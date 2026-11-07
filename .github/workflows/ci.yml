@@ -1,0 +1,116 @@
+# RightAlly CI
+#
+# Efficient-minutes policy:
+#  - Draft pull requests run only the quick job (style + static analysis + types).
+#  - The full job (tests + production build) runs once the PR is marked ready.
+#  - No run on push to main: code on main has already passed CI in its PR.
+#  - Docs-only changes skip CI entirely; superseded runs are cancelled.
+name: CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quick:
+    name: Quick checks (style, static analysis, types)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          tools: composer:v2
+          coverage: none
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache/files
+          key: composer-${{ hashFiles('composer.lock') }}
+
+      - run: composer install --no-interaction --no-progress --prefer-dist
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Prepare application and generate route helpers
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+          php artisan wayfinder:generate --with-form
+
+      - name: PHP style (Pint)
+        run: vendor/bin/pint --test
+
+      - name: PHP static analysis (PHPStan level 8)
+        run: vendor/bin/phpstan analyse --no-progress --memory-limit=1G
+
+      - name: Front-end lint and format
+        run: npm run check
+
+      - name: TypeScript types
+        run: npm run types:check
+
+  full:
+    name: Tests and production build
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false
+    needs: quick
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          tools: composer:v2
+          coverage: none
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache/files
+          key: composer-${{ hashFiles('composer.lock') }}
+
+      - run: composer install --no-interaction --no-progress --prefer-dist
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Prepare application
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+          touch database/database.sqlite
+
+      - name: Production build
+        run: npm run build
+
+      - name: Test suite (Pest)
+        run: php artisan test --parallel
