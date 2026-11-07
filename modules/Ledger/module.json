@@ -1,0 +1,9 @@
+{
+    "id": "ledger",
+    "name": "Ledger",
+    "version": "0.1.0",
+    "provider": "Modules\\Ledger\\LedgerServiceProvider",
+    "depends": ["core"],
+    "entitlement": null,
+    "description": "Money primitives and the immutable double-entry ledger behind commissions, fees, revenue share and payouts."
+}
