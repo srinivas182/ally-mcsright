@@ -28,14 +28,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
 
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.5'
-          tools: composer:v2
+          tools: composer:v2, cs2pr
           coverage: none
 
       - name: Cache Composer packages
@@ -46,7 +46,7 @@ jobs:
 
       - run: composer install --no-interaction --no-progress --prefer-dist
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
           cache: npm
@@ -60,10 +60,10 @@ jobs:
           php artisan wayfinder:generate --with-form
 
       - name: PHP style (Pint)
-        run: vendor/bin/pint --test
+        run: vendor/bin/pint --test --format=checkstyle | cs2pr
 
       - name: PHP static analysis (PHPStan level 8)
-        run: vendor/bin/phpstan analyse --no-progress --memory-limit=1G
+        run: vendor/bin/phpstan analyse --no-progress --memory-limit=1G --error-format=github
 
       - name: Front-end lint and format
         run: npm run check
@@ -78,7 +78,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
 
@@ -96,7 +96,7 @@ jobs:
 
       - run: composer install --no-interaction --no-progress --prefer-dist
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
           cache: npm
