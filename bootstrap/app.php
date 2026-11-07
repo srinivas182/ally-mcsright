@@ -7,6 +7,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
+use Modules\Core\Tenancy\Http\Middleware\ResolveTenant;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -17,11 +18,16 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 
-        $middleware->web(append: [
+        // Tenant resolution runs first on every web request (specs/core/01).
+        $middleware->web(prepend: [
+            ResolveTenant::class,
+        ], append: [
             HandleAppearance::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
         ]);
+
+        $middleware->alias(['tenant' => ResolveTenant::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
