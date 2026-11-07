@@ -10,5 +10,14 @@ parameters:
         - database/
         - routes/
         - modules/
+        - tests/Fixtures/
+        - tests/Support/
 
     level: 8
+
+    ignoreErrors:
+        # Module config files (modules/*/config) are merged into Laravel's config and
+        # cached like config/; env() is correct there.
+        -
+            identifier: larastan.noEnvCallsOutsideOfConfig
+            path: modules/*/config/*

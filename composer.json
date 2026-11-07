@@ -34,7 +34,8 @@
             "App\\": "app/",
             "Database\\Factories\\": "database/factories/",
             "Database\\Seeders\\": "database/seeders/",
-            "Modules\\Core\\": "modules/Core/src/"
+            "Modules\\Core\\": "modules/Core/src/",
+            "Modules\\Core\\Database\\Factories\\": "modules/Core/database/factories/"
         }
     },
     "autoload-dev": {
