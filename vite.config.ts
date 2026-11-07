@@ -5,29 +5,43 @@ import tailwindcss from '@tailwindcss/vite';
 import react, { reactCompilerPreset } from '@vitejs/plugin-react';
 import laravel from 'laravel-vite-plugin';
 import { bunny } from 'laravel-vite-plugin/fonts';
+import { fileURLToPath } from 'node:url';
 import { defineConfig, lazyPlugins } from 'vite-plus';
 
+// Vitest sets VITEST. Component tests need only React: the Laravel, Wayfinder and font
+// plugins start PHP, fetch fonts, and refuse to run when CI=true.
+const isVitest = process.env.VITEST !== undefined;
+
 export default defineConfig({
-    plugins: lazyPlugins(() => [
-        laravel({
-            input: ['resources/css/app.css', 'resources/js/app.tsx'],
-            refresh: true,
-            fonts: [
-                bunny('Instrument Sans', {
-                    weights: [400, 500, 600],
-                }),
-            ],
-        }),
-        inertia(),
-        react(),
-        babel({
-            presets: [reactCompilerPreset()],
-        }),
-        tailwindcss(),
-        wayfinder({
-            formVariants: true,
-        }),
-    ]),
+    resolve: {
+        alias: {
+            '@': fileURLToPath(new URL('./resources/js', import.meta.url)),
+        },
+    },
+    plugins: lazyPlugins(() =>
+        isVitest
+            ? [react()]
+            : [
+                  laravel({
+                      input: ['resources/css/app.css', 'resources/js/app.tsx'],
+                      refresh: true,
+                      fonts: [
+                          bunny('Instrument Sans', {
+                              weights: [400, 500, 600],
+                          }),
+                      ],
+                  }),
+                  inertia(),
+                  react(),
+                  babel({
+                      presets: [reactCompilerPreset()],
+                  }),
+                  tailwindcss(),
+                  wayfinder({
+                      formVariants: true,
+                  }),
+              ],
+    ),
     server: {
         watch: {
             ignored: [
