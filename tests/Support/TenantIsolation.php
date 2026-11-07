@@ -28,11 +28,13 @@ final class TenantIsolation
 
         $record = $context->runAs($tenantA, $makeRecord);
         $key = $record->getKey();
+        $keyName = $record->getKeyName();
 
-        $context->runAs($tenantB, function () use ($modelClass, $key): void {
+        $context->runAs($tenantB, function () use ($modelClass, $key, $keyName): void {
             Assert::assertNull($modelClass::query()->find($key), "{$modelClass}: tenant B found tenant A's record by key.");
             Assert::assertSame(0, $modelClass::query()->count(), "{$modelClass}: tenant B can list tenant A's records.");
-            Assert::assertSame(0, $modelClass::query()->whereKey($key)->update(['updated_at' => now()]), "{$modelClass}: tenant B updated tenant A's record.");
+            // A no-op write (key set to itself) works for every table, including append-only logs.
+            Assert::assertSame(0, $modelClass::query()->whereKey($key)->toBase()->update([$keyName => $key]), "{$modelClass}: tenant B updated tenant A's record.");
             Assert::assertSame(0, $modelClass::query()->whereKey($key)->delete(), "{$modelClass}: tenant B deleted tenant A's record.");
         });
 

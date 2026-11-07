@@ -85,6 +85,8 @@ export default defineConfig({
         ignorePatterns: [
             '.github/**',
             'resources/css/tokens.css',
+            // AI prompts are reviewed exactly as written; reformatting would change them.
+            'modules/*/prompts/**',
             'composer.json',
             'resources/js/components/ui/*',
             'resources/views/mail/*',

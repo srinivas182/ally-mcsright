@@ -1,0 +1,9 @@
+{
+    "id": "ai",
+    "name": "AI platform",
+    "version": "0.1.0",
+    "provider": "Modules\\AI\\AiServiceProvider",
+    "depends": ["core"],
+    "entitlement": null,
+    "description": "AI gateway, model registry, credit metering and AI data protection. No module calls an AI provider except through this gateway."
+}
