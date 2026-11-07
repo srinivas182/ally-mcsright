@@ -65,6 +65,9 @@ jobs:
       - name: PHP static analysis (PHPStan level 8)
         run: vendor/bin/phpstan analyse --no-progress --memory-limit=1G --error-format=github
 
+      - name: Design tokens up to date
+        run: php artisan design:tokens --check
+
       - name: Front-end lint and format
         run: npm run check
 
@@ -111,6 +114,9 @@ jobs:
 
       - name: Production build
         run: npm run build
+
+      - name: Front-end component tests
+        run: npm run test
 
       - name: Test suite (Pest)
         run: php artisan test --parallel

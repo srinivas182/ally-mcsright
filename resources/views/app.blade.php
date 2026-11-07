@@ -26,9 +26,15 @@
             }
 
             html.dark {
-                background-color: oklch(0.145 0 0);
+                background-color: oklch(0.255 0.012 267.4);
             }
         </style>
+
+        {{-- Tenant brand accent (back office: primary and focus colours only) --}}
+        @php($tenantThemeCss = app(\Modules\Core\Branding\TenantTheme::class)->css())
+        @if ($tenantThemeCss)
+            <style>{!! $tenantThemeCss !!}</style>
+        @endif
 
         <link rel="icon" href="/favicon.ico" sizes="any">
         <link rel="icon" href="/favicon.svg" type="image/svg+xml">

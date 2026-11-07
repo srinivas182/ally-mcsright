@@ -12,6 +12,9 @@ use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\ServiceProvider;
+use Modules\Core\Branding\BrandColourSource;
+use Modules\Core\Branding\NullBrandColourSource;
+use Modules\Core\Console\CompileDesignTokens;
 use Modules\Core\Tenancy\DomainResolver;
 use Modules\Core\Tenancy\Models\Tenant;
 use Modules\Core\Tenancy\TenantCache;
@@ -35,6 +38,7 @@ final class CoreServiceProvider extends ServiceProvider
         $this->app->scoped(TenantContext::class);
         $this->app->scoped(TenantCache::class);
         $this->app->singleton(DomainResolver::class);
+        $this->app->bind(BrandColourSource::class, NullBrandColourSource::class);
     }
 
     public function boot(): void
@@ -44,6 +48,10 @@ final class CoreServiceProvider extends ServiceProvider
 
         $this->registerTenantAwareQueues();
         $this->registerMigrationMacros();
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([CompileDesignTokens::class]);
+        }
     }
 
     /**
