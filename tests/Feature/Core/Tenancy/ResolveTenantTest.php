@@ -80,3 +80,7 @@ it('does not leak the tenant into the next request', function (): void {
     probe('first-tenant.rightally.app')->assertSeeText('tenant:first-tenant');
     probe('localhost')->assertSeeText('tenant:none');
 });
+
+it('keeps the health check reachable on any host for load balancers', function (): void {
+    $this->get('http://unknown-host.example/up')->assertOk();
+});

@@ -7,6 +7,7 @@ namespace Modules\Core\Tenancy;
 use Illuminate\Contracts\Cache\Repository as Cache;
 use Modules\Core\Tenancy\Models\Tenant;
 use Modules\Core\Tenancy\Models\TenantDomain;
+use Modules\Core\Tenancy\Models\TenantHostRedirect;
 
 /**
  * Maps a host name to its tenant. The host-to-tenant-id lookup is cached so the
@@ -38,6 +39,20 @@ final class DomainResolver
         }
 
         return Tenant::query()->find($tenantId);
+    }
+
+    /**
+     * For an old platform host after a slug change: the host to redirect to (the tenant's
+     * current primary domain), or null when there is no active redirect.
+     */
+    public function redirectTargetFor(string $host): ?string
+    {
+        $redirect = TenantHostRedirect::query()
+            ->where('host', Host::normalise($host))
+            ->where('redirect_until', '>', now())
+            ->first();
+
+        return $redirect?->tenant->primaryDomain()?->host;
     }
 
     public function forget(string $host): void
