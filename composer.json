@@ -37,7 +37,9 @@
             "Database\\Seeders\\": "database/seeders/",
             "Modules\\Core\\": "modules/Core/src/",
             "Modules\\Core\\Database\\Factories\\": "modules/Core/database/factories/",
-            "Modules\\Ledger\\": "modules/Ledger/src/"
+            "Modules\\Ledger\\": "modules/Ledger/src/",
+            "Modules\\AI\\": "modules/AI/src/",
+            "Modules\\AI\\Database\\Factories\\": "modules/AI/database/factories/"
         }
     },
     "autoload-dev": {

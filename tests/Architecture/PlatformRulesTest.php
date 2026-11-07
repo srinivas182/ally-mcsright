@@ -24,3 +24,11 @@ arch('env() is only read inside config files')
 arch('module code uses strict types')
     ->expect('Modules')
     ->toUseStrictTypes();
+
+arch('AI providers are only reachable through the AI gateway')
+    ->expect('Modules\AI\Providers')
+    ->toOnlyBeUsedIn('Modules\AI');
+
+arch('AI data protection classes are only used inside the AI module')
+    ->expect('Modules\AI\Security')
+    ->toOnlyBeUsedIn('Modules\AI');
