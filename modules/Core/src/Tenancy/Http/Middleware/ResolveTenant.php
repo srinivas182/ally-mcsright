@@ -46,6 +46,12 @@ final class ResolveTenant
         $tenant = $this->resolver->resolve($host);
 
         if ($tenant === null) {
+            $target = $this->resolver->redirectTargetFor($host);
+
+            if ($target !== null) {
+                return redirect()->away($request->getScheme().'://'.$target.$request->getRequestUri(), 301);
+            }
+
             abort(404);
         }
 

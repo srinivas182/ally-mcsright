@@ -28,6 +28,15 @@ return [
         'cell' => env('CORE_CELL_CONNECTION'),
     ],
 
+    /*
+    | TEMPORARY until roles and permissions ship (Sprints 5-6, specs/core/03): HQ console
+    | access is denied unless the signed-in user's email is listed here (comma-separated).
+    */
+    'hq_bootstrap_admins' => array_values(array_filter(array_map(
+        fn (string $email): string => strtolower(trim($email)),
+        explode(',', (string) env('CORE_HQ_ADMINS', '')),
+    ))),
+
     'domain_cache_ttl' => (int) env('CORE_DOMAIN_CACHE_TTL', 300),
 
     'slug' => [

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Core\Tenancy\Models;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -29,6 +30,12 @@ use Modules\Core\Tenancy\Enums\TenantType;
  * @property string $locale
  * @property string|null $state_code
  * @property string|null $suspended_reason
+ * @property string|null $provisioning_key
+ * @property CarbonImmutable|null $closing_at
+ * @property string|null $closing_reason
+ * @property CarbonImmutable|null $closed_at
+ * @property CarbonImmutable|null $purge_after
+ * @property CarbonImmutable|null $created_at
  */
 final class Tenant extends Model
 {
@@ -39,8 +46,9 @@ final class Tenant extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'type', 'name', 'slug', 'status', 'cell_id', 'timezone', 'locale', 'state_code',
-        'suspended_reason', 'closed_at', 'purge_after', 'created_by_user_id',
+        'type', 'name', 'slug', 'provisioning_key', 'status', 'cell_id', 'timezone', 'locale', 'state_code',
+        'suspended_reason', 'closing_at', 'closing_reason', 'closed_at', 'purge_after', 'purge_due_notified_at',
+        'created_by_user_id',
     ];
 
     public function getConnectionName(): ?string
@@ -56,8 +64,10 @@ final class Tenant extends Model
         return [
             'type' => TenantType::class,
             'status' => TenantStatus::class,
+            'closing_at' => 'immutable_datetime',
             'closed_at' => 'immutable_datetime',
             'purge_after' => 'immutable_datetime',
+            'purge_due_notified_at' => 'immutable_datetime',
         ];
     }
 
@@ -75,6 +85,11 @@ final class Tenant extends Model
     public function domains(): HasMany
     {
         return $this->hasMany(TenantDomain::class);
+    }
+
+    public function primaryDomain(): ?TenantDomain
+    {
+        return $this->domains()->where('is_primary', true)->first();
     }
 
     public function isHq(): bool
