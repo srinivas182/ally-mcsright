@@ -39,6 +39,11 @@ export default defineConfig({
             ],
         },
     },
+    test: {
+        environment: 'jsdom',
+        include: ['resources/js/**/*.test.{ts,tsx}'],
+        setupFiles: ['resources/js/test/setup.ts'],
+    },
     lint: {
         ignorePatterns: [
             'vendor/**',
@@ -65,6 +70,7 @@ export default defineConfig({
         htmlWhitespaceSensitivity: 'css',
         ignorePatterns: [
             '.github/**',
+            'resources/css/tokens.css',
             'composer.json',
             'resources/js/components/ui/*',
             'resources/views/mail/*',
