@@ -29,7 +29,7 @@ Two-week sprints, four teams (about 18 people). Every sprint starts from a detai
 | ---------- | --------------------------------------------------------------------------- |
 | 0.1        | Repository, Laravel 13 + React 19, Pest, PHPStan level 8, Docker, CI (done) |
 | 0.2        | Architecture v2, decision records, this plan, legacy reference notes        |
-| 0.3        | Detailed specification for Platform Core, Sprints 1-5                       |
+| 0.3        | Detailed specification for Platform Core, Team A Sprints 1-13               |
 
 ## Sprints 1 to 52
 
