@@ -10,6 +10,7 @@
     "license": "MIT",
     "require": {
         "php": "^8.3",
+        "brick/math": "^1.0",
         "inertiajs/inertia-laravel": "^3.0",
         "laravel/fortify": "^1.37.2",
         "laravel/framework": "^13.17",
@@ -35,7 +36,8 @@
             "Database\\Factories\\": "database/factories/",
             "Database\\Seeders\\": "database/seeders/",
             "Modules\\Core\\": "modules/Core/src/",
-            "Modules\\Core\\Database\\Factories\\": "modules/Core/database/factories/"
+            "Modules\\Core\\Database\\Factories\\": "modules/Core/database/factories/",
+            "Modules\\Ledger\\": "modules/Ledger/src/"
         }
     },
     "autoload-dev": {
