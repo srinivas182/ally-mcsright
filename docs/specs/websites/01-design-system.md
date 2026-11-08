@@ -52,6 +52,13 @@ light/dark, keyboard behaviour, ARIA attributes, RTL-safe layout, Spanish text-e
 
 ## Component workbench and visual tests
 
+> **Updated in Sprint 2C (ADR 0011):** Storybook is incompatible with the Vite+ toolchain without
+> disabling peer-dependency checks project-wide, so the in-app workbench at `/dev/design` is used
+> instead (local, and staging with `CORE_DESIGN_GALLERY=true`). Component tests include axe-core
+> accessibility checks. Screenshot regression is deferred until it can be verified (Sprint 3C).
+
+Original plan:
+
 - Storybook (React, Vite) for every component, published from CI artefacts on demand (not on
   every run).
 - Playwright visual-regression snapshots for components and shells in light/dark and mobile/desktop.

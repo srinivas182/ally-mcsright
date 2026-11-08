@@ -1,13 +1,50 @@
 import { Head } from '@inertiajs/react';
 import { useState } from 'react';
 
+import type { ColumnDef } from '@tanstack/react-table';
+import { InboxIcon } from 'lucide-react';
+import { toast } from 'sonner';
+
+import {
+    Accordion,
+    AccordionContent,
+    AccordionItem,
+    AccordionTrigger,
+} from '@/components/ui/accordion';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Combobox } from '@/components/ui/combobox';
+import { DataTable } from '@/components/ui/data-table';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { EmptyState } from '@/components/ui/empty-state';
 import { FormField } from '@/components/ui/form-field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Pagination } from '@/components/ui/pagination';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
+import { Progress } from '@/components/ui/progress';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
     Select,
@@ -16,8 +53,19 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import {
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetHeader,
+    SheetTitle,
+    SheetTrigger,
+} from '@/components/ui/sheet';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
+import { StatCard } from '@/components/ui/stat-card';
 import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import {
     Tooltip,
@@ -27,6 +75,20 @@ import {
 } from '@/components/ui/tooltip';
 
 const steps = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950];
+
+type SampleAgent = { id: string; name: string; office: string; deals: number };
+
+const sampleAgents: SampleAgent[] = [
+    { id: '1', name: 'Sarah Lee', office: 'Jackson', deals: 18 },
+    { id: '2', name: 'Bob Jones', office: 'Ridgeland', deals: 31 },
+    { id: '3', name: 'Ann Kim', office: 'Jackson', deals: 7 },
+];
+
+const agentColumns: ColumnDef<SampleAgent>[] = [
+    { accessorKey: 'name', header: 'Agent' },
+    { accessorKey: 'office', header: 'Office' },
+    { accessorKey: 'deals', header: 'Closed deals' },
+];
 
 function Section({
     title,
@@ -49,6 +111,9 @@ function Section({
  */
 export default function DesignGallery() {
     const [dark, setDark] = useState(false);
+    const [agent, setAgent] = useState<string | null>(null);
+    const [page, setPage] = useState(1);
+    const [selected, setSelected] = useState<string[]>([]);
 
     function toggleDark(value: boolean) {
         setDark(value);
@@ -212,6 +277,200 @@ export default function DesignGallery() {
                             <TooltipContent>Helpful tooltip</TooltipContent>
                         </Tooltip>
                     </div>
+                </Section>
+                <Section title="Key numbers">
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                        <StatCard
+                            label="GCI this month"
+                            value="$184,200"
+                            change={12.4}
+                            comparison="vs last month"
+                        />
+                        <StatCard
+                            label="Active agents"
+                            value="142"
+                            change={0}
+                        />
+                        <StatCard
+                            label="Avg. days to close"
+                            value="31"
+                            change={-6}
+                            higherIsBetter={false}
+                        />
+                        <StatCard
+                            label="Leads uncontacted"
+                            value="9"
+                            change={18}
+                            higherIsBetter={false}
+                        />
+                    </div>
+                </Section>
+
+                <Section title="Data table">
+                    <DataTable
+                        columns={agentColumns}
+                        data={sampleAgents}
+                        caption="Agents"
+                        getRowId={(row) => row.id}
+                        onSelectionChange={setSelected}
+                    />
+                    <p className="text-sm text-muted-foreground">
+                        Selected:{' '}
+                        {selected.length === 0 ? 'none' : selected.join(', ')}.
+                        Resize below 768 px to see rows become cards.
+                    </p>
+                    <Pagination
+                        page={page}
+                        lastPage={4}
+                        total={96}
+                        onPageChange={setPage}
+                    />
+                </Section>
+
+                <Section title="Navigation and disclosure">
+                    <Tabs defaultValue="overview">
+                        <TabsList>
+                            <TabsTrigger value="overview">Overview</TabsTrigger>
+                            <TabsTrigger value="deals">Deals</TabsTrigger>
+                            <TabsTrigger value="documents">
+                                Documents
+                            </TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="overview">
+                            Overview content
+                        </TabsContent>
+                        <TabsContent value="deals">Deals content</TabsContent>
+                        <TabsContent value="documents">
+                            Documents content
+                        </TabsContent>
+                    </Tabs>
+                    <Accordion type="single" collapsible className="max-w-xl">
+                        <AccordionItem value="cap">
+                            <AccordionTrigger>What is a cap?</AccordionTrigger>
+                            <AccordionContent>
+                                The most company dollar an agent pays in a cap
+                                year.
+                            </AccordionContent>
+                        </AccordionItem>
+                        <AccordionItem value="share">
+                            <AccordionTrigger>
+                                How is revenue share paid?
+                            </AccordionTrigger>
+                            <AccordionContent>
+                                Monthly, by level, from company dollar.
+                            </AccordionContent>
+                        </AccordionItem>
+                    </Accordion>
+                </Section>
+
+                <Section title="Overlays">
+                    <div className="flex flex-wrap items-center gap-3">
+                        <Dialog>
+                            <DialogTrigger asChild>
+                                <Button variant="outline">Dialog</Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>
+                                        Approve commission
+                                    </DialogTitle>
+                                    <DialogDescription>
+                                        Dialogs trap focus and close with
+                                        Escape.
+                                    </DialogDescription>
+                                </DialogHeader>
+                            </DialogContent>
+                        </Dialog>
+                        <Sheet>
+                            <SheetTrigger asChild>
+                                <Button variant="outline">Drawer</Button>
+                            </SheetTrigger>
+                            <SheetContent>
+                                <SheetHeader>
+                                    <SheetTitle>Deal details</SheetTitle>
+                                    <SheetDescription>
+                                        On phones this slides in as a
+                                        full-height sheet.
+                                    </SheetDescription>
+                                </SheetHeader>
+                            </SheetContent>
+                        </Sheet>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button variant="outline">Popover</Button>
+                            </PopoverTrigger>
+                            <PopoverContent>
+                                Quick details without leaving the page.
+                            </PopoverContent>
+                        </Popover>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline">Menu</Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                                <DropdownMenuLabel>Deal</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem>Edit</DropdownMenuItem>
+                                <DropdownMenuItem>Duplicate</DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                        <Button
+                            variant="outline"
+                            onClick={() =>
+                                toast.success('Commission approved.')
+                            }
+                        >
+                            Toast
+                        </Button>
+                    </div>
+                    <div className="max-w-sm">
+                        <FormField
+                            label="Agent"
+                            help="Searchable for long lists"
+                        >
+                            {(control) => (
+                                <Combobox
+                                    {...control}
+                                    value={agent}
+                                    onChange={setAgent}
+                                    placeholder="Choose an agent"
+                                    options={sampleAgents.map((a) => ({
+                                        value: a.id,
+                                        label: a.name,
+                                        hint: a.office,
+                                    }))}
+                                />
+                            )}
+                        </FormField>
+                    </div>
+                </Section>
+
+                <Section title="Feedback and loading">
+                    <Alert>
+                        <AlertTitle>Licence renews in 30 days</AlertTitle>
+                        <AlertDescription>
+                            Upload the renewal before 14 December to keep
+                            listing.
+                        </AlertDescription>
+                    </Alert>
+                    <Alert variant="destructive">
+                        <AlertTitle>Payment failed</AlertTitle>
+                        <AlertDescription>
+                            We will retry on 3 December.
+                        </AlertDescription>
+                    </Alert>
+                    <Progress value={65} aria-label="Onboarding progress" />
+                    <div className="grid gap-2">
+                        <Skeleton className="h-4 w-1/2" />
+                        <Skeleton className="h-4 w-3/4" />
+                        <Skeleton className="h-4 w-2/3" />
+                    </div>
+                    <EmptyState
+                        icon={<InboxIcon />}
+                        title="No leads yet"
+                        description="Connect a lead source or import a list to get started."
+                        action={<Button>Import leads</Button>}
+                    />
                 </Section>
             </main>
         </TooltipProvider>

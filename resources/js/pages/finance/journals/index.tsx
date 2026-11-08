@@ -2,6 +2,7 @@ import { Head, Link, router } from '@inertiajs/react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Pagination } from '@/components/ui/pagination';
 import { formatMoney } from '@/lib/money';
 
 type JournalRow = {
@@ -112,38 +113,18 @@ export default function JournalsIndex({ journals }: Props) {
                     </table>
                 </div>
 
-                {journals.last_page > 1 && (
-                    <nav
-                        aria-label="Pagination"
-                        className="flex items-center justify-between"
-                    >
-                        <span className="text-sm text-muted-foreground">
-                            Page {journals.current_page} of {journals.last_page}
-                        </span>
-                        <div className="flex gap-2">
-                            <Button
-                                variant="outline"
-                                disabled={!journals.prev_page_url}
-                                onClick={() =>
-                                    journals.prev_page_url &&
-                                    router.get(journals.prev_page_url)
-                                }
-                            >
-                                Previous
-                            </Button>
-                            <Button
-                                variant="outline"
-                                disabled={!journals.next_page_url}
-                                onClick={() =>
-                                    journals.next_page_url &&
-                                    router.get(journals.next_page_url)
-                                }
-                            >
-                                Next
-                            </Button>
-                        </div>
-                    </nav>
-                )}
+                <Pagination
+                    page={journals.current_page}
+                    lastPage={journals.last_page}
+                    onPageChange={(page) =>
+                        router.get(window.location.pathname, {
+                            ...Object.fromEntries(
+                                new URLSearchParams(window.location.search),
+                            ),
+                            page,
+                        })
+                    }
+                />
             </div>
         </>
     );

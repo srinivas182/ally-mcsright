@@ -3,6 +3,7 @@ import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Pagination } from '@/components/ui/pagination';
 import {
     Select,
     SelectContent,
@@ -191,38 +192,18 @@ export default function TenantsIndex({ tenants, filters }: Props) {
                     </table>
                 </div>
 
-                {tenants.last_page > 1 && (
-                    <nav
-                        aria-label="Pagination"
-                        className="flex items-center justify-between"
-                    >
-                        <span className="text-sm text-muted-foreground">
-                            Page {tenants.current_page} of {tenants.last_page}
-                        </span>
-                        <div className="flex gap-2">
-                            <Button
-                                variant="outline"
-                                disabled={!tenants.prev_page_url}
-                                onClick={() =>
-                                    tenants.prev_page_url &&
-                                    router.get(tenants.prev_page_url)
-                                }
-                            >
-                                Previous
-                            </Button>
-                            <Button
-                                variant="outline"
-                                disabled={!tenants.next_page_url}
-                                onClick={() =>
-                                    tenants.next_page_url &&
-                                    router.get(tenants.next_page_url)
-                                }
-                            >
-                                Next
-                            </Button>
-                        </div>
-                    </nav>
-                )}
+                <Pagination
+                    page={tenants.current_page}
+                    lastPage={tenants.last_page}
+                    onPageChange={(page) =>
+                        router.get(window.location.pathname, {
+                            ...Object.fromEntries(
+                                new URLSearchParams(window.location.search),
+                            ),
+                            page,
+                        })
+                    }
+                />
             </div>
         </>
     );
