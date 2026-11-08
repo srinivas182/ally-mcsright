@@ -1,0 +1,87 @@
+# Ledger on real MySQL: database triggers (append-only history) and true concurrent posting.
+#
+# Minutes policy: runs only for ready (non-draft) pull requests that touch the ledger, tenancy
+# or these tests; superseded runs are cancelled.
+name: Ledger on MySQL
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - 'modules/Ledger/**'
+      - 'modules/Core/src/Tenancy/**'
+      - 'tests/Feature/Ledger/**'
+      - 'tests/Unit/Ledger/**'
+      - 'tests/Mysql/**'
+      - '.github/workflows/ledger-mysql.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ledger-mysql-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  ledger-mysql:
+    name: Ledger tests on MySQL 8.4
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_DATABASE: rightally_test
+          MYSQL_USER: rightally
+          MYSQL_PASSWORD: secret
+          MYSQL_ROOT_PASSWORD: root
+        # Required for non-super users to create triggers when binary logging is on
+        # (the same parameter must be set on RDS/Aurora; see docs/architecture/deployment-requirements.md).
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+        ports:
+          - 3306:3306
+
+    env:
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: rightally_test
+      DB_USERNAME: rightally
+      DB_PASSWORD: secret
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          tools: composer:v2
+          coverage: none
+
+      - name: Cache Composer packages
+        uses: actions/cache@v6
+        with:
+          path: ~/.composer/cache/files
+          key: composer-${{ hashFiles('composer.lock') }}
+
+      - run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Allow trigger creation with binary logging (RDS parameter equivalent)
+        run: mysql -h 127.0.0.1 -uroot -proot -e "SET PERSIST log_bin_trust_function_creators = 1;"
+
+      - name: Prepare application
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Ledger tests, database guards and concurrency on MySQL
+        run: vendor/bin/pest tests/Unit/Ledger tests/Feature/Ledger tests/Mysql

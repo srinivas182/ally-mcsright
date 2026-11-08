@@ -10,6 +10,8 @@ use Illuminate\Database\DatabaseManager;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
+use Modules\Ledger\Data\Statement;
+use Modules\Ledger\Data\StatementLine;
 use Modules\Ledger\Enums\NormalSide;
 use Modules\Ledger\Enums\PeriodStatus;
 use Modules\Ledger\Events\JournalPosted;
@@ -34,6 +36,9 @@ use Modules\Ledger\Money\Money;
  */
 final class LedgerService
 {
+    /** Retries of the posting transaction on deadlock or lock timeout. */
+    private const ATTEMPTS = 5;
+
     public function __construct(
         private readonly DatabaseManager $db,
         private readonly TenantContext $tenants,
@@ -44,9 +49,10 @@ final class LedgerService
         $draft->validate();
 
         $this->assertAccountsBelongToCurrentTenant($draft);
+        $this->prepare($draft);
 
         try {
-            return $this->connection()->transaction(fn (): LedgerJournal => $this->write($draft));
+            return $this->connection()->transaction(fn (): LedgerJournal => $this->write($draft), self::ATTEMPTS);
         } catch (UniqueConstraintViolationException $exception) {
             // A concurrent request posted the same key first: return that journal.
             // Any other unique violation is a real error and is rethrown.
@@ -60,26 +66,28 @@ final class LedgerService
             throw new AlreadyReversed("Journal {$journal->ulid} cannot be reversed again.");
         }
 
-        return $this->connection()->transaction(function () use ($journal, $reason, $by): LedgerJournal {
-            $draft = JournalDraft::make('reversal.'.$journal->journal_type, 'reversal:'.$journal->ulid)
-                ->describe('Reversal: '.$reason)
-                ->by($by)
-                ->reversing($journal->id);
+        $draft = JournalDraft::make('reversal.'.$journal->journal_type, 'reversal:'.$journal->ulid)
+            ->describe('Reversal: '.$reason)
+            ->by($by)
+            ->reversing($journal->id);
 
-            if ($journal->source_type !== null && $journal->source_id !== null) {
-                $draft->source($journal->source_type, $journal->source_id);
-            }
+        if ($journal->source_type !== null && $journal->source_id !== null) {
+            $draft->source($journal->source_type, $journal->source_id);
+        }
 
-            foreach ($journal->lines()->with('account')->get() as $line) {
-                /** @var LedgerAccount $account */
-                $account = $line->account;
-                $line->debit_cents > 0
-                    ? $draft->credit($account, $line->debit(), $line->memo)
-                    : $draft->debit($account, $line->credit(), $line->memo);
-            }
+        foreach ($journal->lines()->with('account')->get() as $line) {
+            /** @var LedgerAccount $account */
+            $account = $line->account;
+            $line->debit_cents > 0
+                ? $draft->credit($account, $line->debit(), $line->memo)
+                : $draft->debit($account, $line->credit(), $line->memo);
+        }
 
-            $draft->validate();
-            $this->assertAccountsBelongToCurrentTenant($draft);
+        $draft->validate();
+        $this->assertAccountsBelongToCurrentTenant($draft);
+        $this->prepare($draft);
+
+        return $this->connection()->transaction(function () use ($journal, $draft, $reason): LedgerJournal {
             $reversal = $this->write($draft);
 
             $journal->reversed_by_id = $reversal->id;
@@ -90,7 +98,7 @@ final class LedgerService
             ));
 
             return $reversal;
-        });
+        }, self::ATTEMPTS);
     }
 
     /**
@@ -104,6 +112,49 @@ final class LedgerService
             : $this->netDebitFromLines($account, $asOf);
 
         return Money::of($account->normal_side === NormalSide::Debit ? $netDebit : -$netDebit, $currency);
+    }
+
+    /**
+     * Statement for an account between two dates (inclusive), in the account's natural sign.
+     */
+    public function statement(LedgerAccount $account, CarbonImmutable $from, CarbonImmutable $to, string $currency = 'USD'): Statement
+    {
+        $from = $from->startOfDay();
+        $to = $to->startOfDay();
+        $sign = $account->normal_side === NormalSide::Debit ? 1 : -1;
+
+        $opening = Money::of($sign * $this->netDebitFromLines($account, $from->subDay()), $currency);
+        $running = $opening;
+        $lines = [];
+
+        $rows = LedgerLine::query()
+            ->select('ledger_lines.*', 'ledger_journals.ulid as journal_ulid', 'ledger_journals.journal_type',
+                'ledger_journals.description', 'ledger_journals.effective_date')
+            ->join('ledger_journals', 'ledger_journals.id', '=', 'ledger_lines.journal_id')
+            ->where('ledger_lines.account_id', $account->id)
+            ->whereDate('ledger_journals.effective_date', '>=', $from->toDateString())
+            ->whereDate('ledger_journals.effective_date', '<=', $to->toDateString())
+            ->orderBy('ledger_journals.effective_date')
+            ->orderBy('ledger_journals.id')
+            ->orderBy('ledger_lines.id')
+            ->get();
+
+        foreach ($rows as $row) {
+            $amount = Money::of($sign * ($row->debit_cents - $row->credit_cents), $row->currency);
+            $running = $running->add($amount);
+
+            $lines[] = new StatementLine(
+                CarbonImmutable::parse((string) $row->getAttribute('effective_date')),
+                (string) $row->getAttribute('journal_ulid'),
+                (string) $row->getAttribute('journal_type'),
+                $row->getAttribute('description') !== null ? (string) $row->getAttribute('description') : null,
+                $row->memo,
+                $amount,
+                $running,
+            );
+        }
+
+        return new Statement($from, $to, $opening, $lines, $running);
     }
 
     /**
@@ -127,7 +178,15 @@ final class LedgerService
             return $existing;
         }
 
-        $period = $this->periodFor($draft->effectiveDate());
+        // Shared lock: a period cannot be closed while a posting into it is in progress.
+        $period = LedgerPeriod::query()
+            ->whereDate('starts_on', $draft->effectiveDate()->startOfMonth()->toDateString())
+            ->sharedLock()
+            ->firstOrFail();
+
+        if ($period->isClosed()) {
+            throw new ClosedPeriod("The period starting {$period->starts_on->toDateString()} is closed.");
+        }
 
         $journal = LedgerJournal::query()->create([
             'journal_type' => $draft->type,
@@ -166,8 +225,7 @@ final class LedgerService
         // Lock balances in a stable order to avoid deadlocks between concurrent postings.
         ksort($deltas);
         foreach ($deltas as $accountId => $delta) {
-            $balance = LedgerBalance::query()->whereKey($accountId)->lockForUpdate()->first()
-                ?? LedgerBalance::query()->create(['account_id' => $accountId, 'currency' => $delta['currency']]);
+            $balance = LedgerBalance::query()->whereKey($accountId)->lockForUpdate()->firstOrFail();
 
             $balance->net_debit_cents += $delta['net'];
             $balance->last_journal_id = $journal->id;
@@ -182,22 +240,45 @@ final class LedgerService
         return $journal;
     }
 
-    private function periodFor(CarbonImmutable $date): LedgerPeriod
+    /**
+     * Make sure the month's period and every touched balance row exist BEFORE the posting
+     * transaction. Concurrent first postings race to create them; the loser's unique-key error is
+     * expected and ignored, so the posting transaction itself never has to create shared rows
+     * (which would cause duplicate-key failures or InnoDB gap-lock deadlocks under load).
+     */
+    private function prepare(JournalDraft $draft): void
     {
-        $start = $date->startOfMonth();
+        $start = $draft->effectiveDate()->startOfMonth();
 
-        $period = LedgerPeriod::query()->whereDate('starts_on', $start->toDateString())->first()
-            ?? LedgerPeriod::query()->create([
+        if (! LedgerPeriod::query()->whereDate('starts_on', $start->toDateString())->exists()) {
+            $this->createIgnoringRace(fn () => LedgerPeriod::query()->create([
                 'starts_on' => $start,
                 'ends_on' => $start->endOfMonth()->startOfDay(),
                 'status' => PeriodStatus::Open,
-            ]);
-
-        if ($period->isClosed()) {
-            throw new ClosedPeriod("The period starting {$start->toDateString()} is closed.");
+            ]));
         }
 
-        return $period;
+        foreach ($draft->lines() as $line) {
+            $amount = $line['debit'] ?? $line['credit'];
+            assert($amount !== null);
+            $accountId = $line['account']->id;
+
+            if (! LedgerBalance::query()->whereKey($accountId)->exists()) {
+                $this->createIgnoringRace(fn () => LedgerBalance::query()->create([
+                    'account_id' => $accountId,
+                    'currency' => $amount->currency,
+                ]));
+            }
+        }
+    }
+
+    private function createIgnoringRace(\Closure $create): void
+    {
+        try {
+            $create();
+        } catch (UniqueConstraintViolationException) {
+            // Another process created it first; that is fine.
+        }
     }
 
     /**
