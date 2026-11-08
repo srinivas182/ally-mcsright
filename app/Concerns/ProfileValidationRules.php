@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Unique;
+use Modules\Core\Tenancy\TenantContext;
 
 trait ProfileValidationRules
 {
@@ -17,7 +18,8 @@ trait ProfileValidationRules
     protected function profileRules(?int $userId = null): array
     {
         return [
-            'name' => $this->nameRules(),
+            'first_name' => $this->nameRules(),
+            'last_name' => $this->nameRules(),
             'email' => $this->emailRules($userId),
         ];
     }
@@ -29,7 +31,7 @@ trait ProfileValidationRules
      */
     protected function nameRules(): array
     {
-        return ['required', 'string', 'max:255'];
+        return ['required', 'string', 'max:80'];
     }
 
     /**
@@ -44,9 +46,11 @@ trait ProfileValidationRules
             'string',
             'email',
             'max:255',
-            $userId === null
-                ? Rule::unique(User::class)
-                : Rule::unique(User::class)->ignore($userId),
+            // Unique within this tenant only (specs/core/02).
+            Rule::unique(User::class, 'email')
+                ->where('tenant_id', app(TenantContext::class)->id())
+                ->whereNull('deleted_at')
+                ->ignore($userId),
         ];
     }
 }

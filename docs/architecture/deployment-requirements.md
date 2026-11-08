@@ -12,8 +12,9 @@ Settings the platform depends on in every environment. Each one was found by a t
 
 ## Application
 
-| Setting                                                 | Why                                                             |
-| ------------------------------------------------------- | --------------------------------------------------------------- |
-| `CORE_HQ_HOST`, `CORE_PLATFORM_DOMAIN`                  | Tenant resolution (specs/core/01).                              |
-| `CORE_HQ_ADMINS`                                        | Temporary HQ console allow-list until roles ship (Sprints 5–6). |
-| Scheduler running (`php artisan schedule:work` or cron) | `tenants:lifecycle` daily, `ledger:reconcile` nightly.          |
+| Setting                                                 | Why                                                                                                                                                  |
+| ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CORE_HQ_HOST`, `CORE_PLATFORM_DOMAIN`                  | Tenant resolution (specs/core/01).                                                                                                                   |
+| `CORE_BREACHED_PASSWORD_CHECK`                          | `true` in every real environment: new passwords are checked against Have I Been Pwned (k-anonymity; needs outbound HTTPS to api.pwnedpasswords.com). |
+| First HQ staff member                                   | `php artisan tenants:bootstrap-hq --admin-email=…` emails an invitation (no passwords on the command line).                                          |
+| Scheduler running (`php artisan schedule:work` or cron) | `tenants:lifecycle` daily, `ledger:reconcile` nightly.                                                                                               |

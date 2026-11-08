@@ -1,6 +1,10 @@
 export type User = {
     id: number;
+    ulid: string;
     name: string;
+    first_name: string;
+    last_name: string;
+    kind: 'hq_staff' | 'owner' | 'staff' | 'agent' | 'assistant';
     email: string;
     avatar?: string;
     email_verified_at: string | null;

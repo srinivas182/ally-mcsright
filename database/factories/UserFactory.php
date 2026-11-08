@@ -6,6 +6,8 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Modules\Core\Identity\Enums\UserKind;
+use Modules\Core\Identity\Enums\UserStatus;
 
 /**
  * @extends Factory<User>
@@ -25,7 +27,10 @@ class UserFactory extends Factory
     public function definition(): array
     {
         return [
-            'name' => fake()->name(),
+            'kind' => UserKind::Agent,
+            'first_name' => fake()->firstName(),
+            'last_name' => fake()->lastName(),
+            'status' => UserStatus::Active,
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
@@ -39,6 +44,31 @@ class UserFactory extends Factory
     /**
      * Indicate that the model's email address should be unverified.
      */
+    public function owner(): static
+    {
+        return $this->state(fn (array $attributes) => ['kind' => UserKind::Owner]);
+    }
+
+    public function staff(): static
+    {
+        return $this->state(fn (array $attributes) => ['kind' => UserKind::Staff]);
+    }
+
+    public function hqStaff(): static
+    {
+        return $this->state(fn (array $attributes) => ['kind' => UserKind::HqStaff]);
+    }
+
+    public function assistantOf(User $agent): static
+    {
+        return $this->state(fn (array $attributes) => ['kind' => UserKind::Assistant, 'assisted_user_id' => $agent->id]);
+    }
+
+    public function status(UserStatus $status): static
+    {
+        return $this->state(fn (array $attributes) => ['status' => $status]);
+    }
+
     public function unverified(): static
     {
         return $this->state(fn (array $attributes) => [

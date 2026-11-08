@@ -1,0 +1,14 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\Core\Identity\Events;
+
+use Illuminate\Foundation\Events\Dispatchable;
+
+final class InvitationResent
+{
+    use Dispatchable;
+
+    public function __construct(public readonly int $tenantId, public readonly int $invitationId, public readonly ?int $byUserId) {}
+}

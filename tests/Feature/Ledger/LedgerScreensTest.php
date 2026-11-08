@@ -30,7 +30,9 @@ beforeEach(function (): void {
     $this->travelTo(CarbonImmutable::parse('2026-11-15 10:00:00'));
     $this->tenant = Tenant::factory()->withPlatformDomain()->create(['slug' => 'acme']);
     $this->host = 'http://acme.rightally.app';
-    $this->user = User::factory()->create();
+    [$this->user, $this->agent] = app(TenantContext::class)->runAs($this->tenant, fn () => [
+        User::factory()->owner()->create(), User::factory()->create(),
+    ]);
 
     app(TenantContext::class)->runAs($this->tenant, function (): void {
         $chart = app(ChartOfAccounts::class);
@@ -45,8 +47,9 @@ beforeEach(function (): void {
     });
 });
 
-it('denies every finance screen by default, even to signed-in users', function (string $path): void {
-    $this->actingAs($this->user)->get($this->host.$path)->assertForbidden();
+it('denies every finance screen to anyone but the brokerage owner', function (string $path): void {
+    $this->actingAs($this->agent)->get($this->host.$path)->assertForbidden();
+    $this->actingAs($this->user)->get($this->host.$path)->assertOk();
 })->with(['/finance/accounts', '/finance/journals', '/finance/periods', '/finance/adjustments/create']);
 
 it('is not available on the HQ host or central hosts', function (): void {
@@ -54,8 +57,9 @@ it('is not available on the HQ host or central hosts', function (): void {
     config(['core.hq_host' => 'app.rightally.io']);
     $this->artisan('tenants:bootstrap-hq');
 
-    $this->actingAs($this->user)->get('http://app.rightally.io/finance/accounts')->assertNotFound();
-    $this->actingAs($this->user)->get('http://localhost/finance/accounts')->assertNotFound();
+    $hqStaff = app(TenantContext::class)->runAs(Tenant::query()->where('type', 'hq')->sole(), fn () => User::factory()->hqStaff()->create());
+    $this->actingAs($hqStaff)->get('http://app.rightally.io/finance/accounts')->assertNotFound();
+    $this->get('http://localhost/finance/accounts')->assertNotFound();
 });
 
 it('lists accounts with balances in natural sign', function (): void {
@@ -190,9 +194,13 @@ it('closes only finished months', function (): void {
 it('never shows another brokerage\'s ledger records', function (): void {
     grantFinance();
     $other = Tenant::factory()->withPlatformDomain()->create(['slug' => 'other']);
+    $otherOwner = app(TenantContext::class)->runAs($other, fn () => User::factory()->owner()->create());
     $foreign = app(TenantContext::class)->runAs($this->tenant, fn () => LedgerJournal::query()->firstOrFail());
 
-    $this->actingAs($this->user)->get("http://other.rightally.app/finance/journals/{$foreign->ulid}")->assertNotFound();
-    $this->actingAs($this->user)->get('http://other.rightally.app/finance/journals')
+    $this->actingAs($otherOwner)->get("http://other.rightally.app/finance/journals/{$foreign->ulid}")->assertNotFound();
+    $this->actingAs($otherOwner)->get('http://other.rightally.app/finance/journals')
         ->assertInertia(fn (Assert $page) => $page->has('journals.data', 0));
+
+    // Carrying a session from one brokerage to another signs the user out.
+    $this->actingAs($this->user)->get('http://other.rightally.app/finance/journals')->assertRedirect('/login');
 });

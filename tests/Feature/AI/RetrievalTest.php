@@ -41,8 +41,9 @@ beforeEach(function (): void {
 
     $this->tenantA = Tenant::factory()->create();
     $this->tenantB = Tenant::factory()->create();
-    $this->agent = User::factory()->create();
-    $this->otherAgent = User::factory()->create();
+    [$this->agent, $this->otherAgent] = app(TenantContext::class)->runAs($this->tenantA, fn () => [
+        User::factory()->create(), User::factory()->create(),
+    ]);
 
     $embedder = AiProvider::factory()->create(['key' => 'embedder', 'adapter' => 'openai_compatible']);
     $backup = AiProvider::factory()->create(['key' => 'backup-embedder', 'adapter' => 'openai_compatible']);

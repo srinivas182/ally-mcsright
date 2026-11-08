@@ -1,6 +1,7 @@
 <?php
 
 use Laravel\Fortify\Features;
+use Modules\Core\Identity\Http\Middleware\EnsureTenantHost;
 
 return [
 
@@ -101,7 +102,7 @@ return [
     |
     */
 
-    'middleware' => ['web'],
+    'middleware' => ['web', EnsureTenantHost::class],
 
     /*
     |--------------------------------------------------------------------------
@@ -161,7 +162,6 @@ return [
     */
 
     'features' => [
-        Features::registration(),
         Features::resetPasswords(),
         Features::emailVerification(),
         Features::twoFactorAuthentication([

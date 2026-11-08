@@ -9,7 +9,7 @@ use Modules\Core\Http\Middleware\EnsureHqConsole;
 /*
 | HQ console (served only on the HQ host; see EnsureHqConsole).
 */
-Route::middleware(['web', 'auth', EnsureHqConsole::class])
+Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.tenants.manage'])
     ->prefix('hq')
     ->name('hq.')
     ->group(function (): void {

@@ -16,6 +16,9 @@ parameters:
     level: 8
 
     ignoreErrors:
+        -
+            identifier: trait.unused
+            path: tests/Support/RunsOnTenantHost.php
         # Module config files (modules/*/config) are merged into Laravel's config and
         # cached like config/; env() is correct there.
         -
