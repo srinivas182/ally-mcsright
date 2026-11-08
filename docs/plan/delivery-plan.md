@@ -6,6 +6,8 @@ Change log: Deal-IQ (AI transaction coordinator) added: Team D +7 sprints of wor
 
 **Definition of ready (every module):** before a module's detailed specification is written, a best-in-class review of the leading products is done, the features that would most improve users' productivity, closings and efficiency are recommended with their timeline effect, and the owner approves them.
 
+**Definition of done (screens):** every sprint that ships screens passes a usability test with five real agents or brokers against the easy-to-use principles (product/ux-principles.md).
+
 ## Milestones
 
 | Sprint             | Milestone                                                                                                                                          |

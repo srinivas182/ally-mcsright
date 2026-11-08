@@ -256,3 +256,8 @@ texting and voice, credits, compliance rule library (state rule packs).
 14. Each special deal type creates its specific deadlines (for example the 1031 45/180-day dates).
 15. MLS status reminders fire before each MLS's deadline; overdue updates appear to the broker.
 16. A Spanish-speaking client receives concierge answers in Spanish.
+
+## Packaging
+
+Sold with DocIQ as the **RightAlly AI Transaction Suite** (product/ux-principles.md). Agents see one
+assistant per deal: "Ask anything or tell me what to do".

@@ -46,3 +46,7 @@ requests and concierge answers.
 Answers only from the documents (no outside knowledge presented as fact); never edits signed
 documents; not legal advice; redaction before sharing; same data protection as all AI
 (specs/ai/01).
+
+## Packaging
+
+Part of the **RightAlly AI Transaction Suite** with Deal-IQ; DocIQ alone is the entry option.
