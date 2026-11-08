@@ -7,6 +7,7 @@ namespace Modules\AI;
 use Modules\AI\Contracts\CreditMeter;
 use Modules\AI\Data\AiResult;
 use Modules\AI\Data\AiTask;
+use Modules\AI\Data\EmbeddingResult;
 use Modules\AI\Data\ProviderRequest;
 use Modules\AI\Data\ProviderResponse;
 use Modules\AI\Events\AiOutputWasBlocked;
@@ -142,6 +143,86 @@ final class AiGateway
         $this->credits->refund($task->idempotencyKey, 'all models failed');
 
         throw new AllModelsFailed("No model could serve [{$task->featureKey}].");
+    }
+
+    /**
+     * Turn texts into embedding vectors through the feature's model, with the same protections
+     * as every AI call: credits charged once, personal data redacted before it leaves RightAlly,
+     * compliant providers only, every request logged without its content.
+     *
+     * Unlike text generation there is NO fallback to another model: vectors from different
+     * embedding models are not comparable, so mixing them would corrupt search results.
+     *
+     * @param  list<string>  $texts
+     */
+    public function embed(string $featureKey, array $texts, string $idempotencyKey, ?int $userId = null): EmbeddingResult
+    {
+        $this->tenants->id();
+
+        if ($texts === []) {
+            throw new \InvalidArgumentException('Nothing to embed.');
+        }
+
+        $route = AiFeatureRoute::query()->where('feature_key', $featureKey)->first()
+            ?? throw new UnknownFeature("No AI route for feature [{$featureKey}].");
+        $model = $route->primaryModel()->with('provider')->firstOrFail();
+        $provider = $model->provider;
+        $template = new PromptTemplate('embeddings', '1', '');
+        $task = new AiTask($featureKey, 'embeddings', $idempotencyKey, userId: $userId);
+
+        if (! $provider->isUsable()) {
+            $this->log($task, $template, $model, 1, 'skipped', 'provider not active or not compliant', []);
+
+            throw new AllModelsFailed("The embedding provider for [{$featureKey}] is not available.");
+        }
+
+        if ($this->circuit->isOpen($provider->key)) {
+            $this->log($task, $template, $model, 1, 'skipped', 'circuit open', []);
+
+            throw new AllModelsFailed("The embedding provider for [{$featureKey}] is temporarily unavailable.");
+        }
+
+        $this->credits->charge($route->credit_action_key, $userId, $idempotencyKey);
+
+        $redactor = new Redactor;
+        $clean = array_map(fn (string $text): string => $redactor->redact($text), $texts);
+        $started = hrtime(true);
+
+        try {
+            $response = $this->providers->embeddingAdapterFor($provider)->embed($provider, $model->model_id, $clean, $route->timeout_seconds);
+        } catch (ProviderUnavailable|ProviderRejected $e) {
+            if ($e instanceof ProviderUnavailable) {
+                $this->circuit->recordFailure($provider->key);
+            }
+            $this->log($task, $template, $model, 1, 'failed', $this->reason($e), [], latency: $this->ms($started));
+            $this->credits->refund($idempotencyKey, 'embedding failed');
+
+            throw $e;
+        }
+
+        $dimensions = count($response->vectors[0] ?? []);
+        foreach ($response->vectors as $vector) {
+            if (count($vector) !== $dimensions || $dimensions === 0) {
+                $this->credits->refund($idempotencyKey, 'malformed embeddings');
+
+                throw new OutputSchemaViolation('The embedding provider returned vectors of inconsistent size.');
+            }
+        }
+
+        if (count($response->vectors) !== count($clean)) {
+            $this->credits->refund($idempotencyKey, 'malformed embeddings');
+
+            throw new OutputSchemaViolation('The embedding provider returned the wrong number of vectors.');
+        }
+
+        $this->circuit->recordSuccess($provider->key);
+        $cost = $model->costMicrocents($response->tokens, 0);
+        $log = $this->log(
+            $task, $template, $model, 1, 'ok', null, [],
+            new ProviderResponse('', $response->tokens, 0), $cost, $this->ms($started), 'not_applicable',
+        );
+
+        return new EmbeddingResult($response->vectors, $model->model_id, $dimensions, $log->ulid, $cost);
     }
 
     /**

@@ -6,6 +6,7 @@ namespace Modules\AI\Data;
 
 use Illuminate\Database\Eloquent\Model;
 use Modules\AI\Exceptions\ContextNotPermitted;
+use Modules\AI\Models\VectorDocument;
 use Modules\Core\Tenancy\Concerns\BelongsToTenant;
 use Modules\Core\Tenancy\TenantContext;
 
@@ -49,6 +50,21 @@ final readonly class RetrievedRecord
         $id = $model->getAttribute('ulid') ?? $model->getKey();
 
         return new self(class_basename($model), (string) $id, self::stringify($fields), false);
+    }
+
+    /**
+     * A retrieved passage from the current tenant's search index. The type and ID are those of the
+     * source record, so answers cite the record the passage came from.
+     */
+    public static function fromIndexedChunk(VectorDocument $chunk): self
+    {
+        $context = app(TenantContext::class);
+
+        if (! $context->check() || $chunk->tenant_id !== $context->id()) {
+            throw new ContextNotPermitted('Indexed passage does not belong to the current tenant.');
+        }
+
+        return new self($chunk->source_type, $chunk->source_id, ['passage' => $chunk->content], false);
     }
 
     /**

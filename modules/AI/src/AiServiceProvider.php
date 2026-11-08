@@ -7,6 +7,12 @@ namespace Modules\AI;
 use Illuminate\Support\ServiceProvider;
 use Modules\AI\Contracts\CreditMeter;
 use Modules\AI\Providers\ProviderRegistry;
+use Modules\AI\Retrieval\AccessScopeResolver;
+use Modules\AI\Retrieval\DatabaseVectorStore;
+use Modules\AI\Retrieval\OwnRecordsOnlyResolver;
+use Modules\AI\Retrieval\ScopedRetriever;
+use Modules\AI\Retrieval\VectorIndexer;
+use Modules\AI\Retrieval\VectorStore;
 use Modules\AI\Security\OutputPolicy;
 use Modules\AI\Security\PromptBuilder;
 use Modules\AI\Support\CircuitBreaker;
@@ -35,6 +41,10 @@ final class AiServiceProvider extends ServiceProvider
         $this->app->singleton(JsonShape::class);
         $this->app->bind(CreditMeter::class, NullCreditMeter::class);
         $this->app->scoped(AiGateway::class);
+        $this->app->bind(VectorStore::class, DatabaseVectorStore::class);
+        $this->app->bind(AccessScopeResolver::class, OwnRecordsOnlyResolver::class);
+        $this->app->scoped(VectorIndexer::class);
+        $this->app->scoped(ScopedRetriever::class);
     }
 
     public function boot(): void

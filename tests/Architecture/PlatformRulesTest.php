@@ -32,3 +32,7 @@ arch('AI providers are only reachable through the AI gateway')
 arch('AI data protection classes are only used inside the AI module')
     ->expect('Modules\AI\Security')
     ->toOnlyBeUsedIn('Modules\AI');
+
+arch('vector stores are only reachable through the AI retrieval services')
+    ->expect(['Modules\AI\Retrieval\DatabaseVectorStore', 'Modules\AI\Embeddings'])
+    ->toOnlyBeUsedIn('Modules\AI');

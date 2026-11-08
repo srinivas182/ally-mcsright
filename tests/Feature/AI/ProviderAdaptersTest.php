@@ -6,10 +6,13 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Modules\AI\Data\ProviderRequest;
+use Modules\AI\Embeddings\GeminiEmbeddings;
+use Modules\AI\Embeddings\OpenAiCompatibleEmbeddings;
 use Modules\AI\Exceptions\ProviderRejected;
 use Modules\AI\Exceptions\ProviderUnavailable;
 use Modules\AI\Models\AiProvider;
 use Modules\AI\Providers\AnthropicAdapter;
+use Modules\AI\Providers\GeminiAdapter;
 use Modules\AI\Providers\OpenAiCompatibleAdapter;
 
 function providerRequest(): ProviderRequest
@@ -82,3 +85,52 @@ it('treats connection failures as unavailable', function (): void {
 
     app(OpenAiCompatibleAdapter::class)->send($provider, providerRequest());
 })->throws(ProviderUnavailable::class);
+
+it('calls Gemini generateContent and maps the response', function (): void {
+    Http::fake(['https://gemini.test/v1beta/models/gemini-x:generateContent' => Http::response([
+        'candidates' => [['content' => ['parts' => [['text' => 'Hi'], ['text' => ' there']]]]],
+        'usageMetadata' => ['promptTokenCount' => 9, 'candidatesTokenCount' => 2, 'cachedContentTokenCount' => 4],
+    ])]);
+    config(['services.gemini.key' => 'g-key']);
+    $provider = AiProvider::factory()->make(['adapter' => 'gemini', 'base_url' => 'https://gemini.test', 'credential_config_key' => 'services.gemini.key']);
+
+    $response = app(GeminiAdapter::class)->send($provider, new ProviderRequest('gemini-x', 'Rules', 'Question', 100, '0.1', 30));
+
+    expect($response->text)->toBe('Hi there')->and($response->tokensIn)->toBe(9)->and($response->cacheReadTokens)->toBe(4);
+    Http::assertSent(fn (Request $r) => $r->hasHeader('x-goog-api-key', 'g-key')
+        && $r['systemInstruction']['parts'][0]['text'] === 'Rules'
+        && $r['contents'][0]['parts'][0]['text'] === 'Question');
+});
+
+it('maps Gemini errors', function (): void {
+    Http::fake(['*' => Http::sequence()->push([], 503)->push([], 400)]);
+    $provider = AiProvider::factory()->make(['adapter' => 'gemini', 'base_url' => 'https://gemini.test']);
+    $adapter = app(GeminiAdapter::class);
+
+    expect(fn () => $adapter->send($provider, providerRequest()))->toThrow(ProviderUnavailable::class)
+        ->and(fn () => $adapter->send($provider, providerRequest()))->toThrow(ProviderRejected::class);
+});
+
+it('maps OpenAI-style embeddings in input order, with either usage field', function (): void {
+    Http::fake(['https://embed.test/v1/embeddings' => Http::response([
+        'data' => [['index' => 1, 'embedding' => [0.3, 0.4]], ['index' => 0, 'embedding' => [0.1, 0.2]]],
+        'usage' => ['total_tokens' => 7],
+    ])]);
+    $provider = AiProvider::factory()->make(['adapter' => 'openai_compatible', 'base_url' => 'https://embed.test']);
+
+    $response = app(OpenAiCompatibleEmbeddings::class)->embed($provider, 'voyage-x', ['a', 'b'], 30);
+
+    expect($response->vectors)->toBe([[0.1, 0.2], [0.3, 0.4]])->and($response->tokens)->toBe(7);
+});
+
+it('maps Gemini batch embeddings', function (): void {
+    Http::fake(['https://gemini.test/v1beta/models/text-embed:batchEmbedContents' => Http::response([
+        'embeddings' => [['values' => [1, 0]], ['values' => [0, 1]]],
+    ])]);
+    $provider = AiProvider::factory()->make(['adapter' => 'gemini', 'base_url' => 'https://gemini.test']);
+
+    $response = app(GeminiEmbeddings::class)->embed($provider, 'text-embed', ['abcd', 'efgh'], 30);
+
+    expect($response->vectors)->toBe([[1.0, 0.0], [0.0, 1.0]])->and($response->tokens)->toBe(2);
+    Http::assertSent(fn (Request $r) => $r['requests'][1]['content']['parts'][0]['text'] === 'efgh');
+});
