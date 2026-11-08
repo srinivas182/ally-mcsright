@@ -6,6 +6,13 @@ Brokers, staff, agents and assistants sign in on their brokerage's own domain an
 screens their role allows. HQ staff sign in on the HQ host. Security is strong by default without
 getting in the way: 2FA is optional unless a tenant (or HQ) requires it.
 
+## Delivery
+
+| Sprint | Delivered                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 3A     | Tenant-scoped users and per-tenant sign-in; landing by kind; neutral errors, lockout per host+email+IP, alert after 20 failures/hour; 12-character minimum and breached-password check; per-tenant password-reset tokens; self-registration and self-deletion removed; invitations (invite, resend, revoke, accept, 7-day expiry); users admin (suspend, deactivate, reactivate, last-owner protection, assistants follow their agent); sign-out when deactivated or when a session reaches another tenant's host; interim access: owners manage users and use finance, HQ staff use the HQ console |
+| 4A     | 2FA policy (required for HQ staff), passkeys policy, Google/Microsoft sign-in, active sessions screen, impersonation, email change with re-verification                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+
 ## Decisions
 
 - **Users are tenant-scoped.** `users` has `tenant_id`; email is unique per tenant, not globally.
@@ -13,6 +20,8 @@ getting in the way: 2FA is optional unless a tenant (or HQ) requires it.
   agent folding into a brokerage is a data move, not a shared account.
 - Built on the starter kit's Fortify setup (login, registration off for tenants, password reset,
   email verification, 2FA, passkeys).
+- Users **cannot delete their own account** (decided in Sprint 3A): owners deactivate users, so
+  deals, commissions and audit history are never orphaned.
 - Self-registration is **off** for brokerage and HQ tenants; people join by invitation or through
   workflows (agent onboarding, spec 06). Solo signup (Sprints 34–37) uses provisioning.
 

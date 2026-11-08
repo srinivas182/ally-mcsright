@@ -6,11 +6,13 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 use Laravel\Fortify\Features;
+use Tests\Support\RunsOnTenantHost;
 use Tests\TestCase;
 
 class TwoFactorChallengeTest extends TestCase
 {
     use RefreshDatabase;
+    use RunsOnTenantHost;
 
     protected function setUp(): void
     {

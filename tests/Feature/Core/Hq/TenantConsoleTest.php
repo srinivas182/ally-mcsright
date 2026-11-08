@@ -7,26 +7,36 @@ use Inertia\Testing\AssertableInertia as Assert;
 use Modules\Core\Tenancy\Enums\TenantStatus;
 use Modules\Core\Tenancy\Models\Cell;
 use Modules\Core\Tenancy\Models\Tenant;
+use Modules\Core\Tenancy\TenantContext;
 
 beforeEach(function (): void {
-    config(['core.hq_host' => 'app.rightally.io', 'core.hq_bootstrap_admins' => ['admin@rightally.io']]);
+    config(['core.hq_host' => 'app.rightally.io']);
     $this->artisan('tenants:bootstrap-hq')->assertSuccessful();
-    $this->admin = User::factory()->create(['email' => 'admin@rightally.io']);
+    $this->hqTenant = Tenant::query()->where('type', 'hq')->sole();
+    $this->admin = app(TenantContext::class)->runAs($this->hqTenant, fn () => User::factory()->hqStaff()->create(['email' => 'admin@rightally.io']));
     $this->hq = 'http://app.rightally.io';
 });
 
 it('is only available on the HQ host', function (): void {
     $brokerage = Tenant::factory()->withPlatformDomain()->create(['slug' => 'jones']);
+    $owner = app(TenantContext::class)->runAs($brokerage, fn () => User::factory()->owner()->create());
 
-    $this->actingAs($this->admin)->get('http://jones.rightally.app/hq/tenants')->assertNotFound();
-    $this->actingAs($this->admin)->get('http://localhost/hq/tenants')->assertNotFound();
+    $this->actingAs($owner)->get('http://jones.rightally.app/hq/tenants')->assertNotFound();
+    $this->get('http://localhost/hq/tenants')->assertNotFound();
 });
 
-it('requires sign-in and an allow-listed HQ admin', function (): void {
+it('requires an HQ staff sign-in on the HQ host', function (): void {
     $this->get($this->hq.'/hq/tenants')->assertRedirect();
 
-    $this->actingAs(User::factory()->create(['email' => 'someone@else.com']))
-        ->get($this->hq.'/hq/tenants')->assertForbidden();
+    // A brokerage user carried to the HQ host is simply signed out.
+    $brokerage = Tenant::factory()->withPlatformDomain()->create(['slug' => 'jones']);
+    $owner = app(TenantContext::class)->runAs($brokerage, fn () => User::factory()->owner()->create());
+    $this->actingAs($owner)->get($this->hq.'/hq/tenants')->assertRedirect('/login');
+    $this->assertGuest();
+
+    // Only HQ staff may use the console.
+    $notStaff = app(TenantContext::class)->runAs($this->hqTenant, fn () => User::factory()->staff()->create());
+    $this->actingAs($notStaff)->get($this->hq.'/hq/tenants')->assertForbidden();
 });
 
 it('lists and filters tenants', function (): void {

@@ -8,7 +8,7 @@ use Modules\Ledger\Http\Controllers\AccountController;
 use Modules\Ledger\Http\Controllers\JournalController;
 use Modules\Ledger\Http\Controllers\PeriodController;
 
-Route::middleware(['web', 'auth', EnsureTenantWorkspace::class])
+Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])
     ->prefix('finance')
     ->name('finance.')
     ->group(function (): void {

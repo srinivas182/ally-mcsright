@@ -37,14 +37,12 @@ class AppServiceProvider extends ServiceProvider
             app()->isProduction(),
         );
 
-        Password::defaults(fn (): ?Password => app()->isProduction()
-            ? Password::min(12)
-                ->mixedCase()
-                ->letters()
-                ->numbers()
-                ->symbols()
-                ->uncompromised()
-            : null,
-        );
+        Password::defaults(function (): Password {
+            // Minimum 12 characters everywhere (specs/core/02); breached-password check against
+            // Have I Been Pwned (k-anonymity) unless switched off (tests).
+            $rule = Password::min(12);
+
+            return config('core.breached_password_check', true) === true ? $rule->uncompromised() : $rule;
+        });
     }
 }

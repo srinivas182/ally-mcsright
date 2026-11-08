@@ -4,12 +4,18 @@ declare(strict_types=1);
 
 namespace Modules\Core;
 
-use Illuminate\Contracts\Auth\Authenticatable;
+use App\Models\User;
+use Illuminate\Auth\Events\Failed;
+use Illuminate\Auth\Events\Login;
+use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Contracts\Hashing\Hasher;
 use Illuminate\Contracts\Queue\Job;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Queue;
@@ -19,6 +25,10 @@ use Modules\Core\Branding\NullBrandColourSource;
 use Modules\Core\Console\BootstrapHq;
 use Modules\Core\Console\CompileDesignTokens;
 use Modules\Core\Console\RunTenantLifecycle;
+use Modules\Core\Identity\Auth\TenantPasswordBrokerManager;
+use Modules\Core\Identity\Auth\TenantUserProvider;
+use Modules\Core\Identity\Enums\UserKind;
+use Modules\Core\Identity\Events\RepeatedLoginFailures;
 use Modules\Core\Tenancy\DomainResolver;
 use Modules\Core\Tenancy\Models\Tenant;
 use Modules\Core\Tenancy\TenantCache;
@@ -51,15 +61,8 @@ final class CoreServiceProvider extends ServiceProvider
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'core');
         $this->loadRoutesFrom(__DIR__.'/../routes/hq.php');
 
-        // TEMPORARY until roles and permissions (Sprints 5-6): allow-listed HQ emails only.
-        Gate::define('hq.tenants.manage', function (Authenticatable $user): bool {
-            $email = strtolower((string) ($user->email ?? ''));
-
-            /** @var list<string> $admins */
-            $admins = (array) config('core.hq_bootstrap_admins', []);
-
-            return $email !== '' && in_array($email, $admins, true);
-        });
+        $this->loadRoutesFrom(__DIR__.'/../routes/identity.php');
+        $this->registerIdentity();
 
         $this->registerTenantAwareQueues();
         $this->registerMigrationMacros();
@@ -86,6 +89,52 @@ final class CoreServiceProvider extends ServiceProvider
     /**
      * Jobs carry the tenant they were dispatched under and run as that tenant.
      */
+    /**
+     * Tenant-scoped sign-in (specs/core/02) and interim access rules until roles and permissions
+     * replace them in Sprints 5-6 (specs/core/03): HQ staff run the HQ console; brokerage owners
+     * manage their users. Everything else stays denied by default.
+     */
+    private function registerIdentity(): void
+    {
+        Auth::provider('tenant-eloquent', function (Application $app, array $config): TenantUserProvider {
+            return new TenantUserProvider($app->make(Hasher::class), (string) $config['model'], $app->make(TenantContext::class));
+        });
+
+        // extend(), not singleton(): Laravel's password provider is deferred and would replace a
+        // plain binding when it loads. The extender applies whenever the manager is resolved.
+        $this->app->extend('auth.password', fn (mixed $manager, Application $app): TenantPasswordBrokerManager => new TenantPasswordBrokerManager($app));
+
+        Gate::define('hq.tenants.manage', fn (User $user): bool => $user->kind === UserKind::HqStaff);
+
+        foreach (['core.users.view', 'core.users.invite', 'core.users.manage'] as $ability) {
+            Gate::define($ability, fn (User $user): bool => $user->isKind(UserKind::Owner, UserKind::HqStaff));
+        }
+
+        Event::listen(Login::class, function (Login $event): void {
+            if ($event->user instanceof User) {
+                $event->user->newQuery()->whereKey($event->user->id)->update(['last_login_at' => now(), 'last_active_at' => now()]);
+            }
+        });
+
+        Event::listen(Failed::class, function (Failed $event): void {
+            $tenants = $this->app->make(TenantContext::class);
+            $email = mb_strtolower((string) ($event->credentials['email'] ?? ''));
+
+            if (! $tenants->check() || $email === '') {
+                return;
+            }
+
+            $hash = hash('sha256', $email);
+            $key = 'login-failures:'.$tenants->id().':'.$hash;
+            Cache::add($key, 0, now()->addHour());
+            $count = (int) Cache::increment($key);
+
+            if ($count === 20) {
+                RepeatedLoginFailures::dispatch($tenants->id(), $hash, $count);
+            }
+        });
+    }
+
     private function registerTenantAwareQueues(): void
     {
         Queue::createPayloadUsing(function (): array {

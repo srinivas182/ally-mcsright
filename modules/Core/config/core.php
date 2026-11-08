@@ -29,13 +29,9 @@ return [
     ],
 
     /*
-    | TEMPORARY until roles and permissions ship (Sprints 5-6, specs/core/03): HQ console
-    | access is denied unless the signed-in user's email is listed here (comma-separated).
+    | Breached-password check (Have I Been Pwned, k-anonymity) on every new password.
     */
-    'hq_bootstrap_admins' => array_values(array_filter(array_map(
-        fn (string $email): string => strtolower(trim($email)),
-        explode(',', (string) env('CORE_HQ_ADMINS', '')),
-    ))),
+    'breached_password_check' => (bool) env('CORE_BREACHED_PASSWORD_CHECK', true),
 
     /*
     | Component workbench at /dev/design: always on locally; set CORE_DESIGN_GALLERY=true to

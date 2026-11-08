@@ -7,11 +7,13 @@ use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Laravel\Fortify\Features;
+use Tests\Support\RunsOnTenantHost;
 use Tests\TestCase;
 
 class VerificationNotificationTest extends TestCase
 {
     use RefreshDatabase;
+    use RunsOnTenantHost;
 
     protected function setUp(): void
     {
