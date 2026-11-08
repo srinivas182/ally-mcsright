@@ -10,7 +10,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 require __DIR__.'/settings.php';
 
-// Interim design gallery for designers (local development only; Storybook follows).
-if (app()->environment('local')) {
+// Component workbench for design review (local, or staging with CORE_DESIGN_GALLERY=true).
+if (app()->environment('local') || config('core.design_gallery') === true) {
     Route::inertia('dev/design', 'dev/design')->name('dev.design');
 }

@@ -37,6 +37,12 @@ return [
         explode(',', (string) env('CORE_HQ_ADMINS', '')),
     ))),
 
+    /*
+    | Component workbench at /dev/design: always on locally; set CORE_DESIGN_GALLERY=true to
+    | enable it in a staging environment for design review. Never enable in production.
+    */
+    'design_gallery' => (bool) env('CORE_DESIGN_GALLERY', false),
+
     'domain_cache_ttl' => (int) env('CORE_DOMAIN_CACHE_TTL', 300),
 
     'slug' => [
