@@ -1,4 +1,4 @@
-# AI 02 — Deal-IQ: the AI transaction coordinator (Team D, Sprints 32–38; Team B, Sprints 53–54)
+# AI 02 — Deal-IQ: the AI transaction coordinator (Teams D, B, C and A; see sprint split)
 
 Status: **Module definition approved.** The detailed sprint specification (screens, data model,
 APIs) is written before Sprint 32, once Transactions, Forms & e-Sign and DocIQ exist.
@@ -19,7 +19,11 @@ Formerly "AI Transaction Coordinator" in the module catalogue. Positioned as
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | D, 32–36         | Core: talk or type (voice and text), intake by upload, email, photo or voice, contract and addendum drafting, client concierge, all-party portal, deal health in the daily game plan |
 | D, 37–38         | Inbox intelligence (Gmail and Outlook) and the smart timeline engine with state rule packs                                                                                           |
+| D, 39–40         | Multiple-offer management; inspection response and repair requests                                                                                                                   |
 | B, 53–54         | Continuous compliance scan, deadline escalation ladder, money milestones and wire-fraud safeguards, TC team mode, results dashboard, post-closing archive                            |
+| B, 55–56         | Special deal types (new construction, lease, short sale and bank-owned, probate and estates, 1031 exchange); MLS status compliance reminders                                         |
+| C, 53            | Listing-to-contract coordination; vendor scheduling and closing-day logistics                                                                                                        |
+| A, 53            | Client concierge in Spanish (multilingual concierge)                                                                                                                                 |
 
 ## Market review (November 2026)
 
@@ -150,6 +154,53 @@ follow-up in the CRM.
 Days to close, deadline-miss rate, files broker-ready at first submission and hours saved, for agents
 and brokers.
 
+### 16. Multiple-offer management (listing agents)
+
+Deal-IQ reads every offer and shows them side by side: price, **net to the seller** (net sheet per
+offer), financing type, earnest money, contingencies, closing date, concessions and risk flags, with
+a plain-English summary and a recommendation the agent can share with the seller. It sends
+"highest and best" deadline messages to every buyer's agent, logs every offer received, and drafts
+the counter-offer for the chosen one.
+
+### 17. Inspection response and repair requests
+
+From the inspection report (read by DocIQ), Deal-IQ drafts the repair request or credit addendum item
+by item with suggested priorities, lets the agent edit and agree it with the client, sends it for
+e-signature, and tracks the response deadline and any re-inspection.
+
+### 18. Listing-to-contract coordination
+
+Deal-IQ also runs the listing side before a contract exists: listing agreement and seller
+disclosures, MLS input checklist and required fields, photography, sign and lockbox scheduling,
+coming-soon and go-live dates, showing feedback, and price-change reminders. One coordinator from
+listing taken to closed.
+
+### 19. Special deal types
+
+Ready-made timelines, checklists and documents for **new construction** (builder contracts and
+milestones), **leases** (application, lease signing, move-in), **short sales and bank-owned
+properties** (lender approval and addenda), **probate and estates** (court and executor steps) and
+**1031 exchanges** (45-day identification and 180-day closing deadlines), on top of the state rule
+packs.
+
+### 20. MLS status compliance reminders
+
+Each MLS's rules for status changes (pending, closed, withdrawn, price change) are part of the
+rule packs; Deal-IQ reminds the agent before the MLS deadline and shows the broker overdue updates.
+RightAlly does not change MLS statuses itself unless an MLS provides approved write access.
+
+### 21. Vendor scheduling and closing-day logistics
+
+Book inspectors, appraisers, photographers, stagers and movers from the brokerage's preferred-vendor
+list; coordinate the closing appointment with title, the final walkthrough checklist and a client
+"moving list" (utilities, keys, mail forwarding). Vendor lists carry **no paid placement** unless
+the brokerage's legal review approves it (RESPA).
+
+### 22. Concierge in the client's language
+
+The client concierge answers in the client's language, starting with English and Spanish, like the
+rest of RightAlly.
+
 ### Existing capabilities kept
 
 Contract-to-timeline, reminders to every party in the agent's name, missing-document chasing,
@@ -200,3 +251,8 @@ texting and voice, credits, compliance rule library (state rule packs).
 9. Changing the closing date by amendment recalculates every dependent deadline and lists who to notify.
 10. The compliance scan grades every finding and blocks broker submission while blockers remain.
 11. A blocker within 48 hours of its deadline escalates to the broker automatically.
+12. Multiple offers are compared with a correct net-to-seller figure for each.
+13. An inspection report produces an editable repair request that can be sent for signature.
+14. Each special deal type creates its specific deadlines (for example the 1031 45/180-day dates).
+15. MLS status reminders fire before each MLS's deadline; overdue updates appear to the broker.
+16. A Spanish-speaking client receives concierge answers in Spanish.
