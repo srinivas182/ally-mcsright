@@ -1,21 +1,29 @@
-# AI 02 — DealIQ: the AI transaction coordinator (Team D, Sprints 32–36)
+# AI 02 — Deal-IQ: the AI transaction coordinator (Team D, Sprints 32–38; Team B, Sprints 53–54)
 
 Status: **Module definition approved.** The detailed sprint specification (screens, data model,
 APIs) is written before Sprint 32, once Transactions, Forms & e-Sign and DocIQ exist.
 
 ## Purpose
 
-DealIQ does the work of a transaction coordinator for every deal, from accepted contract to closing,
+Deal-IQ does the work of a transaction coordinator for every deal, from accepted contract to closing,
 and makes the agent's life easier: agents **talk or type** to it, it reads the contract, keeps every
 deadline, drafts the paperwork, chases every party and answers clients around the clock under the
 agent's brand. Agents stay in control: nothing is sent or signed without their approval.
 
 Formerly "AI Transaction Coordinator" in the module catalogue. Positioned as
-**"DealIQ — your AI transaction coordinator"**, alongside DocIQ.
+**"Deal-IQ — your AI transaction coordinator"**, alongside DocIQ.
+
+## Sprint split
+
+| Team and sprints | Delivers                                                                                                                                                                             |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| D, 32–36         | Core: talk or type (voice and text), intake by upload, email, photo or voice, contract and addendum drafting, client concierge, all-party portal, deal health in the daily game plan |
+| D, 37–38         | Inbox intelligence (Gmail and Outlook) and the smart timeline engine with state rule packs                                                                                           |
+| B, 53–54         | Continuous compliance scan, deadline escalation ladder, money milestones and wire-fraud safeguards, TC team mode, results dashboard, post-closing archive                            |
 
 ## Market review (November 2026)
 
-| Capability                                                   | ProxiClose | Transaction Wingman | DealIQ                                                  |
+| Capability                                                   | ProxiClose | Transaction Wingman | Deal-IQ                                                 |
 | ------------------------------------------------------------ | ---------- | ------------------- | ------------------------------------------------------- |
 | Reads the contract, builds the timeline                      | ✓          | ✓                   | ✓                                                       |
 | Writes contracts and addendums                               | ✓          | ✓ (separate tool)   | ✓                                                       |
@@ -31,23 +39,33 @@ Formerly "AI Transaction Coordinator" in the module catalogue. Positioned as
 
 ### 1. Talk or type to it
 
-- Push-to-talk in the mobile web app and a chat box on every deal; also a dedicated text-message
-  number and email address per agent.
+- **Type** in the chat box on every deal or in the global Deal-IQ chat, or **tap the mic and speak**:
+  speech is converted to text and shown on screen so the agent can check or edit it before
+  Deal-IQ acts.
+- By phone: **text or send a voice note** to the agent's Deal-IQ number (voice notes are
+  transcribed), or email the agent's Deal-IQ address.
+- Optional **read-aloud** answers for hands-free use (for example while driving), in English and
+  Spanish.
+- **The mic is on every screen where Deal-IQ appears**: phone, tablet, laptop and desktop,
+  including the agent and broker dashboards on the website and the installable mobile web app
+  (native apps after version 1.0). It uses the browser's microphone with the user's permission
+  (Chrome, Safari, Edge, Firefox); if permission is refused, typing still works and the screen
+  explains how to allow the mic.
 - Questions: "What's left on 14 Oak Street?", "Which of my deals close this week?"
 - Instructions: "Move the inspection deadline to Friday and tell the lender", "Draft a 3-day
   extension", "Remind the buyer to send the HOA documents".
-- DealIQ shows exactly what it will do (messages, changes, documents) and waits for the agent to
+- Deal-IQ shows exactly what it will do (messages, changes, documents) and waits for the agent to
   confirm. Speech-to-text runs through the AI gateway (specs/ai/01).
 
 ### 2. Start a deal any way
 
-Upload, forward the contract email, text a photo, or say "new deal at 14 Oak Street". DealIQ creates
+Upload, forward the contract email, text a photo, or say "new deal at 14 Oak Street". Deal-IQ creates
 the transaction, extracts parties, prices and dates, builds the timeline and checklist, and asks the
 agent to confirm anything it is unsure of.
 
 ### 3. Contract and addendum drafting
 
-"Write an offer on 14 Oak St at $350,000, 1% earnest money, close May 1, 10-day inspection." DealIQ
+"Write an offer on 14 Oak St at $350,000, 1% earnest money, close May 1, 10-day inspection." Deal-IQ
 fills the correct **licensed state form** with data from the CRM and MLS, flags missing or unusual
 terms, and sends for e-signature after the agent approves. Counter-offers, extensions, amendments
 and termination notices work the same way. Uses Forms & e-Sign; only forms the tenant is licensed for.
@@ -72,6 +90,66 @@ directly. Replaces email chasing; every view and upload is logged.
 At-risk deadlines, missing signatures and overdue documents appear among the agent's top actions
 each morning; the broker sees at-risk deals across the brokerage.
 
+### 7. Inbox intelligence
+
+Agents connect Gmail or Outlook. Every deal email is filed to the right deal automatically (by
+parties, property references and thread history, even without the address in the subject),
+summarised, and turned into tasks and updates. Replies are drafted in the agent's voice and sent
+from the agent's own address after approval, with no AI branding.
+
+### 8. Smart timeline engine
+
+- **State rule packs** maintained by RightAlly HQ: business-day counting, state holidays,
+  attorney-review states, earnest-money and disclosure deadlines.
+- **Counteroffer chains** resolved to the binding terms.
+- **Amendments recalculate every dependent deadline** and list who must be told.
+- Checklists adapt to **property type** (condo/HOA, land, multi-family, well and septic) and
+  **financing** (cash, conventional, FHA, VA).
+- The brokerage's own checklist, written in plain English, becomes rules applied to every file.
+
+### 9. Continuous compliance scan
+
+Runs at intake and on every new document; findings graded **blocker / warning / info**: missing
+signatures and initials, blank fields, mismatches across documents (names, middle initials, prices,
+dates, wrong year), documents referenced but not in the file, required state and brokerage
+disclosures, and a signed buyer agreement before touring (NAR settlement). Each file has a
+**broker-ready score**; submission to broker review is one click at 100%.
+
+### 10. Deadlines that cannot be missed
+
+Escalation ladder to the right party (in-app → email → text → automated voice call), calendar sync
+with invites to all parties, **at-risk prediction** (for example "appraisal not ordered, financing
+deadline in 6 days", "lender silent for 5 days"), and automatic escalation to the broker for
+blockers within 48 hours of a deadline.
+
+### 11. Money milestones and wire-fraud protection
+
+Earnest money tracked to receipt; commission disbursement authorisation generated from the
+compensation engine; the 3-business-day closing-disclosure rule; **wire-fraud safeguards**
+(verified wiring instructions, call-back verification reminders, wire details never sent by email).
+
+### 12. Daily brief and ask-across-deals
+
+Morning brief of due, overdue and upcoming items across all deals (inside the daily game plan);
+questions across every deal the user may see ("Which deals close this week?"); automatic weekly
+status emails to clients.
+
+### 13. TC team mode
+
+For brokerages with human coordinators: assign deals to TCs, workload dashboard (active files,
+overdue items, last active, one-click nudge), clean handoffs. Brokerages can **offer TC service to
+agents for a per-file fee**, charged through the compensation engine as a deduction.
+
+### 14. After closing
+
+Permanent compliance archive kept for each state's retention period, review request, and past-client
+follow-up in the CRM.
+
+### 15. Results dashboard
+
+Days to close, deadline-miss rate, files broker-ready at first submission and hours saved, for agents
+and brokers.
+
 ### Existing capabilities kept
 
 Contract-to-timeline, reminders to every party in the agent's name, missing-document chasing,
@@ -90,6 +168,9 @@ RightAlly Credits.
 
 ## Guardrails
 
+Positioning: Deal-IQ **catches issues before the broker does**; the broker remains legally
+responsible for file review, so Deal-IQ is never marketed as a guarantee of compliance.
+
 - Agent approval before anything is sent, signed or changed on a deal.
 - Concierge answers only from the client's own deal; output policy blocks identifiers outside it
   (specs/ai/01); no legal, tax or financial advice.
@@ -99,8 +180,9 @@ RightAlly Credits.
 
 ## Dependencies
 
-Transactions (Sprints 12–14), Forms & e-Sign (Sprints 27–30), DocIQ (Sprints 30–31), client portal
-(Sprints 31–33), AI gateway speech-to-text, Twilio texting, credits.
+Transactions, Forms & e-Sign, DocIQ, client portal, compensation engine (CDA, TC fees), daily game plan,
+AI gateway (speech-to-text, text-to-speech), Gmail and Outlook connections, calendar sync, Twilio
+texting and voice, credits, compliance rule library (state rule packs).
 
 ## Acceptance (module level)
 
@@ -111,3 +193,10 @@ Transactions (Sprints 12–14), Forms & e-Sign (Sprints 27–30), DocIQ (Sprints
 4. The client concierge answers only from that client's deal and escalates advice questions.
 5. Third-party portal users see only their own milestones and requests.
 6. Solo agents can send a complete broker packet; brokerage features unlock when their broker joins.
+7. Spoken instructions are transcribed and shown for editing before any action, on phone, tablet,
+   laptop and desktop dashboards alike; voice notes sent by text are transcribed and handled like
+   typed messages.
+8. A deal email without the address in the subject is filed to the correct deal.
+9. Changing the closing date by amendment recalculates every dependent deadline and lists who to notify.
+10. The compliance scan grades every finding and blocks broker submission while blockers remain.
+11. A blocker within 48 hours of its deadline escalates to the broker automatically.
