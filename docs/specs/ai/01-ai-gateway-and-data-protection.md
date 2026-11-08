@@ -87,6 +87,13 @@ pull requests, and versioned; the version is logged with every request.
 
 ### Retrieval service
 
+> **Implemented in Sprint 2D.** Embeddings go through `AiGateway::embed()` with the same protections
+> (credits, redaction, compliant providers, logging) but **never fall back to another model**,
+> because vectors from different models are not comparable. The retriever resolves the access
+> scope itself (`AccessScopeResolver`; own records only until roles ship) and searches through the
+> `VectorStore` interface: `DatabaseVectorStore` (exact cosine) now, OpenSearch k-NN when the AWS
+> environment exists.
+
 `ScopedRetriever` searches the tenant's vector and keyword indexes (OpenSearch k-NN). The tenant
 filter and the user's permission scope are added by the query builder and cannot be removed by
 callers; vector documents carry `tenant_id`, `owner_user_id`, `team_ids`, `office_id` and
