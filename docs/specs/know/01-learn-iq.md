@@ -40,6 +40,24 @@ Guardrails: answers cite the lessons and brokerage policies; "ask your broker" w
 legal advice; English and Spanish. A formal best-in-class review of training platforms precedes the
 detailed specification.
 
+## Built to increase closings (approved)
+
+Goal: agents close significantly more. No multiple is promised; every brokerage sees closings,
+conversion and time to first deal before and after, and the pilot with existing customers measures
+the lift (target: 2–3x for new agents who complete the launch program).
+
+| #   | Capability                         | How it works                                                                                                                                 |
+| --- | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| 11  | **Goal to daily actions**          | Income goal worked back to conversations, appointments and contracts; today's targets in the daily game plan                                 |
+| 12  | **Appointment prep and rehearsal** | One-page brief before each listing appointment (CMA, situation, likely objections) and a 3-minute voice rehearsal                            |
+| 13  | **Live coaching cards on calls**   | With consent, short prompts visible only to the agent during a call ("Ask about pre-approval", "Set the next step")                          |
+| 14  | **Voice debrief in the car**       | 30 seconds after a showing or appointment: CRM updated, follow-ups created, one coaching tip                                                 |
+| 15  | **Top-producer playbooks**         | With their permission, what the brokerage's best agents do differently, turned into playbooks                                                |
+| 16  | **Skill scorecard**                | Eight skills scored from real activity; one weekly focus chosen by the coach                                                                 |
+| 17  | **Local market mastery**           | Weekly 2-minute quizzes from live MLS data                                                                                                   |
+| 18  | **Accountability pods**            | Groups of 4–6 agents with weekly AI-led check-ins                                                                                            |
+| 19  | **Closings proof report**          | Per brokerage: closings by agents who completed the program versus before; also a recruiting message ("join us and get a personal AI coach") |
+
 ## New Agent Launch Program (positioning)
 
 Most brokerages onboard new agents who know little. RightAlly includes the training: **"Your new
