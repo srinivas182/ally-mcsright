@@ -24,6 +24,27 @@ Module: `modules/Compensation`, namespace `Modules\Compensation`. Tenant-owned. 
 | 5      | Team overrides, lead-source splits, per-deal fees from a versioned catalogue (legacy rule 14)                                     |
 | 6      | Screens: plan builder, version history, assignments, fee catalogue, simulator, agent "My plan"                                    |
 
+## Additions from the best-in-class review (approved)
+
+Reviewed: BoldTrail BackOffice (Brokermint) and Lone Wolf Back Office (brokerWOLF).
+
+| #   | Addition                                                                                                                              | Why                                     |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| 1   | **Pre-split and post-split deductions** (franchise, royalty and referral fees before the split; transaction, E&O and tech fees after) | Both leaders support them               |
+| 2   | **Franchise and royalty fees** with their own annual caps                                                                             | Franchise brokerages                    |
+| 3   | **Credits and bonuses** (signing, production, marketing credits; shared or per agent)                                                 | BoldTrail credit items                  |
+| 4   | **Exclude a deal** from plan progression and cap, with a required reason (audited)                                                    | BoldTrail exclusion                     |
+| 5   | **Deal classes** (sale, lease, commercial, referral-only, new construction, BPO) with their own rules                                 | Lone Wolf deal classes                  |
+| 6   | **Partial payments and instalments**, holdbacks, automatic commission disbursement authorisation                                      | Lone Wolf partial payments              |
+| 7   | **Automatic recalculation** of every pending deal when a plan, cap or deal changes, with a "what changed" note                        | BoldTrail requires manual recalculation |
+| 8   | **Caps across all offices and teams** in the brokerage                                                                                | BoldTrail caps are per sub-account only |
+| 9   | **AI plan setup**: describe the plan in plain English or upload the agent agreement or plan sheet; legacy plans import automatically  | Setup is slow and hard in incumbents    |
+| 10  | **Agent earnings view**: distance to cap, projected take-home on pending deals, cap celebration, reset reminder                       | Agent motivation and transparency       |
+| 11  | **Plan profitability for brokers**: run the roster's last 12 months through a proposed plan before changing it                        | Data-driven plan decisions              |
+
+Sprint split becomes Sprints 3–7 (the additions land in Sprints 3–5 for 1, 5 and 7, Sprint 6 for
+2–4 and 6, and Sprint 7 for 8–11).
+
 ## Concepts
 
 | Concept      | Meaning                                                                                                        |
