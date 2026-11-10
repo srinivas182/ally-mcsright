@@ -96,3 +96,5 @@ See spec 01. Status changes emit `DomainVerified`, `DomainFailed`, `PrimaryDomai
    primary redirects all other hosts with 301.
 5. A host can belong to only one tenant; removing a domain falls back cleanly.
 6. Domain changes take effect for routing within 5 minutes (cache invalidated immediately).
+
+> **Extended by [08 — Brand Kit and Brand Voice](08-brand-kit-and-voice.md):** brand guide upload, Brand Voice, branded templates and videos, and a brand and quality gate on every AI output.

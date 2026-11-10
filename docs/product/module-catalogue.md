@@ -44,3 +44,5 @@
 | Know    | Mobile                                | Installable mobile web app at launch; native Flutter apps after 1.0                                                                                                                                                                                                                                                                          |
 
 **RightAlly AI Transaction Suite:** DocIQ and Deal-IQ sold together; DocIQ alone is the entry option.
+
+**Brand Kit and Brand Voice (Platform Core):** every AI message, video and document is branded to the brokerage (logo, colours, fonts, tone, disclaimers) and passes a brand and compliance check before it goes out.

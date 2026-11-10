@@ -12,6 +12,7 @@ the definition of ready (in the spec) and the definition of done (tested with re
 | Three taps                | The ten most common actions in each module take no more than three taps on a phone                                                 |
 | What matters today first  | Screens open on "What needs you today"; everything else one tap away                                                               |
 | Teach in the moment       | A sample record to try on first login, short tips the first time a feature appears, no training course needed                      |
+| Branded, never plain      | Every AI message, video and document uses the brokerage's Brand Kit and Brand Voice and passes the brand check                     |
 | Brokers set up in minutes | The AI setup assistant proposes settings from the brokerage's state and size; the broker reviews and approves                      |
 
 ## How we check it
