@@ -18,6 +18,7 @@ screens, permissions, events, edge cases and acceptance criteria.
 | E — Growth and AI engagement | [Know 01: Learn-IQ](know/01-learn-iq.md) (module definition)                                        | E                            |
 | E — Growth and AI engagement | [Know 02: Broker presence](know/02-broker-presence.md) (module definition)                          | E                            |
 | B — Back office              | [Protect 01: Broker Risk Dashboard](protect/01-broker-risk-dashboard.md) (module definition)        | B                            |
+| D — CRM and AI (with C)      | [Core 08: Brand Kit and Brand Voice](core/08-brand-kit-and-voice.md) (module definition)            | D, C                         |
 
 Next specs are added at least one sprint before the work starts (for example, Compensation plan
 builder before Team B Sprint 3, CRM core before Team D Sprint 4).
