@@ -23,6 +23,25 @@ compensation.
 | Database reactivation | Past clients and sphere scored for likely-to-move and re-engaged                                                                                                                                                                                                                                                                                                                                                                                  |
 | **AI Prospector**     | Agent asks "find likely sellers near 14 Oak St": properties scored from **licensed property data** (long ownership, high equity, absentee owners, tired landlords, probate, pre-foreclosure, expired and FSBO listings) with licensed owner contact, **scrubbed against Do Not Call**, and the right outreach for each (mail, door-knock list, email, compliant calls). "Find likely buyers": ranked from the brokerage's own first-party signals |
 
+### Ask for buyers by prompt
+
+Type or say **"Find buyers for 14 Oak St"** or **"Who's looking for a 3-bed under $350k in
+Fondren?"**. Lead-IQ returns the top matches with the reason for each: website and IDX visitors who
+viewed or saved similar homes, saved searches matching the home, past clients and sphere with
+move-up or downsizing signals, open-house sign-ins and older CRM leads that fit, and buyer requests
+from other agents (AI Networking Assistant). Each shows consent status and the next step (AI text
+to those who consented, a call from the agent, or an email). **"Find me more buyers for this
+listing"** builds a buyer ad campaign and an open-house plan for the home.
+
+### How buyer leads are generated
+
+AI buyer ads from real listings (optimised on closings); the brokerage's IDX website, neighbourhood
+pages and AI chat; every listing as a buyer magnet (property site, text-for-info sign code,
+open-house sign-in, free portal inquiries on own listings); renter-to-owner tools (rent vs buy,
+affordability, down-payment assistance); content and social autopilot; the brokerage's database
+(move-up and downsizing signals); incoming referrals; RESPA-compliant lender and builder
+co-marketing.
+
 No scraping of people's personal data; licensed data and first-party signals only.
 
 ## 2. AI follow-up that never stops
