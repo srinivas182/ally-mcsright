@@ -201,6 +201,16 @@ the brokerage's legal review approves it (RESPA).
 The client concierge answers in the client's language, starting with English and Spanish, like the
 rest of RightAlly.
 
+### 23. Seller and buyer appointment flow
+
+At a listing appointment the agent taps record (**everyone present is asked to consent first**;
+several states require all-party consent). The AI extracts the agreed terms (price, commission,
+term, exclusions) and drafts the **listing agreement on the licensed state form**; every compliance
+check runs (broker approval where required); one click sends it for e-signature with a
+**personalised seller guide** (process, timeline, net sheet, marketing plan from List-IQ). The
+buyer side does the same for the **buyer agreement** (required before touring) with a buyer guide.
+Shown as "passes every check"; the broker remains responsible. Built by Team A.
+
 ### Existing capabilities kept
 
 Contract-to-timeline, reminders to every party in the agent's name, missing-document chasing,
