@@ -10,6 +10,8 @@ use Illuminate\Validation\ValidationException;
 use Modules\AI\AiGateway;
 use Modules\AI\Data\AiTask;
 use Modules\AI\Data\RetrievedRecord;
+use Modules\AI\Models\AiBatch;
+use Modules\AI\Support\JsonShape;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Crm\Models\Activity;
 use Modules\Crm\Models\Contact;
@@ -57,29 +59,79 @@ final class ContactBriefs
             throw ValidationException::withMessages(['contact' => 'Contact not found.']);
         }
 
-        $channels = $this->allowedChannels($contact);
-        $records = $this->records($contact);
+        $result = $this->gateway->run($this->task($contact, $user, 'crm-brief:'.$contact->ulid.':'.CarbonImmutable::now()->format('YmdHisv'), true));
 
-        $result = $this->gateway->run(new AiTask(
+        return $this->store($contact, (array) $result->json, $result->requestUlid);
+    }
+
+    /**
+     * Nightly refresh at batch price for contacts whose brief is out of date or who had activity
+     * in the last day. Results arrive through AiBatchCompleted (see storeBatchResult).
+     */
+    public function refreshInBatch(int $limit = 500): ?AiBatch
+    {
+        $since = CarbonImmutable::now()->subDay();
+        $contacts = Contact::query()->whereNotNull('owner_user_id')
+            ->where(fn ($q) => $q->where('last_activity_at', '>=', $since)
+                ->orWhereIn('id', ContactBrief::query()->where('stale', true)->select('contact_id')))
+            ->limit($limit)->get();
+
+        $tasks = [];
+        foreach ($contacts as $contact) {
+            $owner = User::query()->find($contact->owner_user_id);
+            if ($owner instanceof User && $owner->isActive()) {
+                $tasks[] = $this->task($contact, $owner, 'crm-brief-batch:'.$contact->ulid.':'.$since->format('Ymd'), false);
+            }
+        }
+
+        return $tasks === [] ? null : $this->gateway->batch($tasks);
+    }
+
+    /**
+     * Stores one batch answer (plain text holding JSON) after the same checks as a live brief.
+     */
+    public function storeBatchResult(string $idempotencyKey, string $text): ?ContactBrief
+    {
+        if (preg_match('/^crm-brief-batch:([0-9A-HJKMNP-TV-Z]{26}):/', $idempotencyKey, $m) !== 1) {
+            return null;
+        }
+        $contact = Contact::query()->where('ulid', $m[1])->first();
+        $json = json_decode(trim((string) preg_replace('/^```(?:json)?|```$/m', '', $text)), true);
+        if ($contact === null || ! is_array($json) || app(JsonShape::class)->validate($json, self::SCHEMA) !== []) {
+            return null;
+        }
+
+        return $this->store($contact, $json, null);
+    }
+
+    private function task(Contact $contact, User $user, string $key, bool $structured): AiTask
+    {
+        return new AiTask(
             self::FEATURE,
             'crm.contact_brief',
-            'crm-brief:'.$contact->ulid.':'.CarbonImmutable::now()->format('YmdHisv'),
+            $key,
             inputs: [
                 'language' => $user->locale === 'es' ? 'Spanish' : 'English',
-                'allowed_channels' => implode(' or ', $channels),
+                'allowed_channels' => implode(' or ', $this->allowedChannels($contact)),
                 'agent_name' => $user->first_name,
                 'brokerage' => (string) $this->tenants->current()->name,
                 'today' => CarbonImmutable::now()->toFormattedDateString(),
             ],
-            context: $records,
-            outputSchema: self::SCHEMA,
+            context: $this->records($contact),
+            outputSchema: $structured ? self::SCHEMA : null,
             userId: $user->id,
-        ));
+        );
+    }
 
-        $content = $this->enforceRules((array) $result->json, $channels, $records);
+    /**
+     * @param  array<string, mixed>  $json
+     */
+    private function store(Contact $contact, array $json, ?string $requestUlid): ContactBrief
+    {
+        $content = $this->enforceRules($json, $this->allowedChannels($contact), $this->records($contact));
 
         return ContactBrief::query()->updateOrCreate(['contact_id' => $contact->id], [
-            'content' => $content, 'stale' => false, 'ai_request_ulid' => $result->requestUlid, 'generated_at' => CarbonImmutable::now(),
+            'content' => $content, 'stale' => false, 'ai_request_ulid' => $requestUlid, 'generated_at' => CarbonImmutable::now(),
         ]);
     }
 

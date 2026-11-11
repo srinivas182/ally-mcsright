@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Route;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
 use Modules\Crm\Http\Controllers\ActivityController;
+use Modules\Crm\Http\Controllers\AskController;
 use Modules\Crm\Http\Controllers\BriefController;
 use Modules\Crm\Http\Controllers\ContactController;
 use Modules\Crm\Http\Controllers\DataController;
@@ -20,6 +21,8 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])
         Route::get('board', [PipelineController::class, 'board'])->name('board');
         Route::get('duplicates', [DataController::class, 'duplicates'])->name('duplicates');
         Route::get('work', [WorkListController::class, 'show'])->name('work');
+        Route::get('ask', [AskController::class, 'ask'])->middleware('throttle:30,1')->name('ask');
+        Route::post('quick-add/parse', [AskController::class, 'parseQuickAdd'])->middleware('throttle:30,1')->name('quick-add.parse');
         Route::post('merge', [DataController::class, 'merge'])->name('merge');
         Route::post('imports', [DataController::class, 'upload'])->name('imports.store');
         Route::post('/', [ContactController::class, 'store'])->name('store');
@@ -32,12 +35,15 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])
         Route::post('{contact}/consent', [DataController::class, 'consent'])->name('consent');
         Route::post('{contact}/brief', [BriefController::class, 'refresh'])->middleware('throttle:20,1')->name('brief.refresh');
         Route::post('{contact}/brief/feedback', [BriefController::class, 'feedback'])->name('brief.feedback');
+        Route::post('{contact}/voice-log/parse', [AskController::class, 'proposeLog'])->middleware('throttle:30,1')->name('voice-log.parse');
+        Route::post('{contact}/voice-log', [AskController::class, 'applyLog'])->name('voice-log.apply');
         Route::post('{contact}/tags', [PipelineController::class, 'tag'])->name('tags.store');
         Route::delete('{contact}/tags/{tag}', [PipelineController::class, 'untag'])->name('tags.destroy');
     });
 
 Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function (): void {
     Route::post('activities/{activity}/pin', [ActivityController::class, 'pin'])->name('crm.activities.pin');
+    Route::post('voice/transcribe', [AskController::class, 'transcribe'])->middleware('throttle:30,1')->name('crm.voice.transcribe');
     Route::get('contact-imports/{import}', [DataController::class, 'show'])->name('crm.imports.show');
     Route::post('contact-imports/{import}/run', [DataController::class, 'run'])->name('crm.imports.run');
     Route::post('smart-lists', [PipelineController::class, 'saveList'])->name('crm.lists.store');

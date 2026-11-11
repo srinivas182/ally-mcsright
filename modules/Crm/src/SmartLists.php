@@ -28,7 +28,7 @@ final class SmartLists
         'overdue-tasks' => ['Overdue tasks', ['overdue_task' => true]],
     ];
 
-    private const KEYS = ['lifecycle', 'origin', 'source', 'stage', 'tags', 'no_contact_days', 'overdue_task', 'created_within_days'];
+    private const KEYS = ['lifecycle', 'origin', 'source', 'stage', 'tags', 'no_contact_days', 'overdue_task', 'created_within_days', 'cities', 'pipeline', 'keywords'];
 
     public function __construct(private readonly ContactVisibility $visibility) {}
 
@@ -85,6 +85,8 @@ final class SmartLists
             ->when(! empty($filters['no_contact_days']), fn ($q) => $q->where(fn ($q) => $q->whereNull('last_activity_at')
                 ->orWhere('last_activity_at', '<', $now->subDays((int) $filters['no_contact_days']))))
             ->when(! empty($filters['created_within_days']), fn ($q) => $q->where('created_at', '>=', $now->subDays((int) $filters['created_within_days'])))
+            ->when(! empty($filters['cities']) || ! empty($filters['pipeline']) || ! empty($filters['keywords']), fn ($q) => app(AskDatabase::class)->apply($q,
+                array_intersect_key($filters, array_flip(['cities', 'pipeline', 'keywords']))))
             ->when(($filters['overdue_task'] ?? false) === true, fn ($q) => $q->whereExists(fn ($t) => $t->selectRaw('1')->from('crm_tasks')
                 ->whereColumn('crm_tasks.contact_id', 'crm_contacts.id')->whereNull('crm_tasks.completed_at')->where('crm_tasks.due_at', '<', $now)));
     }
