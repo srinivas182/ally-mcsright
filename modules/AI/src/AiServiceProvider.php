@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace Modules\AI;
 
+use App\Models\User;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use Modules\AI\Console\RunRedTeam;
 use Modules\AI\Contracts\CreditMeter;
 use Modules\AI\Providers\ProviderRegistry;
 use Modules\AI\Retrieval\AccessScopeResolver;
@@ -19,6 +22,9 @@ use Modules\AI\Support\CircuitBreaker;
 use Modules\AI\Support\JsonShape;
 use Modules\AI\Support\NullCreditMeter;
 use Modules\AI\Support\PromptRegistry;
+use Modules\Core\Identity\Enums\UserKind;
+use Modules\Core\Navigation\NavigationRegistry;
+use Modules\Core\Navigation\NavItem;
 
 /**
  * AI platform: gateway, registry, credit metering and AI data protection.
@@ -49,6 +55,13 @@ final class AiServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        $this->loadRoutesFrom(__DIR__.'/../routes/hq.php');
+        Gate::define('hq.ai.manage', fn (User $user): bool => $user->kind === UserKind::HqStaff);
+        $this->app->make(NavigationRegistry::class)->add(new NavItem('HQ', 'AI gateway', '/hq/ai', 'sparkles', 20, ability: 'hq.ai.manage', kinds: [UserKind::HqStaff]));
+        if ($this->app->runningInConsole()) {
+            $this->commands([RunRedTeam::class]);
+        }
+
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
     }
 }
