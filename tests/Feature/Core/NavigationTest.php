@@ -19,16 +19,16 @@ function menuFor(User $user): array
 }
 
 it('shows owners the dashboard, people and finance', function (): void {
-    expect(menuFor(User::factory()->owner()->create()))->toBe(['Dashboard', 'Chart of accounts', 'Journals', 'Periods', 'People']);
+    expect(menuFor(User::factory()->owner()->create()))->toBe(['Dashboard', 'Contacts', 'Chart of accounts', 'Journals', 'Periods', 'People']);
 });
 
 it('shows agents only their own pages', function (): void {
-    expect(menuFor(User::factory()->create()))->toBe(['Today'])
-        ->and(menuFor(User::factory()->assistantOf(User::factory()->create())->create()))->toBe(['Today']);
+    expect(menuFor(User::factory()->create()))->toBe(['Today', 'Contacts'])
+        ->and(menuFor(User::factory()->assistantOf(User::factory()->create())->create()))->toBe(['Today', 'Contacts']);
 });
 
 it('shows staff the dashboard but not owner-only pages', function (): void {
-    expect(menuFor(User::factory()->staff()->create()))->toBe(['Dashboard']);
+    expect(menuFor(User::factory()->staff()->create()))->toBe(['Dashboard', 'Contacts']);
 });
 
 it('shows HQ staff the HQ console and people', function (): void {
@@ -46,7 +46,8 @@ it('lets modules add items, grouped and ordered', function (): void {
     $groups = app(NavigationRegistry::class)->for(User::factory()->create());
 
     expect(array_column($groups, 'label'))->toBe(['Overview', 'Grow'])
-        ->and($groups[1]['items'][0]['title'])->toBe('Leads');
+        ->and($groups[1]['items'][0]['title'])->toBe('Leads')
+        ->and($groups[1]['items'][1]['title'])->toBe('Contacts');
 });
 
 it('shares the brokerage name and the menu with every page', function (): void {
