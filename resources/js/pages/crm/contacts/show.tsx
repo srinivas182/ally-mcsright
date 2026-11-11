@@ -49,6 +49,13 @@ type Contact = {
 
 type Props = {
     contact: Contact;
+    tags: { id: number; name: string }[];
+    pipelines: {
+        ulid: string;
+        name: string;
+        stages: { ulid: string; name: string }[];
+    }[];
+    stage: string | null;
     timeline: TimelineItem[];
     tasks: TaskRow[];
     households: {
@@ -66,6 +73,9 @@ type Props = {
 const label = (v: string) => v.replace(/_/g, ' ');
 
 export default function ContactShow({
+    tags,
+    pipelines,
+    stage,
     timeline,
     tasks,
     contact,
@@ -344,6 +354,86 @@ export default function ContactShow({
                     </div>
 
                     <aside className="grid content-start gap-4">
+                        <div className="grid gap-2 rounded-lg border p-4">
+                            <label
+                                htmlFor="stage"
+                                className="text-sm font-medium"
+                            >
+                                Pipeline stage
+                            </label>
+                            <select
+                                id="stage"
+                                className="rounded-md border bg-background px-2 py-1.5 text-sm"
+                                value={stage ?? ''}
+                                onChange={(e) =>
+                                    router.post(
+                                        `${base}/stage`,
+                                        { stage: e.target.value },
+                                        { preserveScroll: true },
+                                    )
+                                }
+                            >
+                                <option value="" disabled>
+                                    Not in a pipeline
+                                </option>
+                                {pipelines.map((p) => (
+                                    <optgroup key={p.ulid} label={p.name}>
+                                        {p.stages.map((s) => (
+                                            <option key={s.ulid} value={s.ulid}>
+                                                {s.name}
+                                            </option>
+                                        ))}
+                                    </optgroup>
+                                ))}
+                            </select>
+                            <p className="mt-2 text-sm font-medium">Tags</p>
+                            <div className="flex flex-wrap gap-1">
+                                {tags.map((t) => (
+                                    <Badge
+                                        key={t.id}
+                                        variant="secondary"
+                                        className="gap-1"
+                                    >
+                                        {t.name}
+                                        <button
+                                            type="button"
+                                            aria-label={`Remove tag ${t.name}`}
+                                            onClick={() =>
+                                                router.delete(
+                                                    `${base}/tags/${t.id}`,
+                                                    { preserveScroll: true },
+                                                )
+                                            }
+                                        >
+                                            ×
+                                        </button>
+                                    </Badge>
+                                ))}
+                            </div>
+                            <form
+                                onSubmit={(e) => {
+                                    e.preventDefault();
+                                    const input =
+                                        e.currentTarget.elements.namedItem(
+                                            'tag',
+                                        ) as HTMLInputElement;
+                                    router.post(
+                                        `${base}/tags`,
+                                        { tag: input.value },
+                                        {
+                                            preserveScroll: true,
+                                            onSuccess: () => (input.value = ''),
+                                        },
+                                    );
+                                }}
+                            >
+                                <Input
+                                    name="tag"
+                                    aria-label="Add a tag"
+                                    placeholder="Add a tag and press Enter"
+                                />
+                            </form>
+                        </div>
                         <div className="grid gap-3 rounded-lg border p-4">
                             <p className="text-sm font-medium">Tasks</p>
                             {tasks.length > 0 && (

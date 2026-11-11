@@ -45,6 +45,9 @@ use Modules\Crm\Enums\Source;
  * @property int|null $owner_user_id
  * @property int|null $team_id
  * @property int|null $office_id
+ * @property int|null $pipeline_id
+ * @property int|null $stage_id
+ * @property CarbonImmutable|null $stage_changed_at
  * @property CarbonImmutable|null $last_activity_at
  * @property bool $email_opt_in
  * @property bool $sms_opt_in
@@ -64,7 +67,7 @@ final class Contact extends Model
     protected $fillable = [
         'type', 'first_name', 'last_name', 'company_name', 'emails', 'phones', 'address_line1', 'address_line2',
         'city', 'state', 'zip', 'birthday', 'origin', 'source', 'source_detail', 'lifecycle', 'owner_user_id',
-        'team_id', 'office_id', 'created_by',
+        'team_id', 'office_id', 'created_by', 'pipeline_id', 'stage_id', 'stage_changed_at',
     ];
 
     public function getConnectionName(): ?string
@@ -95,7 +98,7 @@ final class Contact extends Model
             'emails' => 'array', 'phones' => 'array', 'birthday' => 'immutable_date',
             'origin' => Origin::class, 'source' => Source::class, 'lifecycle' => Lifecycle::class,
             'last_activity_at' => 'immutable_datetime', 'email_opt_in' => 'boolean', 'sms_opt_in' => 'boolean',
-            'do_not_call' => 'boolean', 'created_at' => 'immutable_datetime',
+            'do_not_call' => 'boolean', 'created_at' => 'immutable_datetime', 'stage_changed_at' => 'immutable_datetime',
         ];
     }
 
@@ -105,6 +108,14 @@ final class Contact extends Model
     protected function name(): Attribute
     {
         return Attribute::get(fn (): string => trim($this->first_name.' '.$this->last_name) ?: (string) $this->company_name);
+    }
+
+    /**
+     * @return BelongsToMany<Tag, $this>
+     */
+    public function tags(): BelongsToMany
+    {
+        return $this->belongsToMany(Tag::class, 'crm_contact_tag', 'contact_id', 'tag_id');
     }
 
     /**
