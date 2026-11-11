@@ -44,7 +44,20 @@ type Contact = {
         zip: string | null;
     };
     birthday: string | null;
-    consent: { email: boolean; sms: boolean; do_not_call: boolean };
+    consent: {
+        email: boolean;
+        sms: boolean;
+        do_not_call: boolean;
+        sms_method: string | null;
+        auto_text_allowed: boolean;
+        default_wording: string;
+        history: {
+            channel: string;
+            action: string;
+            method: string;
+            occurred_at: string;
+        }[];
+    };
 };
 
 type Props = {
@@ -71,6 +84,96 @@ type Props = {
 };
 
 const label = (v: string) => v.replace(/_/g, ' ');
+
+function ConsentPanel({
+    base,
+    consent,
+}: {
+    base: string;
+    consent: Contact['consent'];
+}) {
+    const act = (action: string, extra: Record<string, string> = {}) =>
+        router.post(
+            `${base}/consent`,
+            { action, ...extra },
+            { preserveScroll: true },
+        );
+
+    return (
+        <div className="grid gap-2 rounded-lg border p-4 text-sm">
+            <p className="font-medium">Consent</p>
+            <p>
+                Texting:{' '}
+                {consent.sms
+                    ? `yes (${(consent.sms_method ?? '').replace('_', ' ')}${consent.auto_text_allowed ? ', automated texts allowed' : ', manual texts only'})`
+                    : 'not given'}
+            </p>
+            <div className="flex flex-wrap gap-2">
+                {consent.sms ? (
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => act('sms_opt_out')}
+                    >
+                        Opted out of texts
+                    </Button>
+                ) : (
+                    <>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                                act('sms_opt_in', {
+                                    method: 'signed',
+                                    wording: consent.default_wording,
+                                })
+                            }
+                        >
+                            Signed consent received
+                        </Button>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                                act('sms_opt_in', {
+                                    method: 'verbal',
+                                    wording: consent.default_wording,
+                                })
+                            }
+                        >
+                            Agreed verbally
+                        </Button>
+                    </>
+                )}
+                <Button
+                    size="sm"
+                    variant={consent.do_not_call ? 'destructive' : 'outline'}
+                    onClick={() =>
+                        act(consent.do_not_call ? 'dnc_off' : 'dnc_on')
+                    }
+                >
+                    {consent.do_not_call ? 'Remove Do Not Call' : 'Do Not Call'}
+                </Button>
+            </div>
+            {consent.history.length > 0 && (
+                <details>
+                    <summary className="cursor-pointer text-muted-foreground">
+                        History
+                    </summary>
+                    <ul className="mt-1 grid gap-1 text-xs text-muted-foreground">
+                        {consent.history.map((h) => (
+                            <li key={h.occurred_at + h.channel + h.action}>
+                                {new Date(h.occurred_at).toLocaleString()} ·{' '}
+                                {h.channel} {h.action.replace('_', ' ')} (
+                                {h.method.replace('_', ' ')})
+                            </li>
+                        ))}
+                    </ul>
+                </details>
+            )}
+        </div>
+    );
+}
 
 export default function ContactShow({
     tags,
@@ -474,6 +577,7 @@ export default function ContactShow({
                                 </Select>
                             </div>
                         )}
+                        <ConsentPanel base={base} consent={contact.consent} />
                         <div className="grid gap-2 rounded-lg border p-4">
                             <p className="text-sm font-medium">
                                 Household and relationships

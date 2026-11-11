@@ -14,6 +14,7 @@ use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Identity\Enums\UserStatus;
 use Modules\Crm\Actions\ManageContacts;
 use Modules\Crm\Actions\Pipelines;
+use Modules\Crm\Consent;
 use Modules\Crm\ContactVisibility;
 use Modules\Crm\Enums\Lifecycle;
 use Modules\Crm\Enums\Origin;
@@ -110,7 +111,11 @@ final class ContactController
                 'emails' => $contact->emails, 'phones' => $contact->phones,
                 'address' => ['line1' => $contact->address_line1, 'line2' => $contact->address_line2, 'city' => $contact->city, 'state' => $contact->state, 'zip' => $contact->zip],
                 'birthday' => $contact->birthday?->toDateString(),
-                'consent' => ['email' => $contact->email_opt_in, 'sms' => $contact->sms_opt_in, 'do_not_call' => $contact->do_not_call],
+                'consent' => [
+                    'email' => $contact->email_opt_in, 'sms' => $contact->sms_opt_in, 'do_not_call' => $contact->do_not_call,
+                    'sms_method' => $contact->sms_consent_method, 'auto_text_allowed' => app(Consent::class)->canAutoText($contact),
+                    'default_wording' => Consent::DEFAULT_SMS_WORDING, 'history' => DataController::consentHistory($contact),
+                ],
             ],
             'households' => $contact->households()->with('members')->get()->map(fn ($h): array => [
                 'ulid' => $h->ulid, 'name' => $h->name,

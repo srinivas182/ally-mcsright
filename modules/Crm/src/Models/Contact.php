@@ -52,6 +52,13 @@ use Modules\Crm\Enums\Source;
  * @property bool $email_opt_in
  * @property bool $sms_opt_in
  * @property bool $do_not_call
+ * @property string|null $sms_consent_text
+ * @property string|null $sms_consent_method
+ * @property CarbonImmutable|null $sms_opt_in_at
+ * @property CarbonImmutable|null $sms_opt_out_at
+ * @property CarbonImmutable|null $email_opt_in_at
+ * @property int|null $merged_into_id
+ * @property int|null $import_id
  * @property int|null $created_by
  * @property CarbonImmutable|null $created_at
  * @property-read string $name
@@ -67,7 +74,7 @@ final class Contact extends Model
     protected $fillable = [
         'type', 'first_name', 'last_name', 'company_name', 'emails', 'phones', 'address_line1', 'address_line2',
         'city', 'state', 'zip', 'birthday', 'origin', 'source', 'source_detail', 'lifecycle', 'owner_user_id',
-        'team_id', 'office_id', 'created_by', 'pipeline_id', 'stage_id', 'stage_changed_at',
+        'team_id', 'office_id', 'created_by', 'pipeline_id', 'stage_id', 'stage_changed_at', 'merged_into_id', 'import_id',
     ];
 
     public function getConnectionName(): ?string
@@ -98,7 +105,7 @@ final class Contact extends Model
             'emails' => 'array', 'phones' => 'array', 'birthday' => 'immutable_date',
             'origin' => Origin::class, 'source' => Source::class, 'lifecycle' => Lifecycle::class,
             'last_activity_at' => 'immutable_datetime', 'email_opt_in' => 'boolean', 'sms_opt_in' => 'boolean',
-            'do_not_call' => 'boolean', 'created_at' => 'immutable_datetime', 'stage_changed_at' => 'immutable_datetime',
+            'do_not_call' => 'boolean', 'created_at' => 'immutable_datetime', 'stage_changed_at' => 'immutable_datetime', 'sms_opt_in_at' => 'immutable_datetime', 'sms_opt_out_at' => 'immutable_datetime', 'email_opt_in_at' => 'immutable_datetime',
         ];
     }
 
