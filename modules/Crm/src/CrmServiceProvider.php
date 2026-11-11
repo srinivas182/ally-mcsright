@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Modules\Crm;
 
 use Illuminate\Support\ServiceProvider;
+use Modules\AI\FeatureCatalog;
+use Modules\AI\Support\PromptRegistry;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
@@ -26,6 +28,7 @@ final class CrmServiceProvider extends ServiceProvider
         $this->app->scoped(Actions\Tags::class);
         $this->app->scoped(SmartLists::class);
         $this->app->scoped(Consent::class);
+        $this->app->scoped(ContactBriefs::class);
         $this->app->scoped(Actions\MergeContacts::class);
     }
 
@@ -33,6 +36,10 @@ final class CrmServiceProvider extends ServiceProvider
     {
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
+
+        // AI: prompts live with the module; features are declared for ai:sync-features.
+        $this->app->make(PromptRegistry::class)->addPath(__DIR__.'/../prompts');
+        $this->app->make(FeatureCatalog::class)->declare(ContactBriefs::FEATURE, 'ai.crm_brief', 'AI contact brief on every contact');
 
         $this->app->make(NavigationRegistry::class)->add(new NavItem('Grow', 'Contacts', '/contacts', 'contact', 10,
             kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant], mobile: true));

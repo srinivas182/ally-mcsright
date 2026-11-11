@@ -22,6 +22,7 @@ use Modules\Crm\Enums\Relation;
 use Modules\Crm\Enums\Source;
 use Modules\Crm\Models\Activity;
 use Modules\Crm\Models\Contact;
+use Modules\Crm\Models\ContactBrief;
 use Modules\Crm\Models\Relationship;
 use Modules\Crm\Models\Stage;
 use Modules\Crm\Models\Tag;
@@ -137,6 +138,9 @@ final class ContactController
             'pipelines' => app(Pipelines::class)->all()->map(fn ($p): array => ['ulid' => $p->ulid, 'name' => $p->name,
                 'stages' => $p->stages->map(fn ($s): array => ['ulid' => $s->ulid, 'name' => $s->name])->values()])->values(),
             'stage' => $contact->stage_id !== null ? Stage::query()->whereKey($contact->stage_id)->value('ulid') : null,
+            'brief' => ($brief = ContactBrief::query()->where('contact_id', $contact->id)->first()) !== null ? [
+                'content' => $brief->content, 'stale' => $brief->stale, 'generated_at' => $brief->generated_at->toIso8601String(),
+            ] : null,
             'canManage' => $this->visibility->canManage($user, $contact),
             'agents' => $user->isKind(UserKind::Owner, UserKind::Staff) && $contact->origin === Origin::Company
                 ? User::query()->where('status', UserStatus::Active)->whereIn('kind', [UserKind::Agent, UserKind::Owner, UserKind::Staff])

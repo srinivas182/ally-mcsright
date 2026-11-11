@@ -348,6 +348,13 @@ export default function ContactsIndex({
                     actions={
                         <>
                             <Button variant="outline" asChild>
+                                <Link
+                                    href={`/contacts/work${filters.list ? `?list=${filters.list}` : ''}`}
+                                >
+                                    Work this list
+                                </Link>
+                            </Button>
+                            <Button variant="outline" asChild>
                                 <Link href="/contacts/board">
                                     Pipeline board
                                 </Link>

@@ -13,7 +13,7 @@ use Throwable;
  */
 final class ContactImporter
 {
-    public const FIELDS = ['first_name', 'last_name', 'full_name', 'company_name', 'email', 'phone', 'address_line1', 'city', 'state', 'zip', 'birthday', 'tags'];
+    public const FIELDS = ['first_name', 'last_name', 'full_name', 'company_name', 'email', 'phone', 'address_line1', 'city', 'state', 'zip', 'birthday', 'tags', 'notes', 'last_contact'];
 
     private const GUESSES = [
         'first_name' => ['first name', 'firstname', 'first', 'given name'],
@@ -28,6 +28,8 @@ final class ContactImporter
         'zip' => ['zip', 'zip code', 'zipcode', 'postal code'],
         'birthday' => ['birthday', 'birth date', 'date of birth', 'dob'],
         'tags' => ['tags', 'tag', 'groups', 'labels'],
+        'notes' => ['notes', 'note', 'comments', 'background', 'description'],
+        'last_contact' => ['last contact', 'last contacted', 'last contact date', 'last activity', 'last activity date', 'last touch'],
     ];
 
     /**

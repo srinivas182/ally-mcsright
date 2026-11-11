@@ -12,6 +12,7 @@ use Modules\Core\Identity\Enums\UserKind;
 use Modules\Crm\ContactVisibility;
 use Modules\Crm\Events\TaskCompleted;
 use Modules\Crm\Models\Contact;
+use Modules\Crm\Models\ContactBrief;
 use Modules\Crm\Models\Task;
 
 /**
@@ -54,6 +55,9 @@ final class Tasks
         ]);
 
         $this->refreshNextTask($contact);
+        if ($contact !== null) {
+            ContactBrief::query()->where('contact_id', $contact->id)->update(['stale' => true]);
+        }
 
         return $task;
     }

@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Modules\Crm\Models\ConsentEvent;
 use Modules\Crm\Models\Contact;
+use Modules\Crm\Models\ContactBrief;
 
 /**
  * Texting, email and calling consent (TCPA / CAN-SPAM), recorded as append-only evidence.
@@ -100,5 +101,6 @@ final class Consent
             'ip' => $request?->ip(), 'user_agent' => $request !== null ? mb_substr((string) $request->userAgent(), 0, 255) : null,
             'user_id' => $by?->id, 'occurred_at' => $at,
         ]);
+        ContactBrief::query()->where('contact_id', $contact->id)->update(['stale' => true]);
     }
 }

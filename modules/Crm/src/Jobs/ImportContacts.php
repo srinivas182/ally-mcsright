@@ -15,6 +15,7 @@ use Illuminate\Validation\ValidationException;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Crm\Actions\ManageContacts;
 use Modules\Crm\Actions\Tags;
+use Modules\Crm\Actions\Timeline;
 use Modules\Crm\ContactImporter;
 use Modules\Crm\Models\ContactImport;
 use Throwable;
@@ -33,7 +34,7 @@ final class ImportContacts implements ShouldQueue
 
     public function __construct(public readonly int $importId) {}
 
-    public function handle(ManageContacts $contacts, Tags $tags): void
+    public function handle(ManageContacts $contacts, Tags $tags, Timeline $timeline): void
     {
         $import = ContactImport::query()->findOrFail($this->importId);
         $user = User::query()->findOrFail($import->user_id);
@@ -64,6 +65,15 @@ final class ImportContacts implements ShouldQueue
                         'birthday' => ContactImporter::date($data['birthday'] ?? null),
                         'import_id' => $import->id,
                     ], fn ($v) => $v !== null && $v !== ''))->save();
+
+                    // History from the old CRM: the note lands on the timeline at the last contact date.
+                    $lastContact = ContactImporter::date($data['last_contact'] ?? null);
+                    $when = $lastContact !== null && CarbonImmutable::parse($lastContact)->isPast() ? $lastContact.' 12:00:00' : null;
+                    if (isset($data['notes'])) {
+                        $timeline->log($contact, ['type' => 'note', 'body' => 'Imported note: '.mb_substr($data['notes'], 0, 9000), 'occurred_at' => $when], $user);
+                    } elseif ($when !== null) {
+                        $contact->newQuery()->whereKey($contact->id)->update(['last_activity_at' => $when]);
+                    }
 
                     foreach (array_filter(array_map('trim', explode(',', ($options['tag'] ?? '').','.($data['tags'] ?? '')))) as $tag) {
                         $tags->attach($contact, $tag);
