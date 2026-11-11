@@ -27,6 +27,9 @@ final readonly class SideCalculation
         $total = $this->outsideReferral;
         foreach ($this->agents as $agent) {
             $total = $total->add($agent->preSplitTotal())->add($agent->companyDollar)->add($agent->postSplitTotal())->add($agent->agentNet);
+            if ($agent->postCapFee !== null) {
+                $total = $total->add($agent->postCapFee);
+            }
         }
 
         return $total;

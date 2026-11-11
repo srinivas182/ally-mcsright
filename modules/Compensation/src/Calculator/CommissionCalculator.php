@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Compensation\Calculator;
 
 use Brick\Math\BigDecimal;
+use Brick\Math\RoundingMode;
 use Carbon\CarbonImmutable;
 use Closure;
 use InvalidArgumentException;
@@ -86,8 +87,38 @@ final class CommissionCalculator
         }
 
         [$company, $splitStep] = $this->companyDollar($split, $base, $input, $agent);
-        $agentGross = $base->subtract($company);
         $steps[] = $splitStep;
+
+        // Cap: company dollar stops at the cap; the excess goes to the agent (legacy rules 10-12).
+        $cap = $plan->rules->cap;
+        $postCapFee = null;
+        $capped = false;
+        if ($cap !== null) {
+            [$company, $postCapBase, $capSteps] = $this->applyCap($cap->amountCents, $company, $base, $agent);
+            array_push($steps, ...$capSteps);
+            $capped = $agent->capPaidCents + $company->cents >= $cap->amountCents;
+            if ($postCapBase !== null && $cap->postCapCalc !== null && $cap->postCapAmount !== null) {
+                $postCapFee = $cap->postCapCalc === 'percent'
+                    ? $postCapBase->percentage($cap->postCapAmount)
+                    : Money::of((int) $cap->postCapAmount, $currency)->percentage($agent->sharePercent);
+                if ($cap->postCapFeeCapCents !== null) {
+                    $room = max(0, $cap->postCapFeeCapCents - $agent->postCapFeesPaidCents);
+                    if ($postCapFee->cents > $room) {
+                        $postCapFee = Money::of($room, $currency);
+                        $steps[] = 'Post-cap fees limited by the yearly post-cap fee cap.';
+                    }
+                }
+            }
+        }
+
+        $agentGross = $base->subtract($company);
+        if ($postCapFee !== null) {
+            if ($postCapFee->greaterThan($agentGross)) {
+                $postCapFee = $agentGross;
+            }
+            $agentGross = $agentGross->subtract($postCapFee);
+            $steps[] = "Post-cap fee {$postCapFee->format()}.";
+        }
         $steps[] = "Agent side before fees: {$agentGross->format()}.";
 
         // Post-split deductions (transaction, E&O, technology) come off the agent's side.
@@ -103,7 +134,45 @@ final class CommissionCalculator
         $steps[] = "Agent receives {$net->format()}.";
 
         return new AgentCalculation($agent->userId, $plan->planName, $plan->planVersionId, $share, $pre, $base, $source,
-            $company, $agentGross, $post, $net, $steps);
+            $company, $agentGross, $post, $net, $steps, $postCapFee, $cap?->amountCents,
+            $agent->capPaidCents, $agent->capPaidCents + $company->cents, $capped);
+    }
+
+    /**
+     * Limits company dollar to what is left of the cap. Returns the capped company dollar, the part
+     * of the split base that falls after the cap (null when none), and the steps.
+     *
+     * @return array{0: Money, 1: Money|null, 2: list<string>}
+     */
+    private function applyCap(int $capCents, Money $company, Money $base, AgentShare $agent): array
+    {
+        $currency = $company->currency;
+        $remaining = max(0, $capCents - $agent->capPaidCents);
+        $capText = Money::of($capCents, $currency)->format();
+        $paidText = Money::of($agent->capPaidCents, $currency)->format();
+
+        if ($company->cents <= $remaining) {
+            $after = $agent->capPaidCents + $company->cents;
+            $note = $after >= $capCents ? ' The agent has now capped.' : '';
+
+            return [$company, null, ["Cap: {$paidText} of {$capText} paid so far; this deal adds {$company->format()}.{$note}"]];
+        }
+
+        if ($company->isZero()) {
+            return [$company, null, []];
+        }
+
+        $excess = $company->cents - $remaining;
+        // Share of the split base that falls after the cap, exactly: excess / company.
+        $ratio = (string) BigDecimal::of($excess)->dividedBy($company->cents, 10, RoundingMode::HalfEven);
+        $postCapBase = $base->multiply($ratio);
+        $limited = Money::of($remaining, $currency);
+
+        $steps = $remaining === 0
+            ? ["Already capped ({$capText} paid this cap year): no company dollar on this deal."]
+            : ["Cap: {$paidText} of {$capText} paid so far, so company dollar is limited to the remaining {$limited->format()}; ".Money::of($excess, $currency)->format().' goes to the agent. The agent has now capped.'];
+
+        return [$limited, $postCapBase, $steps];
     }
 
     /**

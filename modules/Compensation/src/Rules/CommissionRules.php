@@ -9,12 +9,12 @@ use Modules\Compensation\Exceptions\InvalidRules;
 
 /**
  * Validated rules of a commission plan version (specs/compensation/01). Unknown keys are rejected
- * so mistakes cannot hide in the JSON. Caps and post-cap fees arrive in Sprint 4, team overrides
- * in Sprint 5; their keys are accepted only once those parts ship.
+ * so mistakes cannot hide in the JSON. Team overrides arrive in Sprint 5; their keys are accepted
+ * only once that part ships.
  */
 final readonly class CommissionRules
 {
-    private const KEYS = ['split', 'pre_split', 'post_split', 'deal_classes', 'lead_sources', 'revenue_share'];
+    private const KEYS = ['split', 'pre_split', 'post_split', 'deal_classes', 'lead_sources', 'revenue_share', 'cap', 'post_cap'];
 
     /**
      * @param  list<Deduction>  $preSplit
@@ -29,6 +29,7 @@ final readonly class CommissionRules
         public array $dealClasses = [],
         public array $leadSources = [],
         public ?string $revenueShareBasis = null,
+        public ?Cap $cap = null,
     ) {}
 
     /**
@@ -83,10 +84,12 @@ final readonly class CommissionRules
             }
         }
 
+        $cap = Cap::parse($data['cap'] ?? null, $data['post_cap'] ?? null, $errors);
+
         if ($errors !== [] || $split === null) {
             throw new InvalidRules($errors === [] ? ['split' => 'A split is required.'] : $errors);
         }
 
-        return new self($split, $pre, $post, $classes, $sources, $basis);
+        return new self($split, $pre, $post, $classes, $sources, $basis, $cap);
     }
 }
