@@ -3,6 +3,7 @@
 use App\Providers\AppServiceProvider;
 use App\Providers\FortifyServiceProvider;
 use Modules\AI\AiServiceProvider;
+use Modules\Compensation\CompensationServiceProvider;
 use Modules\Core\CoreServiceProvider;
 use Modules\Ledger\LedgerServiceProvider;
 
@@ -11,5 +12,6 @@ return [
     FortifyServiceProvider::class,
     CoreServiceProvider::class,
     LedgerServiceProvider::class,
+    CompensationServiceProvider::class,
     AiServiceProvider::class,
 ];

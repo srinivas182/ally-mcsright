@@ -15,6 +15,16 @@ spec delivers the calculation, snapshots and simulation that posting will use.
 Module: `modules/Compensation`, namespace `Modules\Compensation`. Tenant-owned. All amounts use
 `Money` (specs/finance/01); percentages are exact decimal strings, never floats.
 
+## Delivery
+
+| Sprint | Delivered                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 3B     | Module `modules/Compensation`; plans (onboarding, commission), immutable published versions with effective dates, default plan rules, archive rules, assignments with automatic end of the previous one; validated rules (percentage, flat-fee bands, tiered by company dollar or units, pre-split and post-split deductions, deal classes, lead-source overrides, revenue-share basis); pure calculator with plain-English steps and an every-cent check; plan resolution by closing date; legacy rules 1–5 as tests; 2,000-deal property test |
+
+Co-agent decision (3B): the outside referral comes off the top, the remainder is shared between
+co-agents, then each agent's share runs through that agent's own plan (pre-split, split,
+post-split). A lead-source rule wins over a deal-class rule, which wins over the plan's split.
+
 ## Sprint split
 
 | Sprint | Delivers                                                                                                                          |
