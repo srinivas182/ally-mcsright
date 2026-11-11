@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Fixtures;
 
+use Closure;
 use Modules\AI\Contracts\ProviderAdapter;
+use Modules\AI\Contracts\StreamingProviderAdapter;
 use Modules\AI\Data\ProviderRequest;
 use Modules\AI\Data\ProviderResponse;
 use Modules\AI\Models\AiProvider;
@@ -15,7 +17,7 @@ use Throwable;
  * Scripted AI provider for tests: returns queued responses or throws queued exceptions,
  * and records every request it receives.
  */
-final class FakeAiProvider implements ProviderAdapter
+final class FakeAiProvider implements ProviderAdapter, StreamingProviderAdapter
 {
     /** @var list<ProviderResponse|Throwable> */
     private array $queue = [];
@@ -47,5 +49,28 @@ final class FakeAiProvider implements ProviderAdapter
         }
 
         return $next;
+    }
+
+    /**
+     * Streams the next queued answer in pieces of $chunkSize characters, like a real model.
+     */
+    /** @var int<1, max> */
+    public int $chunkSize = 7;
+
+    /** Throw this after the first piece has been streamed (simulates a dropped connection). */
+    public ?Throwable $failMidStream = null;
+
+    public function stream(AiProvider $provider, ProviderRequest $request, Closure $onDelta): ProviderResponse
+    {
+        $response = $this->send($provider, $request);
+
+        foreach (mb_str_split($response->text, $this->chunkSize) as $i => $piece) {
+            $onDelta($piece);
+            if ($i === 0 && $this->failMidStream !== null) {
+                throw $this->failMidStream;
+            }
+        }
+
+        return $response;
     }
 }

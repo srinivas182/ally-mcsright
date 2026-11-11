@@ -4,20 +4,23 @@ declare(strict_types=1);
 
 namespace Modules\AI\Providers;
 
+use Closure;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Factory as Http;
 use Modules\AI\Contracts\ProviderAdapter;
+use Modules\AI\Contracts\StreamingProviderAdapter;
 use Modules\AI\Data\ProviderRequest;
 use Modules\AI\Data\ProviderResponse;
 use Modules\AI\Exceptions\ProviderRejected;
 use Modules\AI\Exceptions\ProviderUnavailable;
 use Modules\AI\Models\AiProvider;
+use Modules\AI\Support\SseReader;
 
 /**
  * OpenAI-style Chat Completions API: OpenAI and self-hosted open-source models served
  * through an OpenAI-compatible endpoint.
  */
-final class OpenAiCompatibleAdapter implements ProviderAdapter
+final class OpenAiCompatibleAdapter implements ProviderAdapter, StreamingProviderAdapter
 {
     public function __construct(private readonly Http $http) {}
 
@@ -58,5 +61,62 @@ final class OpenAiCompatibleAdapter implements ProviderAdapter
             (int) $response->json('usage.completion_tokens', 0),
             (int) $response->json('usage.prompt_tokens_details.cached_tokens', 0),
         );
+    }
+
+    public function stream(AiProvider $provider, ProviderRequest $request, Closure $onDelta): ProviderResponse
+    {
+        $client = $this->http->timeout($request->timeoutSeconds)->withOptions(['stream' => true])->accept('text/event-stream');
+        $key = $provider->apiKey();
+        if ($key !== null) {
+            $client = $client->withToken($key);
+        }
+
+        try {
+            $response = $client->post(rtrim($provider->base_url, '/').'/v1/chat/completions', [
+                'model' => $request->modelId,
+                'max_tokens' => $request->maxOutputTokens,
+                'temperature' => (float) $request->temperature,
+                'messages' => [
+                    ['role' => 'system', 'content' => $request->system],
+                    ['role' => 'user', 'content' => $request->userMessage],
+                ],
+                'stream' => true,
+                'stream_options' => ['include_usage' => true],
+            ]);
+        } catch (ConnectionException $e) {
+            throw new ProviderUnavailable("{$provider->name} connection failed: {$e->getMessage()}", previous: $e);
+        }
+
+        $status = $response->status();
+        if ($status === 429 || $status >= 500) {
+            throw new ProviderUnavailable("{$provider->name} returned HTTP {$status}.");
+        }
+        if ($response->failed()) {
+            throw new ProviderRejected("{$provider->name} rejected the request (HTTP {$status}).");
+        }
+
+        $text = '';
+        $in = $out = $cached = 0;
+        foreach (SseReader::events($response->toPsrResponse()->getBody()) as $event) {
+            if ($event['data'] === '[DONE]') {
+                break;
+            }
+            $data = json_decode($event['data'], true);
+            if (! is_array($data)) {
+                continue;
+            }
+            $delta = (string) ($data['choices'][0]['delta']['content'] ?? '');
+            if ($delta !== '') {
+                $text .= $delta;
+                $onDelta($delta);
+            }
+            if (isset($data['usage']) && is_array($data['usage'])) {
+                $in = (int) ($data['usage']['prompt_tokens'] ?? 0);
+                $out = (int) ($data['usage']['completion_tokens'] ?? 0);
+                $cached = (int) ($data['usage']['prompt_tokens_details']['cached_tokens'] ?? 0);
+            }
+        }
+
+        return new ProviderResponse($text, $in, $out, $cached);
     }
 }

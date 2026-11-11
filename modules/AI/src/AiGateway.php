@@ -4,12 +4,17 @@ declare(strict_types=1);
 
 namespace Modules\AI;
 
+use Carbon\CarbonImmutable;
+use Closure;
+use Modules\AI\Contracts\BatchProviderAdapter;
 use Modules\AI\Contracts\CreditMeter;
+use Modules\AI\Contracts\StreamingProviderAdapter;
 use Modules\AI\Data\AiResult;
 use Modules\AI\Data\AiTask;
 use Modules\AI\Data\EmbeddingResult;
 use Modules\AI\Data\ProviderRequest;
 use Modules\AI\Data\ProviderResponse;
+use Modules\AI\Events\AiBatchCompleted;
 use Modules\AI\Events\AiOutputWasBlocked;
 use Modules\AI\Events\AiRequestCompleted;
 use Modules\AI\Exceptions\AiOutputBlocked;
@@ -17,7 +22,9 @@ use Modules\AI\Exceptions\AllModelsFailed;
 use Modules\AI\Exceptions\OutputSchemaViolation;
 use Modules\AI\Exceptions\ProviderRejected;
 use Modules\AI\Exceptions\ProviderUnavailable;
+use Modules\AI\Exceptions\StreamWithheld;
 use Modules\AI\Exceptions\UnknownFeature;
+use Modules\AI\Models\AiBatch;
 use Modules\AI\Models\AiFeatureRoute;
 use Modules\AI\Models\AiModel;
 use Modules\AI\Models\AiRequest;
@@ -25,6 +32,7 @@ use Modules\AI\Providers\ProviderRegistry;
 use Modules\AI\Security\OutputPolicy;
 use Modules\AI\Security\PromptBuilder;
 use Modules\AI\Security\Redactor;
+use Modules\AI\Security\StreamGuard;
 use Modules\AI\Support\CircuitBreaker;
 use Modules\AI\Support\JsonShape;
 use Modules\AI\Support\PromptRegistry;
@@ -143,6 +151,259 @@ final class AiGateway
         $this->credits->refund($task->idempotencyKey, 'all models failed');
 
         throw new AllModelsFailed("No model could serve [{$task->featureKey}].");
+    }
+
+    /**
+     * Like run(), but the answer is streamed to $onText in pieces as it is generated, through the
+     * StreamGuard: only text already checked by the output policy is released, never the last
+     * characters, so identifiers cannot appear half-written. On a violation the stream stops, the
+     * answer is withheld (AiOutputBlocked) and credits are refunded; the caller replaces what was
+     * shown with the withheld message. Falls back to the next model only while nothing has been
+     * shown. Structured (schema) tasks cannot be streamed.
+     *
+     * @param  Closure(string): void  $onText
+     */
+    public function stream(AiTask $task, Closure $onText): AiResult
+    {
+        if ($task->outputSchema !== null) {
+            throw new \InvalidArgumentException('Structured answers cannot be streamed; use run().');
+        }
+
+        $tenantId = $this->tenants->id();
+        $route = AiFeatureRoute::query()->where('feature_key', $task->featureKey)->first()
+            ?? throw new UnknownFeature("No AI route for feature [{$task->featureKey}].");
+        $template = $this->prompts->get($task->promptKey);
+        $this->credits->charge($route->credit_action_key, $task->userId, $task->idempotencyKey);
+
+        $prompt = $this->builder->build($task, $template, new Redactor);
+        $sourceIds = array_map(fn ($record) => $record->type.':'.$record->id, $task->context);
+        $attempt = 0;
+
+        foreach ($route->modelChain() as $model) {
+            $provider = $model->provider;
+
+            if (! $provider->isUsable() || $this->circuit->isOpen($provider->key)) {
+                $this->log($task, $template, $model, ++$attempt, 'skipped', $provider->isUsable() ? 'circuit open' : 'provider not active or not compliant', $sourceIds);
+
+                continue;
+            }
+
+            $adapter = $this->providers->adapterFor($provider);
+            if (! $adapter instanceof StreamingProviderAdapter) {
+                $this->log($task, $template, $model, ++$attempt, 'skipped', 'adapter cannot stream', $sourceIds);
+
+                continue;
+            }
+
+            $guard = new StreamGuard($this->policy, $prompt['permitted']);
+            $request = new ProviderRequest($model->model_id, $prompt['system'], $prompt['user'], $route->max_output_tokens, $route->temperature, $route->timeout_seconds);
+            $started = hrtime(true);
+
+            try {
+                $response = $adapter->stream($provider, $request, function (string $delta) use ($guard, $onText): void {
+                    $safe = $guard->push($delta);
+                    if ($safe === null) {
+                        throw new StreamWithheld;
+                    }
+                    if ($safe !== '') {
+                        $onText($safe);
+                    }
+                });
+            } catch (StreamWithheld) {
+                $response = new ProviderResponse($guard->received(), 0, 0);
+            } catch (ProviderUnavailable $e) {
+                $this->circuit->recordFailure($provider->key);
+                $this->log($task, $template, $model, ++$attempt, 'failed', $this->reason($e), $sourceIds, latency: $this->ms($started));
+                if ($guard->releasedAnything()) {
+                    $this->credits->refund($task->idempotencyKey, 'stream interrupted');
+
+                    throw $e;
+                }
+
+                continue;
+            } catch (ProviderRejected $e) {
+                $this->log($task, $template, $model, ++$attempt, 'failed', $this->reason($e), $sourceIds, latency: $this->ms($started));
+                $this->credits->refund($task->idempotencyKey, 'failed: '.$e::class);
+
+                throw $e;
+            }
+
+            $this->circuit->recordSuccess($provider->key);
+            $latency = $this->ms($started);
+            $cost = $model->costMicrocents($response->tokensIn, $response->tokensOut, $response->cacheReadTokens);
+            $rest = $guard->finish();
+
+            if ($rest === null) {
+                $violations = $this->policy->violations($guard->received(), $prompt['permitted']);
+                $log = $this->log($task, $template, $model, ++$attempt, 'blocked', 'output policy', $sourceIds, $response, $cost, $latency, 'blocked');
+                $this->credits->refund($task->idempotencyKey, 'output blocked');
+                AiOutputWasBlocked::dispatch($tenantId, $log->ulid, $task->featureKey, $violations);
+
+                throw new AiOutputBlocked('The answer referred to information outside the permitted records and was withheld.');
+            }
+
+            if ($rest !== '') {
+                $onText($rest);
+            }
+
+            $log = $this->log($task, $template, $model, ++$attempt, 'ok', null, $sourceIds, $response, $cost, $latency, 'passed');
+            AiRequestCompleted::dispatch($tenantId, $log->ulid, $task->featureKey, $sourceIds);
+
+            return new AiResult($guard->received(), null, $log->ulid, $provider->key, $model->model_id,
+                $response->tokensIn, $response->tokensOut, $cost, $latency, $sourceIds);
+        }
+
+        $this->credits->refund($task->idempotencyKey, 'all models failed');
+
+        throw new AllModelsFailed("No model could serve [{$task->featureKey}].");
+    }
+
+    /**
+     * Overnight work at batch pricing (results within 24 hours). All tasks must be for one feature;
+     * the route's primary model is used (no fallback). Credits are charged per task now and
+     * refunded per task if it fails or is withheld. Providers without a batch API run the tasks
+     * immediately at the normal price. Collect results with collectBatch() (scheduled).
+     *
+     * @param  list<AiTask>  $tasks
+     */
+    public function batch(array $tasks): AiBatch
+    {
+        $tenantId = $this->tenants->id();
+        if ($tasks === []) {
+            throw new \InvalidArgumentException('A batch needs at least one task.');
+        }
+        $feature = $tasks[0]->featureKey;
+        foreach ($tasks as $task) {
+            if ($task->featureKey !== $feature || $task->outputSchema !== null) {
+                throw new \InvalidArgumentException('A batch holds plain-text tasks for one feature.');
+            }
+        }
+
+        $route = AiFeatureRoute::query()->where('feature_key', $feature)->first()
+            ?? throw new UnknownFeature("No AI route for feature [{$feature}].");
+        $model = $route->primaryModel()->with('provider')->firstOrFail();
+        $provider = $model->provider;
+        if (! $provider->isUsable()) {
+            throw new AllModelsFailed("The provider for [{$feature}] is not available.");
+        }
+
+        $adapter = $this->providers->adapterFor($provider);
+        $mode = $adapter instanceof BatchProviderAdapter ? 'provider_batch' : 'immediate';
+        $batch = AiBatch::query()->create([
+            'feature_key' => $feature, 'provider_key' => $provider->key, 'model_id' => $model->model_id, 'mode' => $mode,
+            'status' => 'submitted', 'item_count' => count($tasks), 'submitted_at' => CarbonImmutable::now(),
+        ]);
+        $purgeAfter = CarbonImmutable::now()->addDays(7);
+
+        if (! $adapter instanceof BatchProviderAdapter) {
+            foreach ($tasks as $task) {
+                $item = $batch->items()->create(['idempotency_key' => $task->idempotencyKey, 'prompt_key' => $task->promptKey, 'user_id' => $task->userId, 'purge_after' => $purgeAfter]);
+                try {
+                    $item->update(['status' => 'ok', 'result' => $this->run($task)->text]);
+                } catch (AiOutputBlocked) {
+                    $item->update(['status' => 'blocked']);
+                } catch (Throwable) {
+                    $item->update(['status' => 'failed']);
+                }
+            }
+
+            return $this->finishBatch($batch);
+        }
+
+        $requests = [];
+        foreach ($tasks as $i => $task) {
+            $template = $this->prompts->get($task->promptKey);
+            $this->credits->charge($route->credit_action_key, $task->userId, $task->idempotencyKey);
+            $prompt = $this->builder->build($task, $template, new Redactor);
+            $customId = 't'.$i;
+            $requests[$customId] = new ProviderRequest($model->model_id, $prompt['system'], $prompt['user'], $route->max_output_tokens, $route->temperature, $route->timeout_seconds);
+            $batch->items()->create([
+                'idempotency_key' => $task->idempotencyKey, 'prompt_key' => $task->promptKey, 'user_id' => $task->userId,
+                'permitted' => $prompt['permitted'], 'purge_after' => $purgeAfter,
+            ]);
+        }
+
+        try {
+            $batch->update(['external_id' => $adapter->submitBatch($provider, $requests)]);
+        } catch (ProviderUnavailable|ProviderRejected $e) {
+            foreach ($tasks as $task) {
+                $this->credits->refund($task->idempotencyKey, 'batch submit failed');
+            }
+            $batch->update(['status' => 'failed', 'completed_at' => CarbonImmutable::now()]);
+            $batch->items()->update(['status' => 'failed']);
+
+            throw $e;
+        }
+
+        return $batch;
+    }
+
+    /**
+     * Collects a provider batch once it has ended: every answer passes the output policy, is
+     * logged (at half price) and stored encrypted for the feature to read; withheld or failed
+     * tasks are refunded. Returns false while the provider is still working.
+     */
+    public function collectBatch(AiBatch $batch): bool
+    {
+        if ($batch->status !== 'submitted' || $batch->mode !== 'provider_batch' || $batch->external_id === null) {
+            return $batch->status !== 'submitted';
+        }
+
+        $model = AiModel::query()->where('model_id', $batch->model_id)->whereHas('provider', fn ($q) => $q->where('key', $batch->provider_key))->with('provider')->firstOrFail();
+        $adapter = $this->providers->adapterFor($model->provider);
+        if (! $adapter instanceof BatchProviderAdapter) {
+            return false;
+        }
+
+        $results = $adapter->fetchBatch($model->provider, $batch->external_id);
+        if ($results === null) {
+            return false;
+        }
+
+        foreach ($batch->items()->orderBy('id')->get()->values() as $i => $item) {
+            $task = new AiTask($batch->feature_key, $item->prompt_key, $item->idempotency_key, userId: $item->user_id);
+            $template = $this->prompts->get($item->prompt_key);
+            $response = $results['t'.$i] ?? 'missing';
+
+            if (! $response instanceof ProviderResponse) {
+                $this->log($task, $template, $model, 1, 'failed', 'batch: '.$response, []);
+                $this->credits->refund($item->idempotency_key, 'batch item failed');
+                $item->update(['status' => 'failed', 'permitted' => null]);
+
+                continue;
+            }
+
+            $cost = intdiv($model->costMicrocents($response->tokensIn, $response->tokensOut, $response->cacheReadTokens), 2);
+            $violations = $this->policy->violations($response->text, (string) $item->permitted);
+            if ($violations !== []) {
+                $log = $this->log($task, $template, $model, 1, 'blocked', 'output policy', [], $response, $cost, 0, 'blocked');
+                $this->credits->refund($item->idempotency_key, 'output blocked');
+                AiOutputWasBlocked::dispatch($batch->tenant_id, $log->ulid, $batch->feature_key, $violations);
+                $item->update(['status' => 'blocked', 'permitted' => null]);
+
+                continue;
+            }
+
+            $this->log($task, $template, $model, 1, 'ok', null, [], $response, $cost, 0, 'passed');
+            $item->update(['status' => 'ok', 'result' => $response->text, 'permitted' => null]);
+        }
+
+        $this->finishBatch($batch);
+
+        return true;
+    }
+
+    private function finishBatch(AiBatch $batch): AiBatch
+    {
+        $batch->update([
+            'status' => 'completed',
+            'succeeded' => $batch->items()->where('status', 'ok')->count(),
+            'failed_count' => $batch->items()->whereIn('status', ['failed', 'blocked'])->count(),
+            'completed_at' => CarbonImmutable::now(),
+        ]);
+        AiBatchCompleted::dispatch($batch->tenant_id, $batch->ulid, $batch->feature_key);
+
+        return $batch;
     }
 
     /**
