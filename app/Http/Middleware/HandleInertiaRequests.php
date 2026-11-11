@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 use Laravel\Fortify\Features;
+use Modules\Core\Identity\Impersonation;
 use Modules\Core\Identity\Security\TwoFactorPolicy;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Tenancy\TenantContext;
@@ -79,6 +80,11 @@ class HandleInertiaRequests extends Middleware
             // The brokerage (or HQ) this page belongs to, and the menu this user may see.
             'tenant' => fn (): ?array => $this->tenant(),
             'security' => fn (): ?array => $this->security($request),
+            'impersonation' => function () use ($request): ?array {
+                $data = app(Impersonation::class)->current($request);
+
+                return $data === null ? null : ['by' => $data['by_name'], 'target' => $data['target_name'], 'expires_at' => $data['expires_at']];
+            },
             'navigation' => fn (): array => app(NavigationRegistry::class)->for($request->user() instanceof User ? $request->user() : null),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];

@@ -1,3 +1,4 @@
+import { ViewAsDialog } from '@/components/view-as-dialog';
 import { Head, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 
@@ -88,6 +89,7 @@ export default function ShowTenant({ tenant, domains, redirects }: Props) {
     const slugForm = useForm({ slug: tenant.slug });
     const reactivateForm = useForm({});
     const base = `/hq/tenants/${tenant.ulid}`;
+    const [support, setSupport] = useState<string | null>(null);
 
     const canSuspend = !tenant.is_hq && tenant.status === 'active';
     const canClose =
@@ -348,6 +350,48 @@ export default function ShowTenant({ tenant, domains, redirects }: Props) {
                     </DialogContent>
                 )}
             </Dialog>
+            <section className="mx-4 mb-6 grid max-w-xl gap-2 rounded-lg border p-4 md:mx-6">
+                <h2 className="font-semibold">Support: view as a user</h2>
+                <p className="text-sm text-muted-foreground">
+                    Opens the brokerage as that user for up to 60 minutes. They
+                    are emailed your reason.
+                </p>
+                <form
+                    className="flex flex-wrap gap-2"
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        const email = (
+                            e.currentTarget.elements.namedItem(
+                                'email',
+                            ) as HTMLInputElement
+                        ).value;
+                        setSupport(email);
+                    }}
+                >
+                    <input
+                        name="email"
+                        type="email"
+                        required
+                        aria-label="User email"
+                        placeholder="user@brokerage.com"
+                        className="min-w-64 flex-1 rounded-md border bg-background px-3 py-2 text-sm"
+                    />
+                    <button
+                        type="submit"
+                        className="rounded-md border px-3 py-2 text-sm"
+                    >
+                        Continue
+                    </button>
+                </form>
+            </section>
+            {support && (
+                <ViewAsDialog
+                    name={support}
+                    url={`${base}/impersonate`}
+                    extra={{ email: support }}
+                    onClose={() => setSupport(null)}
+                />
+            )}
         </>
     );
 }

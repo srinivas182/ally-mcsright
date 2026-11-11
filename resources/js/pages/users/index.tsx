@@ -1,4 +1,5 @@
-import { Head, router, useForm } from '@inertiajs/react';
+import { ViewAsDialog } from '@/components/view-as-dialog';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { MoreHorizontalIcon } from 'lucide-react';
 import { useState } from 'react';
 
@@ -110,6 +111,11 @@ export default function UsersIndex(props: Props) {
         );
     }
 
+    const viewer = usePage().props.auth.user as { kind?: string } | null;
+    const isOwner = viewer?.kind === 'owner';
+    const [viewAs, setViewAs] = useState<{ ulid: string; name: string } | null>(
+        null,
+    );
     const act = (path: string) =>
         router.post(path, {}, { preserveScroll: true });
 
@@ -309,6 +315,18 @@ export default function UsersIndex(props: Props) {
                                                         Reactivate
                                                     </DropdownMenuItem>
                                                 )}
+                                                {isOwner &&
+                                                    user.kind !== 'owner' &&
+                                                    user.status ===
+                                                        'active' && (
+                                                        <DropdownMenuItem
+                                                            onSelect={() =>
+                                                                setViewAs(user)
+                                                            }
+                                                        >
+                                                            Log in as
+                                                        </DropdownMenuItem>
+                                                    )}
                                                 <DropdownMenuItem
                                                     onSelect={() =>
                                                         act(
@@ -513,6 +531,13 @@ export default function UsersIndex(props: Props) {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+            {viewAs && (
+                <ViewAsDialog
+                    name={viewAs.name}
+                    url={`/users/${viewAs.ulid}/impersonate`}
+                    onClose={() => setViewAs(null)}
+                />
+            )}
         </>
     );
 }
