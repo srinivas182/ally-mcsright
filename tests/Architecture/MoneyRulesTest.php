@@ -10,7 +10,7 @@ declare(strict_types=1);
 it('uses no float types in money modules', function (): void {
     $offenders = [];
 
-    foreach (['Ledger'] as $module) {
+    foreach (['Ledger', 'Compensation'] as $module) {
         $base = dirname(__DIR__, 2)."/modules/{$module}/src";
         $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($base));
 
