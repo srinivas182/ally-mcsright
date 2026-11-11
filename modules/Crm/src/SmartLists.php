@@ -26,9 +26,15 @@ final class SmartLists
         'new-leads' => ['New leads', ['lifecycle' => ['lead'], 'created_within_days' => 7]],
         'no-contact-7' => ['No contact in 7 days', ['lifecycle' => ['lead', 'active'], 'no_contact_days' => 7]],
         'overdue-tasks' => ['Overdue tasks', ['overdue_task' => true]],
+        'keep-in-touch' => ['Keep in touch', ['rhythm_due' => true]],
+        'birthdays-week' => ['Birthdays this week', ['birthday_within_days' => 7]],
+        'anniversaries-week' => ['Home anniversaries this week', ['anniversary_within_days' => 7]],
     ];
 
-    private const KEYS = ['lifecycle', 'origin', 'source', 'stage', 'tags', 'no_contact_days', 'overdue_task', 'created_within_days', 'cities', 'pipeline', 'keywords'];
+    /** Keep-in-touch cadence in days by A/B/C/D ranking. */
+    public const RHYTHM_DAYS = ['A' => 30, 'B' => 60, 'C' => 90, 'D' => 180];
+
+    private const KEYS = ['lifecycle', 'origin', 'source', 'stage', 'tags', 'no_contact_days', 'overdue_task', 'created_within_days', 'cities', 'pipeline', 'keywords', 'rhythm', 'rhythm_due', 'birthday_within_days', 'anniversary_within_days'];
 
     public function __construct(private readonly ContactVisibility $visibility) {}
 
@@ -87,8 +93,33 @@ final class SmartLists
             ->when(! empty($filters['created_within_days']), fn ($q) => $q->where('created_at', '>=', $now->subDays((int) $filters['created_within_days'])))
             ->when(! empty($filters['cities']) || ! empty($filters['pipeline']) || ! empty($filters['keywords']), fn ($q) => app(AskDatabase::class)->apply($q,
                 array_intersect_key($filters, array_flip(['cities', 'pipeline', 'keywords']))))
+            ->when(! empty($filters['rhythm']), fn ($q) => $q->whereIn('rhythm', (array) $filters['rhythm']))
+            ->when(($filters['rhythm_due'] ?? false) === true, fn ($q) => $q->where(function ($q) use ($now): void {
+                foreach (self::RHYTHM_DAYS as $tier => $days) {
+                    $q->orWhere(fn ($t) => $t->where('rhythm', $tier)->where(fn ($d) => $d->whereNull('last_activity_at')
+                        ->orWhere('last_activity_at', '<', $now->subDays($days))));
+                }
+            }))
+            ->when(! empty($filters['birthday_within_days']), fn ($q) => self::monthDayWithin($q, 'birthday_md', $now, (int) $filters['birthday_within_days']))
+            ->when(! empty($filters['anniversary_within_days']), fn ($q) => self::monthDayWithin($q, 'closed_md', $now, (int) $filters['anniversary_within_days']))
             ->when(($filters['overdue_task'] ?? false) === true, fn ($q) => $q->whereExists(fn ($t) => $t->selectRaw('1')->from('crm_tasks')
                 ->whereColumn('crm_tasks.contact_id', 'crm_contacts.id')->whereNull('crm_tasks.completed_at')->where('crm_tasks.due_at', '<', $now)));
+    }
+
+    /**
+     * Dates whose month and day fall within the next N days (wrapping into January).
+     *
+     * @param  Builder<Contact>  $query
+     */
+    private static function monthDayWithin(Builder $query, string $column, CarbonImmutable $now, int $days): void
+    {
+        $start = $now->month * 100 + $now->day;
+        $endDate = $now->addDays(max(0, $days - 1));
+        $end = $endDate->month * 100 + $endDate->day;
+
+        $start <= $end
+            ? $query->whereBetween($column, [$start, $end])
+            : $query->where(fn ($q) => $q->where($column, '>=', $start)->orWhere($column, '<=', $end));
     }
 
     /**

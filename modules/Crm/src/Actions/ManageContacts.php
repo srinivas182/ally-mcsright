@@ -92,7 +92,10 @@ final class ManageContacts
      */
     public function update(Contact $contact, array $data, User $by): Contact
     {
-        $allowed = array_intersect_key($data, array_flip(['first_name', 'last_name', 'company_name', 'address_line1', 'address_line2', 'city', 'state', 'zip', 'birthday', 'lifecycle', 'source_detail']));
+        $allowed = array_intersect_key($data, array_flip(['first_name', 'last_name', 'company_name', 'address_line1', 'address_line2', 'city', 'state', 'zip', 'birthday', 'lifecycle', 'source_detail', 'rhythm', 'closed_on']));
+        if (array_key_exists('rhythm', $allowed) && ! in_array($allowed['rhythm'], [null, 'A', 'B', 'C', 'D'], true)) {
+            throw ValidationException::withMessages(['rhythm' => 'Choose A, B, C or D.']);
+        }
         if (isset($allowed['lifecycle'])) {
             $allowed['lifecycle'] = Lifecycle::from((string) $allowed['lifecycle']);
         }

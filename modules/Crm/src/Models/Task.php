@@ -29,6 +29,8 @@ use Modules\Core\Tenancy\Concerns\HasPublicUlid;
  * @property CarbonImmutable|null $completed_at
  * @property int|null $completed_by
  * @property int|null $created_by
+ * @property int|null $plan_enrollment_id
+ * @property string|null $message
  * @property Contact|null $contact
  */
 final class Task extends Model
@@ -40,7 +42,7 @@ final class Task extends Model
 
     protected $table = 'crm_tasks';
 
-    protected $fillable = ['contact_id', 'assigned_to', 'type', 'title', 'notes', 'priority', 'due_at', 'remind_at', 'reminded_at', 'completed_at', 'completed_by', 'created_by'];
+    protected $fillable = ['contact_id', 'assigned_to', 'type', 'title', 'notes', 'priority', 'due_at', 'remind_at', 'reminded_at', 'completed_at', 'completed_by', 'created_by', 'plan_enrollment_id', 'message'];
 
     public function getConnectionName(): ?string
     {

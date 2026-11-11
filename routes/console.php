@@ -21,3 +21,5 @@ Schedule::command('comp:check-caps')->dailyAt('04:30')->onOneServer();
 Schedule::command('crm:task-reminders')->everyFiveMinutes()->onOneServer();
 // Nightly AI brief refresh at batch price (specs/crm/01).
 Schedule::command('crm:refresh-briefs')->dailyAt('02:00')->onOneServer();
+// Follow-up plan steps (specs/crm/01).
+Schedule::command('crm:run-plans')->everyFifteenMinutes()->onOneServer();

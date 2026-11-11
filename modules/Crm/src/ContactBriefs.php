@@ -29,11 +29,6 @@ final class ContactBriefs
 {
     public const FEATURE = 'crm.contact_brief';
 
-    /** Wording that can steer or reference protected characteristics (US Fair Housing Act). */
-    private const FAIR_HOUSING_FLAGS = ['safe neighborhood', 'safe neighbourhood', 'family-friendly', 'family friendly', 'good for families',
-        'perfect for young', 'great for kids', 'church', 'mosque', 'synagogue', 'integrated', 'exclusive neighborhood', 'no children',
-        'adults only', 'walking distance to temple', 'traditional neighborhood', 'ethnic', 'bachelor pad', 'handicap'];
-
     private const SCHEMA = [
         'type' => 'object',
         'required' => ['who', 'wants', 'status', 'unknowns', 'next_step', 'next_step_reason', 'draft_channel', 'draft', 'sources'],
@@ -217,13 +212,9 @@ final class ContactBriefs
             $channel = $channels[0];
         }
 
-        $draft = mb_strtolower((string) ($brief['draft'] ?? ''));
-        foreach (self::FAIR_HOUSING_FLAGS as $flag) {
-            if (str_contains($draft, $flag)) {
-                $brief['draft'] = '';
-                $notes[] = 'The draft was removed because its wording could raise Fair Housing concerns. Please write your own.';
-                break;
-            }
+        if (FairHousing::flags((string) ($brief['draft'] ?? '')) !== []) {
+            $brief['draft'] = '';
+            $notes[] = 'The draft was removed because its wording could raise Fair Housing concerns. Please write your own.';
         }
 
         $known = array_map(fn (RetrievedRecord $r): string => $r->id, $records);
