@@ -46,6 +46,29 @@ intelligence), BoomTown, kvCORE/BoldTrail, Sierra Interactive and Real Geeks.
 Sprint split becomes Team D Sprints 4–9 (core 4–7, additions 8–9), with Team A (lead sources and
 API) and Team C (homeowner dashboard) in parallel.
 
+## Database intelligence (approved additions 10–16)
+
+Goal: turn the dormant 50–80% of a brokerage's database into today's conversations. Reviewed:
+Fello (enrichment, AI lead scoring, Ask AI), Ylopo AI² (AI text and voice reactivation), Revaluate,
+SmartZip, Likely.AI, Luxury Presence AI CRM.
+
+| #   | Addition                                                 | How it works                                                                                                                                                                                                                                                 |
+| --- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 10  | **Nightly AI database research and opportunity scoring** | Every night (half-price batch) each contact is reviewed: likely buyer / likely seller / timeframe, **always with the reasons**; scores are signals, not certainties (independent audits of mover scoring show roughly 20–36% accuracy), so the agent decides |
+| 11  | **Today's 10**                                           | A daily ranked list of who to call and why (hot behaviour, dated intents, listing changes, overdue follow-ups), each with brief and draft, worked with Work my list; on the phone home screen; askable by voice                                              |
+| 12  | **Intent extraction from notes**                         | Old and new notes are read for intents with dates ("relocating for hospital job in March", "lease ends June", "retiring next year") which become reminders and score inputs                                                                                  |
+| 13  | **Database health**                                      | Email and phone validation, licensed fill-in of missing details, "moved" flags from licensed change-of-address data; a health score per database                                                                                                             |
+| 14  | **Reactivate my database**                               | One click: AI groups dormant contacts and drafts personal emails per group (agent approves); replies and clicks raise scores; email first (CAN-SPAM with unsubscribe), texts and AI calls only with written consent                                          |
+| 15  | **Opportunity alerts**                                   | "Your past client's home just listed with another agent", "listing expired", "Sam is looking at homes again", "checked home value twice"                                                                                                                     |
+| 16  | **Pipeline forecast**                                    | Expected commission by month from pipeline stages, for agents and brokers                                                                                                                                                                                    |
+
+Signal sources: the contact's own notes and timeline; licensed property, MLS, change-of-address and
+public-records data (Homeowner intelligence); our websites, IDX and email engagement as those ship.
+Guardrails: consent rules (`canAutoText`), Do Not Call scrubbing, sensitive life events (probate,
+divorce) worded with care and never mentioned to the client, no protected characteristics (Fair
+Housing), licensed-data costs passed through as credits. Delivery: Team D (research, intents,
+scoring, alerts), Team E (Today's 10, reactivation), Team B (health, forecast).
+
 ## Ownership and privacy (decision recorded in AI data protection)
 
 | Field                  | Meaning                                                                                                           |
