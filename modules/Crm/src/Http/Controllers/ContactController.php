@@ -13,6 +13,7 @@ use Inertia\Response;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Identity\Enums\UserStatus;
 use Modules\Crm\Actions\ManageContacts;
+use Modules\Crm\Actions\Pipelines;
 use Modules\Crm\ContactVisibility;
 use Modules\Crm\Enums\Lifecycle;
 use Modules\Crm\Enums\Origin;
@@ -21,7 +22,10 @@ use Modules\Crm\Enums\Source;
 use Modules\Crm\Models\Activity;
 use Modules\Crm\Models\Contact;
 use Modules\Crm\Models\Relationship;
+use Modules\Crm\Models\Stage;
+use Modules\Crm\Models\Tag;
 use Modules\Crm\Models\Task;
+use Modules\Crm\SmartLists;
 
 /**
  * Contacts list, quick add and contact detail. Everything goes through ContactVisibility; a
@@ -31,15 +35,25 @@ final class ContactController
 {
     public function __construct(private readonly ContactVisibility $visibility) {}
 
-    public function index(Request $request): Response
+    public function index(Request $request, SmartLists $smartLists, Pipelines $pipelines): Response
     {
         $user = self::user($request);
+        $listKey = (string) $request->query('list', '');
+        $listFilters = $listKey !== '' ? $smartLists->filtersFor($listKey, $user) : null;
+        abort_if($listKey !== '' && $listFilters === null, 404);
+        $tag = (string) $request->query('tag', '');
         $search = trim((string) $request->query('search', ''));
         $origin = (string) $request->query('origin', '');
         $lifecycle = (string) $request->query('lifecycle', '');
         $digits = (string) preg_replace('/\D/', '', $search);
 
-        $contacts = $this->visibility->query($user)
+        $query = $this->visibility->query($user);
+        if ($listFilters !== null) {
+            $smartLists->apply($query, $listFilters);
+        }
+
+        $contacts = $query
+            ->when($tag !== '', fn ($q) => $q->whereHas('tags', fn ($t) => $t->where('name', $tag)))
             ->when($search !== '', fn ($q) => $q->where(function ($q) use ($search, $digits): void {
                 $q->where('search_name', 'like', '%'.mb_strtolower($search).'%')
                     ->orWhere('primary_email', 'like', '%'.mb_strtolower($search).'%');
@@ -48,7 +62,7 @@ final class ContactController
                 }
             }))
             ->when(Origin::tryFrom($origin) !== null, fn ($q) => $q->where('origin', $origin))
-            ->when(Lifecycle::tryFrom($lifecycle) !== null, fn ($q) => $q->where('lifecycle', $lifecycle), fn ($q) => $q->where('lifecycle', '!=', Lifecycle::Archived))
+            ->when(Lifecycle::tryFrom($lifecycle) !== null, fn ($q) => $q->where('lifecycle', $lifecycle), fn ($q) => $listFilters !== null ? $q : $q->where('lifecycle', '!=', Lifecycle::Archived))
             ->orderByDesc('updated_at')
             ->paginate(25)
             ->withQueryString()
@@ -56,7 +70,9 @@ final class ContactController
 
         return Inertia::render('crm/contacts/index', [
             'contacts' => $contacts,
-            'filters' => ['search' => $search, 'origin' => $origin, 'lifecycle' => $lifecycle],
+            'filters' => ['search' => $search, 'origin' => $origin, 'lifecycle' => $lifecycle, 'list' => $listKey, 'tag' => $tag],
+            'lists' => $smartLists->listsFor($user),
+            'tags' => Tag::query()->orderBy('name')->pluck('name'),
             'lifecycles' => array_map(fn (Lifecycle $l): string => $l->value, Lifecycle::cases()),
             'sources' => array_map(fn (Source $s): string => $s->value, Source::cases()),
             'isManager' => $user->isKind(UserKind::Owner, UserKind::Staff),
@@ -112,6 +128,10 @@ final class ContactController
                 ]),
             'tasks' => Task::query()->where('contact_id', $contact->id)->whereNull('completed_at')->orderBy('due_at')->get()
                 ->map(fn (Task $t): array => TaskController::row($t, $user->timezone !== null && $user->timezone !== '' ? $user->timezone : 'America/New_York')),
+            'tags' => $contact->tags()->orderBy('name')->get()->map(fn (Tag $t): array => ['id' => $t->id, 'name' => $t->name]),
+            'pipelines' => app(Pipelines::class)->all()->map(fn ($p): array => ['ulid' => $p->ulid, 'name' => $p->name,
+                'stages' => $p->stages->map(fn ($s): array => ['ulid' => $s->ulid, 'name' => $s->name])->values()])->values(),
+            'stage' => $contact->stage_id !== null ? Stage::query()->whereKey($contact->stage_id)->value('ulid') : null,
             'canManage' => $this->visibility->canManage($user, $contact),
             'agents' => $user->isKind(UserKind::Owner, UserKind::Staff) && $contact->origin === Origin::Company
                 ? User::query()->where('status', UserStatus::Active)->whereIn('kind', [UserKind::Agent, UserKind::Owner, UserKind::Staff])

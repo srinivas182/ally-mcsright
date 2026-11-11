@@ -38,6 +38,15 @@ type Row = {
     owner: string | null;
 };
 
+type ListItem = {
+    key: string;
+    name: string;
+    count: number;
+    ready_made: boolean;
+    shared: boolean;
+    mine: boolean;
+};
+
 type Props = {
     contacts: {
         data: Row[];
@@ -45,7 +54,15 @@ type Props = {
         last_page: number;
         total: number;
     };
-    filters: { search: string; origin: string; lifecycle: string };
+    filters: {
+        search: string;
+        origin: string;
+        lifecycle: string;
+        list: string;
+        tag: string;
+    };
+    lists: ListItem[];
+    tags: string[];
     lifecycles: string[];
     sources: string[];
     isManager: boolean;
@@ -212,9 +229,90 @@ function QuickAdd({
     );
 }
 
+function SaveList({
+    filters,
+    isManager,
+}: {
+    filters: Props['filters'];
+    isManager: boolean;
+}) {
+    const [open, setOpen] = useState(false);
+    const form = useForm({ name: '', shared: false });
+    const saved = {
+        ...(filters.lifecycle ? { lifecycle: [filters.lifecycle] } : {}),
+        ...(filters.origin ? { origin: filters.origin } : {}),
+        ...(filters.tag ? { tags: [filters.tag] } : {}),
+    };
+
+    return (
+        <>
+            <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+                Save as list
+            </Button>
+            <Dialog open={open} onOpenChange={setOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Save as a smart list</DialogTitle>
+                        <DialogDescription>
+                            It stays up to date as contacts change.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <form
+                        id="save-list"
+                        className="grid gap-3"
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            form.transform((d) => ({ ...d, filters: saved }));
+                            form.post('/smart-lists', {
+                                onSuccess: () => setOpen(false),
+                            });
+                        }}
+                    >
+                        <FormField label="List name" error={form.errors.name}>
+                            {(c) => (
+                                <Input
+                                    {...c}
+                                    value={form.data.name}
+                                    onChange={(e) =>
+                                        form.setData('name', e.target.value)
+                                    }
+                                />
+                            )}
+                        </FormField>
+                        {isManager && (
+                            <label className="flex items-center gap-2 text-sm">
+                                <input
+                                    type="checkbox"
+                                    className="size-4 rounded border"
+                                    checked={form.data.shared}
+                                    onChange={(e) =>
+                                        form.setData('shared', e.target.checked)
+                                    }
+                                />
+                                Share with the whole brokerage
+                            </label>
+                        )}
+                    </form>
+                    <DialogFooter>
+                        <Button
+                            type="submit"
+                            form="save-list"
+                            disabled={form.processing}
+                        >
+                            Save list
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </>
+    );
+}
+
 export default function ContactsIndex({
     contacts,
     filters,
+    lists,
+    tags,
     lifecycles,
     sources,
     isManager,
@@ -248,11 +346,48 @@ export default function ContactsIndex({
                     title="Contacts"
                     description={`${contacts.total} ${isManager ? 'contacts you can see' : 'of your contacts'}`}
                     actions={
-                        <Button onClick={() => setAdding(true)}>
-                            <PlusIcon aria-hidden="true" /> Add contact
-                        </Button>
+                        <>
+                            <Button variant="outline" asChild>
+                                <Link href="/contacts/board">
+                                    Pipeline board
+                                </Link>
+                            </Button>
+                            <Button onClick={() => setAdding(true)}>
+                                <PlusIcon aria-hidden="true" /> Add contact
+                            </Button>
+                        </>
                     }
                 />
+
+                <nav
+                    aria-label="Lists"
+                    className="flex gap-2 overflow-x-auto pb-1"
+                >
+                    <Button
+                        size="sm"
+                        variant={filters.list === '' ? 'default' : 'outline'}
+                        onClick={() => router.get('/contacts')}
+                    >
+                        All
+                    </Button>
+                    {lists.map((l) => (
+                        <Button
+                            key={l.key}
+                            size="sm"
+                            variant={
+                                filters.list === l.key ? 'default' : 'outline'
+                            }
+                            onClick={() =>
+                                router.get('/contacts', { list: l.key })
+                            }
+                        >
+                            {l.name}
+                            <Badge variant="secondary" className="ml-1">
+                                {l.count}
+                            </Badge>
+                        </Button>
+                    ))}
+                </nav>
 
                 <FilterBar
                     active={active}
@@ -318,6 +453,31 @@ export default function ContactsIndex({
                             ))}
                         </SelectContent>
                     </Select>
+                    {tags.length > 0 && (
+                        <Select
+                            value={filters.tag || ALL}
+                            onValueChange={(tag) => apply({ tag })}
+                        >
+                            <SelectTrigger
+                                aria-label="Filter by tag"
+                                className="w-40"
+                            >
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value={ALL}>Any tag</SelectItem>
+                                {tags.map((t) => (
+                                    <SelectItem key={t} value={t}>
+                                        {t}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    )}
+                    {(filters.lifecycle || filters.origin || filters.tag) &&
+                        filters.list === '' && (
+                            <SaveList filters={filters} isManager={isManager} />
+                        )}
                 </FilterBar>
 
                 {contacts.data.length === 0 ? (

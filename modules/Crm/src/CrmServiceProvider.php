@@ -9,6 +9,7 @@ use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
 use Modules\Crm\Actions\ManageContacts;
+use Modules\Crm\Actions\Pipelines;
 use Modules\Crm\Actions\Tasks;
 use Modules\Crm\Actions\Timeline;
 use Modules\Crm\Console\SendTaskReminders;
@@ -21,6 +22,9 @@ final class CrmServiceProvider extends ServiceProvider
         $this->app->scoped(ManageContacts::class);
         $this->app->scoped(Timeline::class);
         $this->app->scoped(Tasks::class);
+        $this->app->scoped(Pipelines::class);
+        $this->app->scoped(Actions\Tags::class);
+        $this->app->scoped(SmartLists::class);
     }
 
     public function boot(): void
