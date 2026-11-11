@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Modules\AI\Console\CollectBatches;
 use Modules\AI\Console\RunRedTeam;
+use Modules\AI\Console\SyncFeatures;
 use Modules\AI\Contracts\CreditMeter;
 use Modules\AI\Providers\ProviderRegistry;
 use Modules\AI\Retrieval\AccessScopeResolver;
@@ -34,6 +35,7 @@ final class AiServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->app->singleton(FeatureCatalog::class);
         $this->app->singleton(PromptRegistry::class, function (): PromptRegistry {
             $registry = new PromptRegistry;
             $registry->addPath(__DIR__.'/../prompts');
@@ -60,7 +62,7 @@ final class AiServiceProvider extends ServiceProvider
         Gate::define('hq.ai.manage', fn (User $user): bool => $user->kind === UserKind::HqStaff);
         $this->app->make(NavigationRegistry::class)->add(new NavItem('HQ', 'AI gateway', '/hq/ai', 'sparkles', 20, ability: 'hq.ai.manage', kinds: [UserKind::HqStaff]));
         if ($this->app->runningInConsole()) {
-            $this->commands([RunRedTeam::class, CollectBatches::class]);
+            $this->commands([RunRedTeam::class, CollectBatches::class, SyncFeatures::class]);
         }
 
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');

@@ -3,6 +3,7 @@ import { MailIcon, MessageSquareIcon, PhoneIcon } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { AiBrief, type Brief } from '@/components/crm/ai-brief';
 import { AddTask, TaskList, type TaskRow } from '@/components/crm/task-list';
 import { Timeline, type TimelineItem } from '@/components/crm/timeline';
 import { FormField } from '@/components/ui/form-field';
@@ -62,6 +63,7 @@ type Contact = {
 
 type Props = {
     contact: Contact;
+    brief: Brief;
     tags: { id: number; name: string }[];
     pipelines: {
         ulid: string;
@@ -176,6 +178,7 @@ function ConsentPanel({
 }
 
 export default function ContactShow({
+    brief,
     tags,
     pipelines,
     stage,
@@ -308,6 +311,12 @@ export default function ContactShow({
 
                 <div className="grid gap-6 lg:grid-cols-3">
                     <div className="grid gap-6 lg:col-span-2">
+                        <AiBrief
+                            contactUlid={contact.ulid}
+                            brief={brief}
+                            phone={contact.phones[0]?.e164 ?? null}
+                            email={contact.emails[0]?.address ?? null}
+                        />
                         <Timeline contactUlid={contact.ulid} items={timeline} />
                         {canManage && (
                             <form

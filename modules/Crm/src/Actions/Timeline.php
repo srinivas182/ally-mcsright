@@ -10,6 +10,7 @@ use Illuminate\Validation\ValidationException;
 use Modules\Crm\Events\ActivityLogged;
 use Modules\Crm\Models\Activity;
 use Modules\Crm\Models\Contact;
+use Modules\Crm\Models\ContactBrief;
 
 /**
  * The contact timeline: notes, calls, meetings and logged emails/texts, plus automatic system
@@ -55,15 +56,20 @@ final class Timeline
         }
 
         ActivityLogged::dispatch($contact->tenant_id, $contact->id, $activity->id, $type);
+        ContactBrief::query()->where('contact_id', $contact->id)->update(['stale' => true]);
 
         return $activity;
     }
 
     public function system(Contact $contact, string $text, ?int $byUserId = null): Activity
     {
-        return Activity::query()->create([
+        $activity = Activity::query()->create([
             'contact_id' => $contact->id, 'type' => 'system', 'body' => $text, 'user_id' => $byUserId, 'occurred_at' => CarbonImmutable::now(),
         ]);
+        // Anything new about the contact makes their AI brief out of date.
+        ContactBrief::query()->where('contact_id', $contact->id)->update(['stale' => true]);
+
+        return $activity;
     }
 
     public function togglePin(Activity $activity): Activity

@@ -5,10 +5,12 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Route;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
 use Modules\Crm\Http\Controllers\ActivityController;
+use Modules\Crm\Http\Controllers\BriefController;
 use Modules\Crm\Http\Controllers\ContactController;
 use Modules\Crm\Http\Controllers\DataController;
 use Modules\Crm\Http\Controllers\PipelineController;
 use Modules\Crm\Http\Controllers\TaskController;
+use Modules\Crm\Http\Controllers\WorkListController;
 
 Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])
     ->prefix('contacts')
@@ -17,6 +19,7 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])
         Route::get('/', [ContactController::class, 'index'])->name('index');
         Route::get('board', [PipelineController::class, 'board'])->name('board');
         Route::get('duplicates', [DataController::class, 'duplicates'])->name('duplicates');
+        Route::get('work', [WorkListController::class, 'show'])->name('work');
         Route::post('merge', [DataController::class, 'merge'])->name('merge');
         Route::post('imports', [DataController::class, 'upload'])->name('imports.store');
         Route::post('/', [ContactController::class, 'store'])->name('store');
@@ -27,6 +30,8 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])
         Route::post('{contact}/activities', [ActivityController::class, 'store'])->name('activities.store');
         Route::post('{contact}/stage', [PipelineController::class, 'move'])->name('stage');
         Route::post('{contact}/consent', [DataController::class, 'consent'])->name('consent');
+        Route::post('{contact}/brief', [BriefController::class, 'refresh'])->middleware('throttle:20,1')->name('brief.refresh');
+        Route::post('{contact}/brief/feedback', [BriefController::class, 'feedback'])->name('brief.feedback');
         Route::post('{contact}/tags', [PipelineController::class, 'tag'])->name('tags.store');
         Route::delete('{contact}/tags/{tag}', [PipelineController::class, 'untag'])->name('tags.destroy');
     });
