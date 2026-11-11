@@ -17,3 +17,5 @@ Schedule::command('ai:red-team')->weeklyOn(1, '05:00')->onOneServer();
 Schedule::command('ai:batches:collect')->everyTenMinutes()->onOneServer();
 // Cap periods reconcile with their entries (specs/compensation/01).
 Schedule::command('comp:check-caps')->dailyAt('04:30')->onOneServer();
+// CRM task reminders (specs/crm/01).
+Schedule::command('crm:task-reminders')->everyFiveMinutes()->onOneServer();

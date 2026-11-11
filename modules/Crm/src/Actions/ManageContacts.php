@@ -25,7 +25,7 @@ use Modules\Crm\Models\Relationship;
  */
 final class ManageContacts
 {
-    public function __construct(private readonly ContactVisibility $visibility) {}
+    public function __construct(private readonly ContactVisibility $visibility, private readonly Timeline $timeline) {}
 
     /**
      * Quick add: a name plus an email or phone. Agents' contacts are personal by default; owners
@@ -81,6 +81,7 @@ final class ManageContacts
             'created_by' => $by->id,
         ]);
 
+        $this->timeline->system($contact, 'Contact added by '.$by->name.' (source: '.str_replace('_', ' ', $contact->source->value).')', $by->id);
         ContactCreated::dispatch($contact->tenant_id, $contact->id, $by->id);
 
         return $contact;
@@ -99,7 +100,11 @@ final class ManageContacts
             $allowed['state'] = mb_strtoupper((string) $allowed['state']);
         }
 
+        $previousStage = $contact->lifecycle;
         $contact->update($allowed);
+        if (isset($allowed['lifecycle']) && $allowed['lifecycle'] !== $previousStage) {
+            $this->timeline->system($contact, 'Stage changed from '.str_replace('_', ' ', $previousStage->value).' to '.str_replace('_', ' ', $contact->lifecycle->value), $by->id);
+        }
         ContactUpdated::dispatch($contact->tenant_id, $contact->id, $by->id);
 
         return $contact;
@@ -116,6 +121,7 @@ final class ManageContacts
 
         $from = $contact->owner_user_id;
         $contact->update(['owner_user_id' => $newOwner->id]);
+        $this->timeline->system($contact, "Assigned to {$newOwner->name} by {$by->name}", $by->id);
         ContactOwnerChanged::dispatch($contact->tenant_id, $contact->id, $from, $newOwner->id, $by->id);
 
         return $contact;
