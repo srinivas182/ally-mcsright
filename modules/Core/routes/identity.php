@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\ValidationException;
 use Modules\Core\Identity\EmailChange;
 use Modules\Core\Identity\Http\Controllers\AgentHomeController;
+use Modules\Core\Identity\Http\Controllers\ImpersonationController;
 use Modules\Core\Identity\Http\Controllers\InvitationController;
 use Modules\Core\Identity\Http\Controllers\SignInSecurityController;
 use Modules\Core\Identity\Http\Controllers\SingleSignOnController;
@@ -70,3 +71,10 @@ Route::middleware(['web', EnsureTenantHost::class, 'auth', 'signed'])->get('sett
 
     return redirect('/settings/profile');
 })->name('email-change.confirm');
+
+// "Log in as" for support (specs/core/02, 4A-3).
+Route::middleware(['web', EnsureTenantHost::class, 'auth'])->group(function (): void {
+    Route::post('users/{user}/impersonate', [ImpersonationController::class, 'start'])->middleware('throttle:10,1')->name('impersonate.start');
+    Route::post('impersonate/stop', [ImpersonationController::class, 'stop'])->name('impersonate.stop');
+});
+Route::middleware(['web', EnsureTenantHost::class, 'throttle:10,1'])->get('impersonate/accept', [ImpersonationController::class, 'accept'])->name('impersonate.accept');

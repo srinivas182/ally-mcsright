@@ -13,6 +13,7 @@ use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
 use Modules\Core\Identity\Http\Middleware\EnsureSecondFactor;
 use Modules\Core\Identity\Http\Middleware\EnsureTenantHost;
 use Modules\Core\Identity\Http\Middleware\EnsureValidSignedInUser;
+use Modules\Core\Identity\Http\Middleware\ImpersonationGuard;
 use Modules\Core\Tenancy\Http\Middleware\ResolveTenant;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -30,6 +31,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ], append: [
             EnsureValidSignedInUser::class,
             EnsureSecondFactor::class,
+            ImpersonationGuard::class,
             HandleAppearance::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,

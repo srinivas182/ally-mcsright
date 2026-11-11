@@ -7,6 +7,7 @@ namespace Modules\Core\Identity\Http\Middleware;
 use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
+use Modules\Core\Identity\Impersonation;
 use Modules\Core\Identity\Security\TwoFactorPolicy;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -24,6 +25,11 @@ final class EnsureSecondFactor
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
+
+        // The person viewing (owner or HQ support) already passed their own second factor.
+        if ($request->hasSession() && $request->session()->has(Impersonation::SESSION)) {
+            return $next($request);
+        }
 
         if (! $user instanceof User || ! $this->policy->requires($user) || $this->policy->satisfied($user)) {
             return $next($request);

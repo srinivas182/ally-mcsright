@@ -30,6 +30,7 @@ use Modules\Core\Identity\Auth\TenantPasswordBrokerManager;
 use Modules\Core\Identity\Auth\TenantUserProvider;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Identity\Events\RepeatedLoginFailures;
+use Modules\Core\Identity\Impersonation;
 use Modules\Core\Identity\Security\SignInSecurity;
 use Modules\Core\Identity\Security\TrustedDevices;
 use Modules\Core\Navigation\NavigationRegistry;
@@ -120,6 +121,11 @@ final class CoreServiceProvider extends ServiceProvider
         }
 
         Event::listen(Login::class, function (Login $event): void {
+            // "Log in as" is not the person signing in: no last-login change or device alert.
+            $request = $this->app->make('request');
+            if ($request->hasSession() && ($request->session()->has(Impersonation::SESSION) || $request->session()->has('impersonation_returning'))) {
+                return;
+            }
             if ($event->user instanceof User) {
                 $event->user->newQuery()->whereKey($event->user->id)->update(['last_login_at' => now(), 'last_active_at' => now()]);
                 $this->app->make(SignInSecurity::class)->recordSignIn($event->user, $this->app->make('request'));
