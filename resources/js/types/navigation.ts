@@ -12,3 +12,15 @@ export type NavItem = {
     icon?: LucideIcon | null;
     isActive?: boolean;
 };
+
+/** Menu sent by the server for the signed-in user (modules register items). */
+export type ServerNavItem = {
+    title: string;
+    href: string;
+    icon: string;
+    mobile: boolean;
+};
+
+export type NavGroup = { label: string; items: ServerNavItem[] };
+
+export type TenantInfo = { name: string; isHq: boolean };

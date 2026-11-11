@@ -2,8 +2,11 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
+use Modules\Core\Navigation\NavigationRegistry;
+use Modules\Core\Tenancy\TenantContext;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -33,6 +36,16 @@ class HandleInertiaRequests extends Middleware
      *
      * @return array<string, mixed>
      */
+    /**
+     * @return array{name: string, isHq: bool}|null
+     */
+    private function tenant(): ?array
+    {
+        $context = app(TenantContext::class);
+
+        return $context->check() ? ['name' => $context->current()->name, 'isHq' => $context->current()->isHq()] : null;
+    }
+
     public function share(Request $request): array
     {
         return [
@@ -41,6 +54,9 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
             ],
+            // The brokerage (or HQ) this page belongs to, and the menu this user may see.
+            'tenant' => fn (): ?array => $this->tenant(),
+            'navigation' => fn (): array => app(NavigationRegistry::class)->for($request->user() instanceof User ? $request->user() : null),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
     }

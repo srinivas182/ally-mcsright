@@ -29,6 +29,8 @@ use Modules\Core\Identity\Auth\TenantPasswordBrokerManager;
 use Modules\Core\Identity\Auth\TenantUserProvider;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Identity\Events\RepeatedLoginFailures;
+use Modules\Core\Navigation\NavigationRegistry;
+use Modules\Core\Navigation\NavItem;
 use Modules\Core\Tenancy\DomainResolver;
 use Modules\Core\Tenancy\Models\Tenant;
 use Modules\Core\Tenancy\TenantCache;
@@ -46,6 +48,7 @@ final class CoreServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->app->singleton(NavigationRegistry::class);
         $this->mergeConfigFrom(__DIR__.'/../config/core.php', 'core');
 
         // Scoped: reset between requests (Octane) and between queued jobs.
@@ -63,6 +66,7 @@ final class CoreServiceProvider extends ServiceProvider
 
         $this->loadRoutesFrom(__DIR__.'/../routes/identity.php');
         $this->registerIdentity();
+        $this->registerNavigation();
 
         $this->registerTenantAwareQueues();
         $this->registerMigrationMacros();
@@ -133,6 +137,15 @@ final class CoreServiceProvider extends ServiceProvider
                 RepeatedLoginFailures::dispatch($tenants->id(), $hash, $count);
             }
         });
+    }
+
+    private function registerNavigation(): void
+    {
+        $nav = $this->app->make(NavigationRegistry::class);
+        $nav->add(new NavItem('Overview', 'Dashboard', '/dashboard', 'layout-grid', 10, kinds: [UserKind::Owner, UserKind::Staff], mobile: true));
+        $nav->add(new NavItem('Overview', 'Today', '/agent', 'sun', 10, kinds: [UserKind::Agent, UserKind::Assistant], mobile: true));
+        $nav->add(new NavItem('Brokerage', 'People', '/users', 'users', 10, ability: 'core.users.view', mobile: true));
+        $nav->add(new NavItem('HQ', 'Tenants', '/hq/tenants', 'building-2', 10, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff], mobile: true));
     }
 
     private function registerTenantAwareQueues(): void

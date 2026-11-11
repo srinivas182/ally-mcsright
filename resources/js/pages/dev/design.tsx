@@ -11,7 +11,20 @@ import {
     AccordionItem,
     AccordionTrigger,
 } from '@/components/ui/accordion';
+import { AddressFields } from '@/components/ui/address-fields';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { ChartCard } from '@/components/ui/chart-card';
+import { DateRangeInput } from '@/components/ui/date-range-input';
+import { FileUpload } from '@/components/ui/file-upload';
+import { FormSection } from '@/components/ui/form-section';
+import {
+    MoneyInput,
+    PercentInput,
+    PhoneInput,
+} from '@/components/ui/number-inputs';
+import { PageHeader } from '@/components/ui/page-header';
+import { Stepper } from '@/components/ui/stepper';
+import { Bar, BarChart, XAxis, YAxis } from 'recharts';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -114,6 +127,20 @@ export default function DesignGallery() {
     const [agent, setAgent] = useState<string | null>(null);
     const [page, setPage] = useState(1);
     const [selected, setSelected] = useState<string[]>([]);
+    const [gci, setGci] = useState<number | null>(900000);
+    const [split, setSplit] = useState('80');
+    const [phone, setPhone] = useState('');
+    const [range, setRange] = useState({
+        from: '2026-11-01',
+        to: '2026-11-30',
+    });
+    const [address, setAddress] = useState({
+        line1: '',
+        line2: '',
+        city: '',
+        state: '',
+        zip: '',
+    });
 
     function toggleDark(value: boolean) {
         setDark(value);
@@ -471,6 +498,80 @@ export default function DesignGallery() {
                         description="Connect a lead source or import a list to get started."
                         action={<Button>Import leads</Button>}
                     />
+                </Section>
+                <Section title="Page and form layout">
+                    <PageHeader
+                        title="Commission plans"
+                        description="How every deal is split between agents and the brokerage."
+                        actions={<Button>New plan</Button>}
+                    />
+                    <Stepper
+                        steps={['Basics', 'Split', 'Cap', 'Fees', 'Review']}
+                        current={2}
+                    />
+                    <FormSection
+                        title="Split"
+                        description="Amounts are exact to the cent."
+                    >
+                        <MoneyInput
+                            aria-label="GCI"
+                            value={gci}
+                            onChange={setGci}
+                        />
+                        <PercentInput
+                            aria-label="Agent percent"
+                            value={split}
+                            onChange={setSplit}
+                        />
+                        <PhoneInput
+                            aria-label="Phone"
+                            value={phone}
+                            onChange={(display) => setPhone(display)}
+                        />
+                    </FormSection>
+                    <FormSection title="Address and dates">
+                        <AddressFields value={address} onChange={setAddress} />
+                        <DateRangeInput value={range} onChange={setRange} />
+                    </FormSection>
+                    <FileUpload
+                        label="Upload the contract"
+                        onUpload={(_file, onProgress) =>
+                            new Promise((resolve) => {
+                                let p = 0;
+                                const timer = setInterval(() => {
+                                    p += 25;
+                                    onProgress(p);
+                                    if (p >= 100) {
+                                        clearInterval(timer);
+                                        resolve();
+                                    }
+                                }, 200);
+                            })
+                        }
+                    />
+                    <ChartCard
+                        title="Closings by month"
+                        table={{
+                            headers: ['Month', 'Closings'],
+                            rows: [
+                                ['Sep', 12],
+                                ['Oct', 18],
+                                ['Nov', 9],
+                            ],
+                        }}
+                    >
+                        <BarChart
+                            data={[
+                                { m: 'Sep', c: 12 },
+                                { m: 'Oct', c: 18 },
+                                { m: 'Nov', c: 9 },
+                            ]}
+                        >
+                            <XAxis dataKey="m" />
+                            <YAxis />
+                            <Bar dataKey="c" fill="var(--color-primary)" />
+                        </BarChart>
+                    </ChartCard>
                 </Section>
             </main>
         </TooltipProvider>
