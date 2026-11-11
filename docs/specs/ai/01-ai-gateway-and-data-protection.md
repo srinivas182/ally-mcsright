@@ -14,8 +14,8 @@ request logs are tenant-owned (cell).
 
 ```php
 AiGateway::run(AiTask $task): AiResult        // synchronous
-AiGateway::stream(AiTask $task): AiStream     // streaming chat
-AiGateway::batch(array $tasks): BatchHandle   // overnight work at batch pricing
+AiGateway::stream(AiTask $task, Closure $onText): AiResult  // guarded streaming (Sprint 3D-2)
+AiGateway::batch(array $tasks): AiBatch                     // overnight work at batch pricing (Sprint 3D-2)
 ```
 
 `AiTask` fields: `featureKey` (e.g. `crm.lead_reply`), `tenant`, `actingUser`, `promptKey` and
@@ -129,6 +129,23 @@ history for its users (retention set per tenant). Evaluation samples use synthet
    _Decided in Sprint 3D:_ cross-tenant data leaks cannot be tested this way because a model cannot
    reveal records it never receives; they are prevented by permission-scoped retrieval and proven
    by tests 1–2 on every pull request.
+
+## Streaming and batch (delivered in Sprint 3D-2)
+
+**Guarded streaming.** Text reaches the user only after the output policy has checked everything
+received so far, only up to a word boundary, and never the last 32 characters, so an email, phone or
+record ID can never appear half-written before it is checked. On a violation the stream stops, the
+answer is withheld and credits are refunded; the browser receives a `withheld` event and replaces
+what it showed. Fallback to another model only while nothing has been shown. Structured (schema)
+tasks are not streamed. Adapters: Anthropic, OpenAI-compatible and Gemini (Server-Sent Events);
+`AiEventStream` sends `text`, `done`, `withheld` or `error` events.
+
+**Batch.** One feature per batch, primary model only, credits charged per task and refunded per
+task if it fails or is withheld. Anthropic Message Batches (half price, within 24 hours); other
+providers run the tasks immediately at normal price. `ai:batches:collect` (every 10 minutes)
+checks every answer with the output policy, logs it at half price and stores it **encrypted** for
+the feature to read; stored answers are purged after 7 days. The request log still never stores
+prompts or answers.
 
 ## HQ console screens
 
