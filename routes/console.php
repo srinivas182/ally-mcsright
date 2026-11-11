@@ -15,3 +15,5 @@ Schedule::command('ledger:reconcile')->dailyAt('04:00')->onOneServer();
 Schedule::command('ai:red-team')->weeklyOn(1, '05:00')->onOneServer();
 // Collect finished AI batches and purge stored results after 7 days (specs/ai/01).
 Schedule::command('ai:batches:collect')->everyTenMinutes()->onOneServer();
+// Cap periods reconcile with their entries (specs/compensation/01).
+Schedule::command('comp:check-caps')->dailyAt('04:30')->onOneServer();

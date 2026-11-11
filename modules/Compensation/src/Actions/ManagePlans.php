@@ -10,6 +10,7 @@ use Illuminate\Validation\ValidationException;
 use Modules\Compensation\Enums\PlanStatus;
 use Modules\Compensation\Enums\PlanType;
 use Modules\Compensation\Enums\VersionStatus;
+use Modules\Compensation\Events\PlansChanged;
 use Modules\Compensation\Exceptions\InvalidRules;
 use Modules\Compensation\Models\Plan;
 use Modules\Compensation\Models\PlanAssignment;
@@ -69,6 +70,14 @@ final class ManagePlans
 
     public function publish(PlanVersion $draft, CarbonImmutable $effectiveFrom, ?int $byUserId = null, ?string $note = null): PlanVersion
     {
+        $published = $this->publishVersion($draft, $effectiveFrom, $byUserId, $note);
+        PlansChanged::dispatch(null, "Plan \"{$published->plan->name}\" version {$published->version} published");
+
+        return $published;
+    }
+
+    private function publishVersion(PlanVersion $draft, CarbonImmutable $effectiveFrom, ?int $byUserId, ?string $note): PlanVersion
+    {
         if ($draft->status !== VersionStatus::Draft) {
             throw ValidationException::withMessages(['version' => 'Only a draft can be published.']);
         }
@@ -113,6 +122,7 @@ final class ManagePlans
             Plan::query()->where('type', PlanType::Commission)->where('is_default', true)->whereKeyNot($plan->id)->update(['is_default' => false]);
             $plan->update(['is_default' => true]);
         });
+        PlansChanged::dispatch(null, "Default plan changed to \"{$plan->name}\"");
 
         return $plan;
     }
@@ -140,6 +150,14 @@ final class ManagePlans
      * day before. Overlapping future assignments are refused.
      */
     public function assign(int $agentUserId, Plan $plan, CarbonImmutable $from, ?int $byUserId = null): PlanAssignment
+    {
+        $assignment = $this->assignAgent($agentUserId, $plan, $from, $byUserId);
+        PlansChanged::dispatch([$agentUserId], "Agent moved to plan \"{$plan->name}\"");
+
+        return $assignment;
+    }
+
+    private function assignAgent(int $agentUserId, Plan $plan, CarbonImmutable $from, ?int $byUserId): PlanAssignment
     {
         if ($plan->status !== PlanStatus::Active) {
             throw ValidationException::withMessages(['plan' => 'This plan is archived.']);

@@ -24,4 +24,42 @@ final readonly class DealSideInput
         public ?string $leadSource = null,
         public ?string $outsideReferralPercent = null,
     ) {}
+
+    /**
+     * @return array<string, mixed> stored with the calculation so it can be recalculated
+     */
+    public function toArray(): array
+    {
+        return [
+            'gci_cents' => $this->gci->cents,
+            'currency' => $this->gci->currency,
+            'sale_price_cents' => $this->salePriceCents,
+            'closing_date' => $this->closingDate->toDateString(),
+            'agents' => array_map(fn (AgentShare $a): array => ['user_id' => $a->userId, 'share_percent' => $a->sharePercent], $this->agents),
+            'side' => $this->side->value,
+            'deal_class' => $this->dealClass->value,
+            'lead_source' => $this->leadSource,
+            'outside_referral_percent' => $this->outsideReferralPercent,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public static function fromArray(array $data): self
+    {
+        /** @var list<array{user_id: int, share_percent: string}> $agents */
+        $agents = $data['agents'];
+
+        return new self(
+            Money::of((int) $data['gci_cents'], (string) $data['currency']),
+            (int) $data['sale_price_cents'],
+            CarbonImmutable::parse((string) $data['closing_date']),
+            array_map(fn (array $a): AgentShare => new AgentShare((int) $a['user_id'], (string) $a['share_percent']), $agents),
+            Side::from((string) $data['side']),
+            DealClass::from((string) $data['deal_class']),
+            isset($data['lead_source']) ? (string) $data['lead_source'] : null,
+            isset($data['outside_referral_percent']) ? (string) $data['outside_referral_percent'] : null,
+        );
+    }
 }

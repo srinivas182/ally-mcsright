@@ -26,6 +26,11 @@ final readonly class AgentCalculation
         public array $postSplit,
         public Money $agentNet,
         public array $steps,
+        public ?Money $postCapFee = null,
+        public ?int $capAmountCents = null,
+        public int $capBeforeCents = 0,
+        public int $capAfterCents = 0,
+        public bool $capped = false,
     ) {}
 
     public function preSplitTotal(): Money
