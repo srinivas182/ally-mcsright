@@ -43,6 +43,9 @@ use Modules\Core\Tenancy\Concerns\HasPublicUlid;
  * @property CarbonImmutable|null $last_login_at
  * @property CarbonImmutable|null $last_active_at
  * @property CarbonImmutable|null $passkey_prompt_dismissed_at
+ * @property string|null $pending_email
+ * @property string|null $pending_email_token
+ * @property CarbonImmutable|null $pending_email_expires_at
  * @property int|null $created_by
  * @property string|null $two_factor_secret
  * @property string|null $two_factor_recovery_codes
@@ -85,6 +88,7 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
             'last_login_at' => 'datetime',
             'last_active_at' => 'datetime',
             'passkey_prompt_dismissed_at' => 'datetime',
+            'pending_email_expires_at' => 'datetime',
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
         ];

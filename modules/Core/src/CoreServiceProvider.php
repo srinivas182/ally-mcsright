@@ -38,6 +38,8 @@ use Modules\Core\Tenancy\DomainResolver;
 use Modules\Core\Tenancy\Models\Tenant;
 use Modules\Core\Tenancy\TenantCache;
 use Modules\Core\Tenancy\TenantContext;
+use SocialiteProviders\Manager\SocialiteWasCalled;
+use SocialiteProviders\Microsoft\MicrosoftExtendSocialite;
 
 /**
  * Platform Core module.
@@ -123,6 +125,9 @@ final class CoreServiceProvider extends ServiceProvider
                 $this->app->make(SignInSecurity::class)->recordSignIn($event->user, $this->app->make('request'));
             }
         });
+
+        // Microsoft sign-in comes from the SocialiteProviders package.
+        Event::listen(SocialiteWasCalled::class, [MicrosoftExtendSocialite::class, 'handle']);
 
         // "Trust this device for 30 days" ticked on the 2FA challenge.
         Event::listen(ValidTwoFactorAuthenticationCodeProvided::class, function (ValidTwoFactorAuthenticationCodeProvided $event): void {

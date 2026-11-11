@@ -2,12 +2,18 @@
 
 declare(strict_types=1);
 
+use App\Models\User;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Validation\ValidationException;
+use Modules\Core\Identity\EmailChange;
 use Modules\Core\Identity\Http\Controllers\AgentHomeController;
 use Modules\Core\Identity\Http\Controllers\InvitationController;
 use Modules\Core\Identity\Http\Controllers\SignInSecurityController;
+use Modules\Core\Identity\Http\Controllers\SingleSignOnController;
 use Modules\Core\Identity\Http\Controllers\UserController;
 use Modules\Core\Identity\Http\Middleware\EnsureTenantHost;
+use Modules\Core\Identity\Security\SingleSignOn;
 
 Route::middleware(['web', EnsureTenantHost::class, 'guest'])->group(function (): void {
     Route::get('invitations/{token}', [InvitationController::class, 'show'])->name('invitations.show');
@@ -37,3 +43,30 @@ Route::middleware(['web', EnsureTenantHost::class, 'auth'])->group(function (): 
     Route::post('users/{user}/deactivate', [UserController::class, 'deactivate'])->name('users.deactivate');
     Route::post('users/{user}/reactivate', [UserController::class, 'reactivate'])->name('users.reactivate');
 });
+
+// Sign in with Google / Microsoft (specs/core/02, 4A-2).
+Route::middleware(['web', EnsureTenantHost::class])->group(function (): void {
+    Route::get('auth/{provider}/start', [SingleSignOnController::class, 'start'])->whereIn('provider', SingleSignOn::PROVIDERS)->middleware('throttle:20,1')->name('sso.start');
+    Route::get('auth/complete', [SingleSignOnController::class, 'complete'])->middleware('throttle:20,1')->name('sso.complete');
+});
+Route::middleware(['web', EnsureTenantHost::class, 'auth'])
+    ->delete('settings/identities/{provider}', [SingleSignOnController::class, 'unlink'])->whereIn('provider', SingleSignOn::PROVIDERS)->name('sso.unlink');
+
+Route::domain((string) config('core.sso_host'))->middleware(['web', 'throttle:30,1'])->group(function (): void {
+    Route::get('oauth/{provider}/redirect', [SingleSignOnController::class, 'toProvider'])->whereIn('provider', SingleSignOn::PROVIDERS)->name('sso.provider');
+    Route::get('oauth/{provider}/callback', [SingleSignOnController::class, 'callback'])->whereIn('provider', SingleSignOn::PROVIDERS)->name('sso.callback');
+});
+
+// Confirm a new sign-in email (signed link sent to the new address).
+Route::middleware(['web', EnsureTenantHost::class, 'auth', 'signed'])->get('settings/email/confirm/{token}', function (Request $request, string $token) {
+    $user = $request->user();
+    abort_unless($user instanceof User, 403);
+    try {
+        app(EmailChange::class)->confirm($user, $token);
+        Inertia\Inertia::flash('toast', ['type' => 'success', 'message' => 'Your sign-in email is now '.$user->email.'.']);
+    } catch (ValidationException $e) {
+        return redirect('/settings/profile')->withErrors($e->errors());
+    }
+
+    return redirect('/settings/profile');
+})->name('email-change.confirm');

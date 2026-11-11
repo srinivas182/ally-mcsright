@@ -18,6 +18,7 @@ use Laravel\Fortify\Contracts\TwoFactorLoginResponse;
 use Laravel\Fortify\Features;
 use Laravel\Fortify\Fortify;
 use Modules\Core\Identity\Auth\LoginResponse;
+use Modules\Core\Identity\Security\SingleSignOn;
 use Modules\Core\Identity\Security\SkipTwoFactorOnTrustedDevice;
 
 class FortifyServiceProvider extends ServiceProvider
@@ -73,6 +74,7 @@ class FortifyServiceProvider extends ServiceProvider
         Fortify::loginView(fn (Request $request) => Inertia::render('auth/login', [
             'canResetPassword' => Features::enabled(Features::resetPasswords()),
             'status' => $request->session()->get('status'),
+            'ssoProviders' => app(SingleSignOn::class)->configured(),
         ]));
 
         Fortify::resetPasswordView(fn (Request $request) => Inertia::render('auth/reset-password', [

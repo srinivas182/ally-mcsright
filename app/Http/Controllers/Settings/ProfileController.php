@@ -10,6 +10,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Modules\Core\Identity\EmailChange;
 
 class ProfileController extends Controller
 {
@@ -30,15 +31,19 @@ class ProfileController extends Controller
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
         $user = AuthenticatedUser::from($request);
-        $user->fill($request->validated());
+        $data = $request->validated();
+        $newEmail = $data['email'] ?? null;
+        unset($data['email']);
+        $user->fill($data)->save();
 
-        if ($user->isDirty('email')) {
-            $user->email_verified_at = null;
+        // A new email only takes effect once confirmed from that address (4A-2).
+        $message = __('Profile updated.');
+        if (is_string($newEmail) && mb_strtolower($newEmail) !== mb_strtolower($user->email)) {
+            app(EmailChange::class)->request($user, $newEmail);
+            $message = 'Profile updated. Check '.$newEmail.' to confirm your new email.';
         }
 
-        $user->save();
-
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('Profile updated.')]);
+        Inertia::flash('toast', ['type' => 'success', 'message' => $message]);
 
         return to_route('profile.edit');
     }

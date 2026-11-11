@@ -25,6 +25,11 @@ final class EnsureValidSignedInUser
 
     public function handle(Request $request, Closure $next): Response
     {
+        // The central sign-in hand-off host never holds brokerage sessions; leave them alone.
+        if ($request->getHost() === (string) config('core.sso_host')) {
+            return $next($request);
+        }
+
         $guard = Auth::guard('web');
         $user = $guard->user();
 
