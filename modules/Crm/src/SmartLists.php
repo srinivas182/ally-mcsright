@@ -29,12 +29,13 @@ final class SmartLists
         'keep-in-touch' => ['Keep in touch', ['rhythm_due' => true]],
         'birthdays-week' => ['Birthdays this week', ['birthday_within_days' => 7]],
         'anniversaries-week' => ['Home anniversaries this week', ['anniversary_within_days' => 7]],
+        'referral-ask' => ['Good moment to ask for a referral', ['referral_moment' => true]],
     ];
 
     /** Keep-in-touch cadence in days by A/B/C/D ranking. */
     public const RHYTHM_DAYS = ['A' => 30, 'B' => 60, 'C' => 90, 'D' => 180];
 
-    private const KEYS = ['lifecycle', 'origin', 'source', 'stage', 'tags', 'no_contact_days', 'overdue_task', 'created_within_days', 'cities', 'pipeline', 'keywords', 'rhythm', 'rhythm_due', 'birthday_within_days', 'anniversary_within_days'];
+    private const KEYS = ['lifecycle', 'origin', 'source', 'stage', 'tags', 'no_contact_days', 'overdue_task', 'created_within_days', 'cities', 'pipeline', 'keywords', 'rhythm', 'rhythm_due', 'birthday_within_days', 'anniversary_within_days', 'referral_moment'];
 
     public function __construct(private readonly ContactVisibility $visibility) {}
 
@@ -102,6 +103,11 @@ final class SmartLists
             }))
             ->when(! empty($filters['birthday_within_days']), fn ($q) => self::monthDayWithin($q, 'birthday_md', $now, (int) $filters['birthday_within_days']))
             ->when(! empty($filters['anniversary_within_days']), fn ($q) => self::monthDayWithin($q, 'closed_md', $now, (int) $filters['anniversary_within_days']))
+            ->when(($filters['referral_moment'] ?? false) === true, fn ($q) => $q->whereIn('lifecycle', ['past_client', 'sphere'])
+                ->where(fn ($m) => $m->whereExists(fn ($r) => $r->selectRaw('1')->from('crm_referrals')->whereColumn('crm_referrals.referrer_contact_id', 'crm_contacts.id'))
+                    ->orWhereExists(fn ($a) => $a->selectRaw('1')->from('crm_activities')->whereColumn('crm_activities.contact_id', 'crm_contacts.id')
+                        ->where('crm_activities.type', 'call')->where('crm_activities.outcome', 'connected')->where('crm_activities.occurred_at', '>=', $now->subDays(7)))
+                    ->orWhere(fn ($d) => self::monthDayWithin($d, 'closed_md', $now, 14))))
             ->when(($filters['overdue_task'] ?? false) === true, fn ($q) => $q->whereExists(fn ($t) => $t->selectRaw('1')->from('crm_tasks')
                 ->whereColumn('crm_tasks.contact_id', 'crm_contacts.id')->whereNull('crm_tasks.completed_at')->where('crm_tasks.due_at', '<', $now)));
     }

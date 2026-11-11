@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Crm\Http\Controllers;
 
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -26,11 +27,14 @@ use Modules\Crm\Models\Contact;
 use Modules\Crm\Models\ContactBrief;
 use Modules\Crm\Models\ContactScore;
 use Modules\Crm\Models\Intent;
+use Modules\Crm\Models\Memory;
 use Modules\Crm\Models\PlanEnrollment;
+use Modules\Crm\Models\Referral;
 use Modules\Crm\Models\Relationship;
 use Modules\Crm\Models\Stage;
 use Modules\Crm\Models\Tag;
 use Modules\Crm\Models\Task;
+use Modules\Crm\Referrals;
 use Modules\Crm\SmartLists;
 
 /**
@@ -83,6 +87,23 @@ final class ContactController
             'sources' => array_map(fn (Source $s): string => $s->value, Source::cases()),
             'isManager' => $user->isKind(UserKind::Owner, UserKind::Staff),
         ]);
+    }
+
+    /**
+     * Type-to-find for pickers: visible contacts only, at most 8.
+     */
+    public function lookup(Request $request): JsonResponse
+    {
+        $user = self::user($request);
+        $q = mb_strtolower(trim((string) $request->query('q', '')));
+        if (mb_strlen($q) < 2) {
+            return response()->json(['contacts' => []]);
+        }
+
+        $matches = $this->visibility->query($user)->where(fn ($w) => $w->where('search_name', 'like', '%'.$q.'%')->orWhere('primary_email', 'like', '%'.$q.'%'))
+            ->orderBy('search_name')->limit(8)->get()->map(fn (Contact $c): array => ['ulid' => $c->ulid, 'name' => $c->name, 'email' => $c->primary_email]);
+
+        return response()->json(['contacts' => $matches]);
     }
 
     public function store(Request $request, ManageContacts $contacts): RedirectResponse
@@ -149,6 +170,13 @@ final class ContactController
                 ? ['buyer' => $score->buyer, 'seller' => $score->seller, 'timeframe' => $score->timeframe, 'reasons' => $score->reasons] : null,
             'intents' => Intent::query()->where('contact_id', $contact->id)->where('status', 'open')->orderBy('due_on')->get()
                 ->map(fn (Intent $i): array => ['id' => $i->id, 'kind' => $i->kind, 'summary' => $i->summary, 'due_on' => $i->due_on?->toDateString()]),
+            'memories' => Memory::query()->where('contact_id', $contact->id)->orderBy('id')->get()
+                ->map(fn (Memory $m): array => ['id' => $m->id, 'category' => $m->category, 'detail' => $m->detail]),
+            'referral' => [
+                'by' => ($ref = Referral::query()->with('referrer')->where('referred_contact_id', $contact->id)->first()) !== null
+                    && $this->visibility->canSee($user, $ref->referrer) ? ['ulid' => $ref->referrer->ulid, 'name' => $ref->referrer->name] : null,
+                'stats' => app(Referrals::class)->stats($contact),
+            ],
             'rhythm' => $contact->rhythm,
             'closedOn' => $contact->closed_on?->toDateString(),
             'plans' => app(FollowUpPlans::class)->plansFor($user)->where('active', true)->map(fn ($p): array => ['ulid' => $p->ulid, 'name' => $p->name])->values(),

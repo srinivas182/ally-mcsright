@@ -55,6 +55,8 @@ final class DatabaseIntelligence
         $result = $this->gateway->run(new AiTask(self::FEATURE, 'crm.intents', 'crm-intents:'.$contact->ulid.':'.CarbonImmutable::now()->format('YmdHisv'),
             inputs: ['today' => CarbonImmutable::now()->toDateString()], context: $records, outputSchema: self::SCHEMA, userId: $user->id));
 
+        app(PersonalMemory::class)->storeExtracted($contact, (array) ($result->json['memories'] ?? []));
+
         return $this->storeIntents($contact, (array) ($result->json['intents'] ?? []));
     }
 
@@ -89,6 +91,7 @@ final class DatabaseIntelligence
         $contact = Contact::query()->where('ulid', $m[1])->first();
         $json = json_decode(trim((string) preg_replace('/^```(?:json)?|```$/m', '', $text)), true);
         if ($contact !== null && is_array($json)) {
+            app(PersonalMemory::class)->storeExtracted($contact, (array) ($json['memories'] ?? []));
             $this->storeIntents($contact, (array) ($json['intents'] ?? []));
         }
     }

@@ -11,6 +11,7 @@ use Modules\Crm\Http\Controllers\ContactController;
 use Modules\Crm\Http\Controllers\DataController;
 use Modules\Crm\Http\Controllers\PipelineController;
 use Modules\Crm\Http\Controllers\PlanController;
+use Modules\Crm\Http\Controllers\RelationshipController;
 use Modules\Crm\Http\Controllers\TaskController;
 use Modules\Crm\Http\Controllers\TodayController;
 use Modules\Crm\Http\Controllers\WorkListController;
@@ -22,6 +23,9 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])
         Route::get('/', [ContactController::class, 'index'])->name('index');
         Route::get('board', [PipelineController::class, 'board'])->name('board');
         Route::get('duplicates', [DataController::class, 'duplicates'])->name('duplicates');
+        Route::get('pond', [RelationshipController::class, 'pond'])->name('pond');
+        Route::get('lookup', [ContactController::class, 'lookup'])->middleware('throttle:120,1')->name('lookup');
+        Route::post('pond/settings', [RelationshipController::class, 'pondSettings'])->name('pond.settings');
         Route::get('work', [WorkListController::class, 'show'])->name('work');
         Route::get('ask', [AskController::class, 'ask'])->middleware('throttle:30,1')->name('ask');
         Route::post('quick-add/parse', [AskController::class, 'parseQuickAdd'])->middleware('throttle:30,1')->name('quick-add.parse');
@@ -40,6 +44,9 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])
         Route::post('{contact}/voice-log/parse', [AskController::class, 'proposeLog'])->middleware('throttle:30,1')->name('voice-log.parse');
         Route::post('{contact}/voice-log', [AskController::class, 'applyLog'])->name('voice-log.apply');
         Route::post('{contact}/plans', [PlanController::class, 'enroll'])->name('plans.enroll');
+        Route::post('{contact}/claim', [RelationshipController::class, 'claim'])->name('claim');
+        Route::post('{contact}/memories', [RelationshipController::class, 'addMemory'])->name('memories.store');
+        Route::post('{contact}/referred-by', [RelationshipController::class, 'referredBy'])->name('referred-by');
         Route::post('{contact}/analyse', [TodayController::class, 'analyse'])->middleware('throttle:20,1')->name('analyse');
         Route::post('{contact}/tags', [PipelineController::class, 'tag'])->name('tags.store');
         Route::delete('{contact}/tags/{tag}', [PipelineController::class, 'untag'])->name('tags.destroy');
@@ -47,6 +54,7 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])
 
 Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function (): void {
     Route::post('activities/{activity}/pin', [ActivityController::class, 'pin'])->name('crm.activities.pin');
+    Route::delete('memories/{memory}', [RelationshipController::class, 'removeMemory'])->name('crm.memories.destroy');
     Route::get('today', [TodayController::class, 'show'])->name('crm.today');
     Route::post('intents/{intent}', [TodayController::class, 'intent'])->name('crm.intents.update');
     Route::get('follow-up-plans', [PlanController::class, 'index'])->name('crm.plans.index');

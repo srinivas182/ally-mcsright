@@ -22,6 +22,7 @@ export type BriefContent = {
     draft: string;
     sources: string[];
     notes: string[];
+    personal_touch?: string;
 };
 
 export type Brief = {
@@ -147,6 +148,11 @@ export function AiBrief({
                 <p>
                     <span className="font-medium">Where things stand: </span>
                     {c.status}
+                </p>
+            )}
+            {c.personal_touch && (
+                <p className="text-emerald-700 dark:text-emerald-300">
+                    💬 {c.personal_touch}
                 </p>
             )}
             {c.unknowns.length > 0 && (

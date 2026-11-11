@@ -63,6 +63,8 @@ use Modules\Crm\Enums\Source;
  * @property CarbonImmutable|null $closed_on
  * @property int|null $birthday_md
  * @property int|null $closed_md
+ * @property CarbonImmutable|null $owner_assigned_at
+ * @property CarbonImmutable|null $in_pond_since
  * @property int|null $created_by
  * @property CarbonImmutable|null $created_at
  * @property-read string $name
@@ -78,7 +80,7 @@ final class Contact extends Model
     protected $fillable = [
         'type', 'first_name', 'last_name', 'company_name', 'emails', 'phones', 'address_line1', 'address_line2',
         'city', 'state', 'zip', 'birthday', 'origin', 'source', 'source_detail', 'lifecycle', 'owner_user_id',
-        'team_id', 'office_id', 'created_by', 'pipeline_id', 'stage_id', 'stage_changed_at', 'merged_into_id', 'import_id', 'rhythm', 'closed_on',
+        'team_id', 'office_id', 'created_by', 'pipeline_id', 'stage_id', 'stage_changed_at', 'merged_into_id', 'import_id', 'rhythm', 'closed_on', 'owner_assigned_at', 'in_pond_since',
     ];
 
     public function getConnectionName(): ?string
@@ -90,6 +92,10 @@ final class Contact extends Model
     {
         // Normalised columns used for search and duplicate detection.
         self::saving(function (self $contact): void {
+            if ($contact->isDirty('owner_user_id') && $contact->owner_user_id !== null) {
+                $contact->owner_assigned_at = CarbonImmutable::now();
+                $contact->in_pond_since = null;
+            }
             $emails = $contact->emails;
             $phones = $contact->phones;
             $primaryEmail = collect($emails)->firstWhere('primary', true)['address'] ?? ($emails[0]['address'] ?? null);
@@ -112,7 +118,7 @@ final class Contact extends Model
             'emails' => 'array', 'phones' => 'array', 'birthday' => 'immutable_date',
             'origin' => Origin::class, 'source' => Source::class, 'lifecycle' => Lifecycle::class,
             'last_activity_at' => 'immutable_datetime', 'email_opt_in' => 'boolean', 'sms_opt_in' => 'boolean',
-            'do_not_call' => 'boolean', 'created_at' => 'immutable_datetime', 'stage_changed_at' => 'immutable_datetime', 'sms_opt_in_at' => 'immutable_datetime', 'sms_opt_out_at' => 'immutable_datetime', 'email_opt_in_at' => 'immutable_datetime', 'closed_on' => 'immutable_date',
+            'do_not_call' => 'boolean', 'created_at' => 'immutable_datetime', 'stage_changed_at' => 'immutable_datetime', 'sms_opt_in_at' => 'immutable_datetime', 'sms_opt_out_at' => 'immutable_datetime', 'email_opt_in_at' => 'immutable_datetime', 'closed_on' => 'immutable_date', 'owner_assigned_at' => 'immutable_datetime', 'in_pond_since' => 'immutable_datetime',
         ];
     }
 
