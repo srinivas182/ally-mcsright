@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\AI\Models;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Modules\AI\Database\Factories\AiProviderFactory;
@@ -21,6 +22,7 @@ use Modules\Core\Support\Connections;
  * @property string|null $credential_config_key
  * @property bool $zero_retention_confirmed
  * @property bool $no_training_confirmed
+ * @property CarbonImmutable|null $dpa_signed_at
  * @property string $status
  */
 final class AiProvider extends Model

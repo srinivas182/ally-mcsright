@@ -6,6 +6,7 @@ import {
     Landmark,
     LayoutGrid,
     type LucideIcon,
+    Sparkles,
     Sun,
     Users,
 } from 'lucide-react';
@@ -17,6 +18,7 @@ const icons: Record<string, LucideIcon> = {
     'calendar-check': CalendarCheck,
     landmark: Landmark,
     'layout-grid': LayoutGrid,
+    sparkles: Sparkles,
     sun: Sun,
     users: Users,
 };
