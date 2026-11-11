@@ -49,4 +49,7 @@ return [
             'blog', 'cdn', 'static', 'assets', 'auth', 'login', 'billing', 'rightally',
         ],
     ],
+
+    // Central host for Google/Microsoft sign-in redirects (one registered address for every brokerage).
+    'sso_host' => env('CORE_SSO_HOST', 'auth.rightally.app'),
 ];

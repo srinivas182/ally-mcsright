@@ -35,4 +35,18 @@ return [
         ],
     ],
 
+    // Sign in with Google / Microsoft through the central hand-off host (specs/core/02, 4A-2).
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect' => null,
+    ],
+
+    'microsoft' => [
+        'client_id' => env('MICROSOFT_CLIENT_ID'),
+        'client_secret' => env('MICROSOFT_CLIENT_SECRET'),
+        'redirect' => null,
+        'tenant' => env('MICROSOFT_TENANT', 'common'),
+    ],
+
 ];

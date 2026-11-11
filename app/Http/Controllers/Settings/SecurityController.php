@@ -12,7 +12,9 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Laravel\Fortify\Features;
 use Modules\Core\Identity\Models\TrustedDevice;
+use Modules\Core\Identity\Models\UserIdentity;
 use Modules\Core\Identity\Security\SignInSecurity;
+use Modules\Core\Identity\Security\SingleSignOn;
 use Modules\Core\Identity\Security\TwoFactorPolicy;
 
 class SecurityController extends Controller
@@ -47,6 +49,9 @@ class SecurityController extends Controller
                 ->where('expires_at', '>', now())->orderByDesc('last_used_at')->get()
                 ->map(fn (TrustedDevice $d): array => ['id' => $d->id, 'label' => $d->label, 'expires_at' => $d->expires_at->toIso8601String()])->all(),
             'twoFactorRequired' => app(TwoFactorPolicy::class)->requires(AuthenticatedUser::from($request)),
+            'ssoProviders' => app(SingleSignOn::class)->configured(),
+            'identities' => UserIdentity::query()->where('user_id', AuthenticatedUser::from($request)->id)->get()
+                ->map(fn (UserIdentity $i): array => ['provider' => $i->provider, 'email' => $i->email])->values(),
         ];
 
         if (Features::canManageTwoFactorAuthentication()) {

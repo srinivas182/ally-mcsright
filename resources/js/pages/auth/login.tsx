@@ -1,3 +1,4 @@
+import { SsoButtons } from '@/components/sso-buttons';
 import { Form, Head } from '@inertiajs/react';
 import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
@@ -14,9 +15,14 @@ import PasskeyVerify from '@/components/passkey-verify';
 type Props = {
     status?: string;
     canResetPassword: boolean;
+    ssoProviders?: string[];
 };
 
-export default function Login({ status, canResetPassword }: Props) {
+export default function Login({
+    status,
+    canResetPassword,
+    ssoProviders = [],
+}: Props) {
     return (
         <>
             <Head title="Log in" />
@@ -98,6 +104,8 @@ export default function Login({ status, canResetPassword }: Props) {
                     </>
                 )}
             </Form>
+
+            <SsoButtons providers={ssoProviders} />
 
             {status && (
                 <div className="mb-4 text-center text-sm font-medium text-green-600">

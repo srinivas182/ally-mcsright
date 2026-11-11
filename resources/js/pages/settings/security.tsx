@@ -10,6 +10,7 @@ import { edit } from '@/routes/security';
 import type { Props as ManagePasskeysProps } from '@/components/manage-passkeys';
 import ManagePasskeys from '@/components/manage-passkeys';
 import type { Props as ManageTwoFactorProps } from '@/components/manage-two-factor';
+import ConnectedAccounts from '@/components/connected-accounts';
 import ManageTwoFactor from '@/components/manage-two-factor';
 import SignInActivity, {
     type SessionRow,
@@ -18,6 +19,8 @@ import SignInActivity, {
 
 // oxfmt-ignore
 type Props = {
+    ssoProviders: string[];
+    identities: { provider: string; email: string | null }[];
     sessions: SessionRow[];
     trustedDevices: TrustedDeviceRow[];
     twoFactorRequired: boolean;
@@ -150,6 +153,11 @@ export default function Security(props: Props) {
             <ManagePasskeys
                 canManagePasskeys={props.canManagePasskeys}
                 passkeys={props.passkeys}
+            />
+
+            <ConnectedAccounts
+                providers={props.ssoProviders}
+                identities={props.identities}
             />
 
             <SignInActivity

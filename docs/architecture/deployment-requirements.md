@@ -18,3 +18,12 @@ Settings the platform depends on in every environment. Each one was found by a t
 | `CORE_BREACHED_PASSWORD_CHECK`                          | `true` in every real environment: new passwords are checked against Have I Been Pwned (k-anonymity; needs outbound HTTPS to api.pwnedpasswords.com). |
 | First HQ staff member                                   | `php artisan tenants:bootstrap-hq --admin-email=…` emails an invitation (no passwords on the command line).                                          |
 | Scheduler running (`php artisan schedule:work` or cron) | `tenants:lifecycle` daily, `ledger:reconcile` nightly.                                                                                               |
+
+## Sign in with Google / Microsoft (Sprint 4A-2)
+
+- `CORE_SSO_HOST` (default `auth.rightally.app`): one host for every brokerage's Google/Microsoft
+  sign-in; point it at the app and register `https://<CORE_SSO_HOST>/oauth/google/callback` and
+  `https://<CORE_SSO_HOST>/oauth/microsoft/callback` with Google Cloud and Microsoft Entra.
+- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`,
+  `MICROSOFT_TENANT` (default `common`). A provider without a client ID is hidden.
+- The cache must be shared across app servers (Redis): sign-in tickets live there for 60 seconds.

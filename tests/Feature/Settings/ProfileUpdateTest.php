@@ -41,8 +41,10 @@ class ProfileUpdateTest extends TestCase
         $user->refresh();
 
         $this->assertSame('Test User', $user->name);
-        $this->assertSame('test@example.com', $user->email);
-        $this->assertNull($user->email_verified_at);
+        // Sprint 4A-2: a new email only takes effect after it is confirmed from that address.
+        $this->assertNotSame('test@example.com', $user->email);
+        $this->assertSame('test@example.com', $user->pending_email);
+        $this->assertNotNull($user->email_verified_at);
     }
 
     public function test_email_verification_status_is_unchanged_when_the_email_address_is_unchanged()
