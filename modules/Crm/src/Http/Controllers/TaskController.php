@@ -101,7 +101,9 @@ final class TaskController
             'ulid' => $t->ulid, 'title' => $t->title, 'type' => $t->type, 'priority' => $t->priority,
             'due_at' => $t->due_at->setTimezone($tz)->toIso8601String(), 'overdue' => $t->isOverdue(),
             'completed_at' => $t->completed_at?->toIso8601String(), 'remind' => $t->remind_at !== null,
-            'contact' => $t->contact !== null ? ['ulid' => $t->contact->ulid, 'name' => $t->contact->name] : null,
+            'contact' => $t->contact !== null ? ['ulid' => $t->contact->ulid, 'name' => $t->contact->name, 'phone' => $t->contact->primary_phone, 'email' => $t->contact->primary_email] : null,
+            'message' => $t->message,
+            'from_plan' => $t->plan_enrollment_id !== null,
         ];
     }
 

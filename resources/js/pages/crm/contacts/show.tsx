@@ -64,6 +64,10 @@ type Contact = {
 
 type Props = {
     contact: Contact;
+    rhythm: string | null;
+    closedOn: string | null;
+    plans: { ulid: string; name: string }[];
+    enrollments: { id: number; plan: string; next_due_at: string | null }[];
     brief: Brief;
     tags: { id: number; name: string }[];
     pipelines: {
@@ -87,6 +91,113 @@ type Props = {
 };
 
 const label = (v: string) => v.replace(/_/g, ' ');
+
+function FollowUpPanel({
+    base,
+    plans,
+    enrollments,
+    rhythm,
+    closedOn,
+}: {
+    base: string;
+    plans: { ulid: string; name: string }[];
+    enrollments: { id: number; plan: string; next_due_at: string | null }[];
+    rhythm: string | null;
+    closedOn: string | null;
+}) {
+    return (
+        <div className="grid gap-2 rounded-lg border p-4 text-sm">
+            <p className="font-medium">Keep in touch</p>
+            <label className="flex items-center justify-between gap-2">
+                <span>Relationship</span>
+                <select
+                    aria-label="Relationship ranking"
+                    className="rounded border bg-background px-2 py-1"
+                    value={rhythm ?? ''}
+                    onChange={(e) =>
+                        router.patch(
+                            base,
+                            { rhythm: e.target.value || null },
+                            { preserveScroll: true },
+                        )
+                    }
+                >
+                    <option value="">Not ranked</option>
+                    <option value="A">A · every month</option>
+                    <option value="B">B · every 2 months</option>
+                    <option value="C">C · every quarter</option>
+                    <option value="D">D · twice a year</option>
+                </select>
+            </label>
+            <label className="flex items-center justify-between gap-2">
+                <span>Closing date</span>
+                <input
+                    type="date"
+                    className="rounded border bg-background px-2 py-1"
+                    defaultValue={closedOn ?? ''}
+                    onBlur={(e) =>
+                        e.target.value !== (closedOn ?? '') &&
+                        router.patch(
+                            base,
+                            { closed_on: e.target.value || null },
+                            { preserveScroll: true },
+                        )
+                    }
+                />
+            </label>
+            <p className="mt-2 font-medium">Follow-up plan</p>
+            {enrollments.map((e) => (
+                <p
+                    key={e.id}
+                    className="flex items-center justify-between gap-2"
+                >
+                    <span>
+                        {e.plan}
+                        {e.next_due_at && (
+                            <span className="block text-xs text-muted-foreground">
+                                Next step{' '}
+                                {new Date(e.next_due_at).toLocaleDateString()}
+                            </span>
+                        )}
+                    </span>
+                    <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() =>
+                            router.post(
+                                `/plan-enrollments/${e.id}/stop`,
+                                {},
+                                { preserveScroll: true },
+                            )
+                        }
+                    >
+                        Stop
+                    </Button>
+                </p>
+            ))}
+            <select
+                aria-label="Start a follow-up plan"
+                className="rounded border bg-background px-2 py-1"
+                value=""
+                onChange={(e) =>
+                    e.target.value &&
+                    router.post(
+                        `${base}/plans`,
+                        { plan: e.target.value },
+                        { preserveScroll: true },
+                    )
+                }
+            >
+                <option value="">Start a plan…</option>
+                {plans.map((p) => (
+                    <option key={p.ulid} value={p.ulid}>
+                        {p.name}
+                    </option>
+                ))}
+            </select>
+        </div>
+    );
+}
 
 function ConsentPanel({
     base,
@@ -179,6 +290,10 @@ function ConsentPanel({
 }
 
 export default function ContactShow({
+    rhythm,
+    closedOn,
+    plans,
+    enrollments,
     brief,
     tags,
     pipelines,
@@ -588,6 +703,13 @@ export default function ContactShow({
                                 </Select>
                             </div>
                         )}
+                        <FollowUpPanel
+                            base={base}
+                            plans={plans}
+                            enrollments={enrollments}
+                            rhythm={rhythm}
+                            closedOn={closedOn}
+                        />
                         <ConsentPanel base={base} consent={contact.consent} />
                         <div className="grid gap-2 rounded-lg border p-4">
                             <p className="text-sm font-medium">

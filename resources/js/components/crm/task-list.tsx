@@ -15,7 +15,14 @@ export type TaskRow = {
     overdue: boolean;
     completed_at: string | null;
     remind: boolean;
-    contact: { ulid: string; name: string } | null;
+    contact: {
+        ulid: string;
+        name: string;
+        phone?: string | null;
+        email?: string | null;
+    } | null;
+    message?: string | null;
+    from_plan?: boolean;
 };
 
 const dueLabel = (iso: string) =>

@@ -386,6 +386,11 @@ export default function ContactsIndex({
                                 </Link>
                             </Button>
                             <Button variant="outline" asChild>
+                                <Link href="/follow-up-plans">
+                                    Follow-up plans
+                                </Link>
+                            </Button>
+                            <Button variant="outline" asChild>
                                 <Link href="/contacts/board">
                                     Pipeline board
                                 </Link>

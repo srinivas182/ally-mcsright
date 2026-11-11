@@ -59,6 +59,10 @@ use Modules\Crm\Enums\Source;
  * @property CarbonImmutable|null $email_opt_in_at
  * @property int|null $merged_into_id
  * @property int|null $import_id
+ * @property string|null $rhythm
+ * @property CarbonImmutable|null $closed_on
+ * @property int|null $birthday_md
+ * @property int|null $closed_md
  * @property int|null $created_by
  * @property CarbonImmutable|null $created_at
  * @property-read string $name
@@ -74,7 +78,7 @@ final class Contact extends Model
     protected $fillable = [
         'type', 'first_name', 'last_name', 'company_name', 'emails', 'phones', 'address_line1', 'address_line2',
         'city', 'state', 'zip', 'birthday', 'origin', 'source', 'source_detail', 'lifecycle', 'owner_user_id',
-        'team_id', 'office_id', 'created_by', 'pipeline_id', 'stage_id', 'stage_changed_at', 'merged_into_id', 'import_id',
+        'team_id', 'office_id', 'created_by', 'pipeline_id', 'stage_id', 'stage_changed_at', 'merged_into_id', 'import_id', 'rhythm', 'closed_on',
     ];
 
     public function getConnectionName(): ?string
@@ -93,6 +97,9 @@ final class Contact extends Model
             $contact->primary_email = $primaryEmail !== null ? mb_strtolower($primaryEmail) : null;
             $contact->primary_phone = $primaryPhone;
             $contact->search_name = mb_strtolower(trim($contact->first_name.' '.$contact->last_name.' '.($contact->company_name ?? '')));
+            // Month-and-day numbers so "birthdays / anniversaries this week" work on every database.
+            $contact->birthday_md = $contact->birthday !== null ? $contact->birthday->month * 100 + $contact->birthday->day : null;
+            $contact->closed_md = $contact->closed_on !== null ? $contact->closed_on->month * 100 + $contact->closed_on->day : null;
         });
     }
 
@@ -105,7 +112,7 @@ final class Contact extends Model
             'emails' => 'array', 'phones' => 'array', 'birthday' => 'immutable_date',
             'origin' => Origin::class, 'source' => Source::class, 'lifecycle' => Lifecycle::class,
             'last_activity_at' => 'immutable_datetime', 'email_opt_in' => 'boolean', 'sms_opt_in' => 'boolean',
-            'do_not_call' => 'boolean', 'created_at' => 'immutable_datetime', 'stage_changed_at' => 'immutable_datetime', 'sms_opt_in_at' => 'immutable_datetime', 'sms_opt_out_at' => 'immutable_datetime', 'email_opt_in_at' => 'immutable_datetime',
+            'do_not_call' => 'boolean', 'created_at' => 'immutable_datetime', 'stage_changed_at' => 'immutable_datetime', 'sms_opt_in_at' => 'immutable_datetime', 'sms_opt_out_at' => 'immutable_datetime', 'email_opt_in_at' => 'immutable_datetime', 'closed_on' => 'immutable_date',
         ];
     }
 

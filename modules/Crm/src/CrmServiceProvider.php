@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Modules\Crm;
 
+use App\Models\User;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Validation\ValidationException;
 use Modules\AI\Events\AiBatchCompleted;
 use Modules\AI\FeatureCatalog;
 use Modules\AI\Models\AiBatch;
@@ -18,6 +20,14 @@ use Modules\Crm\Actions\Pipelines;
 use Modules\Crm\Actions\Tasks;
 use Modules\Crm\Actions\Timeline;
 use Modules\Crm\Console\SendTaskReminders;
+use Modules\Crm\Events\ActivityLogged;
+use Modules\Crm\Events\ContactCreated;
+use Modules\Crm\Events\ContactStageChanged;
+use Modules\Crm\Models\Activity;
+use Modules\Crm\Models\Contact;
+use Modules\Crm\Models\FollowUpPlan;
+use Modules\Crm\Models\PlanEnrollment;
+use Modules\Crm\Models\Stage;
 
 final class CrmServiceProvider extends ServiceProvider
 {
@@ -34,6 +44,7 @@ final class CrmServiceProvider extends ServiceProvider
         $this->app->scoped(ContactBriefs::class);
         $this->app->scoped(AskDatabase::class);
         $this->app->scoped(VoiceUpdates::class);
+        $this->app->scoped(FollowUpPlans::class);
         $this->app->scoped(Actions\MergeContacts::class);
     }
 
@@ -56,6 +67,50 @@ final class CrmServiceProvider extends ServiceProvider
             }
         });
 
+        // Follow-up plans: automatic enrolment by source or stage; stop when the person engages.
+        Event::listen(ContactCreated::class, function (ContactCreated $e): void {
+            $contact = Contact::query()->find($e->contactId);
+            $by = $e->byUserId !== null ? User::query()->find($e->byUserId) : null;
+            if ($contact === null || $by === null) {
+                return;
+            }
+            $plans = $this->app->make(FollowUpPlans::class);
+            foreach (FollowUpPlan::query()->where('active', true)->where('trigger', 'source')->where('trigger_value', $contact->source->value)->get() as $plan) {
+                try {
+                    $plans->enroll($contact, $plan, $by);
+                } catch (ValidationException) {
+                    // not usable for this contact
+                }
+            }
+        });
+        Event::listen(ContactStageChanged::class, function (ContactStageChanged $e): void {
+            $contact = Contact::query()->find($e->contactId);
+            $by = $e->byUserId !== null ? User::query()->find($e->byUserId) : null;
+            if ($contact === null || $by === null) {
+                return;
+            }
+            $plans = $this->app->make(FollowUpPlans::class);
+            foreach (PlanEnrollment::query()->where('contact_id', $contact->id)->where('status', 'active')->get() as $enrollment) {
+                $plans->process($enrollment);
+            }
+            $stageUlid = Stage::query()->whereKey($e->stageId)->value('ulid');
+            foreach (FollowUpPlan::query()->where('active', true)->where('trigger', 'stage')->where('trigger_value', $stageUlid)->get() as $plan) {
+                try {
+                    $plans->enroll($contact, $plan, $by);
+                } catch (ValidationException) {
+                    // already enrolled or not usable
+                }
+            }
+        });
+        Event::listen(ActivityLogged::class, function (ActivityLogged $e): void {
+            $activity = Activity::query()->find($e->activityId);
+            $engaged = $activity !== null && (($activity->type === 'call' && $activity->outcome === 'connected') || (in_array($activity->type, ['email', 'text'], true) && $activity->direction === 'in'));
+            $contact = $engaged ? Contact::query()->find($e->contactId) : null;
+            if ($contact !== null) {
+                $this->app->make(FollowUpPlans::class)->stopAllFor($contact, 'Contact responded');
+            }
+        });
+
         $features = $this->app->make(FeatureCatalog::class);
         $features->declare(ContactBriefs::FEATURE, 'ai.crm_brief', 'AI contact brief on every contact');
         $features->declare(AskDatabase::FEATURE, 'ai.crm_ask', 'Ask your database in plain language');
@@ -69,7 +124,7 @@ final class CrmServiceProvider extends ServiceProvider
             kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant], mobile: true));
 
         if ($this->app->runningInConsole()) {
-            $this->commands([SendTaskReminders::class, Console\RefreshBriefs::class]);
+            $this->commands([SendTaskReminders::class, Console\RefreshBriefs::class, Console\RunPlans::class]);
         }
     }
 }

@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Crm\Enums\Lifecycle;
+use Modules\Crm\Events\ContactStageChanged;
 use Modules\Crm\Models\Contact;
 use Modules\Crm\Models\Pipeline;
 use Modules\Crm\Models\Stage;
@@ -61,12 +62,15 @@ final class Pipelines
         $changes = ['pipeline_id' => $pipeline->id, 'stage_id' => $stage->id, 'stage_changed_at' => CarbonImmutable::now()];
         if ($stage->outcome === 'won') {
             $changes['lifecycle'] = Lifecycle::PastClient;
+            $changes['closed_on'] = $contact->closed_on ?? CarbonImmutable::today();
+            $changes['rhythm'] = $contact->rhythm ?? 'A';
         } elseif ($stage->outcome === null && $contact->lifecycle === Lifecycle::Lead && $stage->sort >= 2) {
             $changes['lifecycle'] = Lifecycle::Active;
         }
 
         $contact->update($changes);
         $this->timeline->system($contact, "Moved to {$pipeline->name}: {$stage->name}", $by->id);
+        ContactStageChanged::dispatch($contact->tenant_id, $contact->id, $stage->id, $by->id);
 
         return $contact;
     }

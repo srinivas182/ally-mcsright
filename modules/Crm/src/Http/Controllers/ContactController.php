@@ -20,9 +20,11 @@ use Modules\Crm\Enums\Lifecycle;
 use Modules\Crm\Enums\Origin;
 use Modules\Crm\Enums\Relation;
 use Modules\Crm\Enums\Source;
+use Modules\Crm\FollowUpPlans;
 use Modules\Crm\Models\Activity;
 use Modules\Crm\Models\Contact;
 use Modules\Crm\Models\ContactBrief;
+use Modules\Crm\Models\PlanEnrollment;
 use Modules\Crm\Models\Relationship;
 use Modules\Crm\Models\Stage;
 use Modules\Crm\Models\Tag;
@@ -141,6 +143,11 @@ final class ContactController
             'brief' => ($brief = ContactBrief::query()->where('contact_id', $contact->id)->first()) !== null ? [
                 'content' => $brief->content, 'stale' => $brief->stale, 'generated_at' => $brief->generated_at->toIso8601String(),
             ] : null,
+            'rhythm' => $contact->rhythm,
+            'closedOn' => $contact->closed_on?->toDateString(),
+            'plans' => app(FollowUpPlans::class)->plansFor($user)->where('active', true)->map(fn ($p): array => ['ulid' => $p->ulid, 'name' => $p->name])->values(),
+            'enrollments' => PlanEnrollment::query()->with('plan')->where('contact_id', $contact->id)->where('status', 'active')->get()
+                ->map(fn (PlanEnrollment $e): array => ['id' => $e->id, 'plan' => $e->plan->name, 'next_due_at' => $e->next_due_at?->toIso8601String()]),
             'canManage' => $this->visibility->canManage($user, $contact),
             'agents' => $user->isKind(UserKind::Owner, UserKind::Staff) && $contact->origin === Origin::Company
                 ? User::query()->where('status', UserStatus::Active)->whereIn('kind', [UserKind::Agent, UserKind::Owner, UserKind::Staff])
@@ -168,6 +175,8 @@ final class ContactController
             'zip' => ['sometimes', 'nullable', 'string', 'max:10'],
             'birthday' => ['sometimes', 'nullable', 'date'],
             'lifecycle' => ['sometimes', Rule::enum(Lifecycle::class)],
+            'rhythm' => ['sometimes', 'nullable', Rule::in(['A', 'B', 'C', 'D'])],
+            'closed_on' => ['sometimes', 'nullable', 'date'],
         ]);
 
         $contacts->update($contact, $data, $user);
