@@ -18,8 +18,10 @@ use Modules\Crm\Enums\Lifecycle;
 use Modules\Crm\Enums\Origin;
 use Modules\Crm\Enums\Relation;
 use Modules\Crm\Enums\Source;
+use Modules\Crm\Models\Activity;
 use Modules\Crm\Models\Contact;
 use Modules\Crm\Models\Relationship;
+use Modules\Crm\Models\Task;
 
 /**
  * Contacts list, quick add and contact detail. Everything goes through ContactVisibility; a
@@ -100,6 +102,16 @@ final class ContactController
             ]),
             'relationships' => Relationship::query()->where('contact_id', $contact->id)->whereIn('related_contact_id', $visibleIds)->with('related')->get()
                 ->map(fn (Relationship $r): array => ['relation' => $r->relation->value, 'ulid' => $r->related->ulid, 'name' => $r->related->name]),
+            'timeline' => Activity::query()->where('contact_id', $contact->id)->orderByDesc('pinned')->orderByDesc('occurred_at')->limit(100)->get()
+                ->map(fn (Activity $a): array => [
+                    'ulid' => $a->ulid, 'type' => $a->type, 'direction' => $a->direction, 'outcome' => $a->outcome,
+                    'duration_minutes' => $a->duration_seconds !== null ? intdiv($a->duration_seconds, 60) : null,
+                    'subject' => $a->subject, 'body' => $a->body, 'pinned' => $a->pinned,
+                    'by' => $a->user_id !== null ? User::query()->whereKey($a->user_id)->value('first_name') : null,
+                    'occurred_at' => $a->occurred_at->toIso8601String(),
+                ]),
+            'tasks' => Task::query()->where('contact_id', $contact->id)->whereNull('completed_at')->orderBy('due_at')->get()
+                ->map(fn (Task $t): array => TaskController::row($t, $user->timezone !== null && $user->timezone !== '' ? $user->timezone : 'America/New_York')),
             'canManage' => $this->visibility->canManage($user, $contact),
             'agents' => $user->isKind(UserKind::Owner, UserKind::Staff) && $contact->origin === Origin::Company
                 ? User::query()->where('status', UserStatus::Active)->whereIn('kind', [UserKind::Agent, UserKind::Owner, UserKind::Staff])

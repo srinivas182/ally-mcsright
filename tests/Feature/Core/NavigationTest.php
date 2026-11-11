@@ -19,16 +19,16 @@ function menuFor(User $user): array
 }
 
 it('shows owners the dashboard, people and finance', function (): void {
-    expect(menuFor(User::factory()->owner()->create()))->toBe(['Dashboard', 'Contacts', 'Chart of accounts', 'Journals', 'Periods', 'People']);
+    expect(menuFor(User::factory()->owner()->create()))->toBe(['Dashboard', 'Tasks', 'Contacts', 'Chart of accounts', 'Journals', 'Periods', 'People']);
 });
 
 it('shows agents only their own pages', function (): void {
-    expect(menuFor(User::factory()->create()))->toBe(['Today', 'Contacts'])
-        ->and(menuFor(User::factory()->assistantOf(User::factory()->create())->create()))->toBe(['Today', 'Contacts']);
+    expect(menuFor(User::factory()->create()))->toBe(['Today', 'Tasks', 'Contacts'])
+        ->and(menuFor(User::factory()->assistantOf(User::factory()->create())->create()))->toBe(['Today', 'Tasks', 'Contacts']);
 });
 
 it('shows staff the dashboard but not owner-only pages', function (): void {
-    expect(menuFor(User::factory()->staff()->create()))->toBe(['Dashboard', 'Contacts']);
+    expect(menuFor(User::factory()->staff()->create()))->toBe(['Dashboard', 'Tasks', 'Contacts']);
 });
 
 it('shows HQ staff the HQ console and people', function (): void {

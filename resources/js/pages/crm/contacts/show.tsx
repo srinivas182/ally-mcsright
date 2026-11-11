@@ -3,7 +3,8 @@ import { MailIcon, MessageSquareIcon, PhoneIcon } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { EmptyState } from '@/components/ui/empty-state';
+import { AddTask, TaskList, type TaskRow } from '@/components/crm/task-list';
+import { Timeline, type TimelineItem } from '@/components/crm/timeline';
 import { FormField } from '@/components/ui/form-field';
 import { FormSection } from '@/components/ui/form-section';
 import { Input } from '@/components/ui/input';
@@ -48,6 +49,8 @@ type Contact = {
 
 type Props = {
     contact: Contact;
+    timeline: TimelineItem[];
+    tasks: TaskRow[];
     households: {
         ulid: string;
         name: string;
@@ -63,6 +66,8 @@ type Props = {
 const label = (v: string) => v.replace(/_/g, ' ');
 
 export default function ContactShow({
+    timeline,
+    tasks,
     contact,
     households,
     relationships,
@@ -190,10 +195,7 @@ export default function ContactShow({
 
                 <div className="grid gap-6 lg:grid-cols-3">
                     <div className="grid gap-6 lg:col-span-2">
-                        <EmptyState
-                            title="Timeline"
-                            description="Notes, calls, emails, texts and tasks appear here from the next CRM sprint."
-                        />
+                        <Timeline contactUlid={contact.ulid} items={timeline} />
                         {canManage && (
                             <form
                                 onSubmit={(e) => {
@@ -342,6 +344,13 @@ export default function ContactShow({
                     </div>
 
                     <aside className="grid content-start gap-4">
+                        <div className="grid gap-3 rounded-lg border p-4">
+                            <p className="text-sm font-medium">Tasks</p>
+                            {tasks.length > 0 && (
+                                <TaskList tasks={tasks} showContact={false} />
+                            )}
+                            <AddTask contactUlid={contact.ulid} />
+                        </div>
                         {agents.length > 0 && (
                             <div className="grid gap-2 rounded-lg border p-4">
                                 <p className="text-sm font-medium">Owner</p>
