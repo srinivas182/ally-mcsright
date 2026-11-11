@@ -8,7 +8,8 @@ import { PageHeader } from '@/components/ui/page-header';
 import { Progress } from '@/components/ui/progress';
 
 type Props = {
-    list: { key: string; name: string };
+    list: { key: string; name: string; skip?: string };
+    reason?: string | null;
     position: { done: number; total: number };
     contact: {
         id: number;
@@ -31,7 +32,13 @@ const outcomes = [
 ] as const;
 
 /** Work my list: one contact at a time — call or text, tap the outcome, next. */
-export default function WorkList({ list, position, contact, brief }: Props) {
+export default function WorkList({
+    list,
+    position,
+    contact,
+    brief,
+    reason,
+}: Props) {
     const next = (after: number) =>
         router.get(
             '/contacts/work',
@@ -87,6 +94,11 @@ export default function WorkList({ list, position, contact, brief }: Props) {
                             >
                                 {contact.name}
                             </Link>
+                            {reason && (
+                                <p className="text-sm font-medium">
+                                    Why today: {reason}
+                                </p>
+                            )}
                             <p className="text-sm text-muted-foreground">
                                 Last contact:{' '}
                                 {contact.last_activity_at

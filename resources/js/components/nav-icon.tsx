@@ -10,6 +10,7 @@ import {
     type LucideIcon,
     Sparkles,
     Sun,
+    Target,
     Users,
 } from 'lucide-react';
 
@@ -24,6 +25,7 @@ const icons: Record<string, LucideIcon> = {
     'list-checks': ListChecks,
     sparkles: Sparkles,
     sun: Sun,
+    target: Target,
     users: Users,
 };
 
