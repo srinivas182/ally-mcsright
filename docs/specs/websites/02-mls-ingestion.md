@@ -134,3 +134,21 @@ HQ: `hq.mls.manage`, `hq.mls.authorize`. Tenant: `listings.mls.view`, `listings.
 6. The presenter hides suppressed fields and adds attribution and disclaimers per profile.
 7. Tenants see only MLSs they are actively authorised for; credentials are never exposed.
 8. Freshness alerts fire when a feed stalls.
+
+## MLS licence approvals and enforcement (ADR 0012)
+
+Storage and display are separate: each MLS feed is stored once (RightAlly as approved vendor), but a
+brokerage **sees an MLS's listings only with an approved licence**.
+
+| Step                | Behaviour                                                                                                                                 |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Request             | During setup the broker chooses MLSs and uploads or e-signs the IDX agreement                                                             |
+| Approval            | HQ records per MLS: status, agreement reference, approved date, expiry, scope (IDX display, VOW, back-office data, agent production data) |
+| Enforcement         | Websites, search, alerts, AI and reports query **only approved MLSs and scopes**, checked on every query (not only at setup)              |
+| Revocation / expiry | Listings disappear from that brokerage automatically; broker alerted; HQ dashboard                                                        |
+| Display rules       | Each MLS's logo, disclaimer, update frequency and sold-data limits applied automatically                                                  |
+| Audit               | Report of which brokerage accessed which MLS data, when, under which approval                                                             |
+
+Agent production data (AI Networking Assistant, Recruiting) requires its own licence scope. If an MLS
+vendor contract requires per-customer feeds, the store is keyed per feed. Built by Team C right after
+MLS ingestion.
