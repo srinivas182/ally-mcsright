@@ -4,6 +4,7 @@ import { MailIcon, MessageSquareIcon, PhoneIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AiBrief, type Brief } from '@/components/crm/ai-brief';
+import { QuickUpdate } from '@/components/crm/quick-update';
 import { AddTask, TaskList, type TaskRow } from '@/components/crm/task-list';
 import { Timeline, type TimelineItem } from '@/components/crm/timeline';
 import { FormField } from '@/components/ui/form-field';
@@ -317,6 +318,7 @@ export default function ContactShow({
                             phone={contact.phones[0]?.e164 ?? null}
                             email={contact.emails[0]?.address ?? null}
                         />
+                        <QuickUpdate contactUlid={contact.ulid} />
                         <Timeline contactUlid={contact.ulid} items={timeline} />
                         {canManage && (
                             <form

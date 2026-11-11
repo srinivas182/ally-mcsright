@@ -7,6 +7,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
+use Modules\AI\Models\AiBatchItem;
 use Modules\AI\Models\AiFeatureRoute;
 use Modules\AI\Models\AiModel;
 use Modules\AI\Providers\ProviderRegistry;
@@ -150,4 +151,16 @@ it('imports notes and last-contact dates from the old CRM onto the timeline', fu
     expect($note->body)->toBe('Imported note: Met at the Elm St open house')->and($note->occurred_at->toDateString())->toBe('2025-10-04')
         ->and($sam->last_activity_at?->toDateString())->toBe('2025-10-04')
         ->and(Contact::query()->where('first_name', 'Kim')->sole()->last_activity_at?->toDateString())->toBe('2025-09-01');
+});
+
+it('refreshes briefs overnight for contacts with recent activity, with the same safety rules', function (): void {
+    app(Timeline::class)->log($this->pat, ['type' => 'note', 'body' => 'Called back about Fondren'], $this->agent);
+    $this->ai->respond(briefJson()); // provider without a batch API runs immediately
+
+    $this->artisan('crm:refresh-briefs')->assertSuccessful();
+
+    $brief = ContactBrief::query()->where('contact_id', $this->pat->id)->sole();
+    expect($brief->stale)->toBeFalse()
+        ->and($brief->content['draft_channel'])->toBe('email') // no texting consent: rule still enforced
+        ->and(AiBatchItem::query()->whereNotNull('result')->count())->toBe(0); // answer not kept after use
 });

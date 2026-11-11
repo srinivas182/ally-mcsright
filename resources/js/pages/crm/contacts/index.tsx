@@ -2,6 +2,8 @@ import { Head, Link, router, useForm } from '@inertiajs/react';
 import { PlusIcon } from 'lucide-react';
 import { useState } from 'react';
 
+import { VoiceButton } from '@/components/crm/voice-button';
+import { postJson } from '@/lib/http';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -94,7 +96,36 @@ function QuickAdd({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Add a contact</DialogTitle>
+                    <div className="flex items-center justify-between gap-2">
+                        <DialogTitle>Add a contact</DialogTitle>
+                        <VoiceButton
+                            label="Say it"
+                            onText={async (text) => {
+                                try {
+                                    const { contact } = await postJson<{
+                                        contact: {
+                                            first_name: string;
+                                            last_name: string;
+                                            email: string;
+                                            phone: string;
+                                            source: string;
+                                        };
+                                    }>('/contacts/quick-add/parse', { text });
+                                    form.setData({
+                                        ...form.data,
+                                        first_name: contact.first_name,
+                                        last_name: contact.last_name,
+                                        email: contact.email,
+                                        phone: contact.phone,
+                                        source: contact.source,
+                                    });
+                                    setPhoneDisplay(contact.phone);
+                                } catch {
+                                    // keep the form as typed
+                                }
+                            }}
+                        />
+                    </div>
                     <DialogDescription>
                         A name plus an email or phone is enough. You can add the
                         rest later.

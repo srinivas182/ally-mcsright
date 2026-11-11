@@ -9,6 +9,7 @@ use Closure;
 use Modules\AI\Contracts\BatchProviderAdapter;
 use Modules\AI\Contracts\CreditMeter;
 use Modules\AI\Contracts\StreamingProviderAdapter;
+use Modules\AI\Contracts\TranscriptionAdapter;
 use Modules\AI\Data\AiResult;
 use Modules\AI\Data\AiTask;
 use Modules\AI\Data\EmbeddingResult;
@@ -404,6 +405,63 @@ final class AiGateway
         AiBatchCompleted::dispatch($batch->tenant_id, $batch->ulid, $batch->feature_key);
 
         return $batch;
+    }
+
+    /**
+     * Speech to text for a feature (route models need the "transcribe" capability). Credits are
+     * charged once; falls back to the next model on outages; the request is logged like any other
+     * (no audio and no transcript are stored). Audio is limited to 25 MB.
+     */
+    public function transcribe(string $featureKey, string $audio, string $mimeType, string $idempotencyKey, ?int $userId = null, ?string $language = null): string
+    {
+        if ($audio === '' || strlen($audio) > 25 * 1024 * 1024) {
+            throw new \InvalidArgumentException('Recording is empty or too long.');
+        }
+
+        $tenantId = $this->tenants->id();
+        $route = AiFeatureRoute::query()->where('feature_key', $featureKey)->first()
+            ?? throw new UnknownFeature("No AI route for feature [{$featureKey}].");
+        $template = $this->prompts->get('ai.transcribe');
+        $task = new AiTask($featureKey, 'ai.transcribe', $idempotencyKey, userId: $userId);
+        $this->credits->charge($route->credit_action_key, $userId, $idempotencyKey);
+        $attempt = 0;
+
+        foreach ($route->modelChain() as $model) {
+            $provider = $model->provider;
+            $adapter = $this->providers->adapterFor($provider);
+
+            if (! $provider->isUsable() || $this->circuit->isOpen($provider->key) || ! $adapter instanceof TranscriptionAdapter) {
+                $this->log($task, $template, $model, ++$attempt, 'skipped', $adapter instanceof TranscriptionAdapter ? 'provider not usable' : 'adapter cannot transcribe', []);
+
+                continue;
+            }
+
+            $started = hrtime(true);
+            try {
+                $response = $adapter->transcribe($provider, $model->model_id, $audio, $mimeType, $language, $route->timeout_seconds);
+            } catch (ProviderUnavailable $e) {
+                $this->circuit->recordFailure($provider->key);
+                $this->log($task, $template, $model, ++$attempt, 'failed', $this->reason($e), [], latency: $this->ms($started));
+
+                continue;
+            } catch (ProviderRejected $e) {
+                $this->log($task, $template, $model, ++$attempt, 'failed', $this->reason($e), [], latency: $this->ms($started));
+                $this->credits->refund($idempotencyKey, 'failed: '.$e::class);
+
+                throw $e;
+            }
+
+            $this->circuit->recordSuccess($provider->key);
+            $cost = $model->costMicrocents($response->tokensIn, $response->tokensOut, 0);
+            $log = $this->log($task, $template, $model, ++$attempt, 'ok', null, [], $response, $cost, $this->ms($started), 'passed');
+            AiRequestCompleted::dispatch($tenantId, $log->ulid, $featureKey, []);
+
+            return $response->text;
+        }
+
+        $this->credits->refund($idempotencyKey, 'all models failed');
+
+        throw new AllModelsFailed("No model could transcribe for [{$featureKey}].");
     }
 
     /**
