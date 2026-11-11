@@ -45,6 +45,8 @@ final class CrmServiceProvider extends ServiceProvider
         $this->app->scoped(AskDatabase::class);
         $this->app->scoped(VoiceUpdates::class);
         $this->app->scoped(FollowUpPlans::class);
+        $this->app->scoped(DatabaseIntelligence::class);
+        $this->app->scoped(TodaysTen::class);
         $this->app->scoped(Actions\MergeContacts::class);
     }
 
@@ -57,12 +59,14 @@ final class CrmServiceProvider extends ServiceProvider
         $this->app->make(PromptRegistry::class)->addPath(__DIR__.'/../prompts');
         // Nightly brief answers come back through the AI batch service.
         Event::listen(AiBatchCompleted::class, function (AiBatchCompleted $event): void {
-            if ($event->featureKey !== ContactBriefs::FEATURE) {
+            if (! in_array($event->featureKey, [ContactBriefs::FEATURE, DatabaseIntelligence::FEATURE], true)) {
                 return;
             }
             $batch = AiBatch::query()->where('ulid', $event->batchUlid)->first();
             foreach ($batch?->items()->where('status', 'ok')->get() ?? [] as $item) {
-                $this->app->make(ContactBriefs::class)->storeBatchResult($item->idempotency_key, (string) $item->result);
+                $event->featureKey === ContactBriefs::FEATURE
+                    ? $this->app->make(ContactBriefs::class)->storeBatchResult($item->idempotency_key, (string) $item->result)
+                    : $this->app->make(DatabaseIntelligence::class)->storeBatchResult($item->idempotency_key, (string) $item->result);
                 $item->update(['result' => null]);
             }
         });
@@ -109,6 +113,11 @@ final class CrmServiceProvider extends ServiceProvider
             if ($contact !== null) {
                 $this->app->make(FollowUpPlans::class)->stopAllFor($contact, 'Contact responded');
             }
+            // Keep the opportunity score current (cheap, rule-based).
+            $scored = Contact::query()->find($e->contactId);
+            if ($scored !== null) {
+                $this->app->make(DatabaseIntelligence::class)->score($scored);
+            }
         });
 
         $features = $this->app->make(FeatureCatalog::class);
@@ -117,14 +126,17 @@ final class CrmServiceProvider extends ServiceProvider
         $features->declare(VoiceUpdates::TRANSCRIBE, 'ai.voice', 'Speech to text in the CRM', 'transcribe');
         $features->declare(VoiceUpdates::LOG, 'ai.crm_voice_log', 'Spoken or typed contact updates');
         $features->declare(VoiceUpdates::QUICK_ADD, 'ai.crm_quick_add', 'Spoken quick add');
+        $features->declare(DatabaseIntelligence::FEATURE, 'ai.crm_intents', 'Reading plans and dates from notes');
 
         $this->app->make(NavigationRegistry::class)->add(new NavItem('Grow', 'Contacts', '/contacts', 'contact', 10,
+            kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant], mobile: true));
+        $this->app->make(NavigationRegistry::class)->add(new NavItem('Overview', "Today's 10", '/today', 'target', 15,
             kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant], mobile: true));
         $this->app->make(NavigationRegistry::class)->add(new NavItem('Overview', 'Tasks', '/tasks', 'list-checks', 20,
             kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant], mobile: true));
 
         if ($this->app->runningInConsole()) {
-            $this->commands([SendTaskReminders::class, Console\RefreshBriefs::class, Console\RunPlans::class]);
+            $this->commands([SendTaskReminders::class, Console\RefreshBriefs::class, Console\RunPlans::class, Console\RunIntelligence::class]);
         }
     }
 }

@@ -23,3 +23,5 @@ Schedule::command('crm:task-reminders')->everyFiveMinutes()->onOneServer();
 Schedule::command('crm:refresh-briefs')->dailyAt('02:00')->onOneServer();
 // Follow-up plan steps (specs/crm/01).
 Schedule::command('crm:run-plans')->everyFifteenMinutes()->onOneServer();
+// Nightly database intelligence (specs/crm/01, additions 10-12, 15).
+Schedule::command('crm:intelligence')->dailyAt('01:30')->onOneServer();

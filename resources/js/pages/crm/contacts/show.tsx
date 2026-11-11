@@ -64,6 +64,18 @@ type Contact = {
 
 type Props = {
     contact: Contact;
+    score: {
+        buyer: number;
+        seller: number;
+        timeframe: string;
+        reasons: string[];
+    } | null;
+    intents: {
+        id: number;
+        kind: string;
+        summary: string;
+        due_on: string | null;
+    }[];
     rhythm: string | null;
     closedOn: string | null;
     plans: { ulid: string; name: string }[];
@@ -199,6 +211,115 @@ function FollowUpPanel({
     );
 }
 
+const timeframes: Record<string, string> = {
+    now: 'now',
+    '3m': 'within 3 months',
+    '6m': 'within 6 months',
+    '12m': 'within a year',
+    later: 'later',
+    unknown: 'not known',
+};
+
+function OpportunityPanel({
+    base,
+    score,
+    intents,
+}: {
+    base: string;
+    score: Props['score'];
+    intents: Props['intents'];
+}) {
+    return (
+        <div className="grid gap-2 rounded-lg border p-4 text-sm">
+            <div className="flex items-center justify-between gap-2">
+                <p className="font-medium">Opportunity</p>
+                <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() =>
+                        router.post(
+                            `${base}/analyse`,
+                            {},
+                            { preserveScroll: true },
+                        )
+                    }
+                >
+                    Read notes
+                </Button>
+            </div>
+            {score ? (
+                <>
+                    <p>
+                        Buyer {score.buyer} · Seller {score.seller} · Timing:{' '}
+                        {timeframes[score.timeframe] ?? score.timeframe}
+                    </p>
+                    {score.reasons.length > 0 && (
+                        <ul className="list-disc pl-4 text-muted-foreground">
+                            {score.reasons.map((r) => (
+                                <li key={r}>{r}</li>
+                            ))}
+                        </ul>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                        A signal, not a certainty — you know this person best.
+                    </p>
+                </>
+            ) : (
+                <p className="text-muted-foreground">Not scored yet.</p>
+            )}
+            {intents.length > 0 && (
+                <p className="mt-1 font-medium">Plans they mentioned</p>
+            )}
+            {intents.map((i) => (
+                <div
+                    key={i.id}
+                    className="flex items-start justify-between gap-2"
+                >
+                    <span>
+                        {i.summary}
+                        {i.due_on && (
+                            <span className="block text-xs text-muted-foreground">
+                                {new Date(i.due_on).toLocaleDateString(
+                                    undefined,
+                                    { month: 'short', year: 'numeric' },
+                                )}
+                            </span>
+                        )}
+                    </span>
+                    <span className="flex shrink-0 gap-1">
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() =>
+                                router.post(
+                                    `/intents/${i.id}`,
+                                    { status: 'done' },
+                                    { preserveScroll: true },
+                                )
+                            }
+                        >
+                            Done
+                        </Button>
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() =>
+                                router.post(
+                                    `/intents/${i.id}`,
+                                    { status: 'dismissed' },
+                                    { preserveScroll: true },
+                                )
+                            }
+                        >
+                            Not right
+                        </Button>
+                    </span>
+                </div>
+            ))}
+        </div>
+    );
+}
+
 function ConsentPanel({
     base,
     consent,
@@ -290,6 +411,8 @@ function ConsentPanel({
 }
 
 export default function ContactShow({
+    score,
+    intents,
     rhythm,
     closedOn,
     plans,
@@ -703,6 +826,11 @@ export default function ContactShow({
                                 </Select>
                             </div>
                         )}
+                        <OpportunityPanel
+                            base={base}
+                            score={score}
+                            intents={intents}
+                        />
                         <FollowUpPanel
                             base={base}
                             plans={plans}

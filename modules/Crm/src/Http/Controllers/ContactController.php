@@ -24,6 +24,8 @@ use Modules\Crm\FollowUpPlans;
 use Modules\Crm\Models\Activity;
 use Modules\Crm\Models\Contact;
 use Modules\Crm\Models\ContactBrief;
+use Modules\Crm\Models\ContactScore;
+use Modules\Crm\Models\Intent;
 use Modules\Crm\Models\PlanEnrollment;
 use Modules\Crm\Models\Relationship;
 use Modules\Crm\Models\Stage;
@@ -143,6 +145,10 @@ final class ContactController
             'brief' => ($brief = ContactBrief::query()->where('contact_id', $contact->id)->first()) !== null ? [
                 'content' => $brief->content, 'stale' => $brief->stale, 'generated_at' => $brief->generated_at->toIso8601String(),
             ] : null,
+            'score' => ($score = ContactScore::query()->where('contact_id', $contact->id)->first()) !== null
+                ? ['buyer' => $score->buyer, 'seller' => $score->seller, 'timeframe' => $score->timeframe, 'reasons' => $score->reasons] : null,
+            'intents' => Intent::query()->where('contact_id', $contact->id)->where('status', 'open')->orderBy('due_on')->get()
+                ->map(fn (Intent $i): array => ['id' => $i->id, 'kind' => $i->kind, 'summary' => $i->summary, 'due_on' => $i->due_on?->toDateString()]),
             'rhythm' => $contact->rhythm,
             'closedOn' => $contact->closed_on?->toDateString(),
             'plans' => app(FollowUpPlans::class)->plansFor($user)->where('active', true)->map(fn ($p): array => ['ulid' => $p->ulid, 'name' => $p->name])->values(),
