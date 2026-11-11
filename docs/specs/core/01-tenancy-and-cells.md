@@ -175,3 +175,22 @@ Every change is audited with reason.
 ## Out of scope
 
 Moving tenants between cells (designed for, built in Sprint 50–52), dedicated cells, agent domains.
+
+## Dedicated databases and moves (ADR 0012)
+
+- A dedicated database is a cell with one brokerage; same schema, same releases, optional region.
+- **HQ console, tenant page → Database panel**: where the data lives (shared cell or dedicated), size,
+  and **Move to a dedicated database / Move back to shared**:
+    1. Target: create a new dedicated database (automated, recommended) or enter connection details
+       (encrypted; AWS Secrets Manager once available; never displayed again).
+    2. Test connection: reachable, empty, supported MySQL version.
+    3. Plan: estimated time, read-only window (minutes), now or scheduled.
+    4. **Second HQ approver required.**
+    5. Progress: structure → copy (brokerage keeps working) → final sync (read-only) → verify row counts
+       and money totals per table → switch the brokerage's cell in the control plane.
+    6. Old copy kept 14 days with one-click switch-back, then removed automatically.
+    7. Owner notified before and after; every step audited.
+- Files, caches and search/vector entries move with the brokerage.
+- **Per-brokerage export and restore**, **per-brokerage encryption keys** for the most sensitive
+  fields, and **per-request cell routing** ship with the move tool (Team A, Sprints 20–22, before
+  the pilot).
