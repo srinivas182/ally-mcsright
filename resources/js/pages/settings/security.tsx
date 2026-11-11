@@ -11,9 +11,16 @@ import type { Props as ManagePasskeysProps } from '@/components/manage-passkeys'
 import ManagePasskeys from '@/components/manage-passkeys';
 import type { Props as ManageTwoFactorProps } from '@/components/manage-two-factor';
 import ManageTwoFactor from '@/components/manage-two-factor';
+import SignInActivity, {
+    type SessionRow,
+    type TrustedDeviceRow,
+} from '@/components/sign-in-activity';
 
 // oxfmt-ignore
 type Props = {
+    sessions: SessionRow[];
+    trustedDevices: TrustedDeviceRow[];
+    twoFactorRequired: boolean;
     passwordRules: string;
 } & ManagePasskeysProps &
     ManageTwoFactorProps;
@@ -25,6 +32,16 @@ export default function Security(props: Props) {
     return (
         <>
             <Head title="Security settings" />
+            {props.twoFactorRequired && (
+                <p
+                    role="status"
+                    className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-100"
+                >
+                    Your brokerage requires two-step verification for your
+                    account. Set up a passkey or an authenticator app below to
+                    continue.
+                </p>
+            )}
 
             <h1 className="sr-only">Security settings</h1>
 
@@ -133,6 +150,11 @@ export default function Security(props: Props) {
             <ManagePasskeys
                 canManagePasskeys={props.canManagePasskeys}
                 passkeys={props.passkeys}
+            />
+
+            <SignInActivity
+                sessions={props.sessions}
+                trustedDevices={props.trustedDevices}
             />
         </>
     );

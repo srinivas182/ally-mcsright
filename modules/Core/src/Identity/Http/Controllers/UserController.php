@@ -16,6 +16,7 @@ use Modules\Core\Identity\Actions\ManageUserStatus;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Identity\Enums\UserStatus;
 use Modules\Core\Identity\Models\Invitation;
+use Modules\Core\Identity\Security\SignInSecurity;
 use Modules\Core\Tenancy\TenantContext;
 
 /**
@@ -142,6 +143,22 @@ final class UserController
         $status->reactivate($user, self::actor($request));
 
         return $this->done("{$user->name} is active again.");
+    }
+
+    public function resetSecurity(Request $request, User $user, SignInSecurity $security): RedirectResponse
+    {
+        Gate::authorize('core.users.manage');
+        $security->resetSecurity($user, self::actor($request));
+
+        return $this->done("{$user->name}'s sign-in security was reset. They have been emailed a password reset link.");
+    }
+
+    public function signOutEverywhere(Request $request, User $user, SignInSecurity $security): RedirectResponse
+    {
+        Gate::authorize('core.users.manage');
+        $security->signOutEverywhere($user, self::actor($request));
+
+        return $this->done("{$user->name} has been signed out everywhere.");
     }
 
     private function done(string $message): RedirectResponse

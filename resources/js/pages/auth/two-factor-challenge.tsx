@@ -104,6 +104,16 @@ export default function TwoFactorChallenge() {
                                 </div>
                             )}
 
+                            <label className="flex items-center gap-2 text-sm">
+                                <input
+                                    type="checkbox"
+                                    name="remember_device"
+                                    value="1"
+                                    className="size-4 rounded border"
+                                />
+                                Trust this device for 30 days
+                            </label>
+
                             <Button
                                 type="submit"
                                 className="w-full"

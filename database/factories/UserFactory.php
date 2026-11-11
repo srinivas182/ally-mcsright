@@ -44,9 +44,23 @@ class UserFactory extends Factory
     /**
      * Indicate that the model's email address should be unverified.
      */
+    /**
+     * Owners and HQ staff must use a second factor (TwoFactorPolicy), so these states come with
+     * confirmed two-step verification, like every real owner. Use withoutTwoFactor() to test the
+     * requirement itself.
+     */
     public function owner(): static
     {
-        return $this->state(fn (array $attributes) => ['kind' => UserKind::Owner]);
+        return $this->state(fn (array $attributes) => ['kind' => UserKind::Owner])->withTwoFactor();
+    }
+
+    public function withoutTwoFactor(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'two_factor_secret' => null,
+            'two_factor_recovery_codes' => null,
+            'two_factor_confirmed_at' => null,
+        ]);
     }
 
     public function staff(): static
@@ -56,7 +70,7 @@ class UserFactory extends Factory
 
     public function hqStaff(): static
     {
-        return $this->state(fn (array $attributes) => ['kind' => UserKind::HqStaff]);
+        return $this->state(fn (array $attributes) => ['kind' => UserKind::HqStaff])->withTwoFactor();
     }
 
     public function assistantOf(User $agent): static

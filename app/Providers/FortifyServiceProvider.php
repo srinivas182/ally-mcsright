@@ -13,10 +13,12 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 use Laravel\Fortify\Contracts\LoginResponse as LoginResponseContract;
+use Laravel\Fortify\Contracts\RedirectsIfTwoFactorAuthenticatable;
 use Laravel\Fortify\Contracts\TwoFactorLoginResponse;
 use Laravel\Fortify\Features;
 use Laravel\Fortify\Fortify;
 use Modules\Core\Identity\Auth\LoginResponse;
+use Modules\Core\Identity\Security\SkipTwoFactorOnTrustedDevice;
 
 class FortifyServiceProvider extends ServiceProvider
 {
@@ -27,6 +29,8 @@ class FortifyServiceProvider extends ServiceProvider
     {
         $this->app->singleton(LoginResponseContract::class, LoginResponse::class);
         $this->app->singleton(TwoFactorLoginResponse::class, LoginResponse::class);
+        // Skip the 2FA prompt on devices the user chose to trust for 30 days.
+        $this->app->scoped(RedirectsIfTwoFactorAuthenticatable::class, fn ($app) => $app->make(SkipTwoFactorOnTrustedDevice::class));
         //
     }
 

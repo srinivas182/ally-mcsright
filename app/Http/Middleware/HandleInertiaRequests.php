@@ -5,6 +5,8 @@ namespace App\Http\Middleware;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
+use Laravel\Fortify\Features;
+use Modules\Core\Identity\Security\TwoFactorPolicy;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Tenancy\TenantContext;
 
@@ -46,6 +48,26 @@ class HandleInertiaRequests extends Middleware
         return $context->check() ? ['name' => $context->current()->name, 'isHq' => $context->current()->isHq()] : null;
     }
 
+    /**
+     * @return array{secondFactorMissing: bool, passkeyPrompt: bool}|null
+     */
+    private function security(Request $request): ?array
+    {
+        $user = $request->user();
+        if (! $user instanceof User) {
+            return null;
+        }
+
+        $policy = app(TwoFactorPolicy::class);
+        $hasPasskey = $user->passkeys()->exists();
+        $dismissed = $user->passkey_prompt_dismissed_at;
+
+        return [
+            'secondFactorMissing' => $policy->requires($user) && ! $policy->satisfied($user),
+            'passkeyPrompt' => Features::canManagePasskeys() && ! $hasPasskey && ($dismissed === null || $dismissed->lt(now()->subDays(30))),
+        ];
+    }
+
     public function share(Request $request): array
     {
         return [
@@ -56,6 +78,7 @@ class HandleInertiaRequests extends Middleware
             ],
             // The brokerage (or HQ) this page belongs to, and the menu this user may see.
             'tenant' => fn (): ?array => $this->tenant(),
+            'security' => fn (): ?array => $this->security($request),
             'navigation' => fn (): array => app(NavigationRegistry::class)->for($request->user() instanceof User ? $request->user() : null),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];

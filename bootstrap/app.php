@@ -10,6 +10,7 @@ use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
 use Modules\Core\Http\Middleware\EnsureHqConsole;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
+use Modules\Core\Identity\Http\Middleware\EnsureSecondFactor;
 use Modules\Core\Identity\Http\Middleware\EnsureTenantHost;
 use Modules\Core\Identity\Http\Middleware\EnsureValidSignedInUser;
 use Modules\Core\Tenancy\Http\Middleware\ResolveTenant;
@@ -28,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
             ResolveTenant::class,
         ], append: [
             EnsureValidSignedInUser::class,
+            EnsureSecondFactor::class,
             HandleAppearance::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,

@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Fortify\Events\ValidTwoFactorAuthenticationCodeProvided;
 use Modules\Core\Branding\BrandColourSource;
 use Modules\Core\Branding\NullBrandColourSource;
 use Modules\Core\Console\BootstrapHq;
@@ -29,6 +30,8 @@ use Modules\Core\Identity\Auth\TenantPasswordBrokerManager;
 use Modules\Core\Identity\Auth\TenantUserProvider;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Identity\Events\RepeatedLoginFailures;
+use Modules\Core\Identity\Security\SignInSecurity;
+use Modules\Core\Identity\Security\TrustedDevices;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
 use Modules\Core\Tenancy\DomainResolver;
@@ -117,6 +120,15 @@ final class CoreServiceProvider extends ServiceProvider
         Event::listen(Login::class, function (Login $event): void {
             if ($event->user instanceof User) {
                 $event->user->newQuery()->whereKey($event->user->id)->update(['last_login_at' => now(), 'last_active_at' => now()]);
+                $this->app->make(SignInSecurity::class)->recordSignIn($event->user, $this->app->make('request'));
+            }
+        });
+
+        // "Trust this device for 30 days" ticked on the 2FA challenge.
+        Event::listen(ValidTwoFactorAuthenticationCodeProvided::class, function (ValidTwoFactorAuthenticationCodeProvided $event): void {
+            $request = $this->app->make('request');
+            if ($request->boolean('remember_device')) {
+                $this->app->make(TrustedDevices::class)->trust($event->user, $request);
             }
         });
 

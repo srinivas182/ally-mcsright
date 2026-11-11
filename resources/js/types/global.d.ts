@@ -15,6 +15,10 @@ declare module '@inertiajs/core' {
             sidebarOpen: boolean;
             tenant: TenantInfo | null;
             navigation: NavGroup[];
+            security: {
+                secondFactorMissing: boolean;
+                passkeyPrompt: boolean;
+            } | null;
             [key: string]: unknown;
         };
     }
