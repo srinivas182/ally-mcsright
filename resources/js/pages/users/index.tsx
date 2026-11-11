@@ -309,6 +309,24 @@ export default function UsersIndex(props: Props) {
                                                         Reactivate
                                                     </DropdownMenuItem>
                                                 )}
+                                                <DropdownMenuItem
+                                                    onSelect={() =>
+                                                        act(
+                                                            `/users/${user.ulid}/sign-out-everywhere`,
+                                                        )
+                                                    }
+                                                >
+                                                    Sign out everywhere
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem
+                                                    onSelect={() =>
+                                                        act(
+                                                            `/users/${user.ulid}/security-reset`,
+                                                        )
+                                                    }
+                                                >
+                                                    Reset sign-in security
+                                                </DropdownMenuItem>
                                                 {user.status !==
                                                     'deactivated' && (
                                                     <DropdownMenuItem

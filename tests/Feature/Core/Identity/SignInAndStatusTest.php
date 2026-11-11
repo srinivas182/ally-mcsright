@@ -47,7 +47,7 @@ it('lands each kind of user on their own page', function (Closure $make, string 
 
     signIn('acme', $user->email)->assertRedirect($landing);
 })->with([
-    'owner' => [fn () => User::factory()->owner()->create(), '/dashboard'],
+    'owner' => [fn () => User::factory()->owner()->withoutTwoFactor()->create(), '/dashboard'],
     'staff' => [fn () => User::factory()->staff()->create(), '/dashboard'],
     'agent' => [fn () => User::factory()->create(), '/agent'],
 ]);
@@ -56,7 +56,7 @@ it('lands HQ staff on the HQ console', function (): void {
     config(['core.hq_host' => 'app.rightally.io']);
     $this->artisan('tenants:bootstrap-hq');
     $hq = Tenant::query()->where('type', 'hq')->sole();
-    $staff = app(TenantContext::class)->runAs($hq, fn () => User::factory()->hqStaff()->create());
+    $staff = app(TenantContext::class)->runAs($hq, fn () => User::factory()->hqStaff()->withoutTwoFactor()->create());
 
     $this->post('http://app.rightally.io/login', ['email' => $staff->email, 'password' => 'password'])->assertRedirect('/hq/tenants');
 });
@@ -81,6 +81,7 @@ it('has no sign-in or registration on central addresses', function (): void {
 });
 
 it('records the last sign-in time', function (): void {
+    $this->owner->forceFill(['two_factor_secret' => null, 'two_factor_confirmed_at' => null])->save();
     signIn('acme', $this->owner->email);
 
     expect($this->owner->fresh()?->last_login_at)->not->toBeNull();

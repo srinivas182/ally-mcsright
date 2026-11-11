@@ -11,6 +11,9 @@ use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 use Inertia\Response;
 use Laravel\Fortify\Features;
+use Modules\Core\Identity\Models\TrustedDevice;
+use Modules\Core\Identity\Security\SignInSecurity;
+use Modules\Core\Identity\Security\TwoFactorPolicy;
 
 class SecurityController extends Controller
 {
@@ -39,6 +42,11 @@ class SecurityController extends Controller
                     ->all()
                 : [],
             'passwordRules' => Password::defaults()->toPasswordRulesString(),
+            'sessions' => app(SignInSecurity::class)->sessions(AuthenticatedUser::from($request), $request->session()->getId()),
+            'trustedDevices' => TrustedDevice::query()->where('user_id', AuthenticatedUser::from($request)->id)
+                ->where('expires_at', '>', now())->orderByDesc('last_used_at')->get()
+                ->map(fn (TrustedDevice $d): array => ['id' => $d->id, 'label' => $d->label, 'expires_at' => $d->expires_at->toIso8601String()])->all(),
+            'twoFactorRequired' => app(TwoFactorPolicy::class)->requires(AuthenticatedUser::from($request)),
         ];
 
         if (Features::canManageTwoFactorAuthentication()) {
@@ -56,9 +64,13 @@ class SecurityController extends Controller
      */
     public function update(PasswordUpdateRequest $request): RedirectResponse
     {
-        AuthenticatedUser::from($request)->update([
+        $user = AuthenticatedUser::from($request);
+        $user->update([
             'password' => $request->password,
         ]);
+
+        // Changing the password signs out every other session and forgets trusted devices.
+        app(SignInSecurity::class)->signOutOthers($user, $request->session()->getId());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Password updated.')]);
 
