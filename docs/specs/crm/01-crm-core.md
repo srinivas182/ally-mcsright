@@ -69,6 +69,26 @@ divorce) worded with care and never mentioned to the client, no protected charac
 Housing), licensed-data costs passed through as credits. Delivery: Team D (research, intents,
 scoring, alerts), Team E (Today's 10, reactivation), Team B (health, forecast).
 
+## Differentiators (approved additions 17–25, all in version 1.0)
+
+The opportunity: about 50 of every 1,000 homeowners in a database move each year, and most agents
+capture a small share. A 30,000-contact brokerage has roughly 1,500 moves a year inside its own data.
+
+| #   | Addition                                         | Team | How it works                                                                                                                                                                                                                                                                                           |
+| --- | ------------------------------------------------ | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 17  | **Database AI assistant by email**               | D    | Personal emails to dormant contacts; the AI reads and answers replies two-way, asks one or two qualifying questions, and notifies the agent with the brief when someone is qualified; moves to text or AI calls only with written consent (unlike text/voice-first tools, safe for the whole database) |
+| 18  | **Consent builder**                              | A    | A one-tap "Text me updates" link in those emails records written consent properly (exact wording, time, IP), so the compliant texting list grows every month                                                                                                                                           |
+| 19  | **Personal memory**                              | A    | Small personal details from notes (children's and pets' names, hobbies) appear in the brief ("Ask how Luna the dog is doing"); never sensitive categories                                                                                                                                              |
+| 20  | **Referral engine**                              | E    | Finds past clients who referred before or reviewed well; prompts referral asks at the right moments (closing anniversaries, after a happy check-in); tracks referrals to closing                                                                                                                       |
+| 21  | **Monthly personal content by contact type**     | C    | Homeowners: home-equity report; renters: rent vs buy; past buyers: homes like yours that sold; branded; engagement feeds the scores                                                                                                                                                                    |
+| 22  | **Lead ponds for brokers**                       | A    | Company leads untouched for a set number of days move to a shared pond other agents can claim; rules set by the broker                                                                                                                                                                                 |
+| 23  | **Handwritten cards and postcards on autopilot** | C    | Signal-triggered mail (equity milestone, home anniversary, expired listing) through a mailing partner, cost passed through; reaches contacts with no consent needed                                                                                                                                    |
+| 24  | **Database value dashboard**                     | B    | Contacts, contacts showing intent, estimated commission opportunity, contacts worked this week, agent rankings on database conversations                                                                                                                                                               |
+| 25  | **Database proof report**                        | B    | Deals and commission from the database versus paid leads, with cost per deal                                                                                                                                                                                                                           |
+
+Pre-start checklist: mailing partner agreement (cards and postcards); licensed data for change of
+address and contact validation.
+
 ## Ownership and privacy (decision recorded in AI data protection)
 
 | Field                  | Meaning                                                                                                           |
