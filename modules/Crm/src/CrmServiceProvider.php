@@ -25,6 +25,8 @@ final class CrmServiceProvider extends ServiceProvider
         $this->app->scoped(Pipelines::class);
         $this->app->scoped(Actions\Tags::class);
         $this->app->scoped(SmartLists::class);
+        $this->app->scoped(Consent::class);
+        $this->app->scoped(Actions\MergeContacts::class);
     }
 
     public function boot(): void
