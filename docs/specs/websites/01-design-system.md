@@ -50,6 +50,14 @@ light/dark, keyboard behaviour, ARIA attributes, RTL-safe layout, Spanish text-e
 | 2      | Dialog, Drawer (mobile sheet), Popover, Dropdown menu, Toast, Tabs, Accordion, Card, Stat card, Data table (sort, select, pagination, column visibility, responsive stacking), Empty state, Skeleton, Pagination, Breadcrumbs, Alert/banner, Progress                                                                                                                                                          |
 | 3      | Back-office shell (sidebar with module groups, top bar, tenant switch for HQ, user menu, search/command bar slot, notifications slot), agent mobile shell (bottom navigation, quick actions), page header, filter bar, form layouts, settings layout, wizard/stepper, file upload with progress, date and date-range picker, money and percentage inputs, phone input, address input, chart wrapper (Recharts) |
 
+## Sprint 3C (delivered)
+
+- **Server-driven navigation:** modules register menu items (`NavigationRegistry`, an extension point) with the user kinds and permissions allowed; each user gets only their items; the same list drives the sidebar, phone bottom bar and command bar
+- **Back-office shell:** grouped sidebar with the brokerage's name, top bar with the command bar (Ctrl/⌘ K) and a notifications slot; starter links removed
+- **Phone shell:** bottom bar with up to four main destinations and "More"
+- **Building blocks:** page header, filter bar, form section, stepper, money input (integer cents), percent input (exact strings), phone input (E.164), address fields, date range, file upload with progress, chart card with an accessible data table (Recharts, loaded only where used)
+- Screenshot regression remains deferred (ADR 0011)
+
 ## Component workbench and visual tests
 
 > **Updated in Sprint 2C (ADR 0011):** Storybook is incompatible with the Vite+ toolchain without
