@@ -19,6 +19,27 @@ Module: `modules/Crm`, namespace `Modules\Crm`. Tenant-owned.
 | 6      | Pipelines and stages (board view), tags, smart lists (saved filters), bulk actions                  |
 | 7      | CSV import with mapping, duplicate detection and merge, consent and Do Not Call fields, AI indexing |
 
+## Additions from the best-in-class review (approved)
+
+Reviewed: Follow Up Boss (follow-up discipline: Smart Lists, Action Plans, 250+ integrations; weak
+mobile app, AI only on higher plans), Lofty (AI assistant, Homeowner Agent), Fello (database seller
+intelligence), BoomTown, kvCORE/BoldTrail, Sierra Interactive and Real Geeks.
+
+| #   | Addition                    | Team                       | How it works                                                                                                                                                       |
+| --- | --------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | **Follow-up plans**         | D                          | Automatic texts, emails and tasks triggered by source, stage or behaviour, with a library of proven templates; edited in plain English; consent rules always apply |
+| 2   | **Work my list**            | D                          | Open any smart list and move through it one contact at a time: tap to call or text, log the outcome, next                                                          |
+| 3   | **Ready-made daily lists**  | D                          | New leads, no contact in 7 days, hot website activity, birthdays and home anniversaries, past clients due a check-in                                               |
+| 4   | **Connect any lead source** | A                          | Portal lead emails (Zillow, Realtor.com, Homes.com) read automatically, webhooks, Zapier and a public CRM API with the same visibility rules                       |
+| 5   | **Homeowner intelligence**  | C (dashboard), D (signals) | Past clients enriched with value, equity and time in home from licensed data; seller-intent alerts; a branded homeowner dashboard and monthly home-value email     |
+| 6   | **AI contact brief**        | D                          | On every record for every user: who they are, what they want, last conversation, suggested next step and a drafted message                                         |
+| 7   | **Relationship rhythm**     | D                          | A/B/C sphere ranking with keep-in-touch cadences, birthdays and closing anniversaries                                                                              |
+| 8   | **Property matches**        | D                          | Each contact's saved searches and new matching listings, with "send to client"                                                                                     |
+| 9   | **Full CRM on the phone**   | D                          | Every CRM feature works in the mobile web app (usability-tested on phones)                                                                                         |
+
+Sprint split becomes Team D Sprints 4–9 (core 4–7, additions 8–9), with Team A (lead sources and
+API) and Team C (homeowner dashboard) in parallel.
+
 ## Ownership and privacy (decision recorded in AI data protection)
 
 | Field                  | Meaning                                                                                                           |
