@@ -4,6 +4,7 @@ import { MailIcon, MessageSquareIcon, PhoneIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AiBrief, type Brief } from '@/components/crm/ai-brief';
+import { ContactPicker } from '@/components/crm/contact-picker';
 import { QuickUpdate } from '@/components/crm/quick-update';
 import { AddTask, TaskList, type TaskRow } from '@/components/crm/task-list';
 import { Timeline, type TimelineItem } from '@/components/crm/timeline';
@@ -64,6 +65,11 @@ type Contact = {
 
 type Props = {
     contact: Contact;
+    memories: { id: number; category: string; detail: string }[];
+    referral: {
+        by: { ulid: string; name: string } | null;
+        stats: { referred: number; closed: number };
+    };
     score: {
         buyer: number;
         seller: number;
@@ -320,6 +326,118 @@ function OpportunityPanel({
     );
 }
 
+function PeoplePanel({
+    base,
+    memories,
+    referral,
+}: {
+    base: string;
+    memories: Props['memories'];
+    referral: Props['referral'];
+}) {
+    return (
+        <div className="grid gap-2 rounded-lg border p-4 text-sm">
+            <p className="font-medium">Personal notes</p>
+            <p className="text-xs text-muted-foreground">
+                Small details for a personal touch. Never sensitive topics. Only
+                you see them.
+            </p>
+            {memories.map((m) => (
+                <p
+                    key={m.id}
+                    className="flex items-center justify-between gap-2"
+                >
+                    <span>
+                        <span className="text-muted-foreground capitalize">
+                            {m.category}:{' '}
+                        </span>
+                        {m.detail}
+                    </span>
+                    <Button
+                        size="sm"
+                        variant="ghost"
+                        aria-label={`Remove ${m.detail}`}
+                        onClick={() =>
+                            router.delete(`/memories/${m.id}`, {
+                                preserveScroll: true,
+                            })
+                        }
+                    >
+                        ×
+                    </Button>
+                </p>
+            ))}
+            <form
+                className="flex gap-2"
+                onSubmit={(e) => {
+                    e.preventDefault();
+                    const els = e.currentTarget.elements;
+                    const detail = els.namedItem('detail') as HTMLInputElement;
+                    const category = els.namedItem(
+                        'category',
+                    ) as HTMLSelectElement;
+                    router.post(
+                        `${base}/memories`,
+                        { category: category.value, detail: detail.value },
+                        {
+                            preserveScroll: true,
+                            onSuccess: () => (detail.value = ''),
+                        },
+                    );
+                }}
+            >
+                <select
+                    name="category"
+                    aria-label="Kind of note"
+                    className="rounded border bg-background px-1 py-1"
+                >
+                    <option value="family">Family</option>
+                    <option value="pet">Pet</option>
+                    <option value="hobby">Hobby</option>
+                    <option value="preference">Likes</option>
+                    <option value="milestone">Milestone</option>
+                    <option value="other">Other</option>
+                </select>
+                <Input
+                    name="detail"
+                    aria-label="Personal note"
+                    placeholder="e.g. Dog called Luna"
+                />
+            </form>
+            <p className="mt-2 font-medium">Referrals</p>
+            {referral.by ? (
+                <p>
+                    Referred by{' '}
+                    <a
+                        className="text-primary hover:underline"
+                        href={`/contacts/${referral.by.ulid}`}
+                    >
+                        {referral.by.name}
+                    </a>
+                </p>
+            ) : (
+                <ContactPicker
+                    label="Referred by…"
+                    onPick={(c) =>
+                        router.post(
+                            `${base}/referred-by`,
+                            { referrer: c.ulid },
+                            { preserveScroll: true },
+                        )
+                    }
+                />
+            )}
+            {referral.stats.referred > 0 && (
+                <p className="text-muted-foreground">
+                    Has referred {referral.stats.referred}{' '}
+                    {referral.stats.referred === 1 ? 'person' : 'people'} (
+                    {referral.stats.closed} closed)
+                </p>
+            )}
+        </div>
+    );
+}
+
 function ConsentPanel({
     base,
     consent,
@@ -411,6 +529,8 @@ function ConsentPanel({
 }
 
 export default function ContactShow({
+    memories,
+    referral,
     score,
     intents,
     rhythm,
@@ -830,6 +950,11 @@ export default function ContactShow({
                             base={base}
                             score={score}
                             intents={intents}
+                        />
+                        <PeoplePanel
+                            base={base}
+                            memories={memories}
+                            referral={referral}
                         />
                         <FollowUpPanel
                             base={base}

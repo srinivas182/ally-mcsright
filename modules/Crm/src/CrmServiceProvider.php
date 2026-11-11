@@ -47,6 +47,9 @@ final class CrmServiceProvider extends ServiceProvider
         $this->app->scoped(FollowUpPlans::class);
         $this->app->scoped(DatabaseIntelligence::class);
         $this->app->scoped(TodaysTen::class);
+        $this->app->scoped(PersonalMemory::class);
+        $this->app->scoped(Referrals::class);
+        $this->app->scoped(LeadPond::class);
         $this->app->scoped(Actions\MergeContacts::class);
     }
 
@@ -97,6 +100,9 @@ final class CrmServiceProvider extends ServiceProvider
             foreach (PlanEnrollment::query()->where('contact_id', $contact->id)->where('status', 'active')->get() as $enrollment) {
                 $plans->process($enrollment);
             }
+            if (Stage::query()->whereKey($e->stageId)->value('outcome') === 'won') {
+                $this->app->make(Referrals::class)->closed($contact);
+            }
             $stageUlid = Stage::query()->whereKey($e->stageId)->value('ulid');
             foreach (FollowUpPlan::query()->where('active', true)->where('trigger', 'stage')->where('trigger_value', $stageUlid)->get() as $plan) {
                 try {
@@ -136,7 +142,7 @@ final class CrmServiceProvider extends ServiceProvider
             kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant], mobile: true));
 
         if ($this->app->runningInConsole()) {
-            $this->commands([SendTaskReminders::class, Console\RefreshBriefs::class, Console\RunPlans::class, Console\RunIntelligence::class]);
+            $this->commands([SendTaskReminders::class, Console\RefreshBriefs::class, Console\RunPlans::class, Console\RunIntelligence::class, Console\SweepPonds::class]);
         }
     }
 }

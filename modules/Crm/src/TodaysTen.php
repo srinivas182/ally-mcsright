@@ -62,6 +62,9 @@ final class TodaysTen
         foreach ($this->lists->apply($base(), ['anniversary_within_days' => 1])->limit(10)->get() as $c) {
             $add($c, 30, 'Home anniversary today');
         }
+        foreach ($this->lists->apply($base(), ['referral_moment' => true])->limit(10)->get() as $c) {
+            $add($c, 25, 'Good moment to ask for a referral');
+        }
         foreach ($this->lists->apply($base(), ['rhythm_due' => true])->limit(20)->get() as $c) {
             $add($c, 20, 'Due a keep-in-touch call ('.$c->rhythm.')');
         }

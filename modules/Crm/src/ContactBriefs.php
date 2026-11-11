@@ -16,6 +16,7 @@ use Modules\Core\Tenancy\TenantContext;
 use Modules\Crm\Models\Activity;
 use Modules\Crm\Models\Contact;
 use Modules\Crm\Models\ContactBrief;
+use Modules\Crm\Models\Memory;
 use Modules\Crm\Models\Stage;
 use Modules\Crm\Models\Task;
 
@@ -38,6 +39,7 @@ final class ContactBriefs
             'next_step' => ['type' => 'string'], 'next_step_reason' => ['type' => 'string'],
             'draft_channel' => ['type' => 'string'], 'draft' => ['type' => 'string'],
             'sources' => ['type' => 'array', 'items' => ['type' => 'string']],
+            'personal_touch' => ['type' => 'string'],
         ],
     ];
 
@@ -188,6 +190,10 @@ final class ContactBriefs
             ]);
         }
 
+        foreach (Memory::query()->where('contact_id', $contact->id)->limit(10)->get() as $memory) {
+            $records[] = RetrievedRecord::fromModel($memory, ['personal_detail' => $memory->detail]);
+        }
+
         foreach (Task::query()->where('contact_id', $contact->id)->whereNull('completed_at')->orderBy('due_at')->limit(10)->get() as $task) {
             $records[] = RetrievedRecord::fromModel($task, ['open_task' => $task->title, 'due' => $task->due_at->toDateString()]);
         }
@@ -223,6 +229,8 @@ final class ContactBriefs
         $brief['allowed_channels'] = $channels;
         $brief['notes'] = $notes;
         $brief['unknowns'] = array_slice(array_values((array) ($brief['unknowns'] ?? [])), 0, 3);
+        $touch = trim((string) ($brief['personal_touch'] ?? ''));
+        $brief['personal_touch'] = $touch !== '' && ! app(PersonalMemory::class)->isSensitive($touch) ? mb_substr($touch, 0, 200) : '';
 
         return $brief;
     }
