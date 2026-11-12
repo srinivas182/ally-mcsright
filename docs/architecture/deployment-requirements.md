@@ -27,3 +27,12 @@ Settings the platform depends on in every environment. Each one was found by a t
 - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`,
   `MICROSOFT_TENANT` (default `common`). A provider without a client ID is hidden.
 - The cache must be shared across app servers (Redis): sign-in tickets live there for 60 seconds.
+
+## Audit log database users (Sprint 7A-3)
+
+- `CORE_AUDIT_CONNECTION`: a MySQL user with `INSERT, SELECT` on `audit_events`, `audit_outbox`
+  (plus `DELETE` on `audit_outbox` only) and `INSERT, UPDATE, SELECT` on `audit_heads` — **no UPDATE or
+  DELETE on `audit_events`**.
+- `CORE_AUDIT_MAINTENANCE_CONNECTION`: used only by daily retention; `SELECT, DELETE` on `audit_events`.
+- Scheduler: `audit:flush` and `audit:maintain stream` every minute, `audit:maintain retention` daily,
+  `audit:maintain weekly-digest` on Mondays.

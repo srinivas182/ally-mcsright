@@ -50,7 +50,7 @@ final class AuditRetention
             return 0;
         }
 
-        $removed = $db->table('audit_events')->where('tenant_id', $tenantId)->where('chain_seq', '<=', $upTo)->delete();
+        $removed = DB::connection(Connections::auditMaintenance())->table('audit_events')->where('tenant_id', $tenantId)->where('chain_seq', '<=', $upTo)->delete();
         $this->logger->record('core.audit.retention_purged', metadata: [
             'up_to_seq' => $upTo, 'anchor_hash' => $anchor, 'count' => $removed, 'older_than' => $cutoff->toDateString(), 'retention_years' => $years,
         ], severity: 'notice', label: "{$removed} audit event(s) older than {$years} years");

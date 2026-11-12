@@ -32,3 +32,5 @@ Schedule::command('audit:flush')->everyMinute()->withoutOverlapping()->onOneServ
 // Audit retention (daily) and the owners' weekly security digest (Mondays).
 Schedule::command('audit:maintain retention')->dailyAt('03:30')->onOneServer();
 Schedule::command('audit:maintain weekly-digest')->weeklyOn(1, '13:00')->onOneServer();
+// Audit streaming to brokerages' security tools (every minute).
+Schedule::command('audit:maintain stream')->everyMinute()->withoutOverlapping()->onOneServer();

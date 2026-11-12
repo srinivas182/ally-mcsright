@@ -26,6 +26,8 @@ return [
     'connections' => [
         'control' => env('CORE_CONTROL_CONNECTION'),
         'cell' => env('CORE_CELL_CONNECTION'),
+        'audit' => env('CORE_AUDIT_CONNECTION'),
+        'audit_maintenance' => env('CORE_AUDIT_MAINTENANCE_CONNECTION'),
     ],
 
     /*

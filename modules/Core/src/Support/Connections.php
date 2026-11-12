@@ -26,4 +26,25 @@ final class Connections
 
         return is_string($name) && $name !== '' ? $name : null;
     }
+
+    /**
+     * Audit writes (sealing). In production a user with INSERT and SELECT only on audit_events
+     * (plus audit_heads and audit_outbox housekeeping); falls back to the cell connection.
+     */
+    public static function audit(): ?string
+    {
+        $name = config('core.connections.audit');
+
+        return is_string($name) && $name !== '' ? $name : self::cell();
+    }
+
+    /**
+     * Retention deletes only (the one place allowed to DELETE audit events).
+     */
+    public static function auditMaintenance(): ?string
+    {
+        $name = config('core.connections.audit_maintenance');
+
+        return is_string($name) && $name !== '' ? $name : self::cell();
+    }
 }

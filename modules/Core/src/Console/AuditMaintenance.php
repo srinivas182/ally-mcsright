@@ -8,6 +8,7 @@ use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
 use Modules\Core\Audit\AuditRetention;
+use Modules\Core\Audit\AuditStreamer;
 use Modules\Core\Audit\SecurityDigest;
 use Modules\Core\Audit\WeeklySecurityDigestMail;
 use Modules\Core\Identity\Enums\UserKind;
@@ -20,16 +21,25 @@ use Throwable;
  */
 final class AuditMaintenance extends Command
 {
-    protected $signature = 'audit:maintain {task : retention or weekly-digest}';
+    protected $signature = 'audit:maintain {task : retention, weekly-digest or stream}';
 
     protected $description = 'Audit retention and the weekly security digest';
 
     public function handle(TenantContext $tenants): int
     {
         $task = (string) $this->argument('task');
-        foreach (Tenant::query()->where('status', 'active')->where('type', '!=', 'hq')->get() as $tenant) {
+        $query = Tenant::query()->where('status', 'active');
+        if ($task !== 'stream') {
+            $query->where('type', '!=', 'hq');
+        }
+        foreach ($query->get() as $tenant) {
             try {
                 $tenants->runAs($tenant, function () use ($task, $tenant): void {
+                    if ($task === 'stream') {
+                        app(AuditStreamer::class)->deliverAll();
+
+                        return;
+                    }
                     if ($task === 'retention') {
                         $removed = app(AuditRetention::class)->purge();
                         $this->line("{$tenant->slug}: {$removed} removed");

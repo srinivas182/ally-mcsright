@@ -2,6 +2,7 @@ import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 
 import { AuditEventRow, type AuditRow } from '@/components/audit-row';
+import { AuditStreams, type Stream } from '@/components/audit-streams';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -37,6 +38,7 @@ type Props = {
         scope: string;
         since: string | null;
     }[];
+    streams: Stream[];
 };
 
 const areas: [string, string][] = [
@@ -202,6 +204,7 @@ export default function AuditLog({
     people,
     retention,
     holds,
+    streams,
 }: Props) {
     const apply = (patch: Partial<Filters> & { view?: string }) =>
         router.get(
@@ -347,6 +350,7 @@ export default function AuditLog({
                     )}
                 </nav>
                 <Retention retention={retention} holds={holds} />
+                <AuditStreams streams={streams} />
             </div>
         </>
     );
