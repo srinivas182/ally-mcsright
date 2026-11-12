@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Identity\Impersonation;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
@@ -50,7 +51,7 @@ final class AuditLogger
         $payload = [
             'ulid' => (string) Str::ulid(),
             'occurred_at' => CarbonImmutable::now()->format('Y-m-d H:i:s.u'),
-            'actor_type' => $auto['actor_type'] ?? ($impersonation !== null && $impersonation['by_kind'] === 'hq' ? 'hq_support' : ($user instanceof User ? 'user' : 'system')),
+            'actor_type' => $auto['actor_type'] ?? (($impersonation !== null && $impersonation['by_kind'] === 'hq') || ($user instanceof User && $user->kind === UserKind::HqStaff) ? 'hq_support' : ($user instanceof User ? 'user' : 'system')),
             'actor_id' => $auto === null && $user instanceof User ? $user->id : null,
             'actor_name' => $auto === null && $user instanceof User ? $user->name : null,
             'actor_kind' => $auto === null && $user instanceof User ? $user->kind->value : null,
@@ -72,7 +73,7 @@ final class AuditLogger
             'severity' => in_array($severity, ['info', 'notice', 'warning', 'critical'], true) ? $severity : 'info',
         ];
 
-        DB::connection(Connections::cell())->table('audit_outbox')->insert([
+        DB::connection(Connections::audit())->table('audit_outbox')->insert([
             'tenant_id' => $tenantId, 'payload' => json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), 'created_at' => $payload['occurred_at'],
         ]);
 

@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Identity\Enums\UserStatus;
 use Modules\Core\Identity\Events\ImpersonationStarted;
@@ -69,6 +70,8 @@ final class Impersonation
         ], 60);
         $domain = $tenant->primaryDomain();
         $host = $domain !== null ? $domain->host : $tenant->slug.'.'.config('core.platform_domain');
+        app(AuditLogger::class)->record('core.impersonation.ticket_issued', $target,
+            metadata: ['by_user_id' => $hqStaff->id, 'by_name' => $hqStaff->name, 'reason' => $reason], severity: 'warning', tenantId: $tenant->id);
 
         return 'https://'.$host.'/impersonate/accept?ticket='.urlencode($ticket);
     }

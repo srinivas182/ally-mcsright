@@ -55,6 +55,8 @@ jobs:
       DB_DATABASE: rightally_test
       DB_USERNAME: rightally
       DB_PASSWORD: secret
+      DB_ADMIN_USERNAME: root
+      DB_ADMIN_PASSWORD: root
 
     steps:
       - uses: actions/checkout@v7

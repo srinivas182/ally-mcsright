@@ -22,7 +22,7 @@ final class FlushAuditOutbox implements ShouldQueue
 
     public function handle(): void
     {
-        $db = DB::connection(Connections::cell());
+        $db = DB::connection(Connections::audit());
 
         foreach ($db->table('audit_outbox')->distinct()->pluck('tenant_id') as $tenantId) {
             Cache::lock('audit-chain:'.$tenantId, 30)->block(10, function () use ($db, $tenantId): void {

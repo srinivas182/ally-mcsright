@@ -8,6 +8,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Http\Requests\Hq\ChangeSlugRequest;
 use Modules\Core\Http\Requests\Hq\ProvisionTenantRequest;
 use Modules\Core\Http\Requests\Hq\TenantReasonRequest;
@@ -117,38 +118,58 @@ final class TenantController
 
     public function suspend(TenantReasonRequest $request, Tenant $tenant, TenantLifecycle $lifecycle): RedirectResponse
     {
-        return $this->transition(fn () => $lifecycle->suspend($tenant, $request->string('reason')->toString(), $this->userId($request)), $tenant, 'Tenant suspended.');
+        return $this->transition(fn () => $lifecycle->suspend($tenant, $request->string('reason')->toString(), $this->userId($request)), $tenant, 'Tenant suspended.',
+            'core.tenant.suspended', ['reason' => $request->string('reason')->toString()]);
     }
 
     public function reactivate(Request $request, Tenant $tenant, TenantLifecycle $lifecycle): RedirectResponse
     {
-        return $this->transition(fn () => $lifecycle->reactivate($tenant, $this->userId($request)), $tenant, 'Tenant reactivated.');
+        return $this->transition(fn () => $lifecycle->reactivate($tenant, $this->userId($request)), $tenant, 'Tenant reactivated.', 'core.tenant.reactivated');
     }
 
     public function close(TenantReasonRequest $request, Tenant $tenant, TenantLifecycle $lifecycle): RedirectResponse
     {
-        return $this->transition(fn () => $lifecycle->close($tenant, $request->string('reason')->toString(), $this->userId($request)), $tenant, 'Closing started. It can be reversed for 30 days.');
+        return $this->transition(fn () => $lifecycle->close($tenant, $request->string('reason')->toString(), $this->userId($request)), $tenant, 'Closing started. It can be reversed for 30 days.',
+            'core.tenant.closing', ['reason' => $request->string('reason')->toString()]);
     }
 
     public function changeSlug(ChangeSlugRequest $request, Tenant $tenant, ChangeTenantSlug $change): RedirectResponse
     {
+        $old = $tenant->slug;
         $change->handle($tenant, $request->string('slug')->lower()->toString(), $this->userId($request));
+        $this->hqAudit($tenant, 'core.tenant.slug_changed', ['old' => $old, 'new' => $tenant->fresh()?->slug]);
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Address changed. The old address redirects for 90 days.']);
 
         return to_route('hq.tenants.show', $tenant);
     }
 
-    private function transition(callable $action, Tenant $tenant, string $message): RedirectResponse
+    /**
+     * @param  array<string, mixed>  $metadata
+     */
+    private function transition(callable $action, Tenant $tenant, string $message, string $auditAction, array $metadata = []): RedirectResponse
     {
         try {
             $action();
         } catch (InvalidTenantTransition $e) {
             return back()->withErrors(['reason' => $e->getMessage()]);
         }
+        $this->hqAudit($tenant, $auditAction, $metadata);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => $message]);
 
         return to_route('hq.tenants.show', $tenant);
+    }
+
+    /**
+     * HQ actions are recorded in the brokerage's own log (so owners see what support did) and in HQ's.
+     *
+     * @param  array<string, mixed>  $metadata
+     */
+    private function hqAudit(Tenant $tenant, string $action, array $metadata = []): void
+    {
+        $logger = app(AuditLogger::class);
+        $logger->record($action, $tenant, metadata: $metadata, severity: 'warning', label: $tenant->name, tenantId: $tenant->id);
+        $logger->record($action, $tenant, metadata: $metadata, severity: 'notice', label: $tenant->name);
     }
 
     private function userId(Request $request): ?int

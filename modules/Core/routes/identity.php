@@ -88,3 +88,11 @@ Route::middleware(['web', EnsureTenantHost::class, 'auth'])->group(function (): 
     Route::post('audit/holds/{hold}/release', [AuditController::class, 'releaseHold'])->name('audit.holds.release');
     Route::get('contacts/{contact}/evidence-pack', [AuditController::class, 'evidencePack'])->middleware('throttle:10,1')->name('audit.evidence-pack');
 });
+// Audit streaming: owners only, after re-confirming their password (sudo mode).
+Route::middleware(['web', EnsureTenantHost::class, 'auth', 'password.confirm'])->group(function (): void {
+    Route::post('audit/streams', [AuditController::class, 'addStream'])->name('audit.streams.store');
+    Route::delete('audit/streams/{stream}', [AuditController::class, 'removeStream'])->name('audit.streams.destroy');
+    Route::post('audit/streams/{stream}/resume', [AuditController::class, 'resumeStream'])->name('audit.streams.resume');
+});
+Route::middleware(['web', EnsureTenantHost::class, 'auth', 'throttle:10,1'])
+    ->post('audit/streams/{stream}/test', [AuditController::class, 'testStream'])->name('audit.streams.test');

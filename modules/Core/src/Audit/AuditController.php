@@ -58,6 +58,12 @@ final class AuditController
             'links' => $links,
             'filters' => $filters + ['area' => null, 'actor' => null, 'from' => null, 'to' => null, 'severity' => null, 'q' => null, 'important' => false],
             'retention' => ['years' => (int) app(TenantContext::class)->current()->getAttribute('audit_retention_years'), 'min' => AuditRetention::MIN_YEARS, 'max' => AuditRetention::MAX_YEARS],
+            'streams' => AuditStream::query()->orderBy('id')->get()->map(fn (AuditStream $st): array => [
+                'ulid' => $st->ulid, 'type' => $st->type, 'name' => $st->name, 'status' => $st->status,
+                'last_success_at' => $st->last_success_at?->toIso8601String(), 'last_error' => $st->last_error,
+                'failing_since' => $st->failing_since?->toIso8601String(),
+                'behind' => max(0, (int) AuditEvent::query()->max('chain_seq') - $st->cursor_seq),
+            ]),
             'holds' => LegalHold::query()->whereNull('released_at')->orderByDesc('id')->get()->map(fn (LegalHold $h): array => [
                 'ulid' => $h->ulid, 'reason' => $h->reason, 'scope' => $h->describe(), 'since' => $h->created_at?->toIso8601String(),
             ]),
@@ -127,5 +133,44 @@ final class AuditController
         abort_unless($user instanceof User && $user->isKind(UserKind::Owner), 403);
 
         return $user;
+    }
+
+    public function addStream(Request $request, AuditStreamer $streamer): RedirectResponse
+    {
+        $user = $this->owner($request);
+        $data = $request->validate(['type' => ['required', 'in:webhook,s3,datadog,splunk'], 'name' => ['nullable', 'string', 'max:80'], 'config' => ['required', 'array']]);
+        $streamer->add($data['type'], (string) ($data['name'] ?? ''), array_map('strval', $data['config']), $user);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Streaming destination added. New events will be sent every minute.']);
+
+        return back();
+    }
+
+    public function removeStream(Request $request, AuditStream $stream, AuditStreamer $streamer): RedirectResponse
+    {
+        $this->owner($request);
+        $streamer->remove($stream);
+
+        return back();
+    }
+
+    public function testStream(Request $request, AuditStream $stream, AuditStreamer $streamer): RedirectResponse
+    {
+        $this->owner($request);
+        try {
+            $streamer->test($stream);
+            Inertia::flash('toast', ['type' => 'success', 'message' => "Test event delivered to {$stream->name}."]);
+        } catch (\Throwable $e) {
+            Inertia::flash('toast', ['type' => 'error', 'message' => "Test failed: {$e->getMessage()}"]);
+        }
+
+        return back();
+    }
+
+    public function resumeStream(Request $request, AuditStream $stream, AuditStreamer $streamer): RedirectResponse
+    {
+        $this->owner($request);
+        $streamer->resume($stream);
+
+        return back();
     }
 }
