@@ -11,6 +11,9 @@ use Modules\Compensation\Calculator\CommissionCalculator;
 use Modules\Compensation\Console\CheckCapPeriods;
 use Modules\Compensation\Events\PlansChanged;
 use Modules\Core\Access\PermissionRegistry;
+use Modules\Core\Identity\Enums\UserKind;
+use Modules\Core\Navigation\NavigationRegistry;
+use Modules\Core\Navigation\NavItem;
 
 final class CompensationServiceProvider extends ServiceProvider
 {
@@ -34,6 +37,15 @@ final class CompensationServiceProvider extends ServiceProvider
         ]);
 
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
+        $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
+
+        $nav = $this->app->make(NavigationRegistry::class);
+        $nav->add(new NavItem('Compensation', 'Plans', '/compensation/plans', 'scale', 10, ability: 'compensation.plans.view'));
+        $nav->add(new NavItem('Compensation', 'Fees', '/compensation/fees', 'receipt', 20, ability: 'compensation.plans.view'));
+        $nav->add(new NavItem('Compensation', 'Credits', '/compensation/credits', 'gift', 30, ability: 'compensation.credits.grant'));
+        $nav->add(new NavItem('Compensation', 'Simulator', '/compensation/simulator', 'calculator', 40, ability: 'compensation.plans.view'));
+        $nav->add(new NavItem('Compensation', 'Profitability', '/compensation/profitability', 'trending-up', 50, ability: 'finance.amounts.view'));
+        $nav->add(new NavItem('Overview', 'My plan', '/my-plan', 'badge-dollar-sign', 30, kinds: [UserKind::Agent], mobile: true));
 
         // Plan changes recalculate pending deals automatically (best-in-class review, addition 7).
         Event::listen(PlansChanged::class, fn (PlansChanged $e) => $this->app->make(CommissionService::class)->recalculatePending($e->agentUserIds, $e->reason));

@@ -173,6 +173,14 @@ final class CommissionService
         return $problems;
     }
 
+    /**
+     * The simulator: the real calculation with the agent's real cap state, nothing saved.
+     */
+    public function preview(DealSideInput $input): SideCalculation
+    {
+        return $this->run($input);
+    }
+
     private function run(DealSideInput $input): SideCalculation
     {
         $resolved = [];
