@@ -86,6 +86,8 @@ final class CommissionService
                     app(Credits::class)->consume((int) $row['user_id'], (int) $row['credit_used_cents'], $final->id, $input->closingDate);
                 }
             }
+            // Revenue share in the same transaction as the calculation (legacy rule 15).
+            app(RevenueShare\RevenueShareEngine::class)->distribute($final);
 
             return $final;
         });
@@ -112,6 +114,7 @@ final class CommissionService
                 $this->feeEntries($final, $row, -1, $input->closingDate);
             }
             app(Credits::class)->restore($final->id);
+            app(RevenueShare\RevenueShareEngine::class)->reverse($final);
             $final->update(['status' => 'reversed', 'change_note' => mb_substr('Reversed: '.$reason, 0, 500)]);
             CalculationAgent::query()->where('calculation_id', $final->id)->update(['status' => 'reversed']);
         });
