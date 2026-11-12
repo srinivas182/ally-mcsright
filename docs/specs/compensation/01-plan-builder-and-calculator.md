@@ -8,7 +8,7 @@ calculates each deal exactly (to the cent), explains every step in plain English
 progress per agent. This replaces the legacy plan tables and capping logic; the legacy rules
 (`docs/legacy/business-rules.md`) are acceptance tests.
 
-Revenue share (multi-level payments to sponsors) is a separate spec (Compensation 02, Sprints 7–9).
+Revenue share (multi-level payments to sponsors) is a separate spec: [Compensation 02](02-revenue-share.md).
 Posting results to the ledger happens when a deal is approved (Transactions, Sprints 12–14); this
 spec delivers the calculation, snapshots and simulation that posting will use.
 
