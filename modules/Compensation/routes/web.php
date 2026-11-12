@@ -36,4 +36,8 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function
         Route::post('holds/{hold}/reject', [RevenueShareController::class, 'reject'])->whereNumber('hold')->name('reject');
         Route::post('members/{user}/deceased', [RevenueShareController::class, 'deceased'])->name('deceased');
     });
+    Route::get('revenue-share', [RevenueShareController::class, 'mine'])->name('revenue-share.mine');
+    Route::get('compensation/revenue-share', [RevenueShareController::class, 'admin'])->name('revenue-share.admin');
+    Route::post('compensation/revenue-share/settings', [RevenueShareController::class, 'settings'])->name('revenue-share.settings');
+    Route::post('compensation/revenue-share/simulate', [RevenueShareController::class, 'simulate'])->middleware('throttle:20,1')->name('revenue-share.simulate');
 });

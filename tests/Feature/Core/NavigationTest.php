@@ -19,11 +19,11 @@ function menuFor(User $user): array
 }
 
 it('shows owners the dashboard, people and finance', function (): void {
-    expect(menuFor(User::factory()->owner()->create()))->toBe(['Dashboard', "Today's 10", 'Tasks', 'Contacts', 'Chart of accounts', 'Journals', 'Periods', 'People', 'Plans', 'Fees', 'Credits', 'Simulator', 'Profitability', 'Agent plans', 'Billing', 'Partner earnings', 'Roles', 'Offices and teams', 'Audit log']);
+    expect(menuFor(User::factory()->owner()->create()))->toBe(['Dashboard', "Today's 10", 'Tasks', 'Contacts', 'Chart of accounts', 'Journals', 'Periods', 'People', 'Plans', 'Fees', 'Credits', 'Simulator', 'Revenue share', 'Profitability', 'Agent plans', 'Billing', 'Partner earnings', 'Roles', 'Offices and teams', 'Audit log']);
 });
 
 it('shows agents only their own pages', function (): void {
-    expect(menuFor(User::factory()->create()))->toBe(['Today', "Today's 10", 'Tasks', 'My plan', 'Contacts'])
+    expect(menuFor(User::factory()->create()))->toBe(['Today', "Today's 10", 'Tasks', 'My plan', 'Revenue share', 'Contacts'])
         ->and(menuFor(User::factory()->assistantOf(User::factory()->create())->create()))->toBe(['Today', "Today's 10", 'Tasks', 'Contacts']);
 });
 
