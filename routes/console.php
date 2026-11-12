@@ -27,3 +27,5 @@ Schedule::command('crm:run-plans')->everyFifteenMinutes()->onOneServer();
 Schedule::command('crm:intelligence')->dailyAt('01:30')->onOneServer();
 // Lead ponds: uncontacted company leads return to the pond (specs/crm/01, differentiator 22).
 Schedule::command('crm:ponds')->hourly()->onOneServer();
+// Audit log: seal any waiting events (specs/core/04).
+Schedule::command('audit:flush')->everyMinute()->withoutOverlapping()->onOneServer();

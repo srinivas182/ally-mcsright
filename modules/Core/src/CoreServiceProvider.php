@@ -6,6 +6,7 @@ namespace Modules\Core;
 
 use App\Models\User;
 use Illuminate\Auth\Events\Failed;
+use Illuminate\Auth\Events\Lockout;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\Hashing\Hasher;
@@ -21,6 +22,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Fortify\Events\ValidTwoFactorAuthenticationCodeProvided;
+use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Branding\BrandColourSource;
 use Modules\Core\Branding\NullBrandColourSource;
 use Modules\Core\Console\BootstrapHq;
@@ -29,6 +31,8 @@ use Modules\Core\Console\RunTenantLifecycle;
 use Modules\Core\Identity\Auth\TenantPasswordBrokerManager;
 use Modules\Core\Identity\Auth\TenantUserProvider;
 use Modules\Core\Identity\Enums\UserKind;
+use Modules\Core\Identity\Events\ImpersonationStarted;
+use Modules\Core\Identity\Events\ImpersonationStopped;
 use Modules\Core\Identity\Events\RepeatedLoginFailures;
 use Modules\Core\Identity\Impersonation;
 use Modules\Core\Identity\Security\SignInSecurity;
@@ -54,6 +58,7 @@ final class CoreServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->app->scoped(AuditLogger::class);
         $this->app->singleton(NavigationRegistry::class);
         $this->mergeConfigFrom(__DIR__.'/../config/core.php', 'core');
 
@@ -78,7 +83,7 @@ final class CoreServiceProvider extends ServiceProvider
         $this->registerMigrationMacros();
 
         if ($this->app->runningInConsole()) {
-            $this->commands([CompileDesignTokens::class, RunTenantLifecycle::class, BootstrapHq::class]);
+            $this->commands([CompileDesignTokens::class, RunTenantLifecycle::class, BootstrapHq::class, Console\FlushAudit::class, Console\VerifyAudit::class]);
         }
     }
 
@@ -132,6 +137,29 @@ final class CoreServiceProvider extends ServiceProvider
             }
         });
 
+        // Audit log (specs/core/04): sign-ins, failures, lockouts and "log in as".
+        Event::listen(Login::class, function (Login $e): void {
+            $request = $this->app->make('request');
+            if ($e->user instanceof User && ! ($request->hasSession() && $request->session()->has(Impersonation::SESSION))) {
+                $this->app->make(AuditLogger::class)->record('core.auth.signed_in', $e->user, label: $e->user->name);
+            }
+        });
+        Event::listen(Failed::class, function (Failed $e): void {
+            $email = is_string($e->credentials['email'] ?? null) ? $e->credentials['email'] : '';
+            $this->app->make(AuditLogger::class)->record('core.auth.sign_in_failed', $e->user instanceof User ? $e->user : null,
+                metadata: ['email' => AuditLogger::mask($email)], severity: 'notice', label: $e->user instanceof User ? $e->user->name : AuditLogger::mask($email));
+        });
+        Event::listen(Lockout::class, fn (Lockout $e) => $this->app->make(AuditLogger::class)->record('core.auth.locked_out',
+            metadata: ['email' => AuditLogger::mask((string) $e->request->input('email'))], severity: 'warning'));
+        Event::listen(ImpersonationStarted::class, function (ImpersonationStarted $e): void {
+            $target = User::query()->find($e->targetUserId);
+            $this->app->make(AuditLogger::class)->record('core.impersonation.started', $target, metadata: ['by_user_id' => $e->byUserId, 'by_kind' => $e->byKind, 'reason' => $e->reason], severity: 'warning');
+        });
+        Event::listen(ImpersonationStopped::class, function (ImpersonationStopped $e): void {
+            $target = User::query()->find($e->targetUserId);
+            $this->app->make(AuditLogger::class)->record('core.impersonation.stopped', $target, metadata: ['by_user_id' => $e->byUserId, 'by_kind' => $e->byKind, 'why' => $e->why], severity: 'notice');
+        });
+
         // Microsoft sign-in comes from the SocialiteProviders package.
         Event::listen(SocialiteWasCalled::class, [MicrosoftExtendSocialite::class, 'handle']);
 
@@ -165,6 +193,7 @@ final class CoreServiceProvider extends ServiceProvider
     private function registerNavigation(): void
     {
         $nav = $this->app->make(NavigationRegistry::class);
+        $nav->add(new NavItem('Settings', 'Audit log', '/audit', 'shield', 90, kinds: [UserKind::Owner]));
         $nav->add(new NavItem('Overview', 'Dashboard', '/dashboard', 'layout-grid', 10, kinds: [UserKind::Owner, UserKind::Staff], mobile: true));
         $nav->add(new NavItem('Overview', 'Today', '/agent', 'sun', 10, kinds: [UserKind::Agent, UserKind::Assistant], mobile: true));
         $nav->add(new NavItem('Brokerage', 'People', '/users', 'users', 10, ability: 'core.users.view', mobile: true));

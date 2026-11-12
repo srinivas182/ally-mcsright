@@ -11,6 +11,9 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
+use Modules\Core\Audit\AuditEvent;
+use Modules\Core\Audit\AuditLogger;
+use Modules\Core\Audit\AuditPresenter;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Identity\Enums\UserStatus;
 use Modules\Crm\Actions\ManageContacts;
@@ -128,6 +131,7 @@ final class ContactController
     {
         $user = self::user($request);
         abort_unless($this->visibility->canSee($user, $contact), 404);
+        app(AuditLogger::class)->record('crm.contact.viewed', $contact);
 
         $visibleIds = $this->visibility->query($user)->pluck('id')->all();
 
@@ -177,6 +181,8 @@ final class ContactController
                     && $this->visibility->canSee($user, $ref->referrer) ? ['ulid' => $ref->referrer->ulid, 'name' => $ref->referrer->name] : null,
                 'stats' => app(Referrals::class)->stats($contact),
             ],
+            'history' => $this->visibility->canManage($user, $contact) ? AuditEvent::query()->where('subject_type', 'Contact')->where('subject_id', $contact->ulid)
+                ->orderByDesc('chain_seq')->limit(25)->get()->map(fn (AuditEvent $e): array => AuditPresenter::row($e))->values() : [],
             'rhythm' => $contact->rhythm,
             'closedOn' => $contact->closed_on?->toDateString(),
             'plans' => app(FollowUpPlans::class)->plansFor($user)->where('active', true)->map(fn ($p): array => ['ulid' => $p->ulid, 'name' => $p->name])->values(),

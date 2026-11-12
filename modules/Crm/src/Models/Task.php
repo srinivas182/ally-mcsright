@@ -7,6 +7,7 @@ namespace Modules\Crm\Models;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Modules\Core\Audit\Auditable;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\Concerns\BelongsToTenant;
 use Modules\Core\Tenancy\Concerns\HasPublicUlid;
@@ -35,12 +36,21 @@ use Modules\Core\Tenancy\Concerns\HasPublicUlid;
  */
 final class Task extends Model
 {
+    use Auditable;
     use BelongsToTenant;
     use HasPublicUlid;
 
     public const TYPES = ['call', 'text', 'email', 'follow_up', 'showing', 'other'];
 
     protected $table = 'crm_tasks';
+
+    protected static string $auditAction = 'crm.task';
+
+    /** @var list<string> */
+    protected static array $audited = ['title', 'due_at', 'assigned_to', 'completed_at'];
+
+    /** @var list<string> */
+    protected static array $auditMasked = [];
 
     protected $fillable = ['contact_id', 'assigned_to', 'type', 'title', 'notes', 'priority', 'due_at', 'remind_at', 'reminded_at', 'completed_at', 'completed_by', 'created_by', 'plan_enrollment_id', 'message'];
 

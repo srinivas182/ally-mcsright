@@ -16,6 +16,7 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\Contracts\PasskeyUser;
 use Laravel\Fortify\PasskeyAuthenticatable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
+use Modules\Core\Audit\Auditable;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Identity\Enums\UserStatus;
 use Modules\Core\Tenancy\Concerns\BelongsToTenant;
@@ -56,6 +57,15 @@ use Modules\Core\Tenancy\Concerns\HasPublicUlid;
  */
 class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
 {
+    protected static string $auditAction = 'core.user';
+
+    /** @var list<string> */
+    protected static array $audited = ['first_name', 'last_name', 'email', 'kind', 'status', 'two_factor_confirmed_at', 'pending_email'];
+
+    /** @var list<string> */
+    protected static array $auditMasked = [];
+
+    use Auditable;
     use BelongsToTenant;
 
     /** @use HasFactory<UserFactory> */

@@ -9,6 +9,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Crm\Actions\Timeline;
 use Modules\Crm\Enums\Lifecycle;
@@ -202,7 +203,9 @@ final class FollowUpPlans
 
         $step = $steps->get($index);
         while ($step !== null && $enrollment->started_at->addDays($step->day)->lte($now)) {
-            $this->createTask($enrollment, $step, $contact);
+            $current = $step;
+            app(AuditLogger::class)->asAutomation('follow_up_plan', $enrollment->assigned_to, 'Plan: '.$enrollment->plan->name,
+                fn () => $this->createTask($enrollment, $current, $contact));
             $index++;
             $step = $steps->get($index);
         }

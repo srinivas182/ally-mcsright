@@ -3,6 +3,7 @@ import { MailIcon, MessageSquareIcon, PhoneIcon } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { AuditEventRow, type AuditRow } from '@/components/audit-row';
 import { AiBrief, type Brief } from '@/components/crm/ai-brief';
 import { ContactPicker } from '@/components/crm/contact-picker';
 import { QuickUpdate } from '@/components/crm/quick-update';
@@ -65,6 +66,7 @@ type Contact = {
 
 type Props = {
     contact: Contact;
+    history: AuditRow[];
     memories: { id: number; category: string; detail: string }[];
     referral: {
         by: { ulid: string; name: string } | null;
@@ -529,6 +531,7 @@ function ConsentPanel({
 }
 
 export default function ContactShow({
+    history,
     memories,
     referral,
     score,
@@ -963,6 +966,18 @@ export default function ContactShow({
                             rhythm={rhythm}
                             closedOn={closedOn}
                         />
+                        {history.length > 0 && (
+                            <details className="rounded-lg border p-4 text-sm">
+                                <summary className="cursor-pointer font-medium">
+                                    Who viewed or changed this contact
+                                </summary>
+                                <ul className="mt-2 divide-y">
+                                    {history.map((e) => (
+                                        <AuditEventRow key={e.ulid} e={e} />
+                                    ))}
+                                </ul>
+                            </details>
+                        )}
                         <ConsentPanel base={base} consent={contact.consent} />
                         <div className="grid gap-2 rounded-lg border p-4">
                             <p className="text-sm font-medium">

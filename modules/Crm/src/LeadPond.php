@@ -8,6 +8,7 @@ use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Validation\ValidationException;
+use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Tenancy\Models\Tenant;
 use Modules\Core\Tenancy\TenantContext;
@@ -61,8 +62,10 @@ final class LeadPond
             ->where(fn ($q) => $q->whereNull('last_activity_at')->orWhereColumn('last_activity_at', '<', 'owner_assigned_at'))->get();
 
         foreach ($stale as $contact) {
-            $contact->forceFill(['owner_user_id' => null, 'in_pond_since' => CarbonImmutable::now()])->save();
-            $this->timeline->system($contact, "Moved to the lead pond: no contact within {$settings['after_days']} days");
+            app(AuditLogger::class)->asAutomation('lead_pond', $contact->owner_user_id, "Return company leads not contacted within {$settings['after_days']} days", function () use ($contact, $settings): void {
+                $contact->forceFill(['owner_user_id' => null, 'in_pond_since' => CarbonImmutable::now()])->save();
+                $this->timeline->system($contact, "Moved to the lead pond: no contact within {$settings['after_days']} days");
+            });
             $moved++;
         }
 

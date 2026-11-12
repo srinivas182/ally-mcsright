@@ -19,7 +19,7 @@ function menuFor(User $user): array
 }
 
 it('shows owners the dashboard, people and finance', function (): void {
-    expect(menuFor(User::factory()->owner()->create()))->toBe(['Dashboard', "Today's 10", 'Tasks', 'Contacts', 'Chart of accounts', 'Journals', 'Periods', 'People']);
+    expect(menuFor(User::factory()->owner()->create()))->toBe(['Dashboard', "Today's 10", 'Tasks', 'Contacts', 'Chart of accounts', 'Journals', 'Periods', 'People', 'Audit log']);
 });
 
 it('shows agents only their own pages', function (): void {
