@@ -595,34 +595,43 @@ export default function ContactShow({
                     }
                     actions={
                         canManage && (
-                            <Select
-                                value={contact.lifecycle}
-                                onValueChange={(lifecycle) =>
-                                    router.patch(
-                                        base,
-                                        { lifecycle },
-                                        { preserveScroll: true },
-                                    )
-                                }
-                            >
-                                <SelectTrigger
-                                    aria-label="Stage"
-                                    className="w-44 capitalize"
+                            <span className="flex flex-wrap gap-2">
+                                <Button variant="outline" size="sm" asChild>
+                                    <Link
+                                        href={`/deals?contact=${contact.ulid}`}
+                                    >
+                                        Start a deal
+                                    </Link>
+                                </Button>
+                                <Select
+                                    value={contact.lifecycle}
+                                    onValueChange={(lifecycle) =>
+                                        router.patch(
+                                            base,
+                                            { lifecycle },
+                                            { preserveScroll: true },
+                                        )
+                                    }
                                 >
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {lifecycles.map((l) => (
-                                        <SelectItem
-                                            key={l}
-                                            value={l}
-                                            className="capitalize"
-                                        >
-                                            {label(l)}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                                    <SelectTrigger
+                                        aria-label="Stage"
+                                        className="w-44 capitalize"
+                                    >
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {lifecycles.map((l) => (
+                                            <SelectItem
+                                                key={l}
+                                                value={l}
+                                                className="capitalize"
+                                            >
+                                                {label(l)}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </span>
                         )
                     }
                 />

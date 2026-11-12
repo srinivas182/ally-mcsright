@@ -8,6 +8,7 @@ use Modules\Compensation\CompensationServiceProvider;
 use Modules\Core\CoreServiceProvider;
 use Modules\Crm\CrmServiceProvider;
 use Modules\Ledger\LedgerServiceProvider;
+use Modules\Transactions\TransactionsServiceProvider;
 
 return [
     AppServiceProvider::class,
@@ -18,4 +19,5 @@ return [
     CrmServiceProvider::class,
     AiServiceProvider::class,
     BillingServiceProvider::class,
+    TransactionsServiceProvider::class,
 ];

@@ -43,6 +43,7 @@
             "Modules\\Core\\Database\\Factories\\": "modules/Core/database/factories/",
             "Modules\\Ledger\\": "modules/Ledger/src/",
             "Modules\\Billing\\": "modules/Billing/src/",
+            "Modules\\Transactions\\": "modules/Transactions/src/",
             "Modules\\Compensation\\": "modules/Compensation/src/",
             "Modules\\Crm\\": "modules/Crm/src/",
             "Modules\\AI\\": "modules/AI/src/",
