@@ -39,6 +39,10 @@ final readonly class RevenueShareRules
         public int $productionMonths = 13,
         public ?int $perDealMaxCents = null,
         public ?int $perRecipientYearlyMaxCents = null,
+        public ?int $vestingYears = null,              // vested agents keep revenue share after leaving
+        public ?int $milestoneFirstClosingCents = null, // bonus to the sponsor on a recruit's first closing
+        public int $tinyDealGciCents = 50_000,          // abuse control: deals below this are held for review
+        public int $recentSponsorChangeDays = 30,       // abuse control: sponsor changed this recently → held
     ) {}
 
     /**
@@ -132,6 +136,10 @@ final readonly class RevenueShareRules
             $int($unlock['production']['through_level'] ?? null, 'unlock.production.through_level', 1, $errors),
             $int($unlock['production']['months'] ?? 13, 'unlock.production.months', 1, $errors) ?? 13,
             $int($funding['per_deal_max_cents'] ?? null, 'funding.per_deal_max_cents', 0, $errors),
-            $int($funding['per_recipient_yearly_max_cents'] ?? null, 'funding.per_recipient_yearly_max_cents', 0, $errors));
+            $int($funding['per_recipient_yearly_max_cents'] ?? null, 'funding.per_recipient_yearly_max_cents', 0, $errors),
+            $int($data['vesting']['years'] ?? null, 'vesting.years', 1, $errors),
+            $int($data['milestone']['first_closing_cents'] ?? null, 'milestone.first_closing_cents', 1, $errors),
+            $int($data['controls']['tiny_deal_gci_cents'] ?? 50_000, 'controls.tiny_deal_gci_cents', 0, $errors) ?? 50_000,
+            $int($data['controls']['recent_sponsor_change_days'] ?? 30, 'controls.recent_sponsor_change_days', 0, $errors) ?? 30);
     }
 }

@@ -27,6 +27,7 @@ use Modules\Core\Tenancy\Concerns\HasPublicUlid;
  * @property list<int> $role_ids
  * @property int|null $assisted_user_id
  * @property int|null $invited_by
+ * @property int|null $sponsor_user_id
  * @property string $token_hash
  * @property CarbonImmutable $expires_at
  * @property CarbonImmutable|null $accepted_at
@@ -39,7 +40,7 @@ final class Invitation extends Model
     use HasPublicUlid;
 
     protected $fillable = [
-        'email', 'first_name', 'last_name', 'kind', 'role_ids', 'assisted_user_id', 'invited_by',
+        'email', 'first_name', 'last_name', 'kind', 'role_ids', 'assisted_user_id', 'invited_by', 'sponsor_user_id',
         'token_hash', 'expires_at', 'accepted_at', 'revoked_at',
     ];
 

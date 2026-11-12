@@ -12,6 +12,8 @@ use Modules\Compensation\Console\CheckCapPeriods;
 use Modules\Compensation\Events\PlansChanged;
 use Modules\Core\Access\PermissionRegistry;
 use Modules\Core\Identity\Enums\UserKind;
+use Modules\Core\Identity\Events\UserActivated;
+use Modules\Core\Identity\Events\UserDeactivated;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
 
@@ -48,6 +50,10 @@ final class CompensationServiceProvider extends ServiceProvider
         $nav->add(new NavItem('Overview', 'My plan', '/my-plan', 'badge-dollar-sign', 30, kinds: [UserKind::Agent], mobile: true));
 
         // Plan changes recalculate pending deals automatically (best-in-class review, addition 7).
+        // Revenue share attribution and vesting follow people joining and leaving.
+        Event::listen(UserActivated::class, [RevenueShare\Attribution::class, 'onActivated']);
+        Event::listen(UserDeactivated::class, [RevenueShare\Attribution::class, 'onDeactivated']);
+
         Event::listen(PlansChanged::class, fn (PlansChanged $e) => $this->app->make(CommissionService::class)->recalculatePending($e->agentUserIds, $e->reason));
 
         if ($this->app->runningInConsole()) {

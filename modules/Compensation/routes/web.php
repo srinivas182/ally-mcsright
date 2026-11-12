@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use Modules\Compensation\Http\CompensationController;
+use Modules\Compensation\Http\RevenueShareController;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
 
 Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function (): void {
@@ -25,4 +26,14 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function
         Route::post('what-if', [CompensationController::class, 'whatIf'])->middleware('throttle:20,1')->name('what-if');
     });
     Route::get('my-plan', [CompensationController::class, 'myPlan'])->name('compensation.my-plan');
+
+    // Revenue share trust actions (specs/compensation/02).
+    Route::prefix('revenue-share')->name('revenue-share.')->group(function (): void {
+        Route::post('beneficiary', [RevenueShareController::class, 'beneficiary'])->name('beneficiary');
+        Route::post('disputes', [RevenueShareController::class, 'claim'])->middleware('throttle:10,1')->name('claim');
+        Route::post('disputes/{dispute}/decide', [RevenueShareController::class, 'decide'])->name('decide');
+        Route::post('holds/{hold}/release', [RevenueShareController::class, 'release'])->whereNumber('hold')->name('release');
+        Route::post('holds/{hold}/reject', [RevenueShareController::class, 'reject'])->whereNumber('hold')->name('reject');
+        Route::post('members/{user}/deceased', [RevenueShareController::class, 'deceased'])->name('deceased');
+    });
 });
