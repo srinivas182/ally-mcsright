@@ -18,7 +18,23 @@ type Deal = {
     agent: string | null;
     missing: number;
 };
-type Props = { deals: Deal[]; canCreateFor: { ulid: string; name: string }[] };
+type Forecast = {
+    buckets: Record<
+        string,
+        {
+            days: number;
+            deals: number;
+            company_cents: number;
+            gci_cents: number;
+        }
+    >;
+    agents: { name: string; deals: number; company_cents: number }[];
+} | null;
+type Props = {
+    deals: Deal[];
+    canCreateFor: { ulid: string; name: string }[];
+    forecast?: Forecast;
+};
 
 const columns: [string, string][] = [
     ['pre_contract', 'Pre-contract'],
@@ -36,7 +52,7 @@ const typeLabel: Record<string, string> = {
 };
 
 /** The deal pipeline. */
-export default function Deals({ deals, canCreateFor }: Props) {
+export default function Deals({ deals, canCreateFor, forecast }: Props) {
     const params = new URLSearchParams(
         typeof window !== 'undefined' ? window.location.search : '',
     );
@@ -66,6 +82,28 @@ export default function Deals({ deals, canCreateFor }: Props) {
                         </Button>
                     }
                 />
+                {forecast && (
+                    <section className="grid gap-2 rounded-lg border p-4 text-sm">
+                        <p className="font-medium">
+                            Company dollar expected from deals under contract
+                        </p>
+                        <div className="grid gap-2 sm:grid-cols-3">
+                            {Object.values(forecast.buckets).map((b) => (
+                                <div key={b.days}>
+                                    <p className="text-muted-foreground">
+                                        Next {b.days} days
+                                    </p>
+                                    <p className="text-xl font-semibold">
+                                        {usd(b.company_cents)}
+                                    </p>
+                                    <p className="text-muted-foreground">
+                                        {b.deals} deal(s)
+                                    </p>
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+                )}
                 {creating && (
                     <form
                         className="grid gap-2 rounded-lg border p-4 text-sm md:grid-cols-4"

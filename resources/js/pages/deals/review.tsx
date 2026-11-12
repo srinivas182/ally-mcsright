@@ -1,4 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react';
+import { useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,12 +15,27 @@ type Props = {
         agent: string | null;
         submitted_at: string | null;
         overdue: boolean;
+        mine: boolean;
+        reviewer: string | null;
     }[];
     reasons: string[];
 };
 
-/** Documents waiting for review across all deals, oldest first. */
+/** Documents waiting for review, oldest first: assigned to the reviewer with the lightest load. */
 export default function ReviewQueue({ sla_hours, items }: Props) {
+    const [onlyMine, setOnlyMine] = useState(true);
+    const [picked, setPicked] = useState<string[]>([]);
+    const shown =
+        onlyMine && items.some((i) => i.mine)
+            ? items.filter((i) => i.mine)
+            : items;
+    const toggle = (ulid: string) =>
+        setPicked(
+            picked.includes(ulid)
+                ? picked.filter((p) => p !== ulid)
+                : [...picked, ulid],
+        );
+
     return (
         <>
             <Head title="Review queue" />
@@ -28,33 +44,85 @@ export default function ReviewQueue({ sla_hours, items }: Props) {
                     title="Review queue"
                     description={`${items.length} waiting · reviews are due within ${sla_hours} hours of upload.`}
                 />
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                    <div
+                        role="group"
+                        aria-label="Whose reviews"
+                        className="flex rounded border"
+                    >
+                        <button
+                            type="button"
+                            aria-pressed={onlyMine}
+                            className={`px-3 py-1.5 ${onlyMine ? 'bg-muted font-medium' : ''}`}
+                            onClick={() => setOnlyMine(true)}
+                        >
+                            Mine
+                        </button>
+                        <button
+                            type="button"
+                            aria-pressed={!onlyMine}
+                            className={`px-3 py-1.5 ${!onlyMine ? 'bg-muted font-medium' : ''}`}
+                            onClick={() => setOnlyMine(false)}
+                        >
+                            Everyone
+                        </button>
+                    </div>
+                    <Button
+                        size="sm"
+                        disabled={picked.length === 0}
+                        onClick={() =>
+                            router.post(
+                                '/deals/review/bulk',
+                                { items: picked },
+                                {
+                                    preserveScroll: true,
+                                    onSuccess: () => setPicked([]),
+                                },
+                            )
+                        }
+                    >
+                        Approve {picked.length || ''} selected
+                    </Button>
+                </div>
                 <ul className="divide-y rounded-lg border text-sm">
-                    {items.length === 0 && (
+                    {shown.length === 0 && (
                         <li className="p-3 text-muted-foreground">
                             Nothing waiting. Nice.
                         </li>
                     )}
-                    {items.map((i) => (
+                    {shown.map((i) => (
                         <li
                             key={i.ulid}
                             className="flex flex-wrap items-center justify-between gap-2 p-3"
                         >
-                            <span className="grid">
-                                <Link
-                                    className="font-medium hover:underline"
-                                    href={`/deals/${i.deal}`}
-                                >
-                                    {i.label}
-                                </Link>
-                                <span className="text-muted-foreground">
-                                    {i.street} · {i.agent} ·{' '}
-                                    {i.submitted_at
-                                        ? new Date(
-                                              i.submitted_at,
-                                          ).toLocaleString()
-                                        : ''}
+                            <label className="flex items-start gap-2">
+                                <input
+                                    type="checkbox"
+                                    className="mt-1 size-4"
+                                    checked={picked.includes(i.ulid)}
+                                    onChange={() => toggle(i.ulid)}
+                                    aria-label={`Select ${i.label}`}
+                                />
+                                <span className="grid">
+                                    <Link
+                                        className="font-medium hover:underline"
+                                        href={`/deals/${i.deal}`}
+                                    >
+                                        {i.label}
+                                    </Link>
+                                    <span className="text-muted-foreground">
+                                        {i.street} · {i.agent} ·{' '}
+                                        {i.submitted_at
+                                            ? new Date(
+                                                  i.submitted_at,
+                                              ).toLocaleString()
+                                            : ''}
+                                        {i.reviewer
+                                            ? ` · for ${i.reviewer}`
+                                            : ''}
+                                    </span>
                                 </span>
-                            </span>
+                            </label>
                             <span className="flex items-center gap-2">
                                 {i.overdue && (
                                     <Badge variant="destructive">Overdue</Badge>

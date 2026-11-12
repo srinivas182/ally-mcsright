@@ -139,6 +139,8 @@ final class Deals
             $deal->type === 'buyer' ? Side::Buying : Side::Listing,
             match ($deal->type) {
                 'lease' => DealClass::Lease, 'referral' => DealClass::ReferralOnly, 'new_construction' => DealClass::NewConstruction, default => DealClass::Sale,
-            });
+            },
+            // Outgoing referral fees come off the top (referrals in and out, specs/transactions/01).
+            outsideReferralPercent: app(Referrals::class)->outPercent($deal));
     }
 }

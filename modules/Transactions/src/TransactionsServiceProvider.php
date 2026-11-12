@@ -16,7 +16,7 @@ final class TransactionsServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        foreach ([Checklists::class, Deals::class, Documents::class, Reviews::class] as $service) {
+        foreach ([Checklists::class, Deals::class, Documents::class, Reviews::class, EarnestMoney::class, TitleDesk::class, Cdas::class, Referrals::class, FileExport::class, Forecast::class] as $service) {
             $this->app->scoped($service);
         }
     }
@@ -29,6 +29,9 @@ final class TransactionsServiceProvider extends ServiceProvider
         $this->app->make(PermissionRegistry::class)->register('Transactions', [
             'transactions.review' => ['Review deal documents and see every deal'],
             'transactions.templates' => ['Manage checklist templates'],
+            'transactions.cda.approve' => ['Approve commission disbursement authorisations (CDAs)'],
+            'transactions.trust.manage' => ['Record earnest money received and released'],
+            'transactions.export' => ['Export complete transaction files'],
         ]);
 
         $nav = $this->app->make(NavigationRegistry::class);
@@ -37,5 +40,6 @@ final class TransactionsServiceProvider extends ServiceProvider
             || $user->can('transactions.review'));
         $nav->add(new NavItem('Overview', 'Deals', '/deals', 'briefcase', 25, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant], mobile: true));
         $nav->add(new NavItem('Overview', 'Review queue', '/deals/review', 'clipboard-check', 26, ability: 'transactions.queue'));
+        $nav->add(new NavItem('Settings', 'Transactions', '/settings/transactions', 'briefcase', 76, ability: 'transactions.queue'));
     }
 }

@@ -43,6 +43,9 @@ final class Documents
             'version' => $version, 'via' => in_array($via, ['upload', 'photo', 'email'], true) ? $via : 'upload', 'uploaded_by' => $by->id,
         ]);
         $item?->update(['status' => 'submitted', 'submitted_at' => now(), 'fix_reason' => null]);
+        if ($item !== null && $item->getAttribute('assigned_reviewer_id') === null) {
+            app(Reviews::class)->assign($item);
+        }
         app(AuditLogger::class)->record('transactions.document.uploaded', $deal, metadata: ['item' => $item?->label, 'filename' => $doc->filename, 'version' => $version], label: $deal->street);
 
         return $doc;

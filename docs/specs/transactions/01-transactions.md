@@ -47,3 +47,22 @@ checklist templates by deal type and state with required documents, document upl
 missing", file locked after closing, compensation linked (calculate at contract, finalise at closing,
 revenue share automatically), audit trail. Earnest money, CDA and the review-queue team tools follow in
 part 2.
+
+## Sprint 11B-T2 (Transactions core, part 2) — delivered
+
+Earnest money (expected, received, released or refunded; due dates with overdue warnings; deposits in the
+brokerage trust account post to the ledger — trust cash against escrow deposits held per deal — for the
+three-way reconciliation sprint); referrals in and out (outgoing fees feed the commission calculation as the
+outside referral; added before contract; yearly 1099-NEC data for fees paid, with W-9 status); the
+**wire-fraud-safe CDA** (from the deal's calculation; title-facing payees only — outside referral and the
+brokerage remainder, adding up to the GCI exactly — never agents' internal splits or full bank numbers;
+versioned, a new version kills the old link; approved by someone other than the deal's agent with the
+"Approve CDAs" permission; sent only to a title company verified by call-back, as an emailed secret link the
+title officer opens without signing in and acknowledges by name; sent, opened and acknowledged tracked);
+the brokerage receiving account (bank and last four only) changes only when a second person confirms by
+call-back, needing the bank-details permission and a fresh password; reviewer auto-assignment to the lightest
+load (never the deal's agent), mine/everyone and bulk approve; the complete transaction file export (every
+document version, checklist decisions, the deal's audit trail, an audit certificate with each document's
+SHA-256 and the chain check; the download is audited); the pending-deal cash forecast (company dollar in the
+next 30/60/90 days, brokerage only). New permissions: Approve CDAs, Record earnest money, Export complete
+files. Settings › Transactions: title companies, receiving account, referral fees paid.

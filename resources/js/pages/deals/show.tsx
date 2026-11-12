@@ -1,3 +1,9 @@
+import {
+    MoneyDesk,
+    type Cda,
+    type Deposit,
+    type Referral,
+} from '@/components/deals/money-desk';
 import { Head, router, useForm } from '@inertiajs/react';
 import { CameraIcon, UploadIcon } from 'lucide-react';
 import { useRef, useState } from 'react';
@@ -240,7 +246,18 @@ export default function ShowDeal({
     missing,
     reviewer,
     reasons,
-}: Props) {
+    deposits,
+    referrals,
+    cdas,
+    titles,
+    can,
+}: Props & {
+    deposits: Deposit[];
+    referrals: Referral[];
+    cdas: Cda[];
+    titles: { ulid: string; name: string }[];
+    can: { trust: boolean; approveCda: boolean; export: boolean };
+}) {
     const contract = useForm({
         status: 'under_contract',
         price: deal.price_cents ? String(deal.price_cents / 100) : '',
@@ -424,6 +441,15 @@ export default function ShowDeal({
                         ))}
                     </ul>
                 </section>
+                <MoneyDesk
+                    deal={deal}
+                    deposits={deposits}
+                    referrals={referrals}
+                    cdas={cdas}
+                    titles={titles}
+                    reviewer={reviewer}
+                    can={can}
+                />
             </div>
         </>
     );
