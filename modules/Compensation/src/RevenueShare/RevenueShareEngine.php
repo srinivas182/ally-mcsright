@@ -37,7 +37,7 @@ final class RevenueShareEngine
 
     private ?string $limitReason = null;
 
-    public function __construct(private readonly Sponsorships $sponsorships, private readonly Unlocking $unlocking) {}
+    public function __construct(private readonly Sponsorships $sponsorships, private readonly Unlocking $unlocking, private readonly Members $members, private readonly Holds $holds) {}
 
     public function distribute(Calculation $final): void
     {
@@ -82,10 +82,12 @@ final class RevenueShareEngine
             }
         }
 
+        $this->milestones($final, $date);
+
         if ($this->credits !== []) {
             $journal = $this->post($final, $this->credits, $date, 1, null);
             DB::connection(Connections::cell())->table('rs_entries')->where('calculation_id', $final->id)
-                ->whereIn('kind', ['share', 'root'])->whereNull('journal_id')->update(['journal_id' => $journal]);
+                ->whereIn('kind', ['share', 'root', 'bonus'])->whereNull('journal_id')->update(['journal_id' => $journal]);
         }
         $this->warnBudget($date);
     }
@@ -101,19 +103,28 @@ final class RevenueShareEngine
         if ($amount <= 0) {
             return;
         }
-        $reason = match (true) {
-            $payee === null => 'missing_upline',
-            ! $this->eligible($payee) => 'ineligible_upline',
-            ! $this->unlocking->open($payee, (int) $entry['level'], $rules, $date) => 'locked_level',
-            default => null,
-        };
+        $reason = $payee === null ? 'missing_upline' : null;
+        $resolved = null;
+        if ($payee !== null) {
+            [$resolved, $why] = $this->members->payee($payee, $rules, $date);
+            $reason = $resolved === null ? $why : (! $this->unlocking->open($payee, (int) $entry['level'], $rules, $date) ? 'locked_level' : null);
+        }
 
-        if ($reason === null) {
-            $pay = $this->limit($payee, $amount, $rules, $date, $budget);
+        if ($reason === null && $resolved !== null) {
+            $pay = $this->limit($resolved, $amount, $rules, $date, $budget);
+            $cutReason = $this->limitReason;
             if ($pay > 0) {
-                $this->insert($final, $row, $date, $entry + ['kind' => 'share', 'amount_cents' => $pay, 'recipient_user_id' => $payee]);
-                $this->credits[$payee] = ($this->credits[$payee] ?? 0) + $pay;
+                $signals = $this->holds->signals((int) $row['user_id'], $resolved, $row, $rules, $date);
+                if ($signals !== []) {
+                    // Looks like self-sponsoring or gaming: held until the brokerage reviews it.
+                    $id = $this->insert($final, $row, $date, $entry + ['kind' => 'held', 'amount_cents' => $pay, 'recipient_user_id' => $resolved, 'reason' => $signals[0]]);
+                    $this->holds->hold($id, $final->tenant_id, $signals);
+                } else {
+                    $this->insert($final, $row, $date, $entry + ['kind' => 'share', 'amount_cents' => $pay, 'recipient_user_id' => $resolved]);
+                    $this->credits[$resolved] = ($this->credits[$resolved] ?? 0) + $pay;
+                }
             }
+            $this->limitReason = $cutReason;
             if ($amount - $pay > 0) {
                 $this->insert($final, $row, $date, $entry + ['kind' => 'missed', 'amount_cents' => $amount - $pay, 'reason' => $this->limitReason, 'missed_user_id' => $payee]);
             }
@@ -239,12 +250,53 @@ final class RevenueShareEngine
                 'basis' => $r->basis, 'base_cents' => -(int) $r->base_cents, 'percent' => $r->percent, 'amount_cents' => -(int) $r->amount_cents,
                 'reversal_of' => $r->id, 'closing_date' => $r->closing_date, 'created_at' => now(),
             ]);
-            if (in_array($r->kind, ['share', 'root'], true) && $r->recipient_user_id !== null) {
+            if (in_array($r->kind, ['share', 'root', 'bonus'], true) && $r->recipient_user_id !== null) {
                 $credits[(int) $r->recipient_user_id] = ($credits[(int) $r->recipient_user_id] ?? 0) + (int) $r->amount_cents;
             }
         }
         if ($credits !== []) {
             $this->post($final, $credits, CarbonImmutable::now(), -1, 'Reversal of revenue share for '.$final->deal_ref);
+        }
+        // Payments still held for review are cancelled with the deal.
+        $db->table('rs_holds')->whereIn('entry_id', $rows->where('kind', 'held')->pluck('id'))->where('status', 'held')
+            ->update(['status' => 'rejected', 'note' => 'Deal reversed', 'reviewed_at' => now(), 'updated_at' => now()]);
+    }
+
+    /** Posts a released held payment to the recipient's wallet. */
+    public function postRelease(Calculation $final, int $entryId, int $recipient, int $cents): int
+    {
+        $accounts = app(ChartOfAccounts::class);
+        $accounts->seed();
+        $name = User::query()->whereKey($recipient)->value('first_name') ?? 'Agent';
+        $draft = JournalDraft::make('revenue_share', 'revenue_share_release:'.$entryId)->source('revenue_share', $final->ulid)
+            ->describe('Released revenue share for '.$final->deal_ref)
+            ->debit($accounts->account('5000'), Money::of($cents))
+            ->credit($accounts->subAccount('2100', 'user', $recipient, "Revenue share — {$name}"), Money::of($cents));
+
+        return app(LedgerService::class)->post($draft)->id;
+    }
+
+    /** Milestone bonus (addition 10): to the sponsor when a recruit closes their very first deal. */
+    private function milestones(Calculation $final, CarbonImmutable $date): void
+    {
+        $db = DB::connection(Connections::cell());
+        foreach ((array) ($final->result['agents'] ?? []) as $row) {
+            /** @var array<string, mixed> $row */
+            $rules = $this->rulesFor($row);
+            $agentId = (int) $row['user_id'];
+            if ($rules?->milestoneFirstClosingCents === null
+                || $db->table('comp_calculation_agents')->where('agent_user_id', $agentId)->where('status', 'final')->count() !== 1
+                || $db->table('rs_entries')->where('source_agent_user_id', $agentId)->where('kind', 'bonus')->whereNull('reversal_of')->exists()) {
+                continue;
+            }
+            $sponsor = $this->sponsorships->sponsorOf($agentId, $date);
+            [$payee] = $sponsor !== null ? $this->members->payee($sponsor, $rules, $date) : [null];
+            if ($payee === null) {
+                continue;
+            }
+            $this->insert($final, $row, $date, ['level' => 1, 'kind' => 'bonus', 'reason' => 'first_closing', 'basis' => 'milestone', 'base_cents' => 0,
+                'percent' => '0', 'amount_cents' => $rules->milestoneFirstClosingCents, 'recipient_user_id' => $payee]);
+            $this->credits[$payee] = ($this->credits[$payee] ?? 0) + $rules->milestoneFirstClosingCents;
         }
     }
 
@@ -288,13 +340,6 @@ final class RevenueShareEngine
         return $version instanceof PlanVersion ? $version->commissionRules()->revenueShare : null;
     }
 
-    private function eligible(int $userId): bool
-    {
-        $user = User::query()->find($userId);
-
-        return $user instanceof User && $user->status === UserStatus::Active;
-    }
-
     private function rootUserId(): ?int
     {
         $root = DB::connection(Connections::cell())->table('rs_settings')->value('root_user_id');
@@ -310,9 +355,9 @@ final class RevenueShareEngine
      * @param  array<string, mixed>  $row
      * @param  array<string, mixed>  $entry
      */
-    private function insert(Calculation $final, array $row, CarbonImmutable $date, array $entry): void
+    private function insert(Calculation $final, array $row, CarbonImmutable $date, array $entry): int
     {
-        DB::connection(Connections::cell())->table('rs_entries')->insert($entry + [
+        return DB::connection(Connections::cell())->table('rs_entries')->insertGetId($entry + [
             'tenant_id' => $final->tenant_id, 'calculation_id' => $final->id, 'deal_ref' => $final->deal_ref,
             'source_agent_user_id' => (int) $row['user_id'], 'recipient_user_id' => null, 'missed_user_id' => null, 'reason' => null,
             'closing_date' => $date->toDateString(), 'created_at' => now(),

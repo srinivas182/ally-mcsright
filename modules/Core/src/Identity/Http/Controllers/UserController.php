@@ -100,11 +100,13 @@ final class UserController
             'last_name' => ['required', 'string', 'max:80'],
             'kind' => ['required', Rule::enum(UserKind::class)],
             'assisted_user_id' => ['nullable', 'integer'],
+            'sponsor' => ['nullable', 'string', 'size:26'],
         ]);
 
         $invitations->invite(
             $data['email'], $data['first_name'], $data['last_name'], UserKind::from($data['kind']),
             self::actor($request), isset($data['assisted_user_id']) ? (int) $data['assisted_user_id'] : null,
+            isset($data['sponsor']) ? User::query()->where('ulid', $data['sponsor'])->value('id') : null,
         );
 
         Inertia::flash('toast', ['type' => 'success', 'message' => "Invitation sent to {$data['email']}."]);
