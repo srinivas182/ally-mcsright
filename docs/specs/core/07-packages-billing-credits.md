@@ -273,3 +273,27 @@ $55, RightAlly $45.
 Stripe Billing (cards, subscriptions, invoices), Stripe Tax (SaaS sales tax by state), Stripe Connect
 (brokerage payouts, identity checks, 1099 forms). Delivery: Team A (plans, billing, access, dashboard,
 Sprints 20–21), Team B (commissions and payouts), before the pilot at Sprint 26.
+
+### Owner decisions (approved, Sprint 10A-2 planning)
+
+- **Agents pay RightAlly directly by default for every brokerage** (HQ global setting, on). Brokers cannot
+  change it, so they carry no contract or liability. **HQ exception per brokerage**: "This brokerage pays for
+  its agents", only when a brokerage wants the liability (reason recorded, audited). If HQ turns the global
+  default off, brokers choose in Settings › Agent plans.
+- **Worked example**: public price $200; brokerage floor $100 (50% partner discount); brokerage price
+  anywhere from $100 to $200; revenue share 20% of the floor = $20. At $150 the brokerage earns $20 + $50
+  markup = $70 and RightAlly keeps $80. **RightAlly always keeps the same amount per agent.**
+- **Stripe settings in the HQ console**: test and live keys stored separately, encrypted, never shown again;
+  test/live switch (going live needs identity re-confirmation, audited); a "Test mode: no real charges" banner
+  for HQ and every brokerage. **Brokerages never enter Stripe keys**; they see the same mode and connect a
+  Stripe account only to receive commission payouts (Stripe Connect).
+- **rightally.io pricing**: each plan shows the direct price and "from $X through a RightAlly partner
+  brokerage", with **"My brokerage is a partner"** (join code or name → that brokerage's price before signing
+  up) and **"Invite my broker"** (a direct agent invites their broker to become a partner — a growth loop).
+- **Automatic switch**: when a direct agent's brokerage becomes a partner, the agent moves to the brokerage
+  price at their next billing date and the brokerage starts earning on them.
+- Delivery: 10A-2 agent payments (settings, default model and exceptions, gateway, checkout, webhooks,
+  grace, card and invoice portal, fully sponsored agents); 10A-2b broker flat fee, packages, partial
+  subsidies, join code and lookup, Stripe Tax; 10A-3 commissions, statements, Connect payouts, partner
+  dashboard, Invite my broker, automatic switch. The public pricing page ships with the RightAlly website
+  sprint; keeping an account after leaving a brokerage ships with RightAlly for Agents (Team E).

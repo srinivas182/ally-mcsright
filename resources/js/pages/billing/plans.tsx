@@ -1,4 +1,4 @@
-import { Head } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,12 @@ type Props = {
     }[];
     featureNames: Record<string, string>;
     paymentsOpen: boolean;
+    subscription: {
+        status: string;
+        grace_until: string | null;
+        sponsored: boolean;
+        price_cents: number;
+    } | null;
 };
 
 /** Plans at the brokerage's price, next to the public price. */
@@ -30,6 +36,7 @@ export default function Plans({
     plans,
     featureNames,
     paymentsOpen,
+    subscription,
 }: Props) {
     return (
         <>
@@ -50,6 +57,35 @@ export default function Plans({
                     >
                         Your brokerage asks you to choose a plan to use
                         RightAlly.
+                    </p>
+                )}
+                {subscription?.status === 'grace' && (
+                    <p
+                        role="alert"
+                        className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-100"
+                    >
+                        Your last payment didn't go through. Everything keeps
+                        working until{' '}
+                        {subscription.grace_until
+                            ? new Date(
+                                  subscription.grace_until,
+                              ).toLocaleDateString()
+                            : 'next week'}
+                        . Update your card to keep it that way.
+                    </p>
+                )}
+                {subscription && !subscription.sponsored && (
+                    <Button
+                        variant="outline"
+                        className="justify-self-start"
+                        onClick={() => router.get('/plans/portal')}
+                    >
+                        Manage card and invoices
+                    </Button>
+                )}
+                {subscription?.sponsored && (
+                    <p className="text-sm">
+                        Your brokerage pays for your plan.
                     </p>
                 )}
                 {wanted && featureNames[wanted] && (

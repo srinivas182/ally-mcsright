@@ -1,5 +1,5 @@
 import { ViewAsDialog } from '@/components/view-as-dialog';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
@@ -83,7 +83,12 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
     );
 }
 
-export default function ShowTenant({ tenant, domains, redirects }: Props) {
+export default function ShowTenant({
+    tenant,
+    domains,
+    redirects,
+    billing,
+}: Props & { billing: { exception: boolean; reason: string | null } }) {
     const [action, setAction] = useState<Action>(null);
     const reasonForm = useForm({ reason: '' });
     const slugForm = useForm({ slug: tenant.slug });
@@ -392,6 +397,7 @@ export default function ShowTenant({ tenant, domains, redirects }: Props) {
                     onClose={() => setSupport(null)}
                 />
             )}
+            <BillingException ulid={tenant.ulid} billing={billing} />
         </>
     );
 }
@@ -399,3 +405,48 @@ export default function ShowTenant({ tenant, domains, redirects }: Props) {
 ShowTenant.layout = {
     breadcrumbs: [{ title: 'Tenants', href: '/hq/tenants' }],
 };
+
+function BillingException({
+    ulid,
+    billing,
+}: {
+    ulid: string;
+    billing: { exception: boolean; reason: string | null };
+}) {
+    const [reason, setReason] = useState(billing.reason ?? '');
+
+    return (
+        <section className="mx-4 mb-6 grid max-w-xl gap-2 rounded-lg border p-4 text-sm md:mx-6">
+            <h2 className="font-semibold">Who pays</h2>
+            <p className="text-muted-foreground">
+                {billing.exception
+                    ? `This brokerage pays for its agents: ${billing.reason ?? ''}`
+                    : 'Agents pay RightAlly directly (default). The brokerage has no liability.'}
+            </p>
+            {!billing.exception && (
+                <input
+                    aria-label="Reason"
+                    placeholder="Signed brokerage agreement, 12 Jan"
+                    className="rounded-md border bg-background px-3 py-2"
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                />
+            )}
+            <button
+                type="button"
+                className="justify-self-start rounded-md border px-3 py-2"
+                onClick={() =>
+                    router.post(
+                        `/hq/tenants/${ulid}/billing-exception`,
+                        { enabled: !billing.exception, reason },
+                        { preserveScroll: true },
+                    )
+                }
+            >
+                {billing.exception
+                    ? 'Return to agents pay'
+                    : 'This brokerage pays for its agents'}
+            </button>
+        </section>
+    );
+}

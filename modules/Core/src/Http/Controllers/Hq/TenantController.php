@@ -87,6 +87,7 @@ final class TenantController
     public function show(Tenant $tenant): Response
     {
         return Inertia::render('hq/tenants/show', [
+            'billing' => ['exception' => (bool) $tenant->getAttribute('billing_exception'), 'reason' => $tenant->getAttribute('billing_exception_reason')],
             'tenant' => [
                 'ulid' => $tenant->ulid,
                 'name' => $tenant->name,

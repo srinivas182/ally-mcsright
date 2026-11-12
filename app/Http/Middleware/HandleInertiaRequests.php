@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 use Laravel\Fortify\Features;
+use Modules\Billing\PaymentSettings;
 use Modules\Core\Identity\Impersonation;
 use Modules\Core\Identity\Security\TwoFactorPolicy;
 use Modules\Core\Navigation\NavigationRegistry;
@@ -80,6 +81,8 @@ class HandleInertiaRequests extends Middleware
             // The brokerage (or HQ) this page belongs to, and the menu this user may see.
             'tenant' => fn (): ?array => $this->tenant(),
             'security' => fn (): ?array => $this->security($request),
+            'paymentsTestMode' => fn (): bool => app(PaymentSettings::class)->summary()['mode'] === 'test'
+                && app(PaymentSettings::class)->summary()['test_set'],
             'impersonation' => function () use ($request): ?array {
                 $data = app(Impersonation::class)->current($request);
 
