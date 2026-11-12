@@ -6,6 +6,7 @@ namespace Modules\Compensation\RevenueShare;
 
 use App\Models\User;
 use Brick\Math\BigDecimal;
+use Brick\Math\RoundingMode;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Modules\Compensation\Calculator\DealSideInput;
@@ -31,13 +32,20 @@ final class RevenueShareEngine
 {
     public const MAX_DEPTH = RevenueShareRules::MAX_LEVELS;
 
-    public function __construct(private readonly Sponsorships $sponsorships) {}
+    /** @var array<int, int> recipient => cents in the deal being distributed */
+    private array $credits = [];
+
+    private ?string $limitReason = null;
+
+    public function __construct(private readonly Sponsorships $sponsorships, private readonly Unlocking $unlocking) {}
 
     public function distribute(Calculation $final): void
     {
         $input = DealSideInput::fromArray($final->inputs);
         $date = $input->closingDate;
-        $credits = [];
+        $this->credits = [];
+        $this->unlocking->forget();
+        $budget = $this->budgetRoom($date);
 
         foreach ((array) ($final->result['agents'] ?? []) as $row) {
             /** @var array<string, mixed> $row */
@@ -46,56 +54,171 @@ final class RevenueShareEngine
                 continue;
             }
             $base = $this->base($rules->basis, $row);
-            if ($base <= 0) {
-                continue;
-            }
-            $distributable = $this->distributable($base, $rules);
+            $companyTotal = (int) $row['company_cents'] + (int) ($row['post_cap_fee_cents'] ?? 0);
+            // Never more than the brokerage earned on the deal, nor above the plan's per-deal maximum.
+            $distributable = min($this->distributable(max(0, $base), $rules), max(0, $companyTotal), $rules->perDealMaxCents ?? PHP_INT_MAX);
             if ($distributable <= 0) {
                 continue;
             }
-            $parts = Money::of($distributable)->allocate($rules->levels);
-            $chain = $this->sponsorships->chain((int) $row['user_id'], $date, count($rules->levels));
-            $root = $this->rootUserId();
+            $agentId = (int) $row['user_id'];
+            $chain = $this->sponsorships->chain($agentId, $date, count($rules->levels));
+            $co = $this->sponsorships->coSponsorOf($agentId, $date);
             $rootPaid = 0;
 
-            foreach ($parts as $i => $part) {
-                $amount = $part->cents;
-                if ($amount === 0) {
+            foreach (Money::of($distributable)->allocate($rules->levels) as $i => $part) {
+                if ($part->cents === 0) {
                     continue;
                 }
-                $upline = $chain[$i] ?? null;
-                $entry = ['level' => $i + 1, 'percent' => $rules->levels[$i], 'base_cents' => $base, 'basis' => $rules->basis];
+                $level = $i + 1;
+                $entry = ['level' => $level, 'percent' => $rules->levels[$i], 'base_cents' => $base, 'basis' => $rules->basis];
+                // Level 1 is shared with a co-sponsor; deeper levels follow the primary sponsor's line.
+                $slots = $level === 1 && $co !== null && isset($chain[0])
+                    ? array_map(null, [$chain[0], $co[0]], array_values(array_map(fn (Money $m): int => $m->cents, $part->allocate([(string) BigDecimal::of(100)->minus($co[1]), $co[1]]))))
+                    : [[$chain[$i] ?? null, $part->cents]];
 
-                if ($upline !== null && $this->eligible($upline)) {
-                    $this->insert($final, $row, $date, $entry + ['kind' => 'share', 'amount_cents' => $amount, 'recipient_user_id' => $upline]);
-                    $credits[$upline] = ($credits[$upline] ?? 0) + $amount;
-
-                    continue;
-                }
-
-                $reason = $upline === null ? 'missing_upline' : 'ineligible_upline';
-                $policy = $upline === null ? $rules->missingUpline : $rules->ineligibleUpline;
-                $toRoot = 0;
-                if ($policy === 'root' && $root !== null) {
-                    $room = $rules->fallbackCapCents !== null ? max(0, $rules->fallbackCapCents - $rootPaid) : $amount;
-                    $toRoot = min($amount, $room);
-                }
-                if ($toRoot > 0) {
-                    $this->insert($final, $row, $date, $entry + ['kind' => 'root', 'amount_cents' => $toRoot, 'reason' => $reason, 'recipient_user_id' => $root, 'missed_user_id' => $upline]);
-                    $credits[$root] = ($credits[$root] ?? 0) + $toRoot;
-                    $rootPaid += $toRoot;
-                }
-                if ($amount - $toRoot > 0) {
-                    $this->insert($final, $row, $date, $entry + ['kind' => 'missed', 'amount_cents' => $amount - $toRoot,
-                        'reason' => $policy === 'root' && $root !== null ? 'fallback_cap' : $reason, 'missed_user_id' => $upline]);
+                foreach ($slots as [$payee, $amount]) {
+                    $this->slot($final, $row, $date, $rules, $entry, $payee, (int) $amount, $rootPaid, $budget);
                 }
             }
         }
 
-        if ($credits !== []) {
-            $journal = $this->post($final, $credits, $date, 1, null);
+        if ($this->credits !== []) {
+            $journal = $this->post($final, $this->credits, $date, 1, null);
             DB::connection(Connections::cell())->table('rs_entries')->where('calculation_id', $final->id)
                 ->whereIn('kind', ['share', 'root'])->whereNull('journal_id')->update(['journal_id' => $journal]);
+        }
+        $this->warnBudget($date);
+    }
+
+    /**
+     * Pays one level (or one co-sponsor's part of level 1), or records why it was missed.
+     *
+     * @param  array<string, mixed>  $row
+     * @param  array<string, mixed>  $entry
+     */
+    private function slot(Calculation $final, array $row, CarbonImmutable $date, RevenueShareRules $rules, array $entry, ?int $payee, int $amount, int &$rootPaid, ?int &$budget): void
+    {
+        if ($amount <= 0) {
+            return;
+        }
+        $reason = match (true) {
+            $payee === null => 'missing_upline',
+            ! $this->eligible($payee) => 'ineligible_upline',
+            ! $this->unlocking->open($payee, (int) $entry['level'], $rules, $date) => 'locked_level',
+            default => null,
+        };
+
+        if ($reason === null) {
+            $pay = $this->limit($payee, $amount, $rules, $date, $budget);
+            if ($pay > 0) {
+                $this->insert($final, $row, $date, $entry + ['kind' => 'share', 'amount_cents' => $pay, 'recipient_user_id' => $payee]);
+                $this->credits[$payee] = ($this->credits[$payee] ?? 0) + $pay;
+            }
+            if ($amount - $pay > 0) {
+                $this->insert($final, $row, $date, $entry + ['kind' => 'missed', 'amount_cents' => $amount - $pay, 'reason' => $this->limitReason, 'missed_user_id' => $payee]);
+            }
+
+            return;
+        }
+
+        $policy = $payee === null ? $rules->missingUpline : $rules->ineligibleUpline;
+        $root = $policy === 'root' ? $this->rootUserId() : null;
+        $toRoot = 0;
+        if ($root !== null) {
+            $room = $rules->fallbackCapCents !== null ? max(0, $rules->fallbackCapCents - $rootPaid) : $amount;
+            $toRoot = $this->limit($root, min($amount, $room), $rules, $date, $budget, recipientCap: false);
+        }
+        if ($toRoot > 0) {
+            $this->insert($final, $row, $date, $entry + ['kind' => 'root', 'amount_cents' => $toRoot, 'reason' => $reason, 'recipient_user_id' => $root, 'missed_user_id' => $payee]);
+            $this->credits[(int) $root] = ($this->credits[(int) $root] ?? 0) + $toRoot;
+            $rootPaid += $toRoot;
+        }
+        if ($amount - $toRoot > 0) {
+            $this->insert($final, $row, $date, $entry + ['kind' => 'missed', 'amount_cents' => $amount - $toRoot,
+                'reason' => $root !== null ? ($this->limitReason ?? 'fallback_cap') : $reason, 'missed_user_id' => $payee]);
+        }
+    }
+
+    /**
+     * Applies the per-recipient yearly maximum and the brokerage budget; sets limitReason when it cuts.
+     */
+    private function limit(int $recipient, int $amount, RevenueShareRules $rules, CarbonImmutable $date, ?int &$budget, bool $recipientCap = true): int
+    {
+        $this->limitReason = null;
+        $pay = $amount;
+        if ($recipientCap && $rules->perRecipientYearlyMaxCents !== null) {
+            $received = (int) DB::connection(Connections::cell())->table('rs_entries')->where('recipient_user_id', $recipient)->where('kind', 'share')
+                ->whereYear('closing_date', $date->year)->sum('amount_cents') + ($this->credits[$recipient] ?? 0);
+            $room = max(0, $rules->perRecipientYearlyMaxCents - $received);
+            if ($pay > $room) {
+                $pay = $room;
+                $this->limitReason = 'recipient_limit';
+            }
+        }
+        if ($budget !== null && $pay > $budget) {
+            $pay = max(0, $budget);
+            $this->limitReason = 'budget';
+        }
+        if ($budget !== null) {
+            $budget -= $pay;
+        }
+
+        return $pay;
+    }
+
+    /** Room left in the brokerage's yearly revenue share budget (null when no budget is set). */
+    public function budgetRoom(CarbonImmutable $date): ?int
+    {
+        $percent = DB::connection(Connections::cell())->table('rs_settings')->value('budget_percent');
+        if ($percent === null) {
+            return null;
+        }
+
+        return max(0, $this->ofPercent($this->companyDollarYtd($date), (string) $percent) - $this->paidYtd($date));
+    }
+
+    public function companyDollarYtd(CarbonImmutable $date): int
+    {
+        $total = 0;
+        foreach (Calculation::query()->where('status', 'final')->get() as $calc) {
+            if (substr((string) ($calc->inputs['closing_date'] ?? ''), 0, 4) !== (string) $date->year) {
+                continue;
+            }
+            foreach ((array) ($calc->result['agents'] ?? []) as $r) {
+                $total += (int) $r['company_cents'] + (int) ($r['post_cap_fee_cents'] ?? 0);
+            }
+        }
+
+        return $total;
+    }
+
+    /** A percentage of an amount in cents, rounded down, with exact decimal maths. */
+    private function ofPercent(int $cents, string $percent): int
+    {
+        return BigDecimal::of($cents)->multipliedBy($percent)->dividedBy(100, 0, RoundingMode::Down)->toInt();
+    }
+
+    public function paidYtd(CarbonImmutable $date): int
+    {
+        return (int) DB::connection(Connections::cell())->table('rs_entries')->whereIn('kind', ['share', 'root'])
+            ->whereYear('closing_date', $date->year)->sum('amount_cents');
+    }
+
+    /** Owners are emailed once a year when revenue share passes 80% of the budget. */
+    private function warnBudget(CarbonImmutable $date): void
+    {
+        $db = DB::connection(Connections::cell());
+        $settings = $db->table('rs_settings')->first();
+        if ($settings === null || $settings->budget_percent === null || (int) ($settings->budget_warned_year ?? 0) === $date->year) {
+            return;
+        }
+        $budget = $this->ofPercent($this->companyDollarYtd($date), (string) $settings->budget_percent);
+        if ($budget <= 0 || $this->paidYtd($date) * 10 < $budget * 8) {
+            return;
+        }
+        $db->table('rs_settings')->update(['budget_warned_year' => $date->year, 'updated_at' => now()]);
+        foreach (User::query()->where('kind', UserKind::Owner)->where('status', UserStatus::Active)->get() as $owner) {
+            $owner->notify(new BudgetWarning((string) $settings->budget_percent, $this->paidYtd($date), $budget));
         }
     }
 

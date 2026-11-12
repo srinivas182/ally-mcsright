@@ -29,6 +29,16 @@ final readonly class RevenueShareRules
         public string $missingUpline = 'root',
         public string $ineligibleUpline = 'forfeit',
         public ?int $fallbackCapCents = null,
+        public ?int $openLevels = null,            // null: every level open
+        public int $qualifyingMinClosings = 2,
+        public int $qualifyingMinGciCents = 500_000,
+        public int $qualifyingWindowMonths = 6,
+        /** @var array<int, int> level => qualifying front-line agents needed */
+        public array $unlockThresholds = [],
+        public ?int $productionThroughLevel = null, // capping opens levels up to this one
+        public int $productionMonths = 13,
+        public ?int $perDealMaxCents = null,
+        public ?int $perRecipientYearlyMaxCents = null,
     ) {}
 
     /**
@@ -46,7 +56,7 @@ final readonly class RevenueShareRules
 
         $levels = [];
         foreach ((array) ($data['levels'] ?? []) as $i => $pct) {
-            if (! is_numeric($pct) || (float) $pct < 0 || (float) $pct > 100) {
+            if (! is_numeric($pct) || BigDecimal::of((string) $pct)->isNegative() || BigDecimal::of((string) $pct)->isGreaterThan(100)) {
                 $errors["revenue_share.levels.{$i}"] = 'Each level is a percentage from 0 to 100.';
 
                 continue;
@@ -85,6 +95,43 @@ final readonly class RevenueShareRules
             $errors['revenue_share.fallback_cap_cents'] = 'The fallback cap is an amount in cents.';
         }
 
-        return new self($basis, $levels, $missing, $ineligible, is_int($cap) ? $cap : null);
+        // Tier unlocking (addition 1).
+        $unlock = is_array($data['unlock'] ?? null) ? $data['unlock'] : [];
+        $int = static function (mixed $v, string $key, int $min, array &$errors): ?int {
+            if ($v === null) {
+                return null;
+            }
+            if (! is_int($v) || $v < $min) {
+                $errors["revenue_share.{$key}"] = 'Use a whole number'.($min > 0 ? " of at least {$min}" : '').'.';
+
+                return null;
+            }
+
+            return $v;
+        };
+        $thresholds = [];
+        foreach ((array) ($unlock['thresholds'] ?? []) as $level => $needed) {
+            if (! is_numeric($level) || (int) $level < 1 || (int) $level > self::MAX_LEVELS || ! is_int($needed) || $needed < 0) {
+                $errors['revenue_share.unlock.thresholds'] = 'Thresholds are level number => qualifying agents needed.';
+
+                continue;
+            }
+            $thresholds[(int) $level] = $needed;
+        }
+        ksort($thresholds);
+
+        // Funding limits (addition 2).
+        $funding = is_array($data['funding'] ?? null) ? $data['funding'] : [];
+
+        return new self($basis, $levels, $missing, $ineligible, is_int($cap) ? $cap : null,
+            $int($unlock['open_levels'] ?? null, 'unlock.open_levels', 0, $errors),
+            $int($unlock['qualifying']['min_closings'] ?? 2, 'unlock.qualifying.min_closings', 0, $errors) ?? 2,
+            $int($unlock['qualifying']['min_gci_cents'] ?? 500_000, 'unlock.qualifying.min_gci_cents', 0, $errors) ?? 500_000,
+            $int($unlock['qualifying']['window_months'] ?? 6, 'unlock.qualifying.window_months', 1, $errors) ?? 6,
+            $thresholds,
+            $int($unlock['production']['through_level'] ?? null, 'unlock.production.through_level', 1, $errors),
+            $int($unlock['production']['months'] ?? 13, 'unlock.production.months', 1, $errors) ?? 13,
+            $int($funding['per_deal_max_cents'] ?? null, 'funding.per_deal_max_cents', 0, $errors),
+            $int($funding['per_recipient_yearly_max_cents'] ?? null, 'funding.per_recipient_yearly_max_cents', 0, $errors));
     }
 }
