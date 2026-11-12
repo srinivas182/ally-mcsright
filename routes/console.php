@@ -36,3 +36,5 @@ Schedule::command('audit:maintain weekly-digest')->weeklyOn(1, '13:00')->onOneSe
 Schedule::command('audit:maintain stream')->everyMinute()->withoutOverlapping()->onOneServer();
 // Temporary access: remove expired grants (specs/core/03).
 Schedule::command('core:expire-access')->hourly()->onOneServer();
+// Brokerage price increases reach existing agents after 30 days (specs/core/07).
+Schedule::command('billing:apply-price-changes')->dailyAt('04:00')->onOneServer();

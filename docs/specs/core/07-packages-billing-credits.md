@@ -206,6 +206,19 @@ Tenant: `core.billing.view`, `core.billing.manage`, `core.credits.view`, `core.c
 
 ## Brokerage-partner and agent-pays model (approved, version 1.0; ready before the pilot)
 
+Delivery: **10A delivered** (module `modules/Billing`): HQ agent plans (public list price, brokerage floor,
+features; floor never above list; increases reach brokerages after 60 days via price notices, decreases at
+once) and commission tiers; brokerage settings (who pays: brokerage or agents; agents without a plan keep
+the basics or must choose a plan; per-plan price between floor and list, offered, default; increases reach
+existing agents after 30 days via `billing:apply-price-changes`, decreases at once; earnings preview =
+commission on the floor + 100% markup); the **entitlements engine** (brokerage-pays and every existing
+brokerage: no change; agent-pays: owners and staff get the package, agents and their assistants get their
+plan's features while active or in grace, else minimal or blocked); `feature:` route guards on the CRM
+(back office, AI, Today's 10); agents' Plans page at the brokerage price beside the public price (Plans menu
+only under agent-pays); all changes audited. **10A-2 next**: payment gateway (Stripe; fake in tests), cards,
+subscriptions, join flow, failed-payment grace, subsidies, leaving a brokerage, Stripe Tax. **10A-3**:
+commissions, statements, Stripe Connect payouts, partner dashboard.
+
 **Everyone pays RightAlly directly by card. The brokerage is never responsible for agents' fees.**
 
 | Who                                 | Pays                                                     | Gets                                                                                                                                                                                 |

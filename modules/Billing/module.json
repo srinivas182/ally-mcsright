@@ -1,0 +1,9 @@
+{
+    "id": "billing",
+    "name": "Billing",
+    "version": "0.1.0",
+    "provider": "Modules\\Billing\\BillingServiceProvider",
+    "depends": ["core"],
+    "entitlement": null,
+    "description": "Brokerage packages, agent plans and prices, entitlements, and the brokerage-partner agent-pays model."
+}
