@@ -20,6 +20,8 @@ use Modules\Compensation\Models\Calculation;
 use Modules\Compensation\Models\CalculationAgent;
 use Modules\Compensation\Models\CapEntry;
 use Modules\Compensation\Models\CapPeriod;
+use Modules\Core\Audit\AuditLogger;
+use Modules\Core\Support\Connections;
 use Modules\Ledger\Money\Money;
 
 /**
@@ -41,6 +43,13 @@ final class CommissionService
 
     public function calculate(DealSideInput $input, string $dealRef, ?int $byUserId = null, ?string $note = null): Calculation
     {
+        if ($input->excludedReason !== null) {
+            if (mb_strlen(trim($input->excludedReason)) < 5) {
+                throw ValidationException::withMessages(['excluded_reason' => 'Say why this deal is excluded from plan progression and cap.']);
+            }
+            app(AuditLogger::class)->record('compensation.deal.excluded', metadata: ['deal' => $dealRef, 'reason' => $input->excludedReason], severity: 'warning', label: $dealRef);
+        }
+
         return DB::transaction(function () use ($input, $dealRef, $byUserId, $note): Calculation {
             $existing = Calculation::query()->where('deal_ref', $dealRef)->where('side', $input->side->value)->orderByDesc('version')->first();
             if ($existing !== null && $existing->status === 'final') {
@@ -69,7 +78,13 @@ final class CommissionService
 
             foreach ((array) $final->result['agents'] as $row) {
                 /** @var array<string, mixed> $row */
-                $this->addEntry($final, $row, 1, 'deal');
+                if (! ($row['excluded'] ?? false)) {
+                    $this->addEntry($final, $row, 1, 'deal');
+                }
+                $this->feeEntries($final, $row, 1, $input->closingDate);
+                if ((int) ($row['credit_used_cents'] ?? 0) > 0) {
+                    app(Credits::class)->consume((int) $row['user_id'], (int) $row['credit_used_cents'], $final->id, $input->closingDate);
+                }
             }
 
             return $final;
@@ -88,10 +103,15 @@ final class CommissionService
         }
 
         DB::transaction(function () use ($final, $reason): void {
+            $input = DealSideInput::fromArray($final->inputs);
             foreach ((array) $final->result['agents'] as $row) {
                 /** @var array<string, mixed> $row */
-                $this->addEntry($final, $row, -1, 'reversal');
+                if (! ($row['excluded'] ?? false)) {
+                    $this->addEntry($final, $row, -1, 'reversal');
+                }
+                $this->feeEntries($final, $row, -1, $input->closingDate);
             }
+            app(Credits::class)->restore($final->id);
             $final->update(['status' => 'reversed', 'change_note' => mb_substr('Reversed: '.$reason, 0, 500)]);
             CalculationAgent::query()->where('calculation_id', $final->id)->update(['status' => 'reversed']);
         });
@@ -163,24 +183,40 @@ final class CommissionService
         }
 
         $stateful = new DealSideInput($input->gci, $input->salePriceCents, $input->closingDate, $agents, $input->side,
-            $input->dealClass, $input->leadSource, $input->outsideReferralPercent);
+            $input->dealClass, $input->leadSource, $input->outsideReferralPercent, $input->excludedReason);
 
         return $this->calculator->calculate($stateful, fn (int $userId): ResolvedPlan => $resolved[$userId]);
     }
 
     private function withCapState(AgentShare $agent, ResolvedPlan $plan, CarbonImmutable $date): AgentShare
     {
+        $db = DB::connection(Connections::cell());
+        $ytd = $agent->ytdCompanyDollarCents;
+        $units = $agent->ytdUnits;
+        $capPaid = $agent->capPaidCents;
+        $postCapPaid = $agent->postCapFeesPaidCents;
+
         $cap = $plan->rules->cap;
-        if ($cap === null) {
-            return $agent;
+        if ($cap !== null) {
+            $period = $this->periods->periodFor($agent->userId, $cap, $date);
+            $units = max(0, CapEntry::query()->where('cap_period_id', $period->id)->where('reason', 'deal')->count()
+                - CapEntry::query()->where('cap_period_id', $period->id)->where('reason', 'reversal')->count());
+            $ytd = $capPaid = $period->company_dollar_cents;
+            $postCapPaid = $period->post_cap_fees_cents;
         }
 
-        $period = $this->periods->periodFor($agent->userId, $cap, $date);
-        $units = CapEntry::query()->where('cap_period_id', $period->id)->where('reason', 'deal')->count()
-            - CapEntry::query()->where('cap_period_id', $period->id)->where('reason', 'reversal')->count();
+        // Yearly fee totals, credit balance and team split.
+        $fees = $db->table('comp_fee_entries')->where('agent_user_id', $agent->userId)->where('year', $date->year)
+            ->groupBy('code')->selectRaw('code, sum(cents) as total')->pluck('total', 'code')->map(fn ($v): int => (int) $v)->all();
+        $team = $db->table('team_members')->join('teams', 'teams.id', '=', 'team_members.team_id')
+            ->where('team_members.user_id', $agent->userId)->whereNull('teams.deleted_at')->whereNotNull('teams.comp_split_percent')
+            ->where(fn ($q) => $q->whereNull('teams.leader_user_id')->orWhere('teams.leader_user_id', '!=', $agent->userId))
+            ->orderBy('teams.id')->first(['teams.leader_user_id', 'teams.comp_split_percent']);
 
-        return new AgentShare($agent->userId, $agent->sharePercent, $period->company_dollar_cents, max(0, $units),
-            $period->company_dollar_cents, $period->post_cap_fees_cents);
+        return new AgentShare($agent->userId, $agent->sharePercent, $ytd, $units, $capPaid, $postCapPaid, $fees,
+            app(Credits::class)->available($agent->userId, $date),
+            $team !== null && $team->leader_user_id !== null ? (int) $team->leader_user_id : null,
+            $team !== null && $team->leader_user_id !== null ? (string) $team->comp_split_percent : null);
     }
 
     private function store(DealSideInput $input, string $dealRef, string $status, ?Calculation $previous, ?int $byUserId, ?string $note): Calculation
@@ -223,7 +259,8 @@ final class CommissionService
         }
 
         $period = CapPeriod::query()->whereKey((int) $periodId)->lockForUpdate()->firstOrFail();
-        $company = $sign * (int) $row['company_cents'];
+        // Fees marked "counts toward cap" progress the cap like company dollar.
+        $company = $sign * ((int) $row['company_cents'] + (int) ($row['counted_fees_cents'] ?? 0));
         $fee = $sign * (int) ($row['post_cap_fee_cents'] ?? 0);
 
         CapEntry::query()->create(['cap_period_id' => $period->id, 'calculation_id' => $calculation->id,
@@ -240,6 +277,24 @@ final class CommissionService
 
         if ($nowCapped && ! $wasCapped) {
             AgentCapped::dispatch($period->tenant_id, $period->agent_user_id, $period->ulid);
+        }
+    }
+
+    /**
+     * Yearly fee totals (for fees with a yearly cap and for reporting).
+     *
+     * @param  array<string, mixed>  $row
+     */
+    private function feeEntries(Calculation $calculation, array $row, int $sign, CarbonImmutable $date): void
+    {
+        foreach ((array) ($row['fees'] ?? []) as $fee) {
+            if ((int) $fee['cents'] === 0) {
+                continue;
+            }
+            DB::connection(Connections::cell())->table('comp_fee_entries')->insert([
+                'tenant_id' => $calculation->tenant_id, 'agent_user_id' => (int) $row['user_id'], 'year' => $date->year,
+                'code' => (string) $fee['code'], 'calculation_id' => $calculation->id, 'cents' => $sign * (int) $fee['cents'], 'created_at' => now(),
+            ]);
         }
     }
 
@@ -272,6 +327,13 @@ final class CommissionService
                     'cap_after_cents' => $a->capAfterCents,
                     'capped' => $a->capped,
                     'cap_period_id' => $period,
+                    'counted_fees_cents' => $a->countedFeesCents,
+                    'excluded' => $a->excluded,
+                    'team_leader_user_id' => $a->teamLeaderUserId,
+                    'team_split_cents' => $a->teamSplit !== null ? $a->teamSplit->cents : 0,
+                    'credit_used_cents' => $a->creditUsed !== null ? $a->creditUsed->cents : 0,
+                    'brokerage_fees_cents' => array_sum(array_map(fn ($l) => $l->amount->cents, $a->brokerageFees)),
+                    'fees' => array_map(fn ($l): array => ['code' => $l->code, 'cents' => $l->amount->cents], [...$a->preSplit, ...$a->postSplit, ...$a->brokerageFees]),
                 ];
             }, $result->agents),
         ];

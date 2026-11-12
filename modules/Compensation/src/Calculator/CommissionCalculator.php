@@ -80,7 +80,7 @@ final class CommissionCalculator
         $base = $share;
         $pre = [];
         foreach ($plan->rules->preSplit as $deduction) {
-            $amount = $this->deductionAmount($deduction, $base, $agent->sharePercent, $currency);
+            $amount = $this->capped($deduction, $this->deductionAmount($deduction, $base, $agent->sharePercent, $currency), $agent, $steps);
             $base = $base->subtract($amount);
             $pre[] = new DeductionLine($deduction->code, $deduction->name, $amount, $deduction->payableTo);
             $steps[] = "Before the split: {$deduction->name} ".$this->describe($deduction)." = {$amount->format()}.";
@@ -90,7 +90,11 @@ final class CommissionCalculator
         $steps[] = $splitStep;
 
         // Cap: company dollar stops at the cap; the excess goes to the agent (legacy rules 10-12).
-        $cap = $plan->rules->cap;
+        // An excluded deal neither uses nor progresses the cap.
+        $cap = $input->excludedReason === null ? $plan->rules->cap : null;
+        if ($input->excludedReason !== null && $plan->rules->cap !== null) {
+            $steps[] = "Excluded from plan progression and cap: {$input->excludedReason}.";
+        }
         $postCapFee = null;
         $capped = false;
         if ($cap !== null) {
@@ -119,23 +123,56 @@ final class CommissionCalculator
             $agentGross = $agentGross->subtract($postCapFee);
             $steps[] = "Post-cap fee {$postCapFee->format()}.";
         }
+        // Team split: the team lead's share of a member's side, after the brokerage split.
+        $teamSplit = null;
+        if ($agent->teamLeaderUserId !== null && $agent->teamSplitPercent !== null && $agent->teamLeaderUserId !== $agent->userId
+            && BigDecimal::of($agent->teamSplitPercent)->isPositive()) {
+            $teamSplit = $agentGross->percentage($agent->teamSplitPercent);
+            $agentGross = $agentGross->subtract($teamSplit);
+            $steps[] = "Team split {$agent->teamSplitPercent}% to the team lead = {$teamSplit->format()}.";
+        }
         $steps[] = "Agent side before fees: {$agentGross->format()}.";
 
-        // Post-split deductions (transaction, E&O, technology) come off the agent's side.
+        // Post-split deductions (transaction, E&O, technology) come off the agent's side, unless the
+        // brokerage pays them (from company dollar). Credits pay the agent's fees first.
         $net = $agentGross;
         $post = [];
+        $brokerageFees = [];
+        $counted = 0;
+        $credit = $agent->creditCents;
+        $creditUsed = 0;
         foreach ($plan->rules->postSplit as $deduction) {
-            $amount = $this->deductionAmount($deduction, $net, $agent->sharePercent, $currency, percentOf: $agentGross);
+            $amount = $this->capped($deduction, $this->deductionAmount($deduction, $net, $agent->sharePercent, $currency, percentOf: $agentGross), $agent, $steps);
+            if ($deduction->chargedTo === 'brokerage') {
+                $brokerageFees[] = new DeductionLine($deduction->code, $deduction->name, $amount, $deduction->payableTo);
+                $steps[] = "Paid by the brokerage: {$deduction->name} = {$amount->format()}.";
+
+                continue;
+            }
             $net = $net->subtract($amount);
             $post[] = new DeductionLine($deduction->code, $deduction->name, $amount, $deduction->payableTo);
             $steps[] = "After the split: {$deduction->name} ".$this->describe($deduction)." = {$amount->format()}.";
+            if ($deduction->countsTowardCap && $cap !== null) {
+                $counted += $amount->cents;
+            }
+            if ($credit > 0 && $amount->cents > 0) {
+                $use = min($credit, $amount->cents);
+                $credit -= $use;
+                $creditUsed += $use;
+                $steps[] = 'Credit pays '.Money::of($use, $currency)->format()." of the {$deduction->name}.";
+            }
+        }
+        $creditMoney = $creditUsed > 0 ? Money::of($creditUsed, $currency) : null;
+        if ($creditMoney !== null) {
+            $net = $net->add($creditMoney);
         }
 
         $steps[] = "Agent receives {$net->format()}.";
 
         return new AgentCalculation($agent->userId, $plan->planName, $plan->planVersionId, $share, $pre, $base, $source,
             $company, $agentGross, $post, $net, $steps, $postCapFee, $cap?->amountCents,
-            $agent->capPaidCents, $agent->capPaidCents + $company->cents, $capped);
+            $agent->capPaidCents, $agent->capPaidCents + ($cap !== null ? $company->cents + $counted : 0), $capped,
+            $brokerageFees, $creditMoney, $teamSplit !== null ? $agent->teamLeaderUserId : null, $teamSplit, $counted, $input->excludedReason !== null);
     }
 
     /**
@@ -244,6 +281,26 @@ final class CommissionCalculator
         }
 
         throw new LogicException('Price bands must end with an open band.');
+    }
+
+    /**
+     * Limits a fee to what is left of its yearly cap for this agent.
+     *
+     * @param  list<string>  $steps
+     */
+    private function capped(Deduction $deduction, Money $amount, AgentShare $agent, array &$steps): Money
+    {
+        if ($deduction->annualCapCents === null) {
+            return $amount;
+        }
+        $room = max(0, $deduction->annualCapCents - ($agent->feesPaidCents[$deduction->code] ?? 0));
+        if ($amount->cents > $room) {
+            $steps[] = "{$deduction->name} limited by its yearly cap (".Money::of($deduction->annualCapCents, $amount->currency)->format().').';
+
+            return Money::of((int) $room, $amount->currency);
+        }
+
+        return $amount;
     }
 
     private function deductionAmount(Deduction $deduction, Money $available, string $sharePercent, string $currency, ?Money $percentOf = null): Money

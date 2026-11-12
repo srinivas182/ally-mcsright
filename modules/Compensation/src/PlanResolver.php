@@ -44,7 +44,13 @@ final class PlanResolver
             ->first()
             ?? throw new NoPlanForAgent("Plan \"{$plan->name}\" has no published version in force on {$date->toDateString()}.");
 
-        return new ResolvedPlan($version->commissionRules(), $plan->name, $version->id, $version->version);
+        $rules = $version->commissionRules();
+        if ($rules->feeCodes !== []) {
+            [$pre, $post] = app(FeeCatalogue::class)->resolve($rules->feeCodes, $date);
+            $rules = $rules->withCatalogueFees($pre, $post);
+        }
+
+        return new ResolvedPlan($rules, $plan->name, $version->id, $version->version);
     }
 
     /**

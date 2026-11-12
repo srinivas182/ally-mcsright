@@ -23,6 +23,7 @@ final readonly class DealSideInput
         public DealClass $dealClass = DealClass::Sale,
         public ?string $leadSource = null,
         public ?string $outsideReferralPercent = null,
+        public ?string $excludedReason = null, // excluded from plan progression and cap (audited)
     ) {}
 
     /**
@@ -40,6 +41,7 @@ final readonly class DealSideInput
             'deal_class' => $this->dealClass->value,
             'lead_source' => $this->leadSource,
             'outside_referral_percent' => $this->outsideReferralPercent,
+            'excluded_reason' => $this->excludedReason,
         ];
     }
 
@@ -60,6 +62,7 @@ final readonly class DealSideInput
             DealClass::from((string) $data['deal_class']),
             isset($data['lead_source']) ? (string) $data['lead_source'] : null,
             isset($data['outside_referral_percent']) ? (string) $data['outside_referral_percent'] : null,
+            excludedReason: isset($data['excluded_reason']) ? (string) $data['excluded_reason'] : null,
         );
     }
 }

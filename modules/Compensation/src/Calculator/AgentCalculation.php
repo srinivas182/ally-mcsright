@@ -12,6 +12,7 @@ final readonly class AgentCalculation
      * @param  list<DeductionLine>  $preSplit
      * @param  list<DeductionLine>  $postSplit
      * @param  list<string>  $steps
+     * @param  list<DeductionLine>  $brokerageFees
      */
     public function __construct(
         public int $userId,
@@ -31,6 +32,12 @@ final readonly class AgentCalculation
         public int $capBeforeCents = 0,
         public int $capAfterCents = 0,
         public bool $capped = false,
+        public array $brokerageFees = [],   // list<DeductionLine> paid from company dollar
+        public ?Money $creditUsed = null,    // credit that paid the agent's fees (from company dollar)
+        public ?int $teamLeaderUserId = null,
+        public ?Money $teamSplit = null,
+        public int $countedFeesCents = 0,    // fees that count toward the cap
+        public bool $excluded = false,
     ) {}
 
     public function preSplitTotal(): Money

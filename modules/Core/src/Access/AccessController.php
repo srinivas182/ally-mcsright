@@ -88,7 +88,7 @@ final class AccessController
                 'people' => $db->table('user_offices')->where('office_id', $o->id)->count(),
             ]),
             'teams' => Team::query()->orderBy('name')->get()->map(fn (Team $t): array => [
-                'ulid' => $t->ulid, 'name' => $t->name, 'office' => $t->office_id !== null ? Office::query()->whereKey($t->office_id)->value('name') : null,
+                'ulid' => $t->ulid, 'name' => $t->name, 'split' => $t->getAttribute('comp_split_percent'), 'office' => $t->office_id !== null ? Office::query()->whereKey($t->office_id)->value('name') : null,
                 'leader' => $t->leader_user_id !== null ? User::query()->find($t->leader_user_id)?->name : null,
                 'members' => User::query()->whereIn('id', $db->table('team_members')->where('team_id', $t->id)->pluck('user_id'))->get()->map(fn (User $u): array => ['ulid' => $u->ulid, 'name' => $u->name])->values(),
             ]),
@@ -111,8 +111,10 @@ final class AccessController
     public function saveTeam(Request $request): RedirectResponse
     {
         $this->authorise($request, 'core.organisation.manage');
-        $data = $request->validate(['name' => ['required', 'string', 'max:120'], 'office' => ['nullable', 'string', 'size:26'], 'leader' => ['nullable', 'string', 'size:26']]);
+        $data = $request->validate(['name' => ['required', 'string', 'max:120'], 'office' => ['nullable', 'string', 'size:26'], 'leader' => ['nullable', 'string', 'size:26'],
+            'split_percent' => ['nullable', 'numeric', 'min:0', 'max:100']]);
         $team = Team::query()->create([
+            'comp_split_percent' => isset($data['split_percent']) ? (string) $data['split_percent'] : null,
             'name' => $data['name'], 'office_id' => isset($data['office']) ? Office::query()->where('ulid', $data['office'])->value('id') : null,
             'leader_user_id' => isset($data['leader']) ? User::query()->where('ulid', $data['leader'])->value('id') : null,
         ]);

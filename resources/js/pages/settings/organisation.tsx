@@ -10,6 +10,7 @@ type Props = {
     teams: {
         ulid: string;
         name: string;
+        split: string | null;
         office: string | null;
         leader: string | null;
         members: { ulid: string; name: string }[];
@@ -19,7 +20,12 @@ type Props = {
 
 export default function Organisation({ offices, teams, people }: Props) {
     const office = useForm({ name: '', city: '', state_code: '' });
-    const team = useForm({ name: '', office: '', leader: '' });
+    const team = useForm({
+        name: '',
+        office: '',
+        leader: '',
+        split_percent: '',
+    });
     const member = (data: Record<string, string | boolean>) =>
         router.post('/settings/membership', data, { preserveScroll: true });
 
@@ -108,6 +114,9 @@ export default function Organisation({ offices, teams, people }: Props) {
                                     {[
                                         t.office,
                                         t.leader ? `Lead: ${t.leader}` : null,
+                                        t.split
+                                            ? `Team split ${Number(t.split)}%`
+                                            : null,
                                     ]
                                         .filter(Boolean)
                                         .join(' · ')}
@@ -194,6 +203,18 @@ export default function Organisation({ offices, teams, people }: Props) {
                                 </option>
                             ))}
                         </select>
+                        <Input
+                            aria-label="Team split percent"
+                            placeholder="Team split %"
+                            type="number"
+                            min={0}
+                            max={100}
+                            className="w-32"
+                            value={team.data.split_percent}
+                            onChange={(e) =>
+                                team.setData('split_percent', e.target.value)
+                            }
+                        />
                         <Button type="submit" variant="outline">
                             Add team
                         </Button>

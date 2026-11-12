@@ -12,6 +12,7 @@ use Modules\Compensation\Enums\PlanType;
 use Modules\Compensation\Enums\VersionStatus;
 use Modules\Compensation\Events\PlansChanged;
 use Modules\Compensation\Exceptions\InvalidRules;
+use Modules\Compensation\FeeCatalogue;
 use Modules\Compensation\Models\Plan;
 use Modules\Compensation\Models\PlanAssignment;
 use Modules\Compensation\Models\PlanVersion;
@@ -83,6 +84,12 @@ final class ManagePlans
         }
 
         $this->validateRules($draft->plan->type, $draft->rules);
+
+        // Every catalogue fee the plan uses must exist on its effective date.
+        $codes = (array) ($draft->rules['fees'] ?? []);
+        if ($codes !== []) {
+            app(FeeCatalogue::class)->resolve(array_values(array_map('strval', $codes)), $effectiveFrom);
+        }
 
         return DB::transaction(function () use ($draft, $effectiveFrom, $byUserId, $note): PlanVersion {
             $latest = PlanVersion::query()->where('plan_id', $draft->plan_id)->where('status', VersionStatus::Published)

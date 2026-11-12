@@ -14,13 +14,14 @@ use Modules\Compensation\Exceptions\InvalidRules;
  */
 final readonly class CommissionRules
 {
-    private const KEYS = ['split', 'pre_split', 'post_split', 'deal_classes', 'lead_sources', 'revenue_share', 'cap', 'post_cap'];
+    private const KEYS = ['split', 'pre_split', 'post_split', 'deal_classes', 'lead_sources', 'revenue_share', 'cap', 'post_cap', 'fees'];
 
     /**
      * @param  list<Deduction>  $preSplit
      * @param  list<Deduction>  $postSplit
      * @param  array<string, Split>  $dealClasses  keyed by DealClass value
      * @param  array<string, Split>  $leadSources  keyed by lead-source category
+     * @param  list<string>  $feeCodes  catalogue fee codes
      */
     public function __construct(
         public Split $split,
@@ -30,6 +31,7 @@ final readonly class CommissionRules
         public array $leadSources = [],
         public ?string $revenueShareBasis = null,
         public ?Cap $cap = null,
+        public array $feeCodes = [],
     ) {}
 
     /**
@@ -90,6 +92,31 @@ final readonly class CommissionRules
             throw new InvalidRules($errors === [] ? ['split' => 'A split is required.'] : $errors);
         }
 
-        return new self($split, $pre, $post, $classes, $sources, $basis, $cap);
+        $fees = [];
+        foreach ((array) ($data['fees'] ?? []) as $i => $code) {
+            if (! is_string($code) || preg_match('/^[a-z0-9_]{2,40}$/', $code) !== 1) {
+                $errors["fees.{$i}"] = 'Fees are catalogue codes like tech_fee.';
+
+                continue;
+            }
+            $fees[] = $code;
+        }
+        if ($errors !== []) {
+            throw new InvalidRules($errors);
+        }
+
+        return new self($split, $pre, $post, $classes, $sources, $basis, $cap, array_values(array_unique($fees)));
+    }
+
+    /**
+     * The same rules with catalogue fees added (resolved at the closing date).
+     *
+     * @param  list<Deduction>  $pre
+     * @param  list<Deduction>  $post
+     */
+    public function withCatalogueFees(array $pre, array $post): self
+    {
+        return new self($this->split, [...$this->preSplit, ...$pre], [...$this->postSplit, ...$post], $this->dealClasses,
+            $this->leadSources, $this->revenueShareBasis, $this->cap, $this->feeCodes);
     }
 }
