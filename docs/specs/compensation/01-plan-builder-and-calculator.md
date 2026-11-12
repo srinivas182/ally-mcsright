@@ -242,3 +242,12 @@ agents always see their own plan and calculations (scope `own`).
 6. Cap period totals always equal the sum of their entries (nightly check).
 7. The simulator's yearly totals equal the sum of individual calculations.
 8. The parallel run against legacy commissions (Sprints 23–25) matches to the cent.
+
+## Approved additions (version 1.0; leader review: Brokermint, BoldTrail BackOffice, Lone Wolf, Real reZEN)
+
+1. **AI plan setup**: upload the brokerage's current plan PDF → a draft plan, checked with the simulator
+   before publishing; nothing is published without the owner's approval.
+2. **Agent earnings forecast**: "$18,400 to cap; at your pace you'll cap in August."
+3. **Company dollar and plan profitability** by plan and by agent.
+4. **Legacy parallel run started early**: every new calculation compared with the current RightAlly result
+   to the cent, well before the pilot.

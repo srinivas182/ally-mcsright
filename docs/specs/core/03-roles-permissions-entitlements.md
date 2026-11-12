@@ -203,3 +203,16 @@ owner.
    the requester.
 8. Access review export matches effective permissions.
 9. All changes are audited; sensitive grants trigger the owner alert.
+
+## Approved additions (version 1.0; leader review: BoldTrail, Lone Wolf, Brokermint, Follow Up Boss)
+
+1. **Ready-made real estate roles**: owner, managing broker, office admin, compliance reviewer, transaction
+   coordinator, team lead, agent, assistant, read-only bookkeeper; copy and adjust.
+2. **Scopes**: everyone, this office, this team, own records — extending the CRM privacy rule.
+3. **Field-level hiding**: e.g. an office admin sees deals but not commission amounts or bank details.
+4. **Plain-English editor**: "Can approve transactions in the Downtown office", grouped by area.
+5. **Preview as this role** before saving.
+6. **Expiring access**: temporary roles or grants with an end date (holiday cover), removed automatically.
+7. **Separation of duties**: conflicting permissions (change bank details + approve payouts) cannot be held
+   together; enforced on save and on every check.
+8. **Quarterly access review**: owners confirm who has what in one screen; attestations audited (SOC 2).
