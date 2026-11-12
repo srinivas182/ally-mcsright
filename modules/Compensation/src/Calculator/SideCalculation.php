@@ -30,6 +30,13 @@ final readonly class SideCalculation
             if ($agent->postCapFee !== null) {
                 $total = $total->add($agent->postCapFee);
             }
+            if ($agent->teamSplit !== null) {
+                $total = $total->add($agent->teamSplit);
+            }
+            if ($agent->creditUsed !== null) {
+                // Credit is company money moved to the agent: it is already inside agent net.
+                $total = $total->subtract($agent->creditUsed);
+            }
         }
 
         return $total;

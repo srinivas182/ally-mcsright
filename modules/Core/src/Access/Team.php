@@ -25,7 +25,7 @@ final class Team extends Model
 
     protected $table = 'teams';
 
-    protected $fillable = ['office_id', 'name', 'leader_user_id'];
+    protected $fillable = ['office_id', 'name', 'leader_user_id', 'comp_split_percent'];
 
     public function getConnectionName(): ?string
     {

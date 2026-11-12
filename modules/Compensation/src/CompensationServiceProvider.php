@@ -10,6 +10,7 @@ use Modules\Compensation\Actions\ManagePlans;
 use Modules\Compensation\Calculator\CommissionCalculator;
 use Modules\Compensation\Console\CheckCapPeriods;
 use Modules\Compensation\Events\PlansChanged;
+use Modules\Core\Access\PermissionRegistry;
 
 final class CompensationServiceProvider extends ServiceProvider
 {
@@ -24,6 +25,14 @@ final class CompensationServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // Permissions (specs/core/03); amounts are guarded by finance.amounts.view.
+        $this->app->make(PermissionRegistry::class)->register('Compensation', [
+            'compensation.plans.view' => ['See compensation plans'],
+            'compensation.plans.manage' => ['Create, publish and assign compensation plans and fees'],
+            'compensation.calculations.manage' => ['Calculate, finalise, reverse and exclude deals'],
+            'compensation.credits.grant' => ['Give agents credits and bonuses'],
+        ]);
+
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
 
         // Plan changes recalculate pending deals automatically (best-in-class review, addition 7).
