@@ -292,6 +292,16 @@ Sprints 20–21), Team B (commissions and payouts), before the pilot at Sprint 2
   up) and **"Invite my broker"** (a direct agent invites their broker to become a partner — a growth loop).
 - **Automatic switch**: when a direct agent's brokerage becomes a partner, the agent moves to the brokerage
   price at their next billing date and the brokerage starts earning on them.
+- **10A-2 delivered**: HQ Payments (encrypted keys, test/live with re-confirmation, Stripe Tax, test-mode
+  banner), agent-pays default and HQ exceptions, `PaymentGateway` (Stripe REST with signed webhooks; fake),
+  agent checkout at the brokerage price, once-only webhooks, 7-day grace with email, card and invoice portal,
+  sponsored agents. **10A-2b delivered**: HQ brokerage packages (monthly/yearly, features, AIlly allowance);
+  owner Settings › Billing (choose package and period, card and invoices); brokerage webhooks; unpaid past
+  grace → **read-only for owners and staff only** (agents who pay keep working); **partial subsidies**
+  (needs the brokerage's card; changes the agent's Stripe amount) and **monthly billing of subsidies and
+  sponsored plans** to the brokerage, once per month (`billing:bill-subsidies`); **partner codes** and the
+  public lookup `GET https://<hq>/partners/{code}` (brokerage prices beside the public price); Stripe Tax
+  on brokerage checkouts.
 - Delivery: 10A-2 agent payments (settings, default model and exceptions, gateway, checkout, webhooks,
   grace, card and invoice portal, fully sponsored agents); 10A-2b broker flat fee, packages, partial
   subsidies, join code and lookup, Stripe Tax; 10A-3 commissions, statements, Connect payouts, partner

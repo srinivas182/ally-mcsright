@@ -11,11 +11,18 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Billing\AgentPayments;
+use Modules\Billing\BrokeragePayments;
+use Modules\Billing\Catalogue;
 use Modules\Billing\Gateway\PaymentGateway;
 use Modules\Billing\Models\AgentPlan;
+use Modules\Billing\Models\Package;
 use Modules\Billing\PaymentSettings;
+use Modules\Billing\Pricing;
+use Modules\Billing\ProductFeatures;
 use Modules\Core\Audit\AuditLogger;
+use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Tenancy\Models\Tenant;
+use Modules\Core\Tenancy\TenantContext;
 use Symfony\Component\HttpFoundation\Response as HttpResponse;
 use Throwable;
 
@@ -104,5 +111,76 @@ final class PaymentsController
         abort_unless($user instanceof User, 403);
 
         return $user;
+    }
+
+    /** Owner: the brokerage's package, card, invoices and partner code. */
+    public function billing(Request $request, BrokeragePayments $brokerage): Response
+    {
+        $user = self::user($request);
+        abort_unless($user->isKind(UserKind::Owner), 403);
+
+        return Inertia::render('settings/billing', [
+            'packages' => Package::query()->where('active', true)->orderBy('monthly_cents')->get()
+                ->map(fn ($p): array => $p->only(['ulid', 'name', 'monthly_cents', 'yearly_cents', 'ailly_conversations', 'features'])),
+            'current' => $brokerage->current(),
+            'readOnly' => $brokerage->readOnly(),
+            'partnerCode' => $brokerage->partnerCode(),
+            'featureNames' => ProductFeatures::all(),
+        ]);
+    }
+
+    public function brokerageCheckout(Request $request, BrokeragePayments $brokerage): HttpResponse
+    {
+        $data = $request->validate(['package' => ['required', 'string', 'size:26'], 'interval' => ['required', 'in:month,year']]);
+        $package = Package::query()->where('ulid', $data['package'])->firstOrFail();
+
+        return Inertia::location($brokerage->checkout(self::user($request), $package, $data['interval'], $request->getSchemeAndHttpHost()));
+    }
+
+    public function brokeragePortal(Request $request, BrokeragePayments $brokerage, PaymentGateway $gateway): HttpResponse
+    {
+        abort_unless(self::user($request)->isKind(UserKind::Owner), 403);
+        $customer = $brokerage->current()['customer'] ?? null;
+        abort_if($customer === null, 404);
+
+        return Inertia::location($gateway->portal($customer, $request->getSchemeAndHttpHost().'/settings/billing'));
+    }
+
+    public function subsidy(Request $request, BrokeragePayments $brokerage): RedirectResponse
+    {
+        $data = $request->validate(['agent' => ['required', 'string', 'size:26'], 'amount' => ['required', 'numeric', 'min:0']]);
+        $brokerage->setSubsidy(User::query()->where('ulid', $data['agent'])->firstOrFail(), (int) round((float) $data['amount'] * 100), self::user($request));
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Subsidy saved. It is added to the brokerage\'s invoice each month.']);
+
+        return back();
+    }
+
+    /** HQ: brokerage packages. */
+    public function savePackage(Request $request, BrokeragePayments $brokerage, ?Package $package = null): RedirectResponse
+    {
+        $data = $request->validate(['name' => ['required', 'string', 'max:80'], 'monthly' => ['required', 'numeric', 'min:1'], 'yearly' => ['required', 'numeric', 'min:1'],
+            'ailly' => ['required', 'integer', 'min:0'], 'features' => ['array'], 'features.*' => ['string']]);
+        $brokerage->savePackage($package, ['name' => $data['name'], 'monthly_cents' => (int) round((float) $data['monthly'] * 100),
+            'yearly_cents' => (int) round((float) $data['yearly'] * 100), 'ailly_conversations' => (int) $data['ailly'], 'features' => array_values($data['features'] ?? [])]);
+
+        return back();
+    }
+
+    /** Public: "My brokerage is a partner" — a brokerage's prices from its join code. */
+    public function partner(string $code, TenantContext $tenants): JsonResponse
+    {
+        $tenant = Tenant::query()->where('partner_code', mb_strtoupper(trim($code)))->where('status', 'active')->first();
+        if ($tenant === null) {
+            return response()->json(['message' => 'We couldn\'t find a partner brokerage with that code.'], 404);
+        }
+
+        return response()->json($tenants->runAs($tenant, function () use ($tenant): array {
+            $pricing = app(Pricing::class);
+            $catalogue = app(Catalogue::class);
+
+            return ['brokerage' => $tenant->name, 'plans' => AgentPlan::query()->where('active', true)->orderBy('sort')->get()
+                ->filter(fn (AgentPlan $p): bool => $pricing->offered($p))
+                ->map(fn (AgentPlan $p): array => ['name' => $p->name, 'price_cents' => $pricing->priceFor($p), 'list_cents' => $catalogue->priceInForce($p, 'list')])->values()];
+        }));
     }
 }

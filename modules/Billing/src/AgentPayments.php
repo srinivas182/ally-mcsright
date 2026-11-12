@@ -61,11 +61,17 @@ final class AgentPayments
         $type = (string) ($event['type'] ?? '');
         $object = (array) ($event['data']['object'] ?? []);
         $meta = (array) ($object['metadata'] ?? ($object['subscription_details']['metadata'] ?? []));
-        if ($id === '' || ! isset($meta['tenant_id'], $meta['user_id'])) {
+        $control = DB::connection(Connections::control());
+        if ($id === '' || ! isset($meta['tenant_id']) || $control->table('billing_gateway_events')->where('id', $id)->exists()) {
             return false;
         }
-        $control = DB::connection(Connections::control());
-        if ($control->table('billing_gateway_events')->where('id', $id)->exists()) {
+        if (($meta['kind'] ?? '') === 'brokerage') {
+            app(BrokeragePayments::class)->apply($type, $object, $meta);
+            $control->table('billing_gateway_events')->insert(['id' => $id, 'type' => $type, 'processed_at' => now()]);
+
+            return true;
+        }
+        if (! isset($meta['user_id'])) {
             return false;
         }
 

@@ -134,6 +134,7 @@ export default function AgentPlans({
 }: Props) {
     const form = useForm({ model, policy });
     const sponsor = useForm({ agent: '', plan: '' });
+    const subsidy = useForm({ agent: '', amount: '' });
 
     return (
         <>
@@ -271,6 +272,66 @@ export default function AgentPlans({
                         >
                             Sponsor
                         </Button>
+                    </form>
+                )}
+                {model === 'agent_pays' && (
+                    <form
+                        className="flex flex-wrap items-center gap-2 rounded-lg border p-4 text-sm"
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            subsidy.post('/settings/agent-plans-subsidy', {
+                                preserveScroll: true,
+                            });
+                        }}
+                    >
+                        Pay part of an agent's plan: $
+                        <input
+                            aria-label="Subsidy per month ($)"
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            className="w-28 rounded-md border bg-background px-2 py-1.5"
+                            value={subsidy.data.amount}
+                            onChange={(e) =>
+                                subsidy.setData('amount', e.target.value)
+                            }
+                        />
+                        a month for
+                        <select
+                            aria-label="Agent to subsidise"
+                            className="rounded border bg-background px-2 py-1.5"
+                            value={subsidy.data.agent}
+                            onChange={(e) =>
+                                subsidy.setData('agent', e.target.value)
+                            }
+                        >
+                            <option value="">Agent…</option>
+                            {agents.map((a) => (
+                                <option key={a.ulid} value={a.ulid}>
+                                    {a.name}
+                                </option>
+                            ))}
+                        </select>
+                        <Button
+                            type="submit"
+                            variant="outline"
+                            disabled={!subsidy.data.agent}
+                        >
+                            Save subsidy
+                        </Button>
+                        {(subsidy.errors as Record<string, string | undefined>)
+                            .subsidy && (
+                            <p role="alert" className="w-full text-destructive">
+                                {
+                                    (
+                                        subsidy.errors as Record<
+                                            string,
+                                            string | undefined
+                                        >
+                                    ).subsidy
+                                }
+                            </p>
+                        )}
                     </form>
                 )}
             </div>
