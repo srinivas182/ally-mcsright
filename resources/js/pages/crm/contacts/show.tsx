@@ -67,6 +67,7 @@ type Contact = {
 type Props = {
     contact: Contact;
     history: AuditRow[];
+    canDownloadEvidence: boolean;
     memories: { id: number; category: string; detail: string }[];
     referral: {
         by: { ulid: string; name: string } | null;
@@ -531,6 +532,7 @@ function ConsentPanel({
 }
 
 export default function ContactShow({
+    canDownloadEvidence,
     history,
     memories,
     referral,
@@ -971,6 +973,14 @@ export default function ContactShow({
                                 <summary className="cursor-pointer font-medium">
                                     Who viewed or changed this contact
                                 </summary>
+                                {canDownloadEvidence && (
+                                    <a
+                                        className="mt-2 inline-block text-primary underline"
+                                        href={`/contacts/${contact.ulid}/evidence-pack`}
+                                    >
+                                        Download evidence pack (PDF)
+                                    </a>
+                                )}
                                 <ul className="mt-2 divide-y">
                                     {history.map((e) => (
                                         <AuditEventRow key={e.ulid} e={e} />

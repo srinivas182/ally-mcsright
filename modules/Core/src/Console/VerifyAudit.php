@@ -5,9 +5,7 @@ declare(strict_types=1);
 namespace Modules\Core\Console;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
-use Modules\Core\Audit\AuditChain;
-use Modules\Core\Support\Connections;
+use Modules\Core\Audit\AuditVerifier;
 use Modules\Core\Tenancy\Models\Tenant;
 
 /**
@@ -29,35 +27,14 @@ final class VerifyAudit extends Command
             return self::FAILURE;
         }
 
-        $db = DB::connection(Connections::cell());
-        $from = max(1, (int) ($this->option('from') ?? 1));
-        $prev = $from === 1 ? AuditChain::GENESIS : (string) $db->table('audit_events')->where('tenant_id', $tenant->id)->where('chain_seq', $from - 1)->value('hash');
-        $expected = $from;
-        $checked = 0;
+        $result = app(AuditVerifier::class)->verify($tenant->id, $this->option('from') !== null ? (int) $this->option('from') : null, $this->option('to') !== null ? (int) $this->option('to') : null);
+        if (! $result['ok']) {
+            $this->error($result['message']);
 
-        $query = $db->table('audit_events')->where('tenant_id', $tenant->id)->where('chain_seq', '>=', $from)->orderBy('chain_seq');
-        if ($this->option('to') !== null) {
-            $query->where('chain_seq', '<=', (int) $this->option('to'));
+            return self::FAILURE;
         }
 
-        foreach ($query->lazy(500) as $row) {
-            $event = (array) $row;
-            if ((int) $event['chain_seq'] !== $expected) {
-                $this->error("Broken at sequence {$expected}: event missing.");
-
-                return self::FAILURE;
-            }
-            if ($event['prev_hash'] !== $prev || AuditChain::hash($prev, $event) !== $event['hash']) {
-                $this->error("Broken at sequence {$expected}: event {$event['ulid']} was altered.");
-
-                return self::FAILURE;
-            }
-            $prev = (string) $event['hash'];
-            $expected++;
-            $checked++;
-        }
-
-        $this->info("Audit log intact: {$checked} event(s) verified for {$tenant->slug}.");
+        $this->info($result['message'].' Brokerage: '.$tenant->slug.'.');
 
         return self::SUCCESS;
     }

@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\ValidationException;
+use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Identity\Events\UserSecurityReset;
 use Modules\Core\Identity\Events\UserSignedOutEverywhere;
 use Modules\Core\Identity\Models\KnownDevice;
@@ -111,6 +112,7 @@ final class SignInSecurity
         if (! $isFirstDevice) {
             $secureUrl = URL::temporarySignedRoute('security.secure-account', CarbonImmutable::now()->addDay(), ['user' => $user->ulid]);
             $user->notify(new NewSignInNotification($label, (string) $request->ip(), $secureUrl));
+            app(AuditLogger::class)->record('core.auth.new_device', $user, metadata: ['device' => $label], severity: 'notice');
         }
     }
 }
