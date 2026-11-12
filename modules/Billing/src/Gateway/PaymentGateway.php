@@ -26,6 +26,15 @@ interface PaymentGateway
     /** Changes the monthly amount of an existing subscription from its next period. */
     public function changeAmount(string $subscriptionRef, int $unitCents, string $productName, string $interval): void;
 
+    /** Creates a connected (Express) account for a brokerage to receive payouts. */
+    public function createConnectAccount(string $email, string $businessName): string;
+
+    /** Hosted onboarding where the brokerage completes identity checks and bank details. */
+    public function connectOnboarding(string $account, string $refreshUrl, string $returnUrl): string;
+
+    /** Sends money to a connected account; the key makes repeats harmless. */
+    public function transfer(string $account, int $cents, string $description, string $idempotencyKey): string;
+
     /** Hosted page where a customer manages their card and sees invoices. */
     public function portal(string $customerRef, string $returnUrl): string;
 

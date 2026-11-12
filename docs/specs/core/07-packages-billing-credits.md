@@ -302,6 +302,16 @@ Sprints 20–21), Team B (commissions and payouts), before the pilot at Sprint 2
   sponsored plans** to the brokerage, once per month (`billing:bill-subsidies`); **partner codes** and the
   public lookup `GET https://<hq>/partners/{code}` (brokerage prices beside the public price); Stripe Tax
   on brokerage checkouts.
+- **10A-3 delivered**: every paid agent invoice is recorded as money collected (excluding sales tax, once
+  per invoice); **monthly statements** per brokerage (commission on the floor at the tier for that month's
+  paying agents, plus 100% of the markup, agent by agent; refunds reverse the matching earnings on the next
+  statement, once; carried amounts roll in); **Stripe Connect** onboarding (Express account, hosted
+  onboarding, ready when Stripe confirms payouts and details); **payouts** on the 2nd for last month
+  (`billing:partner-payouts`), at $25 or more when Connect is ready, otherwise carried forward; transfers use
+  an idempotency key so a re-run never pays twice; **fully sponsored plans are billed at RightAlly's share
+  only** (floor minus commission); owner **Partner earnings** page (payouts status, this month, agents by
+  plan, statements with lines). Chargebacks: handled when Stripe records the refund. "Invite my broker" and
+  the automatic switch need direct agents and ship with RightAlly for Agents (Team E).
 - Delivery: 10A-2 agent payments (settings, default model and exceptions, gateway, checkout, webhooks,
   grace, card and invoice portal, fully sponsored agents); 10A-2b broker flat fee, packages, partial
   subsidies, join code and lookup, Stripe Tax; 10A-3 commissions, statements, Connect payouts, partner

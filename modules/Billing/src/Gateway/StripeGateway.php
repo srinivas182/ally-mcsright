@@ -37,6 +37,22 @@ final class StripeGateway implements PaymentGateway
         return (string) $session['url'];
     }
 
+    public function createConnectAccount(string $email, string $businessName): string
+    {
+        return (string) $this->post('accounts', ['type' => 'express', 'country' => 'US', 'email' => $email,
+            'business_profile' => ['name' => $businessName], 'capabilities' => ['transfers' => ['requested' => 'true']]])['id'];
+    }
+
+    public function connectOnboarding(string $account, string $refreshUrl, string $returnUrl): string
+    {
+        return (string) $this->post('account_links', ['account' => $account, 'refresh_url' => $refreshUrl, 'return_url' => $returnUrl, 'type' => 'account_onboarding'])['url'];
+    }
+
+    public function transfer(string $account, int $cents, string $description, string $idempotencyKey): string
+    {
+        return (string) $this->post('transfers', ['amount' => $cents, 'currency' => 'usd', 'destination' => $account, 'description' => $description], $idempotencyKey)['id'];
+    }
+
     public function addInvoiceItem(string $customerRef, int $cents, string $description): void
     {
         $this->post('invoiceitems', ['customer' => $customerRef, 'amount' => $cents, 'currency' => 'usd', 'description' => $description]);
@@ -102,13 +118,17 @@ final class StripeGateway implements PaymentGateway
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */
-    private function post(string $path, array $data): array
+    private function post(string $path, array $data, ?string $idempotencyKey = null): array
     {
         $secret = $this->settings->keys()['secret'] ?? null;
         if ($secret === null) {
             throw new RuntimeException('Payments are not set up yet.');
         }
-        $response = $this->http->asForm()->withToken($secret)->timeout(20)->post(self::API.$path, $data);
+        $client = $this->http->asForm()->withToken($secret)->timeout(20);
+        if ($idempotencyKey !== null) {
+            $client = $client->withHeaders(['Idempotency-Key' => $idempotencyKey]);
+        }
+        $response = $client->post(self::API.$path, $data);
         if ($response->failed()) {
             throw new RuntimeException('The payment provider refused the request ('.$response->status().').');
         }

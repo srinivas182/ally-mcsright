@@ -42,3 +42,5 @@ Schedule::command('billing:apply-price-changes')->dailyAt('04:00')->onOneServer(
 Schedule::command('billing:end-grace')->dailyAt('04:30')->onOneServer();
 // Brokerages are billed for agent subsidies and sponsorships on the 1st (specs/core/07).
 Schedule::command('billing:bill-subsidies')->monthlyOn(1, '05:00')->onOneServer();
+// Partner statements for last month and payouts by Stripe Connect (specs/core/07).
+Schedule::command('billing:partner-payouts')->monthlyOn(2, '06:00')->onOneServer();

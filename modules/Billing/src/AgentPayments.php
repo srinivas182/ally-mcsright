@@ -62,6 +62,14 @@ final class AgentPayments
         $object = (array) ($event['data']['object'] ?? []);
         $meta = (array) ($object['metadata'] ?? ($object['subscription_details']['metadata'] ?? []));
         $control = DB::connection(Connections::control());
+        if ($id !== '' && in_array($type, ['charge.refunded', 'account.updated'], true) && ! $control->table('billing_gateway_events')->where('id', $id)->exists()) {
+            $type === 'charge.refunded'
+                ? app(PartnerEarnings::class)->recordRefund((string) ($object['invoice'] ?? ''), (int) ($object['amount_refunded'] ?? 0))
+                : app(PartnerEarnings::class)->accountUpdated($object);
+            $control->table('billing_gateway_events')->insert(['id' => $id, 'type' => $type, 'processed_at' => now()]);
+
+            return true;
+        }
         if ($id === '' || ! isset($meta['tenant_id']) || $control->table('billing_gateway_events')->where('id', $id)->exists()) {
             return false;
         }
@@ -86,8 +94,7 @@ final class AgentPayments
 
             match ($type) {
                 'checkout.session.completed' => $this->activate($userId, (int) $meta['agent_plan_id'], (int) $meta['price_cents'], $subRef, (string) ($object['customer'] ?? '')),
-                'invoice.paid' => $current?->update(['status' => 'active', 'grace_until' => null,
-                    'current_period_end' => isset($object['period_end']) ? CarbonImmutable::createFromTimestamp((int) $object['period_end']) : $current->current_period_end]),
+                'invoice.paid' => $current !== null ? $this->paid($current, $object) : null,
                 'invoice.payment_failed' => $current !== null && $current->status === 'active' ? $this->startGrace($current) : null,
                 'customer.subscription.deleted' => $current?->update(['status' => 'ended', 'grace_until' => null]),
                 default => null,
@@ -150,6 +157,16 @@ final class AgentPayments
             'gateway_ref' => $subRef, 'customer_ref' => $customer, 'current_period_end' => CarbonImmutable::now()->addMonth()]);
         app(AuditLogger::class)->record('billing.subscription.started', User::query()->find($userId), metadata: ['plan_id' => $planId, 'price_cents' => $priceCents], severity: 'notice');
         app(Entitlements::class)->forget();
+    }
+
+    /**
+     * @param  array<string, mixed>  $invoice
+     */
+    private function paid(AgentSubscription $sub, array $invoice): void
+    {
+        $sub->update(['status' => 'active', 'grace_until' => null,
+            'current_period_end' => isset($invoice['period_end']) ? CarbonImmutable::createFromTimestamp((int) $invoice['period_end']) : $sub->current_period_end]);
+        app(PartnerEarnings::class)->recordCollection($sub, $invoice);
     }
 
     private function startGrace(AgentSubscription $sub): void
