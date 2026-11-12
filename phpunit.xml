@@ -34,6 +34,7 @@
         <env name="DB_URL" value=""/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
+        <env name="BILLING_AGENT_PAYS_DEFAULT" value="false"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="CORE_BREACHED_PASSWORD_CHECK" value="false"/>
         <env name="PULSE_ENABLED" value="false"/>

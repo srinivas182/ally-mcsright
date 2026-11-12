@@ -12,7 +12,9 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Billing\Catalogue;
 use Modules\Billing\Entitlements;
+use Modules\Billing\Gateway\PaymentGateway;
 use Modules\Billing\Models\AgentPlan;
+use Modules\Billing\Models\AgentSubscription;
 use Modules\Billing\Models\PlanPrice;
 use Modules\Billing\Pricing;
 use Modules\Billing\ProductFeatures;
@@ -63,7 +65,9 @@ final class BillingController
         $tenant = $request->attributes->get('tenant') ?? app(TenantContext::class)->current();
 
         return Inertia::render('settings/agent-plans', [
-            'model' => (string) $tenant->getAttribute('billing_model'),
+            'model' => app(Entitlements::class)->model(),
+            'mayChoose' => app(Entitlements::class)->brokerMayChoose(),
+            'agents' => User::query()->where('kind', UserKind::Agent)->where('status', 'active')->orderBy('first_name')->get()->map(fn (User $u): array => ['ulid' => $u->ulid, 'name' => $u->name]),
             'policy' => (string) $tenant->getAttribute('no_plan_policy'),
             'payingAgents' => $this->pricing->payingAgents(),
             'plans' => AgentPlan::query()->where('active', true)->orderBy('sort')->get()->map(function (AgentPlan $p): array {
@@ -118,7 +122,9 @@ final class BillingController
                 ->map(fn (AgentPlan $p): array => ['ulid' => $p->ulid, 'name' => $p->name, 'description' => $p->description, 'features' => $p->features,
                     'price_cents' => $this->pricing->priceFor($p), 'list_cents' => $this->catalogue->priceInForce($p, 'list')])->values(),
             'featureNames' => ProductFeatures::all(),
-            'paymentsOpen' => false,
+            'paymentsOpen' => $entitlements->model() === 'agent_pays' && app(PaymentGateway::class)->ready(),
+            'subscription' => ($sub = AgentSubscription::query()->where('user_id', $user->id)->whereIn('status', ['active', 'grace'])->orderByDesc('id')->first()) !== null
+                ? ['status' => $sub->status, 'grace_until' => $sub->grace_until?->toDateString(), 'sponsored' => (bool) $sub->getAttribute('sponsored'), 'price_cents' => $sub->price_cents] : null,
         ]);
     }
 

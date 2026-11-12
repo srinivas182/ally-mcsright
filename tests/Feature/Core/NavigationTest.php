@@ -37,7 +37,7 @@ it('shows HQ staff the HQ console and people', function (): void {
     $hq = Tenant::query()->where('type', 'hq')->sole();
     $staff = app(TenantContext::class)->runAs($hq, fn () => User::factory()->hqStaff()->create());
 
-    expect(menuFor($staff))->toBe(['People', 'Tenants', 'AI gateway']);
+    expect(menuFor($staff))->toBe(['People', 'Tenants', 'AI gateway', 'Pricing', 'Payments']);
 });
 
 it('lets modules add items, grouped and ordered', function (): void {

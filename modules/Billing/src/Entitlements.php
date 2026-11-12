@@ -67,9 +67,30 @@ final class Entitlements
         return $sub !== null ? AgentPlan::query()->find($sub->agent_plan_id) : null;
     }
 
+    /**
+     * Who pays: an HQ exception ("this brokerage pays for its agents") wins; otherwise HQ's global
+     * default (agents pay RightAlly directly); only when HQ turns that off does the broker choose.
+     */
     public function model(): string
     {
-        return $this->tenants->check() ? (string) ($this->tenants->current()->getAttribute('billing_model') ?? 'brokerage_pays') : 'brokerage_pays';
+        if (! $this->tenants->check()) {
+            return 'brokerage_pays';
+        }
+        $tenant = $this->tenants->current();
+        if ((bool) $tenant->getAttribute('billing_exception')) {
+            return 'brokerage_pays';
+        }
+        if (app(PaymentSettings::class)->agentPaysDefault()) {
+            return 'agent_pays';
+        }
+
+        return (string) ($tenant->getAttribute('billing_model') ?? 'brokerage_pays');
+    }
+
+    /** Whether the broker may choose who pays (only when HQ's default is off and no exception). */
+    public function brokerMayChoose(): bool
+    {
+        return $this->tenants->check() && ! (bool) $this->tenants->current()->getAttribute('billing_exception') && ! app(PaymentSettings::class)->agentPaysDefault();
     }
 
     public function forget(): void

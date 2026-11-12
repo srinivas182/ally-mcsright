@@ -109,7 +109,13 @@ final class Pricing
         if (! in_array($model, ['brokerage_pays', 'agent_pays'], true) || ! in_array($noPlanPolicy, ['minimal', 'blocked'], true)) {
             throw ValidationException::withMessages(['model' => 'Choose who pays and what agents without a plan can use.']);
         }
-        Tenant::query()->whereKey($this->tenants->id())->update(['billing_model' => $model, 'no_plan_policy' => $noPlanPolicy]);
+        $values = ['no_plan_policy' => $noPlanPolicy];
+        if (app(Entitlements::class)->brokerMayChoose()) {
+            $values['billing_model'] = $model;
+        } elseif ($model !== app(Entitlements::class)->model()) {
+            throw ValidationException::withMessages(['model' => 'RightAlly sets who pays for your brokerage. Contact support to change it.']);
+        }
+        Tenant::query()->whereKey($this->tenants->id())->update($values);
         $this->tenants->set($this->tenants->current()->fresh() ?? $this->tenants->current());
         app(AuditLogger::class)->record('billing.model.changed', metadata: ['model' => $model, 'no_plan_policy' => $noPlanPolicy], severity: 'warning');
     }

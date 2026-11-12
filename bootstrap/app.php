@@ -24,6 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->validateCsrfTokens(except: ['billing/webhook']);
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 
         // Tenant resolution runs first on every web request (specs/core/01).

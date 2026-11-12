@@ -38,3 +38,5 @@ Schedule::command('audit:maintain stream')->everyMinute()->withoutOverlapping()-
 Schedule::command('core:expire-access')->hourly()->onOneServer();
 // Brokerage price increases reach existing agents after 30 days (specs/core/07).
 Schedule::command('billing:apply-price-changes')->dailyAt('04:00')->onOneServer();
+// Unpaid plans end after the 7-day grace period (specs/core/07).
+Schedule::command('billing:end-grace')->dailyAt('04:30')->onOneServer();

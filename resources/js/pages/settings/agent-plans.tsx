@@ -30,6 +30,8 @@ type Plan = {
 };
 type Props = {
     model: string;
+    mayChoose: boolean;
+    agents: { ulid: string; name: string }[];
     policy: string;
     payingAgents: number;
     plans: Plan[];
@@ -124,11 +126,14 @@ function PlanRow({ plan }: { plan: Plan }) {
 /** Who pays RightAlly, what agents without a plan can use, and the brokerage's agent prices. */
 export default function AgentPlans({
     model,
+    agents,
+    mayChoose,
     policy,
     payingAgents,
     plans,
 }: Props) {
     const form = useForm({ model, policy });
+    const sponsor = useForm({ agent: '', plan: '' });
 
     return (
         <>
@@ -147,27 +152,41 @@ export default function AgentPlans({
                         });
                     }}
                 >
-                    <label className="flex items-center gap-2">
-                        <input
-                            type="radio"
-                            name="model"
-                            checked={form.data.model === 'brokerage_pays'}
-                            onChange={() =>
-                                form.setData('model', 'brokerage_pays')
-                            }
-                        />{' '}
-                        The brokerage pays for everyone
-                    </label>
-                    <label className="flex items-center gap-2">
-                        <input
-                            type="radio"
-                            name="model"
-                            checked={form.data.model === 'agent_pays'}
-                            onChange={() => form.setData('model', 'agent_pays')}
-                        />{' '}
-                        Agents pay RightAlly directly (you earn from every
-                        paying agent)
-                    </label>
+                    {mayChoose ? (
+                        <>
+                            <label className="flex items-center gap-2">
+                                <input
+                                    type="radio"
+                                    name="model"
+                                    checked={
+                                        form.data.model === 'brokerage_pays'
+                                    }
+                                    onChange={() =>
+                                        form.setData('model', 'brokerage_pays')
+                                    }
+                                />{' '}
+                                The brokerage pays for everyone
+                            </label>
+                            <label className="flex items-center gap-2">
+                                <input
+                                    type="radio"
+                                    name="model"
+                                    checked={form.data.model === 'agent_pays'}
+                                    onChange={() =>
+                                        form.setData('model', 'agent_pays')
+                                    }
+                                />{' '}
+                                Agents pay RightAlly directly (you earn from
+                                every paying agent)
+                            </label>
+                        </>
+                    ) : (
+                        <p>
+                            {model === 'agent_pays'
+                                ? 'Your agents pay RightAlly directly. You have no contract or liability for their fees, and you earn from every paying agent.'
+                                : 'Your brokerage pays RightAlly for its agents.'}
+                        </p>
+                    )}
                     {form.data.model === 'agent_pays' && (
                         <span className="flex flex-wrap items-center gap-2 pl-6">
                             Agents without a plan:
@@ -202,6 +221,58 @@ export default function AgentPlans({
                         <PlanRow key={p.ulid} plan={p} />
                     ))}
                 </ul>
+                {model === 'agent_pays' && (
+                    <form
+                        className="flex flex-wrap items-center gap-2 rounded-lg border p-4 text-sm"
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            sponsor.post('/settings/agent-plans-sponsor', {
+                                preserveScroll: true,
+                            });
+                        }}
+                    >
+                        Sponsor an agent (the brokerage pays their whole plan):
+                        <select
+                            aria-label="Agent to sponsor"
+                            className="rounded border bg-background px-2 py-1.5"
+                            value={sponsor.data.agent}
+                            onChange={(e) =>
+                                sponsor.setData('agent', e.target.value)
+                            }
+                        >
+                            <option value="">Agent…</option>
+                            {agents.map((a) => (
+                                <option key={a.ulid} value={a.ulid}>
+                                    {a.name}
+                                </option>
+                            ))}
+                        </select>
+                        <select
+                            aria-label="Plan to sponsor"
+                            className="rounded border bg-background px-2 py-1.5"
+                            value={sponsor.data.plan}
+                            onChange={(e) =>
+                                sponsor.setData('plan', e.target.value)
+                            }
+                        >
+                            <option value="">Plan…</option>
+                            {plans
+                                .filter((p) => p.offered)
+                                .map((p) => (
+                                    <option key={p.ulid} value={p.ulid}>
+                                        {p.name}
+                                    </option>
+                                ))}
+                        </select>
+                        <Button
+                            type="submit"
+                            variant="outline"
+                            disabled={!sponsor.data.agent || !sponsor.data.plan}
+                        >
+                            Sponsor
+                        </Button>
+                    </form>
+                )}
             </div>
         </>
     );

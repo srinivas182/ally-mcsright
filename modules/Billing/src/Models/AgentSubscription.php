@@ -22,6 +22,8 @@ use Modules\Core\Tenancy\Concerns\HasPublicUlid;
  * @property CarbonImmutable|null $current_period_end
  * @property CarbonImmutable|null $grace_until
  * @property string|null $gateway_ref
+ * @property string|null $customer_ref
+ * @property bool $sponsored
  */
 final class AgentSubscription extends Model
 {
@@ -30,7 +32,7 @@ final class AgentSubscription extends Model
 
     protected $table = 'billing_agent_subscriptions';
 
-    protected $fillable = ['user_id', 'agent_plan_id', 'status', 'price_cents', 'subsidy_cents', 'current_period_end', 'grace_until', 'gateway_ref'];
+    protected $fillable = ['user_id', 'agent_plan_id', 'status', 'price_cents', 'subsidy_cents', 'current_period_end', 'grace_until', 'gateway_ref', 'customer_ref', 'sponsored'];
 
     public function getConnectionName(): ?string
     {
@@ -42,6 +44,6 @@ final class AgentSubscription extends Model
      */
     protected function casts(): array
     {
-        return ['current_period_end' => 'immutable_datetime', 'grace_until' => 'immutable_datetime'];
+        return ['current_period_end' => 'immutable_datetime', 'grace_until' => 'immutable_datetime', 'sponsored' => 'boolean'];
     }
 }
