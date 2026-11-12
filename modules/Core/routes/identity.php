@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\ValidationException;
+use Modules\Core\Audit\AuditController;
 use Modules\Core\Identity\EmailChange;
 use Modules\Core\Identity\Http\Controllers\AgentHomeController;
 use Modules\Core\Identity\Http\Controllers\ImpersonationController;
@@ -78,3 +79,6 @@ Route::middleware(['web', EnsureTenantHost::class, 'auth'])->group(function (): 
     Route::post('impersonate/stop', [ImpersonationController::class, 'stop'])->name('impersonate.stop');
 });
 Route::middleware(['web', EnsureTenantHost::class, 'throttle:10,1'])->get('impersonate/accept', [ImpersonationController::class, 'accept'])->name('impersonate.accept');
+
+// Audit log for owners (specs/core/04).
+Route::middleware(['web', EnsureTenantHost::class, 'auth'])->get('audit', [AuditController::class, 'index'])->name('audit.index');

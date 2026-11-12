@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Modules\Core\Audit\Auditable;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\Concerns\BelongsToTenant;
 use Modules\Core\Tenancy\Concerns\HasPublicUlid;
@@ -71,11 +72,20 @@ use Modules\Crm\Enums\Source;
  */
 final class Contact extends Model
 {
+    use Auditable;
     use BelongsToTenant;
     use HasPublicUlid;
     use SoftDeletes;
 
     protected $table = 'crm_contacts';
+
+    protected static string $auditAction = 'crm.contact';
+
+    /** @var list<string> */
+    protected static array $audited = ['first_name', 'last_name', 'company_name', 'primary_email', 'primary_phone', 'lifecycle', 'origin', 'source', 'owner_user_id', 'stage_id', 'do_not_call', 'sms_opt_in', 'email_opt_in', 'rhythm', 'in_pond_since'];
+
+    /** @var list<string> */
+    protected static array $auditMasked = ['primary_email', 'primary_phone'];
 
     protected $fillable = [
         'type', 'first_name', 'last_name', 'company_name', 'emails', 'phones', 'address_line1', 'address_line2',

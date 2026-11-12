@@ -1,6 +1,6 @@
 # 04 — Audit log (Team A, Sprint 7 + additions sprint)
 
-Status: **Specification complete** (leader review done; seven additions approved for version 1.0).
+Status: **Part 1 delivered (Sprint 7A)**: outbox in the change's transaction; sealing worker (`FlushAuditOutbox`, after commit, plus `audit:flush` every minute) with per-brokerage gapless `chain_seq` and SHA-256 chain (`audit_heads` holds each tip); `audit:verify` reports the first altered or missing event; read-only `AuditEvent` model; `Auditable` trait (users, contacts, tasks) with masked fields; sign-ins, failed sign-ins (email masked), lockouts, "log in as" start/stop, consent changes and contact views recorded; `asAutomation()` records the automation, the person acted for and its scope (lead pond, follow-up plans, nightly intelligence as AI); only a SHA-256 `session_ref`; owner Audit log screen (area, person, importance, dates, name search, details) and "Who viewed or changed this contact". **Part 2 next**: plain-English activity view, weekly digest, retention and legal hold, streaming, evidence pack, HQ platform events, separate append-only database user.
 
 ## Purpose
 

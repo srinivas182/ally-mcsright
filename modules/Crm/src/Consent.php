@@ -8,6 +8,7 @@ use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use Modules\Core\Audit\AuditLogger;
 use Modules\Crm\Models\ConsentEvent;
 use Modules\Crm\Models\Contact;
 use Modules\Crm\Models\ContactBrief;
@@ -102,5 +103,6 @@ final class Consent
             'user_id' => $by?->id, 'occurred_at' => $at,
         ]);
         ContactBrief::query()->where('contact_id', $contact->id)->update(['stale' => true]);
+        app(AuditLogger::class)->record("crm.consent.{$channel}_{$action}", $contact, metadata: ['method' => $method], severity: 'notice');
     }
 }

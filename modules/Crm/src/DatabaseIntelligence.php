@@ -10,6 +10,7 @@ use Modules\AI\AiGateway;
 use Modules\AI\Data\AiTask;
 use Modules\AI\Data\RetrievedRecord;
 use Modules\AI\Models\AiBatch;
+use Modules\Core\Audit\AuditLogger;
 use Modules\Crm\Enums\Lifecycle;
 use Modules\Crm\Models\Activity;
 use Modules\Crm\Models\Contact;
@@ -250,10 +251,10 @@ final class DatabaseIntelligence
                 continue;
             }
             try {
-                $task = Task::query()->create([
+                $task = app(AuditLogger::class)->asAutomation('nightly_intelligence', $contact->owner_user_id, 'Follow up on a plan mentioned in notes', fn () => Task::query()->create([
                     'contact_id' => $contact->id, 'assigned_to' => $contact->owner_user_id, 'type' => 'call',
                     'title' => mb_substr('Follow up: '.$intent->summary, 0, 200), 'due_at' => CarbonImmutable::now(), 'priority' => 'high',
-                ]);
+                ]), 'ai');
                 $intent->update(['alert_task_id' => $task->id]);
                 $created++;
             } catch (Throwable) {
