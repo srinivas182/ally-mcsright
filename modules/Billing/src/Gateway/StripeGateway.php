@@ -37,6 +37,21 @@ final class StripeGateway implements PaymentGateway
         return (string) $session['url'];
     }
 
+    public function addInvoiceItem(string $customerRef, int $cents, string $description): void
+    {
+        $this->post('invoiceitems', ['customer' => $customerRef, 'amount' => $cents, 'currency' => 'usd', 'description' => $description]);
+    }
+
+    public function changeAmount(string $subscriptionRef, int $unitCents, string $productName, string $interval): void
+    {
+        $sub = $this->get('subscriptions/'.urlencode($subscriptionRef));
+        $itemId = (string) ($sub['items']['data'][0]['id'] ?? '');
+        $this->post('subscriptions/'.urlencode($subscriptionRef), [
+            'proration_behavior' => 'none',
+            'items' => [['id' => $itemId, 'price_data' => ['currency' => 'usd', 'unit_amount' => $unitCents, 'recurring' => ['interval' => $interval], 'product_data' => ['name' => $productName]]]],
+        ]);
+    }
+
     public function portal(string $customerRef, string $returnUrl): string
     {
         return (string) $this->post('billing_portal/sessions', ['customer' => $customerRef, 'return_url' => $returnUrl])['url'];
@@ -64,6 +79,23 @@ final class StripeGateway implements PaymentGateway
         }
 
         return (array) json_decode($payload, true);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function get(string $path): array
+    {
+        $secret = $this->settings->keys()['secret'] ?? null;
+        if ($secret === null) {
+            throw new RuntimeException('Payments are not set up yet.');
+        }
+        $response = $this->http->withToken($secret)->timeout(20)->get(self::API.$path);
+        if ($response->failed()) {
+            throw new RuntimeException('The payment provider refused the request ('.$response->status().').');
+        }
+
+        return (array) $response->json();
     }
 
     /**

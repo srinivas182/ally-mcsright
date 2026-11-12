@@ -6,6 +6,7 @@ namespace Modules\Billing\Console;
 
 use Illuminate\Console\Command;
 use Modules\Billing\AgentPayments;
+use Modules\Billing\BrokeragePayments;
 use Modules\Core\Tenancy\Models\Tenant;
 use Modules\Core\Tenancy\TenantContext;
 
@@ -24,6 +25,7 @@ final class EndGrace extends Command
         foreach (Tenant::query()->where('status', 'active')->get() as $tenant) {
             $total += $tenants->runAs($tenant, fn (): int => app(AgentPayments::class)->endExpiredGrace());
         }
+        $total += app(BrokeragePayments::class)->endExpiredGrace();
         $this->info("{$total} plan(s) ended after the grace period.");
 
         return self::SUCCESS;

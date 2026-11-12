@@ -20,6 +20,12 @@ interface PaymentGateway
      */
     public function subscriptionCheckout(string $email, string $productName, int $unitCents, string $interval, string $successUrl, string $cancelUrl, array $metadata, bool $automaticTax): string;
 
+    /** Adds a one-off charge to the customer's next invoice (e.g. the brokerage's subsidies). */
+    public function addInvoiceItem(string $customerRef, int $cents, string $description): void;
+
+    /** Changes the monthly amount of an existing subscription from its next period. */
+    public function changeAmount(string $subscriptionRef, int $unitCents, string $productName, string $interval): void;
+
     /** Hosted page where a customer manages their card and sees invoices. */
     public function portal(string $customerRef, string $returnUrl): string;
 

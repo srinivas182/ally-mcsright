@@ -17,14 +17,24 @@ type Plan = {
     sort: number;
     active: boolean;
 };
+type Pkg = {
+    ulid: string;
+    name: string;
+    monthly_cents: number;
+    yearly_cents: number;
+    ailly_conversations: number;
+    features: string[];
+    active: boolean;
+};
 type Props = {
+    packages: Pkg[];
     plans: Plan[];
     tiers: { min_paying_agents: number; percent: string }[];
     features: Record<string, string>;
 };
 
 /** HQ: agent plans (public list price and brokerage floor) and brokerage commission tiers. */
-export default function HqBilling({ plans, tiers, features }: Props) {
+export default function HqBilling({ plans, tiers, features, packages }: Props) {
     const form = useForm({
         key: '',
         name: '',
@@ -33,6 +43,13 @@ export default function HqBilling({ plans, tiers, features }: Props) {
         floor: '',
         features: [] as string[],
         sort: 0,
+    });
+    const pkg = useForm({
+        name: '',
+        monthly: '',
+        yearly: '',
+        ailly: '500',
+        features: [] as string[],
     });
     const [editing, setEditing] = useState<string | null>(null);
     const [tierRows, setTierRows] = useState(
@@ -259,6 +276,74 @@ export default function HqBilling({ plans, tiers, features }: Props) {
                     >
                         Save tiers
                     </Button>
+                </section>
+                <section className="grid gap-2 rounded-lg border p-4 text-sm">
+                    <p className="font-medium">
+                        Brokerage packages (the brokerage's flat fee)
+                    </p>
+                    {packages.map((p) => (
+                        <span key={p.ulid}>
+                            {p.name}: {usd(p.monthly_cents)}/month or{' '}
+                            {usd(p.yearly_cents)}/year · AIlly{' '}
+                            {p.ailly_conversations} conversations
+                        </span>
+                    ))}
+                    <form
+                        className="flex flex-wrap gap-2"
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            pkg.post('/hq/billing/packages', {
+                                preserveScroll: true,
+                                onSuccess: () => pkg.reset(),
+                            });
+                        }}
+                    >
+                        <Input
+                            aria-label="Package name"
+                            placeholder="Brokerage"
+                            className="w-40"
+                            value={pkg.data.name}
+                            onChange={(e) =>
+                                pkg.setData('name', e.target.value)
+                            }
+                        />
+                        <Input
+                            aria-label="Monthly ($)"
+                            placeholder="$/month"
+                            type="number"
+                            className="w-28"
+                            value={pkg.data.monthly}
+                            onChange={(e) =>
+                                pkg.setData('monthly', e.target.value)
+                            }
+                        />
+                        <Input
+                            aria-label="Yearly ($)"
+                            placeholder="$/year"
+                            type="number"
+                            className="w-28"
+                            value={pkg.data.yearly}
+                            onChange={(e) =>
+                                pkg.setData('yearly', e.target.value)
+                            }
+                        />
+                        <Input
+                            aria-label="AIlly conversations a month"
+                            type="number"
+                            className="w-28"
+                            value={pkg.data.ailly}
+                            onChange={(e) =>
+                                pkg.setData('ailly', e.target.value)
+                            }
+                        />
+                        <Button
+                            type="submit"
+                            variant="outline"
+                            disabled={pkg.processing}
+                        >
+                            Add package
+                        </Button>
+                    </form>
                 </section>
             </div>
         </>
