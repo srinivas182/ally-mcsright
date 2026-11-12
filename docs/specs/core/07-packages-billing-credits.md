@@ -203,3 +203,60 @@ Tenant: `core.billing.view`, `core.billing.manage`, `core.credits.view`, `core.c
 6. Allowances allocate monthly from the pool; proportional allocation and alert when short.
 7. Purchases, auto-recharge, low-balance alerts and expiry work as specified.
 8. All credit movements are ledger entries, visible by feature and user, and audited.
+
+## Brokerage-partner and agent-pays model (approved, version 1.0; ready before the pilot)
+
+**Everyone pays RightAlly directly by card. The brokerage is never responsible for agents' fees.**
+
+| Who                                 | Pays                                                     | Gets                                                                                                                                                                                 |
+| ----------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Brokerage                           | A small **flat fee**, monthly or yearly (yearly cheaper) | Full broker access to its package (back office, admin, compensation, compliance, websites, AIlly allowance)                                                                          |
+| Agent, no plan                      | Nothing                                                  | The brokerage chooses: **minimal** (default: profile, commission statements, submitting deals and documents, announcements, required training) or **blocked** (only "choose a plan") |
+| Agent, Basic                        | A small monthly fee                                      | The agent back office                                                                                                                                                                |
+| Agent, upgrades (e.g. Pro, Premium) | More                                                     | The best tools: AI brief, Today's 10, Ask your database, Lead-IQ, Deal-IQ, Learn-IQ, own website with AIlly                                                                          |
+
+### Who sets prices
+
+- **HQ creates the agent plans** (features and **list price** — the public price on rightally.io for agents
+  joining directly), the **floor price** for agents joining through a brokerage (list minus the partner
+  discount, e.g. 40%), the **commission tiers** (20% for 1–24 paying agents, 25% for 25–99, 30% for 100+),
+  the broker flat fee, and special deals per brokerage.
+- **Each brokerage**, in its back office: which plans to offer and the default for new agents; **its price
+  for each plan, anywhere between the floor and the list price** (never below the floor, never above the
+  list price); optional subsidies (its card pays part or all of an agent's price, which may go below the
+  floor) and first-month-free offers within HQ limits.
+
+### What the brokerage earns
+
+**Commission on the floor price, plus 100% of any amount above the floor.** RightAlly always receives
+the floor price minus commission, whatever the brokerage charges. Example (Pro: list $100, floor $60,
+25%): price $60 → broker $15, RightAlly $45; price $75 → broker $30, RightAlly $45; price $100 → broker
+$55, RightAlly $45.
+
+### Rules
+
+- Agents see the brokerage price next to the public price.
+- Price increases: new agents immediately, existing agents after 30 days' notice; decreases at once. HQ
+  list/floor increases: brokerages get 60 days' notice and existing agents keep their price for that period.
+  Annual plans lock the price for the year.
+- Commission is paid on money actually collected (after refunds and chargebacks, excluding sales tax),
+  monthly, with a minimum payout (e.g. $25; smaller amounts roll over).
+- Failed agent card: 7-day grace, then the brokerage's chosen level (minimal or blocked); nothing deleted.
+  Failed brokerage card: grace, then read-only; agents' own paid tools keep working.
+- Joining: invitation, brokerage join link, portal sign-in or back office → plans at the brokerage price →
+  card → in. Each agent is tied to the brokerage that brought them; only that brokerage can change it.
+- Leaving a brokerage: the agent keeps their account at the direct price, their personal contacts go with
+  them, company leads stay; the brokerage's commission stops.
+
+### Screens
+
+- **HQ console**: plans, list and floor prices, commission tiers, broker fees, special deals, payouts.
+- **Brokerage back office**: plan prices, agents by plan, revenue from its agents, earnings split into
+  commission and markup, payout history.
+- **Agent**: plans at the brokerage price, card, invoices, upgrade/downgrade.
+
+### Technology
+
+Stripe Billing (cards, subscriptions, invoices), Stripe Tax (SaaS sales tax by state), Stripe Connect
+(brokerage payouts, identity checks, 1099 forms). Delivery: Team A (plans, billing, access, dashboard,
+Sprints 20–21), Team B (commissions and payouts), before the pilot at Sprint 26.
