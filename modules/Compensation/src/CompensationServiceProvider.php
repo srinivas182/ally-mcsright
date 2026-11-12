@@ -48,6 +48,8 @@ final class CompensationServiceProvider extends ServiceProvider
         $nav->add(new NavItem('Compensation', 'Simulator', '/compensation/simulator', 'calculator', 40, ability: 'compensation.plans.view'));
         $nav->add(new NavItem('Compensation', 'Profitability', '/compensation/profitability', 'trending-up', 50, ability: 'finance.amounts.view'));
         $nav->add(new NavItem('Overview', 'My plan', '/my-plan', 'badge-dollar-sign', 30, kinds: [UserKind::Agent], mobile: true));
+        $nav->add(new NavItem('Overview', 'Revenue share', '/revenue-share', 'network', 35, kinds: [UserKind::Agent]));
+        $nav->add(new NavItem('Compensation', 'Revenue share', '/compensation/revenue-share', 'network', 45, ability: 'compensation.calculations.manage'));
 
         // Plan changes recalculate pending deals automatically (best-in-class review, addition 7).
         // Revenue share attribution and vesting follow people joining and leaving.
