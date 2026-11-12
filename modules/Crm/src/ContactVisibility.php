@@ -6,6 +6,7 @@ namespace Modules\Crm;
 
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Modules\Core\Access\Permissions;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Tenancy\Models\Tenant;
 use Modules\Crm\Enums\Origin;
@@ -28,6 +29,28 @@ final class ContactVisibility
      * @return Builder<Contact>
      */
     public function apply(Builder $query, User $user): Builder
+    {
+        // Roles may widen access to COMPANY contacts by scope (team, office, everyone). An agent's
+        // personal sphere is never widened (specs/crm/01 privacy rule; specs/core/03 scopes).
+        $scope = $user->kind === UserKind::HqStaff ? null : app(Permissions::class)->scopeFor($user, 'crm.contacts.view');
+        if (in_array($scope, ['team', 'office', 'tenant'], true)) {
+            $people = app(Permissions::class)->peopleInScope($user, $scope);
+
+            return $query->where(function (Builder $q) use ($user, $people): void {
+                $q->where(fn (Builder $base) => $this->base($base, $user))
+                    ->orWhere(fn (Builder $wide) => $wide->where('origin', Origin::Company)
+                        ->when($people !== null, fn (Builder $w) => $w->whereIn('owner_user_id', $people)));
+            });
+        }
+
+        return $this->base($query, $user);
+    }
+
+    /**
+     * @param  Builder<Contact>  $query
+     * @return Builder<Contact>
+     */
+    private function base(Builder $query, User $user): Builder
     {
         return match ($user->kind) {
             UserKind::Agent => $query->where('owner_user_id', $user->id),
@@ -62,6 +85,9 @@ final class ContactVisibility
     {
         if ($user->isKind(UserKind::Owner, UserKind::Staff)) {
             return $contact->origin === Origin::Company || $contact->owner_user_id === $user->id;
+        }
+        if ($contact->origin === Origin::Company && app(Permissions::class)->allows($user, 'crm.contacts.manage', $contact)) {
+            return true;
         }
 
         return $this->canSee($user, $contact);

@@ -13,6 +13,7 @@ use Modules\Core\Identity\Enums\UserKind;
 use Modules\Crm\Actions\Pipelines;
 use Modules\Crm\Actions\Tags;
 use Modules\Crm\ContactVisibility;
+use Modules\Crm\CrmAccess;
 use Modules\Crm\Models\Contact;
 use Modules\Crm\Models\Pipeline;
 use Modules\Crm\Models\SmartList;
@@ -54,7 +55,7 @@ final class PipelineController
             'pipelines' => $all->map(fn (Pipeline $p): array => ['ulid' => $p->ulid, 'name' => $p->name])->values(),
             'pipeline' => ['ulid' => $current->ulid, 'name' => $current->name],
             'stages' => $stages,
-            'canManage' => $user->isKind(UserKind::Owner, UserKind::Staff),
+            'canManage' => CrmAccess::manager($user),
         ]);
     }
 

@@ -10,7 +10,6 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Modules\Core\Audit\AuditLogger;
-use Modules\Core\Identity\Enums\UserKind;
 use Modules\Crm\Actions\Timeline;
 use Modules\Crm\Enums\Lifecycle;
 use Modules\Crm\Models\Contact;
@@ -87,7 +86,7 @@ final class FollowUpPlans
      */
     public function save(?FollowUpPlan $plan, array $data, User $by): FollowUpPlan
     {
-        $isManager = $by->isKind(UserKind::Owner, UserKind::Staff);
+        $isManager = CrmAccess::manager($by);
         if ($plan !== null && ! $this->canEdit($plan, $by)) {
             throw ValidationException::withMessages(['plan' => 'You can only change your own plans.']);
         }
@@ -230,7 +229,7 @@ final class FollowUpPlans
 
     public function canEdit(FollowUpPlan $plan, User $user): bool
     {
-        return $plan->shared ? $user->isKind(UserKind::Owner, UserKind::Staff) : $plan->owner_user_id === $user->id;
+        return $plan->shared ? CrmAccess::manager($user) : $plan->owner_user_id === $user->id;
     }
 
     private function createTask(PlanEnrollment $enrollment, PlanStep $step, Contact $contact): void

@@ -9,7 +9,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
-use Modules\Core\Identity\Enums\UserKind;
+use Modules\Crm\CrmAccess;
 use Modules\Crm\Enums\Lifecycle;
 use Modules\Crm\Events\ContactStageChanged;
 use Modules\Crm\Models\Contact;
@@ -142,7 +142,7 @@ final class Pipelines
 
     private function guardManager(User $by): void
     {
-        if (! $by->isKind(UserKind::Owner, UserKind::Staff)) {
+        if (! CrmAccess::manager($by)) {
             throw ValidationException::withMessages(['pipeline' => 'Only owners and staff can change pipelines.']);
         }
     }

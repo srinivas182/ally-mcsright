@@ -8,8 +8,8 @@ use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
-use Modules\Core\Identity\Enums\UserKind;
 use Modules\Crm\ContactVisibility;
+use Modules\Crm\CrmAccess;
 use Modules\Crm\Models\Activity;
 use Modules\Crm\Models\ConsentEvent;
 use Modules\Crm\Models\Contact;
@@ -69,7 +69,7 @@ final class MergeContacts
                 throw ValidationException::withMessages(['duplicate' => 'You can only merge contacts you manage.']);
             }
         }
-        if ($keep->origin !== $duplicate->origin && ! $by->isKind(UserKind::Owner, UserKind::Staff)) {
+        if ($keep->origin !== $duplicate->origin && ! CrmAccess::manager($by)) {
             throw ValidationException::withMessages(['duplicate' => 'Ask your broker to merge a personal and a company contact.']);
         }
 

@@ -12,6 +12,7 @@ use Modules\AI\Events\AiBatchCompleted;
 use Modules\AI\FeatureCatalog;
 use Modules\AI\Models\AiBatch;
 use Modules\AI\Support\PromptRegistry;
+use Modules\Core\Access\PermissionRegistry;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
@@ -125,6 +126,15 @@ final class CrmServiceProvider extends ServiceProvider
                 $this->app->make(DatabaseIntelligence::class)->score($scored);
             }
         });
+
+        // Permissions (specs/core/03); scopes widen access to company contacts only.
+        $this->app->make(PermissionRegistry::class)->register('Contacts and CRM', [
+            'crm.contacts.view' => ['See company contacts', true],
+            'crm.contacts.manage' => ['Edit company contacts', true],
+            'crm.contacts.reassign' => ['Reassign company contacts', true],
+            'crm.import' => ['Import contacts into the company database'],
+            'crm.settings.manage' => ['Manage CRM settings (pipelines, shared plans and lists, lead pond)'],
+        ]);
 
         $features = $this->app->make(FeatureCatalog::class);
         $features->declare(ContactBriefs::FEATURE, 'ai.crm_brief', 'AI contact brief on every contact');

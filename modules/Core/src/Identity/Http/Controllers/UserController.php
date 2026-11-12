@@ -11,6 +11,9 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
+use Modules\Core\Access\Role;
+use Modules\Core\Access\Roles;
+use Modules\Core\Access\UserRole;
 use Modules\Core\Identity\Actions\ManageInvitations;
 use Modules\Core\Identity\Actions\ManageUserStatus;
 use Modules\Core\Identity\Enums\UserKind;
@@ -77,7 +80,13 @@ final class UserController
             )),
             'agents' => User::query()->where('kind', UserKind::Agent)->where('status', UserStatus::Active)
                 ->orderBy('first_name')->get()->map(fn (User $a): array => ['id' => $a->id, 'name' => $a->name]),
-            'can' => ['invite' => Gate::allows('core.users.invite'), 'manage' => Gate::allows('core.users.manage')],
+            'can' => ['invite' => Gate::allows('core.users.invite'), 'manage' => Gate::allows('core.users.manage'), 'roles' => Gate::allows('core.roles.manage')],
+            'roles' => Gate::allows('core.roles.manage') && ! $isHq ? app(Roles::class)->all()->map(fn ($r): array => ['ulid' => $r->ulid, 'name' => $r->name, 'locked' => $r->is_locked])->values() : [],
+            'grants' => Gate::allows('core.roles.manage') && ! $isHq ? UserRole::query()->get()->groupBy(fn ($ur) => (string) User::query()->whereKey($ur->user_id)->value('ulid'))->map(fn ($g) => $g->map(fn ($ur): array => [
+                'role' => Role::query()->whereKey($ur->role_id)->value('ulid'),
+                'name' => Role::query()->whereKey($ur->role_id)->value('name'),
+                'expires_at' => $ur->expires_at?->toDateString(),
+            ])->values()) : (object) [],
         ]);
     }
 

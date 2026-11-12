@@ -13,6 +13,7 @@ use Inertia\Response;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Crm\Actions\Pipelines;
 use Modules\Crm\ContactVisibility;
+use Modules\Crm\CrmAccess;
 use Modules\Crm\Enums\Source;
 use Modules\Crm\FollowUpPlans;
 use Modules\Crm\Models\Contact;
@@ -37,7 +38,7 @@ final class PlanController
             ])->values(),
             'sources' => array_map(fn (Source $s): string => $s->value, Source::cases()),
             'stages' => $pipelines->all()->flatMap(fn ($p) => $p->stages->map(fn ($s): array => ['ulid' => $s->ulid, 'name' => "{$p->name}: {$s->name}"]))->values(),
-            'isManager' => $user->isKind(UserKind::Owner, UserKind::Staff),
+            'isManager' => CrmAccess::manager($user),
         ]);
     }
 

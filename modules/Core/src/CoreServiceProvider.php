@@ -11,6 +11,7 @@ use Illuminate\Auth\Events\Login;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\Hashing\Hasher;
 use Illuminate\Contracts\Queue\Job;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
@@ -22,6 +23,9 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Fortify\Events\ValidTwoFactorAuthenticationCodeProvided;
+use Modules\Core\Access\PermissionRegistry;
+use Modules\Core\Access\Permissions;
+use Modules\Core\Access\Roles;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Branding\BrandColourSource;
 use Modules\Core\Branding\NullBrandColourSource;
@@ -58,6 +62,9 @@ final class CoreServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->app->singleton(PermissionRegistry::class);
+        $this->app->scoped(Permissions::class);
+        $this->app->scoped(Roles::class);
         $this->app->scoped(AuditLogger::class);
         $this->app->singleton(NavigationRegistry::class);
         $this->mergeConfigFrom(__DIR__.'/../config/core.php', 'core');
@@ -83,7 +90,7 @@ final class CoreServiceProvider extends ServiceProvider
         $this->registerMigrationMacros();
 
         if ($this->app->runningInConsole()) {
-            $this->commands([CompileDesignTokens::class, RunTenantLifecycle::class, BootstrapHq::class, Console\FlushAudit::class, Console\VerifyAudit::class, Console\AuditMaintenance::class]);
+            $this->commands([CompileDesignTokens::class, RunTenantLifecycle::class, BootstrapHq::class, Console\FlushAudit::class, Console\VerifyAudit::class, Console\AuditMaintenance::class, Console\ExpireAccess::class]);
         }
     }
 
@@ -121,9 +128,25 @@ final class CoreServiceProvider extends ServiceProvider
 
         Gate::define('hq.tenants.manage', fn (User $user): bool => $user->kind === UserKind::HqStaff);
 
-        foreach (['core.users.view', 'core.users.invite', 'core.users.manage'] as $ability) {
-            Gate::define($ability, fn (User $user): bool => $user->isKind(UserKind::Owner, UserKind::HqStaff));
-        }
+        // Roles and permissions (specs/core/03): registered permissions are decided by the engine.
+        $registry = $this->app->make(PermissionRegistry::class);
+        $registry->register('People and settings', [
+            'core.users.view' => ['See people in the brokerage'],
+            'core.users.invite' => ['Invite people'],
+            'core.users.manage' => ['Change and deactivate people'],
+            'core.roles.manage' => ['Create roles and assign them'],
+            'core.organisation.manage' => ['Manage offices and teams'],
+            'core.audit.view' => ['See the audit log'],
+        ]);
+        Gate::before(function (User $user, string $ability, array $arguments): ?bool {
+            $registry = $this->app->make(PermissionRegistry::class);
+            if (! $registry->has($ability)) {
+                return null;
+            }
+            $record = $arguments[0] ?? null;
+
+            return $this->app->make(Permissions::class)->allows($user, $ability, $record instanceof Model ? $record : null);
+        });
 
         Event::listen(Login::class, function (Login $event): void {
             // "Log in as" is not the person signing in: no last-login change or device alert.
@@ -193,7 +216,9 @@ final class CoreServiceProvider extends ServiceProvider
     private function registerNavigation(): void
     {
         $nav = $this->app->make(NavigationRegistry::class);
-        $nav->add(new NavItem('Settings', 'Audit log', '/audit', 'shield', 90, kinds: [UserKind::Owner]));
+        $nav->add(new NavItem('Settings', 'Audit log', '/audit', 'shield', 90, ability: 'core.audit.view'));
+        $nav->add(new NavItem('Settings', 'Roles', '/settings/roles', 'key-round', 80, ability: 'core.roles.manage'));
+        $nav->add(new NavItem('Settings', 'Offices and teams', '/settings/organisation', 'building-2', 85, ability: 'core.organisation.manage'));
         $nav->add(new NavItem('Overview', 'Dashboard', '/dashboard', 'layout-grid', 10, kinds: [UserKind::Owner, UserKind::Staff], mobile: true));
         $nav->add(new NavItem('Overview', 'Today', '/agent', 'sun', 10, kinds: [UserKind::Agent, UserKind::Assistant], mobile: true));
         $nav->add(new NavItem('Brokerage', 'People', '/users', 'users', 10, ability: 'core.users.view', mobile: true));

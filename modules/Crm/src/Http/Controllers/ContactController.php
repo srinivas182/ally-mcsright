@@ -20,6 +20,7 @@ use Modules\Crm\Actions\ManageContacts;
 use Modules\Crm\Actions\Pipelines;
 use Modules\Crm\Consent;
 use Modules\Crm\ContactVisibility;
+use Modules\Crm\CrmAccess;
 use Modules\Crm\Enums\Lifecycle;
 use Modules\Crm\Enums\Origin;
 use Modules\Crm\Enums\Relation;
@@ -88,7 +89,7 @@ final class ContactController
             'tags' => Tag::query()->orderBy('name')->pluck('name'),
             'lifecycles' => array_map(fn (Lifecycle $l): string => $l->value, Lifecycle::cases()),
             'sources' => array_map(fn (Source $s): string => $s->value, Source::cases()),
-            'isManager' => $user->isKind(UserKind::Owner, UserKind::Staff),
+            'isManager' => CrmAccess::manager($user),
         ]);
     }
 
@@ -190,7 +191,7 @@ final class ContactController
             'enrollments' => PlanEnrollment::query()->with('plan')->where('contact_id', $contact->id)->where('status', 'active')->get()
                 ->map(fn (PlanEnrollment $e): array => ['id' => $e->id, 'plan' => $e->plan->name, 'next_due_at' => $e->next_due_at?->toIso8601String()]),
             'canManage' => $this->visibility->canManage($user, $contact),
-            'agents' => $user->isKind(UserKind::Owner, UserKind::Staff) && $contact->origin === Origin::Company
+            'agents' => CrmAccess::manager($user) && $contact->origin === Origin::Company
                 ? User::query()->where('status', UserStatus::Active)->whereIn('kind', [UserKind::Agent, UserKind::Owner, UserKind::Staff])
                     ->orderBy('first_name')->get()->map(fn (User $a): array => ['id' => $a->id, 'name' => $a->name])
                 : [],

@@ -7,8 +7,10 @@ namespace Modules\Crm\Actions;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Modules\Core\Access\Permissions;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Crm\ContactVisibility;
+use Modules\Crm\CrmAccess;
 use Modules\Crm\Enums\Lifecycle;
 use Modules\Crm\Enums\Origin;
 use Modules\Crm\Enums\Relation;
@@ -60,7 +62,7 @@ final class ManageContacts
 
         $this->guardDuplicate($email, $phone, $by);
 
-        $isManager = $by->isKind(UserKind::Owner, UserKind::Staff);
+        $isManager = CrmAccess::manager($by);
         $origin = Origin::tryFrom((string) ($data['origin'] ?? '')) ?? ($isManager ? Origin::Company : Origin::Personal);
         $owner = $by->kind === UserKind::Assistant ? $by->assisted_user_id : $by->id;
         if ($isManager && array_key_exists('owner_user_id', $data)) {
@@ -115,7 +117,8 @@ final class ManageContacts
 
     public function assignOwner(Contact $contact, User $newOwner, User $by): Contact
     {
-        if (! $by->isKind(UserKind::Owner, UserKind::Staff) || $contact->origin !== Origin::Company) {
+        $allowed = CrmAccess::manager($by) || app(Permissions::class)->allows($by, 'crm.contacts.reassign', $contact);
+        if (! $allowed || $contact->origin !== Origin::Company) {
             throw ValidationException::withMessages(['owner_user_id' => 'Only company contacts can be reassigned, by the brokerage.']);
         }
         if ($newOwner->tenant_id !== $contact->tenant_id || ! $newOwner->isActive() || ! $newOwner->isKind(UserKind::Agent, UserKind::Owner, UserKind::Staff)) {

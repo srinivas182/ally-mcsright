@@ -1,3 +1,8 @@
+import {
+    RoleAssignDialog,
+    type Grant,
+    type RoleOption,
+} from '@/components/role-assign-dialog';
 import { ViewAsDialog } from '@/components/view-as-dialog';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { MoreHorizontalIcon } from 'lucide-react';
@@ -62,7 +67,9 @@ type Props = {
     filters: { search: string; kind: string; status: string };
     kinds: { value: string; label: string }[];
     agents: { id: number; name: string }[];
-    can: { invite: boolean; manage: boolean };
+    can: { invite: boolean; manage: boolean; roles?: boolean };
+    roles?: RoleOption[];
+    grants?: Record<string, Grant[]>;
 };
 
 const ALL = 'all';
@@ -86,7 +93,8 @@ function lastActive(value: string | null): string {
 }
 
 export default function UsersIndex(props: Props) {
-    const { users, invitations, filters, kinds, agents, can } = props;
+    const { users, invitations, filters, kinds, agents, can, roles, grants } =
+        props;
     const [inviting, setInviting] = useState(false);
     const [search, setSearch] = useState(filters.search);
     const form = useForm({
@@ -113,6 +121,10 @@ export default function UsersIndex(props: Props) {
 
     const viewer = usePage().props.auth.user as { kind?: string } | null;
     const isOwner = viewer?.kind === 'owner';
+    const [rolesFor, setRolesFor] = useState<{
+        ulid: string;
+        name: string;
+    } | null>(null);
     const [viewAs, setViewAs] = useState<{ ulid: string; name: string } | null>(
         null,
     );
@@ -327,6 +339,15 @@ export default function UsersIndex(props: Props) {
                                                             Log in as
                                                         </DropdownMenuItem>
                                                     )}
+                                                {can.roles && (
+                                                    <DropdownMenuItem
+                                                        onSelect={() =>
+                                                            setRolesFor(user)
+                                                        }
+                                                    >
+                                                        Roles…
+                                                    </DropdownMenuItem>
+                                                )}
                                                 <DropdownMenuItem
                                                     onSelect={() =>
                                                         act(
@@ -536,6 +557,14 @@ export default function UsersIndex(props: Props) {
                     name={viewAs.name}
                     url={`/users/${viewAs.ulid}/impersonate`}
                     onClose={() => setViewAs(null)}
+                />
+            )}
+            {rolesFor && (
+                <RoleAssignDialog
+                    user={rolesFor}
+                    roles={roles ?? []}
+                    grants={grants?.[rolesFor.ulid] ?? []}
+                    onClose={() => setRolesFor(null)}
                 />
             )}
         </>
