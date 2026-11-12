@@ -21,6 +21,7 @@ use Modules\Core\Tenancy\Concerns\HasPublicUlid;
  * @property string $status
  * @property CarbonImmutable|null $submitted_at
  * @property string|null $fix_reason
+ * @property CarbonImmutable|null $reviewed_at
  * @property int|null $reviewed_by
  */
 final class Item extends Model
@@ -30,7 +31,7 @@ final class Item extends Model
 
     protected $table = 'tx_items';
 
-    protected $fillable = ['deal_id', 'label', 'required', 'stage', 'sort', 'status', 'submitted_at', 'fix_reason', 'reviewed_by', 'reviewed_at'];
+    protected $fillable = ['assigned_reviewer_id', 'deal_id', 'label', 'required', 'stage', 'sort', 'status', 'submitted_at', 'fix_reason', 'reviewed_by', 'reviewed_at'];
 
     public function getConnectionName(): ?string
     {

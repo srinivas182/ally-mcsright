@@ -16,11 +16,15 @@ use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Support\Connections;
 use Modules\Crm\ContactVisibility;
 use Modules\Crm\Models\Contact;
+use Modules\Transactions\Cdas;
 use Modules\Transactions\Deals;
 use Modules\Transactions\Documents;
+use Modules\Transactions\EarnestMoney;
+use Modules\Transactions\Forecast;
 use Modules\Transactions\Models\Deal;
 use Modules\Transactions\Models\Document;
 use Modules\Transactions\Models\Item;
+use Modules\Transactions\Referrals;
 use Modules\Transactions\Reviews;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -44,6 +48,7 @@ final class DealController
                 'closing_date' => $d->closing_date?->toDateString(), 'agent' => User::query()->whereKey($d->agent_user_id)->value('first_name'),
                 'missing' => count($deals->missing($d)),
             ]),
+            'forecast' => self::reviewer($user) ? app(Forecast::class)->pending() : null,
             'canCreateFor' => self::reviewer($user) ? User::query()->where('kind', UserKind::Agent)->where('status', 'active')->orderBy('first_name')->get()
                 ->map(fn (User $u): array => ['ulid' => $u->ulid, 'name' => $u->name]) : [],
         ]);
@@ -67,6 +72,12 @@ final class DealController
                 'documents' => ($docs[$i->id] ?? collect())->map(fn (Document $d): array => ['ulid' => $d->ulid, 'filename' => $d->filename, 'version' => $d->version, 'via' => $d->via])->values(),
             ]),
             'missing' => $deals->missing($deal),
+            'deposits' => app(EarnestMoney::class)->forDeal($deal),
+            'referrals' => app(Referrals::class)->forDeal($deal),
+            'cdas' => self::reviewer($user) ? app(Cdas::class)->forDeal($deal) : [],
+            'titles' => self::reviewer($user) ? DB::connection(Connections::cell())->table('tx_title_companies')->whereNotNull('verified_at')->orderBy('name')->get(['ulid', 'name']) : [],
+            'can' => ['trust' => $user->isKind(UserKind::Owner) || $user->can('transactions.trust.manage'), 'approveCda' => $user->isKind(UserKind::Owner) || $user->can('transactions.cda.approve'),
+                'export' => $user->isKind(UserKind::Owner) || $user->can('transactions.export')],
             'reviewer' => self::reviewer($user),
             'reasons' => self::reviewer($user) ? $reviews->reasons() : [],
         ]);
@@ -146,11 +157,13 @@ final class DealController
 
         return Inertia::render('deals/review', [
             'sla_hours' => $reviews->slaHours(),
-            'items' => Item::query()->where('status', 'submitted')->orderBy('submitted_at')->limit(200)->get()->map(function (Item $i) use ($reviews): array {
+            'items' => Item::query()->where('status', 'submitted')->orderBy('submitted_at')->limit(200)->get()->map(function (Item $i) use ($reviews, $request): array {
                 $deal = Deal::query()->findOrFail($i->deal_id);
 
                 return ['ulid' => $i->ulid, 'label' => $i->label, 'deal' => $deal->ulid, 'street' => $deal->street, 'agent' => User::query()->whereKey($deal->agent_user_id)->value('first_name'),
-                    'submitted_at' => $i->submitted_at?->toIso8601String(), 'overdue' => $reviews->overdue($i)];
+                    'submitted_at' => $i->submitted_at?->toIso8601String(), 'overdue' => $reviews->overdue($i),
+                    'mine' => $i->getAttribute('assigned_reviewer_id') === $request->user()?->getAuthIdentifier(),
+                    'reviewer' => $i->getAttribute('assigned_reviewer_id') !== null ? User::query()->whereKey($i->getAttribute('assigned_reviewer_id'))->value('first_name') : null];
             }),
             'reasons' => $reviews->reasons(),
         ]);

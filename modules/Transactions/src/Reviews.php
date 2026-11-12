@@ -8,6 +8,8 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Modules\Core\Audit\AuditLogger;
+use Modules\Core\Identity\Enums\UserKind;
+use Modules\Core\Identity\Enums\UserStatus;
 use Modules\Core\Support\Connections;
 use Modules\Transactions\Models\Deal;
 use Modules\Transactions\Models\Item;
@@ -49,6 +51,42 @@ final class Reviews
         }
         $item->update(['status' => 'waived', 'fix_reason' => trim($reason), 'reviewed_by' => $by->id, 'reviewed_at' => now()]);
         $this->log($item, 'waived', ['reason' => $reason]);
+    }
+
+    /**
+     * Gives a submitted item to the reviewer with the fewest open reviews (never the deal's own agent).
+     */
+    public function assign(Item $item): ?int
+    {
+        $deal = Deal::query()->find($item->deal_id);
+        $reviewers = User::query()->where('status', UserStatus::Active)->get()
+            ->filter(fn (User $u): bool => $u->id !== $deal?->agent_user_id
+                && ($u->isKind(UserKind::Owner, UserKind::Staff) || $u->can('transactions.review')));
+        if ($reviewers->isEmpty()) {
+            return null;
+        }
+        $load = Item::query()->where('status', 'submitted')->whereIn('assigned_reviewer_id', $reviewers->pluck('id'))
+            ->groupBy('assigned_reviewer_id')->selectRaw('assigned_reviewer_id, count(*) as n')->pluck('n', 'assigned_reviewer_id');
+        $chosen = $reviewers->sortBy(fn (User $u): string => sprintf('%08d-%08d', (int) ($load[$u->id] ?? 0), $u->id))->first();
+        $item->update(['assigned_reviewer_id' => $chosen?->id]);
+
+        return $chosen?->id;
+    }
+
+    /**
+     * Approves every submitted item in the list at once.
+     *
+     * @param  list<string>  $ulids
+     */
+    public function bulkApprove(array $ulids, User $by): int
+    {
+        $count = 0;
+        foreach (Item::query()->whereIn('ulid', $ulids)->where('status', 'submitted')->get() as $item) {
+            $this->approve($item, $by);
+            $count++;
+        }
+
+        return $count;
     }
 
     public function slaHours(): int
