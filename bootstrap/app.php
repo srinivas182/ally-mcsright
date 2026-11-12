@@ -8,6 +8,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
+use Modules\Billing\Http\EnsureNotBlocked;
 use Modules\Core\Http\Middleware\EnsureHqConsole;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
 use Modules\Core\Identity\Http\Middleware\EnsureSecondFactor;
@@ -32,6 +33,7 @@ return Application::configure(basePath: dirname(__DIR__))
             EnsureValidSignedInUser::class,
             EnsureSecondFactor::class,
             ImpersonationGuard::class,
+            EnsureNotBlocked::class,
             HandleAppearance::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,

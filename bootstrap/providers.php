@@ -3,6 +3,7 @@
 use App\Providers\AppServiceProvider;
 use App\Providers\FortifyServiceProvider;
 use Modules\AI\AiServiceProvider;
+use Modules\Billing\BillingServiceProvider;
 use Modules\Compensation\CompensationServiceProvider;
 use Modules\Core\CoreServiceProvider;
 use Modules\Crm\CrmServiceProvider;
@@ -16,4 +17,5 @@ return [
     CompensationServiceProvider::class,
     CrmServiceProvider::class,
     AiServiceProvider::class,
+    BillingServiceProvider::class,
 ];
