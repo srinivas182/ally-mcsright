@@ -46,3 +46,7 @@
 **RightAlly AI Transaction Suite:** DocIQ and Deal-IQ sold together; DocIQ alone is the entry option.
 
 **Brand Kit and Brand Voice (Platform Core):** every AI message, video and document is branded to the brokerage (logo, colours, fonts, tone, disclaimers) and passes a brand and compliance check before it goes out.
+
+**AIlly (Home-IQ):** the AI assistant on every brokerage IDX website and on agents' websites (renamable, with the broker's or agent's photo): plain-language and voice home search across licensed MLS listings with distances and commute, listing and area questions, valuation hand-off, booking real meetings, human hand-off, CRM sync with a lead brief; Fair Housing guardrails; HQ cost dashboard.
+
+**Brokerage-partner and agent-pays billing:** brokerages pay a small flat fee; agents pay RightAlly directly by card (Basic and upgrades) at a brokerage price set within a band; brokerages earn commission plus any markup, with no liability for agents' fees.
