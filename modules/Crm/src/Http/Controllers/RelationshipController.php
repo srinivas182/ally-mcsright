@@ -12,6 +12,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Crm\ContactVisibility;
+use Modules\Crm\CrmAccess;
 use Modules\Crm\LeadPond;
 use Modules\Crm\Models\Contact;
 use Modules\Crm\Models\Memory;
@@ -70,7 +71,7 @@ final class RelationshipController
             ]),
             'settings' => $pond->settings(),
             'claimsLeft' => max(0, $pond->settings()['daily_claims'] - $pond->claimsToday($user)),
-            'isManager' => $user->isKind(UserKind::Owner, UserKind::Staff),
+            'isManager' => CrmAccess::manager($user),
         ]);
     }
 

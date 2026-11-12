@@ -1,5 +1,18 @@
 # 03 — Roles, permissions and entitlements (Team A, Sprints 5–6)
 
+Status: **Part 1 delivered (Sprint 8A)**: offices, teams, team members and office membership; roles with
+the nine real estate templates (Owner locked); a code-registered permission catalogue with plain-English
+labels, scopes and sensitive flags (core, finance and CRM areas); the permission engine behind every
+registered gate (owner everything; active unexpired grants; broadest scope wins; own/team/office/everyone
+record checks); **people without roles keep the access of their user type**; CRM company-contact access
+widened by role scope (never personal spheres), reassign and "Manage CRM settings" permissions; temporary
+access with end dates (ignored once expired; removed hourly by `core:expire-access`, audited as automation);
+separation of duties (bank-detail changes vs payout approval) refused in a role, across roles and at every
+check; role editor with live plain-English preview; offices and teams page; role assignment on the People
+screen; all changes audited. **Part 2 next (8A-2)**: field-level hiding in finance and compensation screens
+(compensation permissions registered with it), quarterly access review, module registry, entitlements and
+seats (with billing), HQ roles.
+
 ## Purpose
 
 One permission engine for RightAlly HQ and every brokerage. Brokerages create staff roles and

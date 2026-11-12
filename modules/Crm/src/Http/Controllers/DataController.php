@@ -17,6 +17,7 @@ use Modules\Crm\Actions\MergeContacts;
 use Modules\Crm\Consent;
 use Modules\Crm\ContactImporter;
 use Modules\Crm\ContactVisibility;
+use Modules\Crm\CrmAccess;
 use Modules\Crm\Enums\Source;
 use Modules\Crm\Jobs\ImportContacts;
 use Modules\Crm\Models\ConsentEvent;
@@ -79,7 +80,7 @@ final class DataController
             'preview' => $preview,
             'fields' => ContactImporter::FIELDS,
             'sources' => array_map(fn (Source $s): string => $s->value, Source::cases()),
-            'isManager' => $user->isKind(UserKind::Owner, UserKind::Staff),
+            'isManager' => CrmAccess::manager($user),
         ]);
     }
 

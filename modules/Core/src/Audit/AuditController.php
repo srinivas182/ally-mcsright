@@ -25,10 +25,10 @@ final class AuditController
     public function index(Request $request): Response
     {
         $user = $request->user();
-        abort_unless($user instanceof User && $user->isKind(UserKind::Owner), 403);
+        abort_unless($user instanceof User && $user->can('core.audit.view'), 403);
 
         $filters = $request->validate([
-            'area' => ['nullable', 'in:core.auth,core.impersonation,core.user,core.audit,crm.contact,crm.task,crm.consent'],
+            'area' => ['nullable', 'in:core.auth,core.impersonation,core.user,core.role,core.audit,crm.contact,crm.task,crm.consent'],
             'actor' => ['nullable', 'string', 'size:26'],
             'from' => ['nullable', 'date'], 'to' => ['nullable', 'date'],
             'severity' => ['nullable', 'in:notice,warning,critical'],

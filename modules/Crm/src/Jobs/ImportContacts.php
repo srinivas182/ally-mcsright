@@ -12,11 +12,12 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
-use Modules\Core\Identity\Enums\UserKind;
+use Modules\Core\Access\Permissions;
 use Modules\Crm\Actions\ManageContacts;
 use Modules\Crm\Actions\Tags;
 use Modules\Crm\Actions\Timeline;
 use Modules\Crm\ContactImporter;
+use Modules\Crm\CrmAccess;
 use Modules\Crm\Models\ContactImport;
 use Throwable;
 
@@ -55,7 +56,7 @@ final class ImportContacts implements ShouldQueue
                         'first_name' => $data['first_name'] ?? '', 'last_name' => $data['last_name'] ?? '',
                         'company_name' => $data['company_name'] ?? null, 'email' => $data['email'] ?? null, 'phone' => $data['phone'] ?? null,
                         'source' => $options['source'] ?? 'import',
-                        'origin' => $user->isKind(UserKind::Owner, UserKind::Staff) ? ($options['origin'] ?? 'company') : 'personal',
+                        'origin' => CrmAccess::manager($user) || app(Permissions::class)->allows($user, 'crm.import') ? ($options['origin'] ?? 'company') : 'personal',
                     ], $user);
 
                     $contact->forceFill(array_filter([

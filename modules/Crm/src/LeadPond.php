@@ -39,7 +39,7 @@ final class LeadPond
 
     public function configure(bool $enabled, int $afterDays, int $dailyClaims, User $by): void
     {
-        if (! $by->isKind(UserKind::Owner, UserKind::Staff)) {
+        if (! CrmAccess::manager($by)) {
             throw ValidationException::withMessages(['pond' => 'Only owners and staff can change the lead pond.']);
         }
         Tenant::query()->whereKey($this->tenants->id())->update([

@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\ValidationException;
+use Modules\Core\Access\AccessController;
 use Modules\Core\Audit\AuditController;
 use Modules\Core\Identity\EmailChange;
 use Modules\Core\Identity\Http\Controllers\AgentHomeController;
@@ -96,3 +97,17 @@ Route::middleware(['web', EnsureTenantHost::class, 'auth', 'password.confirm'])-
 });
 Route::middleware(['web', EnsureTenantHost::class, 'auth', 'throttle:10,1'])
     ->post('audit/streams/{stream}/test', [AuditController::class, 'testStream'])->name('audit.streams.test');
+
+// Roles, offices and teams (specs/core/03).
+Route::middleware(['web', EnsureTenantHost::class, 'auth'])->group(function (): void {
+    Route::get('settings/roles', [AccessController::class, 'roles'])->name('roles.index');
+    Route::post('settings/roles/preview', [AccessController::class, 'preview'])->name('roles.preview');
+    Route::post('settings/roles', [AccessController::class, 'save'])->name('roles.store');
+    Route::put('settings/roles/{role}', [AccessController::class, 'save'])->name('roles.update');
+    Route::post('users/{user}/roles', [AccessController::class, 'assign'])->name('roles.assign');
+    Route::delete('users/{user}/roles/{role}', [AccessController::class, 'revoke'])->name('roles.revoke');
+    Route::get('settings/organisation', [AccessController::class, 'organisation'])->name('organisation.index');
+    Route::post('settings/offices', [AccessController::class, 'saveOffice'])->name('offices.store');
+    Route::post('settings/teams', [AccessController::class, 'saveTeam'])->name('teams.store');
+    Route::post('settings/membership', [AccessController::class, 'membership'])->name('organisation.membership');
+});

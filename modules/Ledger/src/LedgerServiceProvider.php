@@ -4,11 +4,9 @@ declare(strict_types=1);
 
 namespace Modules\Ledger;
 
-use App\Models\User;
 use Illuminate\Support\Facades\Event;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
-use Modules\Core\Identity\Enums\UserKind;
+use Modules\Core\Access\PermissionRegistry;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
 use Modules\Core\Tenancy\Events\TenantProvisioned;
@@ -41,9 +39,19 @@ final class LedgerServiceProvider extends ServiceProvider
         // Interim until roles and permissions (Sprints 5-6, specs/core/03): only the brokerage's
         // owners may use the finance screens. Users are tenant-scoped (Sprint 3A), so an owner only
         // ever sees their own brokerage's ledger.
-        foreach (['finance.ledger.view', 'finance.ledger.adjust', 'finance.ledger.export', 'finance.periods.close'] as $ability) {
-            Gate::define($ability, fn (User $user): bool => $user->kind === UserKind::Owner);
-        }
+        // Decided by the permission engine (specs/core/03); owners have all of these.
+        $registry = $this->app->make(PermissionRegistry::class);
+        $registry->register('Finance', [
+            'finance.ledger.view' => ['See the books (accounts, journals, periods)'],
+            'finance.ledger.adjust' => ['Post adjustments to the books'],
+            'finance.ledger.export' => ['Export the books'],
+            'finance.periods.close' => ['Close and reopen accounting periods'],
+            'finance.amounts.view' => ['See commission amounts and earnings', false, true],
+            'finance.bank_details.manage' => ['Change payout and bank details', false, true],
+            'finance.payouts.approve' => ['Approve payouts'],
+        ]);
+        $registry->conflict('finance.bank_details.manage', 'finance.payouts.approve',
+            'One person cannot both change bank details and approve payouts (separation of duties).');
 
         if ($this->app->runningInConsole()) {
             $this->commands([ReconcileBalances::class]);

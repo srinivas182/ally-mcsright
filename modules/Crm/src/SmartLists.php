@@ -8,7 +8,6 @@ use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Validation\ValidationException;
-use Modules\Core\Identity\Enums\UserKind;
 use Modules\Crm\Enums\Lifecycle;
 use Modules\Crm\Enums\Origin;
 use Modules\Crm\Enums\Source;
@@ -172,7 +171,7 @@ final class SmartLists
         if ($name === '' || mb_strlen($name) > 80) {
             throw ValidationException::withMessages(['name' => 'Give the list a short name.']);
         }
-        if ($shared && ! $user->isKind(UserKind::Owner, UserKind::Staff)) {
+        if ($shared && ! CrmAccess::manager($user)) {
             throw ValidationException::withMessages(['shared' => 'Only owners and staff can share lists with the brokerage.']);
         }
 
@@ -181,7 +180,7 @@ final class SmartLists
 
     public function delete(SmartList $list, User $user): void
     {
-        $mayDelete = $list->owner_user_id === $user->id || ($list->shared && $user->isKind(UserKind::Owner, UserKind::Staff));
+        $mayDelete = $list->owner_user_id === $user->id || ($list->shared && CrmAccess::manager($user));
         if (! $mayDelete) {
             throw ValidationException::withMessages(['list' => 'You can only delete your own lists.']);
         }

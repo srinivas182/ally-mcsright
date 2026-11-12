@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Validation\ValidationException;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Crm\ContactVisibility;
+use Modules\Crm\CrmAccess;
 use Modules\Crm\Events\TaskCompleted;
 use Modules\Crm\Models\Contact;
 use Modules\Crm\Models\ContactBrief;
@@ -38,7 +39,7 @@ final class Tasks
 
         $due = $this->dueAt($data['due'] ?? null, $data['due_at'] ?? null, $by);
         $assignee = $data['assigned_to'] ?? null;
-        if ($assignee === null || ! $by->isKind(UserKind::Owner, UserKind::Staff)) {
+        if ($assignee === null || ! CrmAccess::manager($by)) {
             $assignee = $by->kind === UserKind::Assistant && $by->assisted_user_id !== null ? $by->assisted_user_id : $by->id;
         }
 
