@@ -10,6 +10,8 @@ on:
     paths:
       - 'modules/Ledger/**'
       - 'modules/Core/src/Tenancy/**'
+      - 'modules/Core/src/Audit/**'
+      - 'tests/Mysql/**'
       - 'tests/Feature/Ledger/**'
       - 'tests/Unit/Ledger/**'
       - 'tests/Mysql/**'

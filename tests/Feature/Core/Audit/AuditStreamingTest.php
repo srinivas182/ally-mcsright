@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Models\User;
-use Illuminate\Database\QueryException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -130,27 +129,3 @@ it('records HQ actions in the brokerage\'s own log and in HQ\'s', function (): v
     expect($mine->actor_type)->toBe('hq_support')->and(json_decode((string) $mine->metadata, true)['reason'])->toBe('Unpaid invoice for March')
         ->and(DB::table('audit_events')->where('tenant_id', $hq->id)->where('action', 'core.tenant.suspended')->exists())->toBeTrue();
 });
-
-it('cannot change or delete events with the restricted audit database user', function (): void {
-    // User management runs on its own connection: MySQL commits implicitly on CREATE USER/GRANT, and
-    // that must never touch the test's transaction.
-    $db = config('database.connections.mysql.database');
-    config(['database.connections.mysql_admin' => array_merge(config('database.connections.mysql'), [
-        'username' => env('DB_ADMIN_USERNAME'), 'password' => env('DB_ADMIN_PASSWORD', ''),
-    ])]);
-    $admin = DB::connection('mysql_admin');
-    $admin->statement("CREATE USER IF NOT EXISTS 'audit_ro'@'%' IDENTIFIED BY 'audit-ro-pass-1'");
-    $admin->statement("GRANT INSERT, SELECT ON `{$db}`.`audit_events` TO 'audit_ro'@'%'");
-    config(['database.connections.audit_ro' => array_merge(config('database.connections.mysql'), ['username' => 'audit_ro', 'password' => 'audit-ro-pass-1'])]);
-
-    $ro = DB::connection('audit_ro');
-    try {
-        expect($ro->table('audit_events')->count())->toBeInt()
-            ->and(fn () => $ro->table('audit_events')->where('id', '>', 0)->update(['action' => 'x']))->toThrow(QueryException::class, 'denied')
-            ->and(fn () => $ro->table('audit_events')->where('id', '>', 0)->delete())->toThrow(QueryException::class, 'denied');
-    } finally {
-        DB::purge('audit_ro');
-        $admin->statement("DROP USER IF EXISTS 'audit_ro'@'%'");
-        DB::purge('mysql_admin');
-    }
-})->skip(fn () => config('database.default') !== 'mysql' || env('DB_ADMIN_USERNAME') === null, 'MySQL with DB_ADMIN_USERNAME only: proves database privileges');
