@@ -16,6 +16,7 @@ use Modules\Billing\Catalogue;
 use Modules\Billing\Gateway\PaymentGateway;
 use Modules\Billing\Models\AgentPlan;
 use Modules\Billing\Models\Package;
+use Modules\Billing\PartnerEarnings;
 use Modules\Billing\PaymentSettings;
 use Modules\Billing\Pricing;
 use Modules\Billing\ProductFeatures;
@@ -167,7 +168,7 @@ final class PaymentsController
     }
 
     /** Public: "My brokerage is a partner" — a brokerage's prices from its join code. */
-    public function partner(string $code, TenantContext $tenants): JsonResponse
+    public function partnerLookup(string $code, TenantContext $tenants): JsonResponse
     {
         $tenant = Tenant::query()->where('partner_code', mb_strtoupper(trim($code)))->where('status', 'active')->first();
         if ($tenant === null) {
@@ -182,5 +183,18 @@ final class PaymentsController
                 ->filter(fn (AgentPlan $p): bool => $pricing->offered($p))
                 ->map(fn (AgentPlan $p): array => ['name' => $p->name, 'price_cents' => $pricing->priceFor($p), 'list_cents' => $catalogue->priceInForce($p, 'list')])->values()];
         }));
+    }
+
+    /** Owner: partner earnings — payouts setup, agents by plan, this month, statements. */
+    public function partner(Request $request, PartnerEarnings $earnings): Response
+    {
+        abort_unless(self::user($request)->isKind(UserKind::Owner), 403);
+
+        return Inertia::render('settings/partner', $earnings->dashboard());
+    }
+
+    public function connect(Request $request, PartnerEarnings $earnings): HttpResponse
+    {
+        return Inertia::location($earnings->onboarding(self::user($request), $request->getSchemeAndHttpHost()));
     }
 }

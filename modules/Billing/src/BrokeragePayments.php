@@ -168,8 +168,17 @@ final class BrokeragePayments
             return 0;
         }
         $total = 0;
+        $catalogue = app(Catalogue::class);
+        $percent = (float) $catalogue->commissionPercent(app(Pricing::class)->payingAgents());
         foreach (AgentSubscription::query()->whereIn('status', ['active', 'grace'])->get() as $sub) {
-            $total += $sub->sponsored ? $sub->price_cents : $sub->subsidy_cents;
+            if ($sub->sponsored) {
+                // The brokerage pays only RightAlly's share: the floor minus the commission it would earn.
+                $plan = AgentPlan::query()->find($sub->agent_plan_id);
+                $floor = $plan !== null ? $catalogue->priceInForce($plan, 'floor') : $sub->price_cents;
+                $total += $floor - (int) floor($floor * $percent / 100);
+            } else {
+                $total += $sub->subsidy_cents;
+            }
         }
         if ($total > 0) {
             $this->gateway->addInvoiceItem($customer, $total, 'Agent plan subsidies and sponsorships, '.$month->format('F Y'));

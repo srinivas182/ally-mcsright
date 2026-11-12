@@ -23,6 +23,9 @@ final class FakeGateway implements PaymentGateway
     /** @var list<array{subscription: string, cents: int}> */
     public array $amountChanges = [];
 
+    /** @var array<string, array{account: string, cents: int, description: string}> idempotency key => transfer */
+    public array $transfers = [];
+
     public function ready(): bool
     {
         return true;
@@ -33,6 +36,23 @@ final class FakeGateway implements PaymentGateway
         $this->checkouts[] = compact('email', 'productName', 'unitCents', 'interval', 'metadata', 'automaticTax');
 
         return 'https://checkout.example/session/'.count($this->checkouts);
+    }
+
+    public function createConnectAccount(string $email, string $businessName): string
+    {
+        return 'acct_fake_'.substr(md5($email), 0, 8);
+    }
+
+    public function connectOnboarding(string $account, string $refreshUrl, string $returnUrl): string
+    {
+        return 'https://connect.example/onboard/'.$account;
+    }
+
+    public function transfer(string $account, int $cents, string $description, string $idempotencyKey): string
+    {
+        $this->transfers[$idempotencyKey] ??= ['account' => $account, 'cents' => $cents, 'description' => $description];
+
+        return 'tr_'.substr(md5($idempotencyKey), 0, 8);
     }
 
     public function addInvoiceItem(string $customerRef, int $cents, string $description): void

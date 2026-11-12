@@ -89,7 +89,8 @@ it('lets the brokerage pay part of an agent\'s plan and bills it monthly, once',
     $this->artisan('billing:bill-subsidies')->assertSuccessful();
     $this->artisan('billing:bill-subsidies')->assertSuccessful();
     expect($this->gateway->invoiceItems)->toHaveCount(1)
-        ->and($this->gateway->invoiceItems[0])->toMatchArray(['customer' => 'cus_b', 'cents' => 20_000]);
+        // $50 subsidy + the sponsored plan at RightAlly's share only ($100 floor − 20% = $80).
+        ->and($this->gateway->invoiceItems[0])->toMatchArray(['customer' => 'cus_b', 'cents' => 13_000]);
 });
 
 it('gives each brokerage a partner code and shows its prices from it', function (): void {

@@ -23,6 +23,7 @@ final class BillingServiceProvider extends ServiceProvider
         $this->app->singleton(PaymentSettings::class);
         $this->app->scoped(AgentPayments::class);
         $this->app->scoped(BrokeragePayments::class);
+        $this->app->scoped(PartnerEarnings::class);
         $this->app->bind(Gateway\PaymentGateway::class, Gateway\StripeGateway::class);
     }
 
@@ -35,6 +36,7 @@ final class BillingServiceProvider extends ServiceProvider
         $nav = $this->app->make(NavigationRegistry::class);
         $nav->add(new NavItem('Settings', 'Agent plans', '/settings/agent-plans', 'badge-dollar-sign', 70, kinds: [UserKind::Owner]));
         $nav->add(new NavItem('Settings', 'Billing', '/settings/billing', 'credit-card', 72, kinds: [UserKind::Owner]));
+        $nav->add(new NavItem('Settings', 'Partner earnings', '/settings/partner', 'trending-up', 74, kinds: [UserKind::Owner]));
         $nav->add(new NavItem('Platform', 'Pricing', '/hq/billing', 'badge-dollar-sign', 35, kinds: [UserKind::HqStaff]));
         $nav->add(new NavItem('Platform', 'Payments', '/hq/payments', 'credit-card', 40, kinds: [UserKind::HqStaff]));
         // Agents only see Plans when their brokerage uses the agent-pays model.
@@ -43,7 +45,7 @@ final class BillingServiceProvider extends ServiceProvider
         $nav->add(new NavItem('Overview', 'Plans', '/plans', 'gift', 90, ability: 'billing.plans.view'));
 
         if ($this->app->runningInConsole()) {
-            $this->commands([Console\ApplyPriceChanges::class, Console\EndGrace::class, Console\BillSubsidies::class]);
+            $this->commands([Console\ApplyPriceChanges::class, Console\EndGrace::class, Console\BillSubsidies::class, Console\PartnerPayouts::class]);
         }
     }
 }

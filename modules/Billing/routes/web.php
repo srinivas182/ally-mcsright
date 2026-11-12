@@ -20,10 +20,12 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function
     Route::post('settings/billing/checkout', [PaymentsController::class, 'brokerageCheckout'])->middleware('throttle:10,1')->name('billing.brokerage.checkout');
     Route::get('settings/billing/portal', [PaymentsController::class, 'brokeragePortal'])->middleware('throttle:10,1')->name('billing.brokerage.portal');
     Route::post('settings/agent-plans-subsidy', [PaymentsController::class, 'subsidy'])->name('billing.subsidy');
+    Route::get('settings/partner', [PaymentsController::class, 'partner'])->name('billing.partner-earnings');
+    Route::post('settings/partner/connect', [PaymentsController::class, 'connect'])->middleware('throttle:10,1')->name('billing.connect');
 });
 
 // Public partner lookup for rightally.io ("My brokerage is a partner").
-Route::domain((string) config('core.hq_host'))->get('partners/{code}', [PaymentsController::class, 'partner'])->middleware('throttle:30,1')->name('billing.partner');
+Route::domain((string) config('core.hq_host'))->get('partners/{code}', [PaymentsController::class, 'partnerLookup'])->middleware('throttle:30,1')->name('billing.partner');
 
 // Payment provider events: one URL for the platform, on the HQ host; signature-checked, no session.
 Route::domain((string) config('core.hq_host'))->post('billing/webhook', [PaymentsController::class, 'webhook'])->middleware('throttle:600,1')->name('billing.webhook');
