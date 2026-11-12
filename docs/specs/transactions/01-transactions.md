@@ -1,6 +1,6 @@
 # Transactions 01 — Transactions, compliance and the money in between (Team B, with A, C, D)
 
-Status: **Specification approved** (owner, after leader review of SkySlope, dotloop, BoldTrail BackOffice
+Status: **Specification approved; 11B-T (core part 1) delivered** — module `modules/Transactions`: deals (six types, address, MLS number, price, GCI, dates, lifecycle with reasons), start a deal from a contact (client added as a party), ready-made checklists per deal type (state-specific templates win), uploads and phone photos into checklist items with every version kept (PDF, images, Word; 25 MB), broker review (approve, fix request from a library that learns, waive with a reason; agents cannot review), SLA review queue (default 24 hours), "still needed", closing gate (all required items approved or waived) → commission recalculated on the closing date and finalised with revenue share → file locked; assistants work on their agent's deals; everything audited. Part 2 next: earnest money and trust ledger, CDA, team review tools (owner, after leader review of SkySlope, dotloop, BoldTrail BackOffice
 / Brokermint, Lone Wolf, Paperless Pipeline, Open To Close — November 2026). Principle: **everything the
 leaders have, plus twelve things they don't**. Version 1.0 stays at Sprint 66 (work spread across teams).
 
