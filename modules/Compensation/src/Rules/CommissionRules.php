@@ -32,6 +32,7 @@ final readonly class CommissionRules
         public ?string $revenueShareBasis = null,
         public ?Cap $cap = null,
         public array $feeCodes = [],
+        public ?RevenueShareRules $revenueShare = null,
     ) {}
 
     /**
@@ -77,14 +78,13 @@ final readonly class CommissionRules
             }
         }
 
-        $basis = null;
-        if (isset($data['revenue_share'])) {
-            $basis = is_array($data['revenue_share']) ? ($data['revenue_share']['basis'] ?? null) : null;
-            if (! in_array($basis, ['net_profit', 'gci'], true)) {
-                $errors['revenue_share.basis'] = 'Revenue share is based on net_profit or gci.';
-                $basis = null;
-            }
+        $revenueShare = null;
+        if (isset($data['revenue_share']) && $split !== null) {
+            $revenueShare = RevenueShareRules::parse(is_array($data['revenue_share']) ? $data['revenue_share'] : [], $split, $errors);
+        } elseif (isset($data['revenue_share']) && ! is_array($data['revenue_share'])) {
+            $errors['revenue_share.basis'] = 'Revenue share is based on net_profit, gci or company_dollar.';
         }
+        $basis = $revenueShare?->basis;
 
         $cap = Cap::parse($data['cap'] ?? null, $data['post_cap'] ?? null, $errors);
 
@@ -105,7 +105,7 @@ final readonly class CommissionRules
             throw new InvalidRules($errors);
         }
 
-        return new self($split, $pre, $post, $classes, $sources, $basis, $cap, array_values(array_unique($fees)));
+        return new self($split, $pre, $post, $classes, $sources, $basis, $cap, array_values(array_unique($fees)), $revenueShare);
     }
 
     /**
@@ -117,6 +117,6 @@ final readonly class CommissionRules
     public function withCatalogueFees(array $pre, array $post): self
     {
         return new self($this->split, [...$this->preSplit, ...$pre], [...$this->postSplit, ...$post], $this->dealClasses,
-            $this->leadSources, $this->revenueShareBasis, $this->cap, $this->feeCodes);
+            $this->leadSources, $this->revenueShareBasis, $this->cap, $this->feeCodes, $this->revenueShare);
     }
 }

@@ -1,6 +1,6 @@
 # Compensation 02 — Revenue share (Team B, with Team D screens and Team E recruiting)
 
-Status: **Specification approved** (owner, after leader review of eXp, Real, LPT; all 16 additions in
+Status: **Specification approved; 11B (legacy parity) delivered** — rules (basis net profit, GCI or company dollar; up to 15 levels; legacy totals validation; missing and ineligible policies; per-deal root cap), dated sponsorships (no self or cycles; audited), the engine (distribution in the finalise transaction, missed earnings, root fallback, wallets as Revenue share payable sub-accounts with one balanced journal per deal, idempotent posting keys, exact-negative reversals) and a 1,000-deal property test. Next: additions 1–4 (unlocking, funding limits and budget guard, co-sponsorship, vesting) (owner, after leader review of eXp, Real, LPT; all 16 additions in
 version 1.0). Delivery: 11B legacy parity → additions 1, 2, 4 (Team B) → screens (Team D) → AI recruiting
 assistant (Team E).
 
