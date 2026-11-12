@@ -152,3 +152,11 @@ brokerage **sees an MLS's listings only with an approved licence**.
 Agent production data (AI Networking Assistant, Recruiting) requires its own licence scope. If an MLS
 vendor contract requires per-customer feeds, the store is keyed per feed. Built by Team C right after
 MLS ingestion.
+
+## Approved additions (version 1.0; leader review: iHomefinder, Showcase IDX, Sierra, Luxury Presence)
+
+1. **MLS Grid and Trestle** support alongside direct RESO Web API feeds.
+2. **Freshness and display-compliance monitor** per MLS (minutes behind; logo, disclaimer and field rules).
+3. **AI photo tagging** (kitchen island, pool, single level) for AIlly and search.
+4. **Precomputed distances** to schools, transit, groceries and coffee per listing (faster, cheaper AIlly).
+5. **Cross-MLS de-duplication** of the same property listed in overlapping MLSs.

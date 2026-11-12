@@ -30,3 +30,11 @@ and passes the brand and compliance check before it goes out.**
 8. **Brand consistency report:** outputs by agent with brand issues caught.
 
 Builds on settings, branding and domains (specs/core/05) and AI Ad & Flyer Compliance.
+
+## Approved additions (version 1.0; leader review: Canva for Teams, Lofty and BoldTrail marketing)
+
+1. **Brand setup from a brand guide PDF or the brokerage's website**: colours, fonts, logo and tone extracted.
+2. **Advertising compliance built in**: the brokerage name and licence number required by state advertising
+   rules added automatically to every flyer, post and email.
+3. **Brand quality score** on every AI output with one-tap fixes.
+4. **Agent sub-brands within the broker's limits** and a consistency report.
