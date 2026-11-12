@@ -82,3 +82,9 @@ Route::middleware(['web', EnsureTenantHost::class, 'throttle:10,1'])->get('imper
 
 // Audit log for owners (specs/core/04).
 Route::middleware(['web', EnsureTenantHost::class, 'auth'])->get('audit', [AuditController::class, 'index'])->name('audit.index');
+Route::middleware(['web', EnsureTenantHost::class, 'auth'])->group(function (): void {
+    Route::post('audit/retention', [AuditController::class, 'retention'])->name('audit.retention');
+    Route::post('audit/holds', [AuditController::class, 'placeHold'])->name('audit.holds.store');
+    Route::post('audit/holds/{hold}/release', [AuditController::class, 'releaseHold'])->name('audit.holds.release');
+    Route::get('contacts/{contact}/evidence-pack', [AuditController::class, 'evidencePack'])->middleware('throttle:10,1')->name('audit.evidence-pack');
+});

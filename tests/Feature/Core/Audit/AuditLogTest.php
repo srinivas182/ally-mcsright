@@ -60,7 +60,7 @@ it('detects an altered or missing event, and the application cannot change event
     $this->artisan('audit:verify', ['tenant' => 'acme'])->expectsOutputToContain('Broken at sequence 1')->assertFailed();
 
     DB::table('audit_events')->where('id', $event->id)->delete();
-    $this->artisan('audit:verify', ['tenant' => 'acme'])->expectsOutputToContain('event missing')->assertFailed();
+    $this->artisan('audit:verify', ['tenant' => 'acme'])->expectsOutputToContain('missing without a retention record')->assertFailed();
 });
 
 it('writes nothing when the change itself is rolled back', function (): void {
@@ -117,9 +117,9 @@ it('keeps each brokerage\'s log and chain separate, and shows it to owners only'
     expect(events()->where('tenant_id', $other->id)->min('chain_seq'))->toBe(1);
     $this->artisan('audit:verify', ['tenant' => 'other'])->assertSuccessful();
 
-    $this->actingAs($this->owner)->get('/audit?area=crm.contact')->assertInertia(fn (Assert $page) => $page
+    $this->actingAs($this->owner)->get('/audit?area=crm.contact&view=technical')->assertInertia(fn (Assert $page) => $page
         ->component('audit/index')
-        ->where('events.data', fn ($rows) => collect($rows)->pluck('subject')->contains('Sam') && ! collect($rows)->pluck('subject')->contains('Zed')));
+        ->where('rows', fn ($rows) => collect($rows)->pluck('subject')->contains('Sam') && ! collect($rows)->pluck('subject')->contains('Zed')));
     $this->actingAs($this->agent)->get('/audit')->assertForbidden();
 
     app(Timeline::class)->log($sam, ['type' => 'note', 'body' => 'x'], $this->owner);

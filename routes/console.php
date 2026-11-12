@@ -29,3 +29,6 @@ Schedule::command('crm:intelligence')->dailyAt('01:30')->onOneServer();
 Schedule::command('crm:ponds')->hourly()->onOneServer();
 // Audit log: seal any waiting events (specs/core/04).
 Schedule::command('audit:flush')->everyMinute()->withoutOverlapping()->onOneServer();
+// Audit retention (daily) and the owners' weekly security digest (Mondays).
+Schedule::command('audit:maintain retention')->dailyAt('03:30')->onOneServer();
+Schedule::command('audit:maintain weekly-digest')->weeklyOn(1, '13:00')->onOneServer();

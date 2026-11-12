@@ -83,7 +83,7 @@ final class CoreServiceProvider extends ServiceProvider
         $this->registerMigrationMacros();
 
         if ($this->app->runningInConsole()) {
-            $this->commands([CompileDesignTokens::class, RunTenantLifecycle::class, BootstrapHq::class, Console\FlushAudit::class, Console\VerifyAudit::class]);
+            $this->commands([CompileDesignTokens::class, RunTenantLifecycle::class, BootstrapHq::class, Console\FlushAudit::class, Console\VerifyAudit::class, Console\AuditMaintenance::class]);
         }
     }
 

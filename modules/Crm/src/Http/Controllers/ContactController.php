@@ -181,6 +181,7 @@ final class ContactController
                     && $this->visibility->canSee($user, $ref->referrer) ? ['ulid' => $ref->referrer->ulid, 'name' => $ref->referrer->name] : null,
                 'stats' => app(Referrals::class)->stats($contact),
             ],
+            'canDownloadEvidence' => $user->isKind(UserKind::Owner),
             'history' => $this->visibility->canManage($user, $contact) ? AuditEvent::query()->where('subject_type', 'Contact')->where('subject_id', $contact->ulid)
                 ->orderByDesc('chain_seq')->limit(25)->get()->map(fn (AuditEvent $e): array => AuditPresenter::row($e))->values() : [],
             'rhythm' => $contact->rhythm,
