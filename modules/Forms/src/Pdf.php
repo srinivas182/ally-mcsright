@@ -15,7 +15,9 @@ use Symfony\Component\Process\Process;
 final class Pdf
 {
     /**
-     * Normalises a PDF and returns [contents, pages, page sizes in points].
+     * Normalises a PDF and returns [contents, pages, page sizes in points]. qpdf rewrites it without object
+     * streams so FPDI can import compressed forms; if qpdf is missing or fails, the original is used when FPDI
+     * can read it as it is.
      *
      * @return array{0: string, 1: int, 2: list<array{0: float, 1: float}>}
      */
@@ -24,32 +26,70 @@ final class Pdf
         if (! str_starts_with($contents, '%PDF-')) {
             throw new RuntimeException('That file is not a PDF.');
         }
-        $in = tempnam(sys_get_temp_dir(), 'form-in-');
-        $out = tempnam(sys_get_temp_dir(), 'form-out-');
-        file_put_contents($in, $contents);
-        $process = new Process(['qpdf', '--object-streams=disable', '--decrypt', $in, $out]);
-        $process->run();
-        // qpdf exits 3 for warnings but still writes a usable file.
-        if (! in_array($process->getExitCode(), [0, 3], true) || ! is_file($out) || filesize($out) === 0) {
-            @unlink($in);
-            @unlink($out);
+        $candidate = self::viaQpdf($contents) ?? $contents;
+        try {
+            return [$candidate, ...self::measure($candidate)];
+        } catch (\Throwable $e) {
+            if ($candidate !== $contents) {
+                try {
+                    return [$contents, ...self::measure($contents)];
+                } catch (\Throwable) {
+                    // fall through to the message below
+                }
+            }
+            report($e);
+
             throw new RuntimeException('This PDF could not be read. Try printing it to a new PDF and upload again.');
         }
-        $normalised = (string) file_get_contents($out);
-        $pdf = new Fpdi('P', 'pt'); // positions and sizes are in points
-        $pages = $pdf->setSourceFile($out);
-        $sizes = [];
-        for ($i = 1; $i <= $pages; $i++) {
-            $size = $pdf->getTemplateSize($pdf->importPage($i));
-            if (! is_array($size)) {
-                throw new RuntimeException('This PDF could not be read.');
-            }
-            $sizes[] = [round((float) $size['width'], 2), round((float) $size['height'], 2)];
-        }
-        @unlink($in);
-        @unlink($out);
+    }
 
-        return [$normalised, $pages, $sizes];
+    /** qpdf's rewrite, or null (tool missing or failed; logged for operations). */
+    private static function viaQpdf(string $contents): ?string
+    {
+        $in = tempnam(sys_get_temp_dir(), 'form-in-');
+        $out = $in.'.out.pdf';
+        file_put_contents($in, $contents);
+        try {
+            $process = new Process([(string) config('forms.qpdf', 'qpdf'), '--object-streams=disable', '--decrypt', $in, $out]);
+            $process->run();
+            // qpdf exits 3 for warnings but still writes a usable file.
+            if (in_array($process->getExitCode(), [0, 3], true) && is_file($out) && filesize($out) > 0) {
+                return (string) file_get_contents($out);
+            }
+            logger()->warning('qpdf could not normalise a PDF', ['exit' => $process->getExitCode(), 'error' => mb_substr($process->getErrorOutput(), 0, 500)]);
+        } catch (\Throwable $e) {
+            logger()->warning('qpdf is not available', ['error' => $e->getMessage()]);
+        } finally {
+            @unlink($in);
+            @unlink($out);
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array{0: int, 1: list<array{0: float, 1: float}>}
+     */
+    private static function measure(string $pdfContents): array
+    {
+        $file = tempnam(sys_get_temp_dir(), 'form-m-');
+        file_put_contents($file, $pdfContents);
+        try {
+            $pdf = new Fpdi('P', 'pt'); // positions and sizes are in points
+            $pages = $pdf->setSourceFile($file);
+            $sizes = [];
+            for ($i = 1; $i <= $pages; $i++) {
+                $size = $pdf->getTemplateSize($pdf->importPage($i));
+                if (! is_array($size)) {
+                    throw new RuntimeException('Unreadable page.');
+                }
+                $sizes[] = [round((float) $size['width'], 2), round((float) $size['height'], 2)];
+            }
+
+            return [$pages, $sizes];
+        } finally {
+            @unlink($file);
+        }
     }
 
     /**

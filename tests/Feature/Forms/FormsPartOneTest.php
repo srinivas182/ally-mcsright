@@ -149,3 +149,11 @@ it('sends the forms pages the data they need, and keeps a deal\'s forms to its a
     $this->actingAs($this->other)->get("/forms/deals/{$deal->ulid}")->assertForbidden();
     $this->actingAs($this->agent)->get('/forms/templates')->assertForbidden();
 });
+
+it('still reads ordinary PDFs when qpdf is unavailable, and explains when a PDF truly cannot be read', function (): void {
+    config(['forms.qpdf' => '/nonexistent/qpdf']);
+    $ulid = $this->templates->upload('Listing', blankPdf(), null, $this->owner);
+    expect($this->templates->find($ulid)['page_sizes'][0])->toBe([612, 792])
+        ->and(fn () => $this->templates->upload('Broken', UploadedFile::fake()->createWithContent('b.pdf', "%PDF-1.7\nnot really a pdf"), null, $this->owner))
+        ->toThrow(ValidationException::class, 'could not be read');
+});
