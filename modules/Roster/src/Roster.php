@@ -125,7 +125,8 @@ final class Roster
         $today = CarbonImmutable::today();
         $map = fn ($c): array => ['ulid' => $c->ulid, 'kind' => $c->kind, 'state_code' => $c->state_code, 'number' => $c->number, 'issuer' => $c->issuer,
             'coverage_cents' => $c->coverage_cents !== null ? (int) $c->coverage_cents : null, 'expires_on' => $c->expires_on,
-            'status' => self::health($c->expires_on, $today), 'verified' => $c->verified_at !== null, 'verification_note' => $c->verification_note];
+            'status' => self::health($c->expires_on, $today), 'verified' => $c->verified_at !== null, 'verification_note' => $c->verification_note,
+            'check_result' => $c->check_result ?? null];
 
         return [
             'credentials' => array_values($db->table('roster_credentials')->where('user_id', $agent->id)->where('status', 'current')->orderBy('kind')->get()->map($map)->all()),

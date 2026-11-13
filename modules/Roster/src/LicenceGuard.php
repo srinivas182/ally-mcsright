@@ -30,7 +30,9 @@ final class LicenceGuard implements DealGuard
         $today = CarbonImmutable::today()->toDateString();
         $current = DB::connection(Connections::cell())->table('roster_credentials')->where('user_id', $deal->agent_user_id)->where('status', 'current');
         $name = User::query()->find($deal->agent_user_id)->name ?? 'The agent';
-        if (! (clone $current)->where('kind', 'licence')->where('state_code', $deal->state_code)->where('expires_on', '>=', $today)->exists()) {
+        // A licence the state's records show as inactive, missing or someone else's does not count.
+        if (! (clone $current)->where('kind', 'licence')->where('state_code', $deal->state_code)->where('expires_on', '>=', $today)
+            ->where(fn ($q) => $q->whereNull('check_result')->orWhere('check_result', 'active'))->exists()) {
             return "{$name} has no active {$deal->state_code} licence on file. Add or renew it in the roster (or an owner can allow this deal with a reason).";
         }
         if ($settings['eo_required'] && ! (clone $current)->where('kind', 'eo')->where('expires_on', '>=', $today)->exists()) {
