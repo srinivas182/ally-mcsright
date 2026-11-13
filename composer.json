@@ -44,6 +44,7 @@
             "Modules\\Ledger\\": "modules/Ledger/src/",
             "Modules\\Billing\\": "modules/Billing/src/",
             "Modules\\Payouts\\": "modules/Payouts/src/",
+            "Modules\\Roster\\": "modules/Roster/src/",
             "Modules\\Transactions\\": "modules/Transactions/src/",
             "Modules\\Compensation\\": "modules/Compensation/src/",
             "Modules\\Crm\\": "modules/Crm/src/",

@@ -48,3 +48,5 @@ Schedule::command('billing:partner-payouts')->monthlyOn(2, '06:00')->onOneServer
 Schedule::command('payouts:agent-billing')->dailyAt('06:30')->onOneServer();
 // Owners are reminded if last month's trust account is not reconciled (specs/transactions/01).
 Schedule::command('payouts:trust-reminder')->monthlyOn(10, '08:00')->onOneServer();
+// Expiring licences, E&O and memberships (specs/roster/01).
+Schedule::command('roster:reminders')->dailyAt('07:00')->onOneServer();

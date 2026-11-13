@@ -77,7 +77,7 @@ final class DealController
             'cdas' => self::reviewer($user) ? app(Cdas::class)->forDeal($deal) : [],
             'titles' => self::reviewer($user) ? DB::connection(Connections::cell())->table('tx_title_companies')->whereNotNull('verified_at')->orderBy('name')->get(['ulid', 'name']) : [],
             'can' => ['trust' => $user->isKind(UserKind::Owner) || $user->can('transactions.trust.manage'), 'approveCda' => $user->isKind(UserKind::Owner) || $user->can('transactions.cda.approve'),
-                'export' => $user->isKind(UserKind::Owner) || $user->can('transactions.export')],
+                'export' => $user->isKind(UserKind::Owner) || $user->can('transactions.export'), 'owner' => $user->isKind(UserKind::Owner)],
             'reviewer' => self::reviewer($user),
             'reasons' => self::reviewer($user) ? $reviews->reasons() : [],
         ]);

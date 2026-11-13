@@ -104,6 +104,11 @@ final class Deals
         if ($deal->status !== 'pre_contract' || $price <= 0 || $gci <= 0 || empty($data['contract_date']) || empty($data['closing_date'])) {
             throw ValidationException::withMessages(['status' => 'To go under contract, give the price, the commission (GCI), the contract date and the expected closing date.']);
         }
+        foreach (app()->tagged('transactions.deal_guards') as $guard) {
+            if ($guard instanceof DealGuard && ($reason = $guard->check($deal)) !== null) {
+                throw ValidationException::withMessages(['status' => $reason]);
+            }
+        }
         $closing = CarbonImmutable::parse((string) $data['closing_date']);
         $calc = $this->commissions->calculate($this->input($deal, $gci, $price, $closing), $deal->ulid);
         $deal->update(['status' => 'under_contract', 'price_cents' => $price, 'gci_cents' => $gci, 'contract_date' => $data['contract_date'],
