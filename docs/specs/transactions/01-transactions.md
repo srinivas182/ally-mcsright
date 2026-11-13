@@ -66,3 +66,16 @@ document version, checklist decisions, the deal's audit trail, an audit certific
 SHA-256 and the chain check; the download is audited); the pending-deal cash forecast (company dollar in the
 next 30/60/90 days, brokerage only). New permissions: Approve CDAs, Record earnest money, Export complete
 files. Settings › Transactions: title companies, receiving account, referral fees paid.
+
+## Sprint 12B-6 (three-way trust reconciliation) — delivered
+
+Finance › Trust reconciliation ("Record earnest money" permission; owners): each month the trust bank statement
+(CSV from online banking — Date with Amount, or Debit and Credit columns) is imported with its ending balance;
+lines are matched automatically to trust-cash ledger entries of the same amount within 5 days, or by hand. The
+**adjusted bank balance** (statement + deposits in transit − outstanding withdrawals), the **book balance** (trust
+cash in the ledger) and the **clients' balance** (every deal's escrow balance) must agree to the cent; bank lines
+with no trust entry, **negative deal balances** and **money still held more than 10 days after closing or
+cancellation** are flagged. Approval needs a fresh password and a different person from the preparer, only when
+balanced with no negative deal; the month is then locked with a snapshot. PDF report for state audits (download
+audited). Owners are emailed on the 10th if last month is not reconciled. Bank feeds (instead of CSV) can follow
+with the bank-reconciliation sprint.

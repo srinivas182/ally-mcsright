@@ -35,6 +35,10 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function
     Route::get('my-money/statement', [PayoutsController::class, 'statement'])->name('payouts.statement');
     Route::post('my-money/w9', [PayoutsController::class, 'w9'])->middleware(['password.confirm', 'throttle:10,1'])->name('payouts.w9');
     Route::get('finance/tax', [PayoutsController::class, 'tax'])->name('payouts.tax');
+    Route::get('finance/trust', [PayoutsController::class, 'trust'])->name('payouts.trust');
+    Route::post('finance/trust/import', [PayoutsController::class, 'trustImport'])->name('payouts.trust.import');
+    Route::post('finance/trust/match', [PayoutsController::class, 'trustMatch'])->name('payouts.trust.match');
+    Route::post('finance/trust/approve', [PayoutsController::class, 'trustApprove'])->middleware('password.confirm')->name('payouts.trust.approve');
     Route::middleware('password.confirm')->group(function (): void {
         Route::get('finance/tax/export', [PayoutsController::class, 'taxExport'])->name('payouts.tax.export');
         Route::get('finance/tax/tin-file', [PayoutsController::class, 'tinFile'])->name('payouts.tax.tin-file');

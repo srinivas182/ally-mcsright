@@ -46,3 +46,5 @@ Schedule::command('billing:bill-subsidies')->monthlyOn(1, '05:00')->onOneServer(
 Schedule::command('billing:partner-payouts')->monthlyOn(2, '06:00')->onOneServer();
 // Agents' recurring fee invoices, reminders and late fees (specs/finance/02, part 4).
 Schedule::command('payouts:agent-billing')->dailyAt('06:30')->onOneServer();
+// Owners are reminded if last month's trust account is not reconciled (specs/transactions/01).
+Schedule::command('payouts:trust-reminder')->monthlyOn(10, '08:00')->onOneServer();

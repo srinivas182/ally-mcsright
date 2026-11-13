@@ -14,7 +14,7 @@ final class PayoutsServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        foreach ([Receipts::class, BankAccounts::class, Balances::class, PayoutRuns::class, GetPaidNow::class, AgentBilling::class, W9s::class, Tax1099::class, Statements::class] as $service) {
+        foreach ([Receipts::class, BankAccounts::class, Balances::class, PayoutRuns::class, GetPaidNow::class, AgentBilling::class, W9s::class, Tax1099::class, Statements::class, TrustReconciliation::class] as $service) {
             $this->app->scoped($service);
         }
         $this->app->singleton(Rails\Rails::class);
@@ -38,8 +38,9 @@ final class PayoutsServiceProvider extends ServiceProvider
         $nav->add(new NavItem('Finance', 'Payouts', '/finance/payouts', 'send', 6, ability: 'finance.receipts.record'));
         $nav->add(new NavItem('Finance', 'Agent billing', '/finance/agent-billing', 'receipt', 7, ability: 'finance.billing.manage'));
         $nav->add(new NavItem('Finance', 'Tax (1099)', '/finance/tax', 'receipt', 8, ability: 'finance.billing.manage'));
+        $nav->add(new NavItem('Finance', 'Trust reconciliation', '/finance/trust', 'scale', 9, ability: 'transactions.trust.manage'));
         if ($this->app->runningInConsole()) {
-            $this->commands([Console\AgentBillingDaily::class]);
+            $this->commands([Console\AgentBillingDaily::class, Console\TrustReminder::class]);
         }
         $nav->add(new NavItem('Platform', 'Payout rails', '/hq/payout-rails', 'send', 42, kinds: [UserKind::HqStaff]));
         $nav->add(new NavItem('Overview', 'My money', '/my-money', 'wallet', 32, kinds: [UserKind::Agent], mobile: true));

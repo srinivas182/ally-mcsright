@@ -29,6 +29,7 @@ use Modules\Payouts\PayoutRuns;
 use Modules\Payouts\Receipts;
 use Modules\Payouts\Statements;
 use Modules\Payouts\Tax1099;
+use Modules\Payouts\TrustReconciliation;
 use Modules\Payouts\W9s;
 use Modules\Transactions\Models\Deal;
 
@@ -366,6 +367,49 @@ final class PayoutsController
         $request->validate(['file' => ['required', 'file', 'max:5120']]);
         $count = $w9s->importResults((string) file_get_contents((string) $request->file('file')?->getRealPath()), $this->billingUser($request));
         Inertia::flash('toast', ['type' => 'success', 'message' => "{$count} TIN result(s) imported."]);
+
+        return back();
+    }
+
+    /** Finance › Trust reconciliation. */
+    public function trust(Request $request, TrustReconciliation $trust): \Symfony\Component\HttpFoundation\Response
+    {
+        $user = self::user($request);
+        abort_unless($user->can('transactions.trust.manage'), 403);
+        $month = (string) $request->query('month', now()->subMonthNoOverflow()->format('Y-m'));
+        abort_unless(preg_match('/^\d{4}-\d{2}$/', $month) === 1, 404);
+        $s = $trust->summary($month);
+        if ($request->query('format') === 'pdf') {
+            app(AuditLogger::class)->record('trust.report.downloaded', metadata: ['month' => $month], severity: 'notice');
+
+            return Pdf::loadView('pdf.trust-reconciliation', ['s' => $s, 'brokerage' => app(TenantContext::class)->current()->name])
+                ->download("trust-reconciliation-{$month}.pdf");
+        }
+
+        return Inertia::render('finance/trust', ['summary' => $s, 'ledger' => $trust->unmatchedLedger(CarbonImmutable::parse($month.'-01')->endOfMonth()->addDays(31))])->toResponse($request);
+    }
+
+    public function trustImport(Request $request, TrustReconciliation $trust): RedirectResponse
+    {
+        $data = $request->validate(['month' => ['required', 'date_format:Y-m'], 'ending' => ['required', 'numeric'], 'file' => ['required', 'file', 'max:5120']]);
+        $trust->import($data['month'], (string) file_get_contents((string) $request->file('file')?->getRealPath()), (int) round((float) $data['ending'] * 100), self::user($request));
+
+        return redirect('/finance/trust?month='.$data['month']);
+    }
+
+    public function trustMatch(Request $request, TrustReconciliation $trust): RedirectResponse
+    {
+        $data = $request->validate(['statement_line' => ['required', 'integer'], 'ledger_line' => ['required', 'integer']]);
+        $trust->match((int) $data['statement_line'], (int) $data['ledger_line'], self::user($request));
+
+        return back();
+    }
+
+    public function trustApprove(Request $request, TrustReconciliation $trust): RedirectResponse
+    {
+        $data = $request->validate(['month' => ['required', 'date_format:Y-m']]);
+        $trust->approve($data['month'], self::user($request));
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Reconciliation approved and locked.']);
 
         return back();
     }
