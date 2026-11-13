@@ -126,3 +126,8 @@ jobs:
 
       - name: Test suite (Pest)
         run: php artisan test --parallel
+
+      - name: Report failing tests as annotations
+        if: failure()
+        run: |
+          vendor/bin/pest --compact 2>&1 | grep -E "FAILED|Exception|Error|Failed asserting|➜" | head -30 | sed 's/^/::error::/' || true
