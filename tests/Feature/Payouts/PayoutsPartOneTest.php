@@ -133,5 +133,6 @@ it('protects agents\' bank details: validated, encrypted, emailed, and held for 
 it('shows agents what is ready, what is on its way and where it is paid', function (): void {
     payDeal();
     $this->actingAs($this->agent)->get('/my-money')->assertInertia(fn (Assert $page) => $page
-        ->component('finance/my-money')->where('balances.pending_cents', 1_200_000)->where('bank', null)->where('holdHours', 72));
+        ->component('finance/my-money')->where('balances.pending_cents', 1_200_000)->where('bank', null)->where('holdHours', 72)
+        ->has('instant')->where('invoices', [])->where('payOnline', false)->where('w9', null));
 });

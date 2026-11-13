@@ -108,3 +108,13 @@ transmitter). Rails, behind a `PayoutRail` interface:
   password, audited); **title pays agents directly** (Settings › Transactions, where the state allows): agents'
   net becomes CDA lines, the brokerage line shrinks, no payable is booked and the amounts are recorded for 1099s.
   **Agent payouts and billing is complete.**
+
+## Automatic payouts on closing (Sprint 13B-4) — delivered
+
+Off by default; an owner sets the rule (fresh password): pay automatically up to a limit per payee, same-day or
+not. When a deal's money is matched to the CDA (or a broker accepts a difference), a run is prepared for that
+deal's agents and brokerage-paid referral payees (what is ready for them, invoices deducted). Within the limit it
+is approved under the owner's standing rule (audited with the rule; no person recorded as approver) and, on an
+automatic rail, sent at once with "You've been paid" emails; on the bank file, owners are emailed to send it; over
+the limit it waits for approval and owners are emailed. Anyone already in an unsent run is left out of new runs,
+so nothing is paid twice. The 72-hour bank-change hold and every other safeguard apply.
