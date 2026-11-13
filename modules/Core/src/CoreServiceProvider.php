@@ -13,6 +13,7 @@ use Illuminate\Contracts\Hashing\Hasher;
 use Illuminate\Contracts\Queue\Job;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Http\Client\Factory;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
@@ -62,6 +63,12 @@ final class CoreServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->app->singletonIf(Messaging\SmsSender::class, function ($app): Messaging\SmsSender {
+            $sid = (string) config('services.twilio.sid');
+
+            return $sid !== '' ? new Messaging\TwilioSmsSender($app->make(Factory::class), $sid,
+                (string) config('services.twilio.token'), (string) config('services.twilio.from')) : new Messaging\LogSmsSender;
+        });
         $this->app->singleton(PermissionRegistry::class);
         $this->app->scoped(Permissions::class);
         $this->app->scoped(Roles::class);

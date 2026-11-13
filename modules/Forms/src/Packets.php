@@ -223,18 +223,18 @@ final class Packets
     }
 
     /**
-     * @return list<array{role: string, name: string, email: string}>
+     * @return list<array{role: string, name: string, email: string, phone: string|null}>
      */
     private function suggestedSigners(Deal $deal): array
     {
         $out = [];
         foreach (DB::connection(Connections::cell())->table('tx_parties')->where('deal_id', $deal->id)->whereIn('role', ['buyer', 'seller'])->whereNotNull('email')->orderBy('id')->get() as $p) {
             $n = count(array_filter($out, fn ($s) => str_starts_with($s['role'], (string) $p->role))) + 1;
-            $out[] = ['role' => $p->role.$n, 'name' => (string) $p->name, 'email' => (string) $p->email];
+            $out[] = ['role' => $p->role.$n, 'name' => (string) $p->name, 'email' => (string) $p->email, 'phone' => $p->phone !== null ? (string) $p->phone : null];
         }
         $agent = User::query()->find($deal->agent_user_id);
         if ($agent !== null) {
-            $out[] = ['role' => $deal->type === 'buyer' ? 'buyer_agent' : 'listing_agent', 'name' => $agent->name, 'email' => $agent->email];
+            $out[] = ['role' => $deal->type === 'buyer' ? 'buyer_agent' : 'listing_agent', 'name' => $agent->name, 'email' => $agent->email, 'phone' => $agent->phone];
         }
 
         return $out;

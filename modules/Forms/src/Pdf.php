@@ -127,6 +127,72 @@ final class Pdf
         return $pdf->Output('S');
     }
 
+    /**
+     * One document from several forms: each form's pages with its stamps (text, or a PNG signature image),
+     * followed by an audit certificate page.
+     *
+     * @param  list<array{pdf: string, stamps: list<array{page: int, x: float, y: float, w: float, h: float, text?: string, style?: string, image?: string}>}>  $forms
+     * @param  list<string>  $certificate  lines of the audit certificate
+     */
+    public static function assemble(array $forms, array $certificate): string
+    {
+        $doc = new Fpdi('P', 'pt');
+        $doc->SetAutoPageBreak(false);
+        $tmp = [];
+        foreach ($forms as $form) {
+            $src = tempnam(sys_get_temp_dir(), 'form-a-');
+            file_put_contents($src, $form['pdf']);
+            $tmp[] = $src;
+            $pages = $doc->setSourceFile($src);
+            for ($i = 1; $i <= $pages; $i++) {
+                $tpl = $doc->importPage($i);
+                $size = $doc->getTemplateSize($tpl);
+                if (! is_array($size)) {
+                    throw new RuntimeException('This PDF could not be read.');
+                }
+                $doc->AddPage($size['orientation'], [$size['width'], $size['height']]);
+                $doc->useTemplate($tpl);
+                foreach ($form['stamps'] as $s) {
+                    if ($s['page'] !== $i) {
+                        continue;
+                    }
+                    if (isset($s['image']) && $s['image'] !== '') {
+                        $img = tempnam(sys_get_temp_dir(), 'sig-').'.png';
+                        file_put_contents($img, $s['image']);
+                        $tmp[] = $img;
+                        $doc->Image($img, $s['x'], $s['y'], $s['w'], $s['h'], 'PNG');
+
+                        continue;
+                    }
+                    if (($s['text'] ?? '') === '') {
+                        continue;
+                    }
+                    $doc->SetFont('Helvetica', ($s['style'] ?? '') === 'signature' ? 'I' : '', min(11, max(6, $s['h'] * 0.7)));
+                    $doc->SetTextColor(15, 23, 80);
+                    $doc->SetXY($s['x'], $s['y']);
+                    $doc->Cell($s['w'], $s['h'], self::latin1((string) $s['text']), 0, 0, 'L');
+                }
+            }
+        }
+        $doc->AddPage('P', [612, 792]);
+        $doc->SetTextColor(20, 20, 20);
+        $doc->SetFont('Helvetica', 'B', 14);
+        $doc->SetXY(54, 54);
+        $doc->Cell(500, 18, 'Signature certificate', 0, 1);
+        $doc->SetFont('Helvetica', '', 9);
+        $doc->SetX(54);
+        foreach ($certificate as $line) {
+            $doc->SetX(54);
+            $doc->MultiCell(504, 12, self::latin1($line), 0, 'L');
+        }
+        $out = $doc->Output('S');
+        foreach ($tmp as $f) {
+            @unlink($f);
+        }
+
+        return $out;
+    }
+
     private static function latin1(string $text): string
     {
         return (string) iconv('UTF-8', 'windows-1252//TRANSLIT', $text);
