@@ -1,0 +1,9 @@
+{
+    "id": "payouts",
+    "name": "Payouts",
+    "version": "0.1.0",
+    "provider": "Modules\\Payouts\\PayoutsServiceProvider",
+    "depends": ["core", "ledger", "compensation", "transactions"],
+    "entitlement": null,
+    "description": "Money received from title, agent balances, protected bank details, payout runs and agent billing (specs/finance/02)."
+}
