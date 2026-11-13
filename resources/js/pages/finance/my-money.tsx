@@ -1,4 +1,4 @@
-import { Head, useForm } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,10 +21,18 @@ type Props = {
         usable: boolean;
     } | null;
     holdHours: number;
+    instant: {
+        enabled: boolean;
+        available_cents: number;
+        fee_cents: number;
+        net_cents: number;
+        blocked: string | null;
+        automatic: boolean;
+    };
 };
 
 /** An agent's money: what's ready, what's on its way, and where it's paid. */
-export default function MyMoney({ balances, bank, holdHours }: Props) {
+export default function MyMoney({ balances, bank, holdHours, instant }: Props) {
     const form = useForm({
         holder: '',
         routing: '',
@@ -64,6 +72,43 @@ export default function MyMoney({ balances, bank, holdHours }: Props) {
                         </p>
                     </div>
                 </section>
+                {instant.enabled && (
+                    <section className="grid gap-2 rounded-lg border border-primary/40 bg-primary/5 p-4 text-sm">
+                        <h2 className="font-semibold">Get paid now</h2>
+                        {instant.blocked ? (
+                            <p className="text-muted-foreground">
+                                {instant.blocked}
+                            </p>
+                        ) : (
+                            <>
+                                <p>
+                                    Ready: {usd(instant.available_cents)} · fee{' '}
+                                    {usd(instant.fee_cents)} ·{' '}
+                                    <strong>
+                                        you receive {usd(instant.net_cents)}
+                                    </strong>
+                                </p>
+                                <p className="text-muted-foreground">
+                                    {instant.automatic
+                                        ? 'Sent today by same-day direct deposit.'
+                                        : 'Your brokerage sends it in its next same-day bank file.'}
+                                </p>
+                                <Button
+                                    className="justify-self-start"
+                                    onClick={() =>
+                                        router.post(
+                                            '/my-money/get-paid-now',
+                                            { net_cents: instant.net_cents },
+                                            { preserveScroll: true },
+                                        )
+                                    }
+                                >
+                                    Get {usd(instant.net_cents)} now
+                                </Button>
+                            </>
+                        )}
+                    </section>
+                )}
                 <section className="grid gap-2 rounded-lg border p-4 text-sm">
                     <h2 className="font-semibold">Where we pay you</h2>
                     {bank ? (

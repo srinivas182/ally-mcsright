@@ -11,6 +11,7 @@ type Props = {
         { enabled: boolean; mode: string; keys_set: boolean }
     >;
     webhooks: Record<string, string>;
+    instantLimits: { max_flat_cents: number; max_percent: string };
 };
 
 const names: Record<string, string> = {
@@ -93,7 +94,11 @@ function Keys({ rail }: { rail: 'dwolla' | 'stripe' }) {
 }
 
 /** HQ: which payout rails brokerages can use, and RightAlly's platform credentials. */
-export default function PayoutRails({ rails, webhooks }: Props) {
+export default function PayoutRails({ rails, webhooks, instantLimits }: Props) {
+    const limits = useForm({
+        max_flat: String(instantLimits.max_flat_cents / 100),
+        max_percent: instantLimits.max_percent,
+    });
     return (
         <>
             <Head title="Payout rails" />
@@ -149,6 +154,45 @@ export default function PayoutRails({ rails, webhooks }: Props) {
                         </Button>
                     </section>
                 ))}
+                <form
+                    className="flex flex-wrap items-center gap-2 rounded-lg border p-4 text-sm"
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        limits.post('/hq/payout-rails/instant-limits', {
+                            preserveScroll: true,
+                        });
+                    }}
+                >
+                    Get paid now: brokerages may charge up to $
+                    <Input
+                        aria-label="Maximum flat fee ($)"
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        className="w-24"
+                        value={limits.data.max_flat}
+                        onChange={(e) =>
+                            limits.setData('max_flat', e.target.value)
+                        }
+                    />
+                    plus up to
+                    <Input
+                        aria-label="Maximum percent"
+                        type="number"
+                        min={0}
+                        max={10}
+                        step="0.01"
+                        className="w-20"
+                        value={limits.data.max_percent}
+                        onChange={(e) =>
+                            limits.setData('max_percent', e.target.value)
+                        }
+                    />
+                    %
+                    <Button type="submit" size="sm" variant="outline">
+                        Save limits
+                    </Button>
+                </form>
             </div>
         </>
     );

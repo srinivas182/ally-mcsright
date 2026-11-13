@@ -79,7 +79,13 @@ transmitter). Rails, behind a `PayoutRail` interface:
   submits each payment outside the transaction with an idempotency key (a retry never pays twice; "Retry"
   resubmits ones a partner did not accept); signed webhooks (Dwolla and Stripe platform-wide, Modern Treasury per
   brokerage) mark payments completed, or failed/returned — the money goes back to the payee's balance with one
-  reversing journal and the agent is emailed. **12B-3b next**: get paid now.
+  reversing journal and the agent is emailed. **12B-3b delivered — get paid now**: off until the brokerage turns it on; the brokerage sets a flat and/or percentage fee
+  (or none) and a minimum, within HQ's limits (HQ › Payout rails); the agent sees what's ready, the fee and what they
+  receive before confirming (fresh password; a changed amount is refused); the money is committed at once (payables
+  down, net to cash, the fee booked as agent fee revenue — the brokerage's income); automatic rails pay same-day
+  immediately; bank-file brokerages get an approved instant run and an email, and send it in their next same-day
+  file (never posted twice, never blocking regular runs); one request at a time; the 72-hour bank-change hold
+  applies; a bounce returns the full amount and refunds the fee.
 - **Part 4**: agent billing — recurring fees, invoices, online payment, deductions, late fees, negative
   balances and payment plans.
 - **Part 5**: statements with every cent explained; W-9 with TIN matching; 1099 totals; title-pays-agents CDA

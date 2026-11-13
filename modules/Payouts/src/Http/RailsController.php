@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Core\Tenancy\Models\Tenant;
+use Modules\Payouts\GetPaidNow;
 use Modules\Payouts\PayoutRuns;
 use Modules\Payouts\Rails\RailPlatform;
 use Modules\Payouts\Rails\Rails;
@@ -23,7 +24,7 @@ final class RailsController
     /** HQ: payout rails offered to brokerages. */
     public function hq(RailPlatform $platform): Response
     {
-        return Inertia::render('hq/payout-rails', ['rails' => $platform->summary(), 'webhooks' => [
+        return Inertia::render('hq/payout-rails', ['rails' => $platform->summary(), 'instantLimits' => app(GetPaidNow::class)->limits(), 'webhooks' => [
             'dwolla' => 'https://'.config('core.hq_host').'/payout-rails/dwolla/webhook',
             'stripe' => 'https://'.config('core.hq_host').'/payout-rails/stripe/webhook',
         ]]);
