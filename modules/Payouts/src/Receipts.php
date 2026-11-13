@@ -17,6 +17,7 @@ use Modules\Ledger\JournalDraft;
 use Modules\Ledger\LedgerService;
 use Modules\Ledger\Money\Money;
 use Modules\Transactions\Models\Deal;
+use Modules\Transactions\Referrals;
 
 /**
  * Money received from title (specs/finance/02, addition 1): recorded against the deal and checked
@@ -108,7 +109,11 @@ final class Receipts
             return (int) (end($payees)['amount_cents'] ?? 0);
         }
 
-        return (int) ($calc->result['gci_cents'] ?? 0) - (int) ($calc->result['outside_referral_cents'] ?? 0);
+        $outside = (int) ($calc->result['outside_referral_cents'] ?? 0);
+        $shares = app(Referrals::class)->amounts($deal, $outside);
+        $titlePaid = $shares === [] ? $outside : array_sum(array_column(array_filter($shares, fn ($r) => $r['paid_by'] === 'title'), 'cents'));
+
+        return (int) ($calc->result['gci_cents'] ?? 0) - $titlePaid;
     }
 
     private function cashIn(Deal $deal, int $cents, CarbonImmutable $on): int
@@ -140,7 +145,9 @@ final class Receipts
             }
         }
         $basis = $received ?? $expected;
-        $company = $basis - array_sum($payables);
+        // Referral fees the brokerage pays itself become referral payables (paid in a payout run).
+        $referrals = array_filter(app(Referrals::class)->amounts($deal, (int) ($calc->result['outside_referral_cents'] ?? 0)), fn ($r) => $r['paid_by'] === 'brokerage');
+        $company = $basis - array_sum($payables) - array_sum(array_column($referrals, 'cents'));
         $draft = JournalDraft::make('commission_recognised', 'recognise:'.$deal->ulid)->effectiveOn($on)->source('deal', $deal->ulid)
             ->describe('Commission recognised for '.$deal->street)
             ->debit($accounts->subAccount('1100', 'deal', $deal->id, 'Commission receivable — '.$deal->street), Money::of($basis));
@@ -149,6 +156,9 @@ final class Receipts
                 $name = User::query()->whereKey($userId)->value('first_name') ?? 'Agent';
                 $draft->credit($accounts->subAccount('2000', 'user', $userId, "Commission payable — {$name}"), Money::of($cents));
             }
+        }
+        foreach ($referrals as $r) {
+            $draft->credit($accounts->subAccount('2200', 'referral', $r['id'], 'Referral payable — '.$r['brokerage']), Money::of($r['cents']));
         }
         $company >= 0 ? $draft->credit($accounts->account('4000'), Money::of($company)) : $draft->debit($accounts->account('4000'), Money::of(-$company));
         $journal = app(LedgerService::class)->post($draft)->id;

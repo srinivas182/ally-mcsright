@@ -57,8 +57,8 @@ final class MoneyDeskController
     {
         $this->forDeal($request, $deal);
         $data = $request->validate(['direction' => ['required', 'in:in,out'], 'brokerage' => ['required', 'string', 'max:160'], 'agent' => ['required', 'string', 'max:160'],
-            'email' => ['nullable', 'email'], 'percent' => ['required', 'numeric', 'min:0.01', 'max:100']]);
-        $referrals->add($deal, $data['direction'], $data['brokerage'], $data['agent'], $data['email'] ?? null, (string) $data['percent'], null);
+            'email' => ['nullable', 'email'], 'percent' => ['required', 'numeric', 'min:0.01', 'max:100'], 'paid_by' => ['nullable', 'in:title,brokerage']]);
+        $referrals->add($deal, $data['direction'], $data['brokerage'], $data['agent'], $data['email'] ?? null, (string) $data['percent'], null, (string) ($data['paid_by'] ?? 'title'));
 
         return back();
     }

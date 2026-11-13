@@ -35,13 +35,16 @@ final class Cdas
         }
         $gci = (int) ($calc->result['gci_cents'] ?? 0);
         $referral = (int) ($calc->result['outside_referral_cents'] ?? 0);
-        $out = DB::connection(Connections::cell())->table('tx_referrals')->where('deal_id', $deal->id)->where('direction', 'out')->orderBy('id')->get();
+        // Referral fees title pays directly get their own line; ones the brokerage pays stay in its amount.
+        $shares = app(Referrals::class)->amounts($deal, $referral);
+        $byTitle = $shares === [] ? $referral : array_sum(array_column(array_filter($shares, fn ($r) => $r['paid_by'] === 'title'), 'cents'));
         $payees = [];
-        if ($referral > 0) {
-            $payees[] = ['name' => $out->isNotEmpty() ? $out->pluck('brokerage')->implode(', ') : 'Referring brokerage', 'role' => 'Outside referral fee', 'amount_cents' => $referral];
+        if ($byTitle > 0) {
+            $names = array_column(array_filter($shares, fn ($r) => $r['paid_by'] === 'title'), 'brokerage');
+            $payees[] = ['name' => $names !== [] ? implode(', ', $names) : 'Referring brokerage', 'role' => 'Outside referral fee', 'amount_cents' => $byTitle];
         }
         $wire = $this->desk->wire();
-        $payees[] = ['name' => (string) $this->tenants->current()->name, 'role' => 'Brokerage (all remaining commission)', 'amount_cents' => $gci - $referral,
+        $payees[] = ['name' => (string) $this->tenants->current()->name, 'role' => 'Brokerage (all remaining commission)', 'amount_cents' => $gci - $byTitle,
             'account' => $wire['last4'] !== null ? "{$wire['bank']} account ending {$wire['last4']}, verified ".substr((string) $wire['verified_at'], 0, 10) : null];
         if (array_sum(array_column($payees, 'amount_cents')) !== $gci) {
             throw ValidationException::withMessages(['cda' => 'The payees do not add up to the commission.']);
