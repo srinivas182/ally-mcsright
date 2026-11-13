@@ -47,6 +47,7 @@ final class Signing
         }
         $db->table('form_packets')->where('id', $packet->id)->update(['status' => 'sent', 'verify' => $verify === 'sms' ? 'sms' : 'email', 'sent_at' => now(), 'updated_at' => now()]);
         $this->event((int) $packet->id, null, 'sent', 'Sent for signature by '.$by->name);
+        app(Identity\IdentityChecks::class)->prepare((int) $packet->id);
         $this->notifyNext((int) $packet->id, $baseUrl);
         app(AuditLogger::class)->record('forms.packet.sent', metadata: ['packet' => $packetUlid, 'verify' => $verify], severity: 'notice');
     }
@@ -144,6 +145,9 @@ final class Signing
         }
         if ($p->verify === 'sms' && $s->verified_at === null) {
             throw ValidationException::withMessages(['sign' => 'Enter the code we texted you first.']);
+        }
+        if (($blocker = Identity\IdentityChecks::blocker($s)) !== null) {
+            throw ValidationException::withMessages(['sign' => $blocker]);
         }
         $image = null;
         if ($drawnDataUrl !== null && $drawnDataUrl !== '') {
@@ -286,8 +290,14 @@ final class Signing
         $certificate = ['Document: '.$p->title.' ('.implode(', ', $names).')', 'Brokerage: '.$this->tenants->current()->name, 'Envelope: '.$p->ulid,
             'Sent: '.$p->sent_at.' UTC · Verification: '.($p->verify === 'sms' ? 'email link and text code' : 'email link'), ''];
         foreach ($signers as $s) {
-            $certificate[] = sprintf('%s (%s, %s): consented %s, signed %s UTC from %s%s%s', $s->name, $s->role, $s->email, $s->consent_at, $s->signed_at, $s->ip ?? 'unknown',
-                $s->verified_at !== null ? ', text code verified' : '', $s->hosted_by !== null ? ', in person' : '');
+            $id = $s->identity_check_id !== null && $s->id_status === 'verified' ? $db->table('form_identity_checks')->where('id', $s->identity_check_id)->first() : null;
+            $certificate[] = sprintf('%s (%s, %s): consented %s, signed %s UTC from %s%s%s%s', $s->name, $s->role, $s->email, $s->consent_at, $s->signed_at, $s->ip ?? 'unknown',
+                $s->verified_at !== null ? ', text code verified' : '', $s->hosted_by !== null ? ', in person' : '',
+                $id !== null ? ', identity verified '.substr((string) $id->checked_at, 0, 10).' ('.Identity\IdentityChecks::documentLabel($id->document_type, $id->document_country).', '.$id->provider.')' : '');
+        }
+        $owner = json_decode((string) ($p->owner_record ?? 'null'), true);
+        if (is_array($owner)) {
+            $certificate[] = 'Owner of record ('.$owner['source'].'): '.implode(', ', (array) $owner['owners']).($p->owner_override_reason !== null ? ' · mismatch accepted by the brokerage: '.$p->owner_override_reason : '');
         }
         $changes = $db->table('form_changes')->where('packet_id', $packetId)->orderBy('id')->get();
         if ($changes->isNotEmpty()) {

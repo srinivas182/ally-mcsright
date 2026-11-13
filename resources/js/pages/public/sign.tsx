@@ -14,6 +14,8 @@ type Props = {
         verified: boolean;
         signed: boolean;
         phone_last4: string | null;
+        id_required: boolean;
+        id_status: string | null;
     };
     fields: { form: string; label: string; type: string }[];
     disclosure: string;
@@ -319,6 +321,49 @@ export default function Sign({
                             </p>
                         )}
                     </form>
+                ) : signer.id_required && signer.id_status !== 'verified' ? (
+                    <section className="grid gap-2 rounded-lg border p-4">
+                        <h2 className="font-semibold">Verify your identity</h2>
+                        {signer.id_status === 'name_mismatch' ||
+                        signer.id_status === 'owner_mismatch' ? (
+                            <p role="alert" className="text-destructive">
+                                {signer.id_status === 'name_mismatch'
+                                    ? 'The name on your ID does not match these documents.'
+                                    : 'We need to confirm ownership of the property before you sign.'}{' '}
+                                Your agent has been told and will be in touch.
+                            </p>
+                        ) : (
+                            <>
+                                <p>
+                                    To protect you and the property from fraud,
+                                    please verify your identity with a
+                                    government photo ID and a quick selfie. It
+                                    takes about two minutes on your phone. Your
+                                    ID images are held by the verification
+                                    service, not shared with us.
+                                </p>
+                                {signer.id_status === 'failed' && (
+                                    <p
+                                        role="alert"
+                                        className="text-destructive"
+                                    >
+                                        That check did not go through. Please
+                                        try again in good light.
+                                    </p>
+                                )}
+                                <Button
+                                    className="justify-self-start"
+                                    onClick={() =>
+                                        router.post(`${base}/identity`)
+                                    }
+                                >
+                                    {signer.id_status === 'failed'
+                                        ? 'Try again'
+                                        : 'Verify my identity'}
+                                </Button>
+                            </>
+                        )}
+                    </section>
                 ) : (
                     <>
                         <section className="grid gap-2 rounded-lg border p-4">

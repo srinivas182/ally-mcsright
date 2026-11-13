@@ -66,4 +66,25 @@ points from the page's top-left. Bindings read the deal, its parties, its agent 
   packets of one negotiation are linked (`negotiation_ulid`, `round`, `kind`, `parent_packet_id`) and shown as one
   history on the packet page; the deal's forms list marks counters and addenda. New tables: `form_changes`,
   `form_change_acks`.
-- **Part 5**: ID verification for high-risk documents, plain-English summaries, association library connector.
+- **Part 5** (leader review: DocuSign Identify, Adobe Acrobat Sign, Lone Wolf zipForm/Authentisign, dotloop,
+  SkySlope, CertifID; ten additions approved), delivered in three sprints:
+    - **5a — identity checks** (delivered): signers prove who they are with a **government ID and a live selfie**
+      (Stripe Identity on the brokerage's own Stripe account; provider-agnostic, `FORMS_IDENTITY_DRIVER`). Who must
+      verify follows the brokerage policy — _when there are fraud signals_ (default), _every seller_, _every signer_
+      or _off_; agents never verify; forms marked **high-risk** (deeds, powers of attorney) make every client signer
+      verify. **Seller-impersonation signals** are computed per packet and shown on the packet page: vacant land,
+      owner not living at the property, owner's mailing address out of state, price below a set % of the estimated
+      value, seller not met in person, and seller not named as an **owner of record** (property-data provider; one
+      lookup per packet; until a provider is connected no ownership signals are raised). The verified name must
+      match the signer (first and last name, accents and middle names tolerated); a seller must also match the owner
+      of record, otherwise signing pauses, the agent is alerted, and only the broker or office staff can accept it
+      with a written reason (audited). Checks are **reused for 12 months** for the same email and name. RightAlly
+      keeps only the outcome (name, document type and country, dates) — **never ID images**. The certificate records
+      each verification and the owner of record (and any accepted mismatch). Sending is blocked when checks are
+      needed but no identity service is set up. Knowledge-based questions are deliberately not offered.
+    - **5b — plain-English summaries**: packet summary for signers in English and Spanish (agent approves; the
+      contract governs), plain-English counter summaries, deadlines to the deal timeline and Deal-IQ, unusual-clause
+      check against the brokerage's clause library before sending.
+    - **5c — association form libraries**: connector framework, NRDS membership check, new-version alerts with a
+      side-by-side of changes, association PDF package import, template import from dotloop, SkySlope and zipForm.
+    - Later: remote online notarization (partner) for deeds and powers of attorney.

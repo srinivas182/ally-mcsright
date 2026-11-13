@@ -15,9 +15,12 @@ final class FormsServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        foreach ([Templates::class, Packets::class, Signing::class, Sealer::class] as $service) {
+        foreach ([Templates::class, Packets::class, Signing::class, Sealer::class, Negotiations::class, Identity\IdentityChecks::class] as $service) {
             $this->app->scoped($service);
         }
+        $this->app->bindIf(Identity\IdentityProvider::class, fn ($app): Identity\IdentityProvider => config('forms.identity_driver') === 'fake'
+            ? $app->make(Identity\FakeIdentity::class) : $app->make(Identity\StripeIdentity::class));
+        $this->app->bindIf(Identity\OwnerRecords::class, Identity\NoOwnerRecords::class);
     }
 
     public function boot(): void

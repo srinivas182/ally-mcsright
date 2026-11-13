@@ -226,7 +226,8 @@ final class Negotiations
         $db = DB::connection(Connections::cell());
         foreach ($db->table('form_signers')->where('packet_id', $from)->orderBy('sign_order')->get() as $s) {
             $db->table('form_signers')->insert(['ulid' => (string) Str::ulid(), 'tenant_id' => $this->tenants->id(), 'packet_id' => $to, 'role' => $s->role, 'name' => $s->name,
-                'email' => $s->email, 'phone' => $s->phone, 'sign_order' => $s->sign_order, 'status' => 'waiting', 'created_at' => now(), 'updated_at' => now()]);
+                'email' => $s->email, 'phone' => $s->phone, 'sign_order' => $s->sign_order, 'met_in_person' => $s->met_in_person, 'status' => 'waiting',
+                'created_at' => now(), 'updated_at' => now()]);
         }
     }
 

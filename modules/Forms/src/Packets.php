@@ -80,7 +80,7 @@ final class Packets
     }
 
     /**
-     * @param  list<array{role: string, name: string, email: string, phone?: string|null, sign_order: int}>  $signers
+     * @param  list<array{role: string, name: string, email: string, phone?: string|null, sign_order: int, met_in_person?: bool|null}>  $signers
      */
     public function setSigners(string $packetUlid, array $signers, User $by): void
     {
@@ -97,7 +97,8 @@ final class Packets
                 }
                 $db->table('form_signers')->insert(['ulid' => (string) Str::ulid(), 'tenant_id' => $this->tenants->id(), 'packet_id' => $packet->id,
                     'role' => mb_substr(trim($s['role']), 0, 30), 'name' => mb_substr(trim($s['name']), 0, 160), 'email' => mb_strtolower(trim($s['email'])),
-                    'phone' => $s['phone'] ?? null, 'sign_order' => max(1, $s['sign_order']), 'created_at' => now(), 'updated_at' => now()]);
+                    'phone' => $s['phone'] ?? null, 'sign_order' => max(1, $s['sign_order']),
+                    'met_in_person' => isset($s['met_in_person']) ? (bool) $s['met_in_person'] : null, 'created_at' => now(), 'updated_at' => now()]);
             }
         });
     }
@@ -139,6 +140,10 @@ final class Packets
                     $problems[] = "{$name}: {$key} contains bank details; forms never carry wiring instructions.";
                 }
             }
+        }
+
+        if ($packet->status === 'draft' && ($identity = app(Identity\IdentityChecks::class)->sendProblem((int) $packet->id)) !== null) {
+            $problems[] = $identity;
         }
 
         return array_values(array_unique($problems));

@@ -12,6 +12,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
+use Modules\Forms\Identity\IdentityChecks;
 use Modules\Forms\Negotiations;
 use Modules\Forms\Pdf;
 use Modules\Forms\Signing;
@@ -41,7 +42,7 @@ final class SigningController
             'token' => $token, 'brokerage' => app(TenantContext::class)->current()->name,
             'packet' => ['title' => $p->title, 'status' => $p->status, 'verify' => $p->verify],
             'signer' => ['name' => $s->name, 'consented' => $s->consent_at !== null, 'verified' => $s->verified_at !== null, 'signed' => $s->signed_at !== null,
-                'phone_last4' => $s->phone !== null ? substr((string) $s->phone, -4) : null],
+                'phone_last4' => $s->phone !== null ? substr((string) $s->phone, -4) : null, 'id_required' => (bool) $s->id_required, 'id_status' => $s->id_status],
             'fields' => $fields, 'disclosure' => Signing::ESIGN_DISCLOSURE,
             'changes' => $s->signed_at !== null && $p->status === 'sent' ? Negotiations::pendingFor((int) $s->id) : [],
         ]);
@@ -77,6 +78,19 @@ final class SigningController
         $signing->sign($token, $data['typed'] ?? null, $data['drawn'] ?? null, $data['initials'], $request->ip(), $request->userAgent(), $request->getSchemeAndHttpHost());
 
         return back();
+    }
+
+    /** Sends the signer to the identity service (government ID and a live selfie). */
+    public function identity(Request $request, string $token, IdentityChecks $identity): \Symfony\Component\HttpFoundation\Response
+    {
+        return Inertia::location($identity->start($token, $request->getSchemeAndHttpHost()));
+    }
+
+    public function identityReturn(Request $request, string $token, IdentityChecks $identity): RedirectResponse
+    {
+        $identity->finish($token, $request->ip());
+
+        return redirect('/sign/'.$token);
     }
 
     /** A signer who already signed initials the changes made since. */
