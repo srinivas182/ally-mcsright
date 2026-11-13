@@ -1,4 +1,6 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
+
+import { Input } from '@/components/ui/input';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,6 +14,16 @@ type Props = {
     };
     settings: { guard_licence: boolean; eo_required: boolean };
     isOwner: boolean;
+    requests: {
+        ulid: string;
+        agent: string | null;
+        kind: string;
+        submitted_at: string;
+    }[];
+    agreements: Record<
+        'agreement' | 'policy',
+        { title: string; version: number; body: string } | null
+    >;
 };
 
 const tiles: [string, string][] = [
@@ -32,7 +44,13 @@ const tone: Record<string, 'destructive' | 'outline' | 'secondary'> = {
 };
 
 /** Licences, E&O, memberships and documents for every agent, and the licence guard. */
-export default function RosterIndex({ dashboard, settings, isOwner }: Props) {
+export default function RosterIndex({
+    dashboard,
+    settings,
+    isOwner,
+    requests,
+    agreements,
+}: Props) {
     const save = (patch: Partial<Props['settings']>) =>
         router.post(
             '/roster/settings',
@@ -133,6 +151,35 @@ export default function RosterIndex({ dashboard, settings, isOwner }: Props) {
                         </li>
                     ))}
                 </ul>
+                {requests.length > 0 && (
+                    <section className="grid gap-1 rounded-lg border border-amber-300 p-4 text-sm">
+                        <h2 className="font-semibold">
+                            Updates waiting for approval
+                        </h2>
+                        {requests.map((r) => (
+                            <p key={r.ulid}>
+                                {r.agent} sent a new{' '}
+                                {r.kind === 'eo' ? 'E&O' : r.kind} (
+                                {new Date(r.submitted_at).toLocaleDateString()})
+                                — open the agent to approve.
+                            </p>
+                        ))}
+                    </section>
+                )}
+                {isOwner && (
+                    <AgreementEditor
+                        kind="agreement"
+                        label="Independent contractor agreement"
+                        current={agreements.agreement}
+                    />
+                )}
+                {isOwner && (
+                    <AgreementEditor
+                        kind="policy"
+                        label="Policy manual"
+                        current={agreements.policy}
+                    />
+                )}
             </div>
         </>
     );
@@ -141,3 +188,59 @@ export default function RosterIndex({ dashboard, settings, isOwner }: Props) {
 RosterIndex.layout = {
     breadcrumbs: [{ title: 'Roster and compliance', href: '/roster' }],
 };
+
+function AgreementEditor({
+    kind,
+    label,
+    current,
+}: {
+    kind: string;
+    label: string;
+    current: { title: string; version: number; body: string } | null;
+}) {
+    const form = useForm({
+        kind,
+        title: current?.title ?? label,
+        body: current?.body ?? '',
+    });
+
+    return (
+        <details className="rounded-lg border p-4 text-sm">
+            <summary className="cursor-pointer font-semibold">
+                {label}{' '}
+                {current ? `(version ${current.version})` : '(not set yet)'}
+            </summary>
+            <form
+                className="mt-2 grid gap-2"
+                onSubmit={(e) => {
+                    e.preventDefault();
+                    form.post('/roster/agreements', { preserveScroll: true });
+                }}
+            >
+                <Input
+                    aria-label={`${label} title`}
+                    value={form.data.title}
+                    onChange={(e) => form.setData('title', e.target.value)}
+                />
+                <textarea
+                    aria-label={`${label} text`}
+                    className="min-h-48 rounded border bg-background p-2"
+                    value={form.data.body}
+                    onChange={(e) => form.setData('body', e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                    Publishing creates a new version. Agents who signed an
+                    earlier version are asked to sign again.
+                </p>
+                <Button type="submit" size="sm" className="justify-self-start">
+                    Publish new version
+                </Button>
+                {Object.values(form.errors)[0] && (
+                    <p role="alert" className="text-destructive">
+                        {Object.values(form.errors)[0]}
+                    </p>
+                )}
+            </form>
+        </details>
+    );
+}

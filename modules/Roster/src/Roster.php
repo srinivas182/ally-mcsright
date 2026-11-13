@@ -93,6 +93,14 @@ final class Roster
     public function upload(User $agent, string $kind, UploadedFile $file, User $by): string
     {
         $this->guard($by);
+
+        return $this->uploadAs($agent, $kind, $file, $by);
+    }
+
+    /** Stores an agent document (also used for the agent's own update requests). */
+    public function uploadAs(User $agent, string $kind, UploadedFile $file, ?User $by = null): string
+    {
+        $by ??= $agent;
         $mime = (string) $file->getMimeType();
         if (! in_array($kind, self::DOCUMENT_KINDS, true) || ! in_array($mime, ['application/pdf', 'image/jpeg', 'image/png', 'image/heic'], true)) {
             throw ValidationException::withMessages(['file' => 'Upload a PDF or a photo (JPEG, PNG or HEIC).']);

@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Modules\Core\Access\PermissionRegistry;
+use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
 
@@ -15,7 +16,7 @@ final class RosterServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        foreach ([Roster::class, LicenceGuard::class, Compliance::class, ExpiryReminders::class] as $service) {
+        foreach ([Roster::class, LicenceGuard::class, Compliance::class, ExpiryReminders::class, Agreements::class, Flows::class, UpdateRequests::class] as $service) {
             $this->app->scoped($service);
         }
         $this->app->tag([LicenceGuard::class], 'transactions.deal_guards');
@@ -33,6 +34,8 @@ final class RosterServiceProvider extends ServiceProvider
             'roster.manage' => ['Manage the agent roster: licences, E&O, memberships and documents'],
         ]);
         Gate::define('roster.view', fn (User $user): bool => Roster::manages($user));
-        $this->app->make(NavigationRegistry::class)->add(new NavItem('People', 'Roster and compliance', '/roster', 'id-card', 12, ability: 'roster.view'));
+        $nav = $this->app->make(NavigationRegistry::class);
+        $nav->add(new NavItem('People', 'Roster and compliance', '/roster', 'id-card', 12, ability: 'roster.view'));
+        $nav->add(new NavItem('Overview', 'My licences and onboarding', '/roster/me', 'id-card', 33, kinds: [UserKind::Agent]));
     }
 }

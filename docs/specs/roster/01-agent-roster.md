@@ -31,5 +31,14 @@ licence copy, E&O certificate); expiry reminders; onboarding checklists; roster 
 - **Part 1 (Sprint 13B)**: roster profiles, credentials (licences, E&O, associations, MLS), documents, expiry
   reminders (60, 30 and 7 days, and on expiry — to the agent and owners), manual verification, licence guard
   with per-deal override, compliance dashboard, agents' read-only view of their own records.
-- **Part 2**: onboarding and offboarding flows; agent self-service updates with approval.
+- **Part 2 (delivered, Sprint 13B-2)**: owners publish the contractor agreement and policy manual (versioned);
+  agents e-sign by ticking and typing their exact name — the SHA-256 of the signed text, time, IP and device are
+  recorded and a signed PDF is saved to their documents; a new version asks them to sign again. **Onboarding**
+  checklist: agent tasks that tick themselves (agreement, policy, W-9, bank account, active licence, active E&O)
+  and brokerage tasks staff mark (MLS, association, website profile, cards); progress for both; completes at 100%.
+  **Offboarding**: leaving date and reason; brokerage tasks (licence release, MLS and lockbox removed, listings
+  and deals reassigned, final statement) and "balances settled" (ticks itself when commission, revenue share and
+  invoices are all zero); an owner completes it with a fresh password, which deactivates the account (recording
+  the revenue share leaving date). **Self-service**: agents send a renewed licence, E&O or membership with the
+  document; it takes effect only when approved; rejections tell the agent why.
 - **Part 3**: CE tracker; ARELLO verification adapter; roster export and directory.

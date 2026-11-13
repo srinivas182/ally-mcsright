@@ -1,4 +1,10 @@
 import { Head, router, useForm } from '@inertiajs/react';
+
+import { FlowPanel, type Flow } from '@/components/roster/flow-panel';
+import {
+    SignAgreement,
+    type Agreement,
+} from '@/components/roster/sign-agreement';
 import { useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
@@ -32,6 +38,18 @@ type Props = {
         }[];
     };
     canManage: boolean;
+    isSelf: boolean;
+    isOwner: boolean;
+    onboarding: Flow | null;
+    offboarding: Flow | null;
+    toSign: Agreement[];
+    requests: {
+        ulid: string;
+        kind: string;
+        data: Record<string, string | null>;
+        document: string | null;
+        submitted_at: string;
+    }[];
 };
 
 const kinds: Record<string, string> = {
@@ -124,7 +142,17 @@ function Row({ c, canManage }: { c: Credential; canManage: boolean }) {
 }
 
 /** One agent's licences, E&O, memberships and documents. */
-export default function RosterAgent({ agent, records, canManage }: Props) {
+export default function RosterAgent({
+    agent,
+    records,
+    canManage,
+    isSelf,
+    isOwner,
+    onboarding,
+    offboarding,
+    toSign,
+    requests,
+}: Props) {
     const add = useForm({
         kind: 'licence',
         state_code: '',
@@ -147,6 +175,53 @@ export default function RosterAgent({ agent, records, canManage }: Props) {
                     title={agent.name}
                     description="Licences, E&O, memberships and documents."
                 />
+                {toSign.map((a) => (
+                    <SignAgreement key={a.id} agreement={a} name={agent.name} />
+                ))}
+                {onboarding && (
+                    <FlowPanel
+                        title="Onboarding"
+                        flow={onboarding}
+                        canManage={canManage}
+                        onComplete={
+                            canManage
+                                ? () =>
+                                      router.post(
+                                          `/roster/${agent.ulid}/flows/onboarding/complete`,
+                                          {},
+                                          { preserveScroll: true },
+                                      )
+                                : undefined
+                        }
+                    />
+                )}
+                {offboarding && (
+                    <FlowPanel
+                        title="Offboarding"
+                        flow={offboarding}
+                        canManage={canManage}
+                        onComplete={
+                            isOwner
+                                ? () =>
+                                      router.post(
+                                          `/roster/${agent.ulid}/flows/offboarding/complete`,
+                                          {},
+                                          { preserveScroll: true },
+                                      )
+                                : undefined
+                        }
+                    />
+                )}
+                {canManage && !isSelf && (
+                    <FlowStarter
+                        agent={agent.ulid}
+                        onboarding={onboarding}
+                        offboarding={offboarding}
+                    />
+                )}
+                {requests.length > 0 && (
+                    <Requests requests={requests} canManage={canManage} />
+                )}
                 <ul className="divide-y rounded-lg border text-sm">
                     {records.credentials.length === 0 && (
                         <li className="p-3 text-muted-foreground">
@@ -345,6 +420,7 @@ export default function RosterAgent({ agent, records, canManage }: Props) {
                         </ul>
                     </details>
                 )}
+                {isSelf && <UpdateForm />}
             </div>
         </>
     );
@@ -353,3 +429,257 @@ export default function RosterAgent({ agent, records, canManage }: Props) {
 RosterAgent.layout = {
     breadcrumbs: [{ title: 'Roster and compliance', href: '/roster' }],
 };
+
+function FlowStarter({
+    agent,
+    onboarding,
+    offboarding,
+}: {
+    agent: string;
+    onboarding: Flow | null;
+    offboarding: Flow | null;
+}) {
+    const off = useForm({
+        kind: 'offboarding',
+        leaving_on: new Date().toISOString().slice(0, 10),
+        reason: '',
+    });
+
+    return (
+        <section className="flex flex-wrap items-center gap-2 text-sm">
+            {!onboarding && (
+                <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                        router.post(
+                            `/roster/${agent}/flows`,
+                            { kind: 'onboarding' },
+                            { preserveScroll: true },
+                        )
+                    }
+                >
+                    Start onboarding
+                </Button>
+            )}
+            {(!offboarding || offboarding.status === 'complete') && (
+                <form
+                    className="flex flex-wrap items-center gap-2"
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        off.post(`/roster/${agent}/flows`, {
+                            preserveScroll: true,
+                        });
+                    }}
+                >
+                    Leaving on{' '}
+                    <Input
+                        aria-label="Leaving on"
+                        type="date"
+                        className="w-40"
+                        value={off.data.leaving_on}
+                        onChange={(e) =>
+                            off.setData('leaving_on', e.target.value)
+                        }
+                    />
+                    <Input
+                        aria-label="Reason for leaving"
+                        placeholder="Reason"
+                        className="w-48"
+                        value={off.data.reason}
+                        onChange={(e) => off.setData('reason', e.target.value)}
+                    />
+                    <Button
+                        type="submit"
+                        size="sm"
+                        variant="ghost"
+                        disabled={off.data.reason.length < 3}
+                    >
+                        Start offboarding
+                    </Button>
+                </form>
+            )}
+        </section>
+    );
+}
+
+function Requests({
+    requests,
+    canManage,
+}: {
+    requests: Props['requests'];
+    canManage: boolean;
+}) {
+    const [note, setNote] = useState('');
+
+    return (
+        <section className="grid gap-2 rounded-lg border border-amber-300 p-4 text-sm">
+            <h2 className="font-semibold">Updates waiting for approval</h2>
+            {requests.map((r) => (
+                <div key={r.ulid} className="flex flex-wrap items-center gap-2">
+                    <span>
+                        {kinds[r.kind]}
+                        {r.data.state_code ? ` ${r.data.state_code}` : ''}
+                        {r.data.number ? ` ${r.data.number}` : ''}
+                        {r.data.issuer ? ` — ${r.data.issuer}` : ''}
+                        {r.data.expires_on
+                            ? `, expires ${r.data.expires_on}`
+                            : ''}
+                    </span>
+                    {r.document && (
+                        <a
+                            className="underline"
+                            href={`/roster/documents/${r.document}`}
+                        >
+                            Document
+                        </a>
+                    )}
+                    {canManage && (
+                        <>
+                            <Button
+                                size="sm"
+                                onClick={() =>
+                                    router.post(
+                                        `/roster/requests/${r.ulid}/decide`,
+                                        { approve: true },
+                                        { preserveScroll: true },
+                                    )
+                                }
+                            >
+                                Approve
+                            </Button>
+                            <Input
+                                aria-label="Reason if rejecting"
+                                placeholder="Reason if rejecting"
+                                className="w-48"
+                                value={note}
+                                onChange={(e) => setNote(e.target.value)}
+                            />
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={note.length < 5}
+                                onClick={() =>
+                                    router.post(
+                                        `/roster/requests/${r.ulid}/decide`,
+                                        { approve: false, note },
+                                        { preserveScroll: true },
+                                    )
+                                }
+                            >
+                                Reject
+                            </Button>
+                        </>
+                    )}
+                </div>
+            ))}
+        </section>
+    );
+}
+
+function UpdateForm() {
+    const form = useForm<{
+        kind: string;
+        state_code: string;
+        number: string;
+        issuer: string;
+        expires_on: string;
+        file: File | null;
+    }>({
+        kind: 'licence',
+        state_code: '',
+        number: '',
+        issuer: '',
+        expires_on: '',
+        file: null,
+    });
+
+    return (
+        <form
+            className="grid gap-2 rounded-lg border p-4 text-sm"
+            onSubmit={(e) => {
+                e.preventDefault();
+                form.post('/roster/me/requests', {
+                    forceFormData: true,
+                    preserveScroll: true,
+                    onSuccess: () => form.reset(),
+                });
+            }}
+        >
+            <h2 className="font-semibold">Send an update</h2>
+            <p className="text-muted-foreground">
+                Renewed your licence or E&O? Send it here with the document; it
+                takes effect when your brokerage approves.
+            </p>
+            <span className="flex flex-wrap gap-2">
+                <select
+                    aria-label="What you are updating"
+                    className={select}
+                    value={form.data.kind}
+                    onChange={(e) => form.setData('kind', e.target.value)}
+                >
+                    {Object.entries(kinds).map(([k, v]) => (
+                        <option key={k} value={k}>
+                            {v}
+                        </option>
+                    ))}
+                </select>
+                {form.data.kind === 'licence' && (
+                    <Input
+                        aria-label="State"
+                        placeholder="State"
+                        maxLength={2}
+                        className="w-20"
+                        value={form.data.state_code}
+                        onChange={(e) =>
+                            form.setData('state_code', e.target.value)
+                        }
+                    />
+                )}
+                {form.data.kind !== 'eo' && (
+                    <Input
+                        aria-label="Number"
+                        placeholder="Number"
+                        className="w-36"
+                        value={form.data.number}
+                        onChange={(e) => form.setData('number', e.target.value)}
+                    />
+                )}
+                {form.data.kind !== 'licence' && (
+                    <Input
+                        aria-label="Issuer"
+                        placeholder={
+                            form.data.kind === 'eo' ? 'Insurer' : 'Name'
+                        }
+                        className="w-40"
+                        value={form.data.issuer}
+                        onChange={(e) => form.setData('issuer', e.target.value)}
+                    />
+                )}
+                <Input
+                    aria-label="Expires on"
+                    type="date"
+                    className="w-40"
+                    value={form.data.expires_on}
+                    onChange={(e) => form.setData('expires_on', e.target.value)}
+                />
+                <input
+                    aria-label="Document"
+                    type="file"
+                    accept="application/pdf,image/*"
+                    onChange={(e) =>
+                        form.setData('file', e.target.files?.[0] ?? null)
+                    }
+                />
+                <Button type="submit" size="sm" disabled={!form.data.file}>
+                    Send for approval
+                </Button>
+            </span>
+            {Object.values(form.errors)[0] && (
+                <p role="alert" className="text-destructive">
+                    {Object.values(form.errors)[0]}
+                </p>
+            )}
+        </form>
+    );
+}

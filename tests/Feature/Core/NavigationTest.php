@@ -23,7 +23,7 @@ it('shows owners the dashboard, people and finance', function (): void {
 });
 
 it('shows agents only their own pages', function (): void {
-    expect(menuFor(User::factory()->create()))->toBe(['Today', "Today's 10", 'Tasks', 'Deals', 'My plan', 'My money', 'Revenue share', 'Contacts'])
+    expect(menuFor(User::factory()->create()))->toBe(['Today', "Today's 10", 'Tasks', 'Deals', 'My plan', 'My money', 'My licences and onboarding', 'Revenue share', 'Contacts'])
         ->and(menuFor(User::factory()->assistantOf(User::factory()->create())->create()))->toBe(['Today', "Today's 10", 'Tasks', 'Deals', 'Contacts']);
 });
 

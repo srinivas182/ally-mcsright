@@ -12,7 +12,14 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('roster
     Route::post('deals/{deal}/override', [RosterController::class, 'override'])->middleware('password.confirm')->name('override');
     Route::post('credentials/{credential}/verify', [RosterController::class, 'verify'])->name('verify');
     Route::get('documents/{document}', [RosterController::class, 'download'])->name('download');
+    Route::post('agreements', [RosterController::class, 'publishAgreement'])->name('agreements.publish');
+    Route::post('agreements/{kind}/sign', [RosterController::class, 'sign'])->whereIn('kind', ['agreement', 'policy'])->middleware('throttle:10,1')->name('agreements.sign');
+    Route::post('tasks/{task}', [RosterController::class, 'markTask'])->whereNumber('task')->name('tasks.mark');
+    Route::post('me/requests', [RosterController::class, 'submitRequest'])->middleware('throttle:10,1')->name('requests.submit');
+    Route::post('requests/{update}/decide', [RosterController::class, 'decideRequest'])->name('requests.decide');
     Route::get('{agent}', [RosterController::class, 'show'])->name('show');
+    Route::post('{agent}/flows', [RosterController::class, 'startFlow'])->name('flows.start');
+    Route::post('{agent}/flows/{kind}/complete', [RosterController::class, 'completeFlow'])->middleware('password.confirm')->name('flows.complete');
     Route::post('{agent}/credentials', [RosterController::class, 'add'])->name('add');
     Route::post('{agent}/documents', [RosterController::class, 'upload'])->middleware('throttle:30,1')->name('upload');
 });
