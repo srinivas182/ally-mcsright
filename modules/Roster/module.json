@@ -1,0 +1,9 @@
+{
+    "id": "roster",
+    "name": "Roster",
+    "version": "0.1.0",
+    "provider": "Modules\\Roster\\RosterServiceProvider",
+    "depends": ["core", "transactions"],
+    "entitlement": null,
+    "description": "Agent roster: licences, E&O, memberships, documents, reminders, licence guard and compliance (specs/roster/01)."
+}

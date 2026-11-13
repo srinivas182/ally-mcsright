@@ -52,7 +52,12 @@ type Props = {
     cdas: Cda[];
     titles: { ulid: string; name: string }[];
     reviewer: boolean;
-    can: { trust: boolean; approveCda: boolean; export: boolean };
+    can: {
+        trust: boolean;
+        approveCda: boolean;
+        export: boolean;
+        owner?: boolean;
+    };
 };
 
 const heldBy: Record<string, string> = {
@@ -451,6 +456,34 @@ export function MoneyDesk({
                 </section>
             )}
 
+            {can.owner && deal.status === 'pre_contract' && (
+                <form
+                    className="flex flex-wrap items-center gap-2 text-sm"
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        const reason = (
+                            e.currentTarget.elements.namedItem(
+                                'reason',
+                            ) as HTMLInputElement
+                        ).value;
+                        router.post(
+                            `/roster/deals/${deal.ulid}/override`,
+                            { reason },
+                            { preserveScroll: true },
+                        );
+                    }}
+                >
+                    <input
+                        name="reason"
+                        aria-label="Reason to allow past the licence guard"
+                        placeholder="Licence renewal approved; state site not updated yet"
+                        className="w-80 rounded border bg-background px-2 py-1.5"
+                    />
+                    <Button type="submit" size="sm" variant="ghost">
+                        Allow past the licence guard
+                    </Button>
+                </form>
+            )}
             {can.export && (
                 <a
                     href={`/deals/${deal.ulid}/export`}
