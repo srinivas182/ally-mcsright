@@ -53,6 +53,7 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function
     Route::post('finance/agent-billing/plan', [PayoutsController::class, 'billingPlan'])->name('payouts.billing.plan');
     Route::post('my-money/get-paid-now', [PayoutsController::class, 'getPaidNow'])->middleware(['password.confirm', 'throttle:5,1'])->name('payouts.instant');
     Route::post('finance/get-paid-now', [PayoutsController::class, 'instantSettings'])->middleware('password.confirm')->name('payouts.instant.settings');
+    Route::post('finance/auto-payouts', [PayoutsController::class, 'autoSettings'])->middleware('password.confirm')->name('payouts.auto.settings');
     Route::post('my-money/bank', [PayoutsController::class, 'setBank'])->middleware(['password.confirm', 'throttle:5,1'])->name('payouts.bank');
 });
 

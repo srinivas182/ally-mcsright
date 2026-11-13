@@ -41,7 +41,7 @@ final class Receipts
         $total = $already + $amountCents;
         $status = $total === $expected ? 'matched' : ($total < $expected ? 'short' : 'over');
 
-        return DB::connection(Connections::cell())->transaction(function () use ($deal, $calc, $amountCents, $on, $method, $reference, $by, $expected, $status): string {
+        $ulid = DB::connection(Connections::cell())->transaction(function () use ($deal, $calc, $amountCents, $on, $method, $reference, $by, $expected, $status): string {
             $journal = $this->cashIn($deal, $amountCents, $on);
             $ulid = (string) Str::ulid();
             DB::connection(Connections::cell())->table('pay_receipts')->insert([
@@ -57,6 +57,11 @@ final class Receipts
 
             return $ulid;
         });
+        if ($status === 'matched') {
+            app(AutoPayouts::class)->afterSettled($deal, $by);
+        }
+
+        return $ulid;
     }
 
     /** A broker accepts a short or over payment as final; the brokerage absorbs the difference. */
@@ -81,6 +86,7 @@ final class Receipts
         });
         app(AuditLogger::class)->record('payouts.receipt.accepted', $deal, metadata: ['received_cents' => $received, 'expected_cents' => (int) $receipt->expected_cents, 'note' => $note],
             severity: 'warning', label: $deal->street);
+        app(AutoPayouts::class)->afterSettled($deal, $by);
     }
 
     /** Whether the deal's money has arrived (matched or accepted), so its commission can be paid. */

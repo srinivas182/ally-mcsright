@@ -32,25 +32,36 @@ final class PayoutRuns
 {
     public function __construct(private readonly BankAccounts $banks, private readonly TenantContext $tenants) {}
 
-    public function build(CarbonImmutable $payOn, bool $sameDay, User $by): string
+    /**
+     * @param  list<int>|null  $userIds  only these payees (automatic payouts for one deal)
+     * @param  list<int>|null  $referralIds  only these brokerage-paid referrals
+     */
+    public function build(CarbonImmutable $payOn, bool $sameDay, User $by, ?array $userIds = null, ?array $referralIds = null, string $kind = 'regular', bool $system = false): string
     {
-        $this->guardFinance($by);
+        if (! $system) {
+            $this->guardFinance($by);
+        }
         $db = DB::connection(Connections::cell());
-        if ($db->table('pay_runs')->where('kind', 'regular')->whereIn('status', ['draft', 'approved'])->exists()) {
+        if ($kind === 'regular' && $db->table('pay_runs')->where('kind', 'regular')->whereIn('status', ['draft', 'approved'])->exists()) {
             throw ValidationException::withMessages(['run' => 'Finish or cancel the open payout run first.']);
         }
         $accounts = $this->accounts();
         $ledger = app(LedgerService::class);
         $ulid = (string) Str::ulid();
 
-        return $db->transaction(function () use ($db, $ulid, $payOn, $sameDay, $by, $accounts, $ledger): string {
+        return $db->transaction(function () use ($db, $ulid, $payOn, $sameDay, $by, $accounts, $ledger, $userIds, $referralIds, $kind): string {
             $rails = app(Rails\Rails::class)->settings();
             $rail = $rails['rail'] !== 'bank_file' && $rails['status'] === 'ready' ? $rails['rail'] : 'bank_file';
             $runId = $db->table('pay_runs')->insertGetId(['ulid' => $ulid, 'tenant_id' => $this->tenants->id(), 'status' => 'draft', 'pay_on' => $payOn->toDateString(),
-                'same_day' => $sameDay, 'rail' => $rail, 'created_by' => $by->id, 'created_at' => now(), 'updated_at' => now()]);
+                'same_day' => $sameDay, 'rail' => $rail, 'kind' => $kind, 'created_by' => $by->id, 'created_at' => now(), 'updated_at' => now()]);
+            // Anyone already in an unsent run is left out, so nothing is paid twice.
+            $openRuns = $db->table('pay_runs')->whereIn('status', ['draft', 'approved'])->where('id', '!=', $runId)->pluck('id');
+            $busyUsers = $db->table('pay_run_lines')->whereIn('run_id', $openRuns)->whereNotNull('user_id')->pluck('user_id')->map(fn ($v): int => (int) $v)->all();
+            $busyReferrals = $db->table('pay_run_lines')->whereIn('run_id', $openRuns)->whereNotNull('referral_id')->pluck('referral_id')->map(fn ($v): int => (int) $v)->all();
             $total = 0;
 
-            foreach (User::query()->whereIn('kind', [UserKind::Agent, UserKind::Owner])->orderBy('first_name')->get() as $user) {
+            foreach (User::query()->whereIn('kind', [UserKind::Agent, UserKind::Owner])->when($userIds !== null, fn ($q) => $q->whereIn('id', $userIds))
+                ->whereNotIn('id', $busyUsers)->orderBy('first_name')->get() as $user) {
                 $commission = $ledger->balance($accounts->subAccount('2000', 'user', $user->id, 'Commission payable — '.$user->first_name))->cents;
                 $share = $ledger->balance($accounts->subAccount('2100', 'user', $user->id, 'Revenue share — '.$user->first_name))->cents;
                 $amount = max(0, $commission) + max(0, $share);
@@ -75,7 +86,8 @@ final class PayoutRuns
                 $total += $status === 'included' ? $amount : 0;
             }
 
-            foreach ($db->table('tx_referrals')->where('direction', 'out')->where('paid_by', 'brokerage')->whereNull('paid_at')->get() as $ref) {
+            foreach ($db->table('tx_referrals')->where('direction', 'out')->where('paid_by', 'brokerage')->whereNull('paid_at')
+                ->when($referralIds !== null, fn ($q) => $q->whereIn('id', $referralIds))->whereNotIn('id', $busyReferrals)->get() as $ref) {
                 $due = $ledger->balance($accounts->subAccount('2200', 'referral', (int) $ref->id, 'Referral payable — '.$ref->brokerage))->cents;
                 if ($due > 0) {
                     $db->table('pay_run_lines')->insert(['tenant_id' => $this->tenants->id(), 'run_id' => $runId, 'payee_type' => 'referral', 'referral_id' => $ref->id,
@@ -88,6 +100,14 @@ final class PayoutRuns
 
             return $ulid;
         });
+    }
+
+    /** Approval under the owner's standing automatic-payout rule (no person approves; audited). */
+    public function approveAutomatically(string $ulid, string $rule): void
+    {
+        $run = $this->run($ulid, 'draft');
+        DB::connection(Connections::cell())->table('pay_runs')->where('id', $run['id'])->update(['status' => 'approved', 'approved_at' => now(), 'updated_at' => now()]);
+        app(AuditLogger::class)->record('payouts.run.auto_approved', metadata: ['run' => $ulid, 'total_cents' => $run['total_cents'], 'rule' => $rule], severity: 'warning');
     }
 
     public function approve(string $ulid, User $by): void

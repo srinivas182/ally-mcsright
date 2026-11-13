@@ -53,6 +53,7 @@ type Props = {
         min_cents: number;
         limits: { max_flat_cents: number; max_percent: string };
     };
+    auto: { enabled: boolean; limit_cents: number; same_day: boolean };
 };
 
 const method: Record<string, string> = {
@@ -73,6 +74,7 @@ function RunCard({ run, canApprove }: { run: Run; canApprove: boolean }) {
                 </span>
                 <span className="flex gap-1">
                     {run.kind === 'instant' && <Badge>Get paid now</Badge>}
+                    {run.kind === 'auto' && <Badge>Automatic</Badge>}
                     <Badge
                         variant={
                             run.status === 'sent' ? 'secondary' : 'outline'
@@ -251,6 +253,7 @@ export default function Payouts({
     canChangeSettings,
     rail,
     instant,
+    auto,
 }: Props) {
     const build = useForm({
         pay_on: new Date().toISOString().slice(0, 10),
@@ -315,6 +318,7 @@ export default function Payouts({
                         )}
                     </form>
                 )}
+                {canApprove && <AutoSettings auto={auto} />}
                 {canChangeSettings && <InstantSettings instant={instant} />}
                 {canChangeSettings && <RailSetup info={rail} />}
                 {runs.map((r) => (
@@ -488,6 +492,65 @@ function InstantSettings({ instant }: { instant: Props['instant'] }) {
                 Up to {usd(instant.limits.max_flat_cents)} +{' '}
                 {instant.limits.max_percent}% (RightAlly's limit). The fee is
                 the brokerage's income; set it to zero to make it free.
+            </span>
+            {Object.values(form.errors)[0] && (
+                <p role="alert" className="w-full text-destructive">
+                    {Object.values(form.errors)[0]}
+                </p>
+            )}
+        </form>
+    );
+}
+
+function AutoSettings({ auto }: { auto: Props['auto'] }) {
+    const form = useForm({
+        enabled: auto.enabled,
+        limit: String(auto.limit_cents / 100),
+        same_day: auto.same_day,
+    });
+
+    return (
+        <form
+            className="flex flex-wrap items-center gap-2 rounded-lg border p-4 text-sm"
+            onSubmit={(e) => {
+                e.preventDefault();
+                form.post('/finance/auto-payouts', { preserveScroll: true });
+            }}
+        >
+            <label className="flex items-center gap-1">
+                <input
+                    type="checkbox"
+                    className="size-4"
+                    checked={form.data.enabled}
+                    onChange={(e) => form.setData('enabled', e.target.checked)}
+                />{' '}
+                Pay agents automatically when a deal's money matches the CDA
+            </label>
+            · up to $
+            <Input
+                aria-label="Automatic limit per payee ($)"
+                type="number"
+                min={0}
+                className="w-28"
+                value={form.data.limit}
+                onChange={(e) => form.setData('limit', e.target.value)}
+            />{' '}
+            each
+            <label className="flex items-center gap-1">
+                <input
+                    type="checkbox"
+                    className="size-4"
+                    checked={form.data.same_day}
+                    onChange={(e) => form.setData('same_day', e.target.checked)}
+                />{' '}
+                same day
+            </label>
+            <Button type="submit" size="sm" variant="outline">
+                Save
+            </Button>
+            <span className="w-full text-xs text-muted-foreground">
+                Larger payouts wait for approval. The 72-hour bank-change hold
+                and every other safeguard still apply. Owners only.
             </span>
             {Object.values(form.errors)[0] && (
                 <p role="alert" className="w-full text-destructive">

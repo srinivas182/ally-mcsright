@@ -22,10 +22,13 @@ use Modules\Core\Tenancy\TenantContext;
 use Modules\Ledger\ChartOfAccounts;
 use Modules\Ledger\LedgerService;
 use Modules\Payouts\AgentBilling;
+use Modules\Payouts\AutoPayouts;
 use Modules\Payouts\Balances;
 use Modules\Payouts\BankAccounts;
 use Modules\Payouts\GetPaidNow;
 use Modules\Payouts\PayoutRuns;
+use Modules\Payouts\Rails\RailPlatform;
+use Modules\Payouts\Rails\Rails;
 use Modules\Payouts\Receipts;
 use Modules\Payouts\Statements;
 use Modules\Payouts\Tax1099;
@@ -83,7 +86,10 @@ final class PayoutsController
         $user = self::user($request);
 
         return Inertia::render('finance/my-money', ['balances' => $balances->for($user), 'bank' => $accounts->current($user), 'holdHours' => BankAccounts::HOLD_HOURS,
-            'instant' => app(GetPaidNow::class)->quote($user)]);
+            'instant' => app(GetPaidNow::class)->quote($user),
+            'invoices' => app(AgentBilling::class)->invoicesFor($user->id),
+            'payOnline' => (bool) app(TenantContext::class)->current()->getAttribute('connect_ready'),
+            'w9' => app(W9s::class)->current($user->id)]);
     }
 
     public function setBank(Request $request, BankAccounts $accounts): RedirectResponse
@@ -135,6 +141,18 @@ final class PayoutsController
                 'operating_last4' => $settings['operating_account'] !== null ? substr($settings['operating_account'], -4) : null, 'next_check_number' => $settings['next_check_number']],
             'canApprove' => $user->isKind(UserKind::Owner) || $user->can('finance.payouts.approve'),
             'canChangeSettings' => $user->can('finance.bank_details.manage'),
+            'rail' => (function (): array {
+                $s = app(Rails::class)->settings();
+                $c = $s['config'];
+
+                return ['rail' => $s['rail'], 'status' => $s['status'], 'same_day_default' => $s['same_day_default'],
+                    'offered' => array_values(array_filter(RailPlatform::RAILS, fn ($r) => app(RailPlatform::class)->enabled($r))),
+                    'steps' => ['business' => ! empty($c['customer']), 'bank' => ! empty($c['funding_source']), 'verified' => ($c['verified'] ?? false) === true,
+                        'financial_account' => ! empty($c['financial_account']), 'mt' => ! empty($c['api_key'])]];
+            })(),
+            'instant' => ['enabled' => $settings['instant_enabled'], 'flat_cents' => $settings['instant_fee_flat_cents'], 'percent' => $settings['instant_fee_percent'],
+                'min_cents' => $settings['instant_min_cents'], 'limits' => app(GetPaidNow::class)->limits()],
+            'auto' => app(AutoPayouts::class)->settings(),
         ]);
     }
 
@@ -410,6 +428,14 @@ final class PayoutsController
         $data = $request->validate(['month' => ['required', 'date_format:Y-m']]);
         $trust->approve($data['month'], self::user($request));
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Reconciliation approved and locked.']);
+
+        return back();
+    }
+
+    public function autoSettings(Request $request, AutoPayouts $auto): RedirectResponse
+    {
+        $data = $request->validate(['enabled' => ['required', 'boolean'], 'limit' => ['required', 'numeric', 'min:0'], 'same_day' => ['required', 'boolean']]);
+        $auto->configure((bool) $data['enabled'], (int) round((float) $data['limit'] * 100), (bool) $data['same_day'], self::user($request));
 
         return back();
     }
