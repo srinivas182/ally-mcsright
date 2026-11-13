@@ -8,10 +8,12 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Core\Support\Connections;
 use Modules\Forms\Packets;
+use Modules\Forms\Signing;
 use Modules\Forms\Templates;
 use Modules\Transactions\Models\Deal;
 
@@ -94,7 +96,8 @@ final class FormsController
                 return ['id' => (int) $f->id, 'name' => (string) $t?->name, 'values' => (object) json_decode((string) $f->values, true),
                     'fields' => array_values(array_filter((array) json_decode((string) $t?->fields, true), fn ($x) => ! in_array($x['type'], Templates::SIGNER_FIELDS, true)))];
             })->values(),
-            'signers' => $db->table('form_signers')->where('packet_id', $row->id)->orderBy('sign_order')->get(['role', 'name', 'email', 'phone', 'sign_order', 'status']),
+            'signers' => $db->table('form_signers')->where('packet_id', $row->id)->orderBy('sign_order')->get(['ulid', 'role', 'name', 'email', 'phone', 'sign_order', 'status', 'signed_at', 'decline_reason']),
+            'events' => $db->table('form_events')->where('packet_id', $row->id)->orderByDesc('id')->limit(50)->get(['action', 'detail', 'at']),
             'problems' => $packets->check($packet, $user),
             'clauses' => $db->table('form_clauses')->orderBy('title')->get(['title', 'body']),
         ]);
@@ -128,5 +131,36 @@ final class FormsController
         abort_unless($user instanceof User, 403);
 
         return $user;
+    }
+
+    public function send(Request $request, string $packet, Signing $signing): RedirectResponse
+    {
+        $data = $request->validate(['verify' => ['required', 'in:email,sms']]);
+        $signing->send($packet, $data['verify'], self::user($request), $request->getSchemeAndHttpHost());
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Sent for signature.']);
+
+        return back();
+    }
+
+    public function void(Request $request, string $packet, Signing $signing): RedirectResponse
+    {
+        $data = $request->validate(['reason' => ['required', 'string', 'max:200']]);
+        $signing->void($packet, $data['reason'], self::user($request));
+
+        return back();
+    }
+
+    public function inPerson(Request $request, string $packet, string $signer, Signing $signing): \Symfony\Component\HttpFoundation\Response
+    {
+        return Inertia::location($signing->inPerson($packet, $signer, self::user($request), $request->getSchemeAndHttpHost()));
+    }
+
+    public function signed(Request $request, string $packet, Packets $packets): \Symfony\Component\HttpFoundation\Response
+    {
+        $packets->check($packet, self::user($request)); // access check
+        $path = DB::connection(Connections::cell())->table('form_packets')->where('ulid', $packet)->where('status', 'completed')->value('sealed_path');
+        abort_if($path === null, 404);
+
+        return response((string) Storage::disk('local')->get((string) $path), 200, ['Content-Type' => 'application/pdf', 'Content-Disposition' => 'attachment; filename="signed.pdf"']);
     }
 }

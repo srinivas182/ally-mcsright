@@ -14,12 +14,15 @@ type FormRow = {
     fields: Field[];
 };
 type Signer = {
+    ulid?: string;
     role: string;
     name: string;
     email: string;
     phone: string | null;
     sign_order: number;
     status: string;
+    signed_at?: string | null;
+    decline_reason?: string | null;
 };
 type Props = {
     packet: {
@@ -32,6 +35,7 @@ type Props = {
     signers: Signer[];
     problems: string[];
     clauses: { title: string; body: string }[];
+    events: { action: string; detail: string | null; at: string }[];
 };
 
 function FormValues({
@@ -156,10 +160,17 @@ export default function Packet({
     signers,
     problems,
     clauses,
+    events,
 }: Props) {
     const locked = packet.status !== 'draft';
     const signerForm = useForm<{ signers: Omit<Signer, 'status'>[] }>({
-        signers: signers.map(({ status: _s, ...rest }) => rest),
+        signers: signers.map(({ role, name, email, phone, sign_order }) => ({
+            role,
+            name,
+            email,
+            phone,
+            sign_order,
+        })),
     });
     const setSigner = (i: number, patch: Partial<Signer>) =>
         signerForm.setData(
@@ -317,11 +328,151 @@ export default function Packet({
                             {Object.values(signerForm.errors)[0]}
                         </p>
                     )}
-                    <p className="text-xs text-muted-foreground">
-                        Sending for signature arrives in the next release.
-                    </p>
+                    <SendPanel
+                        packet={packet}
+                        signers={signers}
+                        events={events}
+                        ready={problems.length === 0}
+                    />
                 </section>
             </div>
         </>
+    );
+}
+
+function SendPanel({
+    packet,
+    signers,
+    events,
+    ready,
+}: {
+    packet: Props['packet'];
+    signers: Signer[];
+    events: Props['events'];
+    ready: boolean;
+}) {
+    const [verify, setVerify] = useState('email');
+    const [reason, setReason] = useState('');
+    const opts = { preserveScroll: true };
+
+    return (
+        <div className="grid gap-2 border-t pt-2">
+            {packet.status === 'draft' && (
+                <span className="flex flex-wrap items-center gap-2">
+                    <select
+                        aria-label="How signers prove who they are"
+                        className="rounded border bg-background px-2 py-1.5"
+                        value={verify}
+                        onChange={(e) => setVerify(e.target.value)}
+                    >
+                        <option value="email">Email link</option>
+                        <option value="sms">Email link and text code</option>
+                    </select>
+                    <Button
+                        size="sm"
+                        disabled={!ready}
+                        onClick={() =>
+                            router.post(
+                                `/forms/packets/${packet.ulid}/send`,
+                                { verify },
+                                opts,
+                            )
+                        }
+                    >
+                        Send for signature
+                    </Button>
+                </span>
+            )}
+            {packet.status !== 'draft' && (
+                <ul className="grid gap-1">
+                    {signers.map((s) => (
+                        <li
+                            key={s.ulid ?? s.email}
+                            className="flex flex-wrap items-center gap-2"
+                        >
+                            {s.sign_order}. {s.name}{' '}
+                            <Badge
+                                variant={
+                                    s.status === 'signed'
+                                        ? 'secondary'
+                                        : 'outline'
+                                }
+                                className="capitalize"
+                            >
+                                {s.status}
+                            </Badge>
+                            {s.decline_reason && (
+                                <span className="text-destructive">
+                                    “{s.decline_reason}”
+                                </span>
+                            )}
+                            {packet.status === 'sent' &&
+                                s.status !== 'signed' &&
+                                s.ulid && (
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() =>
+                                            router.post(
+                                                `/forms/packets/${packet.ulid}/in-person/${s.ulid}`,
+                                            )
+                                        }
+                                    >
+                                        Sign in person now
+                                    </Button>
+                                )}
+                        </li>
+                    ))}
+                </ul>
+            )}
+            {packet.status === 'completed' && (
+                <a
+                    className="underline"
+                    href={`/forms/packets/${packet.ulid}/signed.pdf`}
+                >
+                    Download the signed, sealed copy
+                </a>
+            )}
+            {(packet.status === 'sent' || packet.status === 'declined') && (
+                <span className="flex flex-wrap gap-2">
+                    <Input
+                        aria-label="Reason to void"
+                        placeholder="Reason to void"
+                        className="w-56"
+                        value={reason}
+                        onChange={(e) => setReason(e.target.value)}
+                    />
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={reason.length < 3}
+                        onClick={() =>
+                            router.post(
+                                `/forms/packets/${packet.ulid}/void`,
+                                { reason },
+                                opts,
+                            )
+                        }
+                    >
+                        Void
+                    </Button>
+                </span>
+            )}
+            {events.length > 0 && (
+                <details>
+                    <summary className="cursor-pointer text-muted-foreground">
+                        Activity ({events.length})
+                    </summary>
+                    <ul className="mt-1 grid gap-0.5 text-xs text-muted-foreground">
+                        {events.map((e, i) => (
+                            <li key={i}>
+                                {e.at} · {e.action}
+                                {e.detail ? ` · ${e.detail}` : ''}
+                            </li>
+                        ))}
+                    </ul>
+                </details>
+            )}
+        </div>
     );
 }

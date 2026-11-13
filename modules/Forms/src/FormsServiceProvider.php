@@ -15,7 +15,7 @@ final class FormsServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        foreach ([Templates::class, Packets::class] as $service) {
+        foreach ([Templates::class, Packets::class, Signing::class, Sealer::class] as $service) {
             $this->app->scoped($service);
         }
     }
@@ -24,6 +24,9 @@ final class FormsServiceProvider extends ServiceProvider
     {
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
+        if ($this->app->runningInConsole()) {
+            $this->commands([Console\SigningReminders::class]);
+        }
         $this->app->make(PermissionRegistry::class)->register('Transactions', [
             'forms.manage' => ['Manage forms: templates, fields and clauses'],
         ]);

@@ -52,3 +52,5 @@ Schedule::command('payouts:trust-reminder')->monthlyOn(10, '08:00')->onOneServer
 Schedule::command('roster:reminders')->dailyAt('07:00')->onOneServer();
 // Licences re-checked against state records when automatic verification is on (specs/roster/01).
 Schedule::command('roster:verify')->dailyAt('03:30')->onOneServer();
+// Signers who have not signed yet (specs/forms/01).
+Schedule::command('forms:reminders')->dailyAt('10:00')->onOneServer();

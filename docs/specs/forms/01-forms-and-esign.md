@@ -35,9 +35,17 @@ points from the page's top-left. Bindings read the deal, its parties, its agent 
 - **Part 1 (Sprint 14B)**: templates (upload, normalise, fields with type, page, position, signer role, binding,
   required), auto-fill from the deal, clause library, packets on a deal (forms, values, signer roles), filled
   PDF preview, pre-send check, wiring-instructions guard.
-- **Part 2**: signing — signing order, emailed secure links, ESIGN/UETA consent, signature and initials capture,
-  SMS code verification, reminders, in-person signing, audit certificate, tamper-evident sealing, filing to the
-  checklist, wire-fraud warning in every email.
+- **Part 2 (delivered, Sprint 14B-2)**: send after the pre-send check passes; signers emailed in signing order
+  (everyone with the lowest unsigned order) with a secret link and the **wire-fraud warning in every email**;
+  ESIGN/UETA disclosure and consent before signing; optional **text-code verification** (Core `SmsSender`: Twilio
+  when configured, otherwise logged; five tries); sign by **typing the exact name or drawing**, plus initials;
+  decline with a reason (the agent is emailed); void (links stop working); reminders every 2 days, up to 3, each
+  with a fresh link; **in-person signing** on the agent's device for whoever is next; completion assembles one PDF
+  (values, signatures, initials, signing dates) with a **signature certificate** page (signers, consent, IPs,
+  verification, every event), **seals** it (SHA-256 signed with Ed25519; key from FORMS_SEAL_SEED or derived from
+  the app key), files it to the deal's checklist items named by the forms (into the review queue), and emails
+  every signer their copy; anyone can **verify a copy** at /verify-document. PDFs are read as uploaded (FPDI reads
+  compressed PDFs); qpdf only repairs ones FPDI cannot read.
 - **Part 3**: visual field placement on the page (drag and drop), templates from the brokerage's forms.
 - **Part 4**: counter-offers and addenda (smart counters), re-sign only what changed.
 - **Part 5**: ID verification for high-risk documents, plain-English summaries, association library connector.

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Route;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
 use Modules\Forms\Http\FormsController;
+use Modules\Forms\Http\SigningController;
 
 Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('forms')->name('forms.')->group(function (): void {
     Route::get('templates', [FormsController::class, 'templates'])->name('templates');
@@ -17,4 +18,23 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('forms'
     Route::post('packets/{packet}/forms/{form}/values', [FormsController::class, 'values'])->whereNumber('form')->name('packets.values');
     Route::post('packets/{packet}/signers', [FormsController::class, 'signers'])->name('packets.signers');
     Route::get('packets/{packet}/forms/{form}/preview', [FormsController::class, 'preview'])->whereNumber('form')->name('packets.preview');
+    Route::post('packets/{packet}/send', [FormsController::class, 'send'])->middleware('throttle:10,1')->name('packets.send');
+    Route::post('packets/{packet}/void', [FormsController::class, 'void'])->name('packets.void');
+    Route::post('packets/{packet}/in-person/{signer}', [FormsController::class, 'inPerson'])->name('packets.in-person');
+    Route::get('packets/{packet}/signed.pdf', [FormsController::class, 'signed'])->name('packets.signed');
+});
+
+// Signers (no sign-in; secret link) and public verification of sealed documents, on the brokerage's host.
+Route::middleware(['web', EnsureTenantWorkspace::class, 'throttle:60,1'])->group(function (): void {
+    Route::prefix('sign/{token}')->where(['token' => '[A-Za-z0-9]{48}'])->name('sign.')->group(function (): void {
+        Route::get('/', [SigningController::class, 'show'])->name('show');
+        Route::get('document.pdf', [SigningController::class, 'document'])->name('document');
+        Route::post('consent', [SigningController::class, 'consent'])->name('consent');
+        Route::post('code', [SigningController::class, 'code'])->middleware('throttle:3,10')->name('code');
+        Route::post('verify', [SigningController::class, 'verify'])->name('verify');
+        Route::post('sign', [SigningController::class, 'sign'])->name('sign');
+        Route::post('decline', [SigningController::class, 'decline'])->name('decline');
+    });
+    Route::get('verify-document', [SigningController::class, 'verifyPage'])->name('verify-document');
+    Route::post('verify-document', [SigningController::class, 'verifyUpload'])->middleware('throttle:20,1')->name('verify-document.check');
 });
