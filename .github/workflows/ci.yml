@@ -131,3 +131,6 @@ jobs:
         if: failure()
         run: |
           vendor/bin/pest --compact 2>&1 | grep -E "FAILED|Exception|Error|Failed asserting|➜" | head -30 | sed 's/^/::error::/' || true
+          (which qpdf || echo "qpdf not found") | sed 's/^/::error::qpdf path: /'
+          (qpdf --version 2>&1 | head -1) | sed 's/^/::error::qpdf version: /'
+          php -r 'require "vendor/autoload.php"; $p = new FPDF("P", "pt", "Letter"); $p->AddPage(); $p->SetFont("Helvetica", "", 12); $p->Text(72, 60, "X"); file_put_contents("/tmp/ci.pdf", $p->Output("S")); passthru("qpdf --object-streams=disable --decrypt /tmp/ci.pdf /tmp/ci2.pdf 2>&1; echo exit=$?");' 2>&1 | sed 's/^/::error::normalise: /' || true
