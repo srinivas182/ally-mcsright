@@ -34,6 +34,7 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('settin
     Route::middleware('password.confirm')->group(function (): void {
         Route::post('wire/propose', [MoneyDeskController::class, 'proposeWire'])->name('.wire.propose');
         Route::post('wire/confirm', [MoneyDeskController::class, 'confirmWire'])->name('.wire.confirm');
+        Route::post('agents-direct', [MoneyDeskController::class, 'agentsDirect'])->name('.agents-direct');
     });
 });
 

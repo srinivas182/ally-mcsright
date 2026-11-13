@@ -43,6 +43,14 @@ final class TitleDesk
         app(AuditLogger::class)->record('transactions.title.verified', metadata: ['title' => $ulid, 'note' => $note], severity: 'warning');
     }
 
+    /** Where the state allows: title pays agents their net commission directly (shown on the CDA). */
+    public function setAgentsDirect(bool $enabled, User $by): void
+    {
+        $this->guard($by);
+        $this->settings(['cda_agents_direct' => $enabled]);
+        app(AuditLogger::class)->record('transactions.cda.agents_direct', metadata: ['enabled' => $enabled], severity: 'warning');
+    }
+
     /** First person: proposes new receiving-account details (bank and last four digits only). */
     public function proposeWire(string $bankName, string $last4, User $by): void
     {

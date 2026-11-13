@@ -43,8 +43,21 @@ final class Cdas
             $names = array_column(array_filter($shares, fn ($r) => $r['paid_by'] === 'title'), 'brokerage');
             $payees[] = ['name' => $names !== [] ? implode(', ', $names) : 'Referring brokerage', 'role' => 'Outside referral fee', 'amount_cents' => $byTitle];
         }
+        // Option (where the state allows): title pays agents their net commission directly.
+        $direct = [];
+        if ((bool) DB::connection(Connections::cell())->table('tx_settings')->value('cda_agents_direct')) {
+            foreach ((array) ($calc->result['agents'] ?? []) as $row) {
+                $direct[(int) $row['user_id']] = ($direct[(int) $row['user_id']] ?? 0) + (int) $row['agent_net_cents'];
+                if ((int) ($row['team_split_cents'] ?? 0) > 0 && isset($row['team_leader_user_id'])) {
+                    $direct[(int) $row['team_leader_user_id']] = ($direct[(int) $row['team_leader_user_id']] ?? 0) + (int) $row['team_split_cents'];
+                }
+            }
+            foreach ($direct as $userId => $cents) {
+                $payees[] = ['name' => (string) User::query()->find($userId)?->name, 'role' => 'Agent commission (paid directly)', 'amount_cents' => $cents];
+            }
+        }
         $wire = $this->desk->wire();
-        $payees[] = ['name' => (string) $this->tenants->current()->name, 'role' => 'Brokerage (all remaining commission)', 'amount_cents' => $gci - $byTitle,
+        $payees[] = ['name' => (string) $this->tenants->current()->name, 'role' => 'Brokerage (all remaining commission)', 'amount_cents' => $gci - $byTitle - array_sum($direct),
             'account' => $wire['last4'] !== null ? "{$wire['bank']} account ending {$wire['last4']}, verified ".substr((string) $wire['verified_at'], 0, 10) : null];
         if (array_sum(array_column($payees, 'amount_cents')) !== $gci) {
             throw ValidationException::withMessages(['cda' => 'The payees do not add up to the commission.']);
@@ -55,7 +68,7 @@ final class Cdas
             'property' => trim("{$deal->street}, {$deal->city} {$deal->state_code} {$deal->postal_code}"), 'mls' => $deal->mls_number,
             'buyers' => $parties->where('role', 'buyer')->pluck('name')->values()->all(), 'sellers' => $parties->where('role', 'seller')->pluck('name')->values()->all(),
             'price_cents' => $deal->price_cents, 'closing_date' => $deal->closing_date?->toDateString(), 'gci_cents' => $gci, 'payees' => $payees,
-            'brokerage' => (string) $this->tenants->current()->name,
+            'brokerage' => (string) $this->tenants->current()->name, 'agents_paid_by_title' => (object) $direct,
             'wire_warning' => 'Pay only to the brokerage\'s verified account on file. Never follow emailed or texted changes to payment instructions — call the brokerage on a number you already know.',
         ];
 

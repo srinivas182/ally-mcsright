@@ -113,6 +113,7 @@ final class MoneyDeskController
                 ->map(fn ($t): array => ['ulid' => $t->ulid, 'name' => $t->name, 'email' => $t->email, 'phone' => $t->phone, 'verified_at' => $t->verified_at, 'note' => $t->verification_note]),
             'wire' => $desk->wire(),
             'canChangeWire' => self::user($request)->can('finance.bank_details.manage'),
+            'agentsDirect' => (bool) DB::connection(Connections::cell())->table('tx_settings')->value('cda_agents_direct'),
             'year' => $year,
             'referralsPaid' => $referrals->paidInYear($year),
         ]);
@@ -139,6 +140,14 @@ final class MoneyDeskController
     {
         $data = $request->validate(['bank' => ['required', 'string', 'max:120'], 'last4' => ['required', 'digits:4']]);
         $desk->proposeWire($data['bank'], $data['last4'], self::user($request));
+
+        return back();
+    }
+
+    public function agentsDirect(Request $request, TitleDesk $desk): RedirectResponse
+    {
+        $data = $request->validate(['enabled' => ['required', 'boolean']]);
+        $desk->setAgentsDirect((bool) $data['enabled'], self::user($request));
 
         return back();
     }

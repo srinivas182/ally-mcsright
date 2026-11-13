@@ -144,6 +144,12 @@ final class Receipts
                 $payables[(int) $row['team_leader_user_id']] = ($payables[(int) $row['team_leader_user_id']] ?? 0) + (int) $row['team_split_cents'];
             }
         }
+        // Agents title paid directly (CDA option) have no payable here; they are recorded for 1099s.
+        $cda = DB::connection(Connections::cell())->table('tx_cdas')->where('deal_id', $deal->id)->whereIn('status', ['approved', 'sent', 'acknowledged'])->orderByDesc('version')->value('payload');
+        $paidByTitle = array_map('intval', (array) (json_decode((string) ($cda ?? '{}'), true)['agents_paid_by_title'] ?? []));
+        foreach (array_keys($paidByTitle) as $userId) {
+            unset($payables[(int) $userId]);
+        }
         $basis = $received ?? $expected;
         // Referral fees the brokerage pays itself become referral payables (paid in a payout run).
         $referrals = array_filter(app(Referrals::class)->amounts($deal, (int) ($calc->result['outside_referral_cents'] ?? 0)), fn ($r) => $r['paid_by'] === 'brokerage');
@@ -163,7 +169,7 @@ final class Receipts
         $company >= 0 ? $draft->credit($accounts->account('4000'), Money::of($company)) : $draft->debit($accounts->account('4000'), Money::of(-$company));
         $journal = app(LedgerService::class)->post($draft)->id;
         DB::connection(Connections::cell())->table('pay_recognitions')->insert(['tenant_id' => $deal->tenant_id, 'deal_id' => $deal->id, 'journal_id' => $journal,
-            'payables' => json_encode($payables), 'created_at' => now()]);
+            'payables' => json_encode($payables), 'paid_by_title' => $paidByTitle !== [] ? json_encode($paidByTitle) : null, 'created_at' => now()]);
     }
 
     private function accounts(): ChartOfAccounts

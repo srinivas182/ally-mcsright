@@ -23,6 +23,7 @@ type Props = {
         pending: { bank: string; last4: string; by: number; at: string } | null;
     };
     canChangeWire: boolean;
+    agentsDirect: boolean;
     year: number;
     referralsPaid: {
         brokerage: string;
@@ -86,6 +87,7 @@ export default function TransactionsSettings({
     canChangeWire,
     year,
     referralsPaid,
+    agentsDirect,
 }: Props) {
     const title = useForm({ name: '', email: '', phone: '' });
     const proposal = useForm({ bank: '', last4: '' });
@@ -153,6 +155,26 @@ export default function TransactionsSettings({
                         </Button>
                     </form>
                 </section>
+                <label className="flex items-start gap-2 rounded-lg border p-4 text-sm">
+                    <input
+                        type="checkbox"
+                        className="mt-1 size-4"
+                        checked={agentsDirect}
+                        onChange={(e) =>
+                            router.post(
+                                '/settings/transactions/agents-direct',
+                                { enabled: e.target.checked },
+                                { preserveScroll: true },
+                            )
+                        }
+                    />
+                    <span>
+                        Title pays agents their commission directly on the CDA.
+                        Only use this where your state allows title to pay
+                        agents directly; the brokerage still issues the agents'
+                        1099s.
+                    </span>
+                </label>
                 <section className="grid gap-2 rounded-lg border p-4 text-sm">
                     <h2 className="font-semibold">
                         Brokerage receiving account

@@ -96,5 +96,15 @@ transmitter). Rails, behind a `PayoutRail` interface:
   agents who owe the brokerage are recovered from future commission automatically, or the debt moves into a
   **payment plan** of 1–24 monthly instalment invoices (not counted as new revenue); agents see What I owe on My
   money.
-- **Part 5**: statements with every cent explained; W-9 with TIN matching; 1099 totals; title-pays-agents CDA
-  option.
+- **Part 5 (delivered, 12B-5)**: monthly agent **statements** (page and PDF): opening and closing balances from the
+  ledger and every line between — commission per deal (or "paid directly by title"), revenue share, invoices,
+  deductions, get-paid-now fees and payments; **W-9** collected online (typed signature must match the legal name;
+  TIN encrypted, last four shown; replacing keeps one current; finance enters referral payees' W-9s); **IRS bulk
+  TIN matching** — the IRS has no API: RightAlly writes the e-Services request file (`TIN type;TIN;Name;account`)
+  and imports the result codes (0/6/7/8 matched, 2/3 mismatch, others invalid); **1099-NEC totals** per calendar
+  year for agents (commission + revenue share paid, before invoices and fees taken) and referral payees, plus
+  commission title paid directly; thresholds **$600 for 2025 payments, $2,000 for 2026** (One Big Beautiful Bill
+  Act), indexed from 2027 via `billing.nec_threshold_cents`; export for filing with full TINs (finance, fresh
+  password, audited); **title pays agents directly** (Settings › Transactions, where the state allows): agents'
+  net becomes CDA lines, the brokerage line shrinks, no payable is booked and the amounts are recorded for 1099s.
+  **Agent payouts and billing is complete.**

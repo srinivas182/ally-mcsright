@@ -1,5 +1,6 @@
 import { Head, router, useForm } from '@inertiajs/react';
 
+import { W9Form } from '@/components/payouts/w9-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/ui/page-header';
@@ -42,6 +43,12 @@ type Props = {
         lines: { description: string; amount_cents: number }[];
     }[];
     payOnline: boolean;
+    w9: {
+        legal_name: string;
+        tin_last4: string;
+        tin_type: string;
+        match_status: string;
+    } | null;
 };
 
 /** An agent's money: what's ready, what's on its way, and where it's paid. */
@@ -52,6 +59,7 @@ export default function MyMoney({
     instant,
     invoices,
     payOnline,
+    w9,
 }: Props) {
     const form = useForm({
         holder: '',
@@ -258,6 +266,34 @@ export default function MyMoney({
                         </p>
                     </section>
                 )}
+                <section className="grid gap-2 rounded-lg border p-4 text-sm">
+                    <div className="flex items-center justify-between">
+                        <h2 className="font-semibold">Tax form (W-9)</h2>
+                        <a className="underline" href="/my-money/statement">
+                            Monthly statements
+                        </a>
+                    </div>
+                    {w9 ? (
+                        <p>
+                            On file: {w9.legal_name},{' '}
+                            {w9.tin_type.toUpperCase()} ending {w9.tin_last4}.
+                            You can replace it below.
+                        </p>
+                    ) : (
+                        <p className="text-muted-foreground">
+                            Your brokerage needs a W-9 to send your 1099 in
+                            January.
+                        </p>
+                    )}
+                    <details>
+                        <summary className="cursor-pointer">
+                            {w9 ? 'Replace my W-9' : 'Fill in my W-9'}
+                        </summary>
+                        <div className="mt-2">
+                            <W9Form />
+                        </div>
+                    </details>
+                </section>
             </div>
         </>
     );
