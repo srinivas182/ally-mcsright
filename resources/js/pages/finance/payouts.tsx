@@ -1,5 +1,7 @@
 import { Head, router, useForm } from '@inertiajs/react';
 
+import { RailSetup, type RailInfo } from '@/components/payouts/rail-setup';
+
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,6 +22,8 @@ type Line = {
 };
 type Run = {
     ulid: string;
+    rail?: string;
+    failed?: number;
     status: string;
     pay_on: string;
     same_day: boolean;
@@ -40,6 +44,7 @@ type Props = {
     };
     canApprove: boolean;
     canChangeSettings: boolean;
+    rail: RailInfo;
 };
 
 const method: Record<string, string> = {
@@ -162,6 +167,21 @@ function RunCard({ run, canApprove }: { run: Run; canApprove: boolean }) {
                         Cancel run
                     </Button>
                 )}
+                {run.status === 'sent' && !!run.failed && (
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                            router.post(
+                                `/finance/payouts/${run.ulid}/retry`,
+                                {},
+                                opts,
+                            )
+                        }
+                    >
+                        Retry {run.failed} payment(s) not accepted
+                    </Button>
+                )}
                 {run.status === 'sent' && (
                     <>
                         {run.lines.some(
@@ -216,6 +236,7 @@ export default function Payouts({
     settings,
     canApprove,
     canChangeSettings,
+    rail,
 }: Props) {
     const build = useForm({
         pay_on: new Date().toISOString().slice(0, 10),
@@ -280,6 +301,7 @@ export default function Payouts({
                         )}
                     </form>
                 )}
+                {canChangeSettings && <RailSetup info={rail} />}
                 {runs.map((r) => (
                     <RunCard key={r.ulid} run={r} canApprove={canApprove} />
                 ))}

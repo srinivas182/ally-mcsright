@@ -69,14 +69,14 @@ final class BankAccounts
     /**
      * Full details for a payout file — only when the 72-hour hold has passed.
      *
-     * @return array{routing: string, account: string, type: string, holder: string}|null
+     * @return array{id: int, routing: string, account: string, type: string, holder: string}|null
      */
     public function forPayout(int $userId): ?array
     {
         $row = DB::connection(Connections::cell())->table('pay_bank_accounts')->where('user_id', $userId)->where('status', 'active')
             ->where('usable_from', '<=', now())->first();
 
-        return $row === null ? null : ['routing' => Crypt::decryptString((string) $row->routing_sealed), 'account' => Crypt::decryptString((string) $row->account_sealed),
+        return $row === null ? null : ['id' => (int) $row->id, 'routing' => Crypt::decryptString((string) $row->routing_sealed), 'account' => Crypt::decryptString((string) $row->account_sealed),
             'type' => (string) $row->type, 'holder' => (string) $row->holder_name];
     }
 
