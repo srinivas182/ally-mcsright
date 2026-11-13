@@ -19,6 +19,8 @@
         "laravel/tinker": "^3.0",
         "laravel/wayfinder": "^0.1.14",
         "league/flysystem-aws-s3-v3": "^3.35",
+        "setasign/fpdf": "^1.8",
+        "setasign/fpdi": "^2.6",
         "socialiteproviders/microsoft": "^4.10"
     },
     "require-dev": {
@@ -45,6 +47,7 @@
             "Modules\\Billing\\": "modules/Billing/src/",
             "Modules\\Payouts\\": "modules/Payouts/src/",
             "Modules\\Roster\\": "modules/Roster/src/",
+            "Modules\\Forms\\": "modules/Forms/src/",
             "Modules\\Transactions\\": "modules/Transactions/src/",
             "Modules\\Compensation\\": "modules/Compensation/src/",
             "Modules\\Crm\\": "modules/Crm/src/",

@@ -484,6 +484,12 @@ export function MoneyDesk({
                     </Button>
                 </form>
             )}
+            <a
+                href={`/forms/deals/${deal.ulid}`}
+                className="text-sm font-medium underline"
+            >
+                Forms and signatures
+            </a>
             {can.export && (
                 <a
                     href={`/deals/${deal.ulid}/export`}
