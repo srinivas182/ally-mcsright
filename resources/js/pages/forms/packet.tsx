@@ -1,6 +1,11 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 
+import {
+    NegotiationPanel,
+    type NegotiationStep,
+    type PacketChange,
+} from '@/components/forms/negotiation-panel';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,6 +34,8 @@ type Props = {
         ulid: string;
         title: string;
         status: string;
+        kind: string;
+        round: number;
         deal: { ulid: string; street: string };
     };
     forms: FormRow[];
@@ -36,6 +43,9 @@ type Props = {
     problems: string[];
     clauses: { title: string; body: string }[];
     events: { action: string; detail: string | null; at: string }[];
+    negotiation: NegotiationStep[];
+    changes: PacketChange[];
+    templates: { ulid: string; name: string }[];
 };
 
 function FormValues({
@@ -161,6 +171,9 @@ export default function Packet({
     problems,
     clauses,
     events,
+    negotiation,
+    changes,
+    templates,
 }: Props) {
     const locked = packet.status !== 'draft';
     const signerForm = useForm<{ signers: Omit<Signer, 'status'>[] }>({
@@ -209,6 +222,19 @@ export default function Packet({
                         <p key={p}>• {p}</p>
                     ))}
                 </section>
+                {negotiation.find((n) => n.ulid === packet.ulid)?.changes
+                    .length ? (
+                    <section className="grid gap-1 rounded-lg border border-sky-300 bg-sky-50/50 p-4 text-sm">
+                        <p className="font-medium capitalize">
+                            {packet.kind} — changed terms
+                        </p>
+                        {negotiation
+                            .find((n) => n.ulid === packet.ulid)
+                            ?.changes.map((c) => (
+                                <p key={c}>• {c}</p>
+                            ))}
+                    </section>
+                ) : null}
                 {forms.map((f) => (
                     <FormValues
                         key={f.id}
@@ -335,6 +361,13 @@ export default function Packet({
                         ready={problems.length === 0}
                     />
                 </section>
+                <NegotiationPanel
+                    packet={packet}
+                    forms={forms}
+                    negotiation={negotiation}
+                    changes={changes}
+                    templates={templates}
+                />
             </div>
         </>
     );

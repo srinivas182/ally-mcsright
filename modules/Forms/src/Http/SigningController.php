@@ -12,6 +12,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
+use Modules\Forms\Negotiations;
 use Modules\Forms\Pdf;
 use Modules\Forms\Signing;
 use Modules\Forms\Templates;
@@ -42,6 +43,7 @@ final class SigningController
             'signer' => ['name' => $s->name, 'consented' => $s->consent_at !== null, 'verified' => $s->verified_at !== null, 'signed' => $s->signed_at !== null,
                 'phone_last4' => $s->phone !== null ? substr((string) $s->phone, -4) : null],
             'fields' => $fields, 'disclosure' => Signing::ESIGN_DISCLOSURE,
+            'changes' => $s->signed_at !== null && $p->status === 'sent' ? Negotiations::pendingFor((int) $s->id) : [],
         ]);
     }
 
@@ -73,6 +75,15 @@ final class SigningController
     {
         $data = $request->validate(['typed' => ['nullable', 'string', 'max:160'], 'drawn' => ['nullable', 'string', 'max:400000'], 'initials' => ['required', 'string', 'max:12']]);
         $signing->sign($token, $data['typed'] ?? null, $data['drawn'] ?? null, $data['initials'], $request->ip(), $request->userAgent(), $request->getSchemeAndHttpHost());
+
+        return back();
+    }
+
+    /** A signer who already signed initials the changes made since. */
+    public function acknowledge(Request $request, string $token, Negotiations $negotiations): RedirectResponse
+    {
+        $data = $request->validate(['initials' => ['required', 'string', 'max:12']]);
+        $negotiations->acknowledge($token, $data['initials'], $request->ip(), $request->getSchemeAndHttpHost());
 
         return back();
     }

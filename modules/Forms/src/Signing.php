@@ -164,11 +164,23 @@ final class Signing
             'signature_image' => $image, 'initials' => strtoupper(trim($initials)), 'ip' => $ip, 'user_agent' => $userAgent !== null ? mb_substr($userAgent, 0, 255) : null, 'updated_at' => now()]);
         $this->event((int) $p->id, (int) $s->id, 'signed', ($image !== null ? 'Drawn signature' : 'Typed signature').($s->hosted_by !== null ? ', in person' : ''), $ip);
 
-        if (! $db->table('form_signers')->where('packet_id', $p->id)->whereNull('signed_at')->exists()) {
-            $this->complete((int) $p->id, $baseUrl);
-        } elseif (! $db->table('form_signers')->where('packet_id', $p->id)->where('sign_order', $s->sign_order)->whereNull('signed_at')->exists()) {
+        if (! $this->completeIfDone((int) $p->id, $baseUrl) && $db->table('form_signers')->where('packet_id', $p->id)->whereNull('signed_at')->exists()
+            && ! $db->table('form_signers')->where('packet_id', $p->id)->where('sign_order', $s->sign_order)->whereNull('signed_at')->exists()) {
             $this->notifyNext((int) $p->id, $baseUrl);
         }
+    }
+
+    /** Completes the packet once everyone has signed and every change made after sending has been initialled. */
+    public function completeIfDone(int $packetId, string $baseUrl): bool
+    {
+        $db = DB::connection(Connections::cell());
+        if ($db->table('form_packets')->where('id', $packetId)->value('status') !== 'sent'
+            || $db->table('form_signers')->where('packet_id', $packetId)->whereNull('signed_at')->exists() || Negotiations::pendingInPacket($packetId)) {
+            return false;
+        }
+        $this->complete($packetId, $baseUrl);
+
+        return true;
     }
 
     public function decline(string $token, string $reason, ?string $ip): void
@@ -277,6 +289,18 @@ final class Signing
             $certificate[] = sprintf('%s (%s, %s): consented %s, signed %s UTC from %s%s%s', $s->name, $s->role, $s->email, $s->consent_at, $s->signed_at, $s->ip ?? 'unknown',
                 $s->verified_at !== null ? ', text code verified' : '', $s->hosted_by !== null ? ', in person' : '');
         }
+        $changes = $db->table('form_changes')->where('packet_id', $packetId)->orderBy('id')->get();
+        if ($changes->isNotEmpty()) {
+            $certificate[] = '';
+            $certificate[] = 'Changes made after sending, and who initialled them:';
+            $signerNames = $db->table('form_signers')->where('packet_id', $packetId)->pluck('name', 'id');
+            foreach ($changes as $c) {
+                $acks = $db->table('form_change_acks')->where('change_id', $c->id)->get()
+                    ->map(fn ($a): string => $signerNames[$a->signer_id].' ('.$a->initials.', '.$a->at.' UTC'.($a->ip !== null ? ', '.$a->ip : '').')')->implode('; ');
+                $certificate[] = $c->changed_at.' UTC · '.Negotiations::line((string) $c->label, (string) $c->old_value, (string) $c->new_value).' · '.$c->reason
+                    .' · initialled by: '.($acks !== '' ? $acks : 'no earlier signers');
+            }
+        }
         $certificate[] = '';
         foreach ($db->table('form_events')->where('packet_id', $packetId)->orderBy('id')->get() as $e) {
             $certificate[] = "{$e->at} UTC · {$e->action}".($e->detail !== null ? " · {$e->detail}" : '').($e->ip !== null ? " · {$e->ip}" : '');
@@ -332,6 +356,11 @@ final class Signing
             app(Documents::class)->upload($deal, $item, new UploadedFile($tmp, 'Signed - '.$p->title.'.pdf', 'application/pdf', null, true), 'esign', $by);
         }
         @unlink($tmp);
+    }
+
+    public function recordEvent(int $packetId, ?int $signerId, string $action, ?string $detail, ?string $ip = null): void
+    {
+        $this->event($packetId, $signerId, $action, $detail, $ip);
     }
 
     private function event(int $packetId, ?int $signerId, string $action, ?string $detail, ?string $ip = null): void

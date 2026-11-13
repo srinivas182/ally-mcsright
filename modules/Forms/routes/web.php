@@ -21,6 +21,9 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('forms'
     Route::get('packets/{packet}/forms/{form}/preview', [FormsController::class, 'preview'])->whereNumber('form')->name('packets.preview');
     Route::post('packets/{packet}/send', [FormsController::class, 'send'])->middleware('throttle:10,1')->name('packets.send');
     Route::post('packets/{packet}/void', [FormsController::class, 'void'])->name('packets.void');
+    Route::post('packets/{packet}/amend', [FormsController::class, 'amend'])->middleware('throttle:20,1')->name('packets.amend');
+    Route::post('packets/{packet}/counter', [FormsController::class, 'counter'])->middleware('throttle:20,1')->name('packets.counter');
+    Route::post('packets/{packet}/addendum', [FormsController::class, 'addendum'])->name('packets.addendum');
     Route::post('packets/{packet}/in-person/{signer}', [FormsController::class, 'inPerson'])->name('packets.in-person');
     Route::get('packets/{packet}/signed.pdf', [FormsController::class, 'signed'])->name('packets.signed');
 });
@@ -35,6 +38,7 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'throttle:60,1'])->group
         Route::post('verify', [SigningController::class, 'verify'])->name('verify');
         Route::post('sign', [SigningController::class, 'sign'])->name('sign');
         Route::post('decline', [SigningController::class, 'decline'])->name('decline');
+        Route::post('acknowledge', [SigningController::class, 'acknowledge'])->name('acknowledge');
     });
     Route::get('verify-document', [SigningController::class, 'verifyPage'])->name('verify-document');
     Route::post('verify-document', [SigningController::class, 'verifyUpload'])->middleware('throttle:20,1')->name('verify-document.check');
