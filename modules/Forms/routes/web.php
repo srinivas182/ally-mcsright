@@ -11,6 +11,7 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('forms'
     Route::get('templates', [FormsController::class, 'templates'])->name('templates');
     Route::post('templates', [FormsController::class, 'upload'])->middleware('throttle:20,1')->name('templates.upload');
     Route::post('templates/{template}/fields', [FormsController::class, 'fields'])->name('templates.fields');
+    Route::get('templates/{template}/pages/{page}', [FormsController::class, 'page'])->whereNumber('page')->name('templates.page');
     Route::post('clauses', [FormsController::class, 'clause'])->name('clauses');
     Route::get('deals/{deal}', [FormsController::class, 'forDeal'])->name('deal');
     Route::post('deals/{deal}/packets', [FormsController::class, 'createPacket'])->name('packets.create');

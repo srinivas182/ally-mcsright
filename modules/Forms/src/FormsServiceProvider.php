@@ -25,7 +25,7 @@ final class FormsServiceProvider extends ServiceProvider
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
         if ($this->app->runningInConsole()) {
-            $this->commands([Console\SigningReminders::class]);
+            $this->commands([Console\SigningReminders::class, Console\SealKey::class]);
         }
         $this->app->make(PermissionRegistry::class)->register('Transactions', [
             'forms.manage' => ['Manage forms: templates, fields and clauses'],

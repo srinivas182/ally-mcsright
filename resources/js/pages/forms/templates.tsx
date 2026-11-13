@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/ui/page-header';
+import { FieldCanvas } from '@/components/forms/field-canvas';
 
 type Field = {
     key: string;
@@ -59,6 +60,7 @@ function FieldEditor({
     types: string[];
 }) {
     const [fields, setFields] = useState<Field[]>(t.fields);
+    const [mode, setMode] = useState<'visual' | 'table'>('visual');
     const set = (i: number, patch: Partial<Field>) =>
         setFields(fields.map((f, j) => (j === i ? { ...f, ...patch } : f)));
 
@@ -68,74 +70,107 @@ function FieldEditor({
                 {t.name} · {t.pages} page(s) · version {t.version} ·{' '}
                 {t.fields.length} field(s)
             </summary>
-            <p className="my-2 text-xs text-muted-foreground">
-                Positions are in points from the page's top-left (page 1 is{' '}
-                {t.page_sizes[0]?.[0]} × {t.page_sizes[0]?.[1]}). Drag-and-drop
-                placement comes in a later release.
-            </p>
-            <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                    <thead className="text-left text-muted-foreground">
-                        <tr>
-                            {[
-                                'Key',
-                                'Label',
-                                'Type',
-                                'Page',
-                                'X',
-                                'Y',
-                                'W',
-                                'H',
-                                'Signer',
-                                'Fill from',
-                                'Req.',
-                                '',
-                            ].map((h) => (
-                                <th key={h} className="p-1">
-                                    {h}
-                                </th>
-                            ))}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {fields.map((f, i) => (
-                            <tr key={i}>
-                                <td className="p-1">
-                                    <input
-                                        aria-label="Key"
-                                        className={`${cell} w-28`}
-                                        value={f.key}
-                                        onChange={(e) =>
-                                            set(i, { key: e.target.value })
-                                        }
-                                    />
-                                </td>
-                                <td className="p-1">
-                                    <input
-                                        aria-label="Label"
-                                        className={`${cell} w-32`}
-                                        value={f.label}
-                                        onChange={(e) =>
-                                            set(i, { label: e.target.value })
-                                        }
-                                    />
-                                </td>
-                                <td className="p-1">
-                                    <select
-                                        aria-label="Type"
-                                        className={cell}
-                                        value={f.type}
-                                        onChange={(e) =>
-                                            set(i, { type: e.target.value })
-                                        }
-                                    >
-                                        {types.map((x) => (
-                                            <option key={x}>{x}</option>
-                                        ))}
-                                    </select>
-                                </td>
-                                {(['page', 'x', 'y', 'w', 'h'] as const).map(
-                                    (k) => (
+            <div
+                role="group"
+                aria-label="Editor"
+                className="my-2 flex w-fit rounded border text-xs"
+            >
+                <button
+                    type="button"
+                    aria-pressed={mode === 'visual'}
+                    className={`px-3 py-1 ${mode === 'visual' ? 'bg-muted font-medium' : ''}`}
+                    onClick={() => setMode('visual')}
+                >
+                    On the page
+                </button>
+                <button
+                    type="button"
+                    aria-pressed={mode === 'table'}
+                    className={`px-3 py-1 ${mode === 'table' ? 'bg-muted font-medium' : ''}`}
+                    onClick={() => setMode('table')}
+                >
+                    As a table
+                </button>
+            </div>
+            {mode === 'visual' && (
+                <FieldCanvas
+                    ulid={t.ulid}
+                    pages={t.pages}
+                    pageSizes={t.page_sizes}
+                    fields={fields}
+                    setFields={setFields}
+                    bindings={bindings}
+                    types={types}
+                    onImageUnavailable={() => setMode('table')}
+                />
+            )}
+            {mode === 'table' && (
+                <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                        <thead className="text-left text-muted-foreground">
+                            <tr>
+                                {[
+                                    'Key',
+                                    'Label',
+                                    'Type',
+                                    'Page',
+                                    'X',
+                                    'Y',
+                                    'W',
+                                    'H',
+                                    'Signer',
+                                    'Fill from',
+                                    'Req.',
+                                    '',
+                                ].map((h) => (
+                                    <th key={h} className="p-1">
+                                        {h}
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {fields.map((f, i) => (
+                                <tr key={i}>
+                                    <td className="p-1">
+                                        <input
+                                            aria-label="Key"
+                                            className={`${cell} w-28`}
+                                            value={f.key}
+                                            onChange={(e) =>
+                                                set(i, { key: e.target.value })
+                                            }
+                                        />
+                                    </td>
+                                    <td className="p-1">
+                                        <input
+                                            aria-label="Label"
+                                            className={`${cell} w-32`}
+                                            value={f.label}
+                                            onChange={(e) =>
+                                                set(i, {
+                                                    label: e.target.value,
+                                                })
+                                            }
+                                        />
+                                    </td>
+                                    <td className="p-1">
+                                        <select
+                                            aria-label="Type"
+                                            className={cell}
+                                            value={f.type}
+                                            onChange={(e) =>
+                                                set(i, { type: e.target.value })
+                                            }
+                                        >
+                                            {types.map((x) => (
+                                                <option key={x}>{x}</option>
+                                            ))}
+                                        </select>
+                                    </td>
+                                    {(
+                                        ['page', 'x', 'y', 'w', 'h'] as const
+                                    ).map((k) => (
                                         <td key={k} className="p-1">
                                             <input
                                                 aria-label={k}
@@ -151,70 +186,72 @@ function FieldEditor({
                                                 }
                                             />
                                         </td>
-                                    ),
-                                )}
-                                <td className="p-1">
-                                    <input
-                                        aria-label="Signer role"
-                                        className={`${cell} w-24`}
-                                        placeholder="buyer1"
-                                        value={f.role ?? ''}
-                                        onChange={(e) =>
-                                            set(i, {
-                                                role: e.target.value || null,
-                                            })
-                                        }
-                                    />
-                                </td>
-                                <td className="p-1">
-                                    <select
-                                        aria-label="Fill from"
-                                        className={cell}
-                                        value={f.bind ?? ''}
-                                        onChange={(e) =>
-                                            set(i, {
-                                                bind: e.target.value || null,
-                                            })
-                                        }
-                                    >
-                                        <option value="">—</option>
-                                        {bindings.map((b) => (
-                                            <option key={b}>{b}</option>
-                                        ))}
-                                    </select>
-                                </td>
-                                <td className="p-1">
-                                    <input
-                                        aria-label="Required"
-                                        type="checkbox"
-                                        checked={f.required}
-                                        onChange={(e) =>
-                                            set(i, {
-                                                required: e.target.checked,
-                                            })
-                                        }
-                                    />
-                                </td>
-                                <td className="p-1">
-                                    <button
-                                        type="button"
-                                        className="underline"
-                                        onClick={() =>
-                                            setFields(
-                                                fields.filter(
-                                                    (_, j) => j !== i,
-                                                ),
-                                            )
-                                        }
-                                    >
-                                        Remove
-                                    </button>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
+                                    ))}
+                                    <td className="p-1">
+                                        <input
+                                            aria-label="Signer role"
+                                            className={`${cell} w-24`}
+                                            placeholder="buyer1"
+                                            value={f.role ?? ''}
+                                            onChange={(e) =>
+                                                set(i, {
+                                                    role:
+                                                        e.target.value || null,
+                                                })
+                                            }
+                                        />
+                                    </td>
+                                    <td className="p-1">
+                                        <select
+                                            aria-label="Fill from"
+                                            className={cell}
+                                            value={f.bind ?? ''}
+                                            onChange={(e) =>
+                                                set(i, {
+                                                    bind:
+                                                        e.target.value || null,
+                                                })
+                                            }
+                                        >
+                                            <option value="">—</option>
+                                            {bindings.map((b) => (
+                                                <option key={b}>{b}</option>
+                                            ))}
+                                        </select>
+                                    </td>
+                                    <td className="p-1">
+                                        <input
+                                            aria-label="Required"
+                                            type="checkbox"
+                                            checked={f.required}
+                                            onChange={(e) =>
+                                                set(i, {
+                                                    required: e.target.checked,
+                                                })
+                                            }
+                                        />
+                                    </td>
+                                    <td className="p-1">
+                                        <button
+                                            type="button"
+                                            className="underline"
+                                            onClick={() =>
+                                                setFields(
+                                                    fields.filter(
+                                                        (_, j) => j !== i,
+                                                    ),
+                                                )
+                                            }
+                                        >
+                                            Remove
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
             <span className="mt-2 flex gap-2">
                 <Button
                     size="sm"
