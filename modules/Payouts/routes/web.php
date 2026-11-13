@@ -32,6 +32,14 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function
         Route::post('stripe', [RailsController::class, 'stripe'])->name('stripe');
     });
     Route::get('my-money', [PayoutsController::class, 'mine'])->name('payouts.mine');
+    Route::get('my-money/statement', [PayoutsController::class, 'statement'])->name('payouts.statement');
+    Route::post('my-money/w9', [PayoutsController::class, 'w9'])->middleware(['password.confirm', 'throttle:10,1'])->name('payouts.w9');
+    Route::get('finance/tax', [PayoutsController::class, 'tax'])->name('payouts.tax');
+    Route::middleware('password.confirm')->group(function (): void {
+        Route::get('finance/tax/export', [PayoutsController::class, 'taxExport'])->name('payouts.tax.export');
+        Route::get('finance/tax/tin-file', [PayoutsController::class, 'tinFile'])->name('payouts.tax.tin-file');
+    });
+    Route::post('finance/tax/tin-results', [PayoutsController::class, 'tinResults'])->name('payouts.tax.tin-results');
     Route::post('my-money/invoices/{invoice}/pay', [PayoutsController::class, 'payInvoice'])->middleware('throttle:10,1')->name('payouts.invoice.pay');
     Route::get('finance/agent-billing', [PayoutsController::class, 'billing'])->name('payouts.billing');
     Route::post('finance/agent-billing/settings', [PayoutsController::class, 'billingSettings'])->name('payouts.billing.settings');

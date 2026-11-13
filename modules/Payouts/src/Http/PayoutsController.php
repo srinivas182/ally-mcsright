@@ -27,6 +27,9 @@ use Modules\Payouts\BankAccounts;
 use Modules\Payouts\GetPaidNow;
 use Modules\Payouts\PayoutRuns;
 use Modules\Payouts\Receipts;
+use Modules\Payouts\Statements;
+use Modules\Payouts\Tax1099;
+use Modules\Payouts\W9s;
 use Modules\Transactions\Models\Deal;
 
 final class PayoutsController
@@ -300,5 +303,70 @@ final class PayoutsController
         abort_unless($user->can('finance.billing.manage'), 403);
 
         return $user;
+    }
+
+    /** Agent: monthly statement (page or PDF). */
+    public function statement(Request $request, Statements $statements): \Symfony\Component\HttpFoundation\Response
+    {
+        $user = self::user($request);
+        $month = (string) $request->query('month', now()->format('Y-m'));
+        abort_unless(preg_match('/^\d{4}-\d{2}$/', $month) === 1, 404);
+        $s = $statements->month($user, $month);
+        if ($request->query('format') === 'pdf') {
+            return Pdf::loadView('pdf.statement', ['s' => $s, 'agent' => $user->name,
+                'brokerage' => app(TenantContext::class)->current()->name])->download("statement-{$month}.pdf");
+        }
+
+        return Inertia::render('finance/statement', ['statement' => $s])->toResponse($request);
+    }
+
+    public function w9(Request $request, W9s $w9s): RedirectResponse
+    {
+        $data = $request->validate(['legal_name' => ['required', 'string', 'max:120'], 'business_name' => ['nullable', 'string', 'max:120'], 'tax_class' => ['required', 'string'],
+            'tin_type' => ['required', 'in:ssn,ein'], 'tin' => ['required', 'string', 'max:11'], 'address' => ['required', 'string', 'max:200'],
+            'signature_name' => ['required', 'string', 'max:120'], 'certify' => ['accepted'], 'referral' => ['nullable', 'string', 'size:26']]);
+        $user = self::user($request);
+        $data['certify'] = true;
+        if (isset($data['referral'])) {
+            abort_unless($user->can('finance.billing.manage'), 403);
+            $w9s->submit($data, null, (int) DB::connection(Connections::cell())->table('tx_referrals')->where('ulid', $data['referral'])->value('id'), $user);
+        } else {
+            $w9s->submit($data, $user, null, $user);
+        }
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'W-9 saved.']);
+
+        return back();
+    }
+
+    /** Finance: 1099 totals, W-9s and TIN matching. */
+    public function tax(Request $request, Tax1099 $tax): Response
+    {
+        $this->billingUser($request);
+        $year = (int) $request->query('year', (string) (now()->month <= 2 ? now()->year - 1 : now()->year));
+
+        return Inertia::render('finance/tax', ['year' => $year, 'threshold_cents' => Tax1099::threshold($year), 'rows' => $tax->forYear($year),
+            'referrals' => DB::connection(Connections::cell())->table('tx_referrals')->where('direction', 'out')
+                ->where('w9_received', false)->get(['ulid', 'brokerage', 'agent_name'])]);
+    }
+
+    public function taxExport(Request $request, Tax1099 $tax): \Symfony\Component\HttpFoundation\Response
+    {
+        $year = (int) $request->query('year', (string) now()->year);
+
+        return response($tax->export($year, $this->billingUser($request)), 200, ['Content-Type' => 'text/csv', 'Content-Disposition' => "attachment; filename=\"1099-nec-{$year}.csv\""]);
+    }
+
+    public function tinFile(Request $request, W9s $w9s): \Symfony\Component\HttpFoundation\Response
+    {
+        return response($w9s->bulkFile($this->billingUser($request)), 200, ['Content-Type' => 'text/plain', 'Content-Disposition' => 'attachment; filename="tin-matching.txt"']);
+    }
+
+    public function tinResults(Request $request, W9s $w9s): RedirectResponse
+    {
+        $request->validate(['file' => ['required', 'file', 'max:5120']]);
+        $count = $w9s->importResults((string) file_get_contents((string) $request->file('file')?->getRealPath()), $this->billingUser($request));
+        Inertia::flash('toast', ['type' => 'success', 'message' => "{$count} TIN result(s) imported."]);
+
+        return back();
     }
 }
