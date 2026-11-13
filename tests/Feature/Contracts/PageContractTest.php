@@ -13,21 +13,7 @@ use Inertia\Testing\AssertableInertia as Assert;
  * and a missing prop only crashes in the browser.
  */
 
-/**
- * @return list<string> required prop names the page destructures
- */
-function requiredProps(string $component): array
-{
-    $source = (string) file_get_contents(base_path("resources/js/pages/{$component}.tsx"));
-    if (preg_match('/export default function \w+\(\{([^}]*)\}\s*:/s', $source, $m) !== 1) {
-        return [];
-    }
-    $names = array_values(array_filter(array_map(fn ($p) => trim((string) preg_replace('/[:=].*$/s', '', trim($p))), explode(',', $m[1]))));
-    // Props declared optional in the page's type (name?:) may be absent.
-    preg_match_all('/^\s*(\w+)\?\s*:/m', $source, $optional);
-
-    return array_values(array_diff($names, $optional[1]));
-}
+require_once __DIR__.'/contract-helpers.php';
 
 beforeEach(function (): void {
     $this->travelTo(CarbonImmutable::parse('2026-06-01 09:00'));
