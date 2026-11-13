@@ -35,6 +35,14 @@ interface PaymentGateway
     /** Sends money to a connected account; the key makes repeats harmless. */
     public function transfer(string $account, int $cents, string $description, string $idempotencyKey): string;
 
+    /**
+     * A one-off hosted payment on a connected account (the money goes to that account, e.g. an agent paying
+     * the brokerage's invoice). Metadata comes back on the gateway's events.
+     *
+     * @param  array<string, string>  $metadata
+     */
+    public function paymentCheckout(string $connectedAccount, string $email, string $description, int $cents, string $successUrl, string $cancelUrl, array $metadata): string;
+
     /** Hosted page where a customer manages their card and sees invoices. */
     public function portal(string $customerRef, string $returnUrl): string;
 

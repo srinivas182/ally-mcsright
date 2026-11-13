@@ -14,7 +14,7 @@ final class PayoutsServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        foreach ([Receipts::class, BankAccounts::class, Balances::class, PayoutRuns::class, GetPaidNow::class] as $service) {
+        foreach ([Receipts::class, BankAccounts::class, Balances::class, PayoutRuns::class, GetPaidNow::class, AgentBilling::class] as $service) {
             $this->app->scoped($service);
         }
         $this->app->singleton(Rails\Rails::class);
@@ -30,11 +30,16 @@ final class PayoutsServiceProvider extends ServiceProvider
 
         $this->app->make(PermissionRegistry::class)->register('Finance', [
             'finance.receipts.record' => ['Record commission received from title and resolve differences'],
+            'finance.billing.manage' => ['Bill agents: fees, charges, invoices and payment plans'],
         ]);
 
         $nav = $this->app->make(NavigationRegistry::class);
         $nav->add(new NavItem('Finance', 'Money received', '/finance/receipts', 'banknote', 5, ability: 'finance.receipts.record'));
         $nav->add(new NavItem('Finance', 'Payouts', '/finance/payouts', 'send', 6, ability: 'finance.receipts.record'));
+        $nav->add(new NavItem('Finance', 'Agent billing', '/finance/agent-billing', 'receipt', 7, ability: 'finance.billing.manage'));
+        if ($this->app->runningInConsole()) {
+            $this->commands([Console\AgentBillingDaily::class]);
+        }
         $nav->add(new NavItem('Platform', 'Payout rails', '/hq/payout-rails', 'send', 42, kinds: [UserKind::HqStaff]));
         $nav->add(new NavItem('Overview', 'My money', '/my-money', 'wallet', 32, kinds: [UserKind::Agent], mobile: true));
     }

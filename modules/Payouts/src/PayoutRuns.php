@@ -64,8 +64,14 @@ final class PayoutRuns
                     $bank !== null => ['ach', 'included', null],
                     default => ['check', 'included', null],
                 };
+                // Unpaid agent invoices are taken from commission first (when the brokerage does that).
+                $deduction = $status === 'included' && app(AgentBilling::class)->settings()['deduct_from_commission'] ? min($amount, app(AgentBilling::class)->owed($user->id)) : 0;
+                if ($status === 'included' && $amount - $deduction === 0) {
+                    $method = 'none';
+                }
                 $db->table('pay_run_lines')->insert(['tenant_id' => $this->tenants->id(), 'run_id' => $runId, 'payee_type' => 'agent', 'user_id' => $user->id, 'name' => $user->name,
-                    'commission_cents' => max(0, $commission), 'revenue_share_cents' => max(0, $share), 'amount_cents' => $amount, 'method' => $method, 'status' => $status, 'skip_reason' => $reason]);
+                    'commission_cents' => max(0, $commission), 'revenue_share_cents' => max(0, $share), 'amount_cents' => $amount, 'deduction_cents' => $deduction,
+                    'method' => $method, 'status' => $status, 'skip_reason' => $reason]);
                 $total += $status === 'included' ? $amount : 0;
             }
 
@@ -127,7 +133,7 @@ final class PayoutRuns
         $settings = $this->settings();
         $db = DB::connection(Connections::cell());
         $lines = $db->table('pay_run_lines')->where('run_id', $run['id'])->where('status', 'included')->orderBy('id')->get();
-        $ach = $lines->where('method', 'ach');
+        $ach = $lines->where('method', 'ach')->filter(fn ($l): bool => self::net($l) > 0);
         $rail = (string) (DB::connection(Connections::cell())->table('pay_runs')->where('ulid', $ulid)->value('rail') ?? 'bank_file');
         if ($rail === 'bank_file' && $ach->isNotEmpty() && ($settings['company_id'] === null || $settings['odfi_routing'] === null)) {
             throw ValidationException::withMessages(['run' => 'Add the brokerage\'s ACH company ID and bank routing number in Finance › Payout settings first.']);
@@ -138,10 +144,10 @@ final class PayoutRuns
             $checks = [];
             $numbers = [];
             $next = $settings['next_check_number'];
-            foreach ($lines->where('method', 'check') as $line) {
+            foreach ($lines->where('method', 'check')->filter(fn ($l): bool => self::net($l) > 0) as $line) {
                 $db->table('pay_run_lines')->where('id', $line->id)->update(['check_number' => $next]);
                 $numbers[(int) $line->id] = $next;
-                $checks[] = ['number' => $next, 'name' => (string) $line->name, 'cents' => (int) $line->amount_cents - (int) $line->fee_cents, 'date' => $payOn->toDateString(), 'memo' => 'Commission'];
+                $checks[] = ['number' => $next, 'name' => (string) $line->name, 'cents' => self::net($line), 'date' => $payOn->toDateString(), 'memo' => 'Commission'];
                 $next++;
             }
             $db->table('pay_settings')->updateOrInsert(['tenant_id' => $this->tenants->id()], ['next_check_number' => $next, 'updated_at' => now(), 'created_at' => now()]);
@@ -154,7 +160,7 @@ final class PayoutRuns
                     if ($bank === null) {
                         throw ValidationException::withMessages(['run' => "{$line->name}'s bank account is no longer available; rebuild the run."]);
                     }
-                    $entries[] = ['name' => $bank['holder'], 'routing' => $bank['routing'], 'account' => $bank['account'], 'type' => $bank['type'], 'cents' => (int) $line->amount_cents - (int) $line->fee_cents, 'id' => (string) $line->user_id];
+                    $entries[] = ['name' => $bank['holder'], 'routing' => $bank['routing'], 'account' => $bank['account'], 'type' => $bank['type'], 'cents' => self::net($line), 'id' => (string) $line->user_id];
                 }
                 $nacha = Nacha::build(['company_name' => (string) $settings['company_name'], 'company_id' => (string) $settings['company_id'],
                     'odfi_routing' => (string) $settings['odfi_routing'], 'bank_name' => (string) $settings['bank_name']], $entries, $payOn, CarbonImmutable::now());
@@ -167,7 +173,13 @@ final class PayoutRuns
                 'file_sha256' => $nacha !== null ? hash('sha256', $nacha) : null, 'updated_at' => now()]);
             $db->table('tx_referrals')->whereIn('id', $lines->where('payee_type', 'referral')->pluck('referral_id'))->update(['paid_at' => now()]);
             foreach ($lines->where('payee_type', 'agent') as $line) {
-                User::query()->find((int) $line->user_id)?->notify(new YouvePaid((int) $line->amount_cents - (int) $line->fee_cents, (string) $line->method, $payOn,
+                if ((int) $line->deduction_cents > 0) {
+                    app(AgentBilling::class)->settle((int) $line->user_id, (int) $line->deduction_cents, 'commission', (int) $line->id);
+                }
+                if (self::net($line) === 0) {
+                    continue;
+                }
+                User::query()->find((int) $line->user_id)?->notify(new YouvePaid(self::net($line), (string) $line->method, $payOn,
                     (int) $line->commission_cents, (int) $line->revenue_share_cents, $numbers[(int) $line->id] ?? null));
             }
             app(AuditLogger::class)->record('payouts.run.sent', metadata: ['run' => $ulid, 'rail' => $rail, 'ach' => $ach->count(), 'checks' => count($checks)], severity: 'warning');
@@ -196,7 +208,7 @@ final class PayoutRuns
         $rail = $registry->get((string) $runRow->rail);
         $config = $registry->settings()['config'];
         $submitted = 0;
-        foreach ($db->table('pay_run_lines')->where('run_id', $runRow->id)->where('status', 'included')->where('method', 'ach')->whereNull('rail_ref')->whereNull('reversal_journal_id')->get() as $line) {
+        foreach ($db->table('pay_run_lines')->where('run_id', $runRow->id)->where('status', 'included')->where('method', 'ach')->whereNull('rail_ref')->whereNull('reversal_journal_id')->get()->filter(fn ($l): bool => self::net($l) > 0) as $line) {
             try {
                 $bank = $this->banks->forPayout((int) $line->user_id) ?? throw new \RuntimeException('No usable bank account.');
                 $payee = $db->table('pay_payees')->where('user_id', $line->user_id)->where('rail', $rail->key())->where('bank_account_id', $bank['id'])->value('ref');
@@ -206,7 +218,7 @@ final class PayoutRuns
                     $db->table('pay_payees')->insert(['tenant_id' => $this->tenants->id(), 'user_id' => $line->user_id, 'rail' => $rail->key(),
                         'bank_account_id' => $bank['id'], 'ref' => $payee, 'created_at' => now(), 'updated_at' => now()]);
                 }
-                $ref = $rail->pay((string) $payee, (int) $line->amount_cents - (int) $line->fee_cents, (bool) $runRow->same_day, 'rightally-line-'.$this->tenants->id().'-'.$line->id,
+                $ref = $rail->pay((string) $payee, self::net($line), (bool) $runRow->same_day, 'rightally-line-'.$this->tenants->id().'-'.$line->id,
                     'Commission '.$runRow->pay_on, $config);
                 $db->table('pay_run_lines')->where('id', $line->id)->update(['rail_ref' => $ref, 'rail_status' => 'submitted']);
                 DB::connection(Connections::control())->table('pay_rail_refs')->insertOrIgnore(['ref' => $ref, 'rail' => $rail->key(), 'tenant_id' => $this->tenants->id(), 'created_at' => now()]);
@@ -233,15 +245,19 @@ final class PayoutRuns
         }
         $accounts = $this->accounts();
         $draft = JournalDraft::make('payout_return', 'payout-return:'.$lineId)->effectiveOn(CarbonImmutable::now())->source('payout_line', (string) $lineId)
-            ->describe('Payment '.$status.' — returned to balance')->debit($accounts->account('1000'), Money::of((int) $line->amount_cents - (int) $line->fee_cents));
+            ->describe('Payment '.$status.' — returned to balance')->debit($accounts->account('1000'), Money::of(self::net($line)));
         if ((int) $line->fee_cents > 0) {
             $draft->debit($accounts->account('4100'), Money::of((int) $line->fee_cents)); // the fee is refunded
         }
-        if ((int) $line->commission_cents > 0) {
-            $draft->credit($accounts->subAccount('2000', 'user', (int) $line->user_id, 'Commission payable'), Money::of((int) $line->commission_cents));
+        // Deducted invoices stay paid; only what was sent (plus any fee) goes back to the balance.
+        $deducted = (int) $line->deduction_cents;
+        $commissionBack = (int) $line->commission_cents - min($deducted, (int) $line->commission_cents);
+        $shareBack = (int) $line->revenue_share_cents - max(0, $deducted - (int) $line->commission_cents);
+        if ($commissionBack > 0) {
+            $draft->credit($accounts->subAccount('2000', 'user', (int) $line->user_id, 'Commission payable'), Money::of($commissionBack));
         }
-        if ((int) $line->revenue_share_cents > 0) {
-            $draft->credit($accounts->subAccount('2100', 'user', (int) $line->user_id, 'Revenue share'), Money::of((int) $line->revenue_share_cents));
+        if ($shareBack > 0) {
+            $draft->credit($accounts->subAccount('2100', 'user', (int) $line->user_id, 'Revenue share'), Money::of($shareBack));
         }
         if ((int) $line->referral_cents > 0) {
             $draft->credit($accounts->subAccount('2200', 'referral', (int) $line->referral_id, 'Referral payable'), Money::of((int) $line->referral_cents));
@@ -252,6 +268,12 @@ final class PayoutRuns
             User::query()->find((int) $line->user_id)?->notify(new PaymentReturned((int) $line->amount_cents, $reason));
         }
         app(AuditLogger::class)->record('payouts.payment.'.$status, metadata: ['line' => $lineId, 'cents' => (int) $line->amount_cents, 'reason' => $reason], severity: 'warning');
+    }
+
+    /** What actually leaves the bank for a line: gross, less the get-paid-now fee and invoice deductions. */
+    public static function net(\stdClass $line): int
+    {
+        return (int) $line->amount_cents - (int) ($line->fee_cents ?? 0) - (int) ($line->deduction_cents ?? 0);
     }
 
     /**
@@ -322,7 +344,16 @@ final class PayoutRuns
             $total += (int) $l->amount_cents;
         }
         $fees = (int) $lines->sum(fn ($l): int => (int) $l->fee_cents);
-        $draft->credit($accounts->account('1000'), Money::of($total - $fees));
+        $deductions = 0;
+        foreach ($lines as $l) {
+            if ((int) ($l->deduction_cents ?? 0) > 0) {
+                $draft->credit($accounts->subAccount('1200', 'user', (int) $l->user_id, 'Agent fees receivable'), Money::of((int) $l->deduction_cents));
+                $deductions += (int) $l->deduction_cents;
+            }
+        }
+        if ($total - $fees - $deductions > 0) {
+            $draft->credit($accounts->account('1000'), Money::of($total - $fees - $deductions));
+        }
         if ($fees > 0) {
             $draft->credit($accounts->account('4100'), Money::of($fees)); // get-paid-now fees are the brokerage's income
         }

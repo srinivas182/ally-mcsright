@@ -68,6 +68,21 @@ final class StripeGateway implements PaymentGateway
         ]);
     }
 
+    public function paymentCheckout(string $connectedAccount, string $email, string $description, int $cents, string $successUrl, string $cancelUrl, array $metadata): string
+    {
+        $secret = $this->settings->keys()['secret'] ?? throw new RuntimeException('Payments are not set up yet.');
+        $response = $this->http->asForm()->withToken($secret)->withHeaders(['Stripe-Account' => $connectedAccount])->timeout(20)->post(self::API.'checkout/sessions', [
+            'mode' => 'payment', 'customer_email' => $email, 'success_url' => $successUrl, 'cancel_url' => $cancelUrl, 'metadata' => $metadata,
+            'payment_method_types' => ['card', 'us_bank_account'], 'payment_intent_data' => ['metadata' => $metadata],
+            'line_items' => [['quantity' => 1, 'price_data' => ['currency' => 'usd', 'unit_amount' => $cents, 'product_data' => ['name' => $description]]]],
+        ]);
+        if ($response->failed()) {
+            throw new RuntimeException('The payment provider refused the request ('.$response->status().').');
+        }
+
+        return (string) $response->json('url');
+    }
+
     public function portal(string $customerRef, string $returnUrl): string
     {
         return (string) $this->post('billing_portal/sessions', ['customer' => $customerRef, 'return_url' => $returnUrl])['url'];
