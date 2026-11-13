@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Core\Support\Connections;
+use Modules\Forms\Negotiations;
 use Modules\Forms\Packets;
 use Modules\Forms\Signing;
 use Modules\Forms\Templates;
@@ -76,7 +77,7 @@ final class FormsController
 
         return Inertia::render('forms/deal', [
             'deal' => ['ulid' => $deal->ulid, 'street' => $deal->street],
-            'packets' => $db->table('form_packets')->where('deal_id', $deal->id)->orderByDesc('id')->get(['ulid', 'title', 'status', 'created_at']),
+            'packets' => $db->table('form_packets')->where('deal_id', $deal->id)->orderByDesc('id')->get(['ulid', 'title', 'status', 'kind', 'round', 'created_at']),
             'templates' => $db->table('form_templates')->where('active', true)->orderBy('name')->get(['ulid', 'name']),
         ]);
     }
@@ -98,7 +99,8 @@ final class FormsController
         $deal = Deal::query()->findOrFail((int) $row->deal_id);
 
         return Inertia::render('forms/packet', [
-            'packet' => ['ulid' => $row->ulid, 'title' => $row->title, 'status' => $row->status, 'deal' => ['ulid' => $deal->ulid, 'street' => $deal->street]],
+            'packet' => ['ulid' => $row->ulid, 'title' => $row->title, 'status' => $row->status, 'kind' => $row->kind, 'round' => (int) $row->round,
+                'deal' => ['ulid' => $deal->ulid, 'street' => $deal->street]],
             'forms' => $db->table('form_packet_forms')->where('packet_id', $row->id)->orderBy('sort')->get()->map(function ($f) use ($db): array {
                 $t = $db->table('form_templates')->where('id', $f->template_id)->first();
 
@@ -109,7 +111,44 @@ final class FormsController
             'events' => $db->table('form_events')->where('packet_id', $row->id)->orderByDesc('id')->limit(50)->get(['action', 'detail', 'at']),
             'problems' => $packets->check($packet, $user),
             'clauses' => $db->table('form_clauses')->orderBy('title')->get(['title', 'body']),
+            'negotiation' => Negotiations::history($row),
+            'changes' => $db->table('form_changes')->where('packet_id', $row->id)->orderByDesc('id')->get()->map(fn ($c): array => [
+                'line' => Negotiations::line((string) $c->label, (string) $c->old_value, (string) $c->new_value), 'reason' => (string) $c->reason, 'at' => (string) $c->changed_at,
+                'waiting_on' => $db->table('form_change_acks')->join('form_signers', 'form_signers.id', '=', 'form_change_acks.signer_id')->where('change_id', $c->id)
+                    ->whereNull('form_change_acks.at')->pluck('form_signers.name')->values()->all()])->values(),
+            'templates' => $db->table('form_templates')->where('active', true)->orderBy('name')->get(['ulid', 'name']),
         ]);
+    }
+
+    /** Changes terms on a packet out for signature; earlier signers initial only the changes. */
+    public function amend(Request $request, string $packet, Negotiations $negotiations): RedirectResponse
+    {
+        $data = $request->validate(['form' => ['required', 'integer'], 'values' => ['required', 'array', 'min:1', 'max:50'], 'values.*' => ['nullable', 'string', 'max:2000'],
+            'reason' => ['required', 'string', 'max:300']]);
+        $n = $negotiations->amend($packet, (int) $data['form'], array_map(fn ($v) => (string) $v, $data['values']), $data['reason'], self::user($request), $request->getSchemeAndHttpHost());
+        Inertia::flash('toast', ['type' => 'success', 'message' => "{$n} change(s) made. Anyone who already signed has been asked to initial them."]);
+
+        return back();
+    }
+
+    public function counter(Request $request, string $packet, Negotiations $negotiations): RedirectResponse
+    {
+        $data = $request->validate(['changes' => ['required', 'array', 'min:1', 'max:20'], 'changes.*' => ['array', 'max:50'], 'changes.*.*' => ['nullable', 'string', 'max:2000']]);
+        $changes = [];
+        foreach ($data['changes'] as $form => $values) {
+            $changes[(int) $form] = array_map(fn ($v) => (string) $v, (array) $values);
+        }
+        $ulid = $negotiations->counter($packet, $changes, self::user($request));
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Counter-offer drafted. Check it, then send it for signature.']);
+
+        return redirect("/forms/packets/{$ulid}");
+    }
+
+    public function addendum(Request $request, string $packet, Negotiations $negotiations): RedirectResponse
+    {
+        $data = $request->validate(['templates' => ['required', 'array', 'min:1', 'max:20'], 'templates.*' => ['string', 'size:26']]);
+
+        return redirect('/forms/packets/'.$negotiations->addendum($packet, array_values($data['templates']), self::user($request)));
     }
 
     public function values(Request $request, string $packet, int $form, Packets $packets): RedirectResponse

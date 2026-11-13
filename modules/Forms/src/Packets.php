@@ -243,7 +243,7 @@ final class Packets
     /**
      * @return array{0: \stdClass, 1: Deal}
      */
-    private function packet(string $ulid, User $by): array
+    public function packet(string $ulid, User $by): array
     {
         $packet = DB::connection(Connections::cell())->table('form_packets')->where('ulid', $ulid)->first();
         if (! $packet instanceof \stdClass) {

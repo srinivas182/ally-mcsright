@@ -17,7 +17,124 @@ type Props = {
     };
     fields: { form: string; label: string; type: string }[];
     disclosure: string;
+    changes: {
+        id: number;
+        form: string;
+        label: string;
+        old: string;
+        new: string;
+        reason: string;
+    }[];
 };
+
+/** A signer who already signed initials only what changed since. */
+function InitialChanges({
+    base,
+    changes,
+}: {
+    base: string;
+    changes: Props['changes'];
+}) {
+    const ack = useForm({ initials: '' });
+    const decline = useForm({ reason: '' });
+    const [declining, setDeclining] = useState(false);
+    const show = (v: string) => (v === '' ? '(blank)' : v);
+
+    return (
+        <section className="grid gap-3 rounded-lg border border-sky-300 bg-sky-50/50 p-4">
+            <h2 className="font-semibold">What changed since you signed</h2>
+            <p>
+                Your signature stays on everything else. Please review and
+                initial only these changes.
+            </p>
+            <ul className="grid gap-2">
+                {changes.map((c) => (
+                    <li key={c.id} className="rounded border bg-background p-2">
+                        <p className="font-medium">
+                            {c.label}{' '}
+                            <span className="text-xs text-muted-foreground">
+                                ({c.form})
+                            </span>
+                        </p>
+                        <p>
+                            <span className="line-through">{show(c.old)}</span>{' '}
+                            → <strong>{show(c.new)}</strong>
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                            Reason: {c.reason}
+                        </p>
+                    </li>
+                ))}
+            </ul>
+            <a
+                className="underline"
+                href={`${base}/document.pdf`}
+                target="_blank"
+                rel="noreferrer"
+            >
+                See the documents with the changes
+            </a>
+            <form
+                className="flex flex-wrap items-center gap-2"
+                onSubmit={(e) => {
+                    e.preventDefault();
+                    ack.post(`${base}/acknowledge`);
+                }}
+            >
+                <Input
+                    aria-label="Your initials"
+                    placeholder="Initials"
+                    maxLength={5}
+                    className="w-28"
+                    value={ack.data.initials}
+                    onChange={(e) => ack.setData('initials', e.target.value)}
+                />
+                <Button
+                    type="submit"
+                    disabled={ack.processing || !ack.data.initials}
+                >
+                    Initial{' '}
+                    {changes.length === 1 ? 'this change' : 'these changes'}
+                </Button>
+            </form>
+            {ack.errors.initials && (
+                <p role="alert" className="text-destructive">
+                    {ack.errors.initials}
+                </p>
+            )}
+            {declining ? (
+                <form
+                    className="flex flex-wrap gap-2"
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        decline.post(`${base}/decline`);
+                    }}
+                >
+                    <Input
+                        aria-label="Why don't you agree?"
+                        placeholder="Why don't you agree?"
+                        className="w-72"
+                        value={decline.data.reason}
+                        onChange={(e) =>
+                            decline.setData('reason', e.target.value)
+                        }
+                    />
+                    <Button type="submit" variant="outline">
+                        Decline the changes
+                    </Button>
+                </form>
+            ) : (
+                <button
+                    type="button"
+                    className="justify-self-start text-xs underline"
+                    onClick={() => setDeclining(true)}
+                >
+                    I don't agree with these changes
+                </button>
+            )}
+        </section>
+    );
+}
 
 function SignaturePad({
     onChange,
@@ -83,6 +200,7 @@ export default function Sign({
     signer,
     fields,
     disclosure,
+    changes,
 }: Props) {
     const base = `/sign/${token}`;
     const consent = useForm({ agree: false });
@@ -114,7 +232,9 @@ export default function Sign({
                     title company on a number you already know.
                 </p>
 
-                {done ? (
+                {changes.length > 0 && packet.status === 'sent' ? (
+                    <InitialChanges base={base} changes={changes} />
+                ) : done ? (
                     <section className="grid gap-2 rounded-lg border p-4">
                         <p className="font-medium">
                             {packet.status === 'completed'

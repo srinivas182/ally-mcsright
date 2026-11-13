@@ -11,6 +11,8 @@ type Props = {
         ulid: string;
         title: string;
         status: string;
+        kind: string;
+        round: number;
         created_at: string;
     }[];
     templates: { ulid: string; name: string }[];
@@ -63,9 +65,19 @@ export default function DealForms({ deal, packets, templates }: Props) {
                             >
                                 {p.title}
                             </Link>
-                            <Badge variant="outline" className="capitalize">
-                                {p.status}
-                            </Badge>
+                            <span className="flex gap-1">
+                                {p.kind !== 'original' && (
+                                    <Badge
+                                        variant="secondary"
+                                        className="capitalize"
+                                    >
+                                        {p.kind}
+                                    </Badge>
+                                )}
+                                <Badge variant="outline" className="capitalize">
+                                    {p.status}
+                                </Badge>
+                            </span>
                         </li>
                     ))}
                 </ul>
