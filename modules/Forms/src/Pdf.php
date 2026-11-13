@@ -15,9 +15,9 @@ use Symfony\Component\Process\Process;
 final class Pdf
 {
     /**
-     * Normalises a PDF and returns [contents, pages, page sizes in points]. qpdf rewrites it without object
-     * streams so FPDI can import compressed forms; if qpdf is missing or fails, the original is used when FPDI
-     * can read it as it is.
+     * Reads an uploaded PDF and returns [contents, pages, page sizes in points]. FPDI reads most PDFs as
+     * uploaded, including compressed ones; a PDF it cannot read (damaged, encrypted, unusual structure) is
+     * repaired with qpdf and read again.
      *
      * @return array{0: string, 1: int, 2: list<array{0: float, 1: float}>}
      */
@@ -26,18 +26,18 @@ final class Pdf
         if (! str_starts_with($contents, '%PDF-')) {
             throw new RuntimeException('That file is not a PDF.');
         }
-        $candidate = self::viaQpdf($contents) ?? $contents;
         try {
-            return [$candidate, ...self::measure($candidate)];
-        } catch (\Throwable $e) {
-            if ($candidate !== $contents) {
+            return [$contents, ...self::measure($contents)];
+        } catch (\Throwable $original) {
+            $repaired = self::viaQpdf($contents);
+            if ($repaired !== null) {
                 try {
-                    return [$contents, ...self::measure($contents)];
-                } catch (\Throwable) {
-                    // fall through to the message below
+                    return [$repaired, ...self::measure($repaired)];
+                } catch (\Throwable $e) {
+                    report($e);
                 }
             }
-            report($e);
+            report($original);
 
             throw new RuntimeException('This PDF could not be read. Try printing it to a new PDF and upload again.');
         }

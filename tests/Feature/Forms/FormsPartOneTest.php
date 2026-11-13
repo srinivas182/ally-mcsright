@@ -13,6 +13,7 @@ use Modules\Compensation\Enums\PlanType;
 use Modules\Forms\Packets;
 use Modules\Forms\Templates;
 use Modules\Transactions\Models\Deal;
+use setasign\Fpdi\Fpdi;
 use Symfony\Component\Process\Process;
 
 require_once __DIR__.'/../Contracts/contract-helpers.php';
@@ -32,14 +33,19 @@ beforeEach(function (): void {
     $this->packets = app(Packets::class);
 });
 
-function blankPdf(): UploadedFile
+function blankPdfContents(): string
 {
     $pdf = new FPDF('P', 'pt', 'Letter');
     $pdf->AddPage();
     $pdf->SetFont('Helvetica', '', 12);
     $pdf->Text(72, 60, 'RESIDENTIAL LISTING AGREEMENT');
 
-    return UploadedFile::fake()->createWithContent('listing.pdf', $pdf->Output('S'));
+    return $pdf->Output('S');
+}
+
+function blankPdf(): UploadedFile
+{
+    return UploadedFile::fake()->createWithContent('listing.pdf', blankPdfContents());
 }
 
 /** @return list<array<string, mixed>> */
@@ -156,4 +162,26 @@ it('still reads ordinary PDFs when qpdf is unavailable, and explains when a PDF 
     expect($this->templates->find($ulid)['page_sizes'][0])->toBe([612, 792])
         ->and(fn () => $this->templates->upload('Broken', UploadedFile::fake()->createWithContent('b.pdf', "%PDF-1.7\nnot really a pdf"), null, $this->owner))
         ->toThrow(ValidationException::class, 'could not be read');
+});
+
+it('imports compressed PDFs (object streams, like most association forms), and qpdf repairs stay importable', function (): void {
+    $plain = tempnam(sys_get_temp_dir(), 'plain');
+    $packed = $plain.'.packed.pdf';
+    file_put_contents($plain, blankPdfContents());
+    $make = new Process(['qpdf', '--object-streams=generate', '--compress-streams=y', $plain, $packed]);
+    $make->run();
+    if (! is_file($packed)) {
+        $this->markTestSkipped('qpdf is not installed here.');
+    }
+    $compressed = (string) file_get_contents($packed);
+    expect($compressed)->toContain('/ObjStm');
+
+    $ulid = $this->templates->upload('Association form', UploadedFile::fake()->createWithContent('assoc.pdf', $compressed), null, $this->owner);
+    expect($this->templates->find($ulid)['page_sizes'][0])->toBe([612, 792]);
+
+    // qpdf's repair output (used for PDFs FPDI cannot read as uploaded) must itself be importable,
+    // whatever qpdf version the server has.
+    $repaired = $plain.'.repaired.pdf';
+    (new Process(['qpdf', '--object-streams=disable', '--decrypt', $packed, $repaired]))->run();
+    expect((new Fpdi('P', 'pt'))->setSourceFile($repaired))->toBe(1);
 });
