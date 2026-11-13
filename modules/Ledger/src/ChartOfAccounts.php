@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Ledger;
 
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Modules\Ledger\Enums\AccountType;
 use Modules\Ledger\Models\LedgerAccount;
 
@@ -49,7 +50,14 @@ final class ChartOfAccounts
 
     public function account(string $code): LedgerAccount
     {
-        return LedgerAccount::query()->where('code', $code)->firstOrFail();
+        $account = LedgerAccount::query()->where('code', $code)->first();
+        if ($account === null && array_key_exists($code, self::SYSTEM)) {
+            // A new brokerage's chart is created on first use, so a standard account is never "not found".
+            $this->seed();
+            $account = LedgerAccount::query()->where('code', $code)->first();
+        }
+
+        return $account ?? throw (new ModelNotFoundException)->setModel(LedgerAccount::class, [$code]);
     }
 
     /**
