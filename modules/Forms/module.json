@@ -1,0 +1,9 @@
+{
+    "id": "forms",
+    "name": "Forms",
+    "version": "0.1.0",
+    "provider": "Modules\\Forms\\FormsServiceProvider",
+    "depends": ["core", "transactions"],
+    "entitlement": null,
+    "description": "Native forms and e-signature: templates, auto-fill from the deal, clauses, packets, signing (specs/forms/01)."
+}
