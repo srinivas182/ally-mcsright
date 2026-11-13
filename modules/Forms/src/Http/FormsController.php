@@ -50,6 +50,15 @@ final class FormsController
         return back();
     }
 
+    public function page(Request $request, string $template, int $page, Templates $templates): \Symfony\Component\HttpFoundation\Response
+    {
+        abort_unless(Templates::manages(self::user($request)), 403);
+        $png = $templates->pageImage($template, $page);
+        abort_if($png === null, 404);
+
+        return response($png, 200, ['Content-Type' => 'image/png', 'Cache-Control' => 'private, max-age=86400']);
+    }
+
     public function clause(Request $request, Templates $templates): RedirectResponse
     {
         $data = $request->validate(['title' => ['required', 'string', 'max:120'], 'body' => ['required', 'string', 'max:10000']]);

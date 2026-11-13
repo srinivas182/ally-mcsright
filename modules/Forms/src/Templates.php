@@ -15,6 +15,7 @@ use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
 use RuntimeException;
+use Symfony\Component\Process\Process;
 
 /**
  * Form templates (specs/forms/01): an uploaded PDF (normalised) with fields — type, page, position, signer role,
@@ -116,6 +117,47 @@ final class Templates
         return ['id' => (int) $t->id, 'ulid' => (string) $t->ulid, 'name' => (string) $t->name, 'version' => (int) $t->version, 'path' => (string) $t->path,
             'pages' => (int) $t->pages, 'page_sizes' => $sizes, 'fields' => $fields,
             'checklist_label' => $t->checklist_label];
+    }
+
+    /**
+     * One page of a form as a PNG at 72 dpi (1 pixel = 1 PDF point) for the visual field editor; cached by the
+     * PDF's fingerprint. Null when the renderer is unavailable (the editor falls back to the coordinate table).
+     */
+    public function pageImage(string $ulid, int $page): ?string
+    {
+        $t = $this->find($ulid);
+        if ($t === null || $page < 1 || $page > $t['pages']) {
+            return null;
+        }
+        $sha = (string) DB::connection(Connections::cell())->table('form_templates')->where('ulid', $ulid)->value('sha256');
+        $cache = 'forms/'.$this->tenants->id().'/pages/'.$sha.'-p'.$page.'.png';
+        $disk = Storage::disk('local');
+        if ($disk->exists($cache)) {
+            return (string) $disk->get($cache);
+        }
+        $pdf = tempnam(sys_get_temp_dir(), 'page-');
+        $out = $pdf.'-img';
+        file_put_contents($pdf, (string) $disk->get($t['path']));
+        try {
+            $process = new Process([(string) config('forms.pdftoppm', 'pdftoppm'), '-png', '-r', '72', '-f', (string) $page, '-l', (string) $page, '-singlefile', $pdf, $out]);
+            $process->run();
+            if (! $process->isSuccessful() || ! is_file($out.'.png')) {
+                logger()->warning('Could not render a form page', ['error' => mb_substr($process->getErrorOutput(), 0, 300)]);
+
+                return null;
+            }
+            $png = (string) file_get_contents($out.'.png');
+            $disk->put($cache, $png);
+
+            return $png;
+        } catch (\Throwable $e) {
+            logger()->warning('pdftoppm is not available', ['error' => $e->getMessage()]);
+
+            return null;
+        } finally {
+            @unlink($pdf);
+            @unlink($out.'.png');
+        }
     }
 
     public function addClause(string $title, string $body, User $by): string

@@ -2,7 +2,7 @@
 FROM php:8.5-fpm-bookworm
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    qpdf \
+    qpdf poppler-utils \
         git unzip libicu-dev libzip-dev libpng-dev libonig-dev \
     && docker-php-ext-install intl zip pdo_mysql bcmath opcache pcntl \
     && pecl install redis && docker-php-ext-enable redis \
