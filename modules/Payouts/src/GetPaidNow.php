@@ -69,7 +69,7 @@ final class GetPaidNow
     /**
      * What the agent would get right now, and why not if they can't.
      *
-     * @return array{enabled: bool, available_cents: int, fee_cents: int, net_cents: int, commission_cents: int, revenue_share_cents: int, blocked: string|null, automatic: bool}
+     * @return array{enabled: bool, available_cents: int, deduction_cents: int, fee_cents: int, net_cents: int, commission_cents: int, revenue_share_cents: int, blocked: string|null, automatic: bool}
      */
     public function quote(User $agent): array
     {
@@ -80,8 +80,12 @@ final class GetPaidNow
         $commission = max(0, $ledger->balance($accounts->subAccount('2000', 'user', $agent->id, 'Commission payable'))->cents);
         $share = max(0, $ledger->balance($accounts->subAccount('2100', 'user', $agent->id, 'Revenue share'))->cents);
         $available = $commission + $share;
-        $fee = $available === 0 ? 0 : min($available, $settings['instant_fee_flat_cents']
-            + BigDecimal::of($available)->multipliedBy($settings['instant_fee_percent'])->dividedBy(100, 0, RoundingMode::HalfUp)->toInt());
+        // Unpaid invoices come off first (when the brokerage deducts them); the fee applies to what is paid out.
+        $billing = app(AgentBilling::class);
+        $deduction = $billing->settings()['deduct_from_commission'] ? min($available, $billing->owed($agent->id)) : 0;
+        $payable = $available - $deduction;
+        $fee = $payable === 0 ? 0 : min($payable, $settings['instant_fee_flat_cents']
+            + BigDecimal::of($payable)->multipliedBy($settings['instant_fee_percent'])->dividedBy(100, 0, RoundingMode::HalfUp)->toInt());
         $bank = $this->banks->current($agent);
         $open = DB::connection(Connections::cell())->table('pay_runs')->where('kind', 'instant')->where('requested_by', $agent->id)->where('status', 'approved')->exists();
         $rail = app(Rails\Rails::class)->settings();
@@ -92,11 +96,11 @@ final class GetPaidNow
             $bank === null => 'Add your bank account first.',
             ! $bank['usable'] => 'Your bank account changed recently; for your protection it can be paid from '.CarbonImmutable::parse($bank['usable_from'])->toDayDateTimeString().'.',
             $open => 'You already have a payment on its way.',
-            $available < $settings['instant_min_cents'] => 'Get paid now starts at $'.number_format($settings['instant_min_cents'] / 100, 2).'.',
+            $payable < $settings['instant_min_cents'] => 'Get paid now starts at $'.number_format($settings['instant_min_cents'] / 100, 2).'.',
             default => null,
         };
 
-        return ['enabled' => $settings['instant_enabled'], 'available_cents' => $available, 'fee_cents' => $fee, 'net_cents' => $available - $fee,
+        return ['enabled' => $settings['instant_enabled'], 'available_cents' => $available, 'deduction_cents' => $deduction, 'fee_cents' => $fee, 'net_cents' => $payable - $fee,
             'commission_cents' => $commission, 'revenue_share_cents' => $share, 'blocked' => $blocked,
             'automatic' => $rail['rail'] !== 'bank_file' && $rail['status'] === 'ready'];
     }
@@ -125,7 +129,7 @@ final class GetPaidNow
                 'requested_by' => $agent->id, 'approved_at' => now(), 'created_at' => now(), 'updated_at' => now()]);
             $db->table('pay_run_lines')->insert(['tenant_id' => $this->tenants->id(), 'run_id' => $runId, 'payee_type' => 'agent', 'user_id' => $agent->id, 'name' => $agent->name,
                 'commission_cents' => $quote['commission_cents'], 'revenue_share_cents' => $quote['revenue_share_cents'], 'amount_cents' => $quote['available_cents'],
-                'fee_cents' => $quote['fee_cents'], 'method' => 'ach', 'status' => 'included']);
+                'fee_cents' => $quote['fee_cents'], 'deduction_cents' => $quote['deduction_cents'], 'method' => 'ach', 'status' => 'included']);
             $journal = $this->runs->post($ulid, $db->table('pay_run_lines')->where('run_id', $runId)->get(), $today);
             $db->table('pay_runs')->where('id', $runId)->update(['journal_id' => $journal]);
         });

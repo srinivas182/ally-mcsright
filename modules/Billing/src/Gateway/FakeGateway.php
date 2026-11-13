@@ -17,6 +17,9 @@ final class FakeGateway implements PaymentGateway
     /** @var list<string> */
     public array $cancelled = [];
 
+    /** @var list<array<string, mixed>> */
+    public array $payments = [];
+
     /** @var list<array{customer: string, cents: int, description: string}> */
     public array $invoiceItems = [];
 
@@ -63,6 +66,13 @@ final class FakeGateway implements PaymentGateway
     public function changeAmount(string $subscriptionRef, int $unitCents, string $productName, string $interval): void
     {
         $this->amountChanges[] = ['subscription' => $subscriptionRef, 'cents' => $unitCents];
+    }
+
+    public function paymentCheckout(string $connectedAccount, string $email, string $description, int $cents, string $successUrl, string $cancelUrl, array $metadata): string
+    {
+        $this->payments[] = compact('connectedAccount', 'email', 'description', 'cents', 'metadata');
+
+        return 'https://checkout.example/pay/'.count($this->payments);
     }
 
     public function portal(string $customerRef, string $returnUrl): string

@@ -10,6 +10,7 @@ type Props = {
         commission_cents: number;
         revenue_share_cents: number;
         available_cents: number;
+        deduction_cents: number;
         pending_cents: number;
         pending_deals: number;
     };
@@ -29,10 +30,29 @@ type Props = {
         blocked: string | null;
         automatic: boolean;
     };
+    invoices: {
+        ulid: string;
+        number: string;
+        issued_on: string;
+        due_on: string;
+        status: string;
+        total_cents: number;
+        paid_cents: number;
+        plan: boolean;
+        lines: { description: string; amount_cents: number }[];
+    }[];
+    payOnline: boolean;
 };
 
 /** An agent's money: what's ready, what's on its way, and where it's paid. */
-export default function MyMoney({ balances, bank, holdHours, instant }: Props) {
+export default function MyMoney({
+    balances,
+    bank,
+    holdHours,
+    instant,
+    invoices,
+    payOnline,
+}: Props) {
     const form = useForm({
         holder: '',
         routing: '',
@@ -195,6 +215,49 @@ export default function MyMoney({ balances, bank, holdHours, instant }: Props) {
                         {holdHours} hours.
                     </p>
                 </section>
+                {invoices.length > 0 && (
+                    <section className="grid gap-2 rounded-lg border p-4 text-sm">
+                        <h2 className="font-semibold">What I owe</h2>
+                        <ul className="divide-y">
+                            {invoices.map((i) => (
+                                <li
+                                    key={i.ulid}
+                                    className="flex flex-wrap items-center justify-between gap-2 py-2"
+                                >
+                                    <span>
+                                        {i.number} ·{' '}
+                                        {i.lines
+                                            .map((l) => l.description)
+                                            .join(', ')}
+                                    </span>
+                                    <span className="flex items-center gap-2">
+                                        {usd(i.total_cents - i.paid_cents)}{' '}
+                                        {i.status === 'open'
+                                            ? `due ${new Date(i.due_on).toLocaleDateString()}`
+                                            : 'paid'}
+                                        {i.status === 'open' && payOnline && (
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() =>
+                                                    router.post(
+                                                        `/my-money/invoices/${i.ulid}/pay`,
+                                                    )
+                                                }
+                                            >
+                                                Pay online
+                                            </Button>
+                                        )}
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
+                        <p className="text-xs text-muted-foreground">
+                            Unpaid invoices may be taken from your next
+                            commission. Payments go to your brokerage.
+                        </p>
+                    </section>
+                )}
             </div>
         </>
     );

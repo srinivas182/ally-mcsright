@@ -44,3 +44,5 @@ Schedule::command('billing:end-grace')->dailyAt('04:30')->onOneServer();
 Schedule::command('billing:bill-subsidies')->monthlyOn(1, '05:00')->onOneServer();
 // Partner statements for last month and payouts by Stripe Connect (specs/core/07).
 Schedule::command('billing:partner-payouts')->monthlyOn(2, '06:00')->onOneServer();
+// Agents' recurring fee invoices, reminders and late fees (specs/finance/02, part 4).
+Schedule::command('payouts:agent-billing')->dailyAt('06:30')->onOneServer();

@@ -19,6 +19,9 @@ use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
+use Modules\Ledger\ChartOfAccounts;
+use Modules\Ledger\LedgerService;
+use Modules\Payouts\AgentBilling;
 use Modules\Payouts\Balances;
 use Modules\Payouts\BankAccounts;
 use Modules\Payouts\GetPaidNow;
@@ -221,5 +224,81 @@ final class PayoutsController
         $instant->saveLimits((int) round((float) $data['max_flat'] * 100), (string) $data['max_percent'], self::user($request));
 
         return back();
+    }
+
+    /** Finance › Agent billing. */
+    public function billing(Request $request, AgentBilling $billing): Response
+    {
+        $this->billingUser($request);
+        $db = DB::connection(Connections::cell());
+        $ledger = app(LedgerService::class);
+        $accounts = app(ChartOfAccounts::class);
+        $accounts->seed();
+        $agents = User::query()->where('kind', UserKind::Agent)->orderBy('first_name')->get();
+
+        return Inertia::render('finance/agent-billing', [
+            'settings' => $billing->settings(),
+            'items' => $db->table('bill_items')->where('active', true)->orderBy('name')->get(['ulid', 'name', 'amount_cents', 'frequency']),
+            'agents' => $agents->map(fn (User $u): array => ['ulid' => $u->ulid, 'name' => $u->name, 'owed_cents' => $billing->owed($u->id),
+                'owes_brokerage_cents' => max(0, -$ledger->balance($accounts->subAccount('2000', 'user', $u->id, 'Commission payable'))->cents)])->values(),
+            'invoices' => $db->table('bill_invoices')->orderByDesc('id')->limit(100)->get()->map(fn ($i): array => ['ulid' => $i->ulid, 'number' => $i->number,
+                'agent' => User::query()->find((int) $i->user_id)?->name, 'due_on' => $i->due_on, 'status' => $i->status, 'total_cents' => (int) $i->total_cents,
+                'paid_cents' => (int) $i->paid_cents, 'plan' => $i->plan_id !== null])->values(),
+        ]);
+    }
+
+    public function billingSettings(Request $request, AgentBilling $billing): RedirectResponse
+    {
+        $data = $request->validate(['deduct' => ['required', 'boolean'], 'late_fee' => ['required', 'numeric', 'min:0'], 'grace_days' => ['required', 'integer', 'min:0', 'max:90'],
+            'due_days' => ['required', 'integer', 'min:1', 'max:90']]);
+        $billing->saveSettings((bool) $data['deduct'], (int) round((float) $data['late_fee'] * 100), (int) $data['grace_days'], (int) $data['due_days'], $this->billingUser($request));
+
+        return back();
+    }
+
+    public function billingItem(Request $request, AgentBilling $billing): RedirectResponse
+    {
+        $data = $request->validate(['name' => ['required', 'string', 'max:80'], 'amount' => ['required', 'numeric', 'min:0.01'], 'frequency' => ['required', 'in:monthly,yearly,once']]);
+        $billing->saveItem($data['name'], (int) round((float) $data['amount'] * 100), $data['frequency'], $this->billingUser($request));
+
+        return back();
+    }
+
+    public function billingAssign(Request $request, AgentBilling $billing): RedirectResponse
+    {
+        $data = $request->validate(['agent' => ['required', 'string', 'size:26'], 'item' => ['required', 'string', 'size:26'], 'from' => ['required', 'date']]);
+        $billing->assign(User::query()->where('ulid', $data['agent'])->firstOrFail(), $data['item'], CarbonImmutable::parse($data['from']), $this->billingUser($request));
+
+        return back();
+    }
+
+    public function billingCharge(Request $request, AgentBilling $billing): RedirectResponse
+    {
+        $data = $request->validate(['agent' => ['required', 'string', 'size:26'], 'description' => ['required', 'string', 'max:160'], 'amount' => ['required', 'numeric', 'min:0.01']]);
+        $billing->charge(User::query()->where('ulid', $data['agent'])->firstOrFail(), $data['description'], (int) round((float) $data['amount'] * 100), $this->billingUser($request));
+
+        return back();
+    }
+
+    public function billingPlan(Request $request, AgentBilling $billing): RedirectResponse
+    {
+        $data = $request->validate(['agent' => ['required', 'string', 'size:26'], 'amount' => ['required', 'numeric', 'min:0.01'], 'instalments' => ['required', 'integer', 'min:1', 'max:24'],
+            'reason' => ['required', 'string', 'max:200']]);
+        $billing->plan(User::query()->where('ulid', $data['agent'])->firstOrFail(), (int) round((float) $data['amount'] * 100), (int) $data['instalments'], $data['reason'], $this->billingUser($request));
+
+        return back();
+    }
+
+    public function payInvoice(Request $request, string $invoice, AgentBilling $billing): \Symfony\Component\HttpFoundation\Response
+    {
+        return Inertia::location($billing->payOnline($invoice, self::user($request), $request->getSchemeAndHttpHost()));
+    }
+
+    private function billingUser(Request $request): User
+    {
+        $user = self::user($request);
+        abort_unless($user->can('finance.billing.manage'), 403);
+
+        return $user;
     }
 }

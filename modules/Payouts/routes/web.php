@@ -32,6 +32,13 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function
         Route::post('stripe', [RailsController::class, 'stripe'])->name('stripe');
     });
     Route::get('my-money', [PayoutsController::class, 'mine'])->name('payouts.mine');
+    Route::post('my-money/invoices/{invoice}/pay', [PayoutsController::class, 'payInvoice'])->middleware('throttle:10,1')->name('payouts.invoice.pay');
+    Route::get('finance/agent-billing', [PayoutsController::class, 'billing'])->name('payouts.billing');
+    Route::post('finance/agent-billing/settings', [PayoutsController::class, 'billingSettings'])->name('payouts.billing.settings');
+    Route::post('finance/agent-billing/items', [PayoutsController::class, 'billingItem'])->name('payouts.billing.items');
+    Route::post('finance/agent-billing/assign', [PayoutsController::class, 'billingAssign'])->name('payouts.billing.assign');
+    Route::post('finance/agent-billing/charge', [PayoutsController::class, 'billingCharge'])->name('payouts.billing.charge');
+    Route::post('finance/agent-billing/plan', [PayoutsController::class, 'billingPlan'])->name('payouts.billing.plan');
     Route::post('my-money/get-paid-now', [PayoutsController::class, 'getPaidNow'])->middleware(['password.confirm', 'throttle:5,1'])->name('payouts.instant');
     Route::post('finance/get-paid-now', [PayoutsController::class, 'instantSettings'])->middleware('password.confirm')->name('payouts.instant.settings');
     Route::post('my-money/bank', [PayoutsController::class, 'setBank'])->middleware(['password.confirm', 'throttle:5,1'])->name('payouts.bank');

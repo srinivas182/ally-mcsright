@@ -86,7 +86,15 @@ transmitter). Rails, behind a `PayoutRail` interface:
   immediately; bank-file brokerages get an approved instant run and an email, and send it in their next same-day
   file (never posted twice, never blocking regular runs); one request at a time; the 72-hour bank-change hold
   applies; a bounce returns the full amount and refunds the fee.
-- **Part 4**: agent billing — recurring fees, invoices, online payment, deductions, late fees, negative
-  balances and payment plans.
+- **Part 4 (delivered, 12B-4)**: Finance › Agent billing ("Bill agents" permission): fee items (monthly,
+  yearly or once) assigned to agents and invoiced on schedule by the daily job; one-off charges; invoices book the
+  agent's receivable against agent fee revenue; unpaid invoices are **deducted from commission** in payout runs
+  and get-paid-now (oldest first; on by default; nothing sent when invoices use it all; invoices marked paid when
+  the run is sent; a bounced payment returns only what was sent) **or paid online** by card or bank through
+  Stripe Checkout on the brokerage's own connected account (paid once, from the webhook); reminders three days
+  before and after the due date; a late fee once after the grace period (never on payment-plan instalments);
+  agents who owe the brokerage are recovered from future commission automatically, or the debt moves into a
+  **payment plan** of 1–24 monthly instalment invoices (not counted as new revenue); agents see What I owe on My
+  money.
 - **Part 5**: statements with every cent explained; W-9 with TIN matching; 1099 totals; title-pays-agents CDA
   option.

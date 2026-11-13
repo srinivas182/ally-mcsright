@@ -16,6 +16,7 @@ use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\Models\Tenant;
 use Modules\Core\Tenancy\TenantContext;
+use Modules\Payouts\AgentBilling;
 
 /**
  * Agents paying RightAlly directly (specs/core/07): checkout at the brokerage price, activation from
@@ -72,6 +73,15 @@ final class AgentPayments
         }
         if ($id === '' || ! isset($meta['tenant_id']) || $control->table('billing_gateway_events')->where('id', $id)->exists()) {
             return false;
+        }
+        if (($meta['kind'] ?? '') === 'agent_invoice' && $type === 'checkout.session.completed') {
+            $tenant = Tenant::query()->find((int) $meta['tenant_id']);
+            if ($tenant !== null) {
+                $this->tenants->runAs($tenant, fn () => app(AgentBilling::class)->paidOnline((string) ($meta['invoice'] ?? ''), (int) ($object['amount_total'] ?? 0), $id));
+            }
+            $control->table('billing_gateway_events')->insert(['id' => $id, 'type' => $type, 'processed_at' => now()]);
+
+            return true;
         }
         if (($meta['kind'] ?? '') === 'brokerage') {
             app(BrokeragePayments::class)->apply($type, $object, $meta);
