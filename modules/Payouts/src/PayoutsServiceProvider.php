@@ -17,6 +17,10 @@ final class PayoutsServiceProvider extends ServiceProvider
         foreach ([Receipts::class, BankAccounts::class, Balances::class, PayoutRuns::class] as $service) {
             $this->app->scoped($service);
         }
+        $this->app->singleton(Rails\Rails::class);
+        foreach ([Rails\RailPlatform::class, Rails\RailSetup::class, Rails\RailWebhooks::class] as $service) {
+            $this->app->scoped($service);
+        }
     }
 
     public function boot(): void
@@ -31,6 +35,7 @@ final class PayoutsServiceProvider extends ServiceProvider
         $nav = $this->app->make(NavigationRegistry::class);
         $nav->add(new NavItem('Finance', 'Money received', '/finance/receipts', 'banknote', 5, ability: 'finance.receipts.record'));
         $nav->add(new NavItem('Finance', 'Payouts', '/finance/payouts', 'send', 6, ability: 'finance.receipts.record'));
+        $nav->add(new NavItem('Platform', 'Payout rails', '/hq/payout-rails', 'send', 42, kinds: [UserKind::HqStaff]));
         $nav->add(new NavItem('Overview', 'My money', '/my-money', 'wallet', 32, kinds: [UserKind::Agent], mobile: true));
     }
 }

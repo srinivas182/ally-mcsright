@@ -68,7 +68,18 @@ transmitter). Rails, behind a `PayoutRail` interface:
   number; bank-details permission and fresh password); referral fees can be **paid by title or by the brokerage**
   — brokerage-paid fees stay in the brokerage's CDA amount and are booked as referral payable when the money
   arrives.
-- **Part 3**: automatic ACH through the partner rail (next-day and same-day); get paid now.
+- **Part 3 (12B-3 delivered)**: `PayoutRail` interface with **Dwolla** (brokerage = verified business customer under
+  RightAlly's Dwolla platform, its own bank as funding source after micro-deposit verification; agents receive-only;
+  transfers with same-day clearing), **Modern Treasury** (the brokerage's own organisation and internal account,
+  credentials encrypted in its settings; counterparties; ACH payment orders, high priority for same-day) and
+  **Stripe Treasury** (outbound payments from the brokerage's own financial account on its connected account; the
+  money never passes through RightAlly's balance); HQ › Payout rails (enable per rail, platform keys encrypted,
+  test/live, webhook addresses); the brokerage chooses its rail and links its own bank in Finance › Payouts
+  (business details pass straight to the partner and are not stored); sending commits the books first, then
+  submits each payment outside the transaction with an idempotency key (a retry never pays twice; "Retry"
+  resubmits ones a partner did not accept); signed webhooks (Dwolla and Stripe platform-wide, Modern Treasury per
+  brokerage) mark payments completed, or failed/returned — the money goes back to the payee's balance with one
+  reversing journal and the agent is emailed. **12B-3b next**: get paid now.
 - **Part 4**: agent billing — recurring fees, invoices, online payment, deductions, late fees, negative
   balances and payment plans.
 - **Part 5**: statements with every cent explained; W-9 with TIN matching; 1099 totals; title-pays-agents CDA

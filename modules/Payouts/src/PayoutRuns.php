@@ -44,8 +44,10 @@ final class PayoutRuns
         $ulid = (string) Str::ulid();
 
         return $db->transaction(function () use ($db, $ulid, $payOn, $sameDay, $by, $accounts, $ledger): string {
+            $rails = app(Rails\Rails::class)->settings();
+            $rail = $rails['rail'] !== 'bank_file' && $rails['status'] === 'ready' ? $rails['rail'] : 'bank_file';
             $runId = $db->table('pay_runs')->insertGetId(['ulid' => $ulid, 'tenant_id' => $this->tenants->id(), 'status' => 'draft', 'pay_on' => $payOn->toDateString(),
-                'same_day' => $sameDay, 'created_by' => $by->id, 'created_at' => now(), 'updated_at' => now()]);
+                'same_day' => $sameDay, 'rail' => $rail, 'created_by' => $by->id, 'created_at' => now(), 'updated_at' => now()]);
             $total = 0;
 
             foreach (User::query()->whereIn('kind', [UserKind::Agent, UserKind::Owner])->orderBy('first_name')->get() as $user) {
@@ -124,11 +126,12 @@ final class PayoutRuns
         $db = DB::connection(Connections::cell());
         $lines = $db->table('pay_run_lines')->where('run_id', $run['id'])->where('status', 'included')->orderBy('id')->get();
         $ach = $lines->where('method', 'ach');
-        if ($ach->isNotEmpty() && ($settings['company_id'] === null || $settings['odfi_routing'] === null)) {
+        $rail = (string) (DB::connection(Connections::cell())->table('pay_runs')->where('ulid', $ulid)->value('rail') ?? 'bank_file');
+        if ($rail === 'bank_file' && $ach->isNotEmpty() && ($settings['company_id'] === null || $settings['odfi_routing'] === null)) {
             throw ValidationException::withMessages(['run' => 'Add the brokerage\'s ACH company ID and bank routing number in Finance › Payout settings first.']);
         }
 
-        return $db->transaction(function () use ($db, $run, $ulid, $lines, $ach, $settings): array {
+        $result = $db->transaction(function () use ($db, $run, $ulid, $lines, $ach, $settings, $rail): array {
             $payOn = CarbonImmutable::parse($run['pay_on']);
             $checks = [];
             $numbers = [];
@@ -142,7 +145,7 @@ final class PayoutRuns
             $db->table('pay_settings')->updateOrInsert(['tenant_id' => $this->tenants->id()], ['next_check_number' => $next, 'updated_at' => now(), 'created_at' => now()]);
 
             $nacha = null;
-            if ($ach->isNotEmpty()) {
+            if ($ach->isNotEmpty() && $rail === 'bank_file') {
                 $entries = [];
                 foreach ($ach as $line) {
                     $bank = $this->banks->forPayout((int) $line->user_id);
@@ -164,10 +167,85 @@ final class PayoutRuns
                 User::query()->find((int) $line->user_id)?->notify(new YouvePaid((int) $line->amount_cents, (string) $line->method, $payOn,
                     (int) $line->commission_cents, (int) $line->revenue_share_cents, $numbers[(int) $line->id] ?? null));
             }
-            app(AuditLogger::class)->record('payouts.run.sent', metadata: ['run' => $ulid, 'ach' => $ach->count(), 'checks' => count($checks)], severity: 'warning');
+            app(AuditLogger::class)->record('payouts.run.sent', metadata: ['run' => $ulid, 'rail' => $rail, 'ach' => $ach->count(), 'checks' => count($checks)], severity: 'warning');
 
             return ['nacha' => $nacha, 'positive_pay' => $positivePay, 'checks' => $checks];
         });
+
+        // Automatic ACH: each payment goes to the partner after the books are committed, with an
+        // idempotency key, so a partner outage never leaves the ledger half-posted and a retry never pays twice.
+        if ($rail !== 'bank_file') {
+            $this->submit($ulid, $run['same_day']);
+        }
+
+        return $result;
+    }
+
+    /** Submits (or retries) the run's direct-deposit payments through the brokerage's rail. */
+    public function submit(string $ulid, bool $sameDay = false): int
+    {
+        $db = DB::connection(Connections::cell());
+        $runRow = $db->table('pay_runs')->where('ulid', $ulid)->where('status', 'sent')->first();
+        if ($runRow === null || $runRow->rail === 'bank_file') {
+            return 0;
+        }
+        $registry = app(Rails\Rails::class);
+        $rail = $registry->get((string) $runRow->rail);
+        $config = $registry->settings()['config'];
+        $submitted = 0;
+        foreach ($db->table('pay_run_lines')->where('run_id', $runRow->id)->where('status', 'included')->where('method', 'ach')->whereNull('rail_ref')->whereNull('reversal_journal_id')->get() as $line) {
+            try {
+                $bank = $this->banks->forPayout((int) $line->user_id) ?? throw new \RuntimeException('No usable bank account.');
+                $payee = $db->table('pay_payees')->where('user_id', $line->user_id)->where('rail', $rail->key())->where('bank_account_id', $bank['id'])->value('ref');
+                if ($payee === null) {
+                    $user = User::query()->findOrFail((int) $line->user_id);
+                    $payee = $rail->payee($bank['holder'], $user->email, $bank, $config);
+                    $db->table('pay_payees')->insert(['tenant_id' => $this->tenants->id(), 'user_id' => $line->user_id, 'rail' => $rail->key(),
+                        'bank_account_id' => $bank['id'], 'ref' => $payee, 'created_at' => now(), 'updated_at' => now()]);
+                }
+                $ref = $rail->pay((string) $payee, (int) $line->amount_cents, (bool) $runRow->same_day, 'rightally-line-'.$this->tenants->id().'-'.$line->id,
+                    'Commission '.$runRow->pay_on, $config);
+                $db->table('pay_run_lines')->where('id', $line->id)->update(['rail_ref' => $ref, 'rail_status' => 'submitted']);
+                DB::connection(Connections::control())->table('pay_rail_refs')->insertOrIgnore(['ref' => $ref, 'rail' => $rail->key(), 'tenant_id' => $this->tenants->id(), 'created_at' => now()]);
+                $submitted++;
+            } catch (\Throwable $e) {
+                $db->table('pay_run_lines')->where('id', $line->id)->update(['rail_status' => 'failed', 'failure_reason' => mb_substr($e->getMessage(), 0, 200)]);
+                app(AuditLogger::class)->record('payouts.payment.not_submitted', metadata: ['line' => (int) $line->id, 'reason' => $e->getMessage()], severity: 'warning');
+            }
+        }
+
+        return $submitted;
+    }
+
+    /**
+     * A failed or returned payment: the money goes back to the payee's balance (one reversing journal)
+     * and the agent and finance are told. Safe to call twice.
+     */
+    public function reverseLine(int $lineId, string $status, ?string $reason): void
+    {
+        $db = DB::connection(Connections::cell());
+        $line = $db->table('pay_run_lines')->where('id', $lineId)->first();
+        if ($line === null || $line->reversal_journal_id !== null) {
+            return;
+        }
+        $accounts = $this->accounts();
+        $draft = JournalDraft::make('payout_return', 'payout-return:'.$lineId)->effectiveOn(CarbonImmutable::now())->source('payout_line', (string) $lineId)
+            ->describe('Payment '.$status.' — returned to balance')->debit($accounts->account('1000'), Money::of((int) $line->amount_cents));
+        if ((int) $line->commission_cents > 0) {
+            $draft->credit($accounts->subAccount('2000', 'user', (int) $line->user_id, 'Commission payable'), Money::of((int) $line->commission_cents));
+        }
+        if ((int) $line->revenue_share_cents > 0) {
+            $draft->credit($accounts->subAccount('2100', 'user', (int) $line->user_id, 'Revenue share'), Money::of((int) $line->revenue_share_cents));
+        }
+        if ((int) $line->referral_cents > 0) {
+            $draft->credit($accounts->subAccount('2200', 'referral', (int) $line->referral_id, 'Referral payable'), Money::of((int) $line->referral_cents));
+        }
+        $journal = app(LedgerService::class)->post($draft)->id;
+        $db->table('pay_run_lines')->where('id', $lineId)->update(['rail_status' => $status, 'failure_reason' => $reason !== null ? mb_substr($reason, 0, 200) : null, 'reversal_journal_id' => $journal]);
+        if ($line->user_id !== null) {
+            User::query()->find((int) $line->user_id)?->notify(new PaymentReturned((int) $line->amount_cents, $reason));
+        }
+        app(AuditLogger::class)->record('payouts.payment.'.$status, metadata: ['line' => $lineId, 'cents' => (int) $line->amount_cents, 'reason' => $reason], severity: 'warning');
     }
 
     /**
@@ -241,7 +319,7 @@ final class PayoutRuns
     }
 
     /**
-     * @return array{id: int, total_cents: int, pay_on: string}
+     * @return array{id: int, total_cents: int, pay_on: string, same_day: bool}
      */
     private function run(string $ulid, string $status): array
     {
@@ -250,7 +328,7 @@ final class PayoutRuns
             throw ValidationException::withMessages(['run' => 'This run is '.($run->status ?? 'missing').'.']);
         }
 
-        return ['id' => (int) $run->id, 'total_cents' => (int) $run->total_cents, 'pay_on' => (string) $run->pay_on];
+        return ['id' => (int) $run->id, 'total_cents' => (int) $run->total_cents, 'pay_on' => (string) $run->pay_on, 'same_day' => (bool) $run->same_day];
     }
 
     private function guardFinance(User $by): void
