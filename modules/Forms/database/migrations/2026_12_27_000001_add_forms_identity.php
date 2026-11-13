@@ -44,7 +44,7 @@ return new class extends Migration
             $table->tenant();
             $table->string('email', 254)->index();
             $table->string('name', 160);
-            $table->string('provider', 20);
+            $table->string('provider', 40);
             $table->string('provider_ref', 120)->nullable()->index();
             $table->string('status', 10)->default('pending'); // pending, verified, failed
             $table->string('verified_name', 160)->nullable();
