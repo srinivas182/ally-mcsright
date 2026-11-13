@@ -24,6 +24,7 @@ export type Referral = {
     agent: string;
     percent: string;
     w9: boolean;
+    paid_by?: string;
 };
 export type Cda = {
     ulid: string;
@@ -82,6 +83,7 @@ export function MoneyDesk({
         agent: '',
         email: '',
         percent: '25',
+        paid_by: 'title',
     });
     const opts = { preserveScroll: true };
     const today = new Date().toISOString().slice(0, 10);
@@ -252,6 +254,11 @@ export function MoneyDesk({
                                 ? 'Paid to'
                                 : 'Received from'}{' '}
                             {r.agent}, {r.brokerage} — {r.percent}%
+                            {r.direction === 'out'
+                                ? r.paid_by === 'brokerage'
+                                    ? ' · we pay it'
+                                    : ' · title pays it'
+                                : ''}
                             {r.direction === 'out' && !r.w9
                                 ? ' · W-9 needed'
                                 : ''}
@@ -311,6 +318,19 @@ export function MoneyDesk({
                                 referral.setData('percent', e.target.value)
                             }
                         />
+                        {referral.data.direction === 'out' && (
+                            <select
+                                aria-label="Who pays the referral fee"
+                                className="rounded border bg-background px-2 py-1.5"
+                                value={referral.data.paid_by}
+                                onChange={(e) =>
+                                    referral.setData('paid_by', e.target.value)
+                                }
+                            >
+                                <option value="title">Title pays it</option>
+                                <option value="brokerage">We pay it</option>
+                            </select>
+                        )}
                         <Button type="submit" variant="outline">
                             Add referral
                         </Button>

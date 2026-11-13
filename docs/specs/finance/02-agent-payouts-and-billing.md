@@ -55,8 +55,19 @@ transmitter). Rails, behind a `PayoutRail` interface:
   deals, revenue share wallet, money on its way); agents' bank details (ABA checksum, encrypted, last four
   shown, emailed on every change, usable after **72 hours**, history kept; set by the agent with a fresh
   password, or by someone with the bank-details permission); Finance › Money received and agents' My money.
-- **Part 2**: payout runs with preview, approval and separation of duties; bank file (NACHA) and checks with
-  positive pay; outside referral payouts; paid notifications.
+- **Part 2 (delivered, Sprint 12B-2)**: payout runs built from what is ready (commission payable from settled
+  deals, revenue share wallets, referral fees the brokerage pays), one open run at a time; agents in the 72-hour
+  bank-change hold or not active are skipped with the reason; direct deposit when a usable bank account exists,
+  otherwise check; preview line by line; approval by an owner or "Approve payouts" holder who is **not paid in
+  the run and has not changed a payee's bank details in the last 30 days** (a one-owner brokerage can still
+  approve); sending (fresh password) numbers checks, posts one balanced journal (payables against operating cash),
+  marks referrals paid and emails each agent **"You've been paid"** with the breakdown and check number; a
+  standard **NACHA** PPD credit file (94-character records, entry hash, padded blocks; same-day by effective
+  date), printable **checks** (amount in words, stub) and a **positive pay** CSV, stored encrypted and downloaded
+  with an audit record; payout settings (ACH company name and ID, bank routing, operating account, next check
+  number; bank-details permission and fresh password); referral fees can be **paid by title or by the brokerage**
+  — brokerage-paid fees stay in the brokerage's CDA amount and are booked as referral payable when the money
+  arrives.
 - **Part 3**: automatic ACH through the partner rail (next-day and same-day); get paid now.
 - **Part 4**: agent billing — recurring fees, invoices, online payment, deductions, late fees, negative
   balances and payment plans.

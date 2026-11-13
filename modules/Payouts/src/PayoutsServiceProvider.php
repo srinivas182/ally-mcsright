@@ -14,7 +14,7 @@ final class PayoutsServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        foreach ([Receipts::class, BankAccounts::class, Balances::class] as $service) {
+        foreach ([Receipts::class, BankAccounts::class, Balances::class, PayoutRuns::class] as $service) {
             $this->app->scoped($service);
         }
     }
@@ -30,6 +30,7 @@ final class PayoutsServiceProvider extends ServiceProvider
 
         $nav = $this->app->make(NavigationRegistry::class);
         $nav->add(new NavItem('Finance', 'Money received', '/finance/receipts', 'banknote', 5, ability: 'finance.receipts.record'));
+        $nav->add(new NavItem('Finance', 'Payouts', '/finance/payouts', 'send', 6, ability: 'finance.receipts.record'));
         $nav->add(new NavItem('Overview', 'My money', '/my-money', 'wallet', 32, kinds: [UserKind::Agent], mobile: true));
     }
 }

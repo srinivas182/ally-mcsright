@@ -11,6 +11,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Support\Connections;
+use Modules\Ledger\Money\Money;
 use Modules\Transactions\Models\Deal;
 
 /**
@@ -19,7 +20,7 @@ use Modules\Transactions\Models\Deal;
  */
 final class Referrals
 {
-    public function add(Deal $deal, string $direction, string $brokerage, string $agentName, ?string $agentEmail, string $percent, ?int $agreementDocumentId): string
+    public function add(Deal $deal, string $direction, string $brokerage, string $agentName, ?string $agentEmail, string $percent, ?int $agreementDocumentId, string $paidBy = 'title'): string
     {
         if (! in_array($direction, ['in', 'out'], true) || trim($brokerage) === '' || trim($agentName) === ''
             || ! is_numeric($percent) || ! BigDecimal::of($percent)->isPositive() || BigDecimal::of($percent)->isGreaterThan(100)) {
@@ -31,10 +32,30 @@ final class Referrals
         $ulid = (string) Str::ulid();
         DB::connection(Connections::cell())->table('tx_referrals')->insert(['ulid' => $ulid, 'tenant_id' => $deal->tenant_id, 'deal_id' => $deal->id,
             'direction' => $direction, 'brokerage' => trim($brokerage), 'agent_name' => trim($agentName), 'agent_email' => $agentEmail, 'percent' => $percent,
-            'agreement_document_id' => $agreementDocumentId, 'created_at' => now(), 'updated_at' => now()]);
+            'agreement_document_id' => $agreementDocumentId, 'paid_by' => $paidBy === 'brokerage' ? 'brokerage' : 'title', 'created_at' => now(), 'updated_at' => now()]);
         app(AuditLogger::class)->record('transactions.referral.added', $deal, metadata: ['direction' => $direction, 'brokerage' => $brokerage, 'percent' => $percent], label: $deal->street);
 
         return $ulid;
+    }
+
+    /**
+     * Each outgoing referral's share of the outside referral amount (split exactly by their percentages).
+     *
+     * @return list<array{id: int, brokerage: string, agent: string, paid_by: string, cents: int}>
+     */
+    public function amounts(Deal $deal, int $outsideReferralCents): array
+    {
+        $rows = DB::connection(Connections::cell())->table('tx_referrals')->where('deal_id', $deal->id)->where('direction', 'out')->orderBy('id')->get();
+        if ($rows->isEmpty() || $outsideReferralCents <= 0) {
+            return [];
+        }
+        $parts = Money::of($outsideReferralCents)->allocate($rows->map(fn ($r): string => (string) $r->percent)->values()->all());
+        $out = [];
+        foreach ($rows->values() as $i => $r) {
+            $out[] = ['id' => (int) $r->id, 'brokerage' => (string) $r->brokerage, 'agent' => (string) $r->agent_name, 'paid_by' => (string) ($r->paid_by ?? 'title'), 'cents' => $parts[$i]->cents];
+        }
+
+        return $out;
     }
 
     /** Total outgoing referral percentage for the commission calculation, or null. */
@@ -76,6 +97,6 @@ final class Referrals
     {
         return DB::connection(Connections::cell())->table('tx_referrals')->where('deal_id', $deal->id)->orderBy('id')->get()
             ->map(fn ($r): array => ['ulid' => $r->ulid, 'direction' => $r->direction, 'brokerage' => $r->brokerage, 'agent' => $r->agent_name,
-                'percent' => (string) $r->percent, 'w9' => (bool) $r->w9_received])->values()->all();
+                'percent' => (string) $r->percent, 'w9' => (bool) $r->w9_received, 'paid_by' => (string) ($r->paid_by ?? 'title')])->values()->all();
     }
 }
