@@ -17,9 +17,16 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('roster
     Route::post('tasks/{task}', [RosterController::class, 'markTask'])->whereNumber('task')->name('tasks.mark');
     Route::post('me/requests', [RosterController::class, 'submitRequest'])->middleware('throttle:10,1')->name('requests.submit');
     Route::post('requests/{update}/decide', [RosterController::class, 'decideRequest'])->name('requests.decide');
+    Route::post('ce/rules', [RosterController::class, 'ceRule'])->name('ce.rule');
+    Route::post('ce/courses/{course}/remove', [RosterController::class, 'ceRemove'])->name('ce.remove');
+    Route::post('credentials/{credential}/check', [RosterController::class, 'check'])->middleware('throttle:30,1')->name('check');
+    Route::get('export.csv', [RosterController::class, 'export'])->name('export');
     Route::get('{agent}', [RosterController::class, 'show'])->name('show');
+    Route::post('{agent}/ce', [RosterController::class, 'ceLog'])->middleware('throttle:30,1')->name('ce.log');
     Route::post('{agent}/flows', [RosterController::class, 'startFlow'])->name('flows.start');
     Route::post('{agent}/flows/{kind}/complete', [RosterController::class, 'completeFlow'])->middleware('password.confirm')->name('flows.complete');
     Route::post('{agent}/credentials', [RosterController::class, 'add'])->name('add');
     Route::post('{agent}/documents', [RosterController::class, 'upload'])->middleware('throttle:30,1')->name('upload');
 });
+
+Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->get('directory', [RosterController::class, 'directory'])->name('directory');

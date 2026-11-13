@@ -41,4 +41,13 @@ licence copy, E&O certificate); expiry reminders; onboarding checklists; roster 
   invoices are all zero); an owner completes it with a fresh password, which deactivates the account (recording
   the revenue share leaving date). **Self-service**: agents send a renewed licence, E&O or membership with the
   document; it takes effect only when approved; rejections tell the agent why.
-- **Part 3**: CE tracker; ARELLO verification adapter; roster export and directory.
+- **Part 3 (delivered, Sprint 13B-3)**: **continuing education** — CE requirements differ by state and change, so each
+  brokerage sets its states' rules (hours per cycle, cycle months, required topics) from the official rules; agents
+  (or staff) log courses with certificates; progress counts courses in the cycle ending at the licence renewal
+  date, by topic; reminders at 90, 60 and 30 days while incomplete (owners copied). **Licence verification** —
+  a `LicenceVerifier` interface (ARELLO adapter bound once the data agreement and its API specification arrive;
+  off until then, manual verification continues): check on demand and a monthly re-check of every licence;
+  active updates the expiry and marks it verified; suspended, expired, not found or a different name is flagged,
+  owners are emailed, and the licence guard stops that agent's deals going under contract. **Roster export**
+  (CSV, staff, audited) and a searchable **directory** of everyone (contact, offices, teams, licences).
+  **The agent roster is complete.**

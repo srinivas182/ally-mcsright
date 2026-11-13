@@ -24,6 +24,12 @@ type Props = {
         'agreement' | 'policy',
         { title: string; version: number; body: string } | null
     >;
+    ceRules: {
+        state: string;
+        hours: string;
+        cycle_months: number;
+        topics: { topic: string; hours: string }[];
+    }[];
 };
 
 const tiles: [string, string][] = [
@@ -50,6 +56,7 @@ export default function RosterIndex({
     isOwner,
     requests,
     agreements,
+    ceRules,
 }: Props) {
     const save = (patch: Partial<Props['settings']>) =>
         router.post(
@@ -65,6 +72,16 @@ export default function RosterIndex({
                 <PageHeader
                     title="Roster and compliance"
                     description="Every agent's licences, E&O, memberships and documents — and what needs attention."
+                    actions={
+                        <span className="flex gap-3 text-sm">
+                            <a className="underline" href="/roster/export.csv">
+                                Export (CSV)
+                            </a>
+                            <a className="underline" href="/directory">
+                                Directory
+                            </a>
+                        </span>
+                    }
                 />
                 <section
                     className={`grid gap-2 rounded-lg border p-4 text-sm ${settings.guard_licence ? '' : 'border-amber-300 bg-amber-50 text-amber-900'}`}
@@ -180,6 +197,7 @@ export default function RosterIndex({
                         current={agreements.policy}
                     />
                 )}
+                <CeRules rules={ceRules} />
             </div>
         </>
     );
@@ -237,6 +255,127 @@ function AgreementEditor({
                 </Button>
                 {Object.values(form.errors)[0] && (
                     <p role="alert" className="text-destructive">
+                        {Object.values(form.errors)[0]}
+                    </p>
+                )}
+            </form>
+        </details>
+    );
+}
+
+function CeRules({ rules }: { rules: Props['ceRules'] }) {
+    const form = useForm({
+        state: '',
+        hours: '',
+        cycle_months: '24',
+        topics: [
+            { topic: '', hours: '' },
+            { topic: '', hours: '' },
+        ],
+    });
+
+    return (
+        <details className="rounded-lg border p-4 text-sm">
+            <summary className="cursor-pointer font-semibold">
+                Continuing education rules ({rules.length} state
+                {rules.length === 1 ? '' : 's'})
+            </summary>
+            <p className="mt-2 text-muted-foreground">
+                Set each state's requirement from the state's official rules.
+                RightAlly tracks every agent against it, timed to their licence
+                renewal.
+            </p>
+            <ul className="my-2 grid gap-1">
+                {rules.map((r) => (
+                    <li key={r.state}>
+                        {r.state}: {r.hours} hours every {r.cycle_months} months
+                        {r.topics.length
+                            ? ` — including ${r.topics.map((t) => `${t.hours} h ${t.topic}`).join(', ')}`
+                            : ''}
+                    </li>
+                ))}
+            </ul>
+            <form
+                className="flex flex-wrap items-center gap-2"
+                onSubmit={(e) => {
+                    e.preventDefault();
+                    form.post('/roster/ce/rules', {
+                        preserveScroll: true,
+                        onSuccess: () => form.reset(),
+                    });
+                }}
+            >
+                <Input
+                    aria-label="State"
+                    placeholder="State"
+                    maxLength={2}
+                    className="w-20"
+                    value={form.data.state}
+                    onChange={(e) => form.setData('state', e.target.value)}
+                />
+                <Input
+                    aria-label="Hours required"
+                    type="number"
+                    step="0.5"
+                    placeholder="Hours"
+                    className="w-24"
+                    value={form.data.hours}
+                    onChange={(e) => form.setData('hours', e.target.value)}
+                />
+                every{' '}
+                <Input
+                    aria-label="Cycle in months"
+                    type="number"
+                    className="w-20"
+                    value={form.data.cycle_months}
+                    onChange={(e) =>
+                        form.setData('cycle_months', e.target.value)
+                    }
+                />{' '}
+                months
+                {form.data.topics.map((t, i) => (
+                    <span key={i} className="flex gap-1">
+                        <Input
+                            aria-label={`Required topic ${i + 1}`}
+                            placeholder="Topic (optional)"
+                            className="w-36"
+                            value={t.topic}
+                            onChange={(e) =>
+                                form.setData(
+                                    'topics',
+                                    form.data.topics.map((x, j) =>
+                                        j === i
+                                            ? { ...x, topic: e.target.value }
+                                            : x,
+                                    ),
+                                )
+                            }
+                        />
+                        <Input
+                            aria-label={`Topic ${i + 1} hours`}
+                            type="number"
+                            step="0.5"
+                            placeholder="h"
+                            className="w-16"
+                            value={t.hours}
+                            onChange={(e) =>
+                                form.setData(
+                                    'topics',
+                                    form.data.topics.map((x, j) =>
+                                        j === i
+                                            ? { ...x, hours: e.target.value }
+                                            : x,
+                                    ),
+                                )
+                            }
+                        />
+                    </span>
+                ))}
+                <Button type="submit" size="sm" variant="outline">
+                    Save rule
+                </Button>
+                {Object.values(form.errors)[0] && (
+                    <p role="alert" className="w-full text-destructive">
                         {Object.values(form.errors)[0]}
                     </p>
                 )}

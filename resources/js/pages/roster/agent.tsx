@@ -1,5 +1,6 @@
 import { Head, router, useForm } from '@inertiajs/react';
 
+import { CePanel, type CeProgress } from '@/components/roster/ce-panel';
 import { FlowPanel, type Flow } from '@/components/roster/flow-panel';
 import {
     SignAgreement,
@@ -24,6 +25,7 @@ type Credential = {
     status: string;
     verified: boolean;
     verification_note: string | null;
+    check_result?: string | null;
 };
 type Props = {
     agent: { ulid: string; name: string };
@@ -50,6 +52,8 @@ type Props = {
         document: string | null;
         submitted_at: string;
     }[];
+    ce: CeProgress[];
+    canVerify: boolean;
 };
 
 const kinds: Record<string, string> = {
@@ -76,7 +80,15 @@ function title(c: Credential) {
           : `${c.issuer}${c.number ? ` · ${c.number}` : ''}`;
 }
 
-function Row({ c, canManage }: { c: Credential; canManage: boolean }) {
+function Row({
+    c,
+    canManage,
+    canVerify,
+}: {
+    c: Credential;
+    canManage: boolean;
+    canVerify: boolean;
+}) {
     const [note, setNote] = useState('');
 
     return (
@@ -107,6 +119,22 @@ function Row({ c, canManage }: { c: Credential; canManage: boolean }) {
                         <Badge variant="outline">Not verified</Badge>
                     ))}
             </span>
+            {canVerify && c.kind === 'licence' && (
+                <Button
+                    size="sm"
+                    variant="ghost"
+                    className="justify-self-start"
+                    onClick={() =>
+                        router.post(
+                            `/roster/credentials/${c.ulid}/check`,
+                            {},
+                            { preserveScroll: true },
+                        )
+                    }
+                >
+                    Check with state records
+                </Button>
+            )}
             {c.verification_note && (
                 <span className="text-xs text-muted-foreground">
                     Checked: {c.verification_note}
@@ -152,6 +180,8 @@ export default function RosterAgent({
     offboarding,
     toSign,
     requests,
+    ce,
+    canVerify,
 }: Props) {
     const add = useForm({
         kind: 'licence',
@@ -229,7 +259,12 @@ export default function RosterAgent({
                         </li>
                     )}
                     {records.credentials.map((c) => (
-                        <Row key={c.ulid} c={c} canManage={canManage} />
+                        <Row
+                            key={c.ulid}
+                            c={c}
+                            canManage={canManage}
+                            canVerify={canVerify}
+                        />
                     ))}
                 </ul>
                 {canManage && (
@@ -421,6 +456,12 @@ export default function RosterAgent({
                     </details>
                 )}
                 {isSelf && <UpdateForm />}
+                <CePanel
+                    agent={isSelf ? 'me' : agent.ulid}
+                    ce={ce}
+                    canManage={canManage}
+                    canLog={isSelf || canManage}
+                />
             </div>
         </>
     );
