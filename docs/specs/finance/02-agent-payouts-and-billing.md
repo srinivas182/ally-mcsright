@@ -47,8 +47,14 @@ transmitter). Rails, behind a `PayoutRail` interface:
 
 ## Delivery
 
-- **Part 1**: money received matched to the CDA; agent balances (ledger sub-accounts); agents' protected bank
-  details with the 72-hour hold.
+- **Part 1 (delivered, Sprint 12B)**: new module `modules/Payouts`; money received from title (wire, ACH or check)
+  checked against the CDA's brokerage line (or GCI minus the outside referral) — **matched** recognises the
+  commission once (receivable against each agent's payable, the team lead's share and company dollar) and
+  brings the cash in; **short or over** is recorded but held until a broker accepts the difference with a
+  reason (company dollar absorbs it); partial payments add up; agent balances (commission payable from settled
+  deals, revenue share wallet, money on its way); agents' bank details (ABA checksum, encrypted, last four
+  shown, emailed on every change, usable after **72 hours**, history kept; set by the agent with a fresh
+  password, or by someone with the bank-details permission); Finance › Money received and agents' My money.
 - **Part 2**: payout runs with preview, approval and separation of duties; bank file (NACHA) and checks with
   positive pay; outside referral payouts; paid notifications.
 - **Part 3**: automatic ACH through the partner rail (next-day and same-day); get paid now.
