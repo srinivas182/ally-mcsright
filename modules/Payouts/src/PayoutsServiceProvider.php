@@ -14,7 +14,7 @@ final class PayoutsServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        foreach ([Receipts::class, BankAccounts::class, Balances::class, PayoutRuns::class] as $service) {
+        foreach ([Receipts::class, BankAccounts::class, Balances::class, PayoutRuns::class, GetPaidNow::class] as $service) {
             $this->app->scoped($service);
         }
         $this->app->singleton(Rails\Rails::class);

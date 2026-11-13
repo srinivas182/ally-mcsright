@@ -32,12 +32,15 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function
         Route::post('stripe', [RailsController::class, 'stripe'])->name('stripe');
     });
     Route::get('my-money', [PayoutsController::class, 'mine'])->name('payouts.mine');
+    Route::post('my-money/get-paid-now', [PayoutsController::class, 'getPaidNow'])->middleware(['password.confirm', 'throttle:5,1'])->name('payouts.instant');
+    Route::post('finance/get-paid-now', [PayoutsController::class, 'instantSettings'])->middleware('password.confirm')->name('payouts.instant.settings');
     Route::post('my-money/bank', [PayoutsController::class, 'setBank'])->middleware(['password.confirm', 'throttle:5,1'])->name('payouts.bank');
 });
 
 Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.tenants.manage'])->prefix('hq')->name('hq.')->group(function (): void {
     Route::get('payout-rails', [RailsController::class, 'hq'])->name('payout-rails');
     Route::post('payout-rails/enable', [RailsController::class, 'hqEnable'])->name('payout-rails.enable');
+    Route::post('payout-rails/instant-limits', [PayoutsController::class, 'instantLimits'])->name('payout-rails.instant');
     Route::post('payout-rails/keys', [RailsController::class, 'hqKeys'])->middleware('password.confirm')->name('payout-rails.keys');
 });
 

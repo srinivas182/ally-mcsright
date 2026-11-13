@@ -21,6 +21,7 @@ use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Payouts\Balances;
 use Modules\Payouts\BankAccounts;
+use Modules\Payouts\GetPaidNow;
 use Modules\Payouts\PayoutRuns;
 use Modules\Payouts\Receipts;
 use Modules\Transactions\Models\Deal;
@@ -74,7 +75,8 @@ final class PayoutsController
     {
         $user = self::user($request);
 
-        return Inertia::render('finance/my-money', ['balances' => $balances->for($user), 'bank' => $accounts->current($user), 'holdHours' => BankAccounts::HOLD_HOURS]);
+        return Inertia::render('finance/my-money', ['balances' => $balances->for($user), 'bank' => $accounts->current($user), 'holdHours' => BankAccounts::HOLD_HOURS,
+            'instant' => app(GetPaidNow::class)->quote($user)]);
     }
 
     public function setBank(Request $request, BankAccounts $accounts): RedirectResponse
@@ -113,7 +115,7 @@ final class PayoutsController
 
         return Inertia::render('finance/payouts', [
             'runs' => $db->table('pay_runs')->orderByDesc('id')->limit(30)->get()->map(fn ($r): array => [
-                'ulid' => $r->ulid, 'rail' => $r->rail, 'failed' => $db->table('pay_run_lines')->where('run_id', $r->id)->where('rail_status', 'failed')->whereNull('reversal_journal_id')->count(),
+                'ulid' => $r->ulid, 'kind' => $r->kind, 'rail' => $r->rail, 'failed' => $db->table('pay_run_lines')->where('run_id', $r->id)->where('rail_status', 'failed')->whereNull('reversal_journal_id')->count(),
                 'status' => $r->status, 'pay_on' => $r->pay_on, 'same_day' => (bool) $r->same_day, 'total_cents' => (int) $r->total_cents,
                 'approved_by' => $r->approved_by !== null ? User::query()->find((int) $r->approved_by)?->name : null, 'sent_at' => $r->sent_at,
                 'lines' => $db->table('pay_run_lines')->where('run_id', $r->id)->orderBy('id')->get()->map(fn ($l): array => [
@@ -192,6 +194,31 @@ final class PayoutsController
             'bank_name' => ['required', 'string', 'max:23'], 'operating_account' => ['nullable', 'string', 'max:20'], 'next_check_number' => ['nullable', 'integer', 'min:1']]);
         $runs->saveSettings($data['company_name'], strtoupper($data['company_id']), $data['odfi_routing'], $data['bank_name'], $data['operating_account'] ?? null,
             isset($data['next_check_number']) ? (int) $data['next_check_number'] : null, self::user($request));
+
+        return back();
+    }
+
+    public function getPaidNow(Request $request, GetPaidNow $instant): RedirectResponse
+    {
+        $data = $request->validate(['net_cents' => ['required', 'integer', 'min:1']]);
+        $instant->request(self::user($request), (int) $data['net_cents']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'On its way. We\'ll email you when it\'s sent.']);
+
+        return back();
+    }
+
+    public function instantSettings(Request $request, GetPaidNow $instant): RedirectResponse
+    {
+        $data = $request->validate(['enabled' => ['required', 'boolean'], 'flat' => ['required', 'numeric', 'min:0'], 'percent' => ['required', 'numeric', 'min:0'], 'min' => ['required', 'numeric', 'min:1']]);
+        $instant->configure((bool) $data['enabled'], (int) round((float) $data['flat'] * 100), (string) $data['percent'], (int) round((float) $data['min'] * 100), self::user($request));
+
+        return back();
+    }
+
+    public function instantLimits(Request $request, GetPaidNow $instant): RedirectResponse
+    {
+        $data = $request->validate(['max_flat' => ['required', 'numeric', 'min:0'], 'max_percent' => ['required', 'numeric', 'min:0', 'max:10']]);
+        $instant->saveLimits((int) round((float) $data['max_flat'] * 100), (string) $data['max_percent'], self::user($request));
 
         return back();
     }

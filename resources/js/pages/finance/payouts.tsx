@@ -22,6 +22,7 @@ type Line = {
 };
 type Run = {
     ulid: string;
+    kind?: string;
     rail?: string;
     failed?: number;
     status: string;
@@ -45,6 +46,13 @@ type Props = {
     canApprove: boolean;
     canChangeSettings: boolean;
     rail: RailInfo;
+    instant: {
+        enabled: boolean;
+        flat_cents: number;
+        percent: string;
+        min_cents: number;
+        limits: { max_flat_cents: number; max_percent: string };
+    };
 };
 
 const method: Record<string, string> = {
@@ -63,12 +71,17 @@ function RunCard({ run, canApprove }: { run: Run; canApprove: boolean }) {
                     Pay on {new Date(run.pay_on).toLocaleDateString()}
                     {run.same_day ? ' (same day)' : ''} · {usd(run.total_cents)}
                 </span>
-                <Badge
-                    variant={run.status === 'sent' ? 'secondary' : 'outline'}
-                    className="capitalize"
-                >
-                    {run.status}
-                </Badge>
+                <span className="flex gap-1">
+                    {run.kind === 'instant' && <Badge>Get paid now</Badge>}
+                    <Badge
+                        variant={
+                            run.status === 'sent' ? 'secondary' : 'outline'
+                        }
+                        className="capitalize"
+                    >
+                        {run.status}
+                    </Badge>
+                </span>
             </div>
             <div className="overflow-x-auto">
                 <table className="w-full">
@@ -237,6 +250,7 @@ export default function Payouts({
     canApprove,
     canChangeSettings,
     rail,
+    instant,
 }: Props) {
     const build = useForm({
         pay_on: new Date().toISOString().slice(0, 10),
@@ -301,6 +315,7 @@ export default function Payouts({
                         )}
                     </form>
                 )}
+                {canChangeSettings && <InstantSettings instant={instant} />}
                 {canChangeSettings && <RailSetup info={rail} />}
                 {runs.map((r) => (
                     <RunCard key={r.ulid} run={r} canApprove={canApprove} />
@@ -411,3 +426,74 @@ export default function Payouts({
 Payouts.layout = {
     breadcrumbs: [{ title: 'Payouts', href: '/finance/payouts' }],
 };
+
+function InstantSettings({ instant }: { instant: Props['instant'] }) {
+    const form = useForm({
+        enabled: instant.enabled,
+        flat: String(instant.flat_cents / 100),
+        percent: instant.percent,
+        min: String(instant.min_cents / 100),
+    });
+
+    return (
+        <form
+            className="flex flex-wrap items-center gap-2 rounded-lg border p-4 text-sm"
+            onSubmit={(e) => {
+                e.preventDefault();
+                form.post('/finance/get-paid-now', { preserveScroll: true });
+            }}
+        >
+            <label className="flex items-center gap-1">
+                <input
+                    type="checkbox"
+                    className="size-4"
+                    checked={form.data.enabled}
+                    onChange={(e) => form.setData('enabled', e.target.checked)}
+                />{' '}
+                Let agents get paid now
+            </label>
+            · fee $
+            <Input
+                aria-label="Flat fee ($)"
+                type="number"
+                min={0}
+                step="0.01"
+                className="w-24"
+                value={form.data.flat}
+                onChange={(e) => form.setData('flat', e.target.value)}
+            />
+            +{' '}
+            <Input
+                aria-label="Percent fee"
+                type="number"
+                min={0}
+                step="0.01"
+                className="w-20"
+                value={form.data.percent}
+                onChange={(e) => form.setData('percent', e.target.value)}
+            />
+            % · from $
+            <Input
+                aria-label="Minimum ($)"
+                type="number"
+                min={1}
+                className="w-24"
+                value={form.data.min}
+                onChange={(e) => form.setData('min', e.target.value)}
+            />
+            <Button type="submit" size="sm" variant="outline">
+                Save
+            </Button>
+            <span className="w-full text-xs text-muted-foreground">
+                Up to {usd(instant.limits.max_flat_cents)} +{' '}
+                {instant.limits.max_percent}% (RightAlly's limit). The fee is
+                the brokerage's income; set it to zero to make it free.
+            </span>
+            {Object.values(form.errors)[0] && (
+                <p role="alert" className="w-full text-destructive">
+                    {Object.values(form.errors)[0]}
+                </p>
+            )}
+        </form>
+    );
+}

@@ -36,7 +36,7 @@ final class PayoutRuns
     {
         $this->guardFinance($by);
         $db = DB::connection(Connections::cell());
-        if ($db->table('pay_runs')->whereIn('status', ['draft', 'approved'])->exists()) {
+        if ($db->table('pay_runs')->where('kind', 'regular')->whereIn('status', ['draft', 'approved'])->exists()) {
             throw ValidationException::withMessages(['run' => 'Finish or cancel the open payout run first.']);
         }
         $accounts = $this->accounts();
@@ -118,9 +118,11 @@ final class PayoutRuns
      *
      * @return array{nacha: string|null, positive_pay: string|null, checks: list<array<string, mixed>>}
      */
-    public function send(string $ulid, User $by): array
+    public function send(string $ulid, User $by, bool $system = false): array
     {
-        $this->guardFinance($by);
+        if (! $system) {
+            $this->guardFinance($by);
+        }
         $run = $this->run($ulid, 'approved');
         $settings = $this->settings();
         $db = DB::connection(Connections::cell());
@@ -139,7 +141,7 @@ final class PayoutRuns
             foreach ($lines->where('method', 'check') as $line) {
                 $db->table('pay_run_lines')->where('id', $line->id)->update(['check_number' => $next]);
                 $numbers[(int) $line->id] = $next;
-                $checks[] = ['number' => $next, 'name' => (string) $line->name, 'cents' => (int) $line->amount_cents, 'date' => $payOn->toDateString(), 'memo' => 'Commission'];
+                $checks[] = ['number' => $next, 'name' => (string) $line->name, 'cents' => (int) $line->amount_cents - (int) $line->fee_cents, 'date' => $payOn->toDateString(), 'memo' => 'Commission'];
                 $next++;
             }
             $db->table('pay_settings')->updateOrInsert(['tenant_id' => $this->tenants->id()], ['next_check_number' => $next, 'updated_at' => now(), 'created_at' => now()]);
@@ -152,19 +154,20 @@ final class PayoutRuns
                     if ($bank === null) {
                         throw ValidationException::withMessages(['run' => "{$line->name}'s bank account is no longer available; rebuild the run."]);
                     }
-                    $entries[] = ['name' => $bank['holder'], 'routing' => $bank['routing'], 'account' => $bank['account'], 'type' => $bank['type'], 'cents' => (int) $line->amount_cents, 'id' => (string) $line->user_id];
+                    $entries[] = ['name' => $bank['holder'], 'routing' => $bank['routing'], 'account' => $bank['account'], 'type' => $bank['type'], 'cents' => (int) $line->amount_cents - (int) $line->fee_cents, 'id' => (string) $line->user_id];
                 }
                 $nacha = Nacha::build(['company_name' => (string) $settings['company_name'], 'company_id' => (string) $settings['company_id'],
                     'odfi_routing' => (string) $settings['odfi_routing'], 'bank_name' => (string) $settings['bank_name']], $entries, $payOn, CarbonImmutable::now());
             }
             $positivePay = $checks === [] ? null : $this->positivePay($checks, $settings['operating_account']);
 
-            $journal = $this->post($ulid, $lines, $payOn);
+            // Instant (get paid now) runs were already posted when the agent confirmed.
+            $journal = $db->table('pay_runs')->where('ulid', $ulid)->value('journal_id') ?? $this->post($ulid, $lines, $payOn);
             $db->table('pay_runs')->where('id', $run['id'])->update(['status' => 'sent', 'sent_at' => now(), 'journal_id' => $journal,
                 'file_sha256' => $nacha !== null ? hash('sha256', $nacha) : null, 'updated_at' => now()]);
             $db->table('tx_referrals')->whereIn('id', $lines->where('payee_type', 'referral')->pluck('referral_id'))->update(['paid_at' => now()]);
             foreach ($lines->where('payee_type', 'agent') as $line) {
-                User::query()->find((int) $line->user_id)?->notify(new YouvePaid((int) $line->amount_cents, (string) $line->method, $payOn,
+                User::query()->find((int) $line->user_id)?->notify(new YouvePaid((int) $line->amount_cents - (int) $line->fee_cents, (string) $line->method, $payOn,
                     (int) $line->commission_cents, (int) $line->revenue_share_cents, $numbers[(int) $line->id] ?? null));
             }
             app(AuditLogger::class)->record('payouts.run.sent', metadata: ['run' => $ulid, 'rail' => $rail, 'ach' => $ach->count(), 'checks' => count($checks)], severity: 'warning');
@@ -203,7 +206,7 @@ final class PayoutRuns
                     $db->table('pay_payees')->insert(['tenant_id' => $this->tenants->id(), 'user_id' => $line->user_id, 'rail' => $rail->key(),
                         'bank_account_id' => $bank['id'], 'ref' => $payee, 'created_at' => now(), 'updated_at' => now()]);
                 }
-                $ref = $rail->pay((string) $payee, (int) $line->amount_cents, (bool) $runRow->same_day, 'rightally-line-'.$this->tenants->id().'-'.$line->id,
+                $ref = $rail->pay((string) $payee, (int) $line->amount_cents - (int) $line->fee_cents, (bool) $runRow->same_day, 'rightally-line-'.$this->tenants->id().'-'.$line->id,
                     'Commission '.$runRow->pay_on, $config);
                 $db->table('pay_run_lines')->where('id', $line->id)->update(['rail_ref' => $ref, 'rail_status' => 'submitted']);
                 DB::connection(Connections::control())->table('pay_rail_refs')->insertOrIgnore(['ref' => $ref, 'rail' => $rail->key(), 'tenant_id' => $this->tenants->id(), 'created_at' => now()]);
@@ -230,7 +233,10 @@ final class PayoutRuns
         }
         $accounts = $this->accounts();
         $draft = JournalDraft::make('payout_return', 'payout-return:'.$lineId)->effectiveOn(CarbonImmutable::now())->source('payout_line', (string) $lineId)
-            ->describe('Payment '.$status.' — returned to balance')->debit($accounts->account('1000'), Money::of((int) $line->amount_cents));
+            ->describe('Payment '.$status.' — returned to balance')->debit($accounts->account('1000'), Money::of((int) $line->amount_cents - (int) $line->fee_cents));
+        if ((int) $line->fee_cents > 0) {
+            $draft->debit($accounts->account('4100'), Money::of((int) $line->fee_cents)); // the fee is refunded
+        }
         if ((int) $line->commission_cents > 0) {
             $draft->credit($accounts->subAccount('2000', 'user', (int) $line->user_id, 'Commission payable'), Money::of((int) $line->commission_cents));
         }
@@ -249,7 +255,7 @@ final class PayoutRuns
     }
 
     /**
-     * @return array{company_name: string|null, company_id: string|null, odfi_routing: string|null, bank_name: string|null, operating_account: string|null, next_check_number: int}
+     * @return array{company_name: string|null, company_id: string|null, odfi_routing: string|null, bank_name: string|null, operating_account: string|null, next_check_number: int, instant_enabled: bool, instant_fee_flat_cents: int, instant_fee_percent: string, instant_min_cents: int}
      */
     public function settings(): array
     {
@@ -257,7 +263,9 @@ final class PayoutRuns
 
         return ['company_name' => $row?->company_name, 'company_id' => $row?->company_id, 'odfi_routing' => $row?->odfi_routing, 'bank_name' => $row?->bank_name,
             'operating_account' => $row?->operating_account_sealed !== null ? Crypt::decryptString((string) $row->operating_account_sealed) : null,
-            'next_check_number' => (int) ($row->next_check_number ?? 1001)];
+            'next_check_number' => (int) ($row->next_check_number ?? 1001), 'instant_enabled' => (bool) ($row->instant_enabled ?? false),
+            'instant_fee_flat_cents' => (int) ($row->instant_fee_flat_cents ?? 0), 'instant_fee_percent' => (string) ($row->instant_fee_percent ?? '0'),
+            'instant_min_cents' => (int) ($row->instant_min_cents ?? 10_000)];
     }
 
     public function saveSettings(string $companyName, string $companyId, string $odfiRouting, string $bankName, ?string $operatingAccount, ?int $nextCheck, User $by): void
@@ -296,7 +304,7 @@ final class PayoutRuns
     /**
      * @param  Collection<int, \stdClass>  $lines
      */
-    private function post(string $ulid, Collection $lines, CarbonImmutable $on): int
+    public function post(string $ulid, Collection $lines, CarbonImmutable $on): int
     {
         $accounts = $this->accounts();
         $draft = JournalDraft::make('payout', 'payout-run:'.$ulid)->effectiveOn($on)->source('payout_run', $ulid)->describe('Payout run '.$on->toDateString());
@@ -313,7 +321,11 @@ final class PayoutRuns
             }
             $total += (int) $l->amount_cents;
         }
-        $draft->credit($accounts->account('1000'), Money::of($total));
+        $fees = (int) $lines->sum(fn ($l): int => (int) $l->fee_cents);
+        $draft->credit($accounts->account('1000'), Money::of($total - $fees));
+        if ($fees > 0) {
+            $draft->credit($accounts->account('4100'), Money::of($fees)); // get-paid-now fees are the brokerage's income
+        }
 
         return app(LedgerService::class)->post($draft)->id;
     }
