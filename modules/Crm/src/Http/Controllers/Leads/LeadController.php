@@ -15,6 +15,7 @@ use Modules\Core\Identity\Enums\UserKind;
 use Modules\Crm\ContactVisibility;
 use Modules\Crm\CrmAccess;
 use Modules\Crm\Enums\Source;
+use Modules\Crm\Leads\AiResponder;
 use Modules\Crm\Leads\Attribution;
 use Modules\Crm\Leads\LeadRouting;
 use Modules\Crm\Leads\LeadSources;
@@ -100,6 +101,7 @@ final class LeadController
             'sourceOptions' => array_map(fn (Source $s): array => ['value' => $s->value, 'label' => SpeedToLead::sourceLabel($s->value)], Source::cases()),
             'channels' => Attribution::CHANNELS,
             'newKey' => $request->session()->get('lead_key'),
+            'ai' => app(AiResponder::class)->settings(),
         ]);
     }
 
@@ -107,6 +109,14 @@ final class LeadController
     {
         $routing->saveSettings($request->only(['respond_minutes', 'max_passes', 'fallback', 'fallback_user_id']), self::user($request));
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Lead settings saved.']);
+
+        return back();
+    }
+
+    public function saveAi(Request $request, AiResponder $ai): RedirectResponse
+    {
+        $ai->saveSettings($request->only(['enabled', 'assistant_name', 'tone', 'max_messages', 'sources', 'knowledge']), self::user($request));
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'AI assistant saved.']);
 
         return back();
     }
