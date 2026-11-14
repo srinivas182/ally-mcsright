@@ -98,9 +98,10 @@ it('records the journey without cookies, only for homes the brokerage may show, 
     vjBeacon($this, [['type' => 'page', 'path' => '/'], ['type' => 'search', 'query' => 'q=78704&beds=3&max_price=550000'], ['type' => 'listing', 'listing' => vjUlid(1)],
         ['type' => 'listing', 'listing' => str_repeat('Z', 26)], ['type' => 'hack', 'path' => '/x'], ['type' => 'listing', 'listing' => '<script>']]);
     $v = SiteVisitor::query()->sole();
-    expect($v->first_referrer)->toBe('https://chatgpt.com/')->and(SiteEvent::query()->pluck('type')->all())->toBe(['page', 'search', 'listing'])
-        ->and(SiteEvent::query()->where('type', 'listing')->sole()->data)->toBe(['label' => '101 Elm St, Austin', 'price' => 425000, 'beds' => 3, 'zip' => '78704'])
-        ->and(SiteEvent::query()->where('type', 'search')->sole()->data)->toBe(['q' => '78704', 'max_price' => 550000, 'beds' => 3]);
+    expect($v->first_referrer)->toBe('https://chatgpt.com/')->and(SiteEvent::query()->orderBy('id')->pluck('type')->all())->toBe(['page', 'search', 'listing'])
+        // MySQL keeps JSON keys in its own order, so compare as maps.
+        ->and(SiteEvent::query()->where('type', 'listing')->sole()->data)->toEqual(['label' => '101 Elm St, Austin', 'price' => 425000, 'beds' => 3, 'zip' => '78704'])
+        ->and(SiteEvent::query()->where('type', 'search')->sole()->data)->toEqual(['q' => '78704', 'max_price' => 550000, 'beds' => 3]);
 
     vjBeacon($this, [['type' => 'page', 'path' => '/about']], [], ['Sec-GPC' => '1']);
     vjBeacon($this, [['type' => 'page', 'path' => '/about']], [], ['User-Agent' => 'Googlebot/2.1']);

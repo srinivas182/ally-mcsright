@@ -57,7 +57,7 @@ final class LeadController
                 'response_minutes' => $l->response_seconds !== null ? round($l->response_seconds / 60, 1) : null, 'new_contact' => $l->new_contact,
                 'can_claim' => $l->status === 'offered' && in_array($user->id, $l->offered_to ?? [], true),
                 'score' => $l->score, 'score_label' => $l->score_label, 'score_reasons' => $l->score_reasons ?? [],
-                'journey' => $l->contact !== null && $visibility->canSee($user, $l->contact) ? ($journey[$l->contact_id] ?? null) : null,
+                'journey' => $l->contact !== null && $visibility->canSee($user, $l->contact) ? ($journey[$l->contact->id] ?? null) : null,
             ]),
             'review' => $manager ? Lead::query()->where('status', 'needs_review')->latest('id')->limit(20)->get()
                 ->map(fn (Lead $l): array => ['ulid' => $l->ulid, 'received' => $l->created_at->toIso8601String(), 'source' => SpeedToLead::sourceLabel($l->source), 'raw' => mb_substr((string) $l->raw, 0, 3000)]) : [],
