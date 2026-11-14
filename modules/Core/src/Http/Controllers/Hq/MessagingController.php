@@ -23,7 +23,9 @@ final class MessagingController
         return Inertia::render('hq/messaging', [
             'settings' => $settings->summary(),
             'tenants' => Tenant::query()->whereIn('status', [TenantStatus::Active, TenantStatus::Provisioning])->orderBy('name')->get(['id', 'ulid', 'name'])
-                ->map(fn (Tenant $t): array => ['ulid' => $t->ulid, 'name' => $t->name, 'sms' => $allowed[$t->id]['sms'] ?? false, 'voice' => $allowed[$t->id]['voice'] ?? false])->values(),
+                ->map(fn (Tenant $t): array => ['ulid' => $t->ulid, 'name' => $t->name, 'sms' => $allowed[$t->id]['sms'] ?? false, 'voice' => $allowed[$t->id]['voice'] ?? false,
+                    'number' => $allowed[$t->id]['number'] ?? null])->values(),
+            'webhook' => url('/webhooks/twilio/sms'),
         ]);
     }
 
@@ -41,8 +43,8 @@ final class MessagingController
 
     public function tenant(Request $request, Tenant $tenant, MessagingSettings $settings): RedirectResponse
     {
-        $data = $request->validate(['sms' => ['required', 'boolean'], 'voice' => ['required', 'boolean']]);
-        $settings->setTenant($tenant->id, (bool) $data['sms'], (bool) $data['voice']);
+        $data = $request->validate(['sms' => ['required', 'boolean'], 'voice' => ['required', 'boolean'], 'number' => ['nullable', 'string', 'max:20']]);
+        $settings->setTenant($tenant->id, (bool) $data['sms'], (bool) $data['voice'], $request->has('number') ? (string) ($data['number'] ?? '') : null);
 
         return back();
     }

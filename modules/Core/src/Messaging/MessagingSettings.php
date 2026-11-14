@@ -56,11 +56,61 @@ final class MessagingSettings
         app(AuditLogger::class)->record('hq.messaging.saved', metadata: ['sms' => $smsEnabled, 'voice' => $voiceEnabled, 'credentials_changed' => isset($values['credentials'])], severity: 'critical');
     }
 
-    public function setTenant(int $tenantId, bool $sms, bool $voice): void
+    /**
+     * @param  string|null  $number  the brokerage's own texting number; null keeps the current one, '' removes it
+     */
+    public function setTenant(int $tenantId, bool $sms, bool $voice, ?string $number = null): void
     {
-        DB::connection(Connections::control())->table('hq_messaging_tenants')->updateOrInsert(['tenant_id' => $tenantId],
-            ['sms' => $sms, 'voice' => $voice, 'updated_at' => now(), 'created_at' => now()]);
-        app(AuditLogger::class)->record('hq.messaging.tenant', metadata: ['tenant' => $tenantId, 'sms' => $sms, 'voice' => $voice], severity: 'notice');
+        $values = ['sms' => $sms, 'voice' => $voice, 'updated_at' => now(), 'created_at' => now()];
+        if ($number !== null) {
+            $number = trim($number);
+            if ($number !== '' && preg_match('/^\+1\d{10}$/', $number) !== 1) {
+                throw ValidationException::withMessages(['sms_number' => 'Use the +1 format, for example +15125550100.']);
+            }
+            if ($number !== '' && DB::connection(Connections::control())->table('hq_messaging_tenants')->where('sms_number', $number)->where('tenant_id', '!=', $tenantId)->exists()) {
+                throw ValidationException::withMessages(['sms_number' => 'Another brokerage already uses this number.']);
+            }
+            $values['sms_number'] = $number !== '' ? $number : null;
+        }
+        DB::connection(Connections::control())->table('hq_messaging_tenants')->updateOrInsert(['tenant_id' => $tenantId], $values);
+        app(AuditLogger::class)->record('hq.messaging.tenant', metadata: ['tenant' => $tenantId, 'sms' => $sms, 'voice' => $voice, 'number_changed' => $number !== null], severity: 'notice');
+    }
+
+    /** The number this brokerage texts from: its own, or the platform's. */
+    public function numberFor(int $tenantId): string
+    {
+        return $this->ownNumber($tenantId) ?? $this->smsFrom();
+    }
+
+    /** The brokerage's own number, if HQ gave it one (needed for sign codes: strangers text it first). */
+    public function ownNumber(int $tenantId): ?string
+    {
+        $own = DB::connection(Connections::control())->table('hq_messaging_tenants')->where('tenant_id', $tenantId)->value('sms_number');
+
+        return is_string($own) && $own !== '' ? $own : null;
+    }
+
+    /**
+     * Which brokerage a reply belongs to: the owner of the number it was sent to, else the brokerage that last
+     * texted this person from the shared number.
+     */
+    public function tenantForReply(string $from, string $to): ?int
+    {
+        $db = DB::connection(Connections::control());
+        $own = $db->table('hq_messaging_tenants')->where('sms_number', $to)->value('tenant_id');
+        if ($own !== null) {
+            return (int) $own;
+        }
+        $thread = $db->table('sms_threads')->where('contact_phone', $from)->where('from_number', $to)->value('tenant_id');
+
+        return $thread !== null ? (int) $thread : null;
+    }
+
+    /** Remembers who last texted this person from a number, so their reply finds its way back. */
+    public function remember(string $contactPhone, string $fromNumber, int $tenantId): void
+    {
+        DB::connection(Connections::control())->table('sms_threads')->updateOrInsert(['contact_phone' => $contactPhone, 'from_number' => $fromNumber],
+            ['tenant_id' => $tenantId, 'updated_at' => now(), 'created_at' => now()]);
     }
 
     /** Whether this brokerage may text (HQ switched texts on for the platform and for the brokerage). */
@@ -75,12 +125,12 @@ final class MessagingSettings
     }
 
     /**
-     * @return array<int, array{sms: bool, voice: bool}>
+     * @return array<int, array{sms: bool, voice: bool, number: ?string}>
      */
     public function tenants(): array
     {
         return DB::connection(Connections::control())->table('hq_messaging_tenants')->get()
-            ->mapWithKeys(fn ($r): array => [(int) $r->tenant_id => ['sms' => (bool) $r->sms, 'voice' => (bool) $r->voice]])->all();
+            ->mapWithKeys(fn ($r): array => [(int) $r->tenant_id => ['sms' => (bool) $r->sms, 'voice' => (bool) $r->voice, 'number' => $r->sms_number !== null ? (string) $r->sms_number : null]])->all();
     }
 
     /**

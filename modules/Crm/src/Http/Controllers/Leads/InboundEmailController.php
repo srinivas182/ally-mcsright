@@ -12,8 +12,10 @@ use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\Attributes\CrossTenantAccess;
 use Modules\Core\Tenancy\Models\Tenant;
 use Modules\Core\Tenancy\TenantContext;
+use Modules\Crm\Inbox\Inbox;
 use Modules\Crm\Leads\LeadIntake;
 use Modules\Crm\Leads\PortalEmail;
+use Modules\Crm\Models\Conversation;
 use Modules\Crm\Models\Lead;
 use Modules\Crm\Models\LeadSource;
 
@@ -34,6 +36,9 @@ final class InboundEmailController
 
         $recipients = implode(' ', array_filter([(string) $request->input('OriginalRecipient', ''), (string) $request->input('To', ''),
             ...array_map(static fn ($r): string => is_array($r) ? (string) ($r['Email'] ?? '') : '', (array) $request->input('ToFull', []))]));
+        if (preg_match('/reply-([A-Za-z0-9]{40})@/', $recipients, $r) === 1) {
+            return response()->json(['status' => $this->reply($request, $r[1], $tenants)]);
+        }
         if (preg_match('/leads-([A-Za-z0-9]{40})@/', $recipients, $m) !== 1) {
             return response()->json(['status' => 'ignored']);
         }
@@ -66,5 +71,26 @@ final class InboundEmailController
         });
 
         return response()->json(['status' => $status]);
+    }
+
+    /** A reply to an agent's email (sent with the conversation's reply address): into the inbox. */
+    private function reply(Request $request, string $token, TenantContext $tenants): string
+    {
+        $tenantId = DB::connection(Connections::control())->table('crm_inbound_addresses')->where('token', $token)->where('kind', 'reply')->value('tenant_id');
+        $tenant = $tenantId !== null ? Tenant::query()->whereKey($tenantId)->where('status', 'active')->first() : null;
+        if ($tenant === null) {
+            return 'ignored';
+        }
+
+        return $tenants->runAs($tenant, function () use ($request, $token): string {
+            $conversation = Conversation::query()->where('reply_token', $token)->with('contact')->first();
+            if ($conversation === null) {
+                return 'ignored';
+            }
+            app(Inbox::class)->receiveEmail($conversation, (string) $request->input('From', ''), (string) $request->input('Subject', ''),
+                (string) ($request->input('TextBody') ?: $request->input('HtmlBody', '')), (string) $request->input('MessageID', '') ?: null);
+
+            return 'received';
+        });
     }
 }

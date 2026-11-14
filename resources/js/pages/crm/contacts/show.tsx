@@ -597,6 +597,11 @@ export default function ContactShow({
                         canManage && (
                             <span className="flex flex-wrap gap-2">
                                 <Button variant="outline" size="sm" asChild>
+                                    <Link href={`/inbox/start/${contact.ulid}`}>
+                                        Message
+                                    </Link>
+                                </Button>
+                                <Button variant="outline" size="sm" asChild>
                                     <Link
                                         href={`/deals?contact=${contact.ulid}`}
                                     >

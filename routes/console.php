@@ -38,6 +38,7 @@ Schedule::command('crm:intelligence')->dailyAt('01:30')->onOneServer();
 // Lead ponds: uncontacted company leads return to the pond (specs/crm/01, differentiator 22).
 Schedule::command('crm:ponds')->hourly()->onOneServer();
 Schedule::command('crm:leads-reassign')->everyMinute()->withoutOverlapping()->onOneServer();
+Schedule::command('crm:inbox-sweep')->everyMinute()->withoutOverlapping()->onOneServer();
 // Audit log: seal any waiting events (specs/core/04).
 Schedule::command('audit:flush')->everyMinute()->withoutOverlapping()->onOneServer();
 // Audit retention (daily) and the owners' weekly security digest (Mondays).

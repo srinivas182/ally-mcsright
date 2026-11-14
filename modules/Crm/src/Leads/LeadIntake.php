@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Crm\Leads;
 
+use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
@@ -32,7 +33,7 @@ final class LeadIntake
     /**
      * @param  array<string, mixed>  $in
      */
-    public function receive(LeadSource $source, array $in, ?Request $request = null): Lead
+    public function receive(LeadSource $source, array $in, ?Request $request = null, ?User $assignTo = null): Lead
     {
         $email = mb_strtolower(trim((string) ($in['email'] ?? '')));
         $email = $email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL) !== false ? mb_substr($email, 0, 254) : null;
@@ -118,7 +119,12 @@ final class LeadIntake
         /** @var Lead $lead */
         $lead = app(AuditLogger::class)->asAutomation('lead_intake', null, 'Receive leads from '.$source->name, $run);
         if ($lead->status === 'new' && $lead->wasRecentlyCreated) {
-            $this->routing->route($lead);
+            // A sign code's lead goes to that listing's agent, unless the person already has an agent.
+            if ($assignTo !== null && $lead->contact?->owner_user_id === null) {
+                $this->routing->assign($lead, $assignTo, 'their sign');
+            } else {
+                $this->routing->route($lead);
+            }
         }
 
         return $lead->refresh();

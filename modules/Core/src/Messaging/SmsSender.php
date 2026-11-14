@@ -8,4 +8,9 @@ namespace Modules\Core\Messaging;
 interface SmsSender
 {
     public function send(string $to, string $message): void;
+
+    /**
+     * Sends from a given number (a brokerage's own number) and returns the provider's message id.
+     */
+    public function deliver(string $from, string $to, string $message): string;
 }

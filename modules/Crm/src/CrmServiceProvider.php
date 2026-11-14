@@ -56,6 +56,12 @@ final class CrmServiceProvider extends ServiceProvider
         $this->app->scoped(Leads\LeadSources::class);
         $this->app->scoped(Leads\SpeedToLead::class);
         $this->app->scoped(Leads\PortalEmail::class);
+        $this->app->scoped(Inbox\Inbox::class);
+        $this->app->scoped(Inbox\SendGuard::class);
+        $this->app->scoped(Inbox\SignCodes::class);
+        $this->app->scoped(Inbox\Templates::class);
+        $this->app->bind(Inbox\UnansweredRisks::class);
+        $this->app->tag([Inbox\UnansweredRisks::class], 'risk.sources');
         $this->app->scoped(Actions\MergeContacts::class);
     }
 
@@ -154,18 +160,21 @@ final class CrmServiceProvider extends ServiceProvider
         $features->declare(VoiceUpdates::QUICK_ADD, 'ai.crm_quick_add', 'Spoken quick add');
         $features->declare(DatabaseIntelligence::FEATURE, 'ai.crm_intents', 'Reading plans and dates from notes');
         $features->declare(Leads\PortalEmail::FEATURE, 'ai.crm_lead_email', 'Reading forwarded lead emails from any sender');
+        $features->declare(Inbox\Inbox::DRAFT, 'ai.crm_reply_draft', 'Suggested replies in the inbox');
 
         $this->app->make(NavigationRegistry::class)->add(new NavItem('Grow', 'Contacts', '/contacts', 'contact', 10,
             kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant], mobile: true));
         $this->app->make(NavigationRegistry::class)->add(new NavItem('Grow', 'Leads', '/leads', 'zap', 5,
             kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent], mobile: true));
+        $this->app->make(NavigationRegistry::class)->add(new NavItem('Grow', 'Inbox', '/inbox', 'inbox', 7,
+            kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant], mobile: true));
         $this->app->make(NavigationRegistry::class)->add(new NavItem('Overview', "Today's 10", '/today', 'target', 15,
             kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant], mobile: true));
         $this->app->make(NavigationRegistry::class)->add(new NavItem('Overview', 'Tasks', '/tasks', 'list-checks', 20,
             kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant], mobile: true));
 
         if ($this->app->runningInConsole()) {
-            $this->commands([SendTaskReminders::class, Console\RefreshBriefs::class, Console\RunPlans::class, Console\RunIntelligence::class, Console\SweepPonds::class, Console\ReassignLeads::class]);
+            $this->commands([SendTaskReminders::class, Console\RefreshBriefs::class, Console\RunPlans::class, Console\RunIntelligence::class, Console\SweepPonds::class, Console\ReassignLeads::class, Console\SweepInbox::class]);
         }
     }
 }

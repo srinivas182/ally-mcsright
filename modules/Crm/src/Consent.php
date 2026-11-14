@@ -28,7 +28,7 @@ final class Consent
 
     private const WRITTEN = ['web_form', 'signed'];
 
-    private const METHODS = ['web_form', 'signed', 'verbal'];
+    private const METHODS = ['web_form', 'signed', 'verbal', 'sms_keyword'];
 
     public function optInSms(Contact $contact, string $method, string $wording, ?User $by = null, ?Request $request = null): Contact
     {

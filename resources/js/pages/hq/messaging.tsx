@@ -14,11 +14,18 @@ type Props = {
         sms_enabled: boolean;
         voice_enabled: boolean;
     };
-    tenants: { ulid: string; name: string; sms: boolean; voice: boolean }[];
+    tenants: {
+        ulid: string;
+        name: string;
+        sms: boolean;
+        voice: boolean;
+        number: string | null;
+    }[];
+    webhook: string;
 };
 
 /** HQ: the Twilio account and numbers for texts and automated calls, and which brokerages may use them. */
-export default function HqMessaging({ settings, tenants }: Props) {
+export default function HqMessaging({ settings, tenants, webhook }: Props) {
     const form = useForm({
         sid: '',
         token: '',
@@ -148,8 +155,11 @@ export default function HqMessaging({ settings, tenants }: Props) {
                 <section className="grid gap-2 text-sm">
                     <h2 className="font-semibold">Brokerages</h2>
                     <p className="text-muted-foreground">
-                        Which brokerages may send deadline alerts by text and
-                        automated call. Agents still opt in themselves.
+                        Which brokerages may send texts and automated calls, and
+                        each brokerage's own texting number (leave empty to use
+                        the platform number). Agents still opt in themselves. In
+                        Twilio, set each number's incoming message webhook to{' '}
+                        <code className="break-all">{webhook}</code>.
                     </p>
                     <div className="overflow-x-auto rounded-lg border">
                         <table className="w-full min-w-[420px]">
@@ -158,6 +168,7 @@ export default function HqMessaging({ settings, tenants }: Props) {
                                     <th className="p-2">Brokerage</th>
                                     <th className="p-2">Texts</th>
                                     <th className="p-2">Calls</th>
+                                    <th className="p-2">Own number</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y">
@@ -198,6 +209,28 @@ export default function HqMessaging({ settings, tenants }: Props) {
                                                 </td>
                                             ),
                                         )}
+                                        <td className="p-2">
+                                            <input
+                                                aria-label={`${t.name} texting number`}
+                                                placeholder="+15125550100"
+                                                defaultValue={t.number ?? ''}
+                                                className="w-36 rounded border bg-background px-2 py-1"
+                                                onBlur={(e) =>
+                                                    e.target.value !==
+                                                        (t.number ?? '') &&
+                                                    router.post(
+                                                        `/hq/messaging/tenants/${t.ulid}`,
+                                                        {
+                                                            sms: t.sms,
+                                                            voice: t.voice,
+                                                            number: e.target
+                                                                .value,
+                                                        },
+                                                        opts,
+                                                    )
+                                                }
+                                            />
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>

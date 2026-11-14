@@ -66,3 +66,17 @@ it('switches texts and calls on for each brokerage', function (): void {
     $owner = app(TenantContext::class)->runAs($this->brokerage, fn () => User::factory()->owner()->create());
     $this->actingAs($owner)->get('http://jones.rightally.app/hq/messaging')->assertNotFound();
 });
+
+it('gives a brokerage its own texting number, once', function (): void {
+    $other = Tenant::factory()->withPlatformDomain()->create(['slug' => 'smith']);
+    $this->actingAs($this->admin)->post($this->hq.'/hq/messaging/tenants/'.$this->brokerage->ulid, ['sms' => true, 'voice' => false, 'number' => '512-555-0100'])->assertSessionHasErrors('sms_number');
+    $this->actingAs($this->admin)->post($this->hq.'/hq/messaging/tenants/'.$this->brokerage->ulid, ['sms' => true, 'voice' => false, 'number' => '+15125550100'])->assertSessionHasNoErrors();
+    $this->actingAs($this->admin)->post($this->hq.'/hq/messaging/tenants/'.$other->ulid, ['sms' => true, 'voice' => false, 'number' => '+15125550100'])->assertSessionHasErrors('sms_number');
+
+    $settings = app(MessagingSettings::class);
+    expect($settings->numberFor($this->brokerage->id))->toBe('+15125550100')->and($settings->tenantForReply('+15125550199', '+15125550100'))->toBe($this->brokerage->id)
+        ->and($settings->ownNumber($other->id))->toBeNull();
+    // Switching texts off keeps the number.
+    $this->actingAs($this->admin)->post($this->hq.'/hq/messaging/tenants/'.$this->brokerage->ulid, ['sms' => false, 'voice' => false]);
+    expect($settings->ownNumber($this->brokerage->id))->toBe('+15125550100');
+});

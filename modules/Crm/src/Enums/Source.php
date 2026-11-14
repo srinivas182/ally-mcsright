@@ -14,6 +14,7 @@ enum Source: string
     case Google = 'google';
     case Referral = 'referral';
     case OpenHouse = 'open_house';
+    case Sign = 'sign';
     case Sphere = 'sphere';
     case Import = 'import';
     case Manual = 'manual';
