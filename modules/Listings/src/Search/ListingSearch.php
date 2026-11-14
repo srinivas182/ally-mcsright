@@ -31,6 +31,9 @@ final class ListingSearch
     {
         $filters = self::clean($f);
         $query = $this->query($tenantId, $filters, $scope);
+        if ($filters['polygon'] !== null) {
+            $query->whereKey($this->insidePolygon(clone $query, $filters['polygon']));
+        }
         $total = (clone $query)->count();
         $rows = $query->with('source.rulesProfile')->forPage($filters['page'], $filters['per_page'])->get();
 
@@ -40,11 +43,91 @@ final class ListingSearch
             if ($shown !== null) {
                 $results[] = $shown + ['photo' => Photos::url($l->cover_path), 'reduced' => $l->original_list_price_cents !== null && $l->list_price_cents !== null
                     && $l->list_price_cents < $l->original_list_price_cents, 'listed' => $l->on_market_date?->toDateString(),
-                    'added_at' => $l->created_at?->toIso8601String(), 'price_changed_at' => $l->price_changed_at?->toIso8601String(), 'url' => self::publicUrl($l->ulid)];
+                    'added_at' => $l->created_at?->toIso8601String(), 'price_changed_at' => $l->price_changed_at?->toIso8601String(),
+                    'url' => self::publicUrl($l->ulid, self::label($shown))];
             }
         }
 
         return ['results' => $results, 'total' => $total, 'page' => $filters['page'], 'per_page' => $filters['per_page'], 'filters' => $filters];
+    }
+
+    /**
+     * Map pins for the same filters: listings whose address may be shown, newest first, capped so the map stays fast
+     * (the map clusters them). Each pin is [ulid, latitude, longitude, price in dollars, beds].
+     *
+     * @param  array<string, mixed>  $f
+     * @return array{pins: list<array{0: string, 1: float, 2: float, 3: int|null, 4: int|null}>, truncated: bool}
+     */
+    public function pins(int $tenantId, array $f, int $limit = 500, string $scope = 'idx'): array
+    {
+        $filters = self::clean($f);
+        $query = $this->query($tenantId, $filters, $scope)->where('address_display_allowed', true)->whereNotNull('latitude')->whereNotNull('longitude');
+        if ($filters['polygon'] !== null) {
+            $query->whereKey($this->insidePolygon(clone $query, $filters['polygon']));
+        }
+        $rows = $query->limit($limit + 1)->get(['id', 'ulid', 'latitude', 'longitude', 'list_price_cents', 'beds_total']);
+        $pins = [];
+        foreach ($rows->take($limit) as $l) {
+            $pins[] = [$l->ulid, round((float) $l->latitude, 6), round((float) $l->longitude, 6), $l->list_price_cents !== null ? intdiv($l->list_price_cents, 100) : null, $l->beds_total];
+        }
+
+        return ['pins' => $pins, 'truncated' => $rows->count() > $limit];
+    }
+
+    /**
+     * Ids of listings inside a drawn area: the area's bounding box narrows the query, then each point is tested
+     * against the polygon (ray casting). Capped at 5,000 candidates.
+     *
+     * @param  Builder<Listing>  $query
+     * @param  list<array{0: float, 1: float}>  $polygon  [latitude, longitude] points
+     * @return list<int>
+     */
+    private function insidePolygon(Builder $query, array $polygon): array
+    {
+        $lats = array_column($polygon, 0);
+        $lngs = array_column($polygon, 1);
+        if ($lats === [] || $lngs === []) {
+            return [];
+        }
+        $rows = $query->reorder()->whereBetween('latitude', [min($lats), max($lats)])->whereBetween('longitude', [min($lngs), max($lngs)])
+            ->where('address_display_allowed', true)->limit(5000)->get(['id', 'latitude', 'longitude']);
+        $ids = [];
+        foreach ($rows as $r) {
+            if (self::pointInPolygon((float) $r->latitude, (float) $r->longitude, $polygon)) {
+                $ids[] = $r->id;
+            }
+        }
+
+        return $ids;
+    }
+
+    /**
+     * @param  list<array{0: float, 1: float}>  $polygon
+     */
+    public static function pointInPolygon(float $lat, float $lng, array $polygon): bool
+    {
+        $inside = false;
+        $n = count($polygon);
+        for ($i = 0, $j = $n - 1; $i < $n; $j = $i++) {
+            [$yi, $xi] = $polygon[$i];
+            [$yj, $xj] = $polygon[$j];
+            if (($yi > $lat) !== ($yj > $lat) && $lng < ($xj - $xi) * ($lat - $yi) / (($yj - $yi) ?: 1e-12) + $xi) {
+                $inside = ! $inside;
+            }
+        }
+
+        return $inside;
+    }
+
+    /**
+     * Words for a listing's web address (street, city, state, ZIP; the street only when it may be shown).
+     *
+     * @param  array<string, mixed>  $shown  a presented listing
+     */
+    public static function label(array $shown): string
+    {
+        return trim(implode(' ', array_filter([$shown['address'] ?? null, $shown['city'] ?? null, $shown['state'] ?? null, $shown['postal_code'] ?? null],
+            fn ($v): bool => is_string($v) && $v !== '')));
     }
 
     /**
@@ -62,7 +145,9 @@ final class ListingSearch
         $history = DB::connection(Connections::listings())->table('listing_price_changes')->where('listing_id', $l->id)->orderBy('changed_at')->get()
             ->map(fn ($r): array => ['date' => substr((string) $r->changed_at, 0, 10), 'from' => $r->old_cents !== null ? intdiv((int) $r->old_cents, 100) : null, 'to' => intdiv((int) $r->new_cents, 100)])->all();
 
-        return $shown + ['photos' => Photos::forListing($l), 'price_history' => $history, 'listed' => $l->on_market_date?->toDateString()];
+        // The presenter's "photos" is a count; the detail page needs the photos themselves.
+        return [...$shown, 'photo_count' => $shown['photos'], 'photos' => Photos::forListing($l), 'price_history' => $history, 'listed' => $l->on_market_date?->toDateString(),
+            'photo' => Photos::url($l->cover_path), 'updated_at' => $l->modification_timestamp?->toIso8601String()];
     }
 
     /**
@@ -124,17 +209,21 @@ final class ListingSearch
         };
     }
 
-    /** The listing's page on the brokerage's public website, once the site engine provides one (Sprint 17C). */
-    public static function publicUrl(string $ulid): ?string
+    /**
+     * The listing's page on the brokerage's public website (bound by the Sites module): null when the brokerage has
+     * no live website. $label adds the address words to the link.
+     */
+    public static function publicUrl(string $ulid, ?string $label = null): ?string
     {
         $resolver = app()->bound('listings.public_url') ? app('listings.public_url') : null;
+        $url = is_callable($resolver) ? $resolver($ulid, $label) : null;
 
-        return is_callable($resolver) ? $resolver($ulid) : null;
+        return is_string($url) ? $url : null;
     }
 
     /**
      * @param  array<string, mixed>  $f
-     * @return array{q: string, min_price: int|null, max_price: int|null, beds: int|null, baths: int|null, min_sqft: int|null, types: list<string>, statuses: list<string>, bounds: list<float>|null, agent_mls_id: string|null, since: string|null, sort: string, page: int, per_page: int}
+     * @return array{q: string, min_price: int|null, max_price: int|null, beds: int|null, baths: int|null, min_sqft: int|null, types: list<string>, statuses: list<string>, bounds: list<float>|null, polygon: list<array{0: float, 1: float}>|null, agent_mls_id: string|null, since: string|null, sort: string, page: int, per_page: int}
      */
     public static function clean(array $f): array
     {
@@ -148,6 +237,18 @@ final class ListingSearch
                 $bounds = $b; // south, west, north, east
             }
         }
+        // A drawn area: "lat,lng;lat,lng;…" with 3 to 60 points.
+        $polygon = null;
+        if (is_string($f['poly'] ?? null) && preg_match('/^-?\d+(\.\d+)?,-?\d+(\.\d+)?(;-?\d+(\.\d+)?,-?\d+(\.\d+)?){2,59}$/', $f['poly']) === 1) {
+            $points = [];
+            foreach (explode(';', $f['poly']) as $pair) {
+                [$lat, $lng] = array_map('floatval', explode(',', $pair));
+                if (abs($lat) <= 90 && abs($lng) <= 180) {
+                    $points[] = [$lat, $lng];
+                }
+            }
+            $polygon = count($points) >= 3 ? $points : null;
+        }
         $since = null;
         if (is_string($f['since'] ?? null)) {
             try {
@@ -159,7 +260,7 @@ final class ListingSearch
 
         return ['q' => mb_substr(trim((string) (is_scalar($f['q'] ?? null) ? $f['q'] : '')), 0, 80), 'min_price' => $int('min_price', 1_000_000_000), 'max_price' => $int('max_price', 1_000_000_000),
             'beds' => $int('beds', 20), 'baths' => $int('baths', 20), 'min_sqft' => $int('min_sqft', 1_000_000), 'types' => $list('types'),
-            'statuses' => $statuses !== [] ? $statuses : ['Active', 'Coming Soon'], 'bounds' => $bounds,
+            'statuses' => $statuses !== [] ? $statuses : ['Active', 'Coming Soon'], 'bounds' => $bounds, 'polygon' => $polygon,
             'agent_mls_id' => is_string($f['agent_mls_id'] ?? null) && $f['agent_mls_id'] !== '' ? mb_substr($f['agent_mls_id'], 0, 30) : null, 'since' => $since,
             'sort' => in_array($f['sort'] ?? null, self::SORTS, true) ? (string) $f['sort'] : 'newest',
             'page' => max(1, min(500, (int) (is_numeric($f['page'] ?? null) ? $f['page'] : 1))), 'per_page' => max(1, min(48, (int) (is_numeric($f['per_page'] ?? null) ? $f['per_page'] : 24)))];

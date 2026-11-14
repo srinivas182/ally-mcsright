@@ -19,6 +19,13 @@ final class SitesServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(__DIR__.'/../config/sites.php', 'sites');
         $this->app->scoped(SiteSetup::class);
         $this->app->singleton(PoweredBy::class);
+        $this->app->scoped(Maps::class);
+        // Listing links in the back office, alerts and texts point at the brokerage's live website.
+        $this->app->bind('listings.public_url', fn ($app) => function (string $ulid, ?string $label = null) use ($app): ?string {
+            $host = $app->make(SiteSetup::class)->publicHost();
+
+            return $host !== null ? 'https://'.$host.Rendering\Urls::listing($ulid, $label) : null;
+        });
         $this->app->scoped(Http\SiteRouter::class);
     }
 

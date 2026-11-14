@@ -20,6 +20,7 @@ final class ListingsServiceProvider extends ServiceProvider
         $this->app->bindIf(Feed\ResoFeed::class, Feed\ResoWebApi::class);
         $this->app->scoped(Media\Photos::class);
         $this->app->scoped(Search\ListingSearch::class);
+        $this->app->scoped(Search\MarketStats::class);
         $this->app->scoped(Sync\ListingSync::class);
         $this->app->singleton(Access\MlsAccess::class);
     }
