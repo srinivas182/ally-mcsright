@@ -43,6 +43,13 @@ export default function ReviewQueue({ sla_hours, items }: Props) {
                 <PageHeader
                     title="Review queue"
                     description={`${items.length} waiting · reviews are due within ${sla_hours} hours of upload.`}
+                    actions={
+                        <Button variant="outline" asChild>
+                            <Link href="/deals/compliance">
+                                Compliance checks and rules
+                            </Link>
+                        </Button>
+                    }
                 />
                 <div className="flex flex-wrap items-center gap-2 text-sm">
                     <div

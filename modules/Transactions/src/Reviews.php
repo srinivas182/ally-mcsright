@@ -125,5 +125,8 @@ final class Reviews
     {
         $deal = Deal::query()->find($item->deal_id);
         app(AuditLogger::class)->record('transactions.item.reviewed', $deal, metadata: ['item' => $item->label, 'result' => $what] + $extra, label: $deal?->street);
+        if ($deal !== null) {
+            app(Compliance\ComplianceScan::class)->run($deal);
+        }
     }
 }

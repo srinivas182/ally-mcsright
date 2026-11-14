@@ -17,6 +17,8 @@ use Modules\Core\Support\Connections;
 use Modules\Crm\ContactVisibility;
 use Modules\Crm\Models\Contact;
 use Modules\Transactions\Cdas;
+use Modules\Transactions\Compliance\ComplianceScan;
+use Modules\Transactions\Compliance\Findings;
 use Modules\Transactions\Deals;
 use Modules\Transactions\Documents;
 use Modules\Transactions\EarnestMoney;
@@ -84,6 +86,11 @@ final class DealController
             'unsorted' => $all->filter(fn (Document $d): bool => $d->item_id === null)->map($doc)->values(),
             'facts' => DocIq::dealFacts($deal),
             'docAnswer' => $request->session()->get('docAnswer'),
+            'compliance' => $deal->getAttribute('compliance_scanned_at') === null ? (function () use ($deal): array {
+                app(ComplianceScan::class)->run($deal);
+
+                return Findings::forDeal($deal);
+            })() : Findings::forDeal($deal),
             'deposits' => app(EarnestMoney::class)->forDeal($deal),
             'referrals' => app(Referrals::class)->forDeal($deal),
             'cdas' => self::reviewer($user) ? app(Cdas::class)->forDeal($deal) : [],

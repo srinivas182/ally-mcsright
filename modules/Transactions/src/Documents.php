@@ -50,7 +50,9 @@ final class Documents
         app(AuditLogger::class)->record('transactions.document.uploaded', $deal, metadata: ['item' => $item?->label, 'filename' => $doc->filename, 'version' => $version], label: $deal->street);
         if (Reading\DocIq::readable($mime)) {
             DocumentReading::query()->create(['document_id' => $doc->id, 'status' => 'queued']);
-            Jobs\ReadDocument::dispatch($doc->id)->afterCommit();
+            Jobs\ReadDocument::dispatch($doc->id)->afterCommit(); // reads, then re-scans compliance
+        } else {
+            app(Compliance\ComplianceScan::class)->run($deal);
         }
 
         return $doc;

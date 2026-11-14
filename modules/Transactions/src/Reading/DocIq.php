@@ -17,6 +17,7 @@ use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Forms\Pdf;
 use Modules\Forms\Summaries;
+use Modules\Transactions\Compliance\ComplianceScan;
 use Modules\Transactions\Models\Deal;
 use Modules\Transactions\Models\Document;
 use Modules\Transactions\Models\DocumentReading;
@@ -85,6 +86,7 @@ final class DocIq
             $this->file($deal, $doc, $reading);
         }
         $this->requirements($deal, $doc, $pages);
+        app(ComplianceScan::class)->run($deal);
 
         return $reading;
     }
@@ -246,6 +248,7 @@ final class DocIq
             $applied++;
         }
         app(AuditLogger::class)->record('transactions.facts.applied', $deal, metadata: ['facts' => $names, 'by' => $by->id], label: $deal->street);
+        app(ComplianceScan::class)->run($deal);
 
         return $applied;
     }
