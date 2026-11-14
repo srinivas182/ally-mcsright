@@ -152,7 +152,7 @@ it('warns about sensitive numbers and wiring instructions, and makes a safe copy
     $this->ai->respond(factsJson());
     $this->actingAs($this->agent)->post("/deals/{$this->deal->ulid}/documents", ['file' => UploadedFile::fake()->createWithContent('Everything.pdf', combinedFile())]);
     $disclosure = Document::query()->where('filename', 'like', "Seller's disclosure%")->sole();
-    expect(DocumentReading::query()->where('document_id', $disclosure->id)->value('sensitive'))->toBe(['ssn' => 1, 'bank' => 2, 'dob' => 0, 'wire' => true]);
+    expect(DocumentReading::query()->where('document_id', $disclosure->id)->value('sensitive'))->toEqual(['ssn' => 1, 'bank' => 2, 'dob' => 0, 'wire' => true]); // MySQL JSON reorders keys
 
     $safe = $this->actingAs($this->agent)->get("/deals/documents/{$disclosure->ulid}/safe")->assertOk();
     expect($safe->headers->get('Content-Type'))->toBe('application/pdf')->and(pdfText((string) $safe->getContent()))->not->toContain('123-45-6789')->not->toContain('021000021');
