@@ -75,7 +75,7 @@ it('renders a crawlable search page with filters in the address and every listin
         ->toContain('content="index, follow, max-image-preview:large"')
         ->toContain('href="/homes/'.$k1->ulid.'/11-oak-st-austin-tx-78704"')->toContain('Listing courtesy of Acme Realty')
         ->toContain('Information deemed reliable but not guaranteed')->toContain('"@type":"SearchAction"')
-        ->toContain('>Homes for sale</a>')->not->toContain('mapbox-gl.js'); // no token: list only
+        ->toContain('>Homes for sale</a>')->not->toContain('data-map-open'); // no token: list only
 
     $filtered = (string) $this->get($this->web.'/homes?q=78704&beds=3&sort=price_desc&utm_source=x')->assertOk()->getContent();
     expect($filtered)->toContain('2 homes for sale in 78704')->toContain('content="noindex, follow"')
@@ -200,7 +200,9 @@ it('shows maps once HQ adds a Mapbox public token, and refuses secret tokens', f
 
     app()->forgetScopedInstances();
     $search = (string) $this->get($this->web.'/homes')->getContent();
-    expect($search)->toContain('mapbox-gl-js/v3.8.0/mapbox-gl.js')->toContain('data-mapbox="pk.eyJ1IjoicmlnaHRhbGx5In0.Zm9vYmFy"')->toContain('Draw an area');
+    // The map starts only when a visitor asks for it; the token comes from POST /_map (counted against the allowance).
+    expect($search)->toContain('data-mapbox="1"')->toContain('data-map-open')->toContain('Draw an area')->not->toContain('pk.eyJ1IjoicmlnaHRhbGx5In0');
+    $this->postJson($this->web.'/_map')->assertOk()->assertJson(['ok' => true, 'token' => 'pk.eyJ1IjoicmlnaHRhbGx5In0.Zm9vYmFy']);
     $l = idxListing('K1');
     expect((string) $this->get($this->web.'/homes/'.$l->ulid.'/11-oak-st-austin-tx-78704')->getContent())
         ->toContain('https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/pin-l+c9a45c(-97.75,30.21)');

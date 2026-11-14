@@ -40,11 +40,12 @@ final class CreditLedger
     }
 
     /**
-     * Charges an action once per idempotency key.
+     * Charges an action once per idempotency key. With $overdraw the charge always goes through (the balance may go
+     * below zero): for messages that must not be held back, such as security codes and deadline alerts.
      *
      * @throws InsufficientCredits
      */
-    public function charge(string $actionKey, ?int $userId, string $idempotencyKey, int $quantity = 1): int
+    public function charge(string $actionKey, ?int $userId, string $idempotencyKey, int $quantity = 1, bool $overdraw = false): int
     {
         $rate = $this->rates->rate($actionKey);
         $credits = $rate['credits'] * max(1, $quantity);
@@ -55,7 +56,7 @@ final class CreditLedger
         $automation = $rate['automation'] || $user === null;
         $usePoolFirst = $automation || in_array($user->kind, [UserKind::Owner, UserKind::Staff], true);
 
-        $enforce = $this->rates->enforced();
+        $enforce = $this->rates->enforced() && ! $overdraw;
 
         try {
             DB::connection(Connections::cell())->transaction(function () use ($credits, $actionKey, $userId, $idempotencyKey, $automation, $usePoolFirst, $user, $enforce): void {

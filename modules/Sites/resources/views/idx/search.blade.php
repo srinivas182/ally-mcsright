@@ -1,15 +1,9 @@
 @extends('sites::layout')
 
-@push('head')
-    @if ($chrome['mapbox'])
-        <link rel="preconnect" href="https://api.mapbox.com" crossorigin>
-        <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.css">
-    @endif
-@endpush
 
 @section('content')
 <div hidden data-track="search"></div>
-<main id="main" class="idx {{ $chrome['mapbox'] ? 'idx-has-map' : '' }}" data-search data-mapbox="{{ $chrome['mapbox'] }}" data-bounds="{{ $query['bounds'] ?? '' }}" data-poly="{{ $query['poly'] ?? '' }}">
+<main id="main" class="idx {{ $chrome['mapbox'] ? 'idx-has-map' : '' }}" data-search data-mapbox="{{ $chrome['mapbox'] ? '1' : '' }}" data-bounds="{{ $query['bounds'] ?? '' }}" data-poly="{{ $query['poly'] ?? '' }}">
     <form class="filters" action="/homes" method="get" role="search" data-filters>
         <label class="sr-only" for="f-q">City, ZIP, neighborhood or address</label>
         <input id="f-q" class="f-q" name="q" value="{{ $query['q'] ?? '' }}" placeholder="City, ZIP, neighborhood or address" enterkeyhint="search">
@@ -60,7 +54,11 @@
         @if ($chrome['mapbox'])
             <section class="idx-map" aria-label="Map of homes">
                 <div class="map" data-map></div>
-                <div class="map-tools">
+                <div class="map-placeholder" data-map-placeholder>
+                    <p data-map-note>See these homes on a map.</p>
+                    <button type="button" class="btn" data-map-open>Show the map</button>
+                </div>
+                <div class="map-tools" data-map-tools hidden>
                     <label class="map-chip"><input type="checkbox" data-follow checked> Search as I move the map</label>
                     <button type="button" class="map-chip" data-draw>Draw an area</button>
                     <button type="button" class="map-chip" data-clear-area @if (empty($query['poly']) && empty($query['bounds'])) hidden @endif>Clear area</button>
@@ -72,8 +70,5 @@
 @endsection
 
 @push('scripts')
-    @if ($chrome['mapbox'])
-        <script src="https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.js" defer></script>
-    @endif
-    <script src="/site-assets/search.js?v=1" defer></script>
+    <script src="/site-assets/search.js?v=2" defer></script>
 @endpush

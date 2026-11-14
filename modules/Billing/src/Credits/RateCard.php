@@ -39,6 +39,10 @@ final class RateCard
         'ai.doc_ask' => [1, false, 'DocIQ question'],
         'ai.compliance_rule' => [2, false, 'Deal-IQ rule'],
         'ai.ailly' => [1, true, 'AIlly assistant reply'],
+        // Beyond a package's monthly allowances (specs/billing/03).
+        'usage.text_segment' => [4, true, 'Text beyond the allowance (per segment)'],
+        'usage.call_minute' => [4, true, 'Call minute beyond the allowance'],
+        'usage.map_views_10' => [13, true, 'Website map views beyond the allowance (per 10)'],
     ];
 
     /**

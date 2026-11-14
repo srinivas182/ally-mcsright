@@ -75,6 +75,7 @@ final class CoreServiceProvider extends ServiceProvider
         $this->app->bindIf(DealOutcomes::class, NoDealOutcomes::class);
         $this->app->bindIf(VisitorJourneys::class, NoVisitorJourneys::class);
         $this->app->bindIf(AgentCredentials::class, NoAgentCredentials::class);
+        $this->app->bindIf(Usage\WebsiteMaps::class, Usage\UnlimitedWebsiteMaps::class);
         $this->app->bindIf(Messaging\SmsSender::class, function ($app): Messaging\SmsSender {
             $settings = $app->make(Messaging\MessagingSettings::class);
             $creds = $settings->credentials();

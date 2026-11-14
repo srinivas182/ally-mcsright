@@ -67,7 +67,7 @@ than the minimum margin, it emails every active HQ staff member with the action,
 the suggested credits. Typical causes are a provider raising prices, traffic moving to a fallback model, or
 larger uses.
 
-## Next (18A-2b)
+## Next: allowances (18A-2b, see 03-allowances.md)
 
 - Text and call allowances per package, with cost hints; going over uses credits.
 - Map loads counted per brokerage, with a fair-use allowance per package, HQ alerts, and interactive maps

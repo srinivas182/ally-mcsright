@@ -152,7 +152,8 @@ it('shows the consent quote and the menu meter', function (): void {
     $this->actingAs($this->agent)->getJson('/credits/quote?action=bad key')->assertUnprocessable();
 
     $this->actingAs($this->owner)->get('/settings/credits')->assertInertia(fn (Assert $page) => $page->component('settings/credits')
-        ->where('credits', ['available' => 20, 'total' => 40, 'used' => 20, 'scope' => 'brokerage', 'period' => '2026-06', 'enforced' => false])
+        ->where('credits', fn ($c) => collect($c)->except('usage')->all() == ['available' => 20, 'total' => 40, 'used' => 20, 'scope' => 'brokerage', 'period' => '2026-06', 'enforced' => false])
+        ->has('credits.usage.texts')
         ->where('manager', true)->where('usage.people.0', ['name' => $this->owner->name, 'credits' => 20])->has('agents', 1));
     $this->actingAs($this->agent)->get('/settings/credits')->assertInertia(fn (Assert $page) => $page->where('manager', false)->missing('agents')
         ->where('credits.scope', 'you')->where('credits.available', 20));

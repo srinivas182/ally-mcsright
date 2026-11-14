@@ -8,6 +8,7 @@ use Inertia\Middleware;
 use Laravel\Fortify\Features;
 use Modules\Billing\Credits\CreditLedger;
 use Modules\Billing\PaymentSettings;
+use Modules\Billing\Usage\UsageMeter;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Identity\Impersonation;
 use Modules\Core\Identity\Security\TwoFactorPolicy;
@@ -99,7 +100,10 @@ class HandleInertiaRequests extends Middleware
                     return null;
                 }
 
-                return app(CreditLedger::class)->meter($user);
+                $meter = app(CreditLedger::class)->meter($user);
+
+                // Owners and staff also see this month's included texts, call minutes and map views.
+                return $meter['scope'] === 'brokerage' ? $meter + ['usage' => app(UsageMeter::class)->summary()] : $meter;
             },
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];

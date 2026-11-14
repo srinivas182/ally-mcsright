@@ -40,6 +40,9 @@ final class HqCreditsController
             ->selectRaw('tenant_id, -sum(amount) as credits')->groupBy('tenant_id')->orderByDesc('credits')->limit(50)->get();
         $tenants = Tenant::query()->whereIn('id', $used->pluck('tenant_id'))->pluck('name', 'id');
         $packages = Package::query()->orderBy('monthly_cents')->get();
+        $catalog = $this->economics->catalogCosts();
+        $covered = DB::connection(Connections::control())->table('usage_tenant_policies')->where('maps_covered', true)->pluck('tenant_id')->map(fn ($id): int => (int) $id)->all();
+        $mapViews = DB::connection(Connections::cell())->table('usage_meters')->where('period', $period)->where('meter', 'maps')->pluck('used', 'tenant_id');
 
         return Inertia::render('hq/credits', [
             'credit_value_microcents' => $this->rates->creditValueMicrocents(),
@@ -53,9 +56,13 @@ final class HqCreditsController
                     'cost_microcents' => (int) $c->cost_microcents, 'free_units_monthly' => (int) $c->free_units_monthly, 'note' => $c->note !== null ? (string) $c->note : null,
                     'source_url' => $c->source_url !== null ? (string) $c->source_url : null, 'checked_at' => $c->checked_at !== null ? (string) $c->checked_at : null])->values(),
             'packages' => $packages->map(fn (Package $p): array => ['id' => $p->ulid, 'name' => $p->name, 'monthly_cents' => $p->monthly_cents, 'active' => (bool) $p->active,
-                'margin_override_reason' => $p->getAttribute('margin_override_reason')] + $this->economics->packagePlan($p))->values(),
+                'margin_override_reason' => $p->getAttribute('margin_override_reason'), 'included_text_segments' => (int) $p->getAttribute('included_text_segments'),
+                'included_call_minutes' => (int) $p->getAttribute('included_call_minutes'), 'included_map_views' => (int) $p->getAttribute('included_map_views')]
+                + $this->economics->packagePlan($p))->values(),
+            'unit_costs' => ['texts' => $catalog['twilio.sms_segment'] ?? 0, 'calls' => $catalog['twilio.call_minute'] ?? 0, 'maps' => $catalog['mapbox.map_load'] ?? 0],
             'top_usage' => $used->map(fn (object $r): array => ['tenant' => $tenants[$r->tenant_id] ?? 'Unknown', 'credits' => (int) $r->credits])->values(),
-            'tenants' => Tenant::query()->where('type', '!=', 'hq')->orderBy('name')->get(['ulid', 'name'])->map(fn (Tenant $t): array => ['ulid' => $t->ulid, 'name' => $t->name])->values(),
+            'tenants' => Tenant::query()->where('type', '!=', 'hq')->orderBy('name')->get(['id', 'ulid', 'name'])->map(fn (Tenant $t): array => ['ulid' => $t->ulid, 'name' => $t->name,
+                'maps_covered' => in_array($t->id, $covered, true), 'map_views' => (int) ($mapViews[$t->id] ?? 0)])->values(),
             'period' => $period,
         ]);
     }
@@ -79,6 +86,9 @@ final class HqCreditsController
     public function goLive(Request $request): RedirectResponse
     {
         $by = self::user($request);
+        if (! $this->economics->aiPriced()) {
+            throw ValidationException::withMessages(['enforce' => 'Add AI models and their prices in HQ → AI gateway first, so credits can be priced.']);
+        }
         $all = $request->boolean('replace_existing');
         $changed = [];
         foreach (Package::query()->where('active', true)->get() as $package) {
@@ -168,21 +178,42 @@ final class HqCreditsController
         return back();
     }
 
-    /** Sets a package's included credits. Below the minimum margin for a typical customer it needs a reason. */
+    /**
+     * Sets a package's included credits and its monthly texts, call minutes and map views. Below the minimum margin
+     * for a typical customer it needs a reason.
+     */
     public function packageCredits(Request $request, Package $package): RedirectResponse
     {
-        $data = $request->validate(['included_credits' => ['required', 'integer', 'min:0', 'max:10000000'], 'reason' => ['nullable', 'string', 'max:255']]);
+        $data = $request->validate(['included_credits' => ['required', 'integer', 'min:0', 'max:10000000'], 'reason' => ['nullable', 'string', 'max:255'],
+            'included_text_segments' => ['sometimes', 'integer', 'min:0', 'max:10000000'], 'included_call_minutes' => ['sometimes', 'integer', 'min:0', 'max:1000000'],
+            'included_map_views' => ['sometimes', 'integer', 'min:0', 'max:100000000']]);
         $credits = (int) $data['included_credits'];
+        $allowances = array_map('intval', array_intersect_key($data, array_flip(['included_text_segments', 'included_call_minutes', 'included_map_views'])));
+        $package->forceFill($allowances); // priced in the plan below; saved only if accepted
         $plan = $this->economics->packagePlan($package, $credits);
         $reason = trim((string) ($data['reason'] ?? ''));
         if ($plan['below_floor'] && mb_strlen($reason) < 10) {
             throw ValidationException::withMessages(['reason' => 'At '.number_format($credits).' credits this package\'s margin is '.$plan['typical_margin_pct'].'%, below your minimum of '
                 .$this->rates->margins()['floor'].'%. Lower the credits, or give a reason (at least 10 characters).']);
         }
-        $old = (int) $package->getAttribute('included_credits');
+        $old = (int) $package->getOriginal('included_credits');
         $package->forceFill(['included_credits' => $credits, 'margin_override_reason' => $plan['below_floor'] ? $reason : null])->save();
         app(AuditLogger::class)->record('billing.package.credits', changes: ['included_credits' => ['old' => $old, 'new' => $credits]],
-            metadata: ['package' => $package->name, 'margin_pct' => $plan['typical_margin_pct'], 'reason' => $plan['below_floor'] ? $reason : null], severity: $plan['below_floor'] ? 'warning' : 'notice');
+            metadata: ['package' => $package->name, 'allowances' => $allowances, 'margin_pct' => $plan['typical_margin_pct'], 'reason' => $plan['below_floor'] ? $reason : null],
+            severity: $plan['below_floor'] ? 'warning' : 'notice');
+
+        return back();
+    }
+
+    /** Lets RightAlly cover a brokerage's map views beyond its allowance (no credits charged for them). */
+    public function mapsCovered(Request $request, string $tenant): RedirectResponse
+    {
+        $by = self::user($request);
+        $covered = $request->boolean('covered');
+        $t = Tenant::query()->where('ulid', $tenant)->where('type', '!=', 'hq')->firstOrFail();
+        DB::connection(Connections::control())->table('usage_tenant_policies')->updateOrInsert(['tenant_id' => $t->id],
+            ['maps_covered' => $covered, 'updated_by' => $by->id, 'updated_at' => now(), 'created_at' => now()]);
+        app(AuditLogger::class)->record('billing.usage.maps_covered', metadata: ['tenant' => $t->name, 'covered' => $covered], severity: 'notice');
 
         return back();
     }

@@ -16,6 +16,7 @@ export type CreditMeterData = {
     scope: 'brokerage' | 'you';
     period: string;
     enforced: boolean;
+    usage?: Record<string, { used: number; included: number; label: string }>;
 };
 
 /** "This month: 60/100 credits" with a small bar, at the foot of the menu. Links to Settings → Credits. */
@@ -79,6 +80,21 @@ export function CreditMeter() {
                                         className="h-1.5"
                                         aria-hidden="true"
                                     />
+                                )}
+                                {credits.usage && (
+                                    <span className="text-[11px] text-muted-foreground">
+                                        {Object.entries(credits.usage)
+                                            .filter(
+                                                ([, u]) =>
+                                                    u.included > 0 ||
+                                                    u.used > 0,
+                                            )
+                                            .map(
+                                                ([key, u]) =>
+                                                    `${key === 'texts' ? 'Texts' : key === 'calls' ? 'Call min' : 'Map views'} ${u.used.toLocaleString()}/${u.included.toLocaleString()}`,
+                                            )
+                                            .join(' · ')}
+                                    </span>
                                 )}
                                 {!usageOnly && credits.available <= 0 && (
                                     <span className="text-xs text-destructive">

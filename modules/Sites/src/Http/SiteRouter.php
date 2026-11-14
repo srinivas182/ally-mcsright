@@ -45,6 +45,7 @@ final class SiteRouter
         $r->post('_me/favourites', [VisitorController::class, 'favourite']);
         $r->post('_me/searches', [VisitorController::class, 'saveSearch']);
         $r->get('_search', [IdxController::class, 'results']);
+        $r->post('_map', [IdxController::class, 'openMap']);
         $r->get('homes/{listing}/{slug?}', [IdxController::class, 'listing'])->where(['listing' => '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}', 'slug' => '[a-z0-9-]{0,140}']);
         $r->get('blog', [BlogController::class, 'index']);
         $r->get('blog/feed.xml', [BlogController::class, 'feed']);
