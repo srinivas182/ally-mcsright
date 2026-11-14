@@ -86,6 +86,8 @@ function FixButton({
             return link('/finance/receipts');
         case 'title':
             return link('/settings/transactions');
+        case 'dates':
+            return link('#key-dates');
         case 'apply_fact':
             return (
                 <Button

@@ -12,12 +12,15 @@ use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Core\Identity\Enums\UserKind;
+use Modules\Core\Messaging\MessagingSettings;
 use Modules\Core\Support\Connections;
+use Modules\Core\Tenancy\TenantContext;
 use Modules\Transactions\Compliance\Checks;
 use Modules\Transactions\Compliance\ComplianceScan;
 use Modules\Transactions\Compliance\Evidence;
 use Modules\Transactions\Compliance\Findings;
 use Modules\Transactions\Compliance\Rules;
+use Modules\Transactions\Deadlines\Deadlines;
 use Modules\Transactions\Models\Deal;
 use Modules\Transactions\Models\Document;
 
@@ -80,6 +83,8 @@ final class ComplianceController
             'checks' => collect(Checks::settings())->map(fn (array $s, string $code): array => ['code' => $code, 'label' => Checks::CATALOG[$code][0],
                 'default' => Checks::CATALOG[$code][1], 'enabled' => $s['enabled'], 'severity' => $s['severity'],
                 'stats' => $accuracy[$code] ?? ['fixed' => 0, 'dismissed' => 0, 'open' => 0, 'accuracy' => null, 'review' => false]])->values(),
+            'deadlines' => app(Deadlines::class)->settings(),
+            'messaging' => ['sms' => app(MessagingSettings::class)->smsFor(app(TenantContext::class)->id()), 'voice' => app(MessagingSettings::class)->voiceFor(app(TenantContext::class)->id())],
             'rules' => $db->table('tx_compliance_rules')->orderByDesc('id')->get(['ulid', 'text', 'summary', 'active', 'confirmed_at']),
             'rule_stats' => $accuracy['rule'] ?? null,
             'submitted' => $db->table('tx_deals')->whereNotNull('file_submitted_at')->whereNull('closed_on')->orderBy('file_submitted_at')->limit(50)

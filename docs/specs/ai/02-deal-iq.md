@@ -88,6 +88,27 @@ wire-instruction detection with payout holds.
   reason; a manual payout run that pays an agent with a held deal shows the hold and can only be approved with a
   written override (audited as critical). The hold is shown on the deal.
 
+## Delivered in Sprint 15D — deadlines that cannot be missed
+
+- **Escalation ladder** for every open key date (brokerage settings on the compliance page): the email digest
+  (default 2 days before), a **text** the day before and on the day, an **automated voice call** on the day, and
+  an email to the broker (owners and staff who review files) when a date is missed. Blockers still open within
+  48 hours of closing (configurable) also go to the broker, once per finding. Each alert is sent once.
+- **Texts and calls are configured in RightAlly HQ** (Texts and calls): the Twilio account (stored encrypted,
+  never shown again; the password is asked first), the numbers to send and call from, the platform switches and
+  a per-brokerage switch. Agents opt in themselves (consent is recorded with the time and audited) and need a
+  mobile number; nothing is sent between 9pm and 8am in the brokerage's time zone.
+- **At-risk prediction** (part of the continuous scan): missed dates (blocker), a financing deadline within six
+  days with no appraisal, an inspection or option deadline within two days with no inspection report, closing
+  within a week with no closing disclosure or settlement statement, and earnest money past its due date. Within
+  two days they become blockers. Each opens the deal's key dates.
+- **At risk today** on the agent's deals page, and a **private calendar feed** of key dates and closings
+  (Google, Outlook, Apple; a new link cancels the old one).
+- **Broker risk register** (Deals → Risk, protect/01 first version): every open risk with level, owner and due
+  date, an 8-week trend and a CSV export for E&O insurers (spreadsheet-formula safe, audited).
+- Scheduled: `transactions:escalate` hourly, `transactions:scan-open` daily (re-scans open deals so date
+  risks appear without anyone opening the deal).
+
 ## Market review (November 2026)
 
 | Capability                                                   | ProxiClose | Transaction Wingman | Deal-IQ                                                 |

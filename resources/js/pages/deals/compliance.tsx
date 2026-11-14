@@ -28,6 +28,14 @@ type Props = {
         confirmed_at: string | null;
     }[];
     rule_stats: Stats | null;
+    deadlines: {
+        email_days: number;
+        text_days: number;
+        call_on_due: boolean;
+        broker_on_missed: boolean;
+        closing_blocker_hours: number;
+    };
+    messaging: { sms: boolean; voice: boolean };
     submitted: {
         ulid: string;
         street: string;
@@ -49,8 +57,11 @@ export default function ComplianceSettings({
     rule_stats,
     submitted,
     at_risk,
+    deadlines,
+    messaging,
 }: Props) {
     const draft = useForm({ text: '' });
+    const ladder = useForm(deadlines);
     const opts = { preserveScroll: true };
     const save = (code: string, enabled: boolean, severity: string) =>
         router.post(
@@ -130,6 +141,116 @@ export default function ComplianceSettings({
                         </ul>
                     </section>
                 )}
+
+                <section className="grid gap-2 rounded-lg border p-4 text-sm">
+                    <h2 className="font-semibold">Deadline alerts</h2>
+                    <p className="text-muted-foreground">
+                        How Deal-IQ chases every key date. Texts and calls go
+                        only to agents who opted in, between 8am and 9pm.
+                        {!messaging.sms && !messaging.voice
+                            ? ' Texts and calls are not switched on for your brokerage yet (RightAlly HQ).'
+                            : ''}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-3">
+                        <label className="flex items-center gap-2">
+                            Email digest
+                            <input
+                                type="number"
+                                min={0}
+                                max={14}
+                                aria-label="Email days before"
+                                className="w-16 rounded border bg-background px-2 py-1"
+                                value={ladder.data.email_days}
+                                onChange={(e) =>
+                                    ladder.setData(
+                                        'email_days',
+                                        Number(e.target.value),
+                                    )
+                                }
+                            />
+                            days before
+                        </label>
+                        <label className="flex items-center gap-2">
+                            Text
+                            <input
+                                type="number"
+                                min={0}
+                                max={7}
+                                aria-label="Text days before"
+                                className="w-16 rounded border bg-background px-2 py-1"
+                                value={ladder.data.text_days}
+                                onChange={(e) =>
+                                    ladder.setData(
+                                        'text_days',
+                                        Number(e.target.value),
+                                    )
+                                }
+                            />
+                            days before (and on the day)
+                        </label>
+                        <label className="flex items-center gap-2">
+                            <input
+                                type="checkbox"
+                                className="size-4"
+                                checked={ladder.data.call_on_due}
+                                onChange={(e) =>
+                                    ladder.setData(
+                                        'call_on_due',
+                                        e.target.checked,
+                                    )
+                                }
+                            />
+                            Automated call on the day
+                        </label>
+                        <label className="flex items-center gap-2">
+                            <input
+                                type="checkbox"
+                                className="size-4"
+                                checked={ladder.data.broker_on_missed}
+                                onChange={(e) =>
+                                    ladder.setData(
+                                        'broker_on_missed',
+                                        e.target.checked,
+                                    )
+                                }
+                            />
+                            Tell the broker when a date is missed
+                        </label>
+                        <label className="flex items-center gap-2">
+                            Blockers within
+                            <input
+                                type="number"
+                                min={0}
+                                max={240}
+                                aria-label="Hours before closing"
+                                className="w-20 rounded border bg-background px-2 py-1"
+                                value={ladder.data.closing_blocker_hours}
+                                onChange={(e) =>
+                                    ladder.setData(
+                                        'closing_blocker_hours',
+                                        Number(e.target.value),
+                                    )
+                                }
+                            />
+                            hours of closing go to the broker
+                        </label>
+                    </div>
+                    <Button
+                        size="sm"
+                        className="justify-self-start"
+                        disabled={ladder.processing}
+                        onClick={() =>
+                            ladder.post('/deals/compliance/deadlines', opts)
+                        }
+                    >
+                        Save alerts
+                    </Button>
+                    {Object.values(ladder.errors)[0] && (
+                        <p role="alert" className="text-destructive">
+                            {Object.values(ladder.errors)[0]}
+                        </p>
+                    )}
+                </section>
 
                 <section className="grid gap-2 text-sm">
                     <h2 className="font-semibold">Your rules</h2>

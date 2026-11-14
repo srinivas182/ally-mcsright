@@ -4,6 +4,11 @@ import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+    AtRisk,
+    type AlertPrefs,
+    type AtRiskItem,
+} from '@/components/deals/at-risk';
 import { PageHeader } from '@/components/ui/page-header';
 import { usd } from '@/lib/cents';
 
@@ -34,6 +39,8 @@ type Props = {
     deals: Deal[];
     canCreateFor: { ulid: string; name: string }[];
     forecast?: Forecast;
+    atRisk: AtRiskItem[];
+    alerts: AlertPrefs;
 };
 
 const columns: [string, string][] = [
@@ -52,7 +59,13 @@ const typeLabel: Record<string, string> = {
 };
 
 /** The deal pipeline. */
-export default function Deals({ deals, canCreateFor, forecast }: Props) {
+export default function Deals({
+    deals,
+    canCreateFor,
+    forecast,
+    atRisk,
+    alerts,
+}: Props) {
     const params = new URLSearchParams(
         typeof window !== 'undefined' ? window.location.search : '',
     );
@@ -82,6 +95,7 @@ export default function Deals({ deals, canCreateFor, forecast }: Props) {
                         </Button>
                     }
                 />
+                <AtRisk items={atRisk} alerts={alerts} />
                 {forecast && (
                     <section className="grid gap-2 rounded-lg border p-4 text-sm">
                         <p className="font-medium">
