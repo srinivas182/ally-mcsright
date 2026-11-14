@@ -21,6 +21,9 @@ type Lead = {
     response_minutes: number | null;
     new_contact: boolean;
     can_claim: boolean;
+    score: number | null;
+    score_label: 'hot' | 'warm' | 'cold' | null;
+    score_reasons: string[];
 };
 type Props = {
     leads: Lead[];
@@ -80,6 +83,7 @@ export default function Leads({
 }: Props) {
     const opts = { preserveScroll: true };
     const [away, setAway] = useState('4');
+    const [byScore, setByScore] = useState(false);
     const save = (texts: boolean, calls: boolean, awayHours?: number | null) =>
         router.post(
             '/leads/alerts',
@@ -106,11 +110,18 @@ export default function Leads({
                     description="Every new lead, who has it and how fast they were contacted. Unanswered leads move to the next agent."
                     actions={
                         canManage ? (
-                            <Button variant="outline" asChild>
-                                <Link href="/leads/settings">
-                                    Sources and routing
-                                </Link>
-                            </Button>
+                            <span className="flex flex-wrap gap-2">
+                                <Button variant="outline" asChild>
+                                    <Link href="/leads/report">
+                                        Return on spend and speed
+                                    </Link>
+                                </Button>
+                                <Button variant="outline" asChild>
+                                    <Link href="/leads/settings">
+                                        Sources and routing
+                                    </Link>
+                                </Button>
+                            </span>
                         ) : undefined
                     }
                 />
@@ -149,9 +160,20 @@ export default function Leads({
                 )}
 
                 <section className="grid gap-2 text-sm">
-                    <h2 className="font-semibold">
-                        {canManage ? 'All leads' : 'Your leads'}
-                    </h2>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <h2 className="font-semibold">
+                            {canManage ? 'All leads' : 'Your leads'}
+                        </h2>
+                        <label className="ml-auto flex items-center gap-2 text-xs">
+                            <input
+                                type="checkbox"
+                                className="size-4"
+                                checked={byScore}
+                                onChange={(e) => setByScore(e.target.checked)}
+                            />
+                            Hottest first
+                        </label>
+                    </div>
                     {leads.length === 0 ? (
                         <EmptyState
                             title="No leads yet"
@@ -163,7 +185,13 @@ export default function Leads({
                         />
                     ) : (
                         <ul className="divide-y rounded-lg border">
-                            {leads.map((l) => (
+                            {(byScore
+                                ? [...leads].sort(
+                                      (a, b) =>
+                                          (b.score ?? -1) - (a.score ?? -1),
+                                  )
+                                : leads
+                            ).map((l) => (
                                 <li
                                     key={l.ulid}
                                     className={`grid gap-1 p-3 ${focus === l.ulid ? 'bg-muted' : ''}`}
@@ -191,6 +219,25 @@ export default function Leads({
                                         >
                                             {statusLabels[l.status] ?? l.status}
                                         </Badge>
+                                        {l.score !== null && (
+                                            <Badge
+                                                variant={
+                                                    l.score_label === 'hot'
+                                                        ? 'destructive'
+                                                        : 'outline'
+                                                }
+                                                title={l.score_reasons.join(
+                                                    ' · ',
+                                                )}
+                                            >
+                                                {l.score_label === 'hot'
+                                                    ? 'Hot'
+                                                    : l.score_label === 'warm'
+                                                      ? 'Warm'
+                                                      : 'Cold'}{' '}
+                                                {l.score}
+                                            </Badge>
+                                        )}
                                         {!l.new_contact && (
                                             <Badge variant="outline">
                                                 Returning contact
@@ -208,6 +255,14 @@ export default function Leads({
                                             ? ` · contacted in ${l.response_minutes} min`
                                             : ''}
                                     </p>
+                                    {l.score_reasons.length > 0 && (
+                                        <p className="text-xs text-muted-foreground">
+                                            Why:{' '}
+                                            {l.score_reasons
+                                                .slice(0, 3)
+                                                .join(' · ')}
+                                        </p>
+                                    )}
                                     {l.message && (
                                         <p className="italic">“{l.message}”</p>
                                     )}

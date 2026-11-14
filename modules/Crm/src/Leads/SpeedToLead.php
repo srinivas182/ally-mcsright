@@ -70,6 +70,20 @@ final class SpeedToLead
         }
     }
 
+    /** A text to an agent who opted in to lead texts (8am–9pm brokerage time, when HQ allows texts). */
+    public function textAgent(User $agent, string $text): void
+    {
+        $p = $this->prefsFor([$agent->id])[$agent->id] ?? null;
+        if ($p === null || $p->texts_consent_at === null || $agent->phone === null || $agent->phone === '' || ! $this->awake() || ! $this->messaging->smsFor($this->tenants->id())) {
+            return;
+        }
+        try {
+            app(SmsSender::class)->send($agent->phone, $text);
+        } catch (\Throwable $e) {
+            report($e);
+        }
+    }
+
     public function movedOn(Lead $lead, User $agent): void
     {
         $agent->notify(new LeadAlert('A lead moved to another agent', self::summary($lead).': nobody reached out in time, so it went to the next agent.', $this->link('/leads'), 'See your leads'));

@@ -16,6 +16,7 @@ use Modules\Crm\Models\Activity;
 use Modules\Crm\Models\Contact;
 use Modules\Crm\Models\ContactScore;
 use Modules\Crm\Models\Intent;
+use Modules\Crm\Models\Lead;
 use Modules\Crm\Models\Pipeline;
 use Modules\Crm\Models\Task;
 use Throwable;
@@ -198,6 +199,13 @@ final class DatabaseIntelligence
         if ($contact->last_activity_at !== null && $contact->last_activity_at->gte($now->subDays(7))) {
             $buyer >= $seller ? $buyer += 10 : $seller += 10;
             $reasons[] = 'Spoke recently';
+        }
+
+        // A scored lead (grow/07) feeds the opportunity score with its strongest reason.
+        $lead = Lead::query()->where('contact_id', $contact->id)->whereNotNull('score')->where('created_at', '>=', $now->subDays(90))->orderByDesc('score')->first();
+        if ($lead !== null && $lead->score >= 40) {
+            $lead->intent === 'sell' ? $seller += intdiv((int) $lead->score, 2) : $buyer += intdiv((int) $lead->score, 2);
+            $reasons[] = ucfirst((string) $lead->score_label).' lead: '.($lead->score_reasons[0] ?? 'recent inquiry');
         }
 
         $notProspect = in_array($contact->lifecycle, [Lifecycle::UnderContract, Lifecycle::Archived], true)

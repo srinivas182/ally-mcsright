@@ -206,6 +206,7 @@ final class AiResponder
             return;
         }
         $thread->forceFill(['messages_sent' => $thread->messages_sent + 1, 'channel' => $channel])->save();
+        app(LeadScoring::class)->rescoreContact($contact->id);
         if ($reason !== null) {
             $this->handOff($thread, $agent, $reason, null, null);
         }

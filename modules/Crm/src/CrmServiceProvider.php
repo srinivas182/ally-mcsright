@@ -58,11 +58,14 @@ final class CrmServiceProvider extends ServiceProvider
         $this->app->scoped(Leads\PortalEmail::class);
         $this->app->scoped(Inbox\Inbox::class);
         $this->app->scoped(Leads\AiResponder::class);
+        $this->app->scoped(Leads\LeadScoring::class);
+        $this->app->scoped(Leads\LeadReports::class);
+        $this->app->bind(Leads\SlowResponseRisks::class);
         $this->app->scoped(Inbox\SendGuard::class);
         $this->app->scoped(Inbox\SignCodes::class);
         $this->app->scoped(Inbox\Templates::class);
         $this->app->bind(Inbox\UnansweredRisks::class);
-        $this->app->tag([Inbox\UnansweredRisks::class], 'risk.sources');
+        $this->app->tag([Inbox\UnansweredRisks::class, Leads\SlowResponseRisks::class], 'risk.sources');
         $this->app->scoped(Actions\MergeContacts::class);
     }
 
@@ -176,7 +179,7 @@ final class CrmServiceProvider extends ServiceProvider
             kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant], mobile: true));
 
         if ($this->app->runningInConsole()) {
-            $this->commands([SendTaskReminders::class, Console\RefreshBriefs::class, Console\RunPlans::class, Console\RunIntelligence::class, Console\SweepPonds::class, Console\ReassignLeads::class, Console\SweepInbox::class]);
+            $this->commands([SendTaskReminders::class, Console\RefreshBriefs::class, Console\RunPlans::class, Console\RunIntelligence::class, Console\SweepPonds::class, Console\ReassignLeads::class, Console\SweepInbox::class, Console\ScoreLeads::class]);
         }
     }
 }

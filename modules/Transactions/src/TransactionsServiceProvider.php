@@ -10,6 +10,7 @@ use Illuminate\Support\ServiceProvider;
 use Modules\AI\FeatureCatalog;
 use Modules\AI\Support\PromptRegistry;
 use Modules\Core\Access\PermissionRegistry;
+use Modules\Core\Deals\DealOutcomes;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
@@ -21,6 +22,8 @@ final class TransactionsServiceProvider extends ServiceProvider
         foreach ([Checklists::class, Deals::class, Documents::class, Reviews::class, EarnestMoney::class, TitleDesk::class, Cdas::class, Referrals::class, FileExport::class, Forecast::class, KeyDates::class, Reading\DocIq::class, Compliance\ComplianceScan::class, Compliance\Findings::class, Compliance\Rules::class, Deadlines\Deadlines::class] as $service) {
             $this->app->scoped($service);
         }
+        // Lead return on spend (CRM) reads deals and commission through this core interface.
+        $this->app->bind(DealOutcomes::class, Reports\ContactDealOutcomes::class);
     }
 
     public function boot(): void

@@ -17,6 +17,7 @@ use Modules\Crm\CrmAccess;
 use Modules\Crm\Enums\Source;
 use Modules\Crm\Leads\AiResponder;
 use Modules\Crm\Leads\Attribution;
+use Modules\Crm\Leads\LeadReports;
 use Modules\Crm\Leads\LeadRouting;
 use Modules\Crm\Leads\LeadSources;
 use Modules\Crm\Leads\SpeedToLead;
@@ -51,6 +52,7 @@ final class LeadController
                 'agent' => $l->assigned_user_id !== null ? $names->get($l->assigned_user_id)?->name : null,
                 'response_minutes' => $l->response_seconds !== null ? round($l->response_seconds / 60, 1) : null, 'new_contact' => $l->new_contact,
                 'can_claim' => $l->status === 'offered' && in_array($user->id, $l->offered_to ?? [], true),
+                'score' => $l->score, 'score_label' => $l->score_label, 'score_reasons' => $l->score_reasons ?? [],
             ]),
             'review' => $manager ? Lead::query()->where('status', 'needs_review')->latest('id')->limit(20)->get()
                 ->map(fn (Lead $l): array => ['ulid' => $l->ulid, 'received' => $l->created_at->toIso8601String(), 'source' => SpeedToLead::sourceLabel($l->source), 'raw' => mb_substr((string) $l->raw, 0, 3000)]) : [],
@@ -59,6 +61,40 @@ final class LeadController
             'canManage' => $manager,
             'focus' => $request->string('lead')->toString() ?: null,
         ]);
+    }
+
+    public function report(Request $request, LeadReports $reports): Response
+    {
+        abort_unless(CrmAccess::manager(self::user($request)), 403);
+        $days = in_array((int) $request->query('days', 90), [30, 90, 180, 365], true) ? (int) $request->query('days', 90) : 90;
+        $to = CarbonImmutable::now();
+        $from = $to->subDays($days);
+
+        return Inertia::render('crm/leads/report', [
+            'days' => $days,
+            'returns' => $reports->returns($from, $to),
+            'scorecard' => $reports->scorecard($from, $to),
+            'sourceOptions' => array_map(fn (Source $s): array => ['value' => $s->value, 'label' => SpeedToLead::sourceLabel($s->value)], Source::cases()),
+            'channels' => Attribution::CHANNELS,
+            'month' => $to->format('Y-m'),
+        ]);
+    }
+
+    public function saveSpend(Request $request, LeadReports $reports): RedirectResponse
+    {
+        $data = $request->validate(['month' => ['required', 'string'], 'key' => ['required', 'string', 'max:40'], 'amount' => ['required', 'numeric', 'min:0', 'max:100000000']]);
+        $reports->saveSpend((string) $data['month'], (string) $data['key'], (int) round((float) $data['amount'] * 100), self::user($request));
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Spend saved.']);
+
+        return back();
+    }
+
+    public function saveTargets(Request $request, LeadReports $reports): RedirectResponse
+    {
+        $data = $request->validate(['target_minutes' => ['required', 'integer'], 'target_percent' => ['required', 'integer']]);
+        $reports->saveTargets((int) $data['target_minutes'], (int) $data['target_percent'], self::user($request));
+
+        return back();
     }
 
     public function claim(Request $request, Lead $lead, LeadRouting $routing): RedirectResponse

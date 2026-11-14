@@ -33,6 +33,8 @@ use Modules\Core\Branding\NullBrandColourSource;
 use Modules\Core\Console\BootstrapHq;
 use Modules\Core\Console\CompileDesignTokens;
 use Modules\Core\Console\RunTenantLifecycle;
+use Modules\Core\Deals\DealOutcomes;
+use Modules\Core\Deals\NoDealOutcomes;
 use Modules\Core\Identity\Auth\TenantPasswordBrokerManager;
 use Modules\Core\Identity\Auth\TenantUserProvider;
 use Modules\Core\Identity\Enums\UserKind;
@@ -66,6 +68,7 @@ final class CoreServiceProvider extends ServiceProvider
         // Texts and calls use the Twilio account HQ set up (falling back to the server's settings); scoped so a
         // change in HQ settings applies to the next request or job.
         $this->app->singleton(Messaging\MessagingSettings::class);
+        $this->app->bindIf(DealOutcomes::class, NoDealOutcomes::class);
         $this->app->bindIf(Messaging\SmsSender::class, function ($app): Messaging\SmsSender {
             $settings = $app->make(Messaging\MessagingSettings::class);
             $creds = $settings->credentials();
