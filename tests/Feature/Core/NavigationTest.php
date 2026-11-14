@@ -19,7 +19,7 @@ function menuFor(User $user): array
 }
 
 it('shows owners the dashboard, people and finance', function (): void {
-    expect(menuFor(User::factory()->owner()->create()))->toBe(['Dashboard', "Today's 10", 'Tasks', 'Deals', 'Review queue', 'Risk', 'Leads', 'Inbox', 'Contacts', 'Money received', 'Payouts', 'Agent billing', 'Tax (1099)', 'Trust reconciliation', 'Chart of accounts', 'Journals', 'Periods', 'People', 'Plans', 'Fees', 'Credits', 'Simulator', 'Revenue share', 'Profitability', 'Directory', 'Roster and compliance', 'Agent plans', 'Billing', 'Partner earnings', 'Transactions', 'Forms', 'Roles', 'Offices and teams', 'Audit log']);
+    expect(menuFor(User::factory()->owner()->create()))->toBe(['Dashboard', "Today's 10", 'Tasks', 'Deals', 'Review queue', 'Risk', 'Leads', 'Inbox', 'Contacts', 'Money received', 'Payouts', 'Agent billing', 'Tax (1099)', 'Trust reconciliation', 'Chart of accounts', 'Journals', 'Periods', 'People', 'Plans', 'Fees', 'Credits', 'Simulator', 'Revenue share', 'Profitability', 'Directory', 'Roster and compliance', 'MLS', 'Agent plans', 'Billing', 'Partner earnings', 'Transactions', 'Forms', 'Roles', 'Offices and teams', 'Audit log']);
 });
 
 it('shows agents only their own pages', function (): void {
@@ -37,7 +37,7 @@ it('shows HQ staff the HQ console and people', function (): void {
     $hq = Tenant::query()->where('type', 'hq')->sole();
     $staff = app(TenantContext::class)->runAs($hq, fn () => User::factory()->hqStaff()->create());
 
-    expect(menuFor($staff))->toBe(['People', 'Tenants', 'Texts and calls', 'AI gateway', 'Pricing', 'Payments', 'Payout rails']);
+    expect(menuFor($staff))->toBe(['People', 'Tenants', 'Texts and calls', 'MLS connections', 'AI gateway', 'Pricing', 'Payments', 'Payout rails']);
 });
 
 it('lets modules add items, grouped and ordered', function (): void {

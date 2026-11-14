@@ -1,5 +1,27 @@
 # Websites 02 — MLS ingestion and display rules (Team C, Sprints 4–6)
 
+## Delivered in Sprint 17A
+
+- Module `modules/Listings`: `mls_sources`, `mls_rules_profiles`, `listings`, `listing_payloads`, `mls_sync_runs` on the
+  `listings` connection (`CORE_LISTINGS_CONNECTION`, falls back to control); `mls_authorizations` on the control
+  connection (licences are platform records HQ decides).
+- RESO Web API client for MLS Grid (OriginatingSystemName filter, `$expand=Media`), Trestle and direct servers
+  (OAuth client credentials, token cached) and Bridge (bearer token). Next-page links are followed only on the
+  feed's own host, so credentials never leave it.
+- Full replication (resumable from the committed page), incremental with a 2-minute overlap (already-held versions
+  skipped), cursor moved only with its page, per-MLS hourly request limit, 429 back-off, failures back off
+  exponentially and set the feed to `error` after five.
+- Daily removal check (refuses to act on an empty answer), licence expiry, and a stale-feed email to HQ when a
+  feed is 30+ minutes behind (at most hourly).
+- `ListingPresenter::forDisplay` applies internet-display, sold-data delay, suppressed fields, address flags,
+  attribution, disclaimer with last-update time, freshness and indexability.
+- Licences: brokerage requests (Settings → MLS), HQ approves with scopes and expiry (HQ → MLS connections);
+  `Listing::visibleTo($tenantId, $scope)` checks the licence on every query (one-minute cache).
+- **Decision:** feed credentials are stored encrypted in `mls_sources.credentials` (write-only, password confirm,
+  audited) like the Twilio account, instead of a secrets-manager reference; moving to the secrets manager later is
+  a storage change only.
+- Media (CDN variants), search indexing and the Member/Office/OpenHouse resources follow in 17B.
+
 ## Purpose
 
 Bring each MLS's listings into RightAlly once, keep them fresh within minutes, store photos on our

@@ -1,0 +1,9 @@
+{
+    "id": "listings",
+    "name": "Listings",
+    "version": "0.1.0",
+    "provider": "Modules\\Listings\\ListingsServiceProvider",
+    "depends": ["core"],
+    "entitlement": null,
+    "description": "MLS ingestion (RESO Web API), display rules and MLS licence enforcement (specs/websites/02)."
+}
