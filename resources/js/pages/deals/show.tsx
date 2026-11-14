@@ -8,6 +8,7 @@ import { Head, router, useForm } from '@inertiajs/react';
 import { CameraIcon, UploadIcon } from 'lucide-react';
 import { useRef, useState } from 'react';
 
+import { KeyDates, type KeyDate } from '@/components/deals/key-dates';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -57,6 +58,7 @@ type Props = {
     }[];
     items: Item[];
     missing: { label: string; status: string }[];
+    dates: KeyDate[];
     reviewer: boolean;
     reasons: string[];
 };
@@ -244,6 +246,7 @@ export default function ShowDeal({
     parties,
     items,
     missing,
+    dates,
     reviewer,
     reasons,
     deposits,
@@ -407,6 +410,7 @@ export default function ShowDeal({
                         </Button>
                     </section>
                 )}
+                <KeyDates deal={deal.ulid} dates={dates} />
                 <section className="grid gap-2">
                     <h2 className="font-semibold">Checklist</h2>
                     <ul className="divide-y rounded-lg border">

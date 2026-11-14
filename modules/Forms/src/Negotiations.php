@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Forms;
 
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
@@ -209,11 +210,38 @@ final class Negotiations
             ->all());
     }
 
+    /**
+     * "Label: old → new", with the exact difference in plain words for money and dates
+     * ("Purchase price: $485,000 → $470,000 (down $15,000)"; "Closing date: 07/01/2026 → 07/11/2026 (10 days later)").
+     */
     public static function line(string $label, string $old, string $new): string
     {
         $show = fn (string $v): string => $v === '' ? '(blank)' : (mb_strlen($v) > 80 ? mb_substr($v, 0, 77).'…' : $v);
 
-        return "{$label}: {$show($old)} → {$show($new)}";
+        return "{$label}: {$show($old)} → {$show($new)}".self::difference($label, $old, $new);
+    }
+
+    private static function difference(string $label, string $old, string $new): string
+    {
+        $from = Summaries::date($old);
+        $to = Summaries::date($new);
+        if ($from !== null && $to !== null && $from !== $to) {
+            $days = (int) CarbonImmutable::parse($from)->diffInDays(CarbonImmutable::parse($to), false);
+
+            return ' ('.abs($days).' day'.(abs($days) === 1 ? '' : 's').($days > 0 ? ' later' : ' earlier').')';
+        }
+        $money = fn (string $v): ?float => preg_match('/^\$?\s*\d{1,3}(,\d{3})*(\.\d{1,2})?$|^\$?\s*\d+(\.\d{1,2})?$/', trim($v)) === 1 ? (float) str_replace(['$', ',', ' '], '', $v) : null;
+        $a = $money($old);
+        $b = $money($new);
+        $isMoney = str_contains($old.$new, '$') || preg_match('/price|amount|deposit|fee|credit|commission|money|cost/i', $label) === 1;
+        if ($a !== null && $b !== null && $a !== $b && $isMoney) {
+            $diff = $b - $a;
+            $amount = '$'.number_format(abs($diff), fmod(abs($diff), 1.0) === 0.0 ? 0 : 2);
+
+            return ' ('.($diff > 0 ? 'up ' : 'down ').$amount.')';
+        }
+
+        return '';
     }
 
     private static function baseTitle(string $title): string

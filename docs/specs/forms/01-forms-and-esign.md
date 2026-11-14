@@ -82,9 +82,23 @@ points from the page's top-left. Bindings read the deal, its parties, its agent 
       keeps only the outcome (name, document type and country, dates) — **never ID images**. The certificate records
       each verification and the owner of record (and any accepted mismatch). Sending is blocked when checks are
       needed but no identity service is set up. Knowledge-based questions are deliberately not offered.
-    - **5b — plain-English summaries**: packet summary for signers in English and Spanish (agent approves; the
-      contract governs), plain-English counter summaries, deadlines to the deal timeline and Deal-IQ, unusual-clause
-      check against the brokerage's clause library before sending.
+    - **5b — plain-English summaries** (delivered): AI writes a packet summary from the **filled-in terms only**
+      (sent to the model as untrusted data through the AI gateway: redaction, output policy, credits) — headline,
+      points by topic, deadlines, "what you're agreeing to", and terms worth a second look — in **English and
+      Spanish**. Code then checks it: every amount and every date in a line must appear in the documents, or the
+      line is dropped (the agent sees how many); a deadline date not written in the documents is cleared to "date to
+      set"; every date field is always a deadline. The disclaimer ("not legal advice; the documents you sign are
+      what count") is added in code in both languages. The summary is stored encrypted, tied to a hash of the terms:
+      the **agent approves** it before signers see it, and any later change (including a change after sending) makes
+      it stale and hidden until written and approved again. **Counter-offer differences** are spelled out exactly by
+      code, not AI ("$485,000 → $470,000 (down $15,000)", "07/01 → 07/11 (10 days later)") in counters, change
+      emails and history. **Deadlines → key dates**: the agent picks deadlines (setting any missing dates) and adds
+      them to the deal's **Key dates** (new on the deal page: add by hand, tick off, remove); `transactions:date-
+        reminders` emails the agent daily about dates due in 2 days, today, or missed yesterday (once a day; never
+      for ticked-off dates or closed deals) — Deal-IQ escalation builds on these. **Clause check** before sending:
+      typed special terms (text of 60+ characters) that are not clause-library wording are listed on the packet;
+      the brokerage chooses _warn_ (default), _need broker approval before sending_, or _off_; approval is tied to
+      the exact wording, so an edit needs a new approval. Pure text comparison, no AI.
     - **5c — association form libraries**: connector framework, NRDS membership check, new-version alerts with a
       side-by-side of changes, association PDF package import, template import from dotloop, SkySlope and zipForm.
-    - Later: remote online notarization (partner) for deeds and powers of attorney.
+        - Later: remote online notarization (partner) for deeds and powers of attorney.

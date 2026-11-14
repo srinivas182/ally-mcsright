@@ -16,7 +16,7 @@ final class TransactionsServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        foreach ([Checklists::class, Deals::class, Documents::class, Reviews::class, EarnestMoney::class, TitleDesk::class, Cdas::class, Referrals::class, FileExport::class, Forecast::class] as $service) {
+        foreach ([Checklists::class, Deals::class, Documents::class, Reviews::class, EarnestMoney::class, TitleDesk::class, Cdas::class, Referrals::class, FileExport::class, Forecast::class, KeyDates::class] as $service) {
             $this->app->scoped($service);
         }
     }
@@ -25,6 +25,9 @@ final class TransactionsServiceProvider extends ServiceProvider
     {
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
+        if ($this->app->runningInConsole()) {
+            $this->commands([Console\SendDateReminders::class]);
+        }
 
         $this->app->make(PermissionRegistry::class)->register('Transactions', [
             'transactions.review' => ['Review deal documents and see every deal'],

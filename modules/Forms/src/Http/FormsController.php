@@ -12,10 +12,12 @@ use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Core\Support\Connections;
+use Modules\Forms\ClauseCheck;
 use Modules\Forms\Identity\IdentityChecks;
 use Modules\Forms\Negotiations;
 use Modules\Forms\Packets;
 use Modules\Forms\Signing;
+use Modules\Forms\Summaries;
 use Modules\Forms\Templates;
 use Modules\Transactions\Models\Deal;
 
@@ -33,6 +35,7 @@ final class FormsController
             'clauses' => $db->table('form_clauses')->orderBy('title')->get(['ulid', 'title', 'body']),
             'bindings' => Packets::bindings(), 'types' => Templates::TYPES,
             'identity' => app(IdentityChecks::class)->settings(),
+            'clause_review' => ClauseCheck::setting(),
         ]);
     }
 
@@ -117,12 +120,54 @@ final class FormsController
             'clauses' => $db->table('form_clauses')->orderBy('title')->get(['title', 'body']),
             'negotiation' => Negotiations::history($row),
             'risk' => self::risk($row, $user),
+            'summary' => Summaries::forAgent($row),
+            'clause_review' => ['setting' => ClauseCheck::setting(), 'terms' => ClauseCheck::review((int) $row->id), 'approved' => ClauseCheck::approved($row),
+                'can_approve' => Templates::manages($user)],
             'changes' => $db->table('form_changes')->where('packet_id', $row->id)->orderByDesc('id')->get()->map(fn ($c): array => [
                 'line' => Negotiations::line((string) $c->label, (string) $c->old_value, (string) $c->new_value), 'reason' => (string) $c->reason, 'at' => (string) $c->changed_at,
                 'waiting_on' => $db->table('form_change_acks')->join('form_signers', 'form_signers.id', '=', 'form_change_acks.signer_id')->where('change_id', $c->id)
                     ->whereNull('form_change_acks.at')->pluck('form_signers.name')->values()->all()])->values(),
             'templates' => $db->table('form_templates')->where('active', true)->orderBy('name')->get(['ulid', 'name']),
         ]);
+    }
+
+    public function summary(Request $request, string $packet, Summaries $summaries): RedirectResponse
+    {
+        $summaries->generate($packet, self::user($request));
+
+        return back();
+    }
+
+    public function approveSummary(Request $request, string $packet, Summaries $summaries): RedirectResponse
+    {
+        $summaries->approve($packet, self::user($request));
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Summary approved. Signers will see it with the documents.']);
+
+        return back();
+    }
+
+    public function dates(Request $request, string $packet, Summaries $summaries): RedirectResponse
+    {
+        $data = $request->validate(['dates' => ['required', 'array', 'min:1', 'max:20'], 'dates.*.label' => ['required', 'string', 'max:80'], 'dates.*.date' => ['required', 'string', 'max:20']]);
+        $n = $summaries->addDates($packet, array_values(array_map(fn (array $d): array => ['label' => (string) $d['label'], 'date' => (string) $d['date']], $data['dates'])), self::user($request));
+        Inertia::flash('toast', ['type' => 'success', 'message' => "{$n} key date(s) added to the deal, with reminders."]);
+
+        return back();
+    }
+
+    public function approveClauses(Request $request, string $packet, ClauseCheck $clauses): RedirectResponse
+    {
+        $clauses->approve($packet, self::user($request));
+
+        return back();
+    }
+
+    public function clauseSetting(Request $request): RedirectResponse
+    {
+        $data = $request->validate(['clause_review' => ['required', 'string']]);
+        ClauseCheck::setSetting($data['clause_review'], self::user($request));
+
+        return back();
     }
 
     public function ownerOverride(Request $request, string $packet, IdentityChecks $identity): RedirectResponse

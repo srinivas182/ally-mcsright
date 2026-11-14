@@ -14,6 +14,7 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('forms'
     Route::get('templates/{template}/pages/{page}', [FormsController::class, 'page'])->whereNumber('page')->name('templates.page');
     Route::post('clauses', [FormsController::class, 'clause'])->name('clauses');
     Route::post('identity-settings', [FormsController::class, 'identitySettings'])->name('identity-settings');
+    Route::post('clause-setting', [FormsController::class, 'clauseSetting'])->name('clause-setting');
     Route::post('templates/{template}/risk', [FormsController::class, 'templateRisk'])->name('templates.risk');
     Route::get('deals/{deal}', [FormsController::class, 'forDeal'])->name('deal');
     Route::post('deals/{deal}/packets', [FormsController::class, 'createPacket'])->name('packets.create');
@@ -25,6 +26,10 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('forms'
     Route::post('packets/{packet}/void', [FormsController::class, 'void'])->name('packets.void');
     Route::post('packets/{packet}/amend', [FormsController::class, 'amend'])->middleware('throttle:20,1')->name('packets.amend');
     Route::post('packets/{packet}/counter', [FormsController::class, 'counter'])->middleware('throttle:20,1')->name('packets.counter');
+    Route::post('packets/{packet}/summary', [FormsController::class, 'summary'])->middleware('throttle:10,1,forms-summary')->name('packets.summary');
+    Route::post('packets/{packet}/summary/approve', [FormsController::class, 'approveSummary'])->name('packets.summary.approve');
+    Route::post('packets/{packet}/dates', [FormsController::class, 'dates'])->name('packets.dates');
+    Route::post('packets/{packet}/clauses/approve', [FormsController::class, 'approveClauses'])->name('packets.clauses.approve');
     Route::post('packets/{packet}/owner-override', [FormsController::class, 'ownerOverride'])->name('packets.owner-override');
     Route::post('packets/{packet}/addendum', [FormsController::class, 'addendum'])->name('packets.addendum');
     Route::post('packets/{packet}/in-person/{signer}', [FormsController::class, 'inPerson'])->name('packets.in-person');

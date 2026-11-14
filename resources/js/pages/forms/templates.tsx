@@ -39,6 +39,7 @@ type Props = {
     bindings: string[];
     types: string[];
     identity: IdentitySettingsData;
+    clause_review: string;
 };
 
 const blank: Field = {
@@ -290,6 +291,7 @@ export default function FormTemplates({
     bindings,
     types,
     identity,
+    clause_review,
 }: Props) {
     const upload = useForm<{
         name: string;
@@ -365,6 +367,27 @@ export default function FormTemplates({
                 <IdentitySettings settings={identity} templates={templates} />
                 <section className="grid gap-2 rounded-lg border p-4 text-sm">
                     <h2 className="font-semibold">Clause library</h2>
+                    <label className="flex flex-wrap items-center gap-2">
+                        Special terms not from this library:
+                        <select
+                            aria-label="Clause check"
+                            className="rounded border bg-background px-2 py-1.5"
+                            value={clause_review}
+                            onChange={(e) =>
+                                router.post(
+                                    '/forms/clause-setting',
+                                    { clause_review: e.target.value },
+                                    { preserveScroll: true },
+                                )
+                            }
+                        >
+                            <option value="warn">Warn the agent</option>
+                            <option value="require">
+                                Need broker approval before sending
+                            </option>
+                            <option value="off">Don't check</option>
+                        </select>
+                    </label>
                     {clauses.map((c) => (
                         <details key={c.ulid}>
                             <summary className="cursor-pointer">

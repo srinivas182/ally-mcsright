@@ -16,6 +16,7 @@ use Modules\Forms\Identity\IdentityChecks;
 use Modules\Forms\Negotiations;
 use Modules\Forms\Pdf;
 use Modules\Forms\Signing;
+use Modules\Forms\Summaries;
 use Modules\Forms\Templates;
 
 /** The signer's side (no sign-in; secret link) and public document verification. */
@@ -44,6 +45,7 @@ final class SigningController
             'signer' => ['name' => $s->name, 'consented' => $s->consent_at !== null, 'verified' => $s->verified_at !== null, 'signed' => $s->signed_at !== null,
                 'phone_last4' => $s->phone !== null ? substr((string) $s->phone, -4) : null, 'id_required' => (bool) $s->id_required, 'id_status' => $s->id_status],
             'fields' => $fields, 'disclosure' => Signing::ESIGN_DISCLOSURE,
+            'summary' => $s->signed_at === null ? Summaries::forSigner($p) : null,
             'changes' => $s->signed_at !== null && $p->status === 'sent' ? Negotiations::pendingFor((int) $s->id) : [],
         ]);
     }
