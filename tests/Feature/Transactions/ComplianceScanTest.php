@@ -117,7 +117,7 @@ it('finds mismatches, blanks, wrong years, missing e-signature records and bank 
 
     $price = DB::table('tx_findings')->where('message', 'like', 'contract.pdf says the price is%')->sole();
     expect($price->message)->toBe('contract.pdf says the price is $485,000; the deal says $480,000.')
-        ->and(json_decode((string) $price->evidence, true))->toBe(['document' => $doc->ulid, 'filename' => 'contract.pdf', 'page' => 1, 'quote' => 'Sales Price: $485,000.00'])
+        ->and(json_decode((string) $price->evidence, true))->toEqual(['document' => $doc->ulid, 'filename' => 'contract.pdf', 'page' => 1, 'quote' => 'Sales Price: $485,000.00']) // MySQL JSON reorders keys
         ->and(json_decode((string) $price->fix, true)['action'])->toBe('apply_fact');
     expect(DB::table('tx_findings')->where('message', 'like', '%Robert King%does not include Maria Gomez%')->exists())->toBeTrue()
         ->and($findings['docs.blank']->message)->toBe('Looks blank in contract.pdf: “Closing Date: __________”')
