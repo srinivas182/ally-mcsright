@@ -22,6 +22,9 @@ Schedule::command('crm:task-reminders')->everyFiveMinutes()->onOneServer();
 
 // Key dates on deals (inspection, financing, closing…): due in 2 days, today, or missed yesterday.
 Schedule::command('transactions:date-reminders')->dailyAt('12:00')->onOneServer();
+
+// Association form libraries: new editions of forms brokerages use.
+Schedule::command('forms:library-sync')->dailyAt('10:00')->onOneServer();
 // Nightly AI brief refresh at batch price (specs/crm/01).
 Schedule::command('crm:refresh-briefs')->dailyAt('02:00')->onOneServer();
 // Follow-up plan steps (specs/crm/01).

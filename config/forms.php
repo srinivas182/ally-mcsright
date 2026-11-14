@@ -18,4 +18,8 @@ return [
     // Identity checks (government ID + live selfie): 'stripe' uses Stripe Identity on the brokerage's own Stripe
     // account; 'fake' returns straight back as verified (local development only).
     'identity_driver' => env('FORMS_IDENTITY_DRIVER', 'stripe'),
+
+    // Association form libraries offered here (comma-separated connector keys, see Library\Libraries::CONNECTORS).
+    // "test" is a stand-in library for development until association licences are signed.
+    'libraries' => array_values(array_filter(explode(',', (string) env('FORMS_LIBRARIES', '')))),
 ];

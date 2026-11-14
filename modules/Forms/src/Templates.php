@@ -36,23 +36,39 @@ final class Templates
 
     public function upload(string $name, UploadedFile $file, ?string $checklistLabel, User $by): string
     {
+        return $this->fromPdf($name, (string) file_get_contents((string) $file->getRealPath()), [], $by, ['checklist_label' => $checklistLabel]);
+    }
+
+    /**
+     * Creates a template from PDF bytes with (optionally) its fields already placed: uploads, imports from other
+     * systems, and association library editions.
+     *
+     * @param  list<array<string, mixed>>  $fields
+     * @param  array{checklist_label?: ?string, source?: string, edition?: ?string, library_form_id?: ?int, import_source?: ?string, high_risk?: bool}  $attributes
+     */
+    public function fromPdf(string $name, string $bytes, array $fields, User $by, array $attributes = []): string
+    {
         $this->guard($by);
         if (trim($name) === '') {
             throw ValidationException::withMessages(['name' => 'Name the form.']);
         }
         try {
-            [$pdf, $pages, $sizes] = Pdf::normalise((string) file_get_contents((string) $file->getRealPath()));
+            [$pdf, $pages, $sizes] = Pdf::normalise($bytes);
         } catch (RuntimeException $e) {
             throw ValidationException::withMessages(['file' => $e->getMessage()]);
         }
+        $clean = $this->clean($fields, $sizes);
+        $checklistLabel = $attributes['checklist_label'] ?? null;
         $ulid = (string) Str::ulid();
         $path = 'forms/'.$this->tenants->id().'/'.$ulid.'-v1.pdf';
         Storage::disk('local')->put($path, $pdf);
         DB::connection(Connections::cell())->table('form_templates')->insert(['ulid' => $ulid, 'tenant_id' => $this->tenants->id(), 'name' => mb_substr(trim($name), 0, 160),
-            'path' => $path, 'sha256' => hash('sha256', $pdf), 'pages' => $pages, 'page_sizes' => json_encode($sizes), 'fields' => '[]',
-            'checklist_label' => $checklistLabel !== null && trim($checklistLabel) !== '' ? mb_substr(trim($checklistLabel), 0, 160) : null,
-            'created_by' => $by->id, 'created_at' => now(), 'updated_at' => now()]);
-        app(AuditLogger::class)->record('forms.template.uploaded', metadata: ['template' => $ulid, 'name' => $name, 'pages' => $pages], severity: 'notice');
+            'source' => $attributes['source'] ?? 'brokerage', 'path' => $path, 'sha256' => hash('sha256', $pdf), 'pages' => $pages, 'page_sizes' => json_encode($sizes),
+            'fields' => json_encode($clean), 'checklist_label' => $checklistLabel !== null && trim($checklistLabel) !== '' ? mb_substr(trim($checklistLabel), 0, 160) : null,
+            'edition' => $attributes['edition'] ?? null, 'library_form_id' => $attributes['library_form_id'] ?? null, 'import_source' => $attributes['import_source'] ?? null,
+            'high_risk' => $attributes['high_risk'] ?? false, 'created_by' => $by->id, 'created_at' => now(), 'updated_at' => now()]);
+        app(AuditLogger::class)->record('forms.template.uploaded', metadata: ['template' => $ulid, 'name' => $name, 'pages' => $pages, 'fields' => count($clean),
+            'source' => $attributes['import_source'] ?? 'upload'], severity: 'notice');
 
         return $ulid;
     }
@@ -68,7 +84,20 @@ final class Templates
         if ($t === null) {
             throw ValidationException::withMessages(['template' => 'Form not found.']);
         }
-        $sizes = (array) json_decode((string) $t->page_sizes, true);
+        $clean = $this->clean($fields, (array) json_decode((string) $t->page_sizes, true));
+        $db->table('form_templates')->where('id', $t->id)->update(['fields' => json_encode($clean), 'version' => (int) $t->version + 1, 'updated_at' => now()]);
+        app(AuditLogger::class)->record('forms.template.fields', metadata: ['template' => $ulid, 'fields' => count($clean), 'version' => (int) $t->version + 1], severity: 'notice');
+    }
+
+    /**
+     * Validates and normalises field definitions against the form's page sizes.
+     *
+     * @param  list<array<string, mixed>>  $fields
+     * @param  array<int|string, mixed>  $sizes
+     * @return list<array<string, mixed>>
+     */
+    private function clean(array $fields, array $sizes): array
+    {
         $clean = [];
         $keys = [];
         foreach ($fields as $i => $f) {
@@ -95,8 +124,8 @@ final class Templates
                 'bind' => isset($f['bind']) && trim((string) $f['bind']) !== '' ? (string) $f['bind'] : null,
                 'required' => (bool) ($f['required'] ?? false), 'label' => mb_substr((string) ($f['label'] ?? $key), 0, 80)];
         }
-        $db->table('form_templates')->where('id', $t->id)->update(['fields' => json_encode($clean), 'version' => (int) $t->version + 1, 'updated_at' => now()]);
-        app(AuditLogger::class)->record('forms.template.fields', metadata: ['template' => $ulid, 'fields' => count($clean), 'version' => (int) $t->version + 1], severity: 'notice');
+
+        return $clean;
     }
 
     /**

@@ -99,6 +99,20 @@ points from the page's top-left. Bindings read the deal, its parties, its agent 
       typed special terms (text of 60+ characters) that are not clause-library wording are listed on the packet;
       the brokerage chooses _warn_ (default), _need broker approval before sending_, or _off_; approval is tied to
       the exact wording, so an edit needs a new approval. Pure text comparison, no AI.
-    - **5c — association form libraries**: connector framework, NRDS membership check, new-version alerts with a
-      side-by-side of changes, association PDF package import, template import from dotloop, SkySlope and zipForm.
-        - Later: remote online notarization (partner) for deeds and powers of attorney.
+    - **5c — association form libraries and imports** (delivered): a connector framework
+      (`Library\FormLibrary`; offered per deployment with `FORMS_LIBRARIES`) — each real association connector is
+      added once its licence is signed; a stand-in `test` library is used until then. A brokerage connects a library
+      with a **member number (NRDS) verified by the association** (shown masked), sees the catalog, and **adds forms
+      with their fields already placed** (from the library, or mapped from the PDF's fillable fields). A daily
+      `forms:library-sync` (and a "check now" button) finds **new editions** of forms the brokerage uses and emails
+      the people who manage forms once per edition. **See what changed** shows the wording added and removed
+      (text comparison of the two editions) and fields added and removed; **Update** creates a NEW template and
+      retires the old one (never overwritten): packets already sent keep their exact edition; drafts on a retired
+      edition cannot be sent until switched ("Switch to the newest edition", keeping filled-in values whose fields
+      still exist); the checklist filing and high-risk setting carry over. **Imports**: PDFs or a ZIP from dotloop,
+      SkySlope, zipForm, an association package, or any fillable PDFs; fillable fields are read with qpdf and mapped
+      by name — type, signer (seller/buyer 1–2, listing or buyer's agent) and auto-fill (address, price, dates,
+      names, agent, brokerage); signature fields with no recognisable signer get the role _unassigned_, which blocks
+      sending until assigned in the visual editor. ZIPs are read in memory, PDFs only, by file name never by path,
+      up to 50 PDFs of 20 MB.
+    - Later: remote online notarization (partner) for deeds and powers of attorney.

@@ -64,6 +64,7 @@ type Props = {
     };
     summary: PacketSummary;
     clause_review: ClauseReview;
+    outdated: { form_id: number; name: string; edition: string }[];
 };
 
 function FormValues({
@@ -195,6 +196,7 @@ export default function Packet({
     risk,
     summary,
     clause_review,
+    outdated,
 }: Props) {
     const locked = packet.status !== 'draft';
     const signerForm = useForm<{ signers: Omit<Signer, 'status'>[] }>({
@@ -245,6 +247,24 @@ export default function Packet({
                     {problems.map((p) => (
                         <p key={p}>• {p}</p>
                     ))}
+                    {outdated.length > 0 && (
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="justify-self-start bg-background"
+                            onClick={() =>
+                                router.post(
+                                    `/forms/packets/${packet.ulid}/newest-editions`,
+                                    {},
+                                    { preserveScroll: true },
+                                )
+                            }
+                        >
+                            Switch to the newest edition
+                            {outdated.length > 1 ? 's' : ''} (keeps what you
+                            filled in)
+                        </Button>
+                    )}
                 </section>
                 {negotiation.find((n) => n.ulid === packet.ulid)?.changes
                     .length ? (
