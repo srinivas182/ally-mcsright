@@ -26,7 +26,7 @@ return new class extends Migration
             $table->string('reply_token', 40)->unique();
             $table->dateTime('last_message_at')->nullable();
             $table->string('last_direction', 3)->nullable();
-            $table->string('preview', 160)->nullable(); // encrypted
+            $table->text('preview')->nullable(); // encrypted (ciphertext is longer than the text)
             $table->boolean('unread')->default(false);
             $table->dateTime('needs_reply_since')->nullable();
             $table->dateTime('nudged_at')->nullable();
