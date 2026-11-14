@@ -19,6 +19,15 @@ Settings the platform depends on in every environment. Each one was found by a t
 | First HQ staff member                                   | `php artisan tenants:bootstrap-hq --admin-email=…` emails an invitation (no passwords on the command line).                                          |
 | Scheduler running (`php artisan schedule:work` or cron) | `tenants:lifecycle` daily, `ledger:reconcile` nightly.                                                                                               |
 
+## Document tools (forms and DocIQ)
+
+- System packages on every app and queue server: `qpdf`, `poppler-utils` (pdftotext, pdftoppm),
+  `tesseract-ocr` and `tesseract-ocr-eng` (OCR of scanned pages and phone photos, run on our own servers so
+  no document images go to outside services). All are in `docker/php/Dockerfile`.
+- Temporary files handed to these tools always end in `.pdf` (Ubuntu's AppArmor profile for qpdf refuses
+  other names).
+- A queue worker must run: uploaded deal documents are read by the `ReadDocument` job.
+
 ## Sign in with Google / Microsoft (Sprint 4A-2)
 
 - `CORE_SSO_HOST` (default `auth.rightally.app`): one host for every brokerage's Google/Microsoft

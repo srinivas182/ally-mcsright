@@ -8,6 +8,12 @@ import { Head, router, useForm } from '@inertiajs/react';
 import { CameraIcon, UploadIcon } from 'lucide-react';
 import { useRef, useState } from 'react';
 
+import {
+    DocIqPanel,
+    DocRow,
+    type DealDocument,
+    type Fact,
+} from '@/components/deals/doc-iq';
 import { KeyDates, type KeyDate } from '@/components/deals/key-dates';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,13 +28,9 @@ type Item = {
     stage: string;
     status: string;
     fix_reason: string | null;
+    added_reason: string | null;
     overdue: boolean;
-    documents: {
-        ulid: string;
-        filename: string;
-        version: number;
-        via: string;
-    }[];
+    documents: DealDocument[];
 };
 type Props = {
     deal: {
@@ -59,6 +61,8 @@ type Props = {
     items: Item[];
     missing: { label: string; status: string }[];
     dates: KeyDate[];
+    unsorted: DealDocument[];
+    facts: Fact[];
     reviewer: boolean;
     reasons: string[];
 };
@@ -125,15 +129,13 @@ function ChecklistItem({
             {item.fix_reason && item.status === 'needs_fix' && (
                 <p className="text-destructive">Fix: {item.fix_reason}</p>
             )}
+            {item.added_reason && (
+                <p className="text-xs text-muted-foreground">
+                    {item.added_reason}
+                </p>
+            )}
             {item.documents.map((d) => (
-                <a
-                    key={d.ulid}
-                    className="text-primary underline"
-                    href={`/deals/documents/${d.ulid}`}
-                >
-                    {d.filename} (version {d.version}
-                    {d.via === 'photo' ? ', photo' : ''})
-                </a>
+                <DocRow key={d.ulid} doc={d} />
             ))}
             {!deal.locked && (
                 <span className="flex flex-wrap gap-2">
@@ -247,6 +249,8 @@ export default function ShowDeal({
     items,
     missing,
     dates,
+    unsorted,
+    facts,
     reviewer,
     reasons,
     deposits,
@@ -410,6 +414,12 @@ export default function ShowDeal({
                         </Button>
                     </section>
                 )}
+                <DocIqPanel
+                    deal={deal.ulid}
+                    locked={deal.locked}
+                    unsorted={unsorted}
+                    facts={facts}
+                />
                 <KeyDates deal={deal.ulid} dates={dates} />
                 <section className="grid gap-2">
                     <h2 className="font-semibold">Checklist</h2>

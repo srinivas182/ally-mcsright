@@ -1,7 +1,33 @@
 # AI 03 — DocIQ: the document brain (Team D, Sprints 30–31; Team C, Sprint 54)
 
-Status: **Module definition approved.** The detailed sprint specification is written before
-Sprint 30, after its best-in-class review (definition of ready).
+Status: **Sprint 15A delivered (reading).** Leader review November 2026 (Lone Wolf BoldTrail BackOffice
+ComplianceAI, SkySlope, ListedKit Ava, MaxHome.ai); ten additions approved across Sprints 15A–15D (see
+specs/ai/02, "Delivery plan").
+
+## Delivered in Sprint 15A
+
+- **Every uploaded PDF or photo is read once**, in the background (`ReadDocument` job): text straight from
+  the PDF, and **OCR with Tesseract on our own servers** for scanned pages and photos (no document images
+  are sent to outside AI services). Page text is stored encrypted.
+- **Recognised and split**: titles identify the document type (purchase agreement, counter-offer,
+  amendment, HOA addendum, lead-based paint disclosure, seller's disclosure, inspection report, repair
+  request, earnest money receipt, closing disclosure, settlement statement, pre-approval, buyer and listing
+  agreements, wiring instructions). One upload holding several documents is **split into separate PDFs** and
+  each is **filed into the matching checklist slot** (marked submitted and sent for review); unrecognised
+  leading pages join the first document; what cannot be matched stays "not yet in the checklist".
+- **Facts** (parties, address, price, earnest money, contract, closing and contingency dates, year built,
+  title company, lender) extracted by AI from the **redacted** text through the AI gateway; each fact is kept
+  only if its quote is really on the cited page and states the value. The agent ticks facts to **apply to the
+  deal** (price, contract and closing dates) and its **key dates** (contingency deadlines).
+- **Documents the file now needs** are added to the checklist by deterministic rules, each saying which page
+  triggered it: HOA documents, condominium documents, well and septic inspection, short-sale lender approval,
+  FHA/VA amendatory clause, repair invoices, and the lead-based paint disclosure for homes built before 1978.
+- **Sensitive numbers** (Social Security, bank account and routing numbers, dates of birth) are counted on each
+  document with a warning, and a **safe copy** blacks them out for sharing: affected pages are flattened to
+  images first so nothing can be copied from under the boxes. Documents with **wiring or bank instructions**
+  carry a wire-fraud warning.
+- **Ask this document**: answers only from its pages; every citation's quote is checked against the page,
+  and with no checked citation the answer is "I could not find that in this document."
 
 ## Purpose
 

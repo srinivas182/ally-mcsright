@@ -7,6 +7,8 @@ namespace Modules\Transactions;
 use App\Models\User;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use Modules\AI\FeatureCatalog;
+use Modules\AI\Support\PromptRegistry;
 use Modules\Core\Access\PermissionRegistry;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Navigation\NavigationRegistry;
@@ -16,7 +18,7 @@ final class TransactionsServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        foreach ([Checklists::class, Deals::class, Documents::class, Reviews::class, EarnestMoney::class, TitleDesk::class, Cdas::class, Referrals::class, FileExport::class, Forecast::class, KeyDates::class] as $service) {
+        foreach ([Checklists::class, Deals::class, Documents::class, Reviews::class, EarnestMoney::class, TitleDesk::class, Cdas::class, Referrals::class, FileExport::class, Forecast::class, KeyDates::class, Reading\DocIq::class] as $service) {
             $this->app->scoped($service);
         }
     }
@@ -25,6 +27,11 @@ final class TransactionsServiceProvider extends ServiceProvider
     {
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
+        // DocIQ: prompts live with the module; features are declared for ai:sync-features.
+        $this->app->make(PromptRegistry::class)->addPath(__DIR__.'/../prompts');
+        $features = $this->app->make(FeatureCatalog::class);
+        $features->declare(Reading\DocIq::READ, 'ai.doc_read', 'DocIQ: facts read from each uploaded deal document');
+        $features->declare(Reading\DocIq::ASK, 'ai.doc_ask', 'DocIQ: questions answered from one document');
         if ($this->app->runningInConsole()) {
             $this->commands([Console\SendDateReminders::class]);
         }
