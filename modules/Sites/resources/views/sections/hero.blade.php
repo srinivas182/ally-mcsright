@@ -1,4 +1,5 @@
-<section class="hero" @if (! empty($p['image'] ?? $site->brand['hero_image'] ?? null)) style="--hero: url('{{ $p['image'] ?? $site->brand['hero_image'] }}')" @endif>
+@php($heroImage = app(\Modules\Sites\Content\MediaLibrary::class)->url($p['image'] ?? $site->brand['hero_image'] ?? null, 'hero'))
+<section class="hero" @if ($heroImage) style="--hero: url('{{ $heroImage }}')" @endif>
     <div class="wrap hero-inner">
         <h1>{{ $p['headline'] }}</h1>
         @if ($p['subhead'] !== '')<p class="lead">{{ $p['subhead'] }}</p>@endif

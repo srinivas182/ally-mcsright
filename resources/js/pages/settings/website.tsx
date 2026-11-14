@@ -1,4 +1,4 @@
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/ui/page-header';
 import { Textarea } from '@/components/ui/textarea';
+import { postJson } from '@/lib/http';
 
 type Page = {
     ulid: string;
@@ -34,7 +35,20 @@ type Props = {
     cname_target: string;
     templates: { key: string; name: string; description: string }[];
     powered_by: { text: string; url: string } | null;
+    menus: {
+        main: MenuItem[];
+        footer: MenuItem[];
+        custom: boolean;
+    } | null;
+    redirects: {
+        id: number;
+        from: string;
+        to: string;
+        code: number;
+        hits: number;
+    }[];
 };
+type MenuItem = { label: string; url: string };
 
 const opts = { preserveScroll: true };
 const text = (v: unknown): string => (typeof v === 'string' ? v : '');
@@ -185,6 +199,8 @@ function Manage({
     cname_target,
     templates,
     powered_by,
+    menus,
+    redirects,
 }: Props & { site: Site }) {
     const social = (site.info.social ?? {}) as Record<string, string>;
     const form = useForm({
@@ -420,17 +436,36 @@ function Manage({
             </form>
 
             <section className="grid gap-3 rounded-lg border p-4 text-sm">
-                <h2 className="font-semibold">Pages</h2>
+                <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="font-semibold">Pages</h2>
+                    <Button
+                        asChild
+                        size="sm"
+                        variant="outline"
+                        className="ml-auto"
+                    >
+                        <Link href="/settings/website/blog">Blog</Link>
+                    </Button>
+                    <Button asChild size="sm" variant="outline">
+                        <Link href="/settings/website/media">
+                            Media library
+                        </Link>
+                    </Button>
+                </div>
                 <ul className="grid gap-3">
                     {site.pages.map((p) => (
                         <PageRow key={p.ulid} page={p} />
                     ))}
                 </ul>
+                <NewPage />
                 <p className="text-xs text-muted-foreground">
-                    The page builder, blog and more pages arrive next; the
-                    sitemap, llms.txt and structured data update automatically.
+                    The sitemap, llms.txt and structured data update
+                    automatically when you publish.
                 </p>
             </section>
+
+            {menus && <Menus menus={menus} />}
+            <RedirectsPanel redirects={redirects} />
 
             <section className="grid gap-3 rounded-lg border p-4 text-sm">
                 <h2 className="font-semibold">Domains</h2>
@@ -508,23 +543,10 @@ function PageRow({ page }: { page: Page }) {
     const preview = async () => {
         setBusy(true);
         try {
-            const token =
-                document.querySelector<HTMLMetaElement>(
-                    'meta[name="csrf-token"]',
-                )?.content ?? '';
-            const res = await fetch(
+            const body = await postJson<{ url: string | null }>(
                 `/settings/website/pages/${page.ulid}/preview`,
-                {
-                    method: 'POST',
-                    headers: {
-                        Accept: 'application/json',
-                        'X-CSRF-TOKEN': token,
-                        'X-Requested-With': 'XMLHttpRequest',
-                    },
-                    credentials: 'same-origin',
-                },
+                {},
             );
-            const body = (await res.json()) as { url: string | null };
             if (body.url) {
                 window.open(body.url, '_blank', 'noopener');
             }
@@ -539,10 +561,14 @@ function PageRow({ page }: { page: Page }) {
                 <code className="text-xs text-muted-foreground">
                     {page.path}
                 </code>
+                <Button asChild size="sm" variant="outline" className="ml-auto">
+                    <Link href={`/settings/website/pages/${page.ulid}/edit`}>
+                        Edit page
+                    </Link>
+                </Button>
                 <Button
                     size="sm"
                     variant="ghost"
-                    className="ml-auto"
                     disabled={busy}
                     onClick={preview}
                 >
@@ -604,5 +630,309 @@ function PageRow({ page }: { page: Page }) {
                 </div>
             </form>
         </li>
+    );
+}
+
+function NewPage() {
+    const form = useForm({ title: '', path: '' });
+
+    return (
+        <form
+            className="flex flex-wrap gap-2"
+            onSubmit={(e) => {
+                e.preventDefault();
+                form.post('/settings/website/pages', opts);
+            }}
+        >
+            <Input
+                aria-label="New page title"
+                className="max-w-xs"
+                placeholder="New page title, e.g. Buyer guide"
+                value={form.data.title}
+                onChange={(e) => {
+                    const title = e.target.value;
+                    form.setData({
+                        title,
+                        path:
+                            '/' +
+                            title
+                                .toLowerCase()
+                                .replace(/[^a-z0-9]+/g, '-')
+                                .replace(/^-|-$/g, ''),
+                    });
+                }}
+            />
+            <Input
+                aria-label="New page address"
+                className="max-w-xs"
+                placeholder="/buyer-guide"
+                value={form.data.path}
+                onChange={(e) => form.setData('path', e.target.value)}
+            />
+            <Button
+                variant="outline"
+                disabled={form.processing || form.data.title === ''}
+            >
+                Add page
+            </Button>
+            {Object.values(form.errors).map((m) => (
+                <p key={m} className="w-full text-destructive">
+                    {m}
+                </p>
+            ))}
+        </form>
+    );
+}
+
+function MenuEditor({
+    label,
+    items,
+    onChange,
+}: {
+    label: string;
+    items: MenuItem[];
+    onChange: (items: MenuItem[]) => void;
+}) {
+    const move = (i: number, d: number) => {
+        const next = [...items];
+        const [it] = next.splice(i, 1);
+        next.splice(i + d, 0, it);
+        onChange(next);
+    };
+
+    return (
+        <div className="grid gap-2">
+            <h3 className="font-medium">{label}</h3>
+            {items.map((it, i) => (
+                <div key={i} className="flex flex-wrap items-center gap-2">
+                    <Input
+                        aria-label={`${label} link ${i + 1} label`}
+                        className="max-w-[12rem]"
+                        value={it.label}
+                        onChange={(e) =>
+                            onChange(
+                                items.map((x, n) =>
+                                    n === i
+                                        ? { ...x, label: e.target.value }
+                                        : x,
+                                ),
+                            )
+                        }
+                    />
+                    <Input
+                        aria-label={`${label} link ${i + 1} address`}
+                        className="max-w-xs"
+                        value={it.url}
+                        onChange={(e) =>
+                            onChange(
+                                items.map((x, n) =>
+                                    n === i ? { ...x, url: e.target.value } : x,
+                                ),
+                            )
+                        }
+                    />
+                    <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        disabled={i === 0}
+                        onClick={() => move(i, -1)}
+                        aria-label="Move up"
+                    >
+                        ↑
+                    </Button>
+                    <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        disabled={i === items.length - 1}
+                        onClick={() => move(i, 1)}
+                        aria-label="Move down"
+                    >
+                        ↓
+                    </Button>
+                    <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() =>
+                            onChange(items.filter((_, n) => n !== i))
+                        }
+                        aria-label="Remove link"
+                    >
+                        ×
+                    </Button>
+                </div>
+            ))}
+            {items.length < 10 && (
+                <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="justify-self-start"
+                    onClick={() =>
+                        onChange([...items, { label: '', url: '/' }])
+                    }
+                >
+                    Add link
+                </Button>
+            )}
+        </div>
+    );
+}
+
+function Menus({ menus }: { menus: NonNullable<Props['menus']> }) {
+    const form = useForm({ main: menus.main, footer: menus.footer });
+
+    return (
+        <form
+            className="grid gap-4 rounded-lg border p-4 text-sm"
+            onSubmit={(e) => {
+                e.preventDefault();
+                form.post('/settings/website/menus', opts);
+            }}
+        >
+            <h2 className="font-semibold">Menus</h2>
+            <p className="text-muted-foreground">
+                {menus.custom
+                    ? 'Your own menu.'
+                    : 'Showing the automatic menu. Change it and save to use your own.'}{' '}
+                Links can go to a page (like /homes or /blog) or an https
+                address.
+            </p>
+            <MenuEditor
+                label="Main menu"
+                items={form.data.main}
+                onChange={(items) => form.setData('main', items)}
+            />
+            <MenuEditor
+                label="Footer menu (empty: same as main)"
+                items={form.data.footer}
+                onChange={(items) => form.setData('footer', items)}
+            />
+            {Object.values(form.errors).map((m) => (
+                <p key={m} className="text-destructive">
+                    {m}
+                </p>
+            ))}
+            <div>
+                <Button disabled={form.processing}>Save menus</Button>
+            </div>
+        </form>
+    );
+}
+
+function RedirectsPanel({ redirects }: { redirects: Props['redirects'] }) {
+    const one = useForm({ from: '', to: '', code: '301' });
+    const bulk = useForm({ lines: '' });
+
+    return (
+        <section className="grid gap-3 rounded-lg border p-4 text-sm">
+            <h2 className="font-semibold">Redirects</h2>
+            <p className="text-muted-foreground">
+                Moving from another website? Send old addresses to the new pages
+                so you keep your Google rankings. Redirects apply only when a
+                page is not found.
+            </p>
+            <form
+                className="flex flex-wrap gap-2"
+                onSubmit={(e) => {
+                    e.preventDefault();
+                    one.post('/settings/website/redirects', {
+                        ...opts,
+                        onSuccess: () => one.reset(),
+                    });
+                }}
+            >
+                <Input
+                    aria-label="Old address"
+                    className="max-w-xs"
+                    placeholder="/old-page.html"
+                    value={one.data.from}
+                    onChange={(e) => one.setData('from', e.target.value)}
+                />
+                <Input
+                    aria-label="New address"
+                    className="max-w-xs"
+                    placeholder="/new-page"
+                    value={one.data.to}
+                    onChange={(e) => one.setData('to', e.target.value)}
+                />
+                <select
+                    aria-label="Redirect type"
+                    className="rounded-md border bg-background px-2"
+                    value={one.data.code}
+                    onChange={(e) => one.setData('code', e.target.value)}
+                >
+                    <option value="301">Permanent (301)</option>
+                    <option value="302">Temporary (302)</option>
+                </select>
+                <Button variant="outline" disabled={one.processing}>
+                    Add redirect
+                </Button>
+                {Object.values(one.errors).map((m) => (
+                    <p key={m} className="w-full text-destructive">
+                        {m}
+                    </p>
+                ))}
+            </form>
+            <form
+                className="grid gap-2"
+                onSubmit={(e) => {
+                    e.preventDefault();
+                    bulk.post('/settings/website/redirects/import', {
+                        ...opts,
+                        onSuccess: () => bulk.reset(),
+                    });
+                }}
+            >
+                <Textarea
+                    aria-label="Paste redirects"
+                    rows={3}
+                    placeholder={
+                        'One per line: old address, then new address\n/listings/123.html /homes\nhttps://oldsite.com/about-us /about'
+                    }
+                    value={bulk.data.lines}
+                    onChange={(e) => bulk.setData('lines', e.target.value)}
+                />
+                <div>
+                    <Button
+                        variant="outline"
+                        disabled={bulk.processing || bulk.data.lines === ''}
+                    >
+                        Import
+                    </Button>
+                </div>
+            </form>
+            {redirects.length > 0 && (
+                <ul className="grid gap-1">
+                    {redirects.map((r) => (
+                        <li
+                            key={r.id}
+                            className="flex flex-wrap items-center gap-2"
+                        >
+                            <code>{r.from}</code> → <code>{r.to}</code>
+                            <Badge variant="outline">{r.code}</Badge>
+                            <span className="text-xs text-muted-foreground">
+                                {r.hits} visits
+                            </span>
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                className="ml-auto"
+                                onClick={() =>
+                                    router.delete(
+                                        `/settings/website/redirects/${r.id}`,
+                                        opts,
+                                    )
+                                }
+                            >
+                                Remove
+                            </Button>
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </section>
     );
 }

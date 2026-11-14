@@ -24,6 +24,7 @@ final class SitesServiceProvider extends ServiceProvider
         $this->app->singleton(PoweredBy::class);
         $this->app->scoped(Maps::class);
         $this->app->scoped(Visitors\Visitors::class);
+        $this->app->scoped(Content\MediaLibrary::class);
         $this->app->scoped(Visitors\SignIn::class);
         $this->app->scoped(Visitors\JourneySummary::class);
         $this->app->scoped(Visitors\Valuation::class);

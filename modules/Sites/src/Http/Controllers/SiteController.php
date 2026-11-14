@@ -16,6 +16,7 @@ use Modules\Listings\Search\ListingSearch;
 use Modules\Listings\Search\MarketStats;
 use Modules\Sites\Models\Site;
 use Modules\Sites\Models\SitePage;
+use Modules\Sites\Models\SitePost;
 use Modules\Sites\Rendering\Chrome;
 use Modules\Sites\Rendering\Seo;
 use Modules\Sites\Rendering\Urls;
@@ -90,6 +91,13 @@ final class SiteController
             $tenantId = $this->tenants->id();
             $places = app(MarketStats::class)->places($tenantId);
             $urls[] = '<url><loc>'.e($base.'/homes').'</loc></url>';
+            $posts = SitePost::query()->where('site_id', $site->id)->live()->where('noindex', false)->orderByDesc('published_at')->limit(5000)->get(['slug', 'updated_at']);
+            if ($posts->isNotEmpty()) {
+                $urls[] = '<url><loc>'.e($base.'/blog').'</loc></url>';
+            }
+            foreach ($posts as $post) {
+                $urls[] = '<url><loc>'.e($base.'/blog/'.$post->slug).'</loc><lastmod>'.($post->updated_at?->toAtomString() ?? '').'</lastmod></url>';
+            }
             if ($places !== []) {
                 $urls[] = '<url><loc>'.e($base.'/market').'</loc></url>';
             }
@@ -140,6 +148,14 @@ final class SiteController
             $out[] = '- ['.$p->title.']('.$base.$p->path.')'.($p->meta_description ? ': '.$p->meta_description : '');
         }
         $out[] = '- [Homes for sale]('.$base.'/homes): every home for sale from the MLS, searchable by map, price and size';
+        $posts = SitePost::query()->where('site_id', $site->id)->live()->where('noindex', false)->orderByDesc('published_at')->limit(15)->get(['slug', 'title', 'excerpt']);
+        if ($posts->isNotEmpty()) {
+            $out[] = '';
+            $out[] = '## Articles';
+            foreach ($posts as $post) {
+                $out[] = '- ['.$post->title.']('.$base.'/blog/'.$post->slug.')'.($post->excerpt ? ': '.$post->excerpt : '');
+            }
+        }
         $places = array_slice(app(MarketStats::class)->places($this->tenants->id()), 0, 12);
         if ($places !== []) {
             $out[] = '';
@@ -217,6 +233,13 @@ final class SiteController
         $tenantId = $this->tenants->id();
         $blocks = [];
         foreach (Sections::clean($sections) as $s) {
+            if ($s['hidden']) {
+                continue;
+            }
+            if ($s['type'] === 'neighbourhoods') {
+                $stats = app(MarketStats::class);
+                $s['markets'] = array_values(array_filter(array_map(fn (string $slug): ?array => $stats->forPlace($tenantId, $slug), $s['props']['places'])));
+            }
             if ($s['type'] === 'listings') {
                 $p = $s['props'];
                 $s['listings'] = app(ListingSearch::class)->search($tenantId, array_filter(['q' => $p['q'] ?? '', 'min_price' => $p['min_price'] ?? null,

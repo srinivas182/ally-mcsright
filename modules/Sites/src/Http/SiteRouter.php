@@ -8,11 +8,16 @@ use Illuminate\Container\Container;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Router;
+use Modules\Sites\Content\Redirects;
+use Modules\Sites\Http\Controllers\BlogController;
 use Modules\Sites\Http\Controllers\IdxController;
 use Modules\Sites\Http\Controllers\SiteController;
 use Modules\Sites\Http\Controllers\ValuationController;
 use Modules\Sites\Http\Controllers\VisitorController;
+use Modules\Sites\Models\Site;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /** The public website's own routes, kept apart from the back office's (no session, no CSRF, cacheable). */
 final class SiteRouter
@@ -40,6 +45,11 @@ final class SiteRouter
         $r->post('_me/searches', [VisitorController::class, 'saveSearch']);
         $r->get('_search', [IdxController::class, 'results']);
         $r->get('homes/{listing}/{slug?}', [IdxController::class, 'listing'])->where(['listing' => '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}', 'slug' => '[a-z0-9-]{0,140}']);
+        $r->get('blog', [BlogController::class, 'index']);
+        $r->get('blog/feed.xml', [BlogController::class, 'feed']);
+        $r->get('blog/category/{category}', [BlogController::class, 'category'])->where('category', '[a-z0-9-]{1,60}');
+        $r->get('blog/{slug}', [BlogController::class, 'show'])->where('slug', '[a-z0-9-]{1,120}');
+        $r->get('_preview/post/{post}', [BlogController::class, 'preview'])->where('post', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}');
         $r->get('market', [IdxController::class, 'markets']);
         $r->get('market/{place}', [IdxController::class, 'market'])->where('place', '[a-z0-9-]{2,80}');
         $r->get('{path?}', [SiteController::class, 'page'])->where('path', '[A-Za-z0-9/_\-]*');
@@ -47,6 +57,21 @@ final class SiteRouter
 
     public function dispatch(Request $request): Response
     {
-        return $this->router->dispatch($request);
+        try {
+            $response = $this->router->dispatch($request);
+        } catch (NotFoundHttpException|MethodNotAllowedHttpException) {
+            $response = response()->view('sites::missing', ['site' => null], 404)->header('Cache-Control', 'public, max-age=60');
+        }
+        // A moved address: send it on to its new page (only when nothing else answered it).
+        if ($response->getStatusCode() === 404 && $request->isMethod('GET')) {
+            $site = Site::query()->where('kind', 'brokerage')->first();
+            $path = '/'.ltrim($request->path(), '/').($request->getQueryString() !== null ? '?'.$request->getQueryString() : '');
+            $to = $site !== null ? (app(Redirects::class)->find($site, $path) ?? app(Redirects::class)->find($site, '/'.ltrim($request->path(), '/'))) : null;
+            if ($to !== null) {
+                return redirect(str_starts_with($to['to'], '/') ? $request->getSchemeAndHttpHost().$to['to'] : $to['to'], $to['code'])->header('Cache-Control', 'public, max-age=3600');
+            }
+        }
+
+        return $response;
     }
 }
