@@ -145,6 +145,9 @@ final class Packets
         if ($packet->status === 'draft' && ($identity = app(Identity\IdentityChecks::class)->sendProblem((int) $packet->id)) !== null) {
             $problems[] = $identity;
         }
+        if ($packet->status === 'draft' && ($clauses = ClauseCheck::sendProblem($packet)) !== null) {
+            $problems[] = $clauses;
+        }
 
         return array_values(array_unique($problems));
     }

@@ -6,6 +6,12 @@ import {
     type NegotiationStep,
     type PacketChange,
 } from '@/components/forms/negotiation-panel';
+import {
+    ClauseReviewPanel,
+    SummaryPanel,
+    type ClauseReview,
+    type PacketSummary,
+} from '@/components/forms/summary-panel';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -56,6 +62,8 @@ type Props = {
         can_override: boolean;
         policy: string;
     };
+    summary: PacketSummary;
+    clause_review: ClauseReview;
 };
 
 function FormValues({
@@ -185,6 +193,8 @@ export default function Packet({
     changes,
     templates,
     risk,
+    summary,
+    clause_review,
 }: Props) {
     const locked = packet.status !== 'draft';
     const signerForm = useForm<{ signers: Omit<Signer, 'status'>[] }>({
@@ -249,6 +259,11 @@ export default function Packet({
                             ))}
                     </section>
                 ) : null}
+                <ClauseReviewPanel
+                    packet={packet.ulid}
+                    status={packet.status}
+                    review={clause_review}
+                />
                 <RiskPanel packet={packet.ulid} risk={risk} signers={signers} />
                 {forms.map((f) => (
                     <FormValues
@@ -405,6 +420,11 @@ export default function Packet({
                         ready={problems.length === 0}
                     />
                 </section>
+                <SummaryPanel
+                    packet={packet.ulid}
+                    status={packet.status}
+                    summary={summary}
+                />
                 <NegotiationPanel
                     packet={packet}
                     forms={forms}

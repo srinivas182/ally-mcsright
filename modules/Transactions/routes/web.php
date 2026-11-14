@@ -13,6 +13,9 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoff
     Route::post('/', [DealController::class, 'store'])->name('store');
     Route::get('{deal}', [DealController::class, 'show'])->name('show');
     Route::post('{deal}/status', [DealController::class, 'status'])->name('status');
+    Route::post('{deal}/dates', [DealController::class, 'addDate'])->name('dates.store');
+    Route::post('{deal}/dates/{date}/toggle', [DealController::class, 'toggleDate'])->whereNumber('date')->name('dates.toggle');
+    Route::delete('{deal}/dates/{date}', [DealController::class, 'removeDate'])->whereNumber('date')->name('dates.destroy');
     Route::post('{deal}/documents', [DealController::class, 'upload'])->middleware('throttle:60,1')->name('upload');
     Route::get('documents/{document}', [DealController::class, 'download'])->name('download');
     Route::post('items/{item}/review', [DealController::class, 'review'])->name('item.review');

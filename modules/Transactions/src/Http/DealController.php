@@ -21,6 +21,7 @@ use Modules\Transactions\Deals;
 use Modules\Transactions\Documents;
 use Modules\Transactions\EarnestMoney;
 use Modules\Transactions\Forecast;
+use Modules\Transactions\KeyDates;
 use Modules\Transactions\Models\Deal;
 use Modules\Transactions\Models\Document;
 use Modules\Transactions\Models\Item;
@@ -72,6 +73,7 @@ final class DealController
                 'documents' => ($docs[$i->id] ?? collect())->map(fn (Document $d): array => ['ulid' => $d->ulid, 'filename' => $d->filename, 'version' => $d->version, 'via' => $d->via])->values(),
             ]),
             'missing' => $deals->missing($deal),
+            'dates' => app(KeyDates::class)->forDeal($deal),
             'deposits' => app(EarnestMoney::class)->forDeal($deal),
             'referrals' => app(Referrals::class)->forDeal($deal),
             'cdas' => self::reviewer($user) ? app(Cdas::class)->forDeal($deal) : [],
@@ -167,6 +169,31 @@ final class DealController
             }),
             'reasons' => $reviews->reasons(),
         ]);
+    }
+
+    public function addDate(Request $request, Deal $deal, KeyDates $dates): RedirectResponse
+    {
+        $this->authorise($request, $deal);
+        $data = $request->validate(['label' => ['required', 'string', 'max:80'], 'due_on' => ['required', 'date_format:Y-m-d']]);
+        $dates->add($deal, $data['label'], $data['due_on']);
+
+        return back();
+    }
+
+    public function toggleDate(Request $request, Deal $deal, int $date, KeyDates $dates): RedirectResponse
+    {
+        $this->authorise($request, $deal);
+        $dates->toggle($deal, $date);
+
+        return back();
+    }
+
+    public function removeDate(Request $request, Deal $deal, int $date, KeyDates $dates): RedirectResponse
+    {
+        $this->authorise($request, $deal);
+        $dates->remove($deal, $date);
+
+        return back();
     }
 
     private function authorise(Request $request, Deal $deal): User

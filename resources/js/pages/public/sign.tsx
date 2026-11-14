@@ -1,6 +1,7 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import { useRef, useState } from 'react';
 
+import { SummaryBody } from '@/components/forms/summary-panel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -19,6 +20,11 @@ type Props = {
     };
     fields: { form: string; label: string; type: string }[];
     disclosure: string;
+    summary: {
+        en: SummaryLang;
+        es: SummaryLang;
+        deadlines: { label: string; date: string; rule: string }[];
+    } | null;
     changes: {
         id: number;
         form: string;
@@ -28,6 +34,67 @@ type Props = {
         reason: string;
     }[];
 };
+
+type SummaryLang = {
+    headline: string;
+    points: { topic: string; text: string }[];
+    agreeing_to: string[];
+    disclaimer: string;
+};
+
+/** The approved plain-English summary, in English or Spanish, before the signer reviews the documents. */
+function PlainSummary({ summary }: { summary: NonNullable<Props['summary']> }) {
+    const [lang, setLang] = useState<'en' | 'es'>('en');
+    const s = summary[lang];
+
+    return (
+        <section className="grid gap-2 rounded-lg border bg-muted/30 p-4">
+            <div className="flex flex-wrap items-center gap-2">
+                <h2 className="font-semibold">
+                    {lang === 'en'
+                        ? 'In plain English'
+                        : 'En palabras sencillas'}
+                </h2>
+                <div className="ml-auto flex gap-1" role="tablist">
+                    {(['en', 'es'] as const).map((l) => (
+                        <Button
+                            key={l}
+                            size="sm"
+                            role="tab"
+                            aria-selected={lang === l}
+                            variant={lang === l ? 'secondary' : 'ghost'}
+                            onClick={() => setLang(l)}
+                        >
+                            {l === 'en' ? 'English' : 'Español'}
+                        </Button>
+                    ))}
+                </div>
+            </div>
+            <SummaryBody
+                headline={s.headline}
+                points={s.points}
+                agreeing={s.agreeing_to}
+            />
+            {summary.deadlines.some((d) => d.date) && (
+                <div>
+                    <p className="text-xs text-muted-foreground">
+                        {lang === 'en' ? 'Key dates' : 'Fechas clave'}
+                    </p>
+                    <ul>
+                        {summary.deadlines
+                            .filter((d) => d.date)
+                            .map((d, i) => (
+                                <li key={i}>
+                                    {d.label}: {d.date}
+                                </li>
+                            ))}
+                    </ul>
+                </div>
+            )}
+            <p className="text-xs text-muted-foreground">{s.disclaimer}</p>
+        </section>
+    );
+}
 
 /** A signer who already signed initials only what changed since. */
 function InitialChanges({
@@ -202,6 +269,7 @@ export default function Sign({
     signer,
     fields,
     disclosure,
+    summary,
     changes,
 }: Props) {
     const base = `/sign/${token}`;
@@ -366,6 +434,7 @@ export default function Sign({
                     </section>
                 ) : (
                     <>
+                        {summary && <PlainSummary summary={summary} />}
                         <section className="grid gap-2 rounded-lg border p-4">
                             <h2 className="font-semibold">Review</h2>
                             <iframe

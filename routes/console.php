@@ -19,6 +19,9 @@ Schedule::command('ai:batches:collect')->everyTenMinutes()->onOneServer();
 Schedule::command('comp:check-caps')->dailyAt('04:30')->onOneServer();
 // CRM task reminders (specs/crm/01).
 Schedule::command('crm:task-reminders')->everyFiveMinutes()->onOneServer();
+
+// Key dates on deals (inspection, financing, closing…): due in 2 days, today, or missed yesterday.
+Schedule::command('transactions:date-reminders')->dailyAt('12:00')->onOneServer();
 // Nightly AI brief refresh at batch price (specs/crm/01).
 Schedule::command('crm:refresh-briefs')->dailyAt('02:00')->onOneServer();
 // Follow-up plan steps (specs/crm/01).
