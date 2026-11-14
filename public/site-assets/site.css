@@ -1142,3 +1142,201 @@ h3 {
     color: var(--muted);
     font-size: 0.85rem;
 }
+
+/* ---- 17C-2b: accounts, saved homes, compare, home value ---- */
+.header-account {
+    padding: 0.6rem 1rem;
+}
+@media (max-width: 720px) {
+    .header-account {
+        padding: 0.5rem 0.8rem;
+        font-size: 0.85rem;
+    }
+}
+.fav {
+    position: absolute;
+    right: 10px;
+    top: 10px;
+    z-index: 3;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 0;
+    background: rgb(255 255 255 / 0.9);
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    transition: transform 0.2s var(--ease);
+}
+.fav:hover {
+    transform: scale(1.08);
+}
+.fav svg {
+    width: 20px;
+    height: 20px;
+    fill: transparent;
+    stroke: #0f172a;
+    stroke-width: 2;
+}
+.fav[aria-pressed='true'] svg {
+    fill: #e11d48;
+    stroke: #e11d48;
+}
+.cmp {
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+    z-index: 3;
+    border: 0;
+    border-radius: 999px;
+    padding: 0.35rem 0.7rem;
+    font: 600 0.72rem/1 var(--font-body);
+    background: rgb(255 255 255 / 0.9);
+    color: #0f172a;
+    cursor: pointer;
+}
+.cmp[aria-pressed='true'] {
+    background: var(--brand);
+    color: var(--on-brand);
+}
+.listing-actions {
+    display: flex;
+    gap: 0.5rem;
+    float: right;
+}
+.listing-actions [aria-pressed='true'] {
+    background: var(--brand);
+    color: var(--on-brand);
+    border-color: var(--brand);
+}
+.compare-tray {
+    position: fixed;
+    left: 50%;
+    bottom: 1rem;
+    transform: translateX(-50%);
+    z-index: 60;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 0.5rem 0.6rem 0.5rem 1.1rem;
+    box-shadow: 0 20px 40px -12px rgb(0 0 0 / 0.35);
+    font-size: 0.9rem;
+}
+.auth {
+    width: min(440px, calc(100vw - 2rem));
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 1.75rem;
+    background: var(--bg);
+    color: var(--text);
+    box-shadow: 0 30px 80px -20px rgb(0 0 0 / 0.5);
+}
+.auth::backdrop {
+    background: rgb(15 23 42 / 0.55);
+    backdrop-filter: blur(4px);
+}
+.auth form {
+    display: grid;
+    gap: 0.8rem;
+}
+.auth label {
+    display: grid;
+    gap: 0.35rem;
+    font-weight: 600;
+    font-size: 0.88rem;
+}
+.auth input {
+    font: inherit;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 0.75rem 0.85rem;
+}
+.auth .consent {
+    grid-template-columns: auto 1fr;
+    font-weight: 400;
+    font-size: 0.74rem;
+    color: var(--muted);
+}
+.auth-close {
+    position: absolute;
+    right: 0.75rem;
+    top: 0.5rem;
+    display: block !important;
+}
+.auth-close button {
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    font-size: 1.6rem;
+    cursor: pointer;
+}
+.auth h2 {
+    font-size: 1.5rem;
+    padding-right: 2rem;
+}
+.privacy {
+    font-size: 0.75rem;
+}
+.compare-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+.compare {
+    border-collapse: collapse;
+    min-width: 640px;
+    width: 100%;
+}
+.compare th,
+.compare td {
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+    vertical-align: top;
+}
+.compare thead th {
+    width: 22%;
+}
+.compare thead img {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    margin-bottom: 0.5rem;
+}
+.compare thead a {
+    text-decoration: none;
+    font-weight: 600;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+.compare tbody th {
+    color: var(--muted);
+    font-weight: 500;
+    font-size: 0.88rem;
+}
+.compare td.best {
+    font-weight: 700;
+    color: var(--brand);
+}
+.theme-aurum .compare td.best {
+    color: var(--accent);
+}
+.value-range {
+    font: var(--head-weight) clamp(2rem, 4.5vw, 3.4rem)/1.1 var(--font-head);
+    margin: 0.5rem 0 1rem;
+}
+.theme-aurum .value-range {
+    color: var(--accent);
+}
+.form-row {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr;
+    gap: 0.75rem;
+}

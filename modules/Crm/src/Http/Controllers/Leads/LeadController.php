@@ -6,12 +6,14 @@ namespace Modules\Crm\Http\Controllers\Leads;
 
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Core\Identity\Enums\UserKind;
+use Modules\Core\Leads\VisitorJourneys;
 use Modules\Crm\ContactVisibility;
 use Modules\Crm\CrmAccess;
 use Modules\Crm\Enums\Source;
@@ -28,7 +30,7 @@ use Modules\Crm\Models\RoutingRule;
 /** Leads screens (specs/grow/04): incoming leads with speed figures, and the sources and routing settings. */
 final class LeadController
 {
-    public function index(Request $request, SpeedToLead $speed, ContactVisibility $visibility): Response
+    public function index(Request $request, SpeedToLead $speed, ContactVisibility $visibility, VisitorJourneys $journeys): Response
     {
         $user = self::user($request);
         $manager = CrmAccess::manager($user);
@@ -38,6 +40,8 @@ final class LeadController
             ->latest('id')->limit(150)->get()
             ->filter(fn (Lead $l): bool => $manager || $l->status !== 'offered' || in_array($user->id, $l->offered_to ?? [], true))->take(100)->values();
         $names = User::query()->whereIn('id', $leads->pluck('assigned_user_id')->filter()->unique())->get()->keyBy('id');
+        $visible = $leads->filter(fn (Lead $l): bool => $l->contact !== null && $visibility->canSee($user, $l->contact));
+        $journey = $journeys->summaries(array_values(array_unique($visible->pluck('contact_id')->map(fn ($id): int => (int) $id)->all())));
 
         $since = CarbonImmutable::now()->subDays(30);
         $recent = Lead::query()->where('created_at', '>=', $since)->where('status', '!=', 'needs_review')
@@ -53,6 +57,7 @@ final class LeadController
                 'response_minutes' => $l->response_seconds !== null ? round($l->response_seconds / 60, 1) : null, 'new_contact' => $l->new_contact,
                 'can_claim' => $l->status === 'offered' && in_array($user->id, $l->offered_to ?? [], true),
                 'score' => $l->score, 'score_label' => $l->score_label, 'score_reasons' => $l->score_reasons ?? [],
+                'journey' => $l->contact !== null && $visibility->canSee($user, $l->contact) ? ($journey[$l->contact_id] ?? null) : null,
             ]),
             'review' => $manager ? Lead::query()->where('status', 'needs_review')->latest('id')->limit(20)->get()
                 ->map(fn (Lead $l): array => ['ulid' => $l->ulid, 'received' => $l->created_at->toIso8601String(), 'source' => SpeedToLead::sourceLabel($l->source), 'raw' => mb_substr((string) $l->raw, 0, 3000)]) : [],
@@ -61,6 +66,16 @@ final class LeadController
             'canManage' => $manager,
             'focus' => $request->string('lead')->toString() ?: null,
         ]);
+    }
+
+    /** What the lead did on the brokerage's websites, newest first, with the summary (specs/websites/07). */
+    public function journey(Request $request, Lead $lead, ContactVisibility $visibility, VisitorJourneys $journeys): JsonResponse
+    {
+        $user = self::user($request);
+        $contact = $lead->contact;
+        abort_unless($contact !== null && $visibility->canSee($user, $contact), 404);
+
+        return response()->json(['journey' => $journeys->forContact($contact->id)]);
     }
 
     public function report(Request $request, LeadReports $reports): Response

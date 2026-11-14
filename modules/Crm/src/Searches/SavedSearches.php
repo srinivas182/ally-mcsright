@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\ValidationException;
 use Modules\Core\Audit\AuditLogger;
+use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Crm\Actions\Timeline;
@@ -59,6 +60,32 @@ final class SavedSearches
             'name' => mb_substr(trim(strip_tags($name)) ?: self::describe($clean), 0, 100), 'last_checked_at' => CarbonImmutable::now()]);
         $this->timeline->system($contact, 'Saved search "'.$search->name.'" set up ('.$frequency.' alerts)', $by->id);
         app(AuditLogger::class)->record('crm.saved_search.created', $search, metadata: ['frequency' => $frequency]);
+
+        return $search;
+    }
+
+    /**
+     * A search a website visitor saved for themselves (specs/websites/07): daily alerts to their own email, owned by
+     * their agent (or the brokerage's first owner when no agent is assigned yet).
+     *
+     * @param  array<string, mixed>  $filters
+     */
+    public function createForVisitor(Contact $contact, array $filters, string $name, ?int $agentId): SavedSearch
+    {
+        $clean = array_intersect_key(ListingSearch::clean($filters), array_flip(self::FILTERS));
+        if ($clean['q'] === '' && $clean['bounds'] === null && $clean['min_price'] === null && $clean['max_price'] === null) {
+            throw ValidationException::withMessages(['query' => 'Add a place, a map area or a price range first.']);
+        }
+        if ($contact->primary_email === null) {
+            throw ValidationException::withMessages(['query' => 'Your account has no email address for alerts.']);
+        }
+        $agentId ??= User::query()->where('kind', UserKind::Owner)->orderBy('id')->value('id');
+        abort_if($agentId === null, 409);
+        $name = mb_substr(trim(strip_tags($name)) ?: self::describe($clean), 0, 100);
+        $search = SavedSearch::query()->where('contact_id', $contact->id)->where('name', $name)->first()
+            ?? SavedSearch::query()->create(['contact_id' => $contact->id, 'user_id' => $agentId, 'frequency' => 'daily', 'filters' => $clean, 'name' => $name,
+                'last_checked_at' => CarbonImmutable::now()]);
+        $this->timeline->system($contact, 'Saved a search on the website: "'.$search->name.'" (daily alerts)');
 
         return $search;
     }

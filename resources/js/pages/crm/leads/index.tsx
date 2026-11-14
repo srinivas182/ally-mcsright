@@ -1,6 +1,11 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 
+import {
+    VisitorJourney,
+    type JourneySummary,
+} from '@/components/crm/visitor-journey';
+
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -24,6 +29,7 @@ type Lead = {
     score: number | null;
     score_label: 'hot' | 'warm' | 'cold' | null;
     score_reasons: string[];
+    journey: JourneySummary | null;
 };
 type Props = {
     leads: Lead[];
@@ -265,6 +271,12 @@ export default function Leads({
                                     )}
                                     {l.message && (
                                         <p className="italic">“{l.message}”</p>
+                                    )}
+                                    {l.journey && (
+                                        <VisitorJourney
+                                            leadUlid={l.ulid}
+                                            journey={l.journey}
+                                        />
                                     )}
                                     {l.can_claim && (
                                         <Button

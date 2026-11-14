@@ -39,6 +39,9 @@ Settings the platform depends on in every environment. Each one was found by a t
 - `public/site-assets/` is served with long cache headers.
 - Maps (Sprint 17C-2a): create a Mapbox account and a public token (`pk.`) restricted to `*.rightally.site` and
   brokerage domains; paste it in HQ → Websites → Maps (or set `MAPBOX_PUBLIC_TOKEN`). Without it, websites show lists.
+- Visitor journeys (Sprint 17C-2b): a queue worker runs `SummariseJourney`; run `php artisan ai:sync-features` so the
+  `sites.journey_summary` feature and its `ai.site_journey` credit action exist; sign-in codes are sent with the
+  platform mailer (transactional, not marketing). Do not cache `/_t`, `/_auth/*`, `/_me*`, `/_valuation` at the CDN.
 - `SITES_MORTGAGE_RATE` sets the default rate in listing-page payment estimates (default 6.5).
 
 ## MLS listings (Sprint 17A)

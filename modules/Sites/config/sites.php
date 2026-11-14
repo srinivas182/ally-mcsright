@@ -10,6 +10,10 @@ return [
     // Edge cache for published pages (seconds); stale content may be served this long while refreshing.
     'cache_seconds' => (int) env('SITES_CACHE_SECONDS', 300),
     'stale_seconds' => (int) env('SITES_STALE_SECONDS', 86400),
+    // Visitor accounts and journeys (specs/websites/07): sign-up prompt after this many home views (0 = never),
+    // and when to tell the agent a known visitor looks ready to act.
+    'signup_after' => 3,
+    'ready' => ['repeat_views' => 3],
     // Mortgage estimate defaults on listing pages (visitors can change them).
     'mortgage' => ['rate' => (float) env('SITES_MORTGAGE_RATE', 6.5), 'down_pct' => 20, 'years' => 30, 'tax_rate' => 1.2, 'insurance' => 150],
     'templates' => [

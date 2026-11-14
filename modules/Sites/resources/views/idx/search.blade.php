@@ -8,6 +8,7 @@
 @endpush
 
 @section('content')
+<div hidden data-track="search"></div>
 <main id="main" class="idx {{ $chrome['mapbox'] ? 'idx-has-map' : '' }}" data-search data-mapbox="{{ $chrome['mapbox'] }}" data-bounds="{{ $query['bounds'] ?? '' }}" data-poly="{{ $query['poly'] ?? '' }}">
     <form class="filters" action="/homes" method="get" role="search" data-filters>
         <label class="sr-only" for="f-q">City, ZIP, neighborhood or address</label>
@@ -47,6 +48,7 @@
         <section class="idx-list" aria-labelledby="idx-heading">
             <div class="idx-head">
                 <h1 id="idx-heading" data-heading>{{ $heading }}</h1>
+                <button type="button" class="btn btn-ghost" data-save-search>Save search</button>
                 @if ($chrome['mapbox'])<button type="button" class="btn btn-ghost map-toggle" data-map-toggle aria-pressed="false">Map</button>@endif
             </div>
             @if ($found['total'] === 0)
