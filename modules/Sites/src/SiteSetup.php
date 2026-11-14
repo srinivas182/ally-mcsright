@@ -178,9 +178,11 @@ final class SiteSetup
     }
 
     /** Adds a custom website domain; it serves the site once DNS is verified (Cloudflare for SaaS, specs/core/05). */
-    public function addDomain(string $host, User $by): TenantDomain
+    public function addDomain(string $host, User $by, bool $allowAgent = false): TenantDomain
     {
-        self::guard($by);
+        if (! $allowAgent) {
+            self::guard($by);
+        }
         $host = strtolower(trim($host));
         $platform = (string) config('core.platform_domain');
         $sites = (string) config('sites.platform_domain');

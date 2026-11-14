@@ -1,0 +1,79 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\Sites\Rendering;
+
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Modules\Core\Tenancy\TenantContext;
+use Modules\Listings\Search\ListingSearch;
+use Modules\Listings\Search\MarketStats;
+use Modules\Sites\AgentSites;
+use Modules\Sites\Http\Controllers\SiteController;
+use Modules\Sites\Models\Site;
+use Modules\Sites\Models\SitePage;
+use Modules\Sites\Sections;
+
+/**
+ * Renders a page of sections for the brokerage's website or an agent's (specs/websites/05, 09): listings sections
+ * marked "mine" show the agent's own listings; agent pages add the agent as structured data, linked to the
+ * brokerage.
+ */
+final class PageRenderer
+{
+    public function __construct(private readonly TenantContext $tenants, private readonly SiteContext $context) {}
+
+    /**
+     * @param  list<array<string, mixed>>  $sections
+     */
+    public function render(Request $request, Site $brokerage, Site $owner, SitePage $page, array $sections, bool $indexable): Response
+    {
+        $tenantId = $this->tenants->id();
+        $agent = $owner->kind === 'agent' ? AgentSites::profile($owner) : null;
+        $blocks = [];
+        foreach (Sections::clean($sections) as $s) {
+            if ($s['hidden']) {
+                continue;
+            }
+            if ($s['type'] === 'neighbourhoods') {
+                $stats = app(MarketStats::class);
+                $s['markets'] = array_values(array_filter(array_map(fn (string $slug): ?array => $stats->forPlace($tenantId, $slug), $s['props']['places'])));
+            }
+            if ($s['type'] === 'listings') {
+                $p = $s['props'];
+                $mine = $p['mine'] && $agent !== null ? ($agent['mls_ids'][0] ?? '') : null;
+                $s['listings'] = $mine === '' ? [] : app(ListingSearch::class)->search($tenantId, array_filter(['q' => $p['q'] ?? '', 'min_price' => $p['min_price'] ?? null,
+                    'max_price' => $p['max_price'] ?? null, 'sort' => $p['sort'] ?? 'newest', 'per_page' => $p['limit'] ?? 6, 'agent_mls_id' => $mine]))['results'];
+            }
+            $blocks[] = $s;
+        }
+        $page->sections = $sections;
+        $base = $request->getSchemeAndHttpHost();
+        $path = $this->context->url($page->path);
+
+        if ($agent === null) {
+            $seo = Seo::forPage($brokerage, $page, $base, $indexable);
+        } else {
+            $root = rtrim($base, '/');
+            $node = array_filter(['@type' => 'RealEstateAgent', '@id' => $root.$this->context->url('/').'#agent', 'name' => $agent['name'], 'url' => $root.$this->context->url('/'),
+                'image' => $agent['photo'], 'telephone' => $agent['phone'] ?: null, 'email' => $agent['email'] ?: null, 'description' => $agent['tagline'] ?: null,
+                'areaServed' => $agent['areas'] ?: null, 'knowsLanguage' => $agent['languages'] ?: null, 'parentOrganization' => ['@id' => $root.'/#organization'],
+                'identifier' => $agent['licence'] !== null ? ['@type' => 'PropertyValue', 'name' => trim(($agent['licence']['state'] ?? '').' real estate licence'), 'value' => $agent['licence']['number']] : null,
+            ], fn ($v): bool => $v !== null);
+            $title = $page->path === '/' ? $agent['name'].' | Real estate agent at '.$brokerage->displayName() : $page->title.' | '.$agent['name'];
+            $description = $page->meta_description ?: ($agent['tagline'] ?: $agent['name'].' helps buyers and sellers'.($agent['areas'] !== [] ? ' in '.implode(', ', $agent['areas']) : '').' with '.$brokerage->displayName().'.');
+            $crumbs = $this->context->prefix() !== '' ? [['Agents', '/agents'], [$agent['name'], $this->context->url('/')]] : [];
+            if ($page->path !== '/') {
+                $crumbs[] = [$page->title, $path];
+            }
+            $seo = Seo::build($brokerage, $base, $path, $title, $description, $agent['photo'], $indexable && ! $page->noindex, $crumbs, [], [$node], $page->updated_at?->toIso8601String());
+        }
+
+        return response()->view('sites::page', [
+            'site' => $brokerage, 'page' => $page, 'blocks' => $blocks, 'current' => $path, 'base' => $base, 'seo' => $seo, 'landing' => $page->layout === 'landing',
+            'chrome' => Chrome::for($brokerage, $tenantId, collect($blocks)->pluck('listings')->flatten(1)->pluck('disclaimer')->filter()->values()->all()),
+            ...SiteController::form($request),
+        ]);
+    }
+}

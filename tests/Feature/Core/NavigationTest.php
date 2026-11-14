@@ -23,7 +23,7 @@ it('shows owners the dashboard, people and finance', function (): void {
 });
 
 it('shows agents only their own pages', function (): void {
-    expect(menuFor(User::factory()->create()))->toBe(['Today', "Today's 10", 'Tasks', 'Deals', 'My plan', 'My money', 'My licences and onboarding', 'Revenue share', 'Leads', 'Inbox', 'Listings', 'Contacts', 'Directory'])
+    expect(menuFor(User::factory()->create()))->toBe(['Today', "Today's 10", 'Tasks', 'Deals', 'My plan', 'My money', 'My licences and onboarding', 'Revenue share', 'Leads', 'Inbox', 'Listings', 'Contacts', 'Directory', 'My website'])
         ->and(menuFor(User::factory()->assistantOf(User::factory()->create())->create()))->toBe(['Today', "Today's 10", 'Tasks', 'Deals', 'Inbox', 'Listings', 'Contacts']);
 });
 
@@ -45,7 +45,7 @@ it('lets modules add items, grouped and ordered', function (): void {
 
     $groups = app(NavigationRegistry::class)->for(User::factory()->create());
 
-    expect(array_column($groups, 'label'))->toBe(['Overview', 'Grow', 'People'])
+    expect(array_column($groups, 'label'))->toBe(['Overview', 'Grow', 'People', 'Settings'])
         ->and($groups[1]['items'][0]['title'])->toBe('Open houses')
         ->and($groups[1]['items'][1]['title'])->toBe('Leads');
 });

@@ -1610,3 +1610,47 @@ h3 {
 .post-body a {
     color: var(--brand);
 }
+
+/* ---- 17C-3b: agent websites and the directory ---- */
+.brand-agent {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+}
+.brand-agent span {
+    display: grid;
+    line-height: 1.15;
+}
+.brand-agent small {
+    font: 500 0.7rem/1.2 var(--font-body);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+.agent-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+.brokered {
+    margin-top: 1rem;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+.filters-inline {
+    position: static;
+    padding: 0 0 1.5rem;
+    border: 0;
+    background: transparent;
+}
+.agent-card {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.25s var(--ease);
+}
+.agent-card:hover {
+    transform: translateY(-3px);
+}

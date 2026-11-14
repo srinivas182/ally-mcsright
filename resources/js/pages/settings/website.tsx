@@ -15,6 +15,7 @@ type Page = {
     meta_description: string | null;
     noindex: boolean;
     in_menu: boolean;
+    layout?: string;
 };
 type Site = {
     ulid: string;
@@ -47,6 +48,15 @@ type Props = {
         code: number;
         hits: number;
     }[];
+    agent_rules: AgentRules;
+    agent_sites: { ulid: string; name: string; slug: string; status: string }[];
+};
+type AgentRules = {
+    enabled: boolean;
+    template: boolean;
+    colours: boolean;
+    sections: boolean;
+    domain: boolean;
 };
 type MenuItem = { label: string; url: string };
 
@@ -201,6 +211,8 @@ function Manage({
     powered_by,
     menus,
     redirects,
+    agent_rules,
+    agent_sites,
 }: Props & { site: Site }) {
     const social = (site.info.social ?? {}) as Record<string, string>;
     const form = useForm({
@@ -465,6 +477,11 @@ function Manage({
             </section>
 
             {menus && <Menus menus={menus} />}
+            <AgentsPanel
+                rules={agent_rules}
+                sites={agent_sites}
+                liveHost={live_host}
+            />
             <RedirectsPanel redirects={redirects} />
 
             <section className="grid gap-3 rounded-lg border p-4 text-sm">
@@ -634,7 +651,7 @@ function PageRow({ page }: { page: Page }) {
 }
 
 function NewPage() {
-    const form = useForm({ title: '', path: '' });
+    const form = useForm({ title: '', path: '', layout: 'standard' });
 
     return (
         <form
@@ -669,6 +686,15 @@ function NewPage() {
                 value={form.data.path}
                 onChange={(e) => form.setData('path', e.target.value)}
             />
+            <select
+                aria-label="Page kind"
+                className="rounded-md border bg-background px-2"
+                value={form.data.layout}
+                onChange={(e) => form.setData('layout', e.target.value)}
+            >
+                <option value="standard">Page</option>
+                <option value="landing">Landing page (no menu, for ads)</option>
+            </select>
             <Button
                 variant="outline"
                 disabled={form.processing || form.data.title === ''}
@@ -929,6 +955,106 @@ function RedirectsPanel({ redirects }: { redirects: Props['redirects'] }) {
                             >
                                 Remove
                             </Button>
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </section>
+    );
+}
+
+function AgentsPanel({
+    rules,
+    sites,
+    liveHost,
+}: {
+    rules: AgentRules;
+    sites: Props['agent_sites'];
+    liveHost: string | null;
+}) {
+    const form = useForm(rules);
+    const box = (key: keyof AgentRules, label: string) => (
+        <label className="flex items-center gap-2">
+            <input
+                type="checkbox"
+                checked={form.data[key]}
+                onChange={(e) => form.setData(key, e.target.checked)}
+            />{' '}
+            {label}
+        </label>
+    );
+
+    return (
+        <section className="grid gap-3 rounded-lg border p-4 text-sm">
+            <h2 className="font-semibold">Agent websites and brand kit</h2>
+            <p className="text-muted-foreground">
+                Each agent can have a page at /agents/their-name with their
+                listings and a contact form; their leads go straight to them.
+                Your brokerage name, licence and the required notices are always
+                shown.
+            </p>
+            <form
+                className="grid gap-2"
+                onSubmit={(e) => {
+                    e.preventDefault();
+                    form.post('/settings/website/agents', opts);
+                }}
+            >
+                {box('enabled', 'Agents can have websites')}
+                {box('sections', 'Agents can edit their page sections')}
+                {box('template', 'Agents can choose their own design')}
+                {box('colours', 'Agents can change colours')}
+                {box('domain', 'Agents can use their own domain')}
+                <div>
+                    <Button variant="outline" disabled={form.processing}>
+                        Save brand kit
+                    </Button>
+                </div>
+            </form>
+            {sites.length > 0 && (
+                <ul className="grid gap-1">
+                    {sites.map((s) => (
+                        <li
+                            key={s.ulid}
+                            className="flex flex-wrap items-center gap-2"
+                        >
+                            {liveHost ? (
+                                <a
+                                    className="font-medium underline"
+                                    href={`https://${liveHost}/agents/${s.slug}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                >
+                                    {s.name}
+                                </a>
+                            ) : (
+                                <span className="font-medium">{s.name}</span>
+                            )}
+                            <Badge
+                                variant={
+                                    s.status === 'live'
+                                        ? 'secondary'
+                                        : 'outline'
+                                }
+                            >
+                                {s.status === 'live' ? 'Live' : 'Draft'}
+                            </Badge>
+                            {s.status === 'live' && (
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="ml-auto"
+                                    onClick={() =>
+                                        router.post(
+                                            `/settings/website/agents/${s.ulid}/publish`,
+                                            { live: false },
+                                            opts,
+                                        )
+                                    }
+                                >
+                                    Take offline
+                                </Button>
+                            )}
                         </li>
                     ))}
                 </ul>

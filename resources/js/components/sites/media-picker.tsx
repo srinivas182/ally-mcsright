@@ -16,12 +16,14 @@ export function MediaPicker({
     onChange,
     onUploaded,
     label = 'Image',
+    site,
 }: {
     value: string | null;
     media: MediaItem[];
     onChange: (v: string | null) => void;
     onUploaded: (m: MediaItem) => void;
     label?: string;
+    site?: string;
 }) {
     const [open, setOpen] = useState(false);
     const [alt, setAlt] = useState('');
@@ -45,6 +47,9 @@ export function MediaPicker({
             const data = new FormData();
             data.append('file', f);
             data.append('alt', alt);
+            if (site) {
+                data.append('site', site);
+            }
             const res = await postForm<{ media: MediaItem }>(
                 '/settings/website/media',
                 data,

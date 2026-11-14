@@ -9,6 +9,7 @@ use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Router;
 use Modules\Sites\Content\Redirects;
+use Modules\Sites\Http\Controllers\AgentSiteController;
 use Modules\Sites\Http\Controllers\BlogController;
 use Modules\Sites\Http\Controllers\IdxController;
 use Modules\Sites\Http\Controllers\SiteController;
@@ -50,6 +51,8 @@ final class SiteRouter
         $r->get('blog/category/{category}', [BlogController::class, 'category'])->where('category', '[a-z0-9-]{1,60}');
         $r->get('blog/{slug}', [BlogController::class, 'show'])->where('slug', '[a-z0-9-]{1,120}');
         $r->get('_preview/post/{post}', [BlogController::class, 'preview'])->where('post', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}');
+        $r->get('agents', [AgentSiteController::class, 'directory']);
+        $r->get('agents/{slug}/{path?}', [AgentSiteController::class, 'show'])->where(['slug' => '[a-z0-9-]{1,80}', 'path' => '[a-z0-9/\-]{0,130}']);
         $r->get('market', [IdxController::class, 'markets']);
         $r->get('market/{place}', [IdxController::class, 'market'])->where('place', '[a-z0-9-]{2,80}');
         $r->get('{path?}', [SiteController::class, 'page'])->where('path', '[A-Za-z0-9/_\-]*');

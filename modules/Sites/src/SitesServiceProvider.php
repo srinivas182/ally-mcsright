@@ -25,6 +25,7 @@ final class SitesServiceProvider extends ServiceProvider
         $this->app->scoped(Maps::class);
         $this->app->scoped(Visitors\Visitors::class);
         $this->app->scoped(Content\MediaLibrary::class);
+        $this->app->scoped(Rendering\SiteContext::class);
         $this->app->scoped(Visitors\SignIn::class);
         $this->app->scoped(Visitors\JourneySummary::class);
         $this->app->scoped(Visitors\Valuation::class);
@@ -50,6 +51,7 @@ final class SitesServiceProvider extends ServiceProvider
         Gate::define('hq.sites.manage', fn (User $user): bool => $user->kind === UserKind::HqStaff);
         $nav = $this->app->make(NavigationRegistry::class);
         $nav->add(new NavItem('Settings', 'Website', '/settings/website', 'layout-grid', 64, kinds: [UserKind::Owner, UserKind::Staff]));
+        $nav->add(new NavItem('Settings', 'My website', '/settings/my-website', 'layout-grid', 65, kinds: [UserKind::Agent]));
         $nav->add(new NavItem('HQ', 'Websites', '/hq/sites', 'layout-grid', 17, ability: 'hq.sites.manage', kinds: [UserKind::HqStaff]));
     }
 }
