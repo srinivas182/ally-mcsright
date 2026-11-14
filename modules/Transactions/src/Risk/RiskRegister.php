@@ -7,6 +7,7 @@ namespace Modules\Transactions\Risk;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use Modules\Core\Risk\RiskSource;
 use Modules\Core\Support\Connections;
 use Modules\Transactions\Models\Item;
 use Modules\Transactions\Reviews;
@@ -62,6 +63,13 @@ final class RiskRegister
                 $deal = $db->table('tx_deals')->where('id', $item->deal_id)->first(['ulid', 'street']);
                 $risks[] = ['level' => 'medium', 'category' => 'Review', 'title' => "{$item->label} is waiting for review past the deadline.", 'deal' => $deal->ulid ?? null,
                     'street' => $deal->street ?? null, 'owner' => 'Reviewers', 'due' => null, 'link' => '/deals/review'];
+            }
+        }
+
+        // Other modules' risks (e.g. CRM: leads waiting for a reply), through the core extension point.
+        foreach (app()->tagged('risk.sources') as $source) {
+            if ($source instanceof RiskSource) {
+                array_push($risks, ...$source->risks());
             }
         }
 

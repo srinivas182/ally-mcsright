@@ -32,6 +32,7 @@ import {
     Target,
     Users,
     Zap,
+    Inbox,
 } from 'lucide-react';
 
 /** Icons the server may name for menu items. Unknown names fall back to a dot. */
@@ -39,6 +40,7 @@ const icons: Record<string, LucideIcon> = {
     'book-open': BookOpen,
     phone: Phone,
     zap: Zap,
+    inbox: Inbox,
     'shield-alert': ShieldAlert,
     'building-2': Building2,
     'calendar-check': CalendarCheck,

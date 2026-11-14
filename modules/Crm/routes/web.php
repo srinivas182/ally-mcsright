@@ -9,6 +9,8 @@ use Modules\Crm\Http\Controllers\AskController;
 use Modules\Crm\Http\Controllers\BriefController;
 use Modules\Crm\Http\Controllers\ContactController;
 use Modules\Crm\Http\Controllers\DataController;
+use Modules\Crm\Http\Controllers\Inbox\InboxController;
+use Modules\Crm\Http\Controllers\Inbox\TwilioSmsController;
 use Modules\Crm\Http\Controllers\Leads\InboundEmailController;
 use Modules\Crm\Http\Controllers\Leads\LeadApiController;
 use Modules\Crm\Http\Controllers\Leads\LeadConnectController;
@@ -112,3 +114,20 @@ Route::middleware([EnsureTenantWorkspace::class, 'throttle:10,1,lead-form'])->po
 Route::middleware([EnsureTenantWorkspace::class, 'throttle:60,1,lead-connect'])->post('webhooks/leads/connect/{lead}/{agent}', LeadConnectController::class)
     ->where('agent', '[0-9]+')->name('crm.leads.connect');
 Route::middleware('throttle:600,1,inbound-email')->post('webhooks/inbound/lead-email', InboundEmailController::class)->name('crm.leads.inbound');
+
+// Unified inbox (specs/grow/05, Sprint 16A-2).
+Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoffice.basic'])
+    ->prefix('inbox')
+    ->name('crm.inbox.')
+    ->group(function (): void {
+        Route::get('/', [InboxController::class, 'index'])->name('index');
+        Route::get('start/{contact}', [InboxController::class, 'start'])->name('start');
+        Route::post('templates', [InboxController::class, 'storeTemplate'])->name('templates.store');
+        Route::delete('templates/{template}', [InboxController::class, 'destroyTemplate'])->name('templates.destroy');
+        Route::post('signs', [InboxController::class, 'storeSign'])->name('signs.store');
+        Route::post('signs/{sign}/toggle', [InboxController::class, 'toggleSign'])->name('signs.toggle');
+        Route::post('{conversation}/send', [InboxController::class, 'send'])->middleware('throttle:60,1,inbox-send')->name('send');
+        Route::post('{conversation}/draft', [InboxController::class, 'draft'])->middleware(['feature:crm.ai', 'throttle:20,1,inbox-draft'])->name('draft');
+        Route::post('{conversation}/assign', [InboxController::class, 'assign'])->name('assign');
+    });
+Route::middleware('throttle:600,1,twilio-sms')->post('webhooks/twilio/sms', TwilioSmsController::class)->name('crm.inbox.twilio');

@@ -11,4 +11,11 @@ final class LogSmsSender implements SmsSender
     {
         logger()->info('SMS (not sent: Twilio not configured)', ['to' => substr($to, 0, -4).'****']);
     }
+
+    public function deliver(string $from, string $to, string $message): string
+    {
+        $this->send($to, $message);
+
+        return 'log-'.bin2hex(random_bytes(8));
+    }
 }

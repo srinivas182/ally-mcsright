@@ -13,10 +13,17 @@ final class TwilioSmsSender implements SmsSender
 
     public function send(string $to, string $message): void
     {
+        $this->deliver($this->from, $to, $message);
+    }
+
+    public function deliver(string $from, string $to, string $message): string
+    {
         $response = $this->http->asForm()->withBasicAuth($this->sid, $this->token)->timeout(15)
-            ->post("https://api.twilio.com/2010-04-01/Accounts/{$this->sid}/Messages.json", ['To' => $to, 'From' => $this->from, 'Body' => $message]);
+            ->post("https://api.twilio.com/2010-04-01/Accounts/{$this->sid}/Messages.json", ['To' => $to, 'From' => $from !== '' ? $from : $this->from, 'Body' => $message]);
         if ($response->failed()) {
             throw new RuntimeException('The text message could not be sent ('.$response->status().').');
         }
+
+        return (string) $response->json('sid', '');
     }
 }

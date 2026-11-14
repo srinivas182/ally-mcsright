@@ -169,7 +169,7 @@ final class SpeedToLead
     public static function sourceLabel(string $source): string
     {
         return match ($source) {
-            'zillow' => 'Zillow', 'realtor_com' => 'Realtor.com', 'homes_com' => 'Homes.com', 'open_house' => 'open house',
+            'zillow' => 'Zillow', 'realtor_com' => 'Realtor.com', 'homes_com' => 'Homes.com', 'open_house' => 'open house', 'sign' => 'sign text',
             default => str_replace('_', ' ', $source),
         };
     }

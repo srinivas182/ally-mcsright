@@ -35,6 +35,11 @@ Settings the platform depends on in every environment. Each one was found by a t
   `https://<any app host>/webhooks/inbound/lead-email`, with basic auth whose password is
   `CRM_INBOUND_EMAIL_SECRET`. Without the secret the webhook refuses every email.
 - `crm:leads-reassign` runs every minute (scheduler); it moves leads nobody answered in time.
+- Two-way texting (Sprint 16A-2): in Twilio, set every texting number's incoming-message webhook to
+  `https://<HQ host>/webhooks/twilio/sms` (shown in HQ → Texts and calls). Requests are checked against the
+  Twilio auth token stored in HQ. Each brokerage can have its own number (HQ); sign codes need one.
+- Email replies come back through the same inbound-email webhook (reply addresses `reply-<token>@<inbound domain>`).
+- `crm:inbox-sweep` runs every minute.
 - The speed-to-lead call uses the HQ Twilio account (Texts and calls); Twilio must be able to reach the
   brokerage domains over HTTPS for the "press 1" step.
 
