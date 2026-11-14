@@ -212,11 +212,11 @@ final class Libraries
      */
     private static function lines(string $pdf): array
     {
-        $file = tempnam(sys_get_temp_dir(), 'cmp');
-        if ($file === false) {
+        try {
+            $file = Pdf::tempFile('cmp-', $pdf);
+        } catch (\Throwable) {
             return [];
         }
-        file_put_contents($file, $pdf);
         $process = new Process(['pdftotext', '-layout', $file, '-']);
         $process->setTimeout(30);
         $process->run();

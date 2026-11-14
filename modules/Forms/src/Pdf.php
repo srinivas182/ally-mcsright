@@ -43,12 +43,28 @@ final class Pdf
         }
     }
 
+    /**
+     * Writes PDF bytes to a new temporary file ending in ".pdf". External tools get only such names: on hardened
+     * hosts (Ubuntu's AppArmor profile for qpdf, for example) they may refuse to open files without the extension.
+     */
+    public static function tempFile(string $prefix, string $contents): string
+    {
+        $base = tempnam(sys_get_temp_dir(), $prefix);
+        if ($base === false) {
+            throw new RuntimeException('No temporary space for the PDF.');
+        }
+        $path = $base.'.pdf';
+        rename($base, $path);
+        file_put_contents($path, $contents);
+
+        return $path;
+    }
+
     /** qpdf's rewrite, or null (tool missing or failed; logged for operations). */
     private static function viaQpdf(string $contents): ?string
     {
-        $in = tempnam(sys_get_temp_dir(), 'form-in-');
-        $out = $in.'.out.pdf';
-        file_put_contents($in, $contents);
+        $in = self::tempFile('form-in-', $contents);
+        $out = substr($in, 0, -4).'.out.pdf';
         try {
             $process = new Process([(string) config('forms.qpdf', 'qpdf'), '--object-streams=disable', '--decrypt', $in, $out]);
             $process->run();

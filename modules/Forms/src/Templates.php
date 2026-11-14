@@ -164,9 +164,8 @@ final class Templates
         if ($disk->exists($cache)) {
             return (string) $disk->get($cache);
         }
-        $pdf = tempnam(sys_get_temp_dir(), 'page-');
-        $out = $pdf.'-img';
-        file_put_contents($pdf, (string) $disk->get($t['path']));
+        $pdf = Pdf::tempFile('page-', (string) $disk->get($t['path']));
+        $out = substr($pdf, 0, -4).'-img';
         try {
             $process = new Process([(string) config('forms.pdftoppm', 'pdftoppm'), '-png', '-r', '72', '-f', (string) $page, '-l', (string) $page, '-singlefile', $pdf, $out]);
             $process->run();

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Forms\Library;
 
 use Illuminate\Support\Facades\Log;
+use Modules\Forms\Pdf;
 use Symfony\Component\Process\Process;
 
 /**
@@ -117,12 +118,14 @@ final class FillableFields
      */
     private static function dump(string $pdf): ?array
     {
-        $file = tempnam(sys_get_temp_dir(), 'acro');
-        if ($file === false) {
+        try {
+            $file = Pdf::tempFile('acro-', $pdf);
+        } catch (\Throwable $e) {
+            self::$lastError = $e->getMessage();
+
             return null;
         }
         try {
-            file_put_contents($file, $pdf);
             $process = new Process([(string) config('forms.qpdf', 'qpdf'), '--json=2', '--json-key=pages', '--json-key=qpdf', $file]);
             $process->setTimeout(30);
             $process->run();
