@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Route;
 use Modules\Core\Http\Middleware\EnsureHqConsole;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
+use Modules\Sites\Http\Controllers\AillyController;
 use Modules\Sites\Http\Controllers\BlogAdminController;
 use Modules\Sites\Http\Controllers\HqSitesController;
 use Modules\Sites\Http\Controllers\MediaController;
@@ -14,6 +15,11 @@ use Modules\Sites\Http\Controllers\StudioController;
 use Modules\Sites\Http\Controllers\WebsiteSettingsController;
 
 // Settings → Website (owners and staff; specs/websites/05). The public site itself is served by ServeWebsite.
+Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function (): void {
+    Route::get('settings/ailly', [AillyController::class, 'settings'])->name('settings.ailly');
+    Route::post('settings/ailly', [AillyController::class, 'save'])->name('settings.ailly.save');
+});
+
 Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])
     ->prefix('settings/website')
     ->name('settings.website.')

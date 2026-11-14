@@ -121,6 +121,24 @@ try{var k='ra_first_touch',st=window.localStorage,v=JSON.parse(st.getItem(k)||'n
 document.querySelectorAll('form[data-lead]').forEach(function(f){f.first_referrer.value=v.r;f.landing_url.value=v.l;});}catch(e){}})();
 </script>
 <script src="/site-assets/visitor.js?v=1" defer></script>
+@if (! empty($chrome['ailly']))
+<div class="ailly" data-ailly="{{ $chrome['ailly'] }}" data-consent="{{ $chrome['consent'] }}">
+    <section class="ailly-panel" data-ailly-panel role="dialog" aria-label="Chat with {{ $chrome['ailly'] }}" hidden>
+        <header class="ailly-head"><strong>{{ $chrome['ailly'] }}</strong> <span>AI assistant · an agent can take over any time</span>
+            <button type="button" class="ailly-x" data-ailly-close aria-label="Close chat">&times;</button></header>
+        <div class="ailly-log" data-ailly-log aria-live="polite"></div>
+        <form class="ailly-form" data-ailly-form>
+            <input type="text" name="website" class="ailly-hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+            <label class="sr-only" for="ailly-input">Message</label>
+            <input id="ailly-input" name="message" maxlength="800" autocomplete="off" placeholder="Ask about homes, the area or selling…">
+            <button type="submit" class="btn btn-primary">Send</button>
+        </form>
+        <p class="ailly-note">Answers are AI-generated and may be wrong. Don't share financial details here.</p>
+    </section>
+    <button type="button" class="ailly-open btn btn-primary" data-ailly-open aria-expanded="false">Chat with {{ $chrome['ailly'] }}</button>
+</div>
+<script src="/site-assets/ailly.js?v=1" defer></script>
+@endif
 @stack('scripts')
 </body>
 </html>
