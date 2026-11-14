@@ -83,6 +83,19 @@ final class StripeGateway implements PaymentGateway
         return (string) $response->json('url');
     }
 
+    public function oneTimeCheckout(string $email, string $description, int $cents, string $successUrl, string $cancelUrl, array $metadata, bool $automaticTax): string
+    {
+        $session = $this->post('checkout/sessions', [
+            'mode' => 'payment', 'customer_email' => $email, 'success_url' => $successUrl, 'cancel_url' => $cancelUrl, 'metadata' => $metadata,
+            'payment_intent_data' => ['metadata' => $metadata, 'receipt_email' => $email, 'description' => $description],
+            'invoice_creation' => ['enabled' => 'true', 'invoice_data' => ['metadata' => $metadata, 'description' => $description]],
+            'line_items' => [['quantity' => 1, 'price_data' => ['currency' => 'usd', 'unit_amount' => $cents, 'product_data' => ['name' => $description]]]],
+            'automatic_tax' => ['enabled' => $automaticTax ? 'true' : 'false'],
+        ]);
+
+        return (string) $session['url'];
+    }
+
     public function portal(string $customerRef, string $returnUrl): string
     {
         return (string) $this->post('billing_portal/sessions', ['customer' => $customerRef, 'return_url' => $returnUrl])['url'];

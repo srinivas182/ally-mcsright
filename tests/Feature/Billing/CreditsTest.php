@@ -170,7 +170,7 @@ it('lets managers give credits to agents and set the pool rules; agents cannot',
     $ledger = ($this->ledger)();
     expect($ledger->userSummary($this->agent->id)['available'])->toBe(6)
         ->and($ledger->poolSummary()['available'])->toBe(4)
-        ->and($ledger->policy())->toBe(['agents_use_pool' => false, 'agent_monthly_cap' => 25]);
+        ->and($ledger->policy())->toBe(['agents_use_pool' => false, 'agent_monthly_cap' => 25, 'agents_can_buy' => true]);
 });
 
 it('shows HQ the economics behind each action and lets HQ set prices', function (): void {

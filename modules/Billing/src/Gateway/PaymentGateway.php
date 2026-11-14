@@ -43,6 +43,14 @@ interface PaymentGateway
      */
     public function paymentCheckout(string $connectedAccount, string $email, string $description, int $cents, string $successUrl, string $cancelUrl, array $metadata): string;
 
+    /**
+     * A one-off hosted payment to RightAlly (e.g. a pack of credits). The gateway emails its receipt to $email.
+     * Metadata comes back on the gateway's events (including refunds).
+     *
+     * @param  array<string, string>  $metadata
+     */
+    public function oneTimeCheckout(string $email, string $description, int $cents, string $successUrl, string $cancelUrl, array $metadata, bool $automaticTax): string;
+
     /** Hosted page where a customer manages their card and sees invoices. */
     public function portal(string $customerRef, string $returnUrl): string;
 

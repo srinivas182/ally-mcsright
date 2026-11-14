@@ -34,6 +34,16 @@ final class FakeGateway implements PaymentGateway
         return true;
     }
 
+    /** @var list<array<string, mixed>> */
+    public array $oneTime = [];
+
+    public function oneTimeCheckout(string $email, string $description, int $cents, string $successUrl, string $cancelUrl, array $metadata, bool $automaticTax): string
+    {
+        $this->oneTime[] = compact('email', 'description', 'cents', 'successUrl', 'cancelUrl', 'metadata', 'automaticTax');
+
+        return 'https://checkout.example/pay/'.count($this->oneTime);
+    }
+
     public function subscriptionCheckout(string $email, string $productName, int $unitCents, string $interval, string $successUrl, string $cancelUrl, array $metadata, bool $automaticTax): string
     {
         $this->checkouts[] = compact('email', 'productName', 'unitCents', 'interval', 'metadata', 'automaticTax');

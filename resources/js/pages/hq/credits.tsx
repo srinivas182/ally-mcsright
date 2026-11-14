@@ -83,6 +83,20 @@ type Props = {
     }[];
     period: string;
     unit_costs: UnitCosts;
+    packs: CreditPack[];
+    sales: {
+        count: number;
+        revenue_cents: number;
+        credits: number;
+        recent: {
+            tenant: string;
+            pack: string;
+            credits: number;
+            total_cents: number;
+            status: string;
+            paid_at: string;
+        }[];
+    };
 };
 
 /** Micro-cents (millionths of a cent) as dollars, with more places for fractions of a cent. */
@@ -466,6 +480,143 @@ function PackageRow({
                 </td>
             </tr>
         </>
+    );
+}
+
+type CreditPack = {
+    ulid: string;
+    name: string;
+    credits: number;
+    price_cents: number;
+    audience: 'brokerage' | 'agent' | 'both';
+    active: boolean;
+    sort: number;
+};
+
+/** One credit pack (or a new one): price, credits, who may buy it, and its margin at the typical cost per credit. */
+function PackRow({
+    pack,
+    typical,
+    floor,
+}: {
+    pack: CreditPack | null;
+    typical: number;
+    floor: number;
+}) {
+    const [f, setF] = useState({
+        name: pack?.name ?? '',
+        credits: pack ? String(pack.credits) : '',
+        price: pack ? String(pack.price_cents / 100) : '',
+        audience: pack?.audience ?? 'both',
+        active: pack?.active ?? true,
+        sort: pack ? String(pack.sort) : '0',
+    });
+    const credits = parseInt(f.credits || '0', 10);
+    const priceMicro = Math.round(parseFloat(f.price || '0') * 100) * 1_000_000;
+    const cost = credits * typical;
+    const margin =
+        priceMicro > 0
+            ? Math.floor(((priceMicro - cost) * 100) / priceMicro)
+            : null;
+    const save = () =>
+        pack
+            ? router.put(
+                  `/hq/credits/packs/${pack.ulid}`,
+                  { ...f, sort: parseInt(f.sort || '0', 10) },
+                  { preserveScroll: true },
+              )
+            : router.post(
+                  '/hq/credits/packs',
+                  { ...f, sort: parseInt(f.sort || '0', 10) },
+                  {
+                      preserveScroll: true,
+                      onSuccess: () =>
+                          setF({
+                              name: '',
+                              credits: '',
+                              price: '',
+                              audience: 'both',
+                              active: true,
+                              sort: '0',
+                          }),
+                  },
+              );
+    return (
+        <li className="flex flex-wrap items-end gap-2 p-3">
+            <label className="grid gap-1">
+                Name
+                <Input
+                    className="h-8 w-36"
+                    value={f.name}
+                    onChange={(e) => setF({ ...f, name: e.target.value })}
+                />
+            </label>
+            <label className="grid gap-1">
+                Credits
+                <Input
+                    type="number"
+                    min={1}
+                    className="h-8 w-24"
+                    value={f.credits}
+                    onChange={(e) => setF({ ...f, credits: e.target.value })}
+                />
+            </label>
+            <label className="grid gap-1">
+                Price (US$)
+                <Input
+                    type="number"
+                    min={1}
+                    step="0.01"
+                    className="h-8 w-24"
+                    value={f.price}
+                    onChange={(e) => setF({ ...f, price: e.target.value })}
+                />
+            </label>
+            <label className="grid gap-1">
+                Who can buy
+                <select
+                    className="h-8 rounded-md border bg-background px-2"
+                    value={f.audience}
+                    onChange={(e) =>
+                        setF({
+                            ...f,
+                            audience: e.target.value as CreditPack['audience'],
+                        })
+                    }
+                >
+                    <option value="both">Brokerages and agents</option>
+                    <option value="brokerage">Brokerages</option>
+                    <option value="agent">Agents</option>
+                </select>
+            </label>
+            <label className="flex items-center gap-1 pb-1">
+                <input
+                    type="checkbox"
+                    checked={f.active}
+                    onChange={(e) => setF({ ...f, active: e.target.checked })}
+                />
+                On sale
+            </label>
+            <span className="pb-1 text-xs text-muted-foreground">
+                {credits > 0 && priceMicro > 0 && (
+                    <>
+                        {(priceMicro / credits / 1_000_000).toFixed(2)}¢ a
+                        credit · costs you about {dollars(cost)} if all used ·{' '}
+                        <span className={marginClass(margin, floor)}>
+                            margin {margin}%
+                        </span>
+                    </>
+                )}
+            </span>
+            <Button
+                size="sm"
+                variant="outline"
+                onClick={save}
+                disabled={!f.name || !f.credits || !f.price}
+            >
+                {pack ? 'Save' : 'Add pack'}
+            </Button>
+        </li>
     );
 }
 
@@ -895,6 +1046,60 @@ export default function HqCredits(props: Props) {
                             </tbody>
                         </table>
                     </div>
+                </section>
+
+                <section className="grid gap-2">
+                    <h2 className="font-semibold">Credit packs for sale</h2>
+                    <p className="text-sm text-muted-foreground">
+                        What brokerages (for their pool) and agents (for
+                        themselves) can buy. Bought credits last 12 months. This
+                        month: {n(props.sales.count)} sold,{' '}
+                        {usd(props.sales.revenue_cents)} including tax,{' '}
+                        {n(props.sales.credits)} credits.
+                    </p>
+                    <ul className="divide-y rounded-lg border text-sm">
+                        {props.packs.map((p) => (
+                            <PackRow
+                                key={p.ulid}
+                                pack={p}
+                                typical={props.typical_cost_per_credit}
+                                floor={props.margins.floor}
+                            />
+                        ))}
+                        <PackRow
+                            pack={null}
+                            typical={props.typical_cost_per_credit}
+                            floor={props.margins.floor}
+                        />
+                    </ul>
+                    {props.sales.recent.length > 0 && (
+                        <details className="rounded-lg border p-3 text-sm">
+                            <summary className="cursor-pointer font-medium">
+                                Latest purchases
+                            </summary>
+                            <ul className="mt-2 grid gap-1">
+                                {props.sales.recent.map((r, i) => (
+                                    <li
+                                        key={i}
+                                        className="flex justify-between gap-2"
+                                    >
+                                        <span>
+                                            {r.tenant} · {r.pack} ·{' '}
+                                            {n(r.credits)} credits
+                                            {r.status === 'refunded' &&
+                                                ' · refunded'}
+                                        </span>
+                                        <span className="text-muted-foreground">
+                                            {usd(r.total_cents)} ·{' '}
+                                            {new Date(
+                                                r.paid_at,
+                                            ).toLocaleDateString()}
+                                        </span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </details>
+                    )}
                 </section>
 
                 <section className="grid gap-2">
