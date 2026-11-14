@@ -15,6 +15,7 @@ use Modules\Sites\Models\Site;
 use Modules\Sites\Models\SitePage;
 use Modules\Sites\Rendering\Urls;
 use Modules\Sites\Sections;
+use Modules\Sites\SiteAccess;
 
 /**
  * Pages and their drafts (specs/websites/08): edits go to a draft that only signed previews show; publishing copies
@@ -24,9 +25,11 @@ final class Pages
 {
     public const KEEP_VERSIONS = 50;
 
-    public function create(Site $site, string $path, string $title, User $by): SitePage
+    public function create(Site $site, string $path, string $title, User $by, string $layout = 'standard'): SitePage
     {
-        self::guard($by);
+        if (! CrmAccess::manager($by)) {
+            throw ValidationException::withMessages(['page' => 'Only owners and staff can add pages.']);
+        }
         $path = '/'.trim(strtolower(trim($path)), '/');
         $first = explode('/', ltrim($path, '/'))[0];
         if (preg_match('#^/[a-z0-9-]{1,60}(/[a-z0-9-]{1,60})?$#', $path) !== 1 || in_array($first, Urls::RESERVED, true) || in_array($first, ['blog', 'agents'], true)) {
@@ -36,8 +39,15 @@ final class Pages
             throw ValidationException::withMessages(['path' => 'A page already uses that address.']);
         }
         $title = mb_substr(trim(strip_tags($title)), 0, 120) ?: 'New page';
-        $page = SitePage::query()->create(['site_id' => $site->id, 'path' => $path, 'title' => $title, 'sections' => [],
-            'draft_sections' => Sections::clean([['type' => 'text', 'id' => 'intro', 'props' => ['title' => $title, 'body' => 'Start with the answer to the question this page is about.']]]),
+        $landing = $layout === 'landing';
+        $starter = $landing ? [
+            ['type' => 'hero', 'id' => 'hero', 'props' => ['headline' => $title, 'subhead' => 'Say in one sentence what people get by leaving their details.', 'search' => false]],
+            ['type' => 'features', 'id' => 'why', 'props' => ['title' => 'What you get', 'items' => [['title' => 'A benefit', 'body' => 'Why it matters to them.']]]],
+            ['type' => 'contact', 'id' => 'form', 'props' => ['title' => 'Get started', 'body' => '']],
+        ] : [['type' => 'text', 'id' => 'intro', 'props' => ['title' => $title, 'body' => 'Start with the answer to the question this page is about.']]];
+        // Ad landing pages are hidden from search engines by default (they usually repeat other pages).
+        $page = SitePage::query()->create(['site_id' => $site->id, 'path' => $path, 'layout' => $landing ? 'landing' : 'standard', 'title' => $title, 'sections' => [],
+            'draft_sections' => Sections::clean($starter), 'noindex' => $landing,
             'position' => (int) SitePage::query()->where('site_id', $site->id)->max('position') + 1, 'in_menu' => false, 'status' => 'draft', 'updated_by' => $by->id]);
         app(AuditLogger::class)->record('sites.page_created', $page, metadata: ['path' => $path]);
 
@@ -49,7 +59,7 @@ final class Pages
      */
     public function saveDraft(SitePage $page, array $sections, User $by): SitePage
     {
-        self::guard($by);
+        self::guard($by, $page);
         $page->forceFill(['draft_sections' => Sections::clean($sections), 'updated_by' => $by->id])->save();
 
         return $page;
@@ -57,7 +67,7 @@ final class Pages
 
     public function publish(SitePage $page, User $by): SitePage
     {
-        self::guard($by);
+        self::guard($by, $page);
         $sections = $page->draft_sections ?? $page->sections;
         DB::connection(Connections::cell())->transaction(function () use ($page, $sections, $by): void {
             $page->forceFill(['sections' => $sections, 'draft_sections' => null, 'status' => 'published', 'published_at' => $page->published_at ?? CarbonImmutable::now(),
@@ -77,7 +87,7 @@ final class Pages
 
     public function discardDraft(SitePage $page, User $by): void
     {
-        self::guard($by);
+        self::guard($by, $page);
         $page->forceFill(['draft_sections' => null])->save();
     }
 
@@ -96,7 +106,7 @@ final class Pages
     /** Brings a published version back as the draft (publish to make it live again). */
     public function restore(SitePage $page, int $versionId, User $by): void
     {
-        self::guard($by);
+        self::guard($by, $page);
         $row = DB::connection(Connections::cell())->table('site_page_versions')->where('page_id', $page->id)->where('id', $versionId)->first();
         if ($row === null) {
             throw ValidationException::withMessages(['version' => 'That version no longer exists.']);
@@ -107,7 +117,9 @@ final class Pages
 
     public function delete(SitePage $page, User $by): void
     {
-        self::guard($by);
+        if (! CrmAccess::manager($by)) {
+            throw ValidationException::withMessages(['page' => 'Only owners and staff can delete pages.']);
+        }
         if ($page->path === '/') {
             throw ValidationException::withMessages(['page' => 'The home page cannot be deleted.']);
         }
@@ -115,10 +127,11 @@ final class Pages
         $page->delete();
     }
 
-    private static function guard(User $by): void
+    private static function guard(User $by, SitePage $page): void
     {
-        if (! CrmAccess::manager($by)) {
-            throw ValidationException::withMessages(['page' => 'Only owners and staff can edit the website.']);
+        $site = Site::query()->find($page->site_id);
+        if ($site === null || ! SiteAccess::canEdit($by, $site)) {
+            throw ValidationException::withMessages(['page' => 'You cannot edit this website.']);
         }
     }
 }

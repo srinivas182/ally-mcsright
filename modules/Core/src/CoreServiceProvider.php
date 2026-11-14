@@ -27,6 +27,8 @@ use Laravel\Fortify\Events\ValidTwoFactorAuthenticationCodeProvided;
 use Modules\Core\Access\PermissionRegistry;
 use Modules\Core\Access\Permissions;
 use Modules\Core\Access\Roles;
+use Modules\Core\Agents\AgentCredentials;
+use Modules\Core\Agents\NoAgentCredentials;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Branding\BrandColourSource;
 use Modules\Core\Branding\NullBrandColourSource;
@@ -72,6 +74,7 @@ final class CoreServiceProvider extends ServiceProvider
         $this->app->singleton(Messaging\MessagingSettings::class);
         $this->app->bindIf(DealOutcomes::class, NoDealOutcomes::class);
         $this->app->bindIf(VisitorJourneys::class, NoVisitorJourneys::class);
+        $this->app->bindIf(AgentCredentials::class, NoAgentCredentials::class);
         $this->app->bindIf(Messaging\SmsSender::class, function ($app): Messaging\SmsSender {
             $settings = $app->make(Messaging\MessagingSettings::class);
             $creds = $settings->credentials();

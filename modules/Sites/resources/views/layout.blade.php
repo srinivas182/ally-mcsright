@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="theme-{{ $site->template }}">
+<html lang="en" class="theme-{{ $chrome['template'] }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -14,25 +14,33 @@
     <meta property="og:url" content="{{ $seo['canonical'] }}">
     @if ($seo['image'])<meta property="og:image" content="{{ $seo['image'] }}"><meta name="twitter:image" content="{{ $seo['image'] }}">@endif
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="theme-color" content="{{ $site->template === 'aurum' ? '#0b0b0d' : '#ffffff' }}">
+    <meta name="theme-color" content="{{ $chrome['template'] === 'aurum' ? '#0b0b0d' : '#ffffff' }}">
     <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    @if ($site->template === 'aurum')
+    @if ($chrome['template'] === 'aurum')
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;500;600&display=swap">
     @else
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
     @endif
-    <link rel="stylesheet" href="/site-assets/site.css?v=3">
+    <link rel="stylesheet" href="/site-assets/site.css?v=4">
     @stack('head')
-    <style>:root{--brand: {{ $site->brand['primary'] ?? '#1d4ed8' }};--accent: {{ $site->brand['accent'] ?? '#0f172a' }};}</style>
+    <style>:root{--brand: {{ $chrome['brand']['primary'] ?? '#1d4ed8' }};--accent: {{ $chrome['brand']['accent'] ?? '#0f172a' }};}</style>
     <script type="application/ld+json">{!! $seo['jsonld'] !!}</script>
 </head>
 <body data-signup-after="{{ $chrome['signup_after'] }}">
 <a class="skip" href="#main">Skip to content</a>
 <header class="site-header" data-header>
     <div class="wrap header-row">
-        <a class="brand" href="/" aria-label="{{ $site->displayName() }} home">
-            @if (! empty($site->brand['logo_url']))<img src="{{ $site->brand['logo_url'] }}" alt="{{ $site->displayName() }}" height="40">@else<span>{{ $site->displayName() }}</span>@endif
-        </a>
+        @if ($chrome['agent'])
+            <a class="brand brand-agent" href="{{ $chrome['agent']['home'] }}" aria-label="{{ $chrome['agent']['name'] }} home">
+                @if ($chrome['agent']['photo'])<img class="agent-avatar" src="{{ $chrome['agent']['photo'] }}" alt="" width="40" height="40">@endif
+                <span>{{ $chrome['agent']['name'] }}<small>{{ $site->displayName() }}</small></span>
+            </a>
+        @else
+            <a class="brand" href="/" aria-label="{{ $site->displayName() }} home">
+                @if (! empty($site->brand['logo_url']))<img src="{{ $site->brand['logo_url'] }}" alt="{{ $site->displayName() }}" height="40">@else<span>{{ $site->displayName() }}</span>@endif
+            </a>
+        @endif
+        @if (! ($landing ?? false))
         <nav aria-label="Main">
             <ul class="nav">
                 @foreach ($chrome['menu'] as $item)
@@ -41,13 +49,22 @@
             </ul>
         </nav>
         <button type="button" class="btn btn-ghost header-account" data-account>Sign in</button>
-        @if (! empty($site->info['phone']))<a class="btn btn-ghost header-call" href="tel:{{ preg_replace('/[^0-9+]/', '', $site->info['phone']) }}">{{ $site->info['phone'] }}</a>@endif
+        @endif
+        @php($callPhone = ($chrome['agent']['phone'] ?? '') !== '' ? $chrome['agent']['phone'] : (string) ($site->info['phone'] ?? ''))
+        @if (! empty($callPhone))<a class="btn btn-ghost header-call" href="tel:{{ preg_replace('/[^0-9+]/', '', $callPhone) }}">{{ $callPhone }}</a>@endif
     </div>
 </header>
 @yield('content')
 <footer class="site-footer">
     <div class="wrap footer-grid">
         <div>
+            @if ($chrome['agent'])
+                <p class="footer-name">{{ $chrome['agent']['name'] }}</p>
+                @if ($chrome['agent']['licence'])<p>{{ $chrome['agent']['licence']['state'] ? $chrome['agent']['licence']['state'].' ' : '' }}licence {{ $chrome['agent']['licence']['number'] }}</p>@endif
+                @if ($chrome['agent']['phone'])<p><a href="tel:{{ preg_replace('/[^0-9+]/', '', $chrome['agent']['phone']) }}">{{ $chrome['agent']['phone'] }}</a></p>@endif
+                @if ($chrome['agent']['email'])<p><a href="mailto:{{ $chrome['agent']['email'] }}">{{ $chrome['agent']['email'] }}</a></p>@endif
+                <p class="brokered">Brokered by</p>
+            @endif
             <p class="footer-name">{{ $site->displayName() }}</p>
             @if (! empty($site->info['street']))<p>{{ $site->info['street'] }}, {{ $site->info['city'] ?? '' }}, {{ $site->info['state'] ?? '' }} {{ $site->info['zip'] ?? '' }}</p>@endif
             @if (! empty($site->info['phone']))<p><a href="tel:{{ preg_replace('/[^0-9+]/', '', $site->info['phone']) }}">{{ $site->info['phone'] }}</a></p>@endif

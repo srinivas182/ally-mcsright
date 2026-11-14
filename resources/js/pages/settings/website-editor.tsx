@@ -27,6 +27,8 @@ type Props = {
         has_draft: boolean;
     };
     sections: Section[];
+    site: { ulid: string; kind: string };
+    back: string;
     types: { type: string; label: string }[];
     versions: { id: number; at: string; by: string | null; sections: number }[];
     check: SeoChecks;
@@ -286,7 +288,7 @@ export default function WebsiteEditor(props: Props) {
             <div className="grid w-full gap-4 p-4 md:p-6">
                 <div className="flex flex-wrap items-center gap-2">
                     <Link
-                        href="/settings/website"
+                        href={props.back}
                         className="text-sm text-muted-foreground"
                     >
                         ← Website
@@ -455,6 +457,7 @@ export default function WebsiteEditor(props: Props) {
                                 {open === s.id && (
                                     <div className="grid gap-3 border-t p-3">
                                         <Fields
+                                            site={props.site.ulid}
                                             fields={SCHEMA[s.type] ?? []}
                                             value={s.props}
                                             onChange={(p) =>
@@ -699,6 +702,7 @@ export default function WebsiteEditor(props: Props) {
 }
 
 function Fields({
+    site,
     fields,
     value,
     onChange,
@@ -712,6 +716,7 @@ function Fields({
     media: MediaItem[];
     onUploaded: (m: MediaItem) => void;
     places: Props['places'];
+    site: string;
 }) {
     const set = (k: string, v: unknown) => onChange({ ...value, [k]: v });
 
@@ -798,6 +803,7 @@ function Fields({
                     case 'image':
                         return (
                             <MediaPicker
+                                site={site}
                                 key={f.key}
                                 label={f.label}
                                 value={(v as string | null) ?? null}
@@ -819,6 +825,7 @@ function Fields({
                                         className="flex items-end gap-2"
                                     >
                                         <MediaPicker
+                                            site={site}
                                             label={`Photo ${n + 1}`}
                                             value={img}
                                             media={media}
@@ -840,6 +847,7 @@ function Fields({
                                 ))}
                                 {list.length < 24 && (
                                     <MediaPicker
+                                        site={site}
                                         label="Add a photo"
                                         value={null}
                                         media={media}
@@ -917,6 +925,7 @@ function Fields({
                                         className="grid gap-2 rounded-md border p-2"
                                     >
                                         <Fields
+                                            site={site}
                                             fields={f.fields}
                                             value={it}
                                             onChange={(x) =>

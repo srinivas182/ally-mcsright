@@ -26,6 +26,7 @@ use Modules\Core\Tenancy\Host;
  * @property string $host
  * @property DomainKind $kind
  * @property string $purpose app (back office) or website
+ * @property string|null $site_ulid the agent website this domain serves (null: the brokerage's)
  * @property bool $is_primary
  * @property VerificationStatus $verification_status
  * @property SslStatus $ssl_status
@@ -40,7 +41,7 @@ final class TenantDomain extends Model
 
     protected $fillable = [
         'tenant_id', 'host', 'kind', 'owner_user_id', 'is_primary', 'verification_status',
-        'ssl_status', 'provider_hostname_id', 'verified_at', 'purpose',
+        'ssl_status', 'provider_hostname_id', 'verified_at', 'purpose', 'site_ulid',
     ];
 
     public function getConnectionName(): ?string

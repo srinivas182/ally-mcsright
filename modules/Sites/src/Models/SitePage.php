@@ -19,6 +19,7 @@ use Modules\Core\Tenancy\Concerns\HasPublicUlid;
  * @property int $tenant_id
  * @property int $site_id
  * @property string $path
+ * @property string $layout standard | landing
  * @property string $title
  * @property string|null $meta_description
  * @property list<array<string, mixed>> $sections
@@ -38,7 +39,7 @@ final class SitePage extends Model
 
     protected $table = 'site_pages';
 
-    protected $fillable = ['site_id', 'path', 'title', 'meta_description', 'sections', 'draft_sections', 'noindex', 'in_menu', 'position', 'status', 'published_at', 'updated_by'];
+    protected $fillable = ['site_id', 'path', 'layout', 'title', 'meta_description', 'sections', 'draft_sections', 'noindex', 'in_menu', 'position', 'status', 'published_at', 'updated_by'];
 
     public function getConnectionName(): ?string
     {

@@ -9,6 +9,8 @@ use Illuminate\Http\Request;
 use Modules\Core\Tenancy\DomainResolver;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Sites\Http\SiteRouter;
+use Modules\Sites\Models\Site;
+use Modules\Sites\Rendering\SiteContext;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -30,9 +32,22 @@ final class ServeWebsite
             return response()->view('sites::unavailable', [], 404)->header('Cache-Control', 'no-store');
         }
         $this->tenants->set($tenant);
+        $context = app(SiteContext::class);
+        $context->reset(); // never carry an agent's website over from an earlier request (long-running workers)
         try {
+            // An agent's own domain: their website (pages at the root, everything else in their name).
+            $agentUlid = $this->domains->siteFor($request->getHost());
+            if ($agentUlid !== null) {
+                $agent = Site::query()->where('ulid', $agentUlid)->where('kind', 'agent')->first();
+                if ($agent === null || $agent->status !== 'live') {
+                    return response()->view('sites::unavailable', [], 404)->header('Cache-Control', 'no-store');
+                }
+                $context->enterAgent($agent, '');
+            }
+
             return app(SiteRouter::class)->dispatch($request);
         } finally {
+            $context->reset();
             $this->tenants->forget();
         }
     }

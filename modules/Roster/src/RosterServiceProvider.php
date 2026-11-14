@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Modules\Core\Access\PermissionRegistry;
+use Modules\Core\Agents\AgentCredentials;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
@@ -16,6 +17,7 @@ final class RosterServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->app->bind(AgentCredentials::class, RosterAgentCredentials::class);
         foreach ([Roster::class, LicenceGuard::class, Compliance::class, ExpiryReminders::class, Agreements::class, Flows::class, UpdateRequests::class, ContinuingEducation::class, Verification::class] as $service) {
             $this->app->scoped($service);
         }

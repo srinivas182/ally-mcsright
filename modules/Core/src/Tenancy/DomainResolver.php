@@ -59,6 +59,17 @@ final class DomainResolver
     {
         $this->cache->forget($this->key(Host::normalise($host)));
         $this->cache->forget($this->key(Host::normalise($host)).':website');
+        $this->cache->forget($this->key(Host::normalise($host)).':site');
+    }
+
+    /** The agent website a website domain belongs to (null: the brokerage's own website). */
+    public function siteFor(string $host): ?string
+    {
+        $host = Host::normalise($host);
+        $ulid = $this->cache->remember($this->key($host).':site', (int) config('core.domain_cache_ttl', 300),
+            fn (): string => (string) TenantDomain::query()->where('host', $host)->where('purpose', 'website')->value('site_ulid'));
+
+        return $ulid !== '' ? $ulid : null;
     }
 
     /** Whether this host serves a public website rather than the back office (specs/websites/05). */

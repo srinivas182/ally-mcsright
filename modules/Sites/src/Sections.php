@@ -44,7 +44,7 @@ final class Sections
                 'hero' => ['headline' => $t('headline', 120), 'subhead' => $t('subhead', 240), 'image' => self::image($p['image'] ?? null), 'search' => (bool) ($p['search'] ?? true)],
                 'listings' => ['title' => $t('title', 120), 'q' => $t('q', 80), 'max_price' => is_numeric($p['max_price'] ?? null) ? (int) $p['max_price'] : null,
                     'min_price' => is_numeric($p['min_price'] ?? null) ? (int) $p['min_price'] : null, 'sort' => in_array($p['sort'] ?? '', ['newest', 'price_desc', 'reduced'], true) ? (string) $p['sort'] : 'newest',
-                    'limit' => max(3, min(12, (int) ($p['limit'] ?? 6)))],
+                    'limit' => max(3, min(12, (int) ($p['limit'] ?? 6))), 'mine' => (bool) ($p['mine'] ?? false)],
                 'features' => ['title' => $t('title', 120), 'items' => array_values(array_map(fn ($it): array => ['title' => mb_substr(trim(strip_tags((string) ($it['title'] ?? ''))), 0, 80),
                     'body' => mb_substr(trim(strip_tags((string) ($it['body'] ?? ''))), 0, 300)], array_slice(array_filter((array) ($p['items'] ?? []), 'is_array'), 0, 6)))],
                 'text' => ['title' => $t('title', 120), 'body' => $t('body', 6000)],

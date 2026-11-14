@@ -16,6 +16,7 @@ use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Crm\CrmAccess;
+use Modules\Sites\AgentSites;
 use Modules\Sites\Content\Menus;
 use Modules\Sites\Content\Redirects;
 use Modules\Sites\Models\Site;
@@ -36,7 +37,7 @@ final class WebsiteSettingsController
                 'ulid' => $site->ulid, 'template' => $site->template, 'status' => $site->status, 'published_at' => $site->published_at?->toIso8601String(),
                 'info' => $site->info, 'brand' => $site->brand, 'seo' => $site->seo ?? [], 'ai_crawlers' => $site->ai_crawlers,
                 'signup_after' => (int) ($site->settings['signup_after'] ?? config('sites.signup_after', 3)),
-                'pages' => $site->pages()->orderBy('position')->get()->map(fn (SitePage $p): array => ['ulid' => $p->ulid, 'path' => $p->path, 'title' => $p->title,
+                'pages' => $site->pages()->orderBy('position')->get()->map(fn (SitePage $p): array => ['ulid' => $p->ulid, 'path' => $p->path, 'title' => $p->title, 'layout' => $p->layout,
                     'meta_description' => $p->meta_description, 'noindex' => $p->noindex, 'in_menu' => $p->in_menu])->values(),
             ],
             'hosts' => $sites->hosts(),
@@ -44,6 +45,9 @@ final class WebsiteSettingsController
             'cname_target' => (string) config('sites.cname_target'),
             'templates' => collect((array) config('sites.templates'))->map(fn (array $t, string $k): array => ['key' => $k, 'name' => $t['name'], 'description' => $t['description']])->values(),
             'powered_by' => $powered->forTenant($tenants->id()),
+            'agent_rules' => AgentSites::rules(),
+            'agent_sites' => Site::query()->where('kind', 'agent')->orderBy('slug')->limit(500)->get()->map(fn (Site $s): array => ['ulid' => $s->ulid,
+                'name' => (string) ($s->info['name'] ?? $s->slug), 'slug' => (string) $s->slug, 'status' => $s->status])->values(),
             'menus' => $site === null ? null : ['main' => $site->menus['main'] ?? Menus::defaults($site), 'footer' => $site->menus['footer'] ?? [], 'custom' => ! empty($site->menus['main'])],
             'redirects' => $site === null ? [] : DB::connection(Connections::cell())->table('site_redirects')->where('site_id', $site->id)->orderBy('from_path')->limit(500)->get()
                 ->map(fn ($r): array => ['id' => (int) $r->id, 'from' => (string) $r->from_path, 'to' => (string) $r->to_url, 'code' => (int) $r->code, 'hits' => (int) $r->hits])->values(),
@@ -123,6 +127,26 @@ final class WebsiteSettingsController
         self::site($sites);
         $sites->addDomain((string) $request->validate(['host' => ['required', 'string', 'max:253']])['host'], $user);
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Domain added. Add the DNS record shown, and it goes live once verified.']);
+
+        return back();
+    }
+
+    public function agentRules(Request $request, AgentSites $agents): RedirectResponse
+    {
+        $user = self::manager($request);
+        $agents->saveRules($request->validate(['enabled' => ['required', 'boolean'], 'template' => ['required', 'boolean'], 'colours' => ['required', 'boolean'],
+            'sections' => ['required', 'boolean'], 'domain' => ['required', 'boolean']]), $user);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Brand kit saved.']);
+
+        return back();
+    }
+
+    /** Owners and staff can take an agent's website offline (or back online). */
+    public function agentPublish(Request $request, AgentSites $agents, string $agent): RedirectResponse
+    {
+        $user = self::manager($request);
+        $site = Site::query()->where('ulid', $agent)->where('kind', 'agent')->firstOrFail();
+        $agents->publish($site, (bool) $request->validate(['live' => ['required', 'boolean']])['live'], $user);
 
         return back();
     }

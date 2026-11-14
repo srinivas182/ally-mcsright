@@ -14,13 +14,14 @@ use Modules\Core\Tenancy\TenantContext;
 use Modules\Crm\Consent;
 use Modules\Listings\Search\ListingSearch;
 use Modules\Listings\Search\MarketStats;
+use Modules\Sites\AgentSites;
 use Modules\Sites\Models\Site;
 use Modules\Sites\Models\SitePage;
 use Modules\Sites\Models\SitePost;
-use Modules\Sites\Rendering\Chrome;
+use Modules\Sites\Rendering\PageRenderer;
 use Modules\Sites\Rendering\Seo;
+use Modules\Sites\Rendering\SiteContext;
 use Modules\Sites\Rendering\Urls;
-use Modules\Sites\Sections;
 use Modules\Sites\Visitors\SiteLeads;
 
 /**
@@ -40,12 +41,13 @@ final class SiteController
         if ($site->status !== 'live') {
             return response()->view('sites::coming-soon', ['site' => $site], 200)->header('Cache-Control', 'no-store')->header('X-Robots-Tag', 'noindex');
         }
-        $page = SitePage::query()->where('site_id', $site->id)->where('path', '/'.trim((string) $path, '/'))->where('status', 'published')->first();
+        $owner = app(SiteContext::class)->agent() ?? $site;
+        $page = SitePage::query()->where('site_id', $owner->id)->where('path', '/'.trim((string) $path, '/'))->where('status', 'published')->first();
         if ($page === null) {
             return $this->missing($site);
         }
 
-        return $this->render($request, $site, $page, $page->sections, true)
+        return $this->render($request, $owner, $page, $page->sections, true)
             ->header('Cache-Control', 'public, max-age=60, s-maxage='.config('sites.cache_seconds').', stale-while-revalidate='.config('sites.stale_seconds'));
     }
 
@@ -54,6 +56,9 @@ final class SiteController
     {
         abort_unless($request->hasValidSignature(false), 403);
         $row = SitePage::query()->where('ulid', $page)->with('site')->firstOrFail();
+        if ($row->site->kind === 'agent') {
+            app(SiteContext::class)->enterAgent($row->site, '/agents/'.$row->site->slug);
+        }
 
         return $this->render($request, $row->site, $row, $row->draft_sections ?? $row->sections, false)->header('Cache-Control', 'no-store')->header('X-Robots-Tag', 'noindex');
     }
@@ -91,6 +96,15 @@ final class SiteController
             $tenantId = $this->tenants->id();
             $places = app(MarketStats::class)->places($tenantId);
             $urls[] = '<url><loc>'.e($base.'/homes').'</loc></url>';
+            $agents = app(AgentSiteController::class)->live();
+            if ($agents !== []) {
+                $urls[] = '<url><loc>'.e($base.'/agents').'</loc></url>';
+            }
+            foreach ($agents as $agent) {
+                foreach (SitePage::query()->where('site_id', $agent->id)->where('status', 'published')->where('noindex', false)->orderBy('position')->get(['path', 'updated_at']) as $p) {
+                    $urls[] = '<url><loc>'.e($base.'/agents/'.$agent->slug.($p->path === '/' ? '' : $p->path)).'</loc></url>';
+                }
+            }
             $posts = SitePost::query()->where('site_id', $site->id)->live()->where('noindex', false)->orderByDesc('published_at')->limit(5000)->get(['slug', 'updated_at']);
             if ($posts->isNotEmpty()) {
                 $urls[] = '<url><loc>'.e($base.'/blog').'</loc></url>';
@@ -148,6 +162,16 @@ final class SiteController
             $out[] = '- ['.$p->title.']('.$base.$p->path.')'.($p->meta_description ? ': '.$p->meta_description : '');
         }
         $out[] = '- [Homes for sale]('.$base.'/homes): every home for sale from the MLS, searchable by map, price and size';
+        $agents = app(AgentSiteController::class)->live();
+        if ($agents !== []) {
+            $out[] = '';
+            $out[] = '## Our agents';
+            foreach (array_slice($agents, 0, 30) as $agent) {
+                $p = AgentSites::profile($agent);
+                $out[] = '- ['.$p['name'].']('.$base.'/agents/'.$agent->slug.')'.($p['areas'] !== [] ? ': '.implode(', ', $p['areas']) : '')
+                    .($p['languages'] !== [] && $p['languages'] !== ['English'] ? ' (speaks '.implode(', ', $p['languages']).')' : '');
+            }
+        }
         $posts = SitePost::query()->where('site_id', $site->id)->live()->where('noindex', false)->orderByDesc('published_at')->limit(15)->get(['slug', 'title', 'excerpt']);
         if ($posts->isNotEmpty()) {
             $out[] = '';
@@ -192,7 +216,9 @@ final class SiteController
         if (time() - $shown < 3 || ! RateLimiter::attempt('site-lead:'.$request->ip(), 10, fn (): bool => true)) {
             return redirect($back.'?sent=1', 303); // too fast for a person, or too many
         }
-        $source = SiteLeads::source('Website', 'Contact us');
+        // A landing page's leads are reported under that landing page.
+        $landing = SitePage::query()->where('site_id', $site->id)->where('layout', 'landing')->where('path', '/'.ltrim((string) parse_url($back, PHP_URL_PATH), '/'))->first();
+        $source = $landing !== null ? SiteLeads::source(mb_substr('Landing page: '.$landing->title, 0, 120), $landing->title) : SiteLeads::source('Website', 'Contact us');
         $in = ['name' => (string) $request->input('name', ''), 'email' => (string) $request->input('email', ''), 'phone' => (string) $request->input('phone', ''),
             'message' => mb_substr((string) $request->input('message', ''), 0, 4000), 'intent' => (string) $request->input('intent', ''),
             'referrer' => mb_substr((string) $request->input('first_referrer', ''), 0, 500), 'landing_url' => mb_substr((string) $request->input('landing_url', ''), 0, 500),
@@ -230,31 +256,9 @@ final class SiteController
      */
     private function render(Request $request, Site $site, SitePage $page, array $sections, bool $indexable): Response
     {
-        $tenantId = $this->tenants->id();
-        $blocks = [];
-        foreach (Sections::clean($sections) as $s) {
-            if ($s['hidden']) {
-                continue;
-            }
-            if ($s['type'] === 'neighbourhoods') {
-                $stats = app(MarketStats::class);
-                $s['markets'] = array_values(array_filter(array_map(fn (string $slug): ?array => $stats->forPlace($tenantId, $slug), $s['props']['places'])));
-            }
-            if ($s['type'] === 'listings') {
-                $p = $s['props'];
-                $s['listings'] = app(ListingSearch::class)->search($tenantId, array_filter(['q' => $p['q'] ?? '', 'min_price' => $p['min_price'] ?? null,
-                    'max_price' => $p['max_price'] ?? null, 'sort' => $p['sort'] ?? 'newest', 'per_page' => $p['limit'] ?? 6]))['results'];
-            }
-            $blocks[] = $s;
-        }
-        $page->sections = $sections;
+        $brokerage = $site->kind === 'brokerage' ? $site : ($this->site() ?? $site);
 
-        return response()->view('sites::page', [
-            'site' => $site, 'page' => $page, 'blocks' => $blocks, 'current' => $page->path, 'base' => $request->getSchemeAndHttpHost(),
-            'seo' => Seo::forPage($site, $page, $request->getSchemeAndHttpHost(), $indexable),
-            'chrome' => Chrome::for($site, $tenantId, collect($blocks)->pluck('listings')->flatten(1)->pluck('disclaimer')->filter()->values()->all()),
-            ...self::form($request),
-        ]);
+        return app(PageRenderer::class)->render($request, $brokerage, $site, $page, $sections, $indexable);
     }
 
     /**

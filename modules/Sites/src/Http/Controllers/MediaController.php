@@ -13,6 +13,7 @@ use Modules\Crm\CrmAccess;
 use Modules\Sites\Content\MediaLibrary;
 use Modules\Sites\Models\Site;
 use Modules\Sites\Models\SiteMedia;
+use Modules\Sites\SiteAccess;
 use Modules\Sites\SiteSetup;
 
 /** Settings → Website → media library (specs/websites/08). */
@@ -34,9 +35,13 @@ final class MediaController
 
     public function store(Request $request): JsonResponse
     {
-        $user = self::manager($request);
-        $data = $request->validate(['file' => ['required', 'file', 'max:10240'], 'alt' => ['required', 'string', 'max:250']]);
-        $m = $this->media->store($this->site(), $data['file'], $data['alt'], $user);
+        $user = $request->user();
+        abort_unless($user instanceof User, 403);
+        $data = $request->validate(['file' => ['required', 'file', 'max:10240'], 'alt' => ['required', 'string', 'max:250'], 'site' => ['nullable', 'string', 'size:26']]);
+        // Agents upload to their own website's library; owners and staff to the brokerage's (or any of its websites).
+        $site = isset($data['site']) ? Site::query()->where('ulid', $data['site'])->first() : $this->site();
+        abort_unless($site !== null && SiteAccess::canEdit($user, $site), 403);
+        $m = $this->media->store($site, $data['file'], $data['alt'], $user);
 
         return response()->json(['media' => ['ulid' => $m->ulid, 'url' => MediaLibrary::urlFor($m, 'thumb'), 'alt' => $m->alt]], 201);
     }

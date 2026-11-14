@@ -3,12 +3,14 @@
         <div>
             @if ($first ?? false)<h1 class="section-title">{{ $p['title'] }}</h1>@else<h2 class="section-title">{{ $p['title'] }}</h2>@endif
             @if ($p['body'] !== '')<p class="lead-muted">{{ $p['body'] }}</p>@endif
+            @php($phone = ($chrome['agent']['phone'] ?? '') !== '' ? $chrome['agent']['phone'] : (string) ($site->info['phone'] ?? ''))
+            @php($email = ($chrome['agent']['email'] ?? '') !== '' ? $chrome['agent']['email'] : (string) ($site->info['email'] ?? ''))
             <ul class="contact-facts">
-                @if (! empty($site->info['phone']))<li><a href="tel:{{ preg_replace('/[^0-9+]/', '', $site->info['phone']) }}">{{ $site->info['phone'] }}</a></li>@endif
-                @if (! empty($site->info['email']))<li><a href="mailto:{{ $site->info['email'] }}">{{ $site->info['email'] }}</a></li>@endif
+                @if ($phone !== '')<li><a href="tel:{{ preg_replace('/[^0-9+]/', '', $phone) }}">{{ $phone }}</a></li>@endif
+                @if ($email !== '')<li><a href="mailto:{{ $email }}">{{ $email }}</a></li>@endif
                 @if (! empty($site->info['street']))<li>{{ $site->info['street'] }}, {{ $site->info['city'] ?? '' }}, {{ $site->info['state'] ?? '' }} {{ $site->info['zip'] ?? '' }}</li>@endif
             </ul>
         </div>
-        @include('sites::partials.lead-form', ['return' => $page->path])
+        @include('sites::partials.lead-form', ['return' => $current])
     </div>
 </section>
