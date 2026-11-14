@@ -33,7 +33,7 @@ final class Visitors
 {
     public const MAX_EVENTS_PER_DAY = 500;
 
-    private const BOTS = '/bot|crawl|spider|slurp|preview|headless|lighthouse|monitor|curl|wget|python|httpclient/i';
+    public const BOTS = '/bot|crawl|spider|slurp|preview|headless|lighthouse|monitor|curl|wget|python|httpclient/i';
 
     public function __construct(private readonly TenantContext $tenants) {}
 

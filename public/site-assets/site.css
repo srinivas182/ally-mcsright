@@ -1675,3 +1675,167 @@ h3 {
 .agent-card:hover {
     transform: translateY(-3px);
 }
+
+/* AIlly, the website assistant (specs/websites/11). */
+.ailly {
+    position: fixed;
+    right: 1rem;
+    bottom: 1rem;
+    z-index: 60;
+    display: grid;
+    justify-items: end;
+    gap: 0.75rem;
+}
+.ailly-open {
+    box-shadow: var(--shadow);
+    border-radius: 999px;
+}
+.ailly-panel {
+    width: min(380px, calc(100vw - 2rem));
+    height: min(560px, calc(100vh - 6rem));
+    display: grid;
+    grid-template-rows: auto 1fr auto auto;
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+.ailly-panel[hidden] {
+    display: none;
+}
+.ailly-head {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--line);
+    font-size: 0.85rem;
+}
+.ailly-head span {
+    color: var(--muted);
+    flex: 1;
+}
+.ailly-x {
+    background: none;
+    border: 0;
+    font-size: 1.4rem;
+    line-height: 1;
+    cursor: pointer;
+    color: var(--muted);
+}
+.ailly-log {
+    overflow-y: auto;
+    padding: 0.75rem 1rem;
+    display: grid;
+    align-content: start;
+    gap: 0.6rem;
+    font-size: 0.92rem;
+}
+.ailly-msg p {
+    margin: 0;
+    padding: 0.55rem 0.75rem;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--brand) 8%, var(--bg));
+    max-width: 90%;
+}
+.ailly-visitor {
+    justify-self: end;
+}
+.ailly-visitor p {
+    background: var(--brand);
+    color: #fff;
+}
+.ailly-typing {
+    color: var(--muted);
+    font-style: italic;
+}
+.ailly-home {
+    margin-top: 0.4rem;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+    display: grid;
+    gap: 0.25rem;
+    padding-bottom: 0.5rem;
+}
+.ailly-home a {
+    display: grid;
+    gap: 0.15rem;
+    color: inherit;
+    text-decoration: none;
+}
+.ailly-home img {
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+}
+.ailly-home strong,
+.ailly-home span,
+.ailly-home small,
+.ailly-home .ailly-chip {
+    margin: 0 0.6rem;
+}
+.ailly-home small {
+    color: var(--muted);
+    font-size: 0.72rem;
+}
+.ailly-next {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.4rem;
+}
+.ailly-chip {
+    border: 1px solid var(--brand);
+    color: var(--brand);
+    background: var(--bg);
+    border-radius: 999px;
+    padding: 0.35rem 0.7rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+    justify-self: start;
+}
+.ailly-contact {
+    display: grid;
+    gap: 0.4rem;
+    padding: 0.75rem;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    font-size: 0.85rem;
+}
+.ailly-contact label {
+    display: grid;
+    gap: 0.2rem;
+}
+.ailly-contact .consent {
+    display: flex;
+    gap: 0.4rem;
+    font-size: 0.72rem;
+    color: var(--muted);
+}
+.ailly-error {
+    color: #b42318;
+    margin: 0;
+}
+.ailly-form {
+    display: flex;
+    gap: 0.4rem;
+    padding: 0.6rem;
+    border-top: 1px solid var(--line);
+}
+.ailly-form input[name='message'] {
+    flex: 1;
+    min-width: 0;
+}
+.ailly-note {
+    margin: 0;
+    padding: 0 0.75rem 0.6rem;
+    font-size: 0.7rem;
+    color: var(--muted);
+}
+.ailly-hp {
+    position: absolute;
+    left: -9999px;
+}

@@ -55,11 +55,13 @@ final class SitesServiceProvider extends ServiceProvider
         $features->declare(Ai\ContentStudio::PAGE, 'ai.site_page', 'AI page drafts for websites');
         $features->declare(Ai\ContentStudio::ASSIST, 'ai.site_assist', 'AI editing help on websites (rewrite, FAQ, meta, bio)');
         $features->declare(Ai\ContentStudio::MARKET, 'ai.site_market', 'Monthly AI market update drafts');
+        $features->declare(Ailly\Assistant::FEATURE, 'ai.ailly', 'AIlly website assistant replies');
 
         Gate::define('hq.sites.manage', fn (User $user): bool => $user->kind === UserKind::HqStaff);
         $nav = $this->app->make(NavigationRegistry::class);
         $nav->add(new NavItem('Settings', 'Website', '/settings/website', 'layout-grid', 64, kinds: [UserKind::Owner, UserKind::Staff]));
         $nav->add(new NavItem('Settings', 'My website', '/settings/my-website', 'layout-grid', 65, kinds: [UserKind::Agent]));
+        $nav->add(new NavItem('Settings', 'AIlly assistant', '/settings/ailly', 'sparkles', 66, kinds: [UserKind::Owner, UserKind::Staff]));
         $nav->add(new NavItem('HQ', 'Websites', '/hq/sites', 'layout-grid', 17, ability: 'hq.sites.manage', kinds: [UserKind::HqStaff]));
     }
 }
