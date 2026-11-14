@@ -16,7 +16,8 @@
     var map = null,
         drawing = null,
         controller = null,
-        lastPins = null;
+        lastPins = null,
+        pinsHook = null;
 
     function money(v) {
         if (v == null) return '';
@@ -80,7 +81,7 @@
                 );
                 var empty = root.querySelector('[data-empty]');
                 if (empty) empty.hidden = data.total > 0;
-                if (data.pins && map) showPins(data.pins);
+                if (data.pins && map && pinsHook) pinsHook(data.pins);
             })
             .catch(function (e) {
                 if (e && e.name === 'AbortError') return;
@@ -128,328 +129,424 @@
         load(false, true);
     });
 
-    // Map.
-    var token = root.getAttribute('data-mapbox');
+    // Map. It starts only when a visitor asks for it (or asked earlier in this visit, on wide screens): each start
+    // is a counted map view, and the brokerage's monthly allowance decides whether it may open (POST /_map).
     var mapEl = root.querySelector('[data-map]');
-    if (!token || !mapEl || !window.mapboxgl) return;
-    var dark = document.documentElement.classList.contains('theme-aurum');
-    var brand =
-        getComputedStyle(document.documentElement)
-            .getPropertyValue('--accent')
-            .trim() || '#1d4ed8';
-    mapboxgl.accessToken = token;
-    map = new mapboxgl.Map({
-        container: mapEl,
-        style: dark
-            ? 'mapbox://styles/mapbox/dark-v11'
-            : 'mapbox://styles/mapbox/light-v11',
-        center: [-97.74, 30.27],
-        zoom: 10,
-        cooperativeGestures: true,
-    });
-    map.addControl(
-        new mapboxgl.NavigationControl({ showCompass: false }),
-        'top-right',
-    );
-    var b = (root.getAttribute('data-bounds') || '').split(',').map(Number);
-    if (b.length === 4 && b.every(isFinite))
-        map.fitBounds(
-            [
-                [b[1], b[0]],
-                [b[3], b[2]],
-            ],
-            { animate: false },
-        );
+    if (!mapEl || root.getAttribute('data-mapbox') !== '1') return;
+    var tools = root.querySelector('[data-map-tools]');
+    var placeholder = root.querySelector('[data-map-placeholder]');
+    var placeholderText = root.querySelector('[data-map-note]');
+    var openBtn = root.querySelector('[data-map-open]');
+    var toggle = root.querySelector('[data-map-toggle]');
+    var starting = null;
 
-    function geo(pins) {
-        return {
-            type: 'FeatureCollection',
-            features: pins.map(function (p) {
-                return {
-                    type: 'Feature',
-                    geometry: { type: 'Point', coordinates: [p[2], p[1]] },
-                    properties: { u: p[0], label: money(p[3]), beds: p[4] },
-                };
-            }),
-        };
-    }
-    function showPins(pins) {
-        lastPins = pins;
-        var s = map.getSource('homes');
-        if (s) s.setData(geo(pins));
-    }
-    function fitToPins() {
-        if (!lastPins || !lastPins.length) return;
-        var bb = new mapboxgl.LngLatBounds();
-        lastPins.forEach(function (p) {
-            bb.extend([p[2], p[1]]);
-        });
-        map.fitBounds(bb, { padding: 48, maxZoom: 14, duration: 0 });
-    }
-
-    map.on('load', function () {
-        map.addSource('homes', {
-            type: 'geojson',
-            data: geo([]),
-            cluster: true,
-            clusterRadius: 48,
-            clusterMaxZoom: 14,
-        });
-        map.addLayer({
-            id: 'clusters',
-            type: 'circle',
-            source: 'homes',
-            filter: ['has', 'point_count'],
-            paint: {
-                'circle-color': brand,
-                'circle-opacity': 0.9,
-                'circle-radius': [
-                    'step',
-                    ['get', 'point_count'],
-                    16,
-                    20,
-                    22,
-                    100,
-                    28,
-                ],
-                'circle-stroke-width': 2,
-                'circle-stroke-color': '#fff',
-            },
-        });
-        map.addLayer({
-            id: 'cluster-count',
-            type: 'symbol',
-            source: 'homes',
-            filter: ['has', 'point_count'],
-            layout: {
-                'text-field': ['get', 'point_count_abbreviated'],
-                'text-size': 12,
-                'text-font': ['DIN Pro Medium', 'Arial Unicode MS Bold'],
-            },
-            paint: { 'text-color': '#fff' },
-        });
-        map.addLayer({
-            id: 'pins',
-            type: 'symbol',
-            source: 'homes',
-            filter: ['!', ['has', 'point_count']],
-            layout: {
-                'text-field': ['get', 'label'],
-                'text-size': 12,
-                'text-font': ['DIN Pro Bold', 'Arial Unicode MS Bold'],
-                'text-allow-overlap': true,
-                'icon-allow-overlap': true,
-            },
-            paint: {
-                'text-color': dark ? '#0b0b0d' : '#fff',
-                'text-halo-color': brand,
-                'text-halo-width': 6,
-            },
-        });
-        map.addLayer({
-            id: 'pin-hover',
-            type: 'symbol',
-            source: 'homes',
-            filter: ['==', ['get', 'u'], ''],
-            layout: {
-                'text-field': ['get', 'label'],
-                'text-size': 14,
-                'text-font': ['DIN Pro Bold', 'Arial Unicode MS Bold'],
-                'text-allow-overlap': true,
-            },
-            paint: {
-                'text-color': '#fff',
-                'text-halo-color': '#111',
-                'text-halo-width': 7,
-            },
-        });
-        map.addSource('area', {
-            type: 'geojson',
-            data: { type: 'FeatureCollection', features: [] },
-        });
-        map.addLayer({
-            id: 'area-fill',
-            type: 'fill',
-            source: 'area',
-            paint: { 'fill-color': brand, 'fill-opacity': 0.12 },
-        });
-        map.addLayer({
-            id: 'area-line',
-            type: 'line',
-            source: 'area',
-            paint: { 'line-color': brand, 'line-width': 2.5 },
-        });
-        drawArea(params.get('poly'));
-        load(false, true).then(function () {
-            if (!(b.length === 4 && b.every(isFinite)) && !params.get('poly'))
-                fitToPins();
-        });
-    });
-
-    map.on('click', 'clusters', function (e) {
-        var f = e.features[0];
-        map.getSource('homes').getClusterExpansionZoom(
-            f.properties.cluster_id,
-            function (err, zoom) {
-                if (!err)
-                    map.easeTo({ center: f.geometry.coordinates, zoom: zoom });
-            },
-        );
-    });
-    map.on('click', 'pins', function (e) {
-        var u = e.features[0].properties.u;
-        var card = cards.querySelector('[data-ulid="' + CSS.escape(u) + '"] a');
-        if (card) {
-            card.closest('.card').scrollIntoView({
-                behavior: 'smooth',
-                block: 'center',
+    function asset(tag, attrs) {
+        return new Promise(function (resolve, reject) {
+            var el = document.createElement(tag);
+            Object.keys(attrs).forEach(function (k) {
+                el.setAttribute(k, attrs[k]);
             });
-            card.closest('.card').classList.add('is-hl');
-            setTimeout(function () {
-                card.closest('.card').classList.remove('is-hl');
-            }, 1600);
-        } else location.href = '/homes/' + encodeURIComponent(u);
-    });
-    ['clusters', 'pins'].forEach(function (l) {
-        map.on('mouseenter', l, function () {
-            map.getCanvas().style.cursor = 'pointer';
+            el.onload = resolve;
+            el.onerror = reject;
+            document.head.appendChild(el);
         });
-        map.on('mouseleave', l, function () {
-            map.getCanvas().style.cursor = '';
-        });
-    });
-    cards.addEventListener('mouseover', function (e) {
-        var c = e.target.closest('[data-ulid]');
-        if (c && map.getLayer('pin-hover'))
-            map.setFilter('pin-hover', [
-                '==',
-                ['get', 'u'],
-                c.getAttribute('data-ulid'),
-            ]);
-    });
-
-    // Search as I move the map.
-    var follow = root.querySelector('[data-follow]');
-    map.on('moveend', function (e) {
-        if (
-            !e.originalEvent ||
-            drawing ||
-            !follow ||
-            !follow.checked ||
-            params.get('poly')
-        )
-            return;
-        var bb = map.getBounds();
-        setParam(
-            'bounds',
-            [bb.getSouth(), bb.getWest(), bb.getNorth(), bb.getEast()]
-                .map(function (n) {
-                    return n.toFixed(5);
-                })
-                .join(','),
-        );
-        params.delete('page');
-        load(true, true);
-    });
-
-    // Draw an area: click points, click the first point (or double-click) to finish, Esc to cancel.
-    var drawBtn = root.querySelector('[data-draw]');
-    function drawArea(poly, open) {
-        var src = map.getSource('area');
-        if (!src) return;
-        var pts =
-            typeof poly === 'string' && poly
-                ? poly.split(';').map(function (p) {
-                      var a = p.split(',').map(Number);
-                      return [a[1], a[0]];
-                  })
-                : poly || [];
-        var features = [];
-        if (pts.length >= 2)
-            features.push({
-                type: 'Feature',
-                geometry: open
-                    ? { type: 'LineString', coordinates: pts }
-                    : { type: 'Polygon', coordinates: [pts.concat([pts[0]])] },
+    }
+    function rest(message) {
+        if (placeholderText) placeholderText.textContent = message;
+        if (openBtn) openBtn.hidden = true;
+    }
+    function openMap() {
+        if (starting) return starting;
+        if (placeholderText) placeholderText.textContent = 'Loading the map…';
+        if (openBtn) openBtn.disabled = true;
+        starting = fetch('/_map', {
+            method: 'POST',
+            headers: { Accept: 'application/json' },
+            credentials: 'same-origin',
+        })
+            .then(function (r) {
+                return r.ok ? r.json() : Promise.reject(r);
+            })
+            .then(function (d) {
+                if (!d.ok || !d.token) {
+                    rest(
+                        'The map is resting for now. Browse the homes in the list.',
+                    );
+                    return false;
+                }
+                try {
+                    sessionStorage.setItem('ra-map', '1');
+                } catch (e) {
+                    /* storage blocked: the visitor just clicks again next time */
+                }
+                return Promise.all([
+                    asset('link', {
+                        rel: 'stylesheet',
+                        href: 'https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.css',
+                    }),
+                    window.mapboxgl
+                        ? Promise.resolve()
+                        : asset('script', {
+                              src: 'https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.js',
+                          }),
+                ]).then(function () {
+                    startMap(d.token);
+                    return true;
+                });
+            })
+            .catch(function () {
+                starting = null;
+                if (openBtn) openBtn.disabled = false;
+                rest('The map could not load. Browse the homes in the list.');
+                return false;
             });
-        src.setData({ type: 'FeatureCollection', features: features });
+        return starting;
     }
-    function finishDraw() {
-        var pts = drawing;
-        drawing = null;
-        map.doubleClickZoom.enable();
-        map.getCanvas().style.cursor = '';
-        drawBtn.textContent = 'Draw an area';
-        if (!pts || pts.length < 3) {
-            drawArea(params.get('poly'));
-            return;
-        }
-        setParam(
-            'poly',
-            pts
-                .map(function (p) {
-                    return p[1].toFixed(5) + ',' + p[0].toFixed(5);
-                })
-                .join(';'),
-        );
-        params.delete('bounds');
-        params.delete('page');
-        drawArea(params.get('poly'));
-        load(true, true);
+    if (openBtn) openBtn.addEventListener('click', openMap);
+    var again = false;
+    try {
+        again = sessionStorage.getItem('ra-map') === '1';
+    } catch (e) {
+        again = false;
     }
-    drawBtn.addEventListener('click', function () {
-        if (drawing) {
-            finishDraw();
-            return;
-        }
-        drawing = [];
-        map.doubleClickZoom.disable();
-        map.getCanvas().style.cursor = 'crosshair';
-        drawBtn.textContent = 'Finish area';
-        root.classList.add('show-map');
-    });
-    map.on('click', function (e) {
-        if (!drawing) return;
-        var p = [e.lngLat.lng, e.lngLat.lat];
-        if (drawing.length >= 3) {
-            var first = map.project(drawing[0]),
-                here = map.project(p);
-            if (Math.hypot(first.x - here.x, first.y - here.y) < 14) {
-                finishDraw();
-                return;
-            }
-        }
-        if (drawing.length < 60) drawing.push(p);
-        drawArea(drawing, true);
-    });
-    map.on('dblclick', function () {
-        if (drawing) finishDraw();
-    });
-    document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && drawing) {
-            drawing = [];
-            finishDraw();
-        }
-    });
-    if (clearBtn)
-        clearBtn.addEventListener('click', function () {
-            params.delete('poly');
-            params.delete('bounds');
-            params.delete('page');
-            drawArea(null);
-            load(true, true);
-        });
+    if (again && window.matchMedia('(min-width: 1100px)').matches) openMap();
 
     // Phones: list or map.
-    var toggle = root.querySelector('[data-map-toggle]');
     if (toggle)
         toggle.addEventListener('click', function () {
             var on = root.classList.toggle('show-map');
             toggle.setAttribute('aria-pressed', on ? 'true' : 'false');
             toggle.textContent = on ? 'List' : 'Map';
             if (on)
-                setTimeout(function () {
-                    map.resize();
-                }, 50);
+                openMap().then(function () {
+                    if (map)
+                        setTimeout(function () {
+                            map.resize();
+                        }, 50);
+                });
         });
+
+    function startMap(token) {
+        if (placeholder) placeholder.hidden = true;
+        if (tools) tools.hidden = false;
+        var dark = document.documentElement.classList.contains('theme-aurum');
+        var brand =
+            getComputedStyle(document.documentElement)
+                .getPropertyValue('--accent')
+                .trim() || '#1d4ed8';
+        mapboxgl.accessToken = token;
+        map = new mapboxgl.Map({
+            container: mapEl,
+            style: dark
+                ? 'mapbox://styles/mapbox/dark-v11'
+                : 'mapbox://styles/mapbox/light-v11',
+            center: [-97.74, 30.27],
+            zoom: 10,
+            cooperativeGestures: true,
+        });
+        map.addControl(
+            new mapboxgl.NavigationControl({ showCompass: false }),
+            'top-right',
+        );
+        var b = (root.getAttribute('data-bounds') || '').split(',').map(Number);
+        if (b.length === 4 && b.every(isFinite))
+            map.fitBounds(
+                [
+                    [b[1], b[0]],
+                    [b[3], b[2]],
+                ],
+                { animate: false },
+            );
+
+        function geo(pins) {
+            return {
+                type: 'FeatureCollection',
+                features: pins.map(function (p) {
+                    return {
+                        type: 'Feature',
+                        geometry: { type: 'Point', coordinates: [p[2], p[1]] },
+                        properties: { u: p[0], label: money(p[3]), beds: p[4] },
+                    };
+                }),
+            };
+        }
+        pinsHook = showPins;
+        function showPins(pins) {
+            lastPins = pins;
+            var s = map.getSource('homes');
+            if (s) s.setData(geo(pins));
+        }
+        function fitToPins() {
+            if (!lastPins || !lastPins.length) return;
+            var bb = new mapboxgl.LngLatBounds();
+            lastPins.forEach(function (p) {
+                bb.extend([p[2], p[1]]);
+            });
+            map.fitBounds(bb, { padding: 48, maxZoom: 14, duration: 0 });
+        }
+
+        map.on('load', function () {
+            map.addSource('homes', {
+                type: 'geojson',
+                data: geo([]),
+                cluster: true,
+                clusterRadius: 48,
+                clusterMaxZoom: 14,
+            });
+            map.addLayer({
+                id: 'clusters',
+                type: 'circle',
+                source: 'homes',
+                filter: ['has', 'point_count'],
+                paint: {
+                    'circle-color': brand,
+                    'circle-opacity': 0.9,
+                    'circle-radius': [
+                        'step',
+                        ['get', 'point_count'],
+                        16,
+                        20,
+                        22,
+                        100,
+                        28,
+                    ],
+                    'circle-stroke-width': 2,
+                    'circle-stroke-color': '#fff',
+                },
+            });
+            map.addLayer({
+                id: 'cluster-count',
+                type: 'symbol',
+                source: 'homes',
+                filter: ['has', 'point_count'],
+                layout: {
+                    'text-field': ['get', 'point_count_abbreviated'],
+                    'text-size': 12,
+                    'text-font': ['DIN Pro Medium', 'Arial Unicode MS Bold'],
+                },
+                paint: { 'text-color': '#fff' },
+            });
+            map.addLayer({
+                id: 'pins',
+                type: 'symbol',
+                source: 'homes',
+                filter: ['!', ['has', 'point_count']],
+                layout: {
+                    'text-field': ['get', 'label'],
+                    'text-size': 12,
+                    'text-font': ['DIN Pro Bold', 'Arial Unicode MS Bold'],
+                    'text-allow-overlap': true,
+                    'icon-allow-overlap': true,
+                },
+                paint: {
+                    'text-color': dark ? '#0b0b0d' : '#fff',
+                    'text-halo-color': brand,
+                    'text-halo-width': 6,
+                },
+            });
+            map.addLayer({
+                id: 'pin-hover',
+                type: 'symbol',
+                source: 'homes',
+                filter: ['==', ['get', 'u'], ''],
+                layout: {
+                    'text-field': ['get', 'label'],
+                    'text-size': 14,
+                    'text-font': ['DIN Pro Bold', 'Arial Unicode MS Bold'],
+                    'text-allow-overlap': true,
+                },
+                paint: {
+                    'text-color': '#fff',
+                    'text-halo-color': '#111',
+                    'text-halo-width': 7,
+                },
+            });
+            map.addSource('area', {
+                type: 'geojson',
+                data: { type: 'FeatureCollection', features: [] },
+            });
+            map.addLayer({
+                id: 'area-fill',
+                type: 'fill',
+                source: 'area',
+                paint: { 'fill-color': brand, 'fill-opacity': 0.12 },
+            });
+            map.addLayer({
+                id: 'area-line',
+                type: 'line',
+                source: 'area',
+                paint: { 'line-color': brand, 'line-width': 2.5 },
+            });
+            drawArea(params.get('poly'));
+            load(false, true).then(function () {
+                if (
+                    !(b.length === 4 && b.every(isFinite)) &&
+                    !params.get('poly')
+                )
+                    fitToPins();
+            });
+        });
+
+        map.on('click', 'clusters', function (e) {
+            var f = e.features[0];
+            map.getSource('homes').getClusterExpansionZoom(
+                f.properties.cluster_id,
+                function (err, zoom) {
+                    if (!err)
+                        map.easeTo({
+                            center: f.geometry.coordinates,
+                            zoom: zoom,
+                        });
+                },
+            );
+        });
+        map.on('click', 'pins', function (e) {
+            var u = e.features[0].properties.u;
+            var card = cards.querySelector(
+                '[data-ulid="' + CSS.escape(u) + '"] a',
+            );
+            if (card) {
+                card.closest('.card').scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center',
+                });
+                card.closest('.card').classList.add('is-hl');
+                setTimeout(function () {
+                    card.closest('.card').classList.remove('is-hl');
+                }, 1600);
+            } else location.href = '/homes/' + encodeURIComponent(u);
+        });
+        ['clusters', 'pins'].forEach(function (l) {
+            map.on('mouseenter', l, function () {
+                map.getCanvas().style.cursor = 'pointer';
+            });
+            map.on('mouseleave', l, function () {
+                map.getCanvas().style.cursor = '';
+            });
+        });
+        cards.addEventListener('mouseover', function (e) {
+            var c = e.target.closest('[data-ulid]');
+            if (c && map.getLayer('pin-hover'))
+                map.setFilter('pin-hover', [
+                    '==',
+                    ['get', 'u'],
+                    c.getAttribute('data-ulid'),
+                ]);
+        });
+
+        // Search as I move the map.
+        var follow = root.querySelector('[data-follow]');
+        map.on('moveend', function (e) {
+            if (
+                !e.originalEvent ||
+                drawing ||
+                !follow ||
+                !follow.checked ||
+                params.get('poly')
+            )
+                return;
+            var bb = map.getBounds();
+            setParam(
+                'bounds',
+                [bb.getSouth(), bb.getWest(), bb.getNorth(), bb.getEast()]
+                    .map(function (n) {
+                        return n.toFixed(5);
+                    })
+                    .join(','),
+            );
+            params.delete('page');
+            load(true, true);
+        });
+
+        // Draw an area: click points, click the first point (or double-click) to finish, Esc to cancel.
+        var drawBtn = root.querySelector('[data-draw]');
+        function drawArea(poly, open) {
+            var src = map.getSource('area');
+            if (!src) return;
+            var pts =
+                typeof poly === 'string' && poly
+                    ? poly.split(';').map(function (p) {
+                          var a = p.split(',').map(Number);
+                          return [a[1], a[0]];
+                      })
+                    : poly || [];
+            var features = [];
+            if (pts.length >= 2)
+                features.push({
+                    type: 'Feature',
+                    geometry: open
+                        ? { type: 'LineString', coordinates: pts }
+                        : {
+                              type: 'Polygon',
+                              coordinates: [pts.concat([pts[0]])],
+                          },
+                });
+            src.setData({ type: 'FeatureCollection', features: features });
+        }
+        function finishDraw() {
+            var pts = drawing;
+            drawing = null;
+            map.doubleClickZoom.enable();
+            map.getCanvas().style.cursor = '';
+            drawBtn.textContent = 'Draw an area';
+            if (!pts || pts.length < 3) {
+                drawArea(params.get('poly'));
+                return;
+            }
+            setParam(
+                'poly',
+                pts
+                    .map(function (p) {
+                        return p[1].toFixed(5) + ',' + p[0].toFixed(5);
+                    })
+                    .join(';'),
+            );
+            params.delete('bounds');
+            params.delete('page');
+            drawArea(params.get('poly'));
+            load(true, true);
+        }
+        drawBtn.addEventListener('click', function () {
+            if (drawing) {
+                finishDraw();
+                return;
+            }
+            drawing = [];
+            map.doubleClickZoom.disable();
+            map.getCanvas().style.cursor = 'crosshair';
+            drawBtn.textContent = 'Finish area';
+            root.classList.add('show-map');
+        });
+        map.on('click', function (e) {
+            if (!drawing) return;
+            var p = [e.lngLat.lng, e.lngLat.lat];
+            if (drawing.length >= 3) {
+                var first = map.project(drawing[0]),
+                    here = map.project(p);
+                if (Math.hypot(first.x - here.x, first.y - here.y) < 14) {
+                    finishDraw();
+                    return;
+                }
+            }
+            if (drawing.length < 60) drawing.push(p);
+            drawArea(drawing, true);
+        });
+        map.on('dblclick', function () {
+            if (drawing) finishDraw();
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && drawing) {
+                drawing = [];
+                finishDraw();
+            }
+        });
+        if (clearBtn)
+            clearBtn.addEventListener('click', function () {
+                params.delete('poly');
+                params.delete('bounds');
+                params.delete('page');
+                drawArea(null);
+                load(true, true);
+            });
+    }
 })();

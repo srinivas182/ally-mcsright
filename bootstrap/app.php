@@ -26,7 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->validateCsrfTokens(except: ['billing/webhook', 'payout-rails/*']);
+        $middleware->validateCsrfTokens(except: ['billing/webhook', 'billing/twilio/*', 'payout-rails/*']);
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 
         // Website hosts are served by the site engine before any back-office routing (specs/websites/05). Appended to

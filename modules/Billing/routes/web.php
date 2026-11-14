@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use Modules\Billing\Http\BillingController;
+use Modules\Billing\Http\CallStatusController;
 use Modules\Billing\Http\Credits\CreditsController;
 use Modules\Billing\Http\Credits\HqCreditsController;
 use Modules\Billing\Http\PaymentsController;
@@ -33,6 +34,9 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function
 // Public partner lookup for rightally.io ("My brokerage is a partner").
 Route::domain((string) config('core.hq_host'))->get('partners/{code}', [PaymentsController::class, 'partnerLookup'])->middleware('throttle:30,1')->name('billing.partner');
 
+// Twilio's report of each finished call (real minutes for call allowances); signature-checked, no session.
+Route::domain((string) config('core.hq_host'))->post('billing/twilio/call-status', CallStatusController::class)->middleware('throttle:600,1')->name('billing.call-status');
+
 // Payment provider events: one URL for the platform, on the HQ host; signature-checked, no session.
 Route::domain((string) config('core.hq_host'))->post('billing/webhook', [PaymentsController::class, 'webhook'])->middleware('throttle:600,1')->name('billing.webhook');
 
@@ -51,6 +55,7 @@ Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.tenants.manage
     Route::post('credits/value', [HqCreditsController::class, 'value'])->name('credits.value');
     Route::post('credits/rates', [HqCreditsController::class, 'rate'])->name('credits.rate');
     Route::post('credits/packages/{package}', [HqCreditsController::class, 'packageCredits'])->name('credits.package');
+    Route::post('credits/tenants/{tenant}/maps-covered', [HqCreditsController::class, 'mapsCovered'])->where('tenant', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('credits.maps-covered');
     Route::post('credits/grant', [HqCreditsController::class, 'grant'])->name('credits.grant');
     Route::post('billing/packages', [PaymentsController::class, 'savePackage'])->name('billing.packages.store');
     Route::put('billing/packages/{package}', [PaymentsController::class, 'savePackage'])->name('billing.packages.update');

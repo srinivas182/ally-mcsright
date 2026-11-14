@@ -58,7 +58,12 @@ type PackagePlan = {
     worst_margin_pct: number | null;
     suggested_credits: number;
     fixed_microcents: number;
+    allowance_microcents: number;
+    included_text_segments: number;
+    included_call_minutes: number;
+    included_map_views: number;
 };
+type UnitCosts = { texts: number; calls: number; maps: number };
 type Margins = { target: number; floor: number; usage_budget: number };
 type Props = {
     credit_value_microcents: number;
@@ -70,8 +75,14 @@ type Props = {
     catalog: CatalogItem[];
     packages: PackagePlan[];
     top_usage: { tenant: string; credits: number }[];
-    tenants: { ulid: string; name: string }[];
+    tenants: {
+        ulid: string;
+        name: string;
+        maps_covered: boolean;
+        map_views: number;
+    }[];
     period: string;
+    unit_costs: UnitCosts;
 };
 
 /** Micro-cents (millionths of a cent) as dollars, with more places for fractions of a cent. */
@@ -293,93 +304,168 @@ function PackageRow({
     typical,
     worst,
     floor,
+    units,
 }: {
     p: PackagePlan;
     typical: number;
     worst: number;
     floor: number;
+    units: UnitCosts;
 }) {
     const [credits, setCredits] = useState(String(p.included_credits));
     const [reason, setReason] = useState(p.margin_override_reason ?? '');
-    const c = parseInt(credits || '0', 10);
+    const [allow, setAllow] = useState({
+        included_text_segments: String(p.included_text_segments),
+        included_call_minutes: String(p.included_call_minutes),
+        included_map_views: String(p.included_map_views),
+    });
+    const num = (v: string) => parseInt(v || '0', 10);
+    const c = num(credits);
+    const allowanceCost =
+        num(allow.included_text_segments) * units.texts +
+        num(allow.included_call_minutes) * units.calls +
+        num(allow.included_map_views) * units.maps;
+    const changed =
+        credits !== String(p.included_credits) ||
+        allow.included_text_segments !== String(p.included_text_segments) ||
+        allow.included_call_minutes !== String(p.included_call_minutes) ||
+        allow.included_map_views !== String(p.included_map_views);
     const revenue = p.monthly_cents * 1_000_000;
     const margin = (cost: number) =>
         revenue > 0
             ? Math.floor(
-                  ((revenue - cost - p.fixed_microcents) * 100) / revenue,
+                  ((revenue - cost - p.fixed_microcents - allowanceCost) *
+                      100) /
+                      revenue,
               )
             : null;
     const typicalMargin = margin(c * typical);
     const worstMargin = margin(c * worst);
     const below = typicalMargin !== null && typicalMargin < floor;
+    const field = (
+        key: keyof typeof allow,
+        label: string,
+        unitCost: number,
+        note?: string,
+    ) => (
+        <label className="grid gap-1">
+            {label}
+            <Input
+                type="number"
+                min={0}
+                className="h-8 w-28"
+                value={allow[key]}
+                onChange={(e) => setAllow({ ...allow, [key]: e.target.value })}
+            />
+            <span className="text-[11px] text-muted-foreground">
+                costs you up to {dollars(num(allow[key]) * unitCost)} a month
+                {note ? ` ${note}` : ''}
+            </span>
+        </label>
+    );
     return (
-        <tr className="border-t align-top">
-            <td className="p-2">
-                <div className="font-medium">{p.name}</div>
-                <div className="text-xs text-muted-foreground">
-                    {usd(p.monthly_cents)}/mo{!p.active && ' · inactive'}
-                </div>
-            </td>
-            <td className="p-2">
-                <Input
-                    aria-label={`Included credits for ${p.name}`}
-                    type="number"
-                    min={0}
-                    className="h-8 w-28"
-                    value={credits}
-                    onChange={(e) => setCredits(e.target.value)}
-                />
-                <button
-                    type="button"
-                    className="mt-1 text-xs text-muted-foreground underline"
-                    onClick={() => setCredits(String(p.suggested_credits))}
-                >
-                    Suggested: {n(p.suggested_credits)}
-                </button>
-            </td>
-            <td className="p-2 text-right">{dollars(c * typical)}</td>
-            <td className="p-2 text-right">{dollars(c * worst)}</td>
-            <td className="p-2 text-right">{dollars(p.fixed_microcents)}</td>
-            <td
-                className={`p-2 text-right ${marginClass(typicalMargin, floor)}`}
-            >
-                {typicalMargin === null ? '—' : `${typicalMargin}%`}
-            </td>
-            <td className={`p-2 text-right ${marginClass(worstMargin, 0)}`}>
-                {worstMargin === null ? '—' : `${worstMargin}%`}
-            </td>
-            <td className="p-2">
-                {below && (
+        <>
+            <tr className="border-t align-top">
+                <td className="p-2">
+                    <div className="font-medium">{p.name}</div>
+                    <div className="text-xs text-muted-foreground">
+                        {usd(p.monthly_cents)}/mo{!p.active && ' · inactive'}
+                    </div>
+                </td>
+                <td className="p-2">
                     <Input
-                        aria-label={`Reason for ${p.name} below minimum margin`}
-                        className="mb-1 h-8 w-56"
-                        placeholder="Reason (below minimum margin)"
-                        value={reason}
-                        onChange={(e) => setReason(e.target.value)}
+                        aria-label={`Included credits for ${p.name}`}
+                        type="number"
+                        min={0}
+                        className="h-8 w-28"
+                        value={credits}
+                        onChange={(e) => setCredits(e.target.value)}
                     />
-                )}
-                <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={
-                        credits === '' ||
-                        (credits === String(p.included_credits) && !below)
-                    }
-                    onClick={() =>
-                        router.post(
-                            `/hq/credits/packages/${p.id}`,
-                            {
-                                included_credits: c,
-                                reason: below ? reason : null,
-                            },
-                            { preserveScroll: true },
-                        )
-                    }
+                    <button
+                        type="button"
+                        className="mt-1 text-xs text-muted-foreground underline"
+                        onClick={() => setCredits(String(p.suggested_credits))}
+                    >
+                        Suggested: {n(p.suggested_credits)}
+                    </button>
+                </td>
+                <td className="p-2 text-right">{dollars(c * typical)}</td>
+                <td className="p-2 text-right">{dollars(c * worst)}</td>
+                <td className="p-2 text-right">
+                    {dollars(p.fixed_microcents + allowanceCost)}
+                </td>
+                <td
+                    className={`p-2 text-right ${marginClass(typicalMargin, floor)}`}
                 >
-                    Save
-                </Button>
-            </td>
-        </tr>
+                    {typicalMargin === null ? '—' : `${typicalMargin}%`}
+                </td>
+                <td className={`p-2 text-right ${marginClass(worstMargin, 0)}`}>
+                    {worstMargin === null ? '—' : `${worstMargin}%`}
+                </td>
+                <td className="p-2">
+                    {below && (
+                        <Input
+                            aria-label={`Reason for ${p.name} below minimum margin`}
+                            className="mb-1 h-8 w-56"
+                            placeholder="Reason (below minimum margin)"
+                            value={reason}
+                            onChange={(e) => setReason(e.target.value)}
+                        />
+                    )}
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={credits === '' || (!changed && !below)}
+                        onClick={() =>
+                            router.post(
+                                `/hq/credits/packages/${p.id}`,
+                                {
+                                    included_credits: c,
+                                    included_text_segments: num(
+                                        allow.included_text_segments,
+                                    ),
+                                    included_call_minutes: num(
+                                        allow.included_call_minutes,
+                                    ),
+                                    included_map_views: num(
+                                        allow.included_map_views,
+                                    ),
+                                    reason: below ? reason : null,
+                                },
+                                { preserveScroll: true },
+                            )
+                        }
+                    >
+                        Save
+                    </Button>
+                </td>
+            </tr>
+            <tr className="text-xs">
+                <td className="p-2 pt-0 text-muted-foreground">
+                    Included each month
+                </td>
+                <td colSpan={7} className="p-2 pt-0">
+                    <div className="flex flex-wrap gap-4">
+                        {field(
+                            'included_text_segments',
+                            'Texts (segments)',
+                            units.texts,
+                        )}
+                        {field(
+                            'included_call_minutes',
+                            'Call minutes',
+                            units.calls,
+                        )}
+                        {field(
+                            'included_map_views',
+                            'Website map views',
+                            units.maps,
+                            '(free while all brokerages together stay under 50,000)',
+                        )}
+                    </div>
+                </td>
+            </tr>
+        </>
     );
 }
 
@@ -803,6 +889,7 @@ export default function HqCredits(props: Props) {
                                         typical={props.typical_cost_per_credit}
                                         worst={props.worst_cost_per_credit}
                                         floor={props.margins.floor}
+                                        units={props.unit_costs}
                                     />
                                 ))}
                             </tbody>
@@ -812,13 +899,59 @@ export default function HqCredits(props: Props) {
 
                 <section className="grid gap-2">
                     <h2 className="font-semibold">
+                        Website maps by brokerage ({props.period})
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                        Map views beyond a package's allowance use the
+                        brokerage's credits, unless RightAlly covers them. When
+                        credits run out, the website keeps the list and shows a
+                        "map is resting" note instead of the map.
+                    </p>
+                    <ul className="divide-y rounded-lg border text-sm">
+                        {props.tenants.length === 0 && (
+                            <li className="p-3 text-muted-foreground">
+                                No brokerages yet.
+                            </li>
+                        )}
+                        {props.tenants.map((t) => (
+                            <li
+                                key={t.ulid}
+                                className="flex flex-wrap items-center justify-between gap-2 p-3"
+                            >
+                                <span>
+                                    {t.name}{' '}
+                                    <span className="text-muted-foreground">
+                                        · {n(t.map_views)} map views this month
+                                    </span>
+                                </span>
+                                <label className="flex items-center gap-2">
+                                    <input
+                                        type="checkbox"
+                                        checked={t.maps_covered}
+                                        onChange={(e) =>
+                                            router.post(
+                                                `/hq/credits/tenants/${t.ulid}/maps-covered`,
+                                                { covered: e.target.checked },
+                                                { preserveScroll: true },
+                                            )
+                                        }
+                                    />
+                                    RightAlly covers extra map views
+                                </label>
+                            </li>
+                        ))}
+                    </ul>
+                </section>
+
+                <section className="grid gap-2">
+                    <h2 className="font-semibold">
                         Other costs (texts, calls, maps, email, hosting)
                     </h2>
                     <p className="text-sm text-muted-foreground">
                         Prices from the vendors' US price pages; confirm them
                         now and then. Monthly items count as a fixed cost per
-                        brokerage in the package margins. Text, call and map
-                        allowances per package follow in the next update.
+                        brokerage in the package margins; the text, call and map
+                        allowances above are priced from these.
                     </p>
                     <ul className="divide-y rounded-lg border text-sm">
                         {props.catalog.map((item) => (

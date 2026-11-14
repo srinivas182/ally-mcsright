@@ -10,8 +10,10 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Modules\Core\Tenancy\TenantContext;
+use Modules\Core\Usage\WebsiteMaps;
 use Modules\Listings\Search\ListingSearch;
 use Modules\Listings\Search\MarketStats;
 use Modules\Sites\Maps;
@@ -58,6 +60,18 @@ final class IdxController
     }
 
     /** The search results and map pins as JSON for the map script (the cards come pre-rendered, escaped by Blade). */
+    /**
+     * A visitor asked for the interactive map: counted as one map view against the brokerage's monthly allowance
+     * (specs/billing/03). Returns the public map token when the map may open.
+     */
+    public function openMap(Request $request, Maps $maps, WebsiteMaps $allowance): JsonResponse
+    {
+        $token = $maps->token();
+        $ok = $token !== null && RateLimiter::attempt('site-map:'.$request->ip(), 30, fn (): bool => true) && $allowance->open();
+
+        return response()->json(['ok' => $ok, 'token' => $ok ? $token : null])->header('Cache-Control', 'no-store');
+    }
+
     public function results(Request $request): JsonResponse
     {
         $site = $this->site();

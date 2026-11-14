@@ -53,6 +53,8 @@ return [
         'sid' => env('TWILIO_SID'),
         'token' => env('TWILIO_TOKEN'),
         'from' => env('TWILIO_FROM'),
+        // Where Twilio reports each call's real length (defaults to https://{HQ host}/billing/twilio/call-status).
+        'status_callback' => env('TWILIO_STATUS_CALLBACK'),
     ],
 
     // AI providers (specs/ai/01). Keys live only in the environment; HQ adds the provider in HQ > AI gateway.

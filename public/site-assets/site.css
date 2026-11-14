@@ -755,6 +755,27 @@ h3 {
     position: absolute;
     inset: 0;
 }
+.map-placeholder {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-content: center;
+    gap: 0.75rem;
+    padding: 1.5rem;
+    text-align: center;
+    color: var(--muted);
+    background:
+        radial-gradient(
+            circle at 30% 30%,
+            color-mix(in srgb, var(--brand) 10%, transparent),
+            transparent 60%
+        ),
+        var(--surface, var(--bg));
+}
+.map-placeholder[hidden],
+.map-tools[hidden] {
+    display: none;
+}
 .map-tools {
     position: absolute;
     left: 0.75rem;

@@ -30,6 +30,20 @@ use Modules\Core\Support\Connections;
  */
 final class Economics
 {
+    /** Non-AI actions priced from the cost list: [cost item, units per use]. */
+    public const USAGE_COSTS = [
+        'usage.text_segment' => ['twilio.sms_segment', 1],
+        'usage.call_minute' => ['twilio.call_minute', 1],
+        'usage.map_views_10' => ['mapbox.map_load', 10],
+    ];
+
+    /** Package allowance columns and the cost item each is priced at. */
+    public const ALLOWANCES = [
+        'included_text_segments' => 'twilio.sms_segment',
+        'included_call_minutes' => 'twilio.call_minute',
+        'included_map_views' => 'mapbox.map_load',
+    ];
+
     /** @var array<string, ActionEconomics>|null */
     private ?array $actions = null;
 
@@ -49,6 +63,7 @@ final class Economics
         $routes = AiFeatureRoute::query()->get()->groupBy('credit_action_key');
         $models = AiModel::query()->with('provider')->get()->keyBy('id');
         $real = $this->realCosts();
+        $catalog = $this->catalogCosts();
 
         $out = [];
         foreach ($this->rates->all() as $key => $rate) {
@@ -73,6 +88,10 @@ final class Economics
                         $costliest = $m->display_name;
                     }
                 }
+            }
+            if (isset(self::USAGE_COSTS[$key])) {
+                [$item, $units] = self::USAGE_COSTS[$key];
+                $estimate = isset($catalog[$item]) ? $catalog[$item] * $units : null;
             }
             $stats = $route !== null ? ($real[$route->feature_key] ?? null) : null;
             $planning = max($stats['p90'] ?? 0, $estimate ?? 0);
@@ -129,7 +148,23 @@ final class Economics
             return (int) ceil($cost / $credits);
         }
 
-        return (int) ceil(array_sum(array_column($actions, 'cost_per_credit_microcents')) / count($actions));
+        // No use yet: AI actions are what credits mostly buy, so average those (allowance overage only once seen).
+        $ai = array_filter($actions, fn (array $a): bool => str_starts_with($a['action'], 'ai.'));
+        $pool = $ai !== [] ? $ai : $actions;
+
+        return (int) ceil(array_sum(array_column($pool, 'cost_per_credit_microcents')) / count($pool));
+    }
+
+    /** Whether any AI action can be priced yet (models with prices are routed). */
+    public function aiPriced(): bool
+    {
+        foreach ($this->actions() as $a) {
+            if (str_starts_with($a['action'], 'ai.') && $a['planning_microcents'] !== null) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** The costliest credit: every included credit spent on the action that costs most per credit. */
@@ -138,6 +173,27 @@ final class Economics
         $costs = array_filter(array_column($this->actions(), 'cost_per_credit_microcents'));
 
         return $costs === [] ? 0 : (int) max($costs);
+    }
+
+    /** @return array<string, int> cost per unit by cost-list key */
+    public function catalogCosts(): array
+    {
+        return DB::connection(Connections::control())->table('cost_catalog')->pluck('cost_microcents', 'key')->map(fn ($c): int => (int) $c)->all();
+    }
+
+    /**
+     * What a package's included texts, call minutes and map views cost if all are used (map views priced as if past
+     * the free tier on RightAlly's account, to stay on the safe side).
+     *
+     * @return array{texts: int, calls: int, maps: int, total: int}
+     */
+    public function allowanceCosts(Package $package): array
+    {
+        $catalog = $this->catalogCosts();
+        $cost = fn (string $column): int => (int) $package->getAttribute($column) * ($catalog[self::ALLOWANCES[$column]] ?? 0);
+        $out = ['texts' => $cost('included_text_segments'), 'calls' => $cost('included_call_minutes'), 'maps' => $cost('included_map_views')];
+
+        return $out + ['total' => array_sum($out)];
     }
 
     /** Monthly costs per brokerage that credits don't cover (hosting and the like). */
@@ -150,20 +206,21 @@ final class Economics
      * One package's margins: for a typical customer and in the worst case, after fixed monthly costs.
      *
      * @return array{revenue_microcents: int, included_credits: int, typical_cost_microcents: int, worst_cost_microcents: int, fixed_microcents: int,
-     *     typical_margin_pct: int|null, worst_margin_pct: int|null, below_floor: bool, suggested_credits: int}
+     *     allowance_microcents: int, typical_margin_pct: int|null, worst_margin_pct: int|null, below_floor: bool, suggested_credits: int}
      */
     public function packagePlan(Package $package, ?int $includedCredits = null): array
     {
         $credits = $includedCredits ?? (int) $package->getAttribute('included_credits');
         $revenue = $package->monthly_cents * 1_000_000;
         $fixed = $this->fixedMonthlyMicrocents();
+        $allowances = $this->allowanceCosts($package)['total'];
         $typical = $credits * $this->typicalCostPerCredit();
         $worst = $credits * $this->worstCostPerCredit();
-        $margin = fn (int $cost): ?int => $revenue > 0 ? (int) floor(($revenue - $cost - $fixed) * 100 / $revenue) : null;
+        $margin = fn (int $cost): ?int => $revenue > 0 ? (int) floor(($revenue - $cost - $fixed - $allowances) * 100 / $revenue) : null;
         $typicalMargin = $margin($typical);
 
         return ['revenue_microcents' => $revenue, 'included_credits' => $credits, 'typical_cost_microcents' => $typical, 'worst_cost_microcents' => $worst,
-            'fixed_microcents' => $fixed, 'typical_margin_pct' => $typicalMargin, 'worst_margin_pct' => $margin($worst),
+            'fixed_microcents' => $fixed, 'allowance_microcents' => $allowances, 'typical_margin_pct' => $typicalMargin, 'worst_margin_pct' => $margin($worst),
             'below_floor' => $typicalMargin !== null && $typicalMargin < $this->rates->margins()['floor'],
             'suggested_credits' => $this->suggestedIncludedCredits($package)];
     }

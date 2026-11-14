@@ -11,8 +11,12 @@ use Illuminate\Support\ServiceProvider;
 use Modules\AI\Contracts\CreditMeter;
 use Modules\Billing\Http\RequireFeature;
 use Modules\Core\Identity\Enums\UserKind;
+use Modules\Core\Messaging\SmsSender;
+use Modules\Core\Messaging\VoiceCaller;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
+use Modules\Core\Tenancy\TenantContext;
+use Modules\Core\Usage\WebsiteMaps;
 
 final class BillingServiceProvider extends ServiceProvider
 {
@@ -30,6 +34,13 @@ final class BillingServiceProvider extends ServiceProvider
         $this->app->scoped(Credits\RateCard::class);
         $this->app->scoped(Credits\CreditLedger::class);
         $this->app->bind(CreditMeter::class, Credits\LedgerCreditMeter::class);
+        // Allowances (specs/billing/03): texts and call minutes counted per brokerage, website map views gated.
+        $this->app->scoped(Usage\UsageMeter::class);
+        $this->app->extend(SmsSender::class, fn (SmsSender $sender, $app): SmsSender => $sender instanceof Usage\MeteredSmsSender ? $sender
+            : new Usage\MeteredSmsSender($sender, $app->make(TenantContext::class)));
+        $this->app->extend(VoiceCaller::class, fn (VoiceCaller $caller, $app): VoiceCaller => $caller instanceof Usage\MeteredVoiceCaller ? $caller
+            : new Usage\MeteredVoiceCaller($caller, $app->make(TenantContext::class)));
+        $this->app->bind(WebsiteMaps::class, Usage\AllowanceWebsiteMaps::class);
     }
 
     public function boot(): void

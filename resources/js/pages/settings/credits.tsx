@@ -1,4 +1,4 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
@@ -260,6 +260,17 @@ export default function Credits(props: Props) {
     }
 
     const usage = props.usage ?? { people: [], automations: 0, features: [] };
+    const allowances = (
+        usePage().props.credits as
+            | {
+                  usage?: Record<
+                      string,
+                      { used: number; included: number; label: string }
+                  >;
+              }
+            | null
+            | undefined
+    )?.usage;
     return (
         <>
             <Head title="Credits" />
@@ -281,6 +292,54 @@ export default function Credits(props: Props) {
                         you run low before then.
                     </p>
                 </section>
+                {allowances && (
+                    <section className="grid gap-3 rounded-lg border p-4 text-sm">
+                        <h2 className="font-semibold">
+                            Included in your package this month
+                        </h2>
+                        <div className="grid gap-3 md:grid-cols-3">
+                            {Object.entries(allowances).map(([key, a]) => {
+                                const pct =
+                                    a.included > 0
+                                        ? Math.min(
+                                              100,
+                                              Math.round(
+                                                  (a.used * 100) / a.included,
+                                              ),
+                                          )
+                                        : 0;
+                                return (
+                                    <div key={key} className="grid gap-1">
+                                        <span className="flex justify-between">
+                                            <span className="capitalize">
+                                                {a.label}
+                                            </span>
+                                            <span
+                                                className={
+                                                    a.used > a.included
+                                                        ? 'font-medium text-amber-700 dark:text-amber-400'
+                                                        : 'text-muted-foreground'
+                                                }
+                                            >
+                                                {n(a.used)} / {n(a.included)}
+                                            </span>
+                                        </span>
+                                        <Progress
+                                            value={pct}
+                                            aria-label={`${a.label}: ${pct}% used`}
+                                        />
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        <p className="text-muted-foreground">
+                            Everything keeps working past the included amount:
+                            extra texts, call minutes and map views use credits
+                            (see "What each AI action costs" for the price).
+                            Website maps only load when a visitor opens them.
+                        </p>
+                    </section>
+                )}
                 <section className="grid gap-3 md:grid-cols-3">
                     <div className="rounded-lg border p-4 text-sm">
                         <h2 className="mb-2 font-semibold">Who used credits</h2>
