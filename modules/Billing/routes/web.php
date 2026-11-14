@@ -28,6 +28,9 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function
     Route::get('credits/quote', [CreditsController::class, 'quote'])->middleware('throttle:120,1')->name('credits.quote');
     Route::post('settings/credits/allot', [CreditsController::class, 'allot'])->name('credits.allot');
     Route::post('settings/credits/policy', [CreditsController::class, 'policy'])->name('credits.policy');
+    Route::post('settings/credits/buy', [CreditsController::class, 'buy'])->middleware('throttle:10,1')->name('credits.buy');
+    Route::get('settings/credits/receipts/{purchase}', [CreditsController::class, 'receipt'])->where('purchase', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('credits.receipt');
+    Route::get('settings/credits/export', [CreditsController::class, 'export'])->middleware('throttle:20,1')->name('credits.export');
     Route::post('settings/partner/connect', [PaymentsController::class, 'connect'])->middleware('throttle:10,1')->name('billing.connect');
 });
 
@@ -56,6 +59,8 @@ Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.tenants.manage
     Route::post('credits/rates', [HqCreditsController::class, 'rate'])->name('credits.rate');
     Route::post('credits/packages/{package}', [HqCreditsController::class, 'packageCredits'])->name('credits.package');
     Route::post('credits/tenants/{tenant}/maps-covered', [HqCreditsController::class, 'mapsCovered'])->where('tenant', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('credits.maps-covered');
+    Route::post('credits/packs', [HqCreditsController::class, 'savePack'])->name('credits.packs.store');
+    Route::put('credits/packs/{pack}', [HqCreditsController::class, 'savePack'])->where('pack', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('credits.packs.update');
     Route::post('credits/grant', [HqCreditsController::class, 'grant'])->name('credits.grant');
     Route::post('billing/packages', [PaymentsController::class, 'savePackage'])->name('billing.packages.store');
     Route::put('billing/packages/{package}', [PaymentsController::class, 'savePackage'])->name('billing.packages.update');

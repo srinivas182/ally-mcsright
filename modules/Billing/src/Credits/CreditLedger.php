@@ -175,6 +175,7 @@ final class CreditLedger
             // Included credits stay in the pool; what moves is carried over (it does not expire with the month).
             $fromIncluded = $credits > 0 ? min($pool->included_balance, $credits) : 0;
             $this->write($pool->id, 'allocate_out', -$credits, -$fromIncluded, null, $agent->id, false, $key.':out', 'To '.$agent->name, $by->id);
+            $this->drawLots($pool, $credits - $fromIncluded);
             $this->write($mine->id, 'allocate_in', $credits, 0, null, $agent->id, false, $key.':in', 'From the brokerage', $by->id);
         });
         app(AuditLogger::class)->record('billing.credits.allotted', metadata: ['agent' => $agent->id, 'credits' => $credits], severity: 'notice');
@@ -221,6 +222,12 @@ final class CreditLedger
         $available = max(0, $mine['available'] + $poolLeft);
 
         return ['available' => $available, 'total' => $available + $mine['used'], 'used' => $mine['used'], 'scope' => 'you', 'period' => $pool['period'], 'enforced' => $enforced];
+    }
+
+    /** Current balance of the pool (null) or a person's account. */
+    public function balanceOf(?int $userId): int
+    {
+        return $this->account($userId)->balance ?? 0;
     }
 
     /**
@@ -289,20 +296,24 @@ final class CreditLedger
     }
 
     /**
-     * @return array{agents_use_pool: bool, agent_monthly_cap: int|null}
+     * @return array{agents_use_pool: bool, agent_monthly_cap: int|null, agents_can_buy: bool}
      */
     public function policy(): array
     {
         $row = DB::connection(Connections::cell())->table('credit_policies')->where('tenant_id', $this->tenants->id())->first();
 
-        return ['agents_use_pool' => (bool) ($row->agents_use_pool ?? true), 'agent_monthly_cap' => isset($row->agent_monthly_cap) ? (int) $row->agent_monthly_cap : null];
+        return ['agents_use_pool' => (bool) ($row->agents_use_pool ?? true), 'agent_monthly_cap' => isset($row->agent_monthly_cap) ? (int) $row->agent_monthly_cap : null,
+            'agents_can_buy' => (bool) ($row->agents_can_buy ?? true)];
     }
 
-    public function savePolicy(bool $agentsUsePool, ?int $cap, User $by): void
+    public function savePolicy(bool $agentsUsePool, ?int $cap, User $by, ?bool $agentsCanBuy = null): void
     {
-        DB::connection(Connections::cell())->table('credit_policies')->updateOrInsert(['tenant_id' => $this->tenants->id()],
-            ['agents_use_pool' => $agentsUsePool, 'agent_monthly_cap' => $cap !== null && $cap > 0 ? $cap : null, 'updated_at' => now(), 'created_at' => now()]);
-        app(AuditLogger::class)->record('billing.credits.policy', metadata: ['agents_use_pool' => $agentsUsePool, 'cap' => $cap], severity: 'notice');
+        $values = ['agents_use_pool' => $agentsUsePool, 'agent_monthly_cap' => $cap !== null && $cap > 0 ? $cap : null, 'updated_at' => now(), 'created_at' => now()];
+        if ($agentsCanBuy !== null) {
+            $values['agents_can_buy'] = $agentsCanBuy;
+        }
+        DB::connection(Connections::cell())->table('credit_policies')->updateOrInsert(['tenant_id' => $this->tenants->id()], $values);
+        app(AuditLogger::class)->record('billing.credits.policy', metadata: ['agents_use_pool' => $agentsUsePool, 'cap' => $cap, 'agents_can_buy' => $agentsCanBuy], severity: 'notice');
     }
 
     /**
@@ -345,6 +356,52 @@ final class CreditLedger
     {
         $fromIncluded = max(0, min($account->included_balance, $credits));
         $this->write($account->id, 'consume', -$credits, -$fromIncluded, $actionKey, $userId, $automation, $key, null, $userId);
+        $this->drawLots($account, $credits - $fromIncluded);
+    }
+
+    /**
+     * Uses bought credits oldest-expiry first (after the month's included credits), so the ones that would expire
+     * soonest are spent first. Credits added any other way (allotted, adjusted, refunded) never expire.
+     */
+    private function drawLots(CreditAccount $account, int $credits): void
+    {
+        if ($credits <= 0) {
+            return;
+        }
+        $lots = DB::connection(Connections::cell())->table('credit_purchases')->where('tenant_id', $this->tenants->id())->where('status', 'paid')->where('remaining', '>', 0)
+            ->where(fn ($q) => $account->user_id === null ? $q->whereNull('account_user_id') : $q->where('account_user_id', $account->user_id))
+            ->orderBy('expires_at')->orderBy('id')->lockForUpdate()->get(['id', 'remaining']);
+        foreach ($lots as $lot) {
+            if ($credits <= 0) {
+                break;
+            }
+            $take = min($credits, (int) $lot->remaining);
+            DB::connection(Connections::cell())->table('credit_purchases')->where('id', $lot->id)->decrement('remaining', $take);
+            $credits -= $take;
+        }
+    }
+
+    /**
+     * Ends what is left of a bought pack 12 months after payment (never more than the account's carried-over
+     * balance). Returns the credits that expired.
+     */
+    public function expirePurchase(string $purchaseUlid): int
+    {
+        return DB::connection(Connections::cell())->transaction(function () use ($purchaseUlid): int {
+            $p = DB::connection(Connections::cell())->table('credit_purchases')->where('tenant_id', $this->tenants->id())->where('ulid', $purchaseUlid)
+                ->where('status', 'paid')->whereNull('expired_at')->lockForUpdate()->first();
+            if ($p === null) {
+                return 0;
+            }
+            $account = $this->lock($p->account_user_id !== null ? (int) $p->account_user_id : null);
+            $amount = max(0, min((int) $p->remaining, $account->balance - $account->included_balance));
+            if ($amount > 0) {
+                $this->write($account->id, 'expire', -$amount, 0, null, $account->user_id, false, 'expire:'.$purchaseUlid, 'Bought credits ended after 12 months ('.$p->pack_name.')', null);
+            }
+            DB::connection(Connections::cell())->table('credit_purchases')->where('id', $p->id)->update(['remaining' => 0, 'expired_at' => now(), 'updated_at' => now()]);
+
+            return $amount;
+        });
     }
 
     private function write(int $accountId, string $type, int $amount, int $included, ?string $action, ?int $userId, bool $automation, string $key, ?string $note, ?int $by): void

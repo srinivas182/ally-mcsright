@@ -33,6 +33,7 @@ final class BillingServiceProvider extends ServiceProvider
         // RightAlly Credits (specs/billing/01): the AI gateway charges the brokerage's ledger.
         $this->app->scoped(Credits\RateCard::class);
         $this->app->scoped(Credits\CreditLedger::class);
+        $this->app->scoped(Credits\CreditPurchases::class);
         $this->app->bind(CreditMeter::class, Credits\LedgerCreditMeter::class);
         // Allowances (specs/billing/03): texts and call minutes counted per brokerage, website map views gated.
         $this->app->scoped(Usage\UsageMeter::class);
@@ -63,7 +64,7 @@ final class BillingServiceProvider extends ServiceProvider
         $nav->add(new NavItem('Overview', 'Plans', '/plans', 'gift', 90, ability: 'billing.plans.view'));
 
         if ($this->app->runningInConsole()) {
-            $this->commands([Console\ApplyPriceChanges::class, Console\EndGrace::class, Console\BillSubsidies::class, Console\PartnerPayouts::class, Console\GrantMonthlyCredits::class, Console\WatchCreditMargins::class]);
+            $this->commands([Console\ApplyPriceChanges::class, Console\EndGrace::class, Console\BillSubsidies::class, Console\PartnerPayouts::class, Console\GrantMonthlyCredits::class, Console\WatchCreditMargins::class, Console\ExpirePurchasedCredits::class]);
         }
     }
 }

@@ -9,6 +9,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -64,7 +65,52 @@ final class HqCreditsController
             'tenants' => Tenant::query()->where('type', '!=', 'hq')->orderBy('name')->get(['id', 'ulid', 'name'])->map(fn (Tenant $t): array => ['ulid' => $t->ulid, 'name' => $t->name,
                 'maps_covered' => in_array($t->id, $covered, true), 'map_views' => (int) ($mapViews[$t->id] ?? 0)])->values(),
             'period' => $period,
+            'packs' => DB::connection(Connections::control())->table('credit_packs')->orderBy('sort')->orderBy('price_cents')->get()
+                ->map(fn (object $p): array => ['ulid' => (string) $p->ulid, 'name' => (string) $p->name, 'credits' => (int) $p->credits, 'price_cents' => (int) $p->price_cents,
+                    'audience' => (string) $p->audience, 'active' => (bool) $p->active, 'sort' => (int) $p->sort])->values(),
+            'sales' => $this->sales($period),
         ]);
+    }
+
+    /** Adds or changes a credit pack brokers or agents can buy. */
+    public function savePack(Request $request, ?string $pack = null): RedirectResponse
+    {
+        $by = self::user($request);
+        $data = $request->validate(['name' => ['required', 'string', 'max:80'], 'credits' => ['required', 'integer', 'min:1', 'max:10000000'],
+            'price' => ['required', 'numeric', 'min:1', 'max:100000'], 'audience' => ['required', 'in:brokerage,agent,both'], 'active' => ['required', 'boolean'],
+            'sort' => ['nullable', 'integer', 'min:0', 'max:1000']]);
+        $values = ['name' => trim($data['name']), 'credits' => (int) $data['credits'], 'price_cents' => (int) round((float) $data['price'] * 100), 'audience' => $data['audience'],
+            'active' => (bool) $data['active'], 'sort' => (int) ($data['sort'] ?? 0), 'updated_by' => $by->id, 'updated_at' => now()];
+        $db = DB::connection(Connections::control())->table('credit_packs');
+        if ($pack === null) {
+            (clone $db)->insert($values + ['ulid' => (string) Str::ulid(), 'created_at' => now()]);
+        } else {
+            (clone $db)->where('ulid', $pack)->exists() || abort(404);
+            (clone $db)->where('ulid', $pack)->update($values);
+        }
+        app(AuditLogger::class)->record('billing.credits.pack_saved', metadata: ['pack' => $values['name'], 'credits' => $values['credits'], 'price_cents' => $values['price_cents'],
+            'audience' => $values['audience'], 'active' => $values['active']], severity: 'notice');
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Credit pack saved.']);
+
+        return back();
+    }
+
+    /**
+     * Credit packs sold this month across brokerages, and the latest purchases.
+     *
+     * @return array{count: int, revenue_cents: int, credits: int, recent: list<array{tenant: string, pack: string, credits: int, total_cents: int, status: string, paid_at: string}>}
+     */
+    private function sales(string $period): array
+    {
+        $start = CarbonImmutable::createFromFormat('Y-m', $period)?->startOfMonth() ?? CarbonImmutable::now()->startOfMonth();
+        $db = DB::connection(Connections::cell())->table('credit_purchases')->whereIn('status', ['paid', 'refunded']);
+        $month = (clone $db)->where('paid_at', '>=', $start)->where('status', 'paid');
+        $recent = (clone $db)->orderByDesc('paid_at')->limit(20)->get();
+        $names = Tenant::query()->whereIn('id', $recent->pluck('tenant_id'))->pluck('name', 'id');
+
+        return ['count' => (clone $month)->count(), 'revenue_cents' => (int) (clone $month)->sum('total_cents'), 'credits' => (int) (clone $month)->sum('credits'),
+            'recent' => array_values($recent->map(fn (object $p): array => ['tenant' => (string) ($names[$p->tenant_id] ?? 'Unknown'), 'pack' => (string) $p->pack_name,
+                'credits' => (int) $p->credits, 'total_cents' => (int) ($p->total_cents ?: $p->price_cents), 'status' => (string) $p->status, 'paid_at' => (string) $p->paid_at])->all())];
     }
 
     public function enforce(Request $request): RedirectResponse

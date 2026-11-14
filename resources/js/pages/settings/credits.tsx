@@ -41,7 +41,15 @@ type Props = {
     my_history: Entry[];
     prices: Price[];
     pool: Pool;
-    policy: { agents_use_pool: boolean; agent_monthly_cap: number | null };
+    policy: {
+        agents_use_pool: boolean;
+        agent_monthly_cap: number | null;
+        agents_can_buy: boolean;
+    };
+    packs: Pack[];
+    purchases: Purchase[];
+    checkout: 'success' | 'cancelled' | null;
+    value_microcents: number;
     usage?: {
         people: { name: string; credits: number }[];
         automations: number;
@@ -56,6 +64,177 @@ type Props = {
     agents?: ({ id: number; name: string } & Mine)[];
     pool_history?: Entry[];
 };
+
+type Pack = {
+    ulid: string;
+    name: string;
+    credits: number;
+    price_cents: number;
+};
+type Purchase = {
+    ulid: string;
+    pack: string;
+    credits: number;
+    price_cents: number;
+    total_cents: number;
+    status: string;
+    paid_at: string | null;
+    expires_at: string | null;
+    remaining: number;
+    for: string;
+    buyer: string;
+};
+
+const usd = (cents: number) =>
+    new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+    }).format(cents / 100);
+
+/** Credit packs to buy (payment on a secure checkout page), with the price per credit. */
+function BuyCredits({ packs, forPool }: { packs: Pack[]; forPool: boolean }) {
+    const [busy, setBusy] = useState<string | null>(null);
+    if (packs.length === 0) return null;
+    return (
+        <section id="buy" className="grid gap-3 rounded-lg border p-4 text-sm">
+            <h2 className="font-semibold">
+                {forPool
+                    ? 'Buy credits for the brokerage'
+                    : 'Buy your own credits'}
+            </h2>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {packs.map((p) => (
+                    <div
+                        key={p.ulid}
+                        className="grid gap-2 rounded-lg border p-4"
+                    >
+                        <span className="font-medium">{p.name}</span>
+                        <span className="text-2xl font-semibold">
+                            {n(p.credits)}
+                        </span>
+                        <span className="text-muted-foreground">
+                            credits · {usd(p.price_cents)} (
+                            {((p.price_cents / p.credits) * 1).toFixed(2)}¢
+                            each)
+                        </span>
+                        <Button
+                            size="sm"
+                            disabled={busy !== null}
+                            onClick={() => {
+                                setBusy(p.ulid);
+                                router.post(
+                                    '/settings/credits/buy',
+                                    { pack: p.ulid },
+                                    { onFinish: () => setBusy(null) },
+                                );
+                            }}
+                        >
+                            {busy === p.ulid
+                                ? 'Opening checkout…'
+                                : `Buy for ${usd(p.price_cents)}`}
+                        </Button>
+                    </div>
+                ))}
+            </div>
+            <p className="text-muted-foreground">
+                You pay on a secure checkout page and get an emailed receipt.
+                Credits arrive as soon as the payment is confirmed and last 12
+                months; included monthly credits are always used first, then
+                bought credits oldest first.
+            </p>
+        </section>
+    );
+}
+
+function Purchases({
+    purchases,
+    manager,
+}: {
+    purchases: Purchase[];
+    manager: boolean;
+}) {
+    const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
+    return (
+        <section className="grid gap-2 text-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="font-semibold">Purchases and receipts</h2>
+                <span className="flex items-center gap-2">
+                    <Input
+                        aria-label="Month to export"
+                        type="month"
+                        className="h-8 w-40"
+                        value={month}
+                        onChange={(e) => setMonth(e.target.value)}
+                    />
+                    <Button size="sm" variant="outline" asChild>
+                        <a
+                            href={`/settings/credits/export?month=${encodeURIComponent(month)}`}
+                        >
+                            Export {manager ? 'credit history' : 'my history'}{' '}
+                            (CSV)
+                        </a>
+                    </Button>
+                </span>
+            </div>
+            {purchases.length === 0 ? (
+                <p className="text-muted-foreground">No purchases yet.</p>
+            ) : (
+                <ul className="divide-y rounded-lg border">
+                    {purchases.map((p) => (
+                        <li
+                            key={p.ulid}
+                            className="flex flex-wrap items-center justify-between gap-2 p-3"
+                        >
+                            <span>
+                                {p.pack} · {n(p.credits)} credits ·{' '}
+                                {usd(p.total_cents)}
+                                <span className="text-muted-foreground">
+                                    {' '}
+                                    · {p.for}
+                                    {manager && ` · ${p.buyer}`}
+                                    {p.paid_at &&
+                                        ` · ${new Date(p.paid_at).toLocaleDateString()}`}
+                                    {p.status === 'paid' &&
+                                        p.expires_at &&
+                                        ` · ${n(p.remaining)} left until ${new Date(p.expires_at).toLocaleDateString()}`}
+                                </span>
+                                {p.status === 'refunded' && (
+                                    <Badge variant="outline" className="ml-2">
+                                        Refunded
+                                    </Badge>
+                                )}
+                            </span>
+                            <a
+                                className="underline"
+                                href={`/settings/credits/receipts/${p.ulid}`}
+                            >
+                                Receipt
+                            </a>
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </section>
+    );
+}
+
+function CheckoutNotice({ status }: { status: Props['checkout'] }) {
+    if (status === null) return null;
+    return (
+        <p
+            role="status"
+            className={
+                status === 'success'
+                    ? 'rounded-lg border border-emerald-600/40 bg-emerald-50 p-3 text-sm text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100'
+                    : 'rounded-lg border p-3 text-sm text-muted-foreground'
+            }
+        >
+            {status === 'success'
+                ? "Thank you. Your payment went through; the credits appear here within a minute (refresh if you don't see them yet). A receipt is on its way by email."
+                : 'Checkout was cancelled. Nothing was charged.'}
+        </p>
+    );
+}
 
 const entryLabel: Record<string, string> = {
     grant_included: 'Monthly credits',
@@ -206,6 +385,7 @@ function AgentRow({ agent }: { agent: { id: number; name: string } & Mine }) {
 export default function Credits(props: Props) {
     const { manager, me, pool, policy } = props;
     const [usePool, setUsePool] = useState(policy.agents_use_pool);
+    const [canBuy, setCanBuy] = useState(policy.agents_can_buy);
     const [cap, setCap] = useState(
         policy.agent_monthly_cap === null
             ? ''
@@ -217,6 +397,7 @@ export default function Credits(props: Props) {
             {
                 agents_use_pool: usePool,
                 agent_monthly_cap: cap === '' ? null : parseInt(cap, 10),
+                agents_can_buy: canBuy,
             },
             { preserveScroll: true },
         );
@@ -246,12 +427,16 @@ export default function Credits(props: Props) {
                                 ? `You can also use ${n(poolLeft)} from your brokerage this month.`
                                 : 'Your brokerage gives credits to agents directly; ask your broker for more.'}
                         </p>
-                        <p className="text-muted-foreground">
-                            Buying your own credits is coming soon. Until then,
-                            ask your broker.
-                        </p>
                     </section>
+                    <CheckoutNotice status={props.checkout} />
+                    <BuyCredits packs={props.packs} forPool={false} />
+                    {props.packs.length === 0 && (
+                        <p className="text-sm text-muted-foreground">
+                            Need more? Ask your broker to give you credits.
+                        </p>
+                    )}
                     <Prices prices={props.prices} />
+                    <Purchases purchases={props.purchases} manager={false} />
                     <h2 className="font-semibold">Your history</h2>
                     <History entries={props.my_history} />
                 </div>
@@ -287,11 +472,9 @@ export default function Credits(props: Props) {
                         {n(pool.available - pool.included)} are bought or added
                         credits. Used this month: {n(pool.used)}.
                     </p>
-                    <p className="text-muted-foreground">
-                        Buying more credits is coming soon; contact RightAlly if
-                        you run low before then.
-                    </p>
                 </section>
+                <CheckoutNotice status={props.checkout} />
+                <BuyCredits packs={props.packs} forPool />
                 {allowances && (
                     <section className="grid gap-3 rounded-lg border p-4 text-sm">
                         <h2 className="font-semibold">
@@ -406,6 +589,10 @@ export default function Credits(props: Props) {
                         Agents can use the brokerage's credits when their own
                         run out
                     </label>
+                    <label className="flex items-center gap-3">
+                        <Switch checked={canBuy} onCheckedChange={setCanBuy} />
+                        Agents can buy their own credits
+                    </label>
                     {usePool && (
                         <label className="flex flex-wrap items-center gap-2">
                             Limit per agent each month
@@ -439,6 +626,7 @@ export default function Credits(props: Props) {
                     </ul>
                 </section>
                 <Prices prices={props.prices} />
+                <Purchases purchases={props.purchases} manager />
                 <h2 className="font-semibold">Brokerage history</h2>
                 <History entries={props.pool_history ?? []} />
             </div>

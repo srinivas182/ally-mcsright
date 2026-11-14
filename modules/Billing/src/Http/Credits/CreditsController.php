@@ -11,9 +11,13 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Billing\Credits\CreditLedger;
+use Modules\Billing\Credits\CreditPurchases;
 use Modules\Billing\Credits\Models\CreditLedgerEntry;
 use Modules\Billing\Credits\RateCard;
+use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Identity\Enums\UserKind;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Settings → Credits (specs/billing/01): the brokerage's balance and this month's use by person, automation and
@@ -21,7 +25,7 @@ use Modules\Core\Identity\Enums\UserKind;
  */
 final class CreditsController
 {
-    public function __construct(private readonly CreditLedger $ledger, private readonly RateCard $rates) {}
+    public function __construct(private readonly CreditLedger $ledger, private readonly RateCard $rates, private readonly CreditPurchases $purchases) {}
 
     public function index(Request $request): Response
     {
@@ -35,7 +39,10 @@ final class CreditsController
         $props = ['manager' => $manager, 'me' => $this->ledger->userSummary($user->id), 'my_history' => $entries($user->id),
             'prices' => array_map(fn (string $k, array $r): array => ['action' => $k, 'label' => $r['label'], 'credits' => $r['credits'], 'automation' => $r['automation']],
                 array_keys($rates), $rates),
-            'pool' => $this->ledger->poolSummary(), 'policy' => $this->ledger->policy()];
+            'pool' => $this->ledger->poolSummary(), 'policy' => $this->ledger->policy(),
+            'packs' => $this->purchases->packsFor($user), 'purchases' => $this->purchases->list($user),
+            'checkout' => $request->query('checkout') === 'success' ? 'success' : ($request->query('checkout') === 'cancelled' ? 'cancelled' : null),
+            'value_microcents' => $this->rates->creditValueMicrocents()];
         if ($manager) {
             $usage = $this->ledger->usage();
             $names = User::query()->whereIn('id', array_column($usage['people'], 'user_id'))->get()->keyBy('id');
@@ -75,11 +82,59 @@ final class CreditsController
     public function policy(Request $request): RedirectResponse
     {
         $user = self::manager($request);
-        $data = $request->validate(['agents_use_pool' => ['required', 'boolean'], 'agent_monthly_cap' => ['nullable', 'integer', 'min:0', 'max:1000000']]);
-        $this->ledger->savePolicy((bool) $data['agents_use_pool'], isset($data['agent_monthly_cap']) ? (int) $data['agent_monthly_cap'] : null, $user);
+        $data = $request->validate(['agents_use_pool' => ['required', 'boolean'], 'agent_monthly_cap' => ['nullable', 'integer', 'min:0', 'max:1000000'],
+            'agents_can_buy' => ['sometimes', 'boolean']]);
+        $this->ledger->savePolicy((bool) $data['agents_use_pool'], isset($data['agent_monthly_cap']) ? (int) $data['agent_monthly_cap'] : null, $user,
+            isset($data['agents_can_buy']) ? (bool) $data['agents_can_buy'] : null);
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Saved.']);
 
         return back();
+    }
+
+    /** Sends the buyer to the payment page for a credit pack. */
+    public function buy(Request $request): SymfonyResponse
+    {
+        $data = $request->validate(['pack' => ['required', 'string', 'size:26']]);
+
+        return Inertia::location($this->purchases->start(self::user($request), $data['pack'], $request->getSchemeAndHttpHost()));
+    }
+
+    public function receipt(Request $request, string $purchase): Response
+    {
+        return Inertia::render('settings/credit-receipt', ['receipt' => $this->purchases->receipt(self::user($request), $purchase)]);
+    }
+
+    /** This month's (or a chosen month's) credit history as CSV: the brokerage's for owners and staff, your own for agents. */
+    public function export(Request $request): StreamedResponse
+    {
+        $user = self::user($request);
+        $month = (string) ($request->validate(['month' => ['nullable', 'regex:/^\d{4}-(0[1-9]|1[0-2])$/']])['month'] ?? CreditLedger::period());
+        $manager = self::isManager($user);
+        $rates = $this->rates->all();
+        $rows = CreditLedgerEntry::query()->where('period', $month)->when(! $manager, fn ($q) => $q->where('user_id', $user->id))->orderBy('id')->limit(100_000)->get();
+        $names = User::query()->whereIn('id', $rows->pluck('user_id')->filter()->unique())->get()->keyBy('id');
+        $label = fn (?string $a): string => $a !== null ? ($rates[$a]['label'] ?? $a) : '';
+        $name = 'rightally-credits-'.$month.($manager ? '' : '-mine').'.csv';
+        app(AuditLogger::class)->record('billing.credits.exported', metadata: ['month' => $month, 'rows' => $rows->count()]);
+
+        return response()->streamDownload(function () use ($rows, $names, $label): void {
+            $out = fopen('php://output', 'w');
+            if ($out === false) {
+                return;
+            }
+            fputcsv($out, ['Date (UTC)', 'Type', 'Credits', 'What', 'Person', 'Automatic', 'Note'], escape: '');
+            foreach ($rows as $e) {
+                fputcsv($out, [$e->created_at->format('Y-m-d H:i:s'), $e->entry_type, $e->amount, self::cell($label($e->action_key)),
+                    self::cell($e->user_id !== null ? ($names->get($e->user_id)->name ?? 'Former user') : 'Brokerage'), $e->automation ? 'yes' : 'no', self::cell((string) $e->note)], escape: '');
+            }
+            fclose($out);
+        }, $name, ['Content-Type' => 'text/csv; charset=UTF-8', 'Cache-Control' => 'no-store']);
+    }
+
+    /** Stops spreadsheet formula injection (a cell starting with =, +, - or @ is shown as text). */
+    private static function cell(string $value): string
+    {
+        return $value !== '' && in_array($value[0], ['=', '+', '-', '@', "\t", "\r"], true) ? "'".$value : $value;
     }
 
     private static function isManager(User $user): bool

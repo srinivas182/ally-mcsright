@@ -8,6 +8,7 @@ use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Modules\Billing\Credits\CreditPurchases;
 use Modules\Billing\Gateway\PaymentGateway;
 use Modules\Billing\Models\AgentPlan;
 use Modules\Billing\Models\AgentSubscription;
@@ -63,6 +64,21 @@ final class AgentPayments
         $object = (array) ($event['data']['object'] ?? []);
         $meta = (array) ($object['metadata'] ?? ($object['subscription_details']['metadata'] ?? []));
         $control = DB::connection(Connections::control());
+        // RightAlly credit packs (specs/billing/04): paid, or refunded.
+        if (($meta['kind'] ?? '') === 'credit_pack' && in_array($type, ['checkout.session.completed', 'charge.refunded'], true)) {
+            if ($id === '' || $control->table('billing_gateway_events')->where('id', $id)->exists()) {
+                return false;
+            }
+            $tenant = Tenant::query()->whereKey((int) ($meta['tenant_id'] ?? 0))->first();
+            if ($tenant !== null && ($type === 'charge.refunded' || ($object['payment_status'] ?? 'paid') === 'paid')) {
+                $this->tenants->runAs($tenant, fn () => $type === 'checkout.session.completed'
+                    ? app(CreditPurchases::class)->paid((string) ($meta['purchase'] ?? ''), $object)
+                    : app(CreditPurchases::class)->refunded((string) ($meta['purchase'] ?? ''), (int) ($object['amount_refunded'] ?? 0)));
+            }
+            $control->table('billing_gateway_events')->insert(['id' => $id, 'type' => $type, 'processed_at' => now()]);
+
+            return true;
+        }
         if ($id !== '' && in_array($type, ['charge.refunded', 'account.updated'], true) && ! $control->table('billing_gateway_events')->where('id', $id)->exists()) {
             $type === 'charge.refunded'
                 ? app(PartnerEarnings::class)->recordRefund((string) ($object['invoice'] ?? ''), (int) ($object['amount_refunded'] ?? 0))
