@@ -17,6 +17,7 @@ use Modules\Core\Identity\Http\Middleware\EnsureTenantHost;
 use Modules\Core\Identity\Http\Middleware\EnsureValidSignedInUser;
 use Modules\Core\Identity\Http\Middleware\ImpersonationGuard;
 use Modules\Core\Tenancy\Http\Middleware\ResolveTenant;
+use Modules\Sites\Http\Middleware\ServeWebsite;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -27,6 +28,10 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->validateCsrfTokens(except: ['billing/webhook', 'payout-rails/*']);
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
+
+        // Website hosts are served by the site engine before any back-office routing (specs/websites/05). Appended to
+        // the global stack, so proxy trust, size limits and input trimming still apply to website requests.
+        $middleware->append(ServeWebsite::class);
 
         // Tenant resolution runs first on every web request (specs/core/01).
         $middleware->web(prepend: [

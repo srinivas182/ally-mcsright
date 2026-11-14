@@ -12,6 +12,7 @@ use Modules\Ledger\LedgerServiceProvider;
 use Modules\Listings\ListingsServiceProvider;
 use Modules\Payouts\PayoutsServiceProvider;
 use Modules\Roster\RosterServiceProvider;
+use Modules\Sites\SitesServiceProvider;
 use Modules\Transactions\TransactionsServiceProvider;
 
 return [
@@ -28,4 +29,5 @@ return [
     FormsServiceProvider::class,
     TransactionsServiceProvider::class,
     ListingsServiceProvider::class,
+    SitesServiceProvider::class,
 ];

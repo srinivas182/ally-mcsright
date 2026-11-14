@@ -112,13 +112,13 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoff
     });
 
 // Public lead intake: the lead API, hosted and embedded forms, and the speed-to-lead call (no session, no CSRF).
-Route::middleware([EnsureTenantWorkspace::class, 'throttle:120,1,lead-api'])->post('api/leads', [LeadApiController::class, 'store'])->name('crm.leads.api');
-Route::middleware([EnsureTenantWorkspace::class, 'throttle:60,1,lead-form-view'])->group(function (): void {
+Route::middleware(['tenant', EnsureTenantWorkspace::class, 'throttle:120,1,lead-api'])->post('api/leads', [LeadApiController::class, 'store'])->name('crm.leads.api');
+Route::middleware(['tenant', EnsureTenantWorkspace::class, 'throttle:60,1,lead-form-view'])->group(function (): void {
     Route::get('l/{token}', [LeadFormController::class, 'show'])->where('token', '[A-Za-z0-9]{40}')->name('crm.leads.form');
     Route::get('l/{token}/thanks', [LeadFormController::class, 'thanks'])->where('token', '[A-Za-z0-9]{40}')->name('crm.leads.thanks');
 });
-Route::middleware([EnsureTenantWorkspace::class, 'throttle:10,1,lead-form'])->post('l/{token}', [LeadFormController::class, 'store'])->where('token', '[A-Za-z0-9]{40}')->name('crm.leads.form.store');
-Route::middleware([EnsureTenantWorkspace::class, 'throttle:60,1,lead-connect'])->post('webhooks/leads/connect/{lead}/{agent}', LeadConnectController::class)
+Route::middleware(['tenant', EnsureTenantWorkspace::class, 'throttle:10,1,lead-form'])->post('l/{token}', [LeadFormController::class, 'store'])->where('token', '[A-Za-z0-9]{40}')->name('crm.leads.form.store');
+Route::middleware(['tenant', EnsureTenantWorkspace::class, 'throttle:60,1,lead-connect'])->post('webhooks/leads/connect/{lead}/{agent}', LeadConnectController::class)
     ->where('agent', '[0-9]+')->name('crm.leads.connect');
 Route::middleware('throttle:600,1,inbound-email')->post('webhooks/inbound/lead-email', InboundEmailController::class)->name('crm.leads.inbound');
 
@@ -144,4 +144,4 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoff
     Route::patch('searches/{search}', [SavedSearchController::class, 'update'])->name('crm.searches.update');
     Route::delete('searches/{search}', [SavedSearchController::class, 'destroy'])->name('crm.searches.destroy');
 });
-Route::middleware([EnsureTenantWorkspace::class, 'throttle:30,1,alert-stop'])->match(['get', 'post'], 'alerts/{search}/stop', [SavedSearchController::class, 'stop'])->name('crm.alerts.stop');
+Route::middleware(['tenant', EnsureTenantWorkspace::class, 'throttle:30,1,alert-stop'])->match(['get', 'post'], 'alerts/{search}/stop', [SavedSearchController::class, 'stop'])->name('crm.alerts.stop');
