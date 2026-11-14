@@ -28,6 +28,17 @@ final class Connections
     }
 
     /**
+     * Shared MLS listing data (specs/websites/02): stored once per MLS, used by every licensed brokerage.
+     * Falls back to the control connection until a dedicated listings database is split out.
+     */
+    public static function listings(): ?string
+    {
+        $name = config('core.connections.listings');
+
+        return is_string($name) && $name !== '' ? $name : self::control();
+    }
+
+    /**
      * Audit writes (sealing). In production a user with INSERT and SELECT only on audit_events
      * (plus audit_heads and audit_outbox housekeeping); falls back to the cell connection.
      */

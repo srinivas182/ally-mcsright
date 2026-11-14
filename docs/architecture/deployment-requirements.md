@@ -28,6 +28,14 @@ Settings the platform depends on in every environment. Each one was found by a t
   other names).
 - A queue worker must run: uploaded deal documents are read by the `ReadDocument` job.
 
+## MLS listings (Sprint 17A)
+
+- `CORE_LISTINGS_CONNECTION`: the shared listings database (falls back to the control connection).
+- Scheduler: `listings:sync` every minute (queues due feeds on the queue), `listings:reconcile` daily 04:20,
+  `listings:reconcile --freshness-only` every 15 minutes. A queue worker must run.
+- Outbound HTTPS to each MLS provider (api.mlsgrid.com, api-trestle.corelogic.com, api.bridgedataoutput.com, …).
+- Vendor access per MLS (MLS Grid, Trestle or the MLS directly) before a feed can be switched on.
+
 ## Lead intake (Sprint 16A)
 
 - Inbound email for forwarded portal leads: point an inbound-email provider (Postmark inbound format) for

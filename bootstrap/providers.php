@@ -9,6 +9,7 @@ use Modules\Core\CoreServiceProvider;
 use Modules\Crm\CrmServiceProvider;
 use Modules\Forms\FormsServiceProvider;
 use Modules\Ledger\LedgerServiceProvider;
+use Modules\Listings\ListingsServiceProvider;
 use Modules\Payouts\PayoutsServiceProvider;
 use Modules\Roster\RosterServiceProvider;
 use Modules\Transactions\TransactionsServiceProvider;
@@ -26,4 +27,5 @@ return [
     RosterServiceProvider::class,
     FormsServiceProvider::class,
     TransactionsServiceProvider::class,
+    ListingsServiceProvider::class,
 ];
