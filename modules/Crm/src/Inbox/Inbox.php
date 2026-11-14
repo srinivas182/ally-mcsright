@@ -22,6 +22,7 @@ use Modules\Crm\Events\ActivityLogged;
 use Modules\Crm\FairHousing;
 use Modules\Crm\Leads\AiResponder;
 use Modules\Crm\Leads\LeadAlert;
+use Modules\Crm\Leads\LeadScoring;
 use Modules\Crm\Leads\PortalEmail;
 use Modules\Crm\Leads\SpeedToLead;
 use Modules\Crm\Models\Activity;
@@ -228,6 +229,7 @@ final class Inbox
             'subject' => $subject, 'body' => $body, 'user_id' => null, 'occurred_at' => CarbonImmutable::now()]);
         ActivityLogged::dispatch($contact->tenant_id, $contact->id, $activity->id, $activity->type);
         Lead::query()->where('contact_id', $contact->id)->whereNull('engaged_at')->update(['engaged_at' => CarbonImmutable::now()]);
+        app(LeadScoring::class)->rescoreContact($contact->id);
 
         // The AI assistant answers while it is still working this lead (and the agent hears about it at hand-off).
         if ($alert && app(AiResponder::class)->onReply($contact, $channel)) {
@@ -299,7 +301,7 @@ final class Inbox
                 if ($agent !== null) {
                     $url = app(SpeedToLead::class)->link('/inbox?c='.$c->ulid);
                     $agent->notify(new LeadAlert("{$c->contact->name} is waiting for your reply", "{$c->contact->name} wrote {$waited} minutes ago and has not had an answer.", $url, 'Reply now'));
-                    $this->textAgent($agent, "RightAlly: {$c->contact->first_name} has been waiting {$waited} min for your reply: {$url}");
+                    app(SpeedToLead::class)->textAgent($agent, "RightAlly: {$c->contact->first_name} has been waiting {$waited} min for your reply: {$url}");
                 }
                 $out['nudged']++;
             }
@@ -329,18 +331,5 @@ final class Inbox
         }
 
         return mb_substr(trim(implode("\n", $lines)), 0, 20000) ?: '(empty reply)';
-    }
-
-    private function textAgent(User $agent, string $text): void
-    {
-        $consent = DB::connection(Connections::cell())->table('crm_lead_alert_prefs')->where('tenant_id', $this->tenants->id())->where('user_id', $agent->id)->value('texts_consent_at');
-        if ($consent === null || $agent->phone === null || $agent->phone === '' || ! $this->messaging->smsFor($this->tenants->id())) {
-            return;
-        }
-        try {
-            app(SmsSender::class)->send($agent->phone, $text);
-        } catch (\Throwable $e) {
-            report($e);
-        }
     }
 }

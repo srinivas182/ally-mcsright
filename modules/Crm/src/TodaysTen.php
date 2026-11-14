@@ -11,6 +11,7 @@ use Modules\Crm\Models\Contact;
 use Modules\Crm\Models\ContactBrief;
 use Modules\Crm\Models\ContactScore;
 use Modules\Crm\Models\Intent;
+use Modules\Crm\Models\Lead;
 use Modules\Crm\Models\Task;
 
 /**
@@ -40,6 +41,14 @@ final class TodaysTen
             $candidates[$c->id]['points'] += $points;
             $candidates[$c->id]['reasons'][] = $reason;
         };
+
+        // Hot leads (grow/07) go to the top.
+        foreach (Lead::query()->where('score_label', 'hot')->where('scored_at', '>=', $now->subDays(14))->whereIn('contact_id', $base()->select('id'))
+            ->with('contact')->orderByDesc('score')->limit(10)->get() as $lead) {
+            if ($lead->contact !== null) {
+                $add($lead->contact, 60 + intdiv((int) $lead->score, 4), 'Hot lead ('.$lead->score.'): '.implode(', ', array_slice($lead->score_reasons ?? [], 0, 2)));
+            }
+        }
 
         foreach ($base()->whereExists(fn ($t) => $t->selectRaw('1')->from('crm_tasks')->whereColumn('crm_tasks.contact_id', 'crm_contacts.id')
             ->whereNull('crm_tasks.completed_at')->where('crm_tasks.due_at', '<', $now))->limit(30)->get() as $c) {
