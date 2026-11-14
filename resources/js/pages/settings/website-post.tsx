@@ -1,6 +1,7 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 
+import { confirmCredits } from '@/components/credit-consent';
 import { MediaPicker, type MediaItem } from '@/components/sites/media-picker';
 import { SeoScore, type SeoChecks } from '@/components/sites/seo-score';
 import { Button } from '@/components/ui/button';
@@ -82,6 +83,9 @@ export default function WebsitePost({
         extra: Record<string, unknown>,
         apply: (r: T) => void,
     ) => {
+        if (!(await confirmCredits('ai.site_assist'))) {
+            return;
+        }
         setAiBusy(action);
         setAiError(null);
         try {

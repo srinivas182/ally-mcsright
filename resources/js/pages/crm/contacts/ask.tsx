@@ -2,6 +2,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import { SparklesIcon } from 'lucide-react';
 import { useState } from 'react';
 
+import { confirmCredits } from '@/components/credit-consent';
 import { VoiceButton } from '@/components/crm/voice-button';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -40,8 +41,12 @@ export default function Ask({
 }: Props) {
     const [question, setQuestion] = useState(q);
     const [listName, setListName] = useState(q);
-    const ask = (value: string) =>
-        value.trim() !== '' && router.get('/contacts/ask', { q: value });
+    const ask = (value: string) => {
+        if (value.trim() === '') return;
+        void confirmCredits('ai.crm_ask').then(
+            (ok) => ok && router.get('/contacts/ask', { q: value }),
+        );
+    };
 
     return (
         <>

@@ -1,5 +1,6 @@
 import {
     BookOpen,
+    Coins,
     Phone,
     ShieldAlert,
     Building2,
@@ -61,6 +62,7 @@ const icons: Record<string, LucideIcon> = {
     'trending-up': TrendingUp,
     'badge-dollar-sign': BadgeDollarSign,
     'credit-card': CreditCard,
+    coins: Coins,
     network: Network,
     briefcase: Briefcase,
     'clipboard-check': ClipboardCheck,

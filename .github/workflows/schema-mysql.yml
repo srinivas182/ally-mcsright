@@ -1,17 +1,14 @@
-# Full test suite on real MySQL whenever a pull request changes database tables.
+# Full test suite on real MySQL for every pull request.
 #
 # Why: the main CI runs on SQLite, which does not enforce column lengths, strict types or some index rules,
-# so a migration can pass there and fail in production (Sprint 14B-5: a too-short column). This job runs the
-# whole suite on MySQL 8.4 only for pull requests that touch migrations, keeping CI minutes low otherwise.
-name: Full suite on MySQL (schema changes)
+# and orders JSON keys and unordered rows differently, so code can pass there and fail in production
+# (Sprint 14B-5: a too-short column; 17C: JSON key order). Since Sprint 18A it runs on every pull request,
+# not only those that change migrations, because the merge rule requires it to be green.
+name: Full suite on MySQL
 
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
-    paths:
-      - 'database/migrations/**'
-      - 'modules/*/database/migrations/**'
-      - '.github/workflows/schema-mysql.yml'
   workflow_dispatch:
 
 concurrency:

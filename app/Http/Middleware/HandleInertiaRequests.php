@@ -6,7 +6,9 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 use Laravel\Fortify\Features;
+use Modules\Billing\Credits\CreditLedger;
 use Modules\Billing\PaymentSettings;
+use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Identity\Impersonation;
 use Modules\Core\Identity\Security\TwoFactorPolicy;
 use Modules\Core\Navigation\NavigationRegistry;
@@ -89,6 +91,16 @@ class HandleInertiaRequests extends Middleware
                 return $data === null ? null : ['by' => $data['by_name'], 'target' => $data['target_name'], 'expires_at' => $data['expires_at']];
             },
             'navigation' => fn (): array => app(NavigationRegistry::class)->for($request->user() instanceof User ? $request->user() : null),
+            // The credit meter at the foot of the menu (brokerage workspaces only).
+            'credits' => function () use ($request): ?array {
+                $user = $request->user();
+                $context = app(TenantContext::class);
+                if (! $user instanceof User || $user->kind === UserKind::HqStaff || ! $context->check() || $context->current()->isHq()) {
+                    return null;
+                }
+
+                return app(CreditLedger::class)->meter($user);
+            },
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
     }

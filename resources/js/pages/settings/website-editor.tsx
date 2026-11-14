@@ -1,6 +1,7 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { confirmCredits } from '@/components/credit-consent';
 import { MediaPicker, type MediaItem } from '@/components/sites/media-picker';
 import { SeoScore, type SeoChecks } from '@/components/sites/seo-score';
 import { Badge } from '@/components/ui/badge';
@@ -243,6 +244,9 @@ export default function WebsiteEditor(props: Props) {
         action: string,
         body: Record<string, unknown>,
     ): Promise<T | null> => {
+        if (!(await confirmCredits('ai.site_assist'))) {
+            return null;
+        }
         setAiBusy(true);
         setAiError(null);
         try {

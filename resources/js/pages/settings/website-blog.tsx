@@ -1,5 +1,6 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 
+import { confirmCredits } from '@/components/credit-consent';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -112,7 +113,9 @@ function AiWriter({ places }: { places: Props['places'] }) {
             className="grid gap-3 rounded-lg border p-4 text-sm"
             onSubmit={(e) => {
                 e.preventDefault();
-                form.post('/settings/website/ai/post');
+                void confirmCredits('ai.site_post').then(
+                    (ok) => ok && form.post('/settings/website/ai/post'),
+                );
             }}
         >
             <h2 className="font-semibold">Write a post with AI</h2>

@@ -2,6 +2,7 @@ import { AppContent } from '@/components/app-content';
 import { AppShell } from '@/components/app-shell';
 import { AppSidebar } from '@/components/app-sidebar';
 import { AppSidebarHeader } from '@/components/app-sidebar-header';
+import { CreditConsentHost } from '@/components/credit-consent';
 import { ImpersonationBanner } from '@/components/impersonation-banner';
 import { MobileNav } from '@/components/mobile-nav';
 import { PaymentsTestBanner } from '@/components/payments-test-banner';
@@ -23,6 +24,7 @@ export default function AppSidebarLayout({
             </AppContent>
             <MobileNav />
             <PasskeyPrompt />
+            <CreditConsentHost />
         </AppShell>
     );
 }

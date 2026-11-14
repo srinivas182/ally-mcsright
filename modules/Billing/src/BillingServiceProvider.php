@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use Modules\AI\Contracts\CreditMeter;
 use Modules\Billing\Http\RequireFeature;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Navigation\NavigationRegistry;
@@ -25,6 +26,10 @@ final class BillingServiceProvider extends ServiceProvider
         $this->app->scoped(BrokeragePayments::class);
         $this->app->scoped(PartnerEarnings::class);
         $this->app->bind(Gateway\PaymentGateway::class, Gateway\StripeGateway::class);
+        // RightAlly Credits (specs/billing/01): the AI gateway charges the brokerage's ledger.
+        $this->app->scoped(Credits\RateCard::class);
+        $this->app->scoped(Credits\CreditLedger::class);
+        $this->app->bind(CreditMeter::class, Credits\LedgerCreditMeter::class);
     }
 
     public function boot(): void
@@ -36,16 +41,18 @@ final class BillingServiceProvider extends ServiceProvider
         $nav = $this->app->make(NavigationRegistry::class);
         $nav->add(new NavItem('Settings', 'Agent plans', '/settings/agent-plans', 'badge-dollar-sign', 70, kinds: [UserKind::Owner]));
         $nav->add(new NavItem('Settings', 'Billing', '/settings/billing', 'credit-card', 72, kinds: [UserKind::Owner]));
+        $nav->add(new NavItem('Settings', 'RightAlly credits', '/settings/credits', 'coins', 71, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent]));
         $nav->add(new NavItem('Settings', 'Partner earnings', '/settings/partner', 'trending-up', 74, kinds: [UserKind::Owner]));
         $nav->add(new NavItem('Platform', 'Pricing', '/hq/billing', 'badge-dollar-sign', 35, kinds: [UserKind::HqStaff]));
         $nav->add(new NavItem('Platform', 'Payments', '/hq/payments', 'credit-card', 40, kinds: [UserKind::HqStaff]));
+        $nav->add(new NavItem('Platform', 'RightAlly credits', '/hq/credits', 'coins', 37, kinds: [UserKind::HqStaff]));
         // Agents only see Plans when their brokerage uses the agent-pays model.
         Gate::define('billing.plans.view', fn (User $user): bool => $user->kind === UserKind::Agent
             && $this->app->make(Entitlements::class)->model() === 'agent_pays');
         $nav->add(new NavItem('Overview', 'Plans', '/plans', 'gift', 90, ability: 'billing.plans.view'));
 
         if ($this->app->runningInConsole()) {
-            $this->commands([Console\ApplyPriceChanges::class, Console\EndGrace::class, Console\BillSubsidies::class, Console\PartnerPayouts::class]);
+            $this->commands([Console\ApplyPriceChanges::class, Console\EndGrace::class, Console\BillSubsidies::class, Console\PartnerPayouts::class, Console\GrantMonthlyCredits::class]);
         }
     }
 }
