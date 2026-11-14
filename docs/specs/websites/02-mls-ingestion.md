@@ -22,6 +22,18 @@
   a storage change only.
 - Media (CDN variants), search indexing and the Member/Office/OpenHouse resources follow in 17B.
 
+## Delivered in Sprint 17B-1
+
+- Photos: the record's Media list (MLS Grid `$expand=Media`) is mirrored per listing; new or changed photos are
+  downloaded (public https only, images only, 25 MB cap), saved as WebP at 400, 800 and 1600 px on the media disk
+  behind the CDN (`LISTINGS_MEDIA_DISK`, `LISTINGS_CDN_URL`), retried with back-off for 24 hours, then marked failed;
+  removed photos are deleted. The first stored photo is the cover.
+- Price history (`listing_price_changes`, `listings.price_changed_at`) for price-drop alerts and badges.
+- `ListingSearch`: licensed MLSs only, every result through `ListingPresenter`; filters for place (city, ZIP,
+  address, MLS number), price, beds, baths, size, type, status, map bounds, listing agent and "changed since";
+  sorts newest, price, size, price reduced; at most 48 per page. Back office → Listings (search and detail).
+- Feeds that do not expand Media (Trestle, Bridge) will fetch the Media resource in a later sprint.
+
 ## Purpose
 
 Bring each MLS's listings into RightAlly once, keep them fresh within minutes, store photos on our

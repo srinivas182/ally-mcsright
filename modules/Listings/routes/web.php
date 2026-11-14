@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 use Modules\Core\Http\Middleware\EnsureHqConsole;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
 use Modules\Listings\Http\Controllers\HqMlsController;
+use Modules\Listings\Http\Controllers\ListingsController;
 use Modules\Listings\Http\Controllers\MlsSettingsController;
 
 // HQ → MLS connections (specs/websites/02).
@@ -31,4 +32,13 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])
     ->group(function (): void {
         Route::get('/', [MlsSettingsController::class, 'index'])->name('index');
         Route::post('{source}/request', [MlsSettingsController::class, 'request'])->name('request');
+    });
+
+// Back office → Listings.
+Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'throttle:120,1,listing-search'])
+    ->prefix('listings')
+    ->name('listings.')
+    ->group(function (): void {
+        Route::get('/', [ListingsController::class, 'index'])->name('index');
+        Route::get('{listing}', [ListingsController::class, 'show'])->where('listing', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('show');
     });

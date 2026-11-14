@@ -35,6 +35,8 @@ Settings the platform depends on in every environment. Each one was found by a t
   `listings:reconcile --freshness-only` every 15 minutes. A queue worker must run.
 - Outbound HTTPS to each MLS provider (api.mlsgrid.com, api-trestle.corelogic.com, api.bridgedataoutput.com, …).
 - Vendor access per MLS (MLS Grid, Trestle or the MLS directly) before a feed can be switched on.
+- Listing photos: PHP GD with WebP (in the Docker image and CI); `LISTINGS_MEDIA_DISK` (S3 in production) and
+  `LISTINGS_CDN_URL` (the image CDN in front of it). Outbound HTTPS to the MLS photo hosts.
 
 ## Lead intake (Sprint 16A)
 
