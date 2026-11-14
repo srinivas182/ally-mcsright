@@ -1,0 +1,9 @@
+{
+    "id": "sites",
+    "name": "Sites",
+    "version": "0.1.0",
+    "provider": "Modules\\Sites\\SitesServiceProvider",
+    "depends": ["core", "listings", "crm"],
+    "entitlement": null,
+    "description": "Brokerage and agent websites: site engine, templates, SEO and AEO (specs/websites/05)."
+}

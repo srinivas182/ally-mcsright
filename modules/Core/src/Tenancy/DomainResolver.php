@@ -58,6 +58,16 @@ final class DomainResolver
     public function forget(string $host): void
     {
         $this->cache->forget($this->key(Host::normalise($host)));
+        $this->cache->forget($this->key(Host::normalise($host)).':website');
+    }
+
+    /** Whether this host serves a public website rather than the back office (specs/websites/05). */
+    public function isWebsite(string $host): bool
+    {
+        $host = Host::normalise($host);
+
+        return (bool) $this->cache->remember($this->key($host).':website', (int) config('core.domain_cache_ttl', 300),
+            fn (): int => TenantDomain::query()->where('host', $host)->where('purpose', 'website')->exists() ? 1 : 0);
     }
 
     private function key(string $host): string

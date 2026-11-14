@@ -89,7 +89,7 @@ final class Tenant extends Model
 
     public function primaryDomain(): ?TenantDomain
     {
-        return $this->domains()->where('is_primary', true)->first();
+        return $this->domains()->where('is_primary', true)->where('purpose', '!=', 'website')->first();
     }
 
     public function isHq(): bool

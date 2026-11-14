@@ -6,6 +6,7 @@ namespace Modules\Core\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Modules\Core\Tenancy\DomainResolver;
 use Modules\Core\Tenancy\TenantContext;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -20,6 +21,10 @@ final class EnsureTenantWorkspace
     public function handle(Request $request, Closure $next): Response
     {
         if (! $this->context->check() || $this->context->current()->isHq()) {
+            abort(404);
+        }
+        // Websites and the back office never share a host (specs/websites/05).
+        if (app(DomainResolver::class)->isWebsite($request->getHost())) {
             abort(404);
         }
 

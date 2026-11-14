@@ -25,6 +25,7 @@ use Modules\Core\Tenancy\Host;
  * @property int $tenant_id
  * @property string $host
  * @property DomainKind $kind
+ * @property string $purpose app (back office) or website
  * @property bool $is_primary
  * @property VerificationStatus $verification_status
  * @property SslStatus $ssl_status
@@ -39,7 +40,7 @@ final class TenantDomain extends Model
 
     protected $fillable = [
         'tenant_id', 'host', 'kind', 'owner_user_id', 'is_primary', 'verification_status',
-        'ssl_status', 'provider_hostname_id', 'verified_at',
+        'ssl_status', 'provider_hostname_id', 'verified_at', 'purpose',
     ];
 
     public function getConnectionName(): ?string
@@ -97,6 +98,11 @@ final class TenantDomain extends Model
     {
         return $this->kind === DomainKind::Platform
             || $this->verification_status === VerificationStatus::Verified;
+    }
+
+    public function isWebsite(): bool
+    {
+        return $this->purpose === 'website';
     }
 
     protected static function newFactory(): TenantDomainFactory

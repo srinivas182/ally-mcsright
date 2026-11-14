@@ -7,7 +7,6 @@ namespace Modules\Listings\Search;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Route;
 use Modules\Core\Support\Connections;
 use Modules\Listings\Display\ListingPresenter;
 use Modules\Listings\Media\Photos;
@@ -128,7 +127,9 @@ final class ListingSearch
     /** The listing's page on the brokerage's public website, once the site engine provides one (Sprint 17C). */
     public static function publicUrl(string $ulid): ?string
     {
-        return Route::has('site.listing') ? route('site.listing', ['listing' => $ulid]) : null;
+        $resolver = app()->bound('listings.public_url') ? app('listings.public_url') : null;
+
+        return is_callable($resolver) ? $resolver($ulid) : null;
     }
 
     /**

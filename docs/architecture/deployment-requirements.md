@@ -28,6 +28,16 @@ Settings the platform depends on in every environment. Each one was found by a t
   other names).
 - A queue worker must run: uploaded deal documents are read by the `ReadDocument` job.
 
+## Websites (Sprint 17C-1)
+
+- `SITES_PLATFORM_DOMAIN` (default `rightally.site`): wildcard DNS `*.rightally.site` and a wildcard certificate point at
+  the app. Each brokerage's included address is `{slug}.rightally.site`.
+- `SITES_CNAME_TARGET` (default `sites.rightally.site`): the Cloudflare for SaaS fallback origin that custom website
+  domains CNAME to; custom hostnames are verified as in specs/core/05.
+- Put the CDN in front of website hosts and honour origin `Cache-Control` (`SITES_CACHE_SECONDS`, `SITES_STALE_SECONDS`).
+  Website responses set no cookies. Do not cache `/_lead` or `/_preview/*`.
+- `public/site-assets/` is served with long cache headers.
+
 ## MLS listings (Sprint 17A)
 
 - `CORE_LISTINGS_CONNECTION`: the shared listings database (falls back to the control connection).
