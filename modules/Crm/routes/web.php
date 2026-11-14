@@ -19,6 +19,7 @@ use Modules\Crm\Http\Controllers\Leads\LeadFormController;
 use Modules\Crm\Http\Controllers\PipelineController;
 use Modules\Crm\Http\Controllers\PlanController;
 use Modules\Crm\Http\Controllers\RelationshipController;
+use Modules\Crm\Http\Controllers\SavedSearchController;
 use Modules\Crm\Http\Controllers\TaskController;
 use Modules\Crm\Http\Controllers\TodayController;
 use Modules\Crm\Http\Controllers\WorkListController;
@@ -40,6 +41,8 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoff
         Route::post('imports', [DataController::class, 'upload'])->name('imports.store');
         Route::post('/', [ContactController::class, 'store'])->name('store');
         Route::get('{contact}', [ContactController::class, 'show'])->name('show');
+        Route::post('{contact}/searches', [SavedSearchController::class, 'store'])->name('searches.store');
+        Route::post('{contact}/send-listing', [SavedSearchController::class, 'sendListing'])->middleware('throttle:30,1,send-listing')->name('send-listing');
         Route::patch('{contact}', [ContactController::class, 'update'])->name('update');
         Route::post('{contact}/assign', [ContactController::class, 'assign'])->name('assign');
         Route::post('{contact}/relationships', [ContactController::class, 'relate'])->name('relate');
@@ -135,3 +138,10 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoff
         Route::post('{conversation}/assign', [InboxController::class, 'assign'])->name('assign');
     });
 Route::middleware('throttle:600,1,twilio-sms')->post('webhooks/twilio/sms', TwilioSmsController::class)->name('crm.inbox.twilio');
+
+// Saved searches (specs/grow/08).
+Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoffice.basic'])->group(function (): void {
+    Route::patch('searches/{search}', [SavedSearchController::class, 'update'])->name('crm.searches.update');
+    Route::delete('searches/{search}', [SavedSearchController::class, 'destroy'])->name('crm.searches.destroy');
+});
+Route::middleware([EnsureTenantWorkspace::class, 'throttle:30,1,alert-stop'])->match(['get', 'post'], 'alerts/{search}/stop', [SavedSearchController::class, 'stop'])->name('crm.alerts.stop');

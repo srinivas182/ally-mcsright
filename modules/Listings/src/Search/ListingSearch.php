@@ -7,6 +7,7 @@ namespace Modules\Listings\Search;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
 use Modules\Core\Support\Connections;
 use Modules\Listings\Display\ListingPresenter;
 use Modules\Listings\Media\Photos;
@@ -39,7 +40,8 @@ final class ListingSearch
             $shown = ListingPresenter::forDisplay($l);
             if ($shown !== null) {
                 $results[] = $shown + ['photo' => Photos::url($l->cover_path), 'reduced' => $l->original_list_price_cents !== null && $l->list_price_cents !== null
-                    && $l->list_price_cents < $l->original_list_price_cents, 'listed' => $l->on_market_date?->toDateString()];
+                    && $l->list_price_cents < $l->original_list_price_cents, 'listed' => $l->on_market_date?->toDateString(),
+                    'added_at' => $l->created_at?->toIso8601String(), 'price_changed_at' => $l->price_changed_at?->toIso8601String(), 'url' => self::publicUrl($l->ulid)];
             }
         }
 
@@ -121,6 +123,12 @@ final class ListingSearch
             'reduced' => $q->whereNotNull('price_changed_at')->orderByDesc('price_changed_at')->orderBy('id'),
             default => $q->orderByDesc('on_market_date')->orderByDesc('id'),
         };
+    }
+
+    /** The listing's page on the brokerage's public website, once the site engine provides one (Sprint 17C). */
+    public static function publicUrl(string $ulid): ?string
+    {
+        return Route::has('site.listing') ? route('site.listing', ['listing' => $ulid]) : null;
     }
 
     /**

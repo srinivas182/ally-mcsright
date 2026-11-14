@@ -1,5 +1,5 @@
-import { Head, Link } from '@inertiajs/react';
-import { useState } from 'react';
+import { Head, Link, useForm } from '@inertiajs/react';
+import { useEffect, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -156,6 +156,7 @@ export default function ListingShow({ listing: l }: { listing: Listing }) {
                         </a>
                     </Button>
                 )}
+                <SendToClient listing={l.ulid} />
                 {l.price_history.length > 0 && (
                     <section className="grid gap-1 text-sm">
                         <h2 className="font-semibold">Price history</h2>
@@ -181,5 +182,120 @@ export default function ListingShow({ listing: l }: { listing: Listing }) {
                 </footer>
             </div>
         </>
+    );
+}
+
+/** Send this home to a contact: a one-to-one email through the inbox (its checks apply). */
+function SendToClient({ listing }: { listing: string }) {
+    const [q, setQ] = useState('');
+    const [found, setFound] = useState<
+        { ulid: string; name: string; email: string | null }[]
+    >([]);
+    const [to, setTo] = useState<{ ulid: string; name: string } | null>(null);
+    const form = useForm({ listing, note: '' });
+    useEffect(() => {
+        if (q.trim().length < 2 || to) {
+            setFound([]);
+            return;
+        }
+        const t = setTimeout(() => {
+            fetch(`/contacts/lookup?q=${encodeURIComponent(q)}`, {
+                headers: { Accept: 'application/json' },
+                credentials: 'same-origin',
+            })
+                .then((r) => (r.ok ? r.json() : { contacts: [] }))
+                .then(
+                    (j: {
+                        contacts: {
+                            ulid: string;
+                            name: string;
+                            email: string | null;
+                        }[];
+                    }) => setFound(j.contacts),
+                )
+                .catch(() => setFound([]));
+        }, 250);
+        return () => clearTimeout(t);
+    }, [q, to]);
+
+    return (
+        <section className="grid gap-2 rounded-lg border p-3 text-sm">
+            <h2 className="font-semibold">Send to a client</h2>
+            {to ? (
+                <form
+                    className="grid gap-2"
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        form.post(`/contacts/${to.ulid}/send-listing`, {
+                            preserveScroll: true,
+                            onSuccess: () => {
+                                setTo(null);
+                                setQ('');
+                                form.reset('note');
+                            },
+                        });
+                    }}
+                >
+                    <p>
+                        To <strong>{to.name}</strong>{' '}
+                        <button
+                            type="button"
+                            className="underline"
+                            onClick={() => setTo(null)}
+                        >
+                            change
+                        </button>
+                    </p>
+                    <textarea
+                        aria-label="Note"
+                        rows={2}
+                        className="rounded border bg-background p-2"
+                        placeholder="Add a note (optional)"
+                        value={form.data.note}
+                        onChange={(e) => form.setData('note', e.target.value)}
+                    />
+                    <Button
+                        className="justify-self-start"
+                        disabled={form.processing}
+                    >
+                        Send by email
+                    </Button>
+                    {Object.values(form.errors)[0] && (
+                        <p className="text-destructive">
+                            {Object.values(form.errors)[0]}
+                        </p>
+                    )}
+                </form>
+            ) : (
+                <>
+                    <input
+                        aria-label="Find a contact"
+                        placeholder="Find a contact"
+                        className="rounded border bg-background px-2 py-1.5"
+                        value={q}
+                        onChange={(e) => setQ(e.target.value)}
+                    />
+                    {found.length > 0 && (
+                        <ul className="divide-y rounded border">
+                            {found.map((c) => (
+                                <li key={c.ulid}>
+                                    <button
+                                        type="button"
+                                        className="w-full p-2 text-left"
+                                        onClick={() => setTo(c)}
+                                        disabled={!c.email}
+                                    >
+                                        {c.name}{' '}
+                                        <span className="text-muted-foreground">
+                                            {c.email ?? 'no email'}
+                                        </span>
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </>
+            )}
+        </section>
     );
 }

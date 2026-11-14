@@ -40,6 +40,7 @@ Schedule::command('crm:ponds')->hourly()->onOneServer();
 Schedule::command('crm:leads-reassign')->everyMinute()->withoutOverlapping()->onOneServer();
 Schedule::command('crm:inbox-sweep')->everyMinute()->withoutOverlapping()->onOneServer();
 Schedule::command('crm:score-leads')->dailyAt('03:40')->onOneServer();
+Schedule::command('crm:search-alerts')->everyFifteenMinutes()->withoutOverlapping()->onOneServer();
 Schedule::command('listings:sync')->everyMinute()->withoutOverlapping()->onOneServer();
 Schedule::command('listings:reconcile')->dailyAt('04:20')->onOneServer();
 Schedule::command('listings:reconcile --freshness-only')->everyFifteenMinutes()->onOneServer();
