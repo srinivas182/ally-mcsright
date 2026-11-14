@@ -189,12 +189,17 @@ it('shows HQ the economics behind each action and lets HQ set prices', function 
 
     $this->actingAs($staff)->get($hq.'/hq/credits')->assertInertia(fn (Assert $page) => $page->component('hq/credits')
         ->where('credit_value_microcents', 1_000_000)->where('enforced', false)
-        ->where('actions', fn ($actions) => collect($actions)->firstWhere('action', 'ai.crm_ask') == [
-            'action' => 'ai.crm_ask', 'label' => 'Ask your database', 'credits' => 1, 'automation' => false, 'feature' => 'diagnostics.ping',
-            'model' => ['name' => 'Sonnet', 'provider' => 'Anthropic', 'input_per_mtok_cents' => 300, 'output_per_mtok_cents' => 1500],
-            // 3,000 × 300 + 1,000 × 1,500 = 2,400,000 micro-cents (2.4 cents) against 1 cent of revenue.
-            'uses_30d' => 1, 'avg_tokens_in' => 3000, 'avg_tokens_out' => 1000, 'avg_cost_microcents' => 2_400_000, 'revenue_microcents' => 1_000_000,
-            'margin_pct' => -140, 'tokens_per_credit' => 1666,
+        ->where('actions', fn ($actions) => collect(collect($actions)->firstWhere('action', 'ai.crm_ask'))->only([
+            'credits', 'feature', 'model', 'uses_30d', 'avg_tokens_in', 'avg_tokens_out', 'avg_cost_microcents', 'p90_cost_microcents', 'estimate_microcents',
+            'planning_microcents', 'revenue_microcents', 'margin_pct', 'suggested_credits', 'tokens_per_credit', 'below_floor',
+        ])->all() == [
+            'credits' => 1, 'feature' => 'diagnostics.ping',
+            'model' => ['name' => 'Sonnet', 'provider' => 'Anthropic', 'input_per_mtok_cents' => 300, 'output_per_mtok_cents' => 1500, 'audio_per_minute_microcents' => 0],
+            // Real: 3,000 × 300 + 1,000 × 1,500 = 2,400,000 micro-cents (2.4 cents). Estimate: 2,000 in / 300 out = 1,050,000.
+            'uses_30d' => 1, 'avg_tokens_in' => 3000, 'avg_tokens_out' => 1000, 'avg_cost_microcents' => 2_400_000, 'p90_cost_microcents' => 2_400_000,
+            'estimate_microcents' => 1_050_000, 'planning_microcents' => 2_400_000, 'revenue_microcents' => 1_000_000, 'margin_pct' => -140,
+            // 2.4¢ ÷ (1¢ × 40%) = 6 credits for a 60% margin.
+            'suggested_credits' => 6, 'tokens_per_credit' => 1666, 'below_floor' => true,
         ])
         ->where('top_usage.0', ['tenant' => $this->tenant->name, 'credits' => 1]));
 

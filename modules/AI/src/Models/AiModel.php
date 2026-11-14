@@ -7,6 +7,7 @@ namespace Modules\AI\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 use Modules\AI\Database\Factories\AiModelFactory;
 use Modules\Core\Support\Connections;
 
@@ -21,6 +22,8 @@ use Modules\Core\Support\Connections;
  * @property int $input_cost_per_mtok_cents
  * @property int $output_cost_per_mtok_cents
  * @property int $cache_read_cost_per_mtok_cents
+ * @property int $audio_cost_per_minute_microcents
+ * @property Carbon|null $prices_checked_at
  * @property string $status
  * @property AiProvider $provider
  */
@@ -30,7 +33,7 @@ final class AiModel extends Model
     use HasFactory;
 
     protected $fillable = [
-        'provider_id', 'model_id', 'display_name', 'capabilities', 'context_window',
+        'provider_id', 'model_id', 'display_name', 'capabilities', 'context_window', 'audio_cost_per_minute_microcents', 'prices_checked_at',
         'input_cost_per_mtok_cents', 'output_cost_per_mtok_cents', 'cache_read_cost_per_mtok_cents', 'status',
     ];
 
@@ -49,6 +52,8 @@ final class AiModel extends Model
             'input_cost_per_mtok_cents' => 'integer',
             'output_cost_per_mtok_cents' => 'integer',
             'cache_read_cost_per_mtok_cents' => 'integer',
+            'audio_cost_per_minute_microcents' => 'integer',
+            'prices_checked_at' => 'date',
         ];
     }
 
@@ -63,6 +68,16 @@ final class AiModel extends Model
     /**
      * Exact cost in micro-cents (millionths of a cent): tokens × cents per million tokens.
      */
+    /** Cost of a speech-to-text request: per minute of audio when the model is priced that way, else by tokens. */
+    public function transcriptionCostMicrocents(float $audioSeconds, int $tokensIn, int $tokensOut): int
+    {
+        if ($this->audio_cost_per_minute_microcents > 0 && $audioSeconds > 0) {
+            return (int) ceil($audioSeconds * $this->audio_cost_per_minute_microcents / 60);
+        }
+
+        return $this->costMicrocents($tokensIn, $tokensOut);
+    }
+
     public function costMicrocents(int $tokensIn, int $tokensOut, int $cacheReadTokens = 0): int
     {
         return $tokensIn * $this->input_cost_per_mtok_cents

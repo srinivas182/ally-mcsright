@@ -41,6 +41,7 @@ Schedule::command('crm:leads-reassign')->everyMinute()->withoutOverlapping()->on
 Schedule::command('crm:inbox-sweep')->everyMinute()->withoutOverlapping()->onOneServer();
 Schedule::command('crm:score-leads')->dailyAt('03:40')->onOneServer();
 Schedule::command('credits:grant-monthly')->dailyAt('00:20')->onOneServer();
+Schedule::command('credits:margin-watch')->dailyAt('06:10')->onOneServer();
 Schedule::command('sites:market-updates')->monthlyOn(1, '11:20')->onOneServer();
 Schedule::command('crm:search-alerts')->everyFifteenMinutes()->withoutOverlapping()->onOneServer();
 Schedule::command('listings:sync')->everyMinute()->withoutOverlapping()->onOneServer();

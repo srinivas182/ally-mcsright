@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { EmptyState } from '@/components/ui/empty-state';
 import { FormField } from '@/components/ui/form-field';
+import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/ui/page-header';
 import {
     Select,
@@ -43,9 +44,14 @@ type Model = {
     name: string;
     model_id: string;
     provider: string;
+    provider_id: number;
     status: string;
+    capabilities: string[];
     input_cents: number;
     output_cents: number;
+    cache_read_cents: number;
+    audio_per_minute_microcents: number;
+    prices_checked_at: string | null;
 };
 type Route = {
     id: number;
@@ -77,12 +83,252 @@ type RedTeamRun = {
 };
 type Props = {
     days: number;
+    presets: { key: string; name: string }[];
+    capabilities: string[];
     providers: Provider[];
     models: Model[];
     routes: Route[];
     usage: Usage[];
     redTeam: RedTeamRun[];
 };
+
+/** Add a model or change its prices (US dollars per million tokens, or per audio minute for speech to text). */
+function ModelDialog({
+    model,
+    providers,
+    capabilities,
+    onClose,
+}: {
+    model: Model | null;
+    providers: Provider[];
+    capabilities: string[];
+    onClose: () => void;
+}) {
+    const form = useForm({
+        provider_id: model?.provider_id ?? providers[0]?.id ?? 0,
+        model_id: model?.model_id ?? '',
+        display_name: model?.name ?? '',
+        capabilities: model?.capabilities ?? ['chat', 'json'],
+        input_per_mtok: model ? String(model.input_cents / 100) : '',
+        output_per_mtok: model ? String(model.output_cents / 100) : '',
+        cache_read_per_mtok: model ? String(model.cache_read_cents / 100) : '',
+        audio_per_minute: model
+            ? String(model.audio_per_minute_microcents / 100_000_000)
+            : '',
+        status: model?.status ?? 'active',
+    });
+    const submit = () => {
+        const opts = { preserveScroll: true, onSuccess: onClose };
+        if (model) {
+            form.transform((d) => {
+                const { provider_id: _p, model_id: _m, ...rest } = d;
+                return rest;
+            });
+            form.put(`/hq/ai/models/${model.id}`, opts);
+        } else {
+            form.post('/hq/ai/models', opts);
+        }
+    };
+    return (
+        <Dialog open onOpenChange={(open) => !open && onClose()}>
+            <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                    <DialogTitle>
+                        {model ? `Prices for ${model.name}` : 'Add a model'}
+                    </DialogTitle>
+                    <DialogDescription>
+                        Copy prices from the provider's pricing page. Credits
+                        are planned from these prices, so keep them current.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-3 text-sm">
+                    {!model && (
+                        <>
+                            <FormField
+                                label="Provider"
+                                error={form.errors.provider_id}
+                            >
+                                {(control) => (
+                                    <select
+                                        {...control}
+                                        className="h-9 rounded-md border bg-background px-2"
+                                        value={form.data.provider_id}
+                                        onChange={(e) =>
+                                            form.setData(
+                                                'provider_id',
+                                                parseInt(e.target.value, 10),
+                                            )
+                                        }
+                                    >
+                                        {providers.map((p) => (
+                                            <option key={p.id} value={p.id}>
+                                                {p.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                )}
+                            </FormField>
+                            <FormField
+                                label="Model ID (exactly as the provider names it)"
+                                error={form.errors.model_id}
+                            >
+                                {(control) => (
+                                    <Input
+                                        {...control}
+                                        value={form.data.model_id}
+                                        onChange={(e) =>
+                                            form.setData(
+                                                'model_id',
+                                                e.target.value,
+                                            )
+                                        }
+                                    />
+                                )}
+                            </FormField>
+                        </>
+                    )}
+                    <FormField
+                        label="Display name"
+                        error={form.errors.display_name}
+                    >
+                        {(control) => (
+                            <Input
+                                {...control}
+                                value={form.data.display_name}
+                                onChange={(e) =>
+                                    form.setData('display_name', e.target.value)
+                                }
+                            />
+                        )}
+                    </FormField>
+                    <fieldset className="flex flex-wrap gap-3">
+                        <legend className="mb-1 font-medium">Can do</legend>
+                        {capabilities.map((c) => (
+                            <label key={c} className="flex items-center gap-1">
+                                <input
+                                    type="checkbox"
+                                    checked={form.data.capabilities.includes(c)}
+                                    onChange={(e) =>
+                                        form.setData(
+                                            'capabilities',
+                                            e.target.checked
+                                                ? [...form.data.capabilities, c]
+                                                : form.data.capabilities.filter(
+                                                      (x) => x !== c,
+                                                  ),
+                                        )
+                                    }
+                                />
+                                {c}
+                            </label>
+                        ))}
+                    </fieldset>
+                    <div className="grid grid-cols-3 gap-2">
+                        <FormField
+                            label="Input $/1M tokens"
+                            error={form.errors.input_per_mtok}
+                        >
+                            {(control) => (
+                                <Input
+                                    {...control}
+                                    type="number"
+                                    step="0.01"
+                                    value={form.data.input_per_mtok}
+                                    onChange={(e) =>
+                                        form.setData(
+                                            'input_per_mtok',
+                                            e.target.value,
+                                        )
+                                    }
+                                />
+                            )}
+                        </FormField>
+                        <FormField
+                            label="Output $/1M tokens"
+                            error={form.errors.output_per_mtok}
+                        >
+                            {(control) => (
+                                <Input
+                                    {...control}
+                                    type="number"
+                                    step="0.01"
+                                    value={form.data.output_per_mtok}
+                                    onChange={(e) =>
+                                        form.setData(
+                                            'output_per_mtok',
+                                            e.target.value,
+                                        )
+                                    }
+                                />
+                            )}
+                        </FormField>
+                        <FormField
+                            label="Cached input $/1M"
+                            error={form.errors.cache_read_per_mtok}
+                        >
+                            {(control) => (
+                                <Input
+                                    {...control}
+                                    type="number"
+                                    step="0.01"
+                                    value={form.data.cache_read_per_mtok}
+                                    onChange={(e) =>
+                                        form.setData(
+                                            'cache_read_per_mtok',
+                                            e.target.value,
+                                        )
+                                    }
+                                />
+                            )}
+                        </FormField>
+                    </div>
+                    <FormField
+                        label="Speech to text: $ per audio minute (leave empty for token-priced models)"
+                        error={form.errors.audio_per_minute}
+                    >
+                        {(control) => (
+                            <Input
+                                {...control}
+                                type="number"
+                                step="0.0001"
+                                value={form.data.audio_per_minute}
+                                onChange={(e) =>
+                                    form.setData(
+                                        'audio_per_minute',
+                                        e.target.value,
+                                    )
+                                }
+                            />
+                        )}
+                    </FormField>
+                    <label className="flex items-center gap-2">
+                        <Switch
+                            checked={form.data.status === 'active'}
+                            onCheckedChange={(on) =>
+                                form.setData(
+                                    'status',
+                                    on ? 'active' : 'disabled',
+                                )
+                            }
+                        />
+                        Active
+                    </label>
+                    {form.errors.status && (
+                        <p className="text-destructive">{form.errors.status}</p>
+                    )}
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={onClose}>
+                        Cancel
+                    </Button>
+                    <Button onClick={submit} disabled={form.processing}>
+                        Save
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
 
 const dollars = (cents: number) =>
     new Intl.NumberFormat('en-US', {
@@ -281,6 +527,8 @@ function RouteRow({ route, models }: { route: Route; models: Model[] }) {
 
 export default function AiConsole({
     days,
+    presets,
+    capabilities,
     providers,
     models,
     routes,
@@ -288,6 +536,13 @@ export default function AiConsole({
     redTeam,
 }: Props) {
     const [editing, setEditing] = useState<Provider | null>(null);
+    const [modelEditing, setModelEditing] = useState<Model | 'new' | null>(
+        null,
+    );
+    const [preset, setPreset] = useState('');
+    const missingPresets = presets.filter(
+        (p) => !providers.some((x) => x.key === p.key),
+    );
     const totals = usage.reduce(
         (t, u) => ({
             requests: t.requests + u.requests,
@@ -431,7 +686,45 @@ export default function AiConsole({
                         </ul>
                     </TabsContent>
 
-                    <TabsContent value="providers">
+                    <TabsContent value="providers" className="grid gap-3">
+                        {missingPresets.length > 0 && (
+                            <div className="flex flex-wrap items-center gap-2 text-sm">
+                                <select
+                                    aria-label="Provider to add"
+                                    className="h-9 rounded-md border bg-background px-2"
+                                    value={preset}
+                                    onChange={(e) => setPreset(e.target.value)}
+                                >
+                                    <option value="">Add a provider…</option>
+                                    {missingPresets.map((p) => (
+                                        <option key={p.key} value={p.key}>
+                                            {p.name}
+                                        </option>
+                                    ))}
+                                </select>
+                                <Button
+                                    size="sm"
+                                    disabled={!preset}
+                                    onClick={() =>
+                                        router.post(
+                                            '/hq/ai/providers',
+                                            { preset },
+                                            {
+                                                preserveScroll: true,
+                                                onSuccess: () => setPreset(''),
+                                            },
+                                        )
+                                    }
+                                >
+                                    Add
+                                </Button>
+                                <span className="text-muted-foreground">
+                                    Its API key goes in the server environment
+                                    (ANTHROPIC_API_KEY, OPENAI_API_KEY,
+                                    GEMINI_API_KEY), never here.
+                                </span>
+                            </div>
+                        )}
                         <ul className="divide-y rounded-lg border">
                             {providers.map((p) => (
                                 <li
@@ -479,7 +772,20 @@ export default function AiConsole({
                         </ul>
                     </TabsContent>
 
-                    <TabsContent value="models">
+                    <TabsContent value="models" className="grid gap-3">
+                        <div className="flex flex-wrap items-center gap-2 text-sm">
+                            <Button
+                                size="sm"
+                                disabled={providers.length === 0}
+                                onClick={() => setModelEditing('new')}
+                            >
+                                Add a model
+                            </Button>
+                            <span className="text-muted-foreground">
+                                Credits are priced from these prices (HQ →
+                                RightAlly credits).
+                            </span>
+                        </div>
                         <ul className="divide-y rounded-lg border">
                             {models.map((m) => (
                                 <li
@@ -494,10 +800,25 @@ export default function AiConsole({
                                             {m.provider} · {m.model_id}
                                         </span>
                                     </span>
-                                    <span className="text-muted-foreground tabular-nums">
-                                        {dollars(m.input_cents)} in /{' '}
-                                        {dollars(m.output_cents)} out per
-                                        million tokens
+                                    <span className="flex items-center gap-2 text-muted-foreground tabular-nums">
+                                        {m.audio_per_minute_microcents > 0
+                                            ? `$${(m.audio_per_minute_microcents / 100_000_000).toFixed(4)} per audio minute`
+                                            : `${dollars(m.input_cents)} in / ${dollars(m.output_cents)} out per million tokens`}
+                                        {m.prices_checked_at
+                                            ? ` · checked ${m.prices_checked_at}`
+                                            : ' · prices never checked'}
+                                        {m.status !== 'active' && (
+                                            <Badge variant="secondary">
+                                                Off
+                                            </Badge>
+                                        )}
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => setModelEditing(m)}
+                                        >
+                                            Edit
+                                        </Button>
                                     </span>
                                 </li>
                             ))}
@@ -553,6 +874,14 @@ export default function AiConsole({
                     </TabsContent>
                 </Tabs>
             </div>
+            {modelEditing && (
+                <ModelDialog
+                    model={modelEditing === 'new' ? null : modelEditing}
+                    providers={providers}
+                    capabilities={capabilities}
+                    onClose={() => setModelEditing(null)}
+                />
+            )}
             {editing && (
                 <ProviderDialog
                     provider={editing}

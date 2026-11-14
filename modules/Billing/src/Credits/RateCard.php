@@ -41,6 +41,32 @@ final class RateCard
         'ai.ailly' => [1, true, 'AIlly assistant reply'],
     ];
 
+    /**
+     * Planning size of one use until HQ sets its own or real data exists: [tokens in, tokens out, audio seconds].
+     * Generous on purpose (they include retries such as the SEO rewrite on drafts).
+     */
+    public const DEFAULT_ESTIMATES = [
+        'ai.crm_brief' => [3000, 500, 0],
+        'ai.crm_ask' => [2000, 300, 0],
+        'ai.voice' => [0, 0, 30],
+        'ai.crm_voice_log' => [800, 300, 0],
+        'ai.crm_quick_add' => [600, 200, 0],
+        'ai.crm_intents' => [800, 150, 0],
+        'ai.crm_lead_email' => [2000, 300, 0],
+        'ai.crm_reply_draft' => [2000, 300, 0],
+        'ai.crm_ai_responder' => [2500, 300, 0],
+        'ai.forms_summary' => [8000, 800, 0],
+        'ai.site_journey' => [1500, 300, 0],
+        'ai.site_post' => [6000, 4000, 0],
+        'ai.site_page' => [5000, 3000, 0],
+        'ai.site_assist' => [1500, 600, 0],
+        'ai.site_market' => [6000, 4000, 0],
+        'ai.doc_read' => [8000, 600, 0],
+        'ai.doc_ask' => [6000, 300, 0],
+        'ai.compliance_rule' => [1500, 400, 0],
+        'ai.ailly' => [3000, 300, 0],
+    ];
+
     /** @var array<string, array{credits: int, automation: bool, label: string}>|null */
     private ?array $cache = null;
 
@@ -122,5 +148,63 @@ final class RateCard
         $db->exists() ? $db->update(['enforce' => $enforce, 'updated_by' => $by->id, 'updated_at' => now()])
             : $db->insert(['enforce' => $enforce, 'updated_by' => $by->id, 'created_at' => now(), 'updated_at' => now()]);
         app(AuditLogger::class)->record('billing.credits.enforcement', changes: ['enforce' => ['old' => $old, 'new' => $enforce]], severity: 'warning');
+    }
+
+    /**
+     * Planning size of one use of each action (HQ's numbers over the defaults).
+     *
+     * @return array<string, array{tokens_in: int, tokens_out: int, audio_seconds: int}>
+     */
+    public function estimates(): array
+    {
+        $out = [];
+        foreach (array_keys($this->all()) as $key) {
+            [$in, $outTokens, $audio] = self::DEFAULT_ESTIMATES[$key] ?? [2000, 500, 0];
+            $out[$key] = ['tokens_in' => $in, 'tokens_out' => $outTokens, 'audio_seconds' => $audio];
+        }
+        foreach (DB::connection(Connections::control())->table('credit_rate_card')->get(['action_key', 'est_tokens_in', 'est_tokens_out', 'est_audio_seconds']) as $row) {
+            $key = (string) $row->action_key;
+            if (isset($out[$key]) && $row->est_tokens_in !== null) {
+                $out[$key] = ['tokens_in' => (int) $row->est_tokens_in, 'tokens_out' => (int) $row->est_tokens_out, 'audio_seconds' => (int) $row->est_audio_seconds];
+            }
+        }
+
+        return $out;
+    }
+
+    public function saveEstimate(string $actionKey, int $tokensIn, int $tokensOut, int $audioSeconds, User $by): void
+    {
+        $rate = $this->rate($actionKey);
+        DB::connection(Connections::control())->table('credit_rate_card')->updateOrInsert(['action_key' => $actionKey],
+            ['label' => $rate['label'], 'credits' => $rate['credits'], 'automation' => $rate['automation'], 'active' => true, 'est_tokens_in' => $tokensIn,
+                'est_tokens_out' => $tokensOut, 'est_audio_seconds' => $audioSeconds, 'updated_by' => $by->id, 'updated_at' => now(), 'created_at' => now()]);
+        $this->cache = null;
+        app(AuditLogger::class)->record('billing.credits.estimate_changed', metadata: ['action' => $actionKey, 'in' => $tokensIn, 'out' => $tokensOut, 'audio' => $audioSeconds]);
+    }
+
+    /**
+     * HQ's margin rules: the margin prices aim for, the lowest acceptable, and the share of a package's price
+     * that included usage may cost.
+     *
+     * @return array{target: int, floor: int, usage_budget: int}
+     */
+    public function margins(): array
+    {
+        $row = DB::connection(Connections::control())->table('credit_settings')->first(['target_margin_pct', 'floor_margin_pct', 'usage_budget_pct']);
+
+        return ['target' => (int) ($row->target_margin_pct ?? 60), 'floor' => (int) ($row->floor_margin_pct ?? 40), 'usage_budget' => (int) ($row->usage_budget_pct ?? 20)];
+    }
+
+    public function saveMargins(int $target, int $floor, int $usageBudget, User $by): void
+    {
+        if ($floor > $target || $target > 95 || $floor < 0 || $usageBudget < 1 || $usageBudget > 90) {
+            throw ValidationException::withMessages(['target' => 'The minimum margin must be at most the target (target up to 95%), and the usage budget 1–90%.']);
+        }
+        $old = $this->margins();
+        $values = ['target_margin_pct' => $target, 'floor_margin_pct' => $floor, 'usage_budget_pct' => $usageBudget, 'updated_by' => $by->id, 'updated_at' => now()];
+        $db = DB::connection(Connections::control())->table('credit_settings');
+        $db->exists() ? $db->update($values) : $db->insert($values + ['created_at' => now()]);
+        app(AuditLogger::class)->record('billing.credits.margins_changed', changes: ['margins' => ['old' => $old, 'new' => ['target' => $target, 'floor' => $floor, 'usage_budget' => $usageBudget]]],
+            severity: 'notice');
     }
 }
