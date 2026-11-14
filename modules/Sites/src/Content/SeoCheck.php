@@ -82,7 +82,8 @@ final class SeoCheck
         $h1 = preg_match_all('/^#\s/m', $post->body);
         $noAlt = preg_match_all('/!\[\s*\]\(/', $post->body);
         $internal = preg_match_all('#\]\((/[^)\s]*)\)#', $post->body);
-        $firstPara = trim((string) (preg_split('/\n\s*\n/', trim(strip_tags((string) preg_replace('#<h[1-6][^>]*>.*?</h[1-6]>#s', '', $r['html'])))) ?: [''])[0]);
+        // The opening paragraph: the first <p> of the rendered post.
+        $firstPara = preg_match('#<p>(.*?)</p>#s', $r['html'], $pm) === 1 ? trim(html_entity_decode(strip_tags($pm[1]))) : '';
         $answer = str_word_count($firstPara) >= 25 && str_word_count($firstPara) <= 90;
         $questions = count(array_filter($r['toc'], fn (array $h): bool => str_ends_with($h['text'], '?')));
 

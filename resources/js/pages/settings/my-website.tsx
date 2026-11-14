@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/ui/page-header';
 import { Textarea } from '@/components/ui/textarea';
+import { postJson } from '@/lib/http';
 
 type Rules = {
     enabled: boolean;
@@ -131,6 +132,39 @@ function Manage({
         },
     });
     const domain = useForm({ host: '' });
+    const [bioBusy, setBioBusy] = useState(false);
+    const [bioError, setBioError] = useState<string | null>(null);
+    const writeBio = async () => {
+        setBioBusy(true);
+        setBioError(null);
+        try {
+            const res = await postJson<{ result: string; warnings: string[] }>(
+                '/settings/website/ai/assist',
+                {
+                    action: 'bio',
+                    site: site.ulid,
+                    profile: {
+                        name: form.data.name,
+                        tagline: form.data.tagline,
+                        areas: form.data.areas,
+                        languages: form.data.languages,
+                        bio: form.data.bio,
+                    },
+                },
+            );
+            if (res.result) {
+                form.setData('bio', res.result);
+            }
+        } catch (e) {
+            setBioError(
+                e instanceof Error
+                    ? e.message
+                    : 'AI help is not available right now.',
+            );
+        } finally {
+            setBioBusy(false);
+        }
+    };
 
     return (
         <>
@@ -236,6 +270,23 @@ function Manage({
                     value={form.data.bio}
                     onChange={(e) => form.setData('bio', e.target.value)}
                 />
+                <div className="flex items-center gap-2">
+                    <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={bioBusy}
+                        onClick={writeBio}
+                    >
+                        {bioBusy ? 'Writing…' : 'Write my story with AI'}
+                    </Button>
+                    <span className="text-xs text-muted-foreground">
+                        Uses AI credits; from your profile above.
+                    </span>
+                </div>
+                {bioError && (
+                    <p className="text-xs text-destructive">{bioError}</p>
+                )}
                 {(rules.template || rules.colours) && (
                     <div className="flex flex-wrap items-end gap-3">
                         {rules.template && (

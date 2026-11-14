@@ -10,6 +10,7 @@ use Modules\Sites\Http\Controllers\HqSitesController;
 use Modules\Sites\Http\Controllers\MediaController;
 use Modules\Sites\Http\Controllers\MyWebsiteController;
 use Modules\Sites\Http\Controllers\PageEditorController;
+use Modules\Sites\Http\Controllers\StudioController;
 use Modules\Sites\Http\Controllers\WebsiteSettingsController;
 
 // Settings → Website (owners and staff; specs/websites/05). The public site itself is served by ServeWebsite.
@@ -40,6 +41,12 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])
         Route::post('pages/{page}/discard', [PageEditorController::class, 'discard'])->name('pages.discard');
         Route::post('pages/{page}/restore', [PageEditorController::class, 'restore'])->name('pages.restore');
         Route::delete('pages/{page}', [PageEditorController::class, 'destroy'])->name('pages.destroy');
+
+        // AI content studio.
+        Route::post('ai/post', [StudioController::class, 'post'])->middleware('throttle:20,1,site-ai')->name('ai.post');
+        Route::post('ai/page', [StudioController::class, 'page'])->middleware('throttle:20,1,site-ai')->name('ai.page');
+        Route::post('ai/assist', [StudioController::class, 'assist'])->middleware('throttle:60,1,site-ai-assist')->name('ai.assist');
+        Route::post('ai/market-updates', [StudioController::class, 'marketUpdates'])->name('ai.market');
 
         // Media library.
         Route::get('media', [MediaController::class, 'index'])->name('media.index');

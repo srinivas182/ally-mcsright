@@ -47,6 +47,7 @@ final class PageEditorController
             'back' => $site->kind === 'agent' && ! CrmAccess::manager(self::user($request)) ? '/settings/my-website' : '/settings/website',
             'places' => array_map(fn (array $p): array => ['slug' => $p['slug'], 'name' => $p['name']], $stats->places($tenants->id(), 40)),
             'media' => self::mediaList($site, $media),
+            'ai_notes' => $request->session()->get('ai_notes'),
         ]);
     }
 

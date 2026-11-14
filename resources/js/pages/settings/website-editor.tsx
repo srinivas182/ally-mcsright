@@ -7,7 +7,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { getJson, sendJson } from '@/lib/http';
+import {
+    AiNotesPanel,
+    type AiNotes,
+    type AssistResult,
+} from '@/components/sites/ai-notes';
+import { getJson, postJson, sendJson } from '@/lib/http';
 
 type Section = {
     type: string;
@@ -36,7 +41,14 @@ type Props = {
     live_url: string | null;
     places: { slug: string; name: string }[];
     media: MediaItem[];
+    ai_notes: AiNotes;
 };
+
+/** Rewrites a piece of text with AI (improve, shorter, longer); null when unavailable. */
+type Rewrite = (
+    text: string,
+    mode: 'improve' | 'shorter' | 'longer',
+) => Promise<string | null>;
 
 type Field =
     | {
@@ -224,6 +236,44 @@ export default function WebsiteEditor(props: Props) {
     const [width, setWidth] = useState<'desktop' | 'phone'>('desktop');
     const [addType, setAddType] = useState(types[0]?.type ?? 'text');
     const first = useRef(true);
+    const [aiNotes, setAiNotes] = useState<AiNotes>(props.ai_notes);
+    const [aiError, setAiError] = useState<string | null>(null);
+    const [aiBusy, setAiBusy] = useState(false);
+    const assist = async <T,>(
+        action: string,
+        body: Record<string, unknown>,
+    ): Promise<T | null> => {
+        setAiBusy(true);
+        setAiError(null);
+        try {
+            const res = await postJson<AssistResult<T>>(
+                '/settings/website/ai/assist',
+                { action, site: props.site.ulid, title: page.title, ...body },
+            );
+            setAiNotes({ score: check.score, warnings: res.warnings });
+            return res.result;
+        } catch (e) {
+            setAiError(
+                e instanceof Error
+                    ? e.message
+                    : 'AI help is not available right now.',
+            );
+            return null;
+        } finally {
+            setAiBusy(false);
+        }
+    };
+    const rewrite: Rewrite = (text, mode) =>
+        assist<string>('rewrite', { content: text, mode });
+    const pageText = () =>
+        sections
+            .filter((s) => !s.hidden)
+            .map((s) =>
+                [s.props.title, s.props.headline, s.props.subhead, s.props.body]
+                    .filter((x) => typeof x === 'string')
+                    .join('\n'),
+            )
+            .join('\n\n');
     const meta = useForm({
         title: page.title,
         meta_description: page.meta_description ?? '',
@@ -468,6 +518,7 @@ export default function WebsiteEditor(props: Props) {
                                                 setMedia([m, ...media])
                                             }
                                             places={props.places}
+                                            rewrite={rewrite}
                                         />
                                     </div>
                                 )}
@@ -571,6 +622,66 @@ export default function WebsiteEditor(props: Props) {
 
                         <div className="rounded-lg border p-3">
                             <SeoScore check={check} />
+                            <div className="mt-3 flex flex-wrap gap-2">
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={aiBusy}
+                                    onClick={async () => {
+                                        const items = await assist<
+                                            { q: string; a: string }[]
+                                        >('faq', { content: pageText() });
+                                        if (items && items.length > 0) {
+                                            setSections([
+                                                ...sections,
+                                                {
+                                                    type: 'faq',
+                                                    id: `faq-${Math.random().toString(36).slice(2, 8)}`,
+                                                    hidden: false,
+                                                    props: {
+                                                        title: 'Questions and answers',
+                                                        items,
+                                                    },
+                                                },
+                                            ]);
+                                        }
+                                    }}
+                                >
+                                    AI: add FAQ from this page
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={aiBusy}
+                                    onClick={async () => {
+                                        const m = await assist<{
+                                            seo_title: string;
+                                            meta_description: string;
+                                        }>('meta', { content: pageText() });
+                                        if (m) {
+                                            meta.setData(
+                                                'meta_description',
+                                                m.meta_description,
+                                            );
+                                        }
+                                    }}
+                                >
+                                    AI: write search description
+                                </Button>
+                                {aiBusy && (
+                                    <span className="text-xs text-muted-foreground">
+                                        Working…
+                                    </span>
+                                )}
+                            </div>
+                            {aiError && (
+                                <p className="mt-2 text-xs text-destructive">
+                                    {aiError}
+                                </p>
+                            )}
+                            <div className="mt-3">
+                                <AiNotesPanel notes={aiNotes} />
+                            </div>
                         </div>
 
                         {versions.length > 0 && (
@@ -709,7 +820,9 @@ function Fields({
     media,
     onUploaded,
     places,
+    rewrite,
 }: {
+    rewrite: Rewrite;
     fields: Field[];
     value: Record<string, unknown>;
     onChange: (v: Record<string, unknown>) => void;
@@ -737,6 +850,40 @@ function Fields({
                                     value={text(v)}
                                     onChange={(e) => set(f.key, e.target.value)}
                                 />
+                                {text(v).trim().length > 20 && (
+                                    <span className="flex gap-1 font-normal">
+                                        {(
+                                            [
+                                                'improve',
+                                                'shorter',
+                                                'longer',
+                                            ] as const
+                                        ).map((mode) => (
+                                            <Button
+                                                key={mode}
+                                                type="button"
+                                                size="sm"
+                                                variant="ghost"
+                                                className="h-6 px-2 text-xs"
+                                                onClick={async () => {
+                                                    const out = await rewrite(
+                                                        text(v),
+                                                        mode,
+                                                    );
+                                                    if (out) {
+                                                        set(f.key, out);
+                                                    }
+                                                }}
+                                            >
+                                                {mode === 'improve'
+                                                    ? 'AI: improve'
+                                                    : mode === 'shorter'
+                                                      ? 'Shorter'
+                                                      : 'Longer'}
+                                            </Button>
+                                        ))}
+                                    </span>
+                                )}
                             </label>
                         );
                     case 'number':
@@ -925,6 +1072,7 @@ function Fields({
                                         className="grid gap-2 rounded-md border p-2"
                                     >
                                         <Fields
+                                            rewrite={rewrite}
                                             site={site}
                                             fields={f.fields}
                                             value={it}

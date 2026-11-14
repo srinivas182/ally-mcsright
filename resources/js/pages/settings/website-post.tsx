@@ -6,6 +6,11 @@ import { SeoScore, type SeoChecks } from '@/components/sites/seo-score';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import {
+    AiNotesPanel,
+    type AiNotes,
+    type AssistResult,
+} from '@/components/sites/ai-notes';
 import { postJson } from '@/lib/http';
 
 type Post = {
@@ -30,6 +35,7 @@ type Props = {
     live_url: string | null;
     categories: string[];
     media: MediaItem[];
+    ai_notes: AiNotes;
 };
 
 const local = (iso: string | null) =>
@@ -49,6 +55,7 @@ export default function WebsitePost({
     live_url,
     categories,
     media: initialMedia,
+    ai_notes,
 }: Props) {
     const form = useForm({
         title: post?.title ?? '',
@@ -67,6 +74,38 @@ export default function WebsitePost({
     });
     const [check, setCheck] = useState<SeoChecks | null>(initial);
     const [media, setMedia] = useState<MediaItem[]>(initialMedia);
+    const [aiBusy, setAiBusy] = useState<string | null>(null);
+    const [aiNotes, setAiNotes] = useState<AiNotes>(ai_notes);
+    const [aiError, setAiError] = useState<string | null>(null);
+    const assist = async <T,>(
+        action: string,
+        extra: Record<string, unknown>,
+        apply: (r: T) => void,
+    ) => {
+        setAiBusy(action);
+        setAiError(null);
+        try {
+            const res = await postJson<AssistResult<T>>(
+                '/settings/website/ai/assist',
+                {
+                    action,
+                    title: form.data.title,
+                    content: form.data.body,
+                    ...extra,
+                },
+            );
+            apply(res.result);
+            setAiNotes({ score: check?.score ?? 0, warnings: res.warnings });
+        } catch (e) {
+            setAiError(
+                e instanceof Error
+                    ? e.message
+                    : 'AI help is not available right now.',
+            );
+        } finally {
+            setAiBusy(null);
+        }
+    };
 
     // Re-check as the post is written.
     useEffect(() => {
@@ -186,6 +225,108 @@ export default function WebsitePost({
                                 form.setData('body', e.target.value)
                             }
                         />
+                        <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-xs font-medium">
+                                AI help (uses AI credits):
+                            </span>
+                            {(['improve', 'shorter', 'longer'] as const).map(
+                                (mode) => (
+                                    <Button
+                                        key={mode}
+                                        type="button"
+                                        size="sm"
+                                        variant="outline"
+                                        disabled={
+                                            aiBusy !== null ||
+                                            form.data.body.trim() === ''
+                                        }
+                                        onClick={() =>
+                                            assist<string>(
+                                                'rewrite',
+                                                { mode },
+                                                (t) =>
+                                                    t !== '' &&
+                                                    form.setData('body', t),
+                                            )
+                                        }
+                                    >
+                                        {mode === 'improve'
+                                            ? 'Improve'
+                                            : mode === 'shorter'
+                                              ? 'Shorter'
+                                              : 'Longer'}
+                                    </Button>
+                                ),
+                            )}
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                disabled={
+                                    aiBusy !== null ||
+                                    form.data.body.trim() === ''
+                                }
+                                onClick={() =>
+                                    assist<{ q: string; a: string }[]>(
+                                        'faq',
+                                        {},
+                                        (items) => {
+                                            if (items.length > 0) {
+                                                form.setData(
+                                                    'body',
+                                                    form.data.body.trimEnd() +
+                                                        '\n\n## Frequently asked questions\n\n' +
+                                                        items
+                                                            .map(
+                                                                (i) =>
+                                                                    `### ${i.q}\n\n${i.a}`,
+                                                            )
+                                                            .join('\n\n') +
+                                                        '\n',
+                                                );
+                                            }
+                                        },
+                                    )
+                                }
+                            >
+                                Add FAQ
+                            </Button>
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                disabled={
+                                    aiBusy !== null ||
+                                    form.data.body.trim() === ''
+                                }
+                                onClick={() =>
+                                    assist<{
+                                        seo_title: string;
+                                        meta_description: string;
+                                    }>('meta', {}, (m) =>
+                                        form.setData({
+                                            ...form.data,
+                                            seo_title: m.seo_title,
+                                            meta_description:
+                                                m.meta_description,
+                                        }),
+                                    )
+                                }
+                            >
+                                Write search title and description
+                            </Button>
+                            {aiBusy !== null && (
+                                <span className="text-xs text-muted-foreground">
+                                    Working…
+                                </span>
+                            )}
+                        </div>
+                        {aiError && (
+                            <p className="text-xs text-destructive">
+                                {aiError}
+                            </p>
+                        )}
+                        <AiNotesPanel notes={aiNotes} />
                         <p className="text-xs text-muted-foreground">
                             Write in Markdown: ## for headings (phrase some as
                             questions), **bold**, - lists, [link text](/homes),
