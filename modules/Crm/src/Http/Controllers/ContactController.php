@@ -35,6 +35,7 @@ use Modules\Crm\Models\Memory;
 use Modules\Crm\Models\PlanEnrollment;
 use Modules\Crm\Models\Referral;
 use Modules\Crm\Models\Relationship;
+use Modules\Crm\Models\SavedSearch;
 use Modules\Crm\Models\Stage;
 use Modules\Crm\Models\Tag;
 use Modules\Crm\Models\Task;
@@ -136,7 +137,12 @@ final class ContactController
 
         $visibleIds = $this->visibility->query($user)->pluck('id')->all();
 
+        $savedSearches = SavedSearch::query()->where('contact_id', $contact->id)->latest('id')->get()
+            ->map(fn (SavedSearch $s): array => ['ulid' => $s->ulid, 'name' => $s->name, 'frequency' => $s->frequency, 'last_sent_at' => $s->last_sent_at?->toIso8601String(),
+                'sent_count' => $s->sent_count, 'unsubscribed' => $s->unsubscribed_at !== null]);
+
         return Inertia::render('crm/contacts/show', [
+            'savedSearches' => $savedSearches,
             'contact' => self::row($contact) + [
                 'first_name' => $contact->first_name, 'last_name' => $contact->last_name, 'company_name' => $contact->company_name,
                 'emails' => $contact->emails, 'phones' => $contact->phones,

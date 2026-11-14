@@ -1,4 +1,8 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
+import {
+    SavedSearches,
+    type SavedSearchRow,
+} from '@/components/crm/saved-searches';
 import { MailIcon, MessageSquareIcon, PhoneIcon } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
@@ -108,6 +112,7 @@ type Props = {
     canManage: boolean;
     agents: { id: number; name: string }[];
     lifecycles: string[];
+    savedSearches: SavedSearchRow[];
     relations: string[];
 };
 
@@ -554,6 +559,7 @@ export default function ContactShow({
     canManage,
     agents,
     lifecycles,
+    savedSearches,
 }: Props) {
     const base = `/contacts/${contact.ulid}`;
     const form = useForm({
@@ -696,6 +702,11 @@ export default function ContactShow({
                             email={contact.emails[0]?.address ?? null}
                         />
                         <QuickUpdate contactUlid={contact.ulid} />
+                        <SavedSearches
+                            contactUlid={contact.ulid}
+                            searches={savedSearches}
+                            canEmail={contact.emails.length > 0}
+                        />
                         <Timeline contactUlid={contact.ulid} items={timeline} />
                         {canManage && (
                             <form

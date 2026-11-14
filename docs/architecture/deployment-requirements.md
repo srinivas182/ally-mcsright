@@ -51,6 +51,7 @@ Settings the platform depends on in every environment. Each one was found by a t
 - Email replies come back through the same inbound-email webhook (reply addresses `reply-<token>@<inbound domain>`).
 - `crm:inbox-sweep` runs every minute.
 - `crm:score-leads` runs nightly (03:40); scores also update on every reply.
+- `crm:search-alerts` runs every 15 minutes (saved-search emails).
 - The speed-to-lead call uses the HQ Twilio account (Texts and calls); Twilio must be able to reach the
   brokerage domains over HTTPS for the "press 1" step.
 

@@ -60,6 +60,7 @@ use Modules\Listings\Access\MlsAccess;
  * @property bool $avm_allowed
  * @property bool $comments_allowed
  * @property string|null $cover_path
+ * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $price_changed_at
  * @property MlsSource $source
  */
