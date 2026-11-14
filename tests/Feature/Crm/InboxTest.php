@@ -185,7 +185,7 @@ it('answers sign-code texts with the home details and makes a lead for the listi
     $this->actingAs($bob)->post('/inbox/signs', ['code' => 'OAK12', 'property' => 'x', 'details' => 'y'])->assertSessionHasErrors('code');
 
     twilio($this, ['From' => '+15125550177', 'Body' => ' oak12 '])->assertOk()
-        ->assertSee('<Message>12 Oak St: 3 bed, 2 bath, $450,000. Photos: https://acme.example/oak — Bob, '.e($this->tenant->name).' Reply STOP to opt out.</Message>', false);
+        ->assertSee('<Message>12 Oak St: 3 bed, 2 bath, $450,000. Photos: https://acme.example/oak — Bob, '.htmlspecialchars($this->tenant->name, ENT_XML1 | ENT_QUOTES).' Reply STOP to opt out.</Message>', false);
     $lead = Lead::query()->sole();
     $contact = $lead->contact;
     expect($lead->source)->toBe('sign')->and($lead->assigned_user_id)->toBe($bob->id)->and($lead->property)->toBe('12 Oak St')
