@@ -14,4 +14,12 @@ final class FakeVoiceCaller implements VoiceCaller
     {
         $this->calls[] = ['to' => $to, 'message' => $message];
     }
+
+    /** @var list<array{to: string, message: string, on_press: string}> */
+    public array $connects = [];
+
+    public function connect(string $to, string $message, string $onPress): void
+    {
+        $this->connects[] = ['to' => $to, 'message' => $message, 'on_press' => $onPress];
+    }
 }

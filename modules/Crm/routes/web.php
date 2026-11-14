@@ -9,6 +9,11 @@ use Modules\Crm\Http\Controllers\AskController;
 use Modules\Crm\Http\Controllers\BriefController;
 use Modules\Crm\Http\Controllers\ContactController;
 use Modules\Crm\Http\Controllers\DataController;
+use Modules\Crm\Http\Controllers\Leads\InboundEmailController;
+use Modules\Crm\Http\Controllers\Leads\LeadApiController;
+use Modules\Crm\Http\Controllers\Leads\LeadConnectController;
+use Modules\Crm\Http\Controllers\Leads\LeadController;
+use Modules\Crm\Http\Controllers\Leads\LeadFormController;
 use Modules\Crm\Http\Controllers\PipelineController;
 use Modules\Crm\Http\Controllers\PlanController;
 use Modules\Crm\Http\Controllers\RelationshipController;
@@ -77,3 +82,33 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function
     Route::post('tasks/{task}/reopen', [TaskController::class, 'reopen'])->name('crm.tasks.reopen');
     Route::post('tasks/{task}/reschedule', [TaskController::class, 'reschedule'])->name('crm.tasks.reschedule');
 });
+
+// Leads (specs/grow/04, Sprint 16A).
+Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoffice.basic'])
+    ->prefix('leads')
+    ->name('crm.leads.')
+    ->group(function (): void {
+        Route::get('/', [LeadController::class, 'index'])->name('index');
+        Route::post('alerts', [LeadController::class, 'alerts'])->name('alerts');
+        Route::get('settings', [LeadController::class, 'settings'])->name('settings');
+        Route::post('settings', [LeadController::class, 'saveSettings'])->name('settings.save');
+        Route::post('sources', [LeadController::class, 'storeSource'])->name('sources.store');
+        Route::post('sources/{source}/active', [LeadController::class, 'sourceActive'])->name('sources.active');
+        Route::post('sources/{source}/key', [LeadController::class, 'rotateKey'])->middleware('password.confirm')->name('sources.key');
+        Route::post('rules', [LeadController::class, 'storeRule'])->name('rules.store');
+        Route::post('rules/order', [LeadController::class, 'orderRules'])->name('rules.order');
+        Route::patch('rules/{rule}', [LeadController::class, 'updateRule'])->name('rules.update');
+        Route::delete('rules/{rule}', [LeadController::class, 'destroyRule'])->name('rules.destroy');
+        Route::post('{lead}/claim', [LeadController::class, 'claim'])->middleware('throttle:30,1,lead-claim')->name('claim');
+    });
+
+// Public lead intake: the lead API, hosted and embedded forms, and the speed-to-lead call (no session, no CSRF).
+Route::middleware([EnsureTenantWorkspace::class, 'throttle:120,1,lead-api'])->post('api/leads', [LeadApiController::class, 'store'])->name('crm.leads.api');
+Route::middleware([EnsureTenantWorkspace::class, 'throttle:60,1,lead-form-view'])->group(function (): void {
+    Route::get('l/{token}', [LeadFormController::class, 'show'])->where('token', '[A-Za-z0-9]{40}')->name('crm.leads.form');
+    Route::get('l/{token}/thanks', [LeadFormController::class, 'thanks'])->where('token', '[A-Za-z0-9]{40}')->name('crm.leads.thanks');
+});
+Route::middleware([EnsureTenantWorkspace::class, 'throttle:10,1,lead-form'])->post('l/{token}', [LeadFormController::class, 'store'])->where('token', '[A-Za-z0-9]{40}')->name('crm.leads.form.store');
+Route::middleware([EnsureTenantWorkspace::class, 'throttle:60,1,lead-connect'])->post('webhooks/leads/connect/{lead}/{agent}', LeadConnectController::class)
+    ->where('agent', '[0-9]+')->name('crm.leads.connect');
+Route::middleware('throttle:600,1,inbound-email')->post('webhooks/inbound/lead-email', InboundEmailController::class)->name('crm.leads.inbound');

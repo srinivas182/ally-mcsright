@@ -11,4 +11,9 @@ final class LogVoiceCaller implements VoiceCaller
     {
         logger()->info('Voice call (not placed: no provider configured)', ['to' => substr($to, -4), 'message' => $message]);
     }
+
+    public function connect(string $to, string $message, string $onPress): void
+    {
+        $this->call($to, $message);
+    }
 }

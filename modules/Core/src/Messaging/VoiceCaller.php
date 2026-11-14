@@ -8,4 +8,10 @@ namespace Modules\Core\Messaging;
 interface VoiceCaller
 {
     public function call(string $to, string $message): void;
+
+    /**
+     * Reads the message and asks the person to press 1; when they do, Twilio fetches TwiML from $onPress
+     * (which connects them to someone). Voicemail cannot press 1, so a missed call never connects anyone.
+     */
+    public function connect(string $to, string $message, string $onPress): void;
 }
