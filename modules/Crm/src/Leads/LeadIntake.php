@@ -125,6 +125,7 @@ final class LeadIntake
             } else {
                 $this->routing->route($lead);
             }
+            app(AiResponder::class)->leadReceived($lead->refresh());
         }
 
         return $lead->refresh();

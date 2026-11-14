@@ -94,6 +94,7 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoff
         Route::post('alerts', [LeadController::class, 'alerts'])->name('alerts');
         Route::get('settings', [LeadController::class, 'settings'])->name('settings');
         Route::post('settings', [LeadController::class, 'saveSettings'])->name('settings.save');
+        Route::post('ai', [LeadController::class, 'saveAi'])->name('ai.save');
         Route::post('sources', [LeadController::class, 'storeSource'])->name('sources.store');
         Route::post('sources/{source}/active', [LeadController::class, 'sourceActive'])->name('sources.active');
         Route::post('sources/{source}/key', [LeadController::class, 'rotateKey'])->middleware('password.confirm')->name('sources.key');

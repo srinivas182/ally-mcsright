@@ -20,6 +20,7 @@ use Modules\Crm\Actions\Timeline;
 use Modules\Crm\Consent;
 use Modules\Crm\Events\ActivityLogged;
 use Modules\Crm\FairHousing;
+use Modules\Crm\Leads\AiResponder;
 use Modules\Crm\Leads\LeadAlert;
 use Modules\Crm\Leads\PortalEmail;
 use Modules\Crm\Leads\SpeedToLead;
@@ -111,9 +112,53 @@ final class Inbox
                 'needs_reply_since' => null, 'nudged_at' => null, 'escalated_at' => null, 'assigned_user_id' => $conversation->assigned_user_id ?? $by->id])->save();
             // On the timeline as an outgoing text or email: this answers open leads (speed to lead).
             $this->timeline->log($contact, ['type' => $channel === 'sms' ? 'text' : 'email', 'direction' => 'out', 'subject' => $subject, 'body' => $body], $by);
+            // A person has taken over: the AI assistant steps back.
+            app(AiResponder::class)->stop($contact, 'agent_replied');
         } else {
             throw ValidationException::withMessages(['body' => ['The message could not be sent. Please try again in a moment.']]);
         }
+
+        return $message;
+    }
+
+    /**
+     * A message from the AI first responder (specs/grow/06): the same checks, plus written consent for any
+     * automated text. Not a human response, so it does not answer speed to lead. Returns null when it may not be
+     * sent; the reasons are returned through $blocked.
+     *
+     * @param  list<string>  $blocked
+     */
+    public function sendAutomated(Contact $contact, string $channel, string $body, ?string $subject, string $fromName, array &$blocked = []): ?Message
+    {
+        $blocked = $this->guard->check($contact, $channel, $body);
+        if ($channel === 'sms' && ! $this->consent->canAutoText($contact)) {
+            $blocked[] = 'Automated texts need written consent.';
+        }
+        if ($blocked !== []) {
+            return null;
+        }
+        $conversation = $this->conversationFor($contact);
+        $providerId = null;
+        try {
+            if ($channel === 'sms') {
+                $from = $this->messaging->numberFor($this->tenants->id());
+                $providerId = app(SmsSender::class)->deliver($from, (string) $contact->primary_phone, $body);
+                $this->messaging->remember((string) $contact->primary_phone, $from, $this->tenants->id());
+            } else {
+                Mail::to((string) $contact->primary_email, $contact->name)->send(new MessageMail((string) $subject, $body, $fromName, self::replyAddress($conversation)));
+            }
+        } catch (\Throwable $e) {
+            report($e);
+            $blocked = ['The message could not be delivered.'];
+
+            return null;
+        }
+        $message = Message::query()->create(['conversation_id' => $conversation->id, 'contact_id' => $contact->id, 'channel' => $channel, 'direction' => 'out',
+            'user_id' => null, 'subject' => $channel === 'email' ? $subject : null, 'body' => $body, 'status' => 'sent', 'provider_id' => $providerId, 'ai_drafted' => true]);
+        $conversation->forceFill(['last_message_at' => $message->created_at, 'last_direction' => 'out', 'preview' => mb_substr($body, 0, 160),
+            'needs_reply_since' => null, 'nudged_at' => null, 'escalated_at' => null])->save();
+        Activity::query()->create(['contact_id' => $contact->id, 'type' => $channel === 'sms' ? 'text' : 'email', 'direction' => 'out', 'subject' => $subject,
+            'body' => '[AI assistant] '.$body, 'user_id' => null, 'occurred_at' => CarbonImmutable::now()]);
 
         return $message;
     }
@@ -132,6 +177,7 @@ final class Inbox
 
         if ($contact !== null && in_array($keyword, self::STOP, true)) {
             $this->consent->optOutSms($contact, 'sms_keyword');
+            app(AiResponder::class)->stop($contact, 'opted_out');
             $this->timeline->system($contact, 'Replied '.$keyword.': texts stopped everywhere');
             $this->store($contact, 'sms', $body, null, $providerId, false);
 
@@ -182,6 +228,11 @@ final class Inbox
             'subject' => $subject, 'body' => $body, 'user_id' => null, 'occurred_at' => CarbonImmutable::now()]);
         ActivityLogged::dispatch($contact->tenant_id, $contact->id, $activity->id, $activity->type);
         Lead::query()->where('contact_id', $contact->id)->whereNull('engaged_at')->update(['engaged_at' => CarbonImmutable::now()]);
+
+        // The AI assistant answers while it is still working this lead (and the agent hears about it at hand-off).
+        if ($alert && app(AiResponder::class)->onReply($contact, $channel)) {
+            return $message;
+        }
 
         $agentId = $conversation->assigned_user_id;
         $agent = $alert && $agentId !== null ? User::query()->find($agentId) : null;

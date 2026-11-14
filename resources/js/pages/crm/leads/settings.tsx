@@ -44,6 +44,14 @@ type Props = {
     sourceOptions: { value: string; label: string }[];
     channels: string[];
     newKey: { source: string; key: string } | null;
+    ai: {
+        enabled: boolean;
+        assistant_name: string;
+        tone: string;
+        max_messages: number;
+        sources: string[] | null;
+        knowledge: string;
+    };
 };
 
 const kindLabels = {
@@ -67,7 +75,9 @@ export default function LeadSettings({
     sourceOptions,
     channels,
     newKey,
+    ai,
 }: Props) {
+    const assistant = useForm({ ...ai, sources: ai.sources ?? null });
     const opts = { preserveScroll: true };
     const add = useForm({
         name: '',
@@ -326,6 +336,171 @@ export default function LeadSettings({
                             Add source
                         </Button>
                         {error(add.errors)}
+                    </form>
+                </section>
+
+                <section className="grid gap-3 text-sm">
+                    <h2 className="font-semibold">AI first responder</h2>
+                    <form
+                        className="grid gap-2 rounded-lg border p-3"
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            assistant.post('/leads/ai', opts);
+                        }}
+                    >
+                        <p className="text-muted-foreground">
+                            Answers every new lead within a minute, day and
+                            night, says it is an AI assistant, learns what they
+                            want, and hands them to the agent the moment they
+                            ask for a person or are ready. It texts only leads
+                            who gave written consent (others get an email) and
+                            stops as soon as the agent writes.
+                        </p>
+                        <label className="flex items-center gap-2">
+                            <input
+                                type="checkbox"
+                                className="size-4"
+                                checked={assistant.data.enabled}
+                                onChange={(e) =>
+                                    assistant.setData(
+                                        'enabled',
+                                        e.target.checked,
+                                    )
+                                }
+                            />
+                            Answer new leads automatically
+                        </label>
+                        <div className="flex flex-wrap gap-3">
+                            <label className="grid gap-1">
+                                Assistant's name
+                                <Input
+                                    className="w-40"
+                                    value={assistant.data.assistant_name}
+                                    onChange={(e) =>
+                                        assistant.setData(
+                                            'assistant_name',
+                                            e.target.value,
+                                        )
+                                    }
+                                />
+                            </label>
+                            <label className="grid gap-1">
+                                Tone
+                                <select
+                                    className="rounded border bg-background px-2 py-1.5"
+                                    value={assistant.data.tone}
+                                    onChange={(e) =>
+                                        assistant.setData(
+                                            'tone',
+                                            e.target.value,
+                                        )
+                                    }
+                                >
+                                    <option value="friendly">Friendly</option>
+                                    <option value="professional">
+                                        Professional
+                                    </option>
+                                </select>
+                            </label>
+                            <label className="grid gap-1">
+                                Most messages per lead
+                                <Input
+                                    type="number"
+                                    min={1}
+                                    max={20}
+                                    className="w-24"
+                                    value={assistant.data.max_messages}
+                                    onChange={(e) =>
+                                        assistant.setData(
+                                            'max_messages',
+                                            Number(e.target.value),
+                                        )
+                                    }
+                                />
+                            </label>
+                        </div>
+                        <fieldset className="grid gap-1">
+                            <legend className="text-xs text-muted-foreground">
+                                Which sources
+                            </legend>
+                            <label className="flex items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    className="size-4"
+                                    checked={assistant.data.sources === null}
+                                    onChange={(e) =>
+                                        assistant.setData(
+                                            'sources',
+                                            e.target.checked ? null : [],
+                                        )
+                                    }
+                                />
+                                Every source
+                            </label>
+                            {assistant.data.sources !== null && (
+                                <div className="flex flex-wrap gap-3">
+                                    {sources.map((src) => (
+                                        <label
+                                            key={src.ulid}
+                                            className="flex items-center gap-1"
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                className="size-4"
+                                                checked={(
+                                                    assistant.data.sources ?? []
+                                                ).includes(src.ulid)}
+                                                onChange={(e) =>
+                                                    assistant.setData(
+                                                        'sources',
+                                                        e.target.checked
+                                                            ? [
+                                                                  ...(assistant
+                                                                      .data
+                                                                      .sources ??
+                                                                      []),
+                                                                  src.ulid,
+                                                              ]
+                                                            : (
+                                                                  assistant.data
+                                                                      .sources ??
+                                                                  []
+                                                              ).filter(
+                                                                  (x) =>
+                                                                      x !==
+                                                                      src.ulid,
+                                                              ),
+                                                    )
+                                                }
+                                            />
+                                            {src.name}
+                                        </label>
+                                    ))}
+                                </div>
+                            )}
+                        </fieldset>
+                        <label className="grid gap-1">
+                            Facts it may use (office hours, areas you serve, how
+                            showings work, your website)
+                            <textarea
+                                className="rounded border bg-background p-2"
+                                rows={4}
+                                value={assistant.data.knowledge}
+                                onChange={(e) =>
+                                    assistant.setData(
+                                        'knowledge',
+                                        e.target.value,
+                                    )
+                                }
+                            />
+                        </label>
+                        <Button
+                            className="justify-self-start"
+                            disabled={assistant.processing}
+                        >
+                            Save
+                        </Button>
+                        {error(assistant.errors)}
                     </form>
                 </section>
 

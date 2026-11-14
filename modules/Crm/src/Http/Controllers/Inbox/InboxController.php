@@ -17,6 +17,7 @@ use Modules\Crm\CrmAccess;
 use Modules\Crm\Inbox\Inbox;
 use Modules\Crm\Inbox\SignCodes;
 use Modules\Crm\Inbox\Templates;
+use Modules\Crm\Leads\AiResponder;
 use Modules\Crm\Models\Contact;
 use Modules\Crm\Models\Conversation;
 use Modules\Crm\Models\Message;
@@ -51,6 +52,7 @@ final class InboxController
                     ->map(fn (Message $m): array => ['ulid' => $m->ulid, 'channel' => $m->channel, 'direction' => $m->direction, 'subject' => $m->subject, 'body' => $m->body,
                         'status' => $m->status, 'at' => $m->created_at->toIso8601String(), 'ai' => $m->ai_drafted,
                         'by' => $m->user_id !== null ? User::query()->find($m->user_id)?->first_name : null]),
+                'ai' => app(AiResponder::class)->brief($contact),
                 // What stops a message right now (independent of what is written).
                 'blocks' => ['sms' => $inbox->check($contact, 'sms', 'ok'), 'email' => $inbox->check($contact, 'email', 'ok')],
                 'templates' => $templates->for($user)->map(fn (Template $t): array => ['ulid' => $t->ulid, 'name' => $t->name, 'channel' => $t->channel,

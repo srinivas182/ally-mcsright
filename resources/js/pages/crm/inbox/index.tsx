@@ -38,6 +38,14 @@ type Current = {
         email: string | null;
     };
     messages: Msg[];
+    ai: {
+        status: string;
+        reason: string | null;
+        summary: string | null;
+        next_message: string | null;
+        qualification: Record<string, string>;
+        messages: number;
+    } | null;
     blocks: { sms: string[]; email: string[] };
     templates: {
         ulid: string;
@@ -263,6 +271,37 @@ function Thread({
                         .join(' · ')}
                 </span>
             </div>
+            {current.ai && (
+                <div className="grid gap-1 rounded-lg border border-primary/40 p-3">
+                    <p className="font-medium">
+                        AI assistant:{' '}
+                        {current.ai.status === 'active'
+                            ? `talking to them (${current.ai.messages} sent). Write to them yourself to take over.`
+                            : `handed over${current.ai.reason ? ` (${current.ai.reason.replaceAll('_', ' ')})` : ''}.`}
+                    </p>
+                    {current.ai.summary && <p>{current.ai.summary}</p>}
+                    {Object.keys(current.ai.qualification).length > 0 && (
+                        <ul className="flex flex-wrap gap-1">
+                            {Object.entries(current.ai.qualification).map(
+                                ([k, v]) => (
+                                    <li key={k}>
+                                        <Badge variant="outline">
+                                            {k.replaceAll('_', ' ')}: {v}
+                                        </Badge>
+                                    </li>
+                                ),
+                            )}
+                        </ul>
+                    )}
+                    {current.ai.next_message &&
+                        current.ai.status !== 'active' && (
+                            <p className="text-muted-foreground">
+                                Suggested next message: “
+                                {current.ai.next_message}”
+                            </p>
+                        )}
+                </div>
+            )}
             <ol
                 className="grid max-h-[28rem] gap-2 overflow-y-auto rounded-lg border p-3"
                 aria-label="Messages"
@@ -283,7 +322,11 @@ function Thread({
                             {m.channel === 'sms' ? 'Text' : 'Email'} ·{' '}
                             {time(m.at)}
                             {m.by ? ` · ${m.by}` : ''}
-                            {m.ai ? ' · AI-drafted' : ''}
+                            {m.ai
+                                ? m.by
+                                    ? ' · AI-drafted'
+                                    : ' · AI assistant'
+                                : ''}
                             {m.status === 'failed' ? ' · not delivered' : ''}
                         </p>
                     </li>

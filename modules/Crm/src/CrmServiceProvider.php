@@ -57,6 +57,7 @@ final class CrmServiceProvider extends ServiceProvider
         $this->app->scoped(Leads\SpeedToLead::class);
         $this->app->scoped(Leads\PortalEmail::class);
         $this->app->scoped(Inbox\Inbox::class);
+        $this->app->scoped(Leads\AiResponder::class);
         $this->app->scoped(Inbox\SendGuard::class);
         $this->app->scoped(Inbox\SignCodes::class);
         $this->app->scoped(Inbox\Templates::class);
@@ -161,6 +162,7 @@ final class CrmServiceProvider extends ServiceProvider
         $features->declare(DatabaseIntelligence::FEATURE, 'ai.crm_intents', 'Reading plans and dates from notes');
         $features->declare(Leads\PortalEmail::FEATURE, 'ai.crm_lead_email', 'Reading forwarded lead emails from any sender');
         $features->declare(Inbox\Inbox::DRAFT, 'ai.crm_reply_draft', 'Suggested replies in the inbox');
+        $features->declare(Leads\AiResponder::FEATURE, 'ai.crm_ai_responder', 'AI first responder: answers and qualifies new leads');
 
         $this->app->make(NavigationRegistry::class)->add(new NavItem('Grow', 'Contacts', '/contacts', 'contact', 10,
             kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant], mobile: true));
