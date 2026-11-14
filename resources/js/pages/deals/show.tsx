@@ -15,6 +15,10 @@ import {
     type Fact,
 } from '@/components/deals/doc-iq';
 import { KeyDates, type KeyDate } from '@/components/deals/key-dates';
+import {
+    CompliancePanel,
+    type Compliance,
+} from '@/components/deals/compliance-panel';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -63,6 +67,7 @@ type Props = {
     dates: KeyDate[];
     unsorted: DealDocument[];
     facts: Fact[];
+    compliance: Compliance;
     reviewer: boolean;
     reasons: string[];
 };
@@ -98,7 +103,7 @@ function ChecklistItem({
         );
 
     return (
-        <li className="grid gap-2 p-3 text-sm">
+        <li id={`item-${item.ulid}`} className="grid gap-2 p-3 text-sm">
             <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="font-medium">
                     {item.label}
@@ -251,6 +256,7 @@ export default function ShowDeal({
     dates,
     unsorted,
     facts,
+    compliance,
     reviewer,
     reasons,
     deposits,
@@ -414,6 +420,12 @@ export default function ShowDeal({
                         </Button>
                     </section>
                 )}
+                <CompliancePanel
+                    deal={deal.ulid}
+                    compliance={compliance}
+                    reviewer={reviewer}
+                    locked={deal.locked}
+                />
                 <DocIqPanel
                     deal={deal.ulid}
                     locked={deal.locked}

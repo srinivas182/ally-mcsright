@@ -43,6 +43,35 @@ wire-instruction detection with payout holds.
 | 15C    | Money and wire fraud: settlement statement vs contract vs CDA vs trust ledger, wire-instruction alerts, payout holds                                                                              |
 | 15D    | Deadlines that cannot be missed: escalation ladder, at-risk prediction, broker risk view                                                                                                          |
 
+## Delivered in Sprint 15B — compliance scan
+
+- **Continuous**: every deal is re-checked when its file changes (upload, DocIQ read, review decision, status
+  change, facts applied) and on "Check again". All checks are code (no AI), so the same file always gets the
+  same findings.
+- **Findings** graded blocker / warning / note, each with **evidence** (document, page and quote, opened as the
+  page with the words boxed in red) and a **fix** (upload to the item, use the document's value, safe copy,
+  open the roster or the packet, broker approval). Findings keep their identity across scans: fixed ones
+  resolve, dismissed ones stay dismissed, a problem that returns reopens.
+- **Built-in checks**: required checklist items for the deal's stage; items sent back for a fix; blank-looking
+  price, date and name fields; price, closing date, address, buyer and seller names that disagree with the deal
+  (counters and amendments excepted); dates in the wrong year; contracts signed elsewhere with no e-signature
+  record; buyer agreement on buyer deals under contract (NAR settlement); wiring instructions; Social Security
+  and bank numbers (share the safe copy). **Cross-checks against RightAlly's records**: the agent's licence for
+  the deal's state and E&O on the contract date (roster), forms sent on an edition that was already replaced,
+  and ownership mismatches the brokerage accepted.
+- **Broker-ready score** 100 − 20 per blocker − 5 per warning; the agent sends the file to the broker in one
+  click when no blocker or warning is open.
+- **Dismissing** needs a reason; agents may dismiss notes only, reviewers anything (audited, critical for
+  blockers).
+- **Accuracy**: per check, findings fixed vs dismissed; a check dismissed five times or more and wrong more
+  often than right is flagged for review on the compliance page, where the broker turns checks on or off and
+  sets their severity.
+- **Plain-English rules**: the broker writes a rule; AI reads it into a fixed structure (deal types, price range,
+  states, words in the documents → a required document or broker approval, blocker or warning); RightAlly shows
+  its reading in words built by code, and the rule applies only after the broker confirms it (every open file is
+  then re-checked). Rules that cannot be checked automatically are refused with the reason.
+- The compliance page (from the review queue) lists files sent for review and open files not yet broker-ready.
+
 ## Market review (November 2026)
 
 | Capability                                                   | ProxiClose | Transaction Wingman | Deal-IQ                                                 |

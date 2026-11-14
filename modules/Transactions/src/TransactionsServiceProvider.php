@@ -18,7 +18,7 @@ final class TransactionsServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        foreach ([Checklists::class, Deals::class, Documents::class, Reviews::class, EarnestMoney::class, TitleDesk::class, Cdas::class, Referrals::class, FileExport::class, Forecast::class, KeyDates::class, Reading\DocIq::class] as $service) {
+        foreach ([Checklists::class, Deals::class, Documents::class, Reviews::class, EarnestMoney::class, TitleDesk::class, Cdas::class, Referrals::class, FileExport::class, Forecast::class, KeyDates::class, Reading\DocIq::class, Compliance\ComplianceScan::class, Compliance\Findings::class, Compliance\Rules::class] as $service) {
             $this->app->scoped($service);
         }
     }
@@ -32,6 +32,7 @@ final class TransactionsServiceProvider extends ServiceProvider
         $features = $this->app->make(FeatureCatalog::class);
         $features->declare(Reading\DocIq::READ, 'ai.doc_read', 'DocIQ: facts read from each uploaded deal document');
         $features->declare(Reading\DocIq::ASK, 'ai.doc_ask', 'DocIQ: questions answered from one document');
+        $features->declare(Compliance\Rules::FEATURE, 'ai.compliance_rule', 'Deal-IQ: a brokerage rule written in plain English, read into a check');
         if ($this->app->runningInConsole()) {
             $this->commands([Console\SendDateReminders::class]);
         }

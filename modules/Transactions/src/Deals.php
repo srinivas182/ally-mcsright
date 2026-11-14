@@ -79,6 +79,7 @@ final class Deals
             default => throw ValidationException::withMessages(['status' => 'Unknown status.']),
         };
         $this->audit->record('transactions.deal.status', $deal, changes: ['status' => ['old' => $from, 'new' => $status]], severity: $status === 'closed' ? 'notice' : 'info', label: $deal->street);
+        app(Compliance\ComplianceScan::class)->run($deal);
 
         return $deal->refresh();
     }

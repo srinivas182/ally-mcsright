@@ -86,18 +86,25 @@ final class SafeCopy
      */
     private static function textBoxes(string $file, int $page): array
     {
+        $words = self::textWords($file, $page);
+
+        return array_map(fn (int $i): array => $words[$i][1], Sensitive::wordsToHide(array_column($words, 0)));
+    }
+
+    /**
+     * Words on a text page with their boxes (x, y, w, h in points), in reading order.
+     *
+     * @return list<array{0: string, 1: array{0: float, 1: float, 2: float, 3: float}}>
+     */
+    public static function textWords(string $file, int $page): array
+    {
         $p = new Process(['pdftotext', '-bbox', '-f', (string) $page, '-l', (string) $page, $file, '-']);
         $p->setTimeout(30);
         $p->run();
         preg_match_all('/<word xMin="([\d.]+)" yMin="([\d.]+)" xMax="([\d.]+)" yMax="([\d.]+)">(.*?)<\/word>/s', $p->getOutput(), $m, PREG_SET_ORDER);
-        $words = array_map(fn (array $w): string => html_entity_decode($w[5], ENT_QUOTES | ENT_XML1), $m);
-        $out = [];
-        foreach (Sensitive::wordsToHide($words) as $i) {
-            $w = $m[$i];
-            $out[] = [(float) $w[1], (float) $w[2], (float) $w[3] - (float) $w[1], (float) $w[4] - (float) $w[2]];
-        }
 
-        return $out;
+        return array_map(fn (array $w): array => [html_entity_decode($w[5], ENT_QUOTES | ENT_XML1),
+            [(float) $w[1], (float) $w[2], (float) $w[3] - (float) $w[1], (float) $w[4] - (float) $w[2]]], $m);
     }
 
     /**
@@ -107,28 +114,35 @@ final class SafeCopy
      */
     private static function ocrBoxes(string $png, float $pageWidth): array
     {
+        $words = self::ocrWords($png, $pageWidth);
+
+        return array_map(fn (int $i): array => $words[$i][1], Sensitive::wordsToHide(array_column($words, 0)));
+    }
+
+    /**
+     * Words OCR finds on a page image, with boxes scaled to points.
+     *
+     * @return list<array{0: string, 1: array{0: float, 1: float, 2: float, 3: float}}>
+     */
+    public static function ocrWords(string $png, float $pageWidth): array
+    {
         $p = new Process(['tesseract', $png, 'stdout', '-l', 'eng', 'tsv']);
         $p->setTimeout(90);
         $p->run();
-        $rows = [];
-        foreach (explode("\n", $p->getOutput()) as $line) {
-            $c = explode("\t", $line);
-            if (count($c) === 12 && $c[0] === '5' && trim($c[11]) !== '') {
-                $rows[] = $c;
-            }
-        }
         $info = @getimagesize($png);
         $scale = is_array($info) && $info[0] > 0 ? $pageWidth / $info[0] : 72 / self::DPI;
         $out = [];
-        foreach (Sensitive::wordsToHide(array_map(fn (array $c): string => trim($c[11]), $rows)) as $i) {
-            $c = $rows[$i];
-            $out[] = [(float) $c[6] * $scale, (float) $c[7] * $scale, (float) $c[8] * $scale, (float) $c[9] * $scale];
+        foreach (explode("\n", $p->getOutput()) as $line) {
+            $c = explode("\t", $line);
+            if (count($c) === 12 && $c[0] === '5' && trim($c[11]) !== '') {
+                $out[] = [trim($c[11]), [(float) $c[6] * $scale, (float) $c[7] * $scale, (float) $c[8] * $scale, (float) $c[9] * $scale]];
+            }
         }
 
         return $out;
     }
 
-    private static function render(string $file, int $page): ?string
+    public static function render(string $file, int $page): ?string
     {
         $base = substr($file, 0, -4).'-s'.$page;
         $p = new Process(['pdftoppm', '-r', (string) self::DPI, '-png', '-f', (string) $page, '-l', (string) $page, '-singlefile', $file, $base]);
