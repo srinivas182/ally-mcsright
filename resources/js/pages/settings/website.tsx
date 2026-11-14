@@ -470,6 +470,7 @@ function Manage({
                     ))}
                 </ul>
                 <NewPage />
+                <AiPage />
                 <p className="text-xs text-muted-foreground">
                     The sitemap, llms.txt and structured data update
                     automatically when you publish.
@@ -1060,5 +1061,41 @@ function AgentsPanel({
                 </ul>
             )}
         </section>
+    );
+}
+
+function AiPage() {
+    const form = useForm({ topic: '', path: '', tone: 'friendly' });
+
+    return (
+        <form
+            className="flex flex-wrap items-center gap-2"
+            onSubmit={(e) => {
+                e.preventDefault();
+                form.post('/settings/website/ai/page');
+            }}
+        >
+            <Input
+                aria-label="AI page topic"
+                className="max-w-sm"
+                placeholder="Or describe a page for AI to draft, e.g. Guide to selling in 78704"
+                value={form.data.topic}
+                onChange={(e) => form.setData('topic', e.target.value)}
+            />
+            <Button
+                variant="outline"
+                disabled={form.processing || form.data.topic.trim() === ''}
+            >
+                {form.processing ? 'Drafting…' : 'Draft with AI'}
+            </Button>
+            <span className="text-xs text-muted-foreground">
+                Uses AI credits. Drafts only.
+            </span>
+            {Object.values(form.errors).map((m) => (
+                <p key={m} className="w-full text-destructive">
+                    {m}
+                </p>
+            ))}
+        </form>
     );
 }

@@ -25,7 +25,7 @@ use Modules\Core\Tenancy\Concerns\HasPublicUlid;
  * @property array<string, mixed> $info
  * @property array<string, mixed>|null $seo
  * @property bool $ai_crawlers
- * @property array{signup_after?: int, agents?: array<string, bool>}|null $settings
+ * @property array{signup_after?: int, agents?: array<string, bool>, market_updates?: array{enabled?: bool, places?: list<string>}}|null $settings
  * @property array{main?: list<array{label: string, url: string}>, footer?: list<array{label: string, url: string}>}|null $menus
  * @property string $status
  * @property CarbonImmutable|null $published_at

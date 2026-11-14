@@ -12,6 +12,8 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Crm\CrmAccess;
+use Modules\Listings\Search\MarketStats;
+use Modules\Sites\Ai\MarketUpdates;
 use Modules\Sites\Content\MediaLibrary;
 use Modules\Sites\Content\Posts;
 use Modules\Sites\Content\SeoCheck;
@@ -24,13 +26,16 @@ final class BlogAdminController
 {
     public function __construct(private readonly SiteSetup $sites, private readonly Posts $posts) {}
 
-    public function index(Request $request): Response
+    public function index(Request $request, MarketStats $stats): Response
     {
         self::manager($request);
         $site = $this->site();
+        $places = array_map(fn (array $p): array => ['slug' => $p['slug'], 'name' => $p['name']], $stats->places($site->tenant_id, 60));
         $authors = User::query()->whereIn('id', SitePost::query()->where('site_id', $site->id)->pluck('author_user_id')->filter())->get()->keyBy('id');
 
         return Inertia::render('settings/website-blog', [
+            'places' => $places,
+            'market_updates' => MarketUpdates::settings($site),
             'posts' => SitePost::query()->where('site_id', $site->id)->orderByDesc('updated_at')->limit(300)->get()->map(fn (SitePost $p): array => [
                 'ulid' => $p->ulid, 'title' => $p->title, 'slug' => $p->slug, 'category' => $p->category, 'author' => $authors->get($p->author_user_id)?->name,
                 'state' => $p->status === 'draft' ? 'draft' : ($p->isLive() ? 'live' : 'scheduled'), 'published_at' => $p->published_at?->toIso8601String(),
@@ -53,6 +58,7 @@ final class BlogAdminController
             'live_url' => $post !== null && $post->isLive() && ($host = $this->sites->liveHost()) !== null ? 'https://'.$host.'/blog/'.$post->slug : null,
             'categories' => SitePost::query()->where('site_id', $site->id)->whereNotNull('category')->distinct()->orderBy('category')->pluck('category')->values(),
             'media' => PageEditorController::mediaList($site, $media),
+            'ai_notes' => $request->session()->get('ai_notes'),
         ]);
     }
 

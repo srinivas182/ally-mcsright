@@ -45,8 +45,16 @@ final class SitesServiceProvider extends ServiceProvider
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'sites');
+        if ($this->app->runningInConsole()) {
+            $this->commands([Console\WriteMarketUpdates::class]);
+        }
         $this->app->make(PromptRegistry::class)->addPath(__DIR__.'/../prompts');
-        $this->app->make(FeatureCatalog::class)->declare(Visitors\JourneySummary::FEATURE, 'ai.site_journey', 'Website visitor journey summary on new leads');
+        $features = $this->app->make(FeatureCatalog::class);
+        $features->declare(Visitors\JourneySummary::FEATURE, 'ai.site_journey', 'Website visitor journey summary on new leads');
+        $features->declare(Ai\ContentStudio::POST, 'ai.site_post', 'AI blog post drafts for websites');
+        $features->declare(Ai\ContentStudio::PAGE, 'ai.site_page', 'AI page drafts for websites');
+        $features->declare(Ai\ContentStudio::ASSIST, 'ai.site_assist', 'AI editing help on websites (rewrite, FAQ, meta, bio)');
+        $features->declare(Ai\ContentStudio::MARKET, 'ai.site_market', 'Monthly AI market update drafts');
 
         Gate::define('hq.sites.manage', fn (User $user): bool => $user->kind === UserKind::HqStaff);
         $nav = $this->app->make(NavigationRegistry::class);
