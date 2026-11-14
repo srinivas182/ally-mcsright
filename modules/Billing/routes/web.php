@@ -29,6 +29,9 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function
     Route::post('settings/credits/allot', [CreditsController::class, 'allot'])->name('credits.allot');
     Route::post('settings/credits/policy', [CreditsController::class, 'policy'])->name('credits.policy');
     Route::post('settings/credits/buy', [CreditsController::class, 'buy'])->middleware('throttle:10,1')->name('credits.buy');
+    Route::post('settings/credits/buy-saved', [CreditsController::class, 'buySaved'])->middleware('throttle:5,1')->name('credits.buy-saved');
+    Route::post('settings/credits/autopay', [CreditsController::class, 'autopay'])->name('credits.autopay');
+    Route::delete('settings/credits/card', [CreditsController::class, 'removeCard'])->name('credits.card.remove');
     Route::get('settings/credits/receipts/{purchase}', [CreditsController::class, 'receipt'])->where('purchase', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('credits.receipt');
     Route::get('settings/credits/export', [CreditsController::class, 'export'])->middleware('throttle:20,1')->name('credits.export');
     Route::post('settings/partner/connect', [PaymentsController::class, 'connect'])->middleware('throttle:10,1')->name('billing.connect');

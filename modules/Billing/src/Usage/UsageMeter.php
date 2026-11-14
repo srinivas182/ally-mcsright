@@ -12,6 +12,7 @@ use Illuminate\Support\Str;
 use Modules\AI\Exceptions\InsufficientCredits;
 use Modules\Billing\Credits\CreditLedger;
 use Modules\Billing\Credits\RateCard;
+use Modules\Billing\Jobs\TopUpCredits;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\Attributes\CrossTenantAccess;
@@ -104,7 +105,12 @@ final class UsageMeter
         $this->alert($meter, $before, $after, $allowance);
     }
 
-    /** A website visitor opening the map: allowed within the allowance, when HQ covers it, or while credits last. */
+    /**
+     * A website visitor opening the map: allowed within the allowance, when HQ covers it, or while credits last.
+     * When the brokerage has run out (and its automatic top-up couldn't help), its map pauses: only for that
+     * brokerage, nothing else on the site changes, and every visitor who tried is counted to show the owner
+     * what the pause costs them. The map comes back as soon as credits are added.
+     */
     public function openMap(): bool
     {
         $used = $this->used('maps');
@@ -112,12 +118,52 @@ final class UsageMeter
         if ($used >= $allowance && ! $this->mapsCovered() && $this->rates->enforced()) {
             $next = $this->rates->rate(self::METERS['maps']['action'])['credits'];
             if ($this->ledger->poolSummary()['available'] < $next) {
+                $this->missed();
+
                 return false;
             }
         }
         $this->record('maps', 1);
+        $this->resume();
 
         return true;
+    }
+
+    /**
+     * The brokerage's paused map, if any: since when and how many visitors tried to open it.
+     *
+     * @return array{since: string, missed: int}|null
+     */
+    public function mapsPaused(): ?array
+    {
+        $row = DB::connection(Connections::cell())->table('usage_meters')->where('tenant_id', $this->tenants->id())->where('period', CreditLedger::period())
+            ->where('meter', 'maps')->whereNotNull('paused_at')->first(['paused_at', 'missed']);
+
+        return $row !== null ? ['since' => (string) $row->paused_at, 'missed' => (int) $row->missed] : null;
+    }
+
+    private function missed(): void
+    {
+        $db = DB::connection(Connections::cell());
+        $period = CreditLedger::period();
+        $db->table('usage_meters')->insertOrIgnore(['tenant_id' => $this->tenants->id(), 'period' => $period, 'meter' => 'maps', 'used' => 0, 'over' => 0,
+            'created_at' => now(), 'updated_at' => now()]);
+        $where = fn ($q) => $q->where('tenant_id', $this->tenants->id())->where('period', $period)->where('meter', 'maps');
+        $started = $db->table('usage_meters')->where($where)->whereNull('paused_at')->update(['paused_at' => now(), 'missed' => 1, 'updated_at' => now()]);
+        if ($started === 0) {
+            $db->table('usage_meters')->where($where)->increment('missed');
+
+            return;
+        }
+        TopUpCredits::dispatch($this->tenants->id(), null); // a saved card may still bring it back
+        $owners = User::query()->where('kind', UserKind::Owner)->get()->filter(fn (User $u): bool => $u->isActive());
+        Notification::send($owners, new MapsPaused(1, CarbonImmutable::now()->toDateString(), false));
+    }
+
+    private function resume(): void
+    {
+        DB::connection(Connections::cell())->table('usage_meters')->where('tenant_id', $this->tenants->id())->where('period', CreditLedger::period())
+            ->where('meter', 'maps')->whereNotNull('paused_at')->update(['paused_at' => null, 'missed' => 0, 'updated_at' => now()]);
     }
 
     public function used(string $meter, ?string $period = null): int

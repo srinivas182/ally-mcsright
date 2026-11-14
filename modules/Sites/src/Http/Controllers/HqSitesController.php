@@ -28,7 +28,7 @@ final class HqSitesController
 
         return Inertia::render('hq/sites', [
             'powered_by' => $powered->settings(),
-            'maps' => ['configured' => $maps->token() !== null, 'hint' => $maps->hint()],
+            'maps' => ['configured' => $maps->token() !== null, 'hint' => $maps->hint(), 'secret' => $maps->hasSecret()],
             'tenants' => Tenant::query()->orderBy('name')->get()->map(fn (Tenant $t): array => ['ulid' => $t->ulid, 'name' => $t->name,
                 'override' => $overrides->has($t->id) ? (bool) $overrides[$t->id] : null,
                 'hosts' => collect($domains->get($t->id, []))->map(fn (TenantDomain $d): array => ['host' => $d->host, 'verified' => $d->verification_status->value === 'verified'])->values()])->values(),
@@ -54,6 +54,19 @@ final class HqSitesController
         abort_unless($user instanceof User, 403);
         $maps->save($data['mapbox_token'] ?? null, $user);
         Inertia::flash('toast', ['type' => 'success', 'message' => ($data['mapbox_token'] ?? '') !== '' ? 'Map token saved. Website maps are on.' : 'Map token removed. Websites show lists without maps.']);
+
+        return back();
+    }
+
+    /** The Mapbox secret token for one-hour visitor tokens (password-confirmed; never shown again). */
+    public function mapsSecret(Request $request, Maps $maps): RedirectResponse
+    {
+        $data = $request->validate(['mapbox_secret' => ['nullable', 'string', 'max:400']]);
+        $user = $request->user();
+        abort_unless($user instanceof User, 403);
+        $maps->saveSecret($data['mapbox_secret'] ?? null, $user);
+        Inertia::flash('toast', ['type' => 'success', 'message' => ($data['mapbox_secret'] ?? '') !== ''
+            ? 'Secret token saved. Website maps now use tokens that expire within an hour.' : 'Secret token removed. Maps use the public token.']);
 
         return back();
     }

@@ -37,11 +37,37 @@ final class FakeGateway implements PaymentGateway
     /** @var list<array<string, mixed>> */
     public array $oneTime = [];
 
-    public function oneTimeCheckout(string $email, string $description, int $cents, string $successUrl, string $cancelUrl, array $metadata, bool $automaticTax): string
+    public function oneTimeCheckout(string $email, string $description, int $cents, string $successUrl, string $cancelUrl, array $metadata, bool $automaticTax,
+        ?string $customerRef = null, bool $saveCard = false): string
     {
-        $this->oneTime[] = compact('email', 'description', 'cents', 'successUrl', 'cancelUrl', 'metadata', 'automaticTax');
+        $this->oneTime[] = compact('email', 'description', 'cents', 'successUrl', 'cancelUrl', 'metadata', 'automaticTax', 'customerRef', 'saveCard');
 
         return 'https://checkout.example/pay/'.count($this->oneTime);
+    }
+
+    /** @var array<string, array{brand: string, last4: string}> customer => card */
+    public array $cards = [];
+
+    /** Next status chargeSavedCard returns (succeeded, processing, requires_action, failed). */
+    public string $chargeStatus = 'succeeded';
+
+    /** @var array<string, array{customer: string, cents: int, description: string, metadata: array<string, string>}> idempotency key => charge */
+    public array $charges = [];
+
+    public function savedCard(string $customerRef): ?array
+    {
+        return $this->cards[$customerRef] ?? null;
+    }
+
+    public function chargeSavedCard(string $customerRef, int $cents, string $description, array $metadata, string $idempotencyKey): array
+    {
+        if (! isset($this->cards[$customerRef])) {
+            return ['status' => 'failed', 'payment' => '', 'error' => 'No saved card.'];
+        }
+        $this->charges[$idempotencyKey] ??= ['customer' => $customerRef, 'cents' => $cents, 'description' => $description, 'metadata' => $metadata];
+
+        return ['status' => $this->chargeStatus, 'payment' => 'pi_'.substr(md5($idempotencyKey), 0, 10),
+            'error' => $this->chargeStatus === 'succeeded' || $this->chargeStatus === 'processing' ? null : 'Your card was declined.'];
     }
 
     public function subscriptionCheckout(string $email, string $productName, int $unitCents, string $interval, string $successUrl, string $cancelUrl, array $metadata, bool $automaticTax): string

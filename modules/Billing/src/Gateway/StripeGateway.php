@@ -83,17 +83,46 @@ final class StripeGateway implements PaymentGateway
         return (string) $response->json('url');
     }
 
-    public function oneTimeCheckout(string $email, string $description, int $cents, string $successUrl, string $cancelUrl, array $metadata, bool $automaticTax): string
+    public function oneTimeCheckout(string $email, string $description, int $cents, string $successUrl, string $cancelUrl, array $metadata, bool $automaticTax,
+        ?string $customerRef = null, bool $saveCard = false): string
     {
-        $session = $this->post('checkout/sessions', [
-            'mode' => 'payment', 'customer_email' => $email, 'success_url' => $successUrl, 'cancel_url' => $cancelUrl, 'metadata' => $metadata,
-            'payment_intent_data' => ['metadata' => $metadata, 'receipt_email' => $email, 'description' => $description],
+        $session = $this->post('checkout/sessions', array_filter([
+            'mode' => 'payment', 'success_url' => $successUrl, 'cancel_url' => $cancelUrl, 'metadata' => $metadata,
+            'customer' => $customerRef, 'customer_email' => $customerRef === null ? $email : null, 'customer_creation' => $customerRef === null ? 'always' : null,
+            'payment_intent_data' => array_filter(['metadata' => $metadata, 'receipt_email' => $email, 'description' => $description,
+                'setup_future_usage' => $saveCard ? 'off_session' : null]),
             'invoice_creation' => ['enabled' => 'true', 'invoice_data' => ['metadata' => $metadata, 'description' => $description]],
             'line_items' => [['quantity' => 1, 'price_data' => ['currency' => 'usd', 'unit_amount' => $cents, 'product_data' => ['name' => $description]]]],
             'automatic_tax' => ['enabled' => $automaticTax ? 'true' : 'false'],
-        ]);
+        ], fn ($v): bool => $v !== null));
 
         return (string) $session['url'];
+    }
+
+    public function savedCard(string $customerRef): ?array
+    {
+        $card = $this->get('payment_methods?type=card&limit=1&customer='.urlencode($customerRef))['data'][0]['card'] ?? null;
+
+        return is_array($card) ? ['brand' => (string) ($card['brand'] ?? 'card'), 'last4' => (string) ($card['last4'] ?? '')] : null;
+    }
+
+    public function chargeSavedCard(string $customerRef, int $cents, string $description, array $metadata, string $idempotencyKey): array
+    {
+        $method = (string) ($this->get('payment_methods?type=card&limit=1&customer='.urlencode($customerRef))['data'][0]['id'] ?? '');
+        if ($method === '') {
+            return ['status' => 'failed', 'payment' => '', 'error' => 'No saved card.'];
+        }
+        try {
+            $intent = $this->post('payment_intents', ['amount' => $cents, 'currency' => 'usd', 'customer' => $customerRef, 'payment_method' => $method,
+                'off_session' => 'true', 'confirm' => 'true', 'description' => $description, 'metadata' => $metadata], $idempotencyKey);
+        } catch (RuntimeException $e) {
+            return ['status' => 'failed', 'payment' => '', 'error' => mb_substr($e->getMessage(), 0, 200)];
+        }
+        $status = (string) ($intent['status'] ?? 'failed');
+
+        return ['status' => match ($status) {
+            'succeeded' => 'succeeded', 'processing' => 'processing', 'requires_action', 'requires_payment_method' => 'requires_action', default => 'failed',
+        }, 'payment' => (string) ($intent['id'] ?? ''), 'error' => $status === 'succeeded' ? null : ($intent['last_payment_error']['message'] ?? null)];
     }
 
     public function portal(string $customerRef, string $returnUrl): string

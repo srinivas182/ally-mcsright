@@ -49,7 +49,24 @@ interface PaymentGateway
      *
      * @param  array<string, string>  $metadata
      */
-    public function oneTimeCheckout(string $email, string $description, int $cents, string $successUrl, string $cancelUrl, array $metadata, bool $automaticTax): string;
+    public function oneTimeCheckout(string $email, string $description, int $cents, string $successUrl, string $cancelUrl, array $metadata, bool $automaticTax,
+        ?string $customerRef = null, bool $saveCard = false): string;
+
+    /**
+     * The card saved for a customer (for display), or null.
+     *
+     * @return array{brand: string, last4: string}|null
+     */
+    public function savedCard(string $customerRef): ?array;
+
+    /**
+     * Charges a customer's saved card without them present (automatic top-up, one-click buy).
+     * Status is succeeded, processing, requires_action (the bank wants the customer) or failed.
+     *
+     * @param  array<string, string>  $metadata
+     * @return array{status: string, payment: string, error: string|null}
+     */
+    public function chargeSavedCard(string $customerRef, int $cents, string $description, array $metadata, string $idempotencyKey): array;
 
     /** Hosted page where a customer manages their card and sees invoices. */
     public function portal(string $customerRef, string $returnUrl): string;

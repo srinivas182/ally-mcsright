@@ -66,7 +66,7 @@ final class IdxController
      */
     public function openMap(Request $request, Maps $maps, WebsiteMaps $allowance): JsonResponse
     {
-        $token = $maps->token();
+        $token = $maps->visitorToken();
         $ok = $token !== null && RateLimiter::attempt('site-map:'.$request->ip(), 30, fn (): bool => true) && $allowance->open();
 
         return response()->json(['ok' => $ok, 'token' => $ok ? $token : null])->header('Cache-Control', 'no-store');

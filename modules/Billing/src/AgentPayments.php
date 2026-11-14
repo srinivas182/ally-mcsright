@@ -65,15 +65,20 @@ final class AgentPayments
         $meta = (array) ($object['metadata'] ?? ($object['subscription_details']['metadata'] ?? []));
         $control = DB::connection(Connections::control());
         // RightAlly credit packs (specs/billing/04): paid, or refunded.
-        if (($meta['kind'] ?? '') === 'credit_pack' && in_array($type, ['checkout.session.completed', 'charge.refunded'], true)) {
+        if (($meta['kind'] ?? '') === 'credit_pack' && in_array($type, ['checkout.session.completed', 'payment_intent.succeeded', 'payment_intent.payment_failed', 'charge.refunded'], true)) {
             if ($id === '' || $control->table('billing_gateway_events')->where('id', $id)->exists()) {
                 return false;
             }
             $tenant = Tenant::query()->whereKey((int) ($meta['tenant_id'] ?? 0))->first();
-            if ($tenant !== null && ($type === 'charge.refunded' || ($object['payment_status'] ?? 'paid') === 'paid')) {
-                $this->tenants->runAs($tenant, fn () => $type === 'checkout.session.completed'
-                    ? app(CreditPurchases::class)->paid((string) ($meta['purchase'] ?? ''), $object)
-                    : app(CreditPurchases::class)->refunded((string) ($meta['purchase'] ?? ''), (int) ($object['amount_refunded'] ?? 0)));
+            $purchase = (string) ($meta['purchase'] ?? '');
+            if ($tenant !== null && ($type !== 'checkout.session.completed' || ($object['payment_status'] ?? 'paid') === 'paid')) {
+                $this->tenants->runAs($tenant, fn () => match ($type) {
+                    'checkout.session.completed' => app(CreditPurchases::class)->paid($purchase, $object),
+                    'payment_intent.succeeded' => app(CreditPurchases::class)->paid($purchase, ['payment_intent' => (string) ($object['id'] ?? ''),
+                        'amount_total' => (int) ($object['amount_received'] ?? 0), 'customer' => (string) ($object['customer'] ?? '')]),
+                    'payment_intent.payment_failed' => app(CreditPurchases::class)->failed($purchase, (string) ($object['last_payment_error']['message'] ?? 'The card was declined.')),
+                    default => app(CreditPurchases::class)->refunded($purchase, (int) ($object['amount_refunded'] ?? 0)),
+                });
             }
             $control->table('billing_gateway_events')->insert(['id' => $id, 'type' => $type, 'processed_at' => now()]);
 
