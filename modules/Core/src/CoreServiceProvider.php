@@ -63,11 +63,20 @@ final class CoreServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->app->singletonIf(Messaging\SmsSender::class, function ($app): Messaging\SmsSender {
-            $sid = (string) config('services.twilio.sid');
+        // Texts and calls use the Twilio account HQ set up (falling back to the server's settings); scoped so a
+        // change in HQ settings applies to the next request or job.
+        $this->app->singleton(Messaging\MessagingSettings::class);
+        $this->app->bindIf(Messaging\SmsSender::class, function ($app): Messaging\SmsSender {
+            $settings = $app->make(Messaging\MessagingSettings::class);
+            $creds = $settings->credentials();
 
-            return $sid !== '' ? new Messaging\TwilioSmsSender($app->make(Factory::class), $sid,
-                (string) config('services.twilio.token'), (string) config('services.twilio.from')) : new Messaging\LogSmsSender;
+            return $creds !== null ? new Messaging\TwilioSmsSender($app->make(Factory::class), $creds['sid'], $creds['token'], $settings->smsFrom()) : new Messaging\LogSmsSender;
+        });
+        $this->app->bindIf(Messaging\VoiceCaller::class, function ($app): Messaging\VoiceCaller {
+            $settings = $app->make(Messaging\MessagingSettings::class);
+            $creds = $settings->credentials();
+
+            return $creds !== null ? new Messaging\TwilioVoiceCaller($app->make(Factory::class), $creds['sid'], $creds['token'], $settings->voiceFrom()) : new Messaging\LogVoiceCaller;
         });
         $this->app->singleton(PermissionRegistry::class);
         $this->app->scoped(Permissions::class);
@@ -230,6 +239,7 @@ final class CoreServiceProvider extends ServiceProvider
         $nav->add(new NavItem('Overview', 'Today', '/agent', 'sun', 10, kinds: [UserKind::Agent, UserKind::Assistant], mobile: true));
         $nav->add(new NavItem('Brokerage', 'People', '/users', 'users', 10, ability: 'core.users.view', mobile: true));
         $nav->add(new NavItem('HQ', 'Tenants', '/hq/tenants', 'building-2', 10, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff], mobile: true));
+        $nav->add(new NavItem('HQ', 'Texts and calls', '/hq/messaging', 'phone', 15, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff]));
     }
 
     private function registerTenantAwareQueues(): void

@@ -30,6 +30,11 @@ final class Checks
         'money.receipt' => ['Commission received from title matches what is due (or the difference is accepted)', 'blocker'],
         'money.earnest' => ['Earnest money in trust matches the contract, and is released after closing', 'warning'],
         'wire.changed' => ['Wiring instructions are the same in every document (a change is the classic wire-fraud sign)', 'blocker'],
+        'risk.missed' => ['Key dates are not missed', 'blocker'],
+        'risk.financing' => ['An appraisal is on file before the financing deadline', 'warning'],
+        'risk.inspection' => ['An inspection report or waiver is on file before the inspection deadline', 'warning'],
+        'risk.closing_docs' => ['A closing disclosure or settlement statement is on file a week before closing', 'warning'],
+        'risk.earnest_late' => ['Earnest money arrives by its due date', 'warning'],
         'wire.title_unverified' => ['The title company on the settlement statement is one verified by call-back', 'warning'],
     ];
 

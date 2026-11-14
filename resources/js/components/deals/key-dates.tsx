@@ -28,7 +28,7 @@ export function KeyDates({ deal, dates }: { deal: string; dates: KeyDate[] }) {
     const opts = { preserveScroll: true };
 
     return (
-        <section className="grid gap-2">
+        <section id="key-dates" className="grid gap-2">
             <h2 className="font-semibold">Key dates</h2>
             {dates.length === 0 ? (
                 <p className="text-sm text-muted-foreground">

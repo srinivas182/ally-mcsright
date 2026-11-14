@@ -12,12 +12,12 @@ Settings the platform depends on in every environment. Each one was found by a t
 
 ## Application
 
-| Setting                                                 | Why                                                                                                                                                  |
-| ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `CORE_HQ_HOST`, `CORE_PLATFORM_DOMAIN`                  | Tenant resolution (specs/core/01).                                                                                                                   |
-| `CORE_BREACHED_PASSWORD_CHECK`                          | `true` in every real environment: new passwords are checked against Have I Been Pwned (k-anonymity; needs outbound HTTPS to api.pwnedpasswords.com). |
-| First HQ staff member                                   | `php artisan tenants:bootstrap-hq --admin-email=…` emails an invitation (no passwords on the command line).                                          |
-| Scheduler running (`php artisan schedule:work` or cron) | `tenants:lifecycle` daily, `ledger:reconcile` nightly.                                                                                               |
+| Setting                                                 | Why                                                                                                                                                      |
+| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CORE_HQ_HOST`, `CORE_PLATFORM_DOMAIN`                  | Tenant resolution (specs/core/01).                                                                                                                       |
+| `CORE_BREACHED_PASSWORD_CHECK`                          | `true` in every real environment: new passwords are checked against Have I Been Pwned (k-anonymity; needs outbound HTTPS to api.pwnedpasswords.com).     |
+| First HQ staff member                                   | `php artisan tenants:bootstrap-hq --admin-email=…` emails an invitation (no passwords on the command line).                                              |
+| Scheduler running (`php artisan schedule:work` or cron) | `tenants:lifecycle` daily, `ledger:reconcile` nightly, `transactions:escalate` hourly, `transactions:scan-open` and `transactions:date-reminders` daily. |
 
 ## Document tools (forms and DocIQ)
 
@@ -27,6 +27,15 @@ Settings the platform depends on in every environment. Each one was found by a t
 - Temporary files handed to these tools always end in `.pdf` (Ubuntu's AppArmor profile for qpdf refuses
   other names).
 - A queue worker must run: uploaded deal documents are read by the `ReadDocument` job.
+
+## Deadline texts and automated calls (Sprint 15D)
+
+- Twilio is set up in **RightAlly HQ → Texts and calls**: Account SID and auth token (stored encrypted), the
+  number to text from and the number to call from, then switched on per brokerage. `TWILIO_SID`,
+  `TWILIO_TOKEN` and `TWILIO_FROM` in the environment are only a fallback.
+- US texting needs an approved A2P 10DLC brand and campaign on the Twilio account (or a verified toll-free
+  number) before texts are delivered.
+- Calls use Twilio's text-to-speech; no webhooks are needed.
 
 ## Sign in with Google / Microsoft (Sprint 4A-2)
 

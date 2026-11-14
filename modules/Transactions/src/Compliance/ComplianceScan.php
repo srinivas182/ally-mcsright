@@ -66,6 +66,7 @@ final class ComplianceScan
         }
         $this->mismatches($deal, $docs, $readings);
         $this->money($deal, $docs, $readings);
+        $this->risk($deal, $items, $readings);
         $this->buyerAgreement($deal, $items, $readings);
         $this->agent($deal);
         $this->forms($deal);
@@ -245,6 +246,56 @@ final class ComplianceScan
         if ($deal->status === 'closed' && $db->table('tx_deposits')->where('deal_id', $deal->id)->where('status', 'received')->exists()) {
             $this->add('money.earnest', null, 'earnest-unreleased', 'The deal has closed but earnest money is still recorded as held in trust. Record its release.', null,
                 ['action' => 'money', 'label' => 'Open the money desk']);
+        }
+    }
+
+    /**
+     * At-risk prediction: problems likely before a deadline is missed (no appraisal days before the financing
+     * deadline, no closing disclosure a week before closing…), and dates already missed. Becomes a blocker
+     * within two days of the deadline.
+     *
+     * @param  Collection<int, Item>  $items
+     * @param  Collection<int, DocumentReading>  $readings
+     */
+    private function risk(Deal $deal, $items, $readings): void
+    {
+        if (! in_array($deal->status, ['pre_contract', 'under_contract'], true)) {
+            return;
+        }
+        $db = DB::connection(Connections::cell());
+        $today = CarbonImmutable::today();
+        $has = fn (string $word, array $types): bool => $readings->contains(fn (DocumentReading $r): bool => in_array($r->doc_type, $types, true)
+            || str_contains(mb_strtolower((string) $r->title), $word) || str_contains(mb_strtolower(implode(' ', array_slice((array) $r->page_text, 0, 1))), $word))
+            || $items->contains(fn (Item $i): bool => str_contains(mb_strtolower($i->label), $word) && in_array($i->status, ['submitted', 'approved', 'waived'], true));
+        $level = fn (int $days): string => $days <= 2 ? 'blocker' : 'warning';
+        $in = fn (int $days): string => $days === 0 ? 'today' : ($days === 1 ? 'tomorrow' : "in {$days} days");
+
+        foreach ($db->table('tx_dates')->where('deal_id', $deal->id)->whereNull('done_at')->get() as $d) {
+            $due = CarbonImmutable::parse((string) $d->due_on)->startOfDay();
+            $days = (int) $today->diffInDays($due, false);
+            $label = mb_strtolower((string) $d->label);
+            if ($days < 0) {
+                $this->add('risk.missed', null, "missed:{$d->id}", "Missed: {$d->label} was due ".$due->format('m/d/Y').'. Tick it off if it is done, or agree an extension.', null,
+                    ['action' => 'dates', 'label' => 'Key dates']);
+
+                continue;
+            }
+            if ($days <= 6 && preg_match('/financ|loan/', $label) === 1 && ! $has('apprais', [])) {
+                $this->add('risk.financing', $level($days), "financing:{$d->id}", "{$d->label} {$in($days)}, and no appraisal is on file.", null, ['action' => 'dates', 'label' => 'Key dates']);
+            }
+            if ($days <= 2 && preg_match('/inspection|option period/', $label) === 1 && ! $has('inspection', ['inspection_report'])) {
+                $this->add('risk.inspection', $level($days), "inspection:{$d->id}", "{$d->label} {$in($days)}, and no inspection report or waiver is on file.", null, ['action' => 'dates', 'label' => 'Key dates']);
+            }
+        }
+        if ($deal->status === 'under_contract' && $deal->closing_date !== null) {
+            $days = (int) $today->diffInDays($deal->closing_date->startOfDay(), false);
+            if ($days >= 0 && $days <= 7 && ! $has('closing disclosure', ['closing_disclosure', 'settlement_statement']) && ! $has('settlement', [])) {
+                $this->add('risk.closing_docs', $level($days), 'closing-docs', "Closing {$in($days)}, and no closing disclosure or settlement statement is on file.", null, null);
+            }
+        }
+        foreach ($db->table('tx_deposits')->where('deal_id', $deal->id)->where('status', 'expected')->whereNotNull('due_on')->where('due_on', '<', $today->toDateString())->get() as $dep) {
+            $this->add('risk.earnest_late', null, "earnest-late:{$dep->ulid}", 'Earnest money of '.self::usd((int) $dep->amount_cents).' was due '.CarbonImmutable::parse((string) $dep->due_on)->format('m/d/Y').' and has not been received.',
+                null, ['action' => 'money', 'label' => 'Open the money desk']);
         }
     }
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Transactions\Http;
 
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -19,6 +20,7 @@ use Modules\Crm\Models\Contact;
 use Modules\Transactions\Cdas;
 use Modules\Transactions\Compliance\ComplianceScan;
 use Modules\Transactions\Compliance\Findings;
+use Modules\Transactions\Deadlines\Deadlines;
 use Modules\Transactions\Deals;
 use Modules\Transactions\Documents;
 use Modules\Transactions\EarnestMoney;
@@ -54,6 +56,8 @@ final class DealController
                 'missing' => count($deals->missing($d)),
             ]),
             'forecast' => self::reviewer($user) ? app(Forecast::class)->pending() : null,
+            'atRisk' => self::atRisk(self::actingFor($user)),
+            'alerts' => app(Deadlines::class)->prefs($user),
             'canCreateFor' => self::reviewer($user) ? User::query()->where('kind', UserKind::Agent)->where('status', 'active')->orderBy('first_name')->get()
                 ->map(fn (User $u): array => ['ulid' => $u->ulid, 'name' => $u->name]) : [],
         ]);
@@ -222,6 +226,32 @@ final class DealController
     }
 
     /** Assistants work on the deals of the agent they assist. */
+    /**
+     * At risk today on the agent's own deals: key dates due within 3 days or missed, and open blockers.
+     *
+     * @return list<array{deal: string, street: string, what: string, when: ?string, level: string}>
+     */
+    private static function atRisk(int $agentId): array
+    {
+        $db = DB::connection(Connections::cell());
+        $today = CarbonImmutable::today();
+        $deals = $db->table('tx_deals')->where('agent_user_id', $agentId)->whereIn('status', ['pre_contract', 'under_contract'])->get(['id', 'ulid', 'street'])->keyBy('id');
+        $out = [];
+        foreach ($db->table('tx_dates')->whereIn('deal_id', $deals->keys())->whereNull('done_at')->where('due_on', '<=', $today->addDays(3)->toDateString())->orderBy('due_on')->get() as $d) {
+            $days = (int) $today->diffInDays(CarbonImmutable::parse(substr((string) $d->due_on, 0, 10)), false);
+            $deal = $deals->get($d->deal_id);
+            $out[] = ['deal' => (string) $deal?->ulid, 'street' => (string) $deal?->street, 'what' => (string) $d->label,
+                'when' => $days < 0 ? 'missed '.CarbonImmutable::parse((string) $d->due_on)->format('M j') : ($days === 0 ? 'today' : ($days === 1 ? 'tomorrow' : "in {$days} days")),
+                'level' => $days <= 0 ? 'high' : 'medium'];
+        }
+        foreach ($db->table('tx_findings')->whereIn('deal_id', $deals->keys())->where('status', 'open')->where('severity', 'blocker')->where('code', 'not like', 'risk.missed')->orderBy('id')->limit(20)->get() as $f) {
+            $deal = $deals->get($f->deal_id);
+            $out[] = ['deal' => (string) $deal?->ulid, 'street' => (string) $deal?->street, 'what' => (string) $f->message, 'when' => null, 'level' => 'high'];
+        }
+
+        return $out;
+    }
+
     /**
      * What DocIQ made of one document, for the deal page.
      *

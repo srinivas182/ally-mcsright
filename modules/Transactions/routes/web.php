@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Route;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
 use Modules\Transactions\Http\ComplianceController;
+use Modules\Transactions\Http\DeadlinesController;
 use Modules\Transactions\Http\DealController;
 use Modules\Transactions\Http\DocumentReadingController;
 use Modules\Transactions\Http\MoneyDeskController;
@@ -13,6 +14,11 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoff
     Route::get('/', [DealController::class, 'index'])->name('index');
     Route::get('review', [DealController::class, 'queue'])->name('review');
     Route::get('compliance', [ComplianceController::class, 'settings'])->name('compliance');
+    Route::get('risk', [DeadlinesController::class, 'risk'])->name('risk');
+    Route::get('risk.csv', [DeadlinesController::class, 'export'])->name('risk.export');
+    Route::post('alerts', [DeadlinesController::class, 'consent'])->name('alerts');
+    Route::post('calendar', [DeadlinesController::class, 'calendar'])->name('calendar');
+    Route::post('compliance/deadlines', [DeadlinesController::class, 'settings'])->name('compliance.deadlines');
     Route::post('compliance/checks/{code}', [ComplianceController::class, 'saveCheck'])->where('code', '[a-z_.]+')->name('compliance.check');
     Route::post('compliance/rules', [ComplianceController::class, 'draftRule'])->middleware('throttle:10,1,compliance-rule')->name('compliance.rules.draft');
     Route::post('compliance/rules/{rule}/confirm', [ComplianceController::class, 'confirmRule'])->name('compliance.rules.confirm');
@@ -61,3 +67,6 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'throttle:30,1'])->group
     Route::get('cda/{token}', [MoneyDeskController::class, 'viewCda'])->where('token', '[A-Za-z0-9]{48}')->name('cda.view');
     Route::post('cda/{token}/acknowledge', [MoneyDeskController::class, 'acknowledgeCda'])->where('token', '[A-Za-z0-9]{48}')->name('cda.acknowledge');
 });
+
+// An agent's private calendar feed (subscribed from Google, Outlook or Apple Calendar; the token is the key).
+Route::middleware(['web', EnsureTenantWorkspace::class, 'throttle:60,1,calendar-feed'])->get('calendar/{token}.ics', [DeadlinesController::class, 'feed'])->name('calendar.feed');

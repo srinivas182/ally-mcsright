@@ -1,6 +1,9 @@
 # Protect 01 — Broker Risk Dashboard (Team B)
 
-Status: **Module definition approved.**
+Status: **Module definition approved. First version delivered in Sprint 15D** (Deals → Risk): compliance-scan
+findings on open deals (including missed and at-risk dates and wire-instruction changes), licence and E&O
+expiring within 30 days, and files waiting too long for review; level, owner and due date; an 8-week trend;
+CSV export for insurers. Advertising, buyer agreements before touring and MLS status follow with their modules.
 
 One screen with every open risk in the brokerage, each with a level, an owner and a due date:
 compliance-scan blockers, missing disclosures, buyer agreements missing before touring, licence

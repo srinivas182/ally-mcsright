@@ -105,6 +105,7 @@ it('sends every HQ console page the data its component needs', function (string 
     'pricing' => ['/hq/billing', 'hq/billing'],
     'payments' => ['/hq/payments', 'hq/payments'],
     'payout rails' => ['/hq/payout-rails', 'hq/payout-rails'],
+    'texts and calls' => ['/hq/messaging', 'hq/messaging'],
 ]);
 
 it('sends the sign-in pages the data they need', function (string $url, string $component): void {

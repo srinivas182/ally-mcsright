@@ -13,6 +13,7 @@ use Modules\Core\Tenancy\Attributes\CrossTenantAccess;
 use Modules\Core\Tenancy\Models\Tenant;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Transactions\DateReminder;
+use Modules\Transactions\Deadlines\Deadlines;
 
 /**
  * Daily: one email per deal to its agent listing key dates due in the next 2 days, due today, or missed
@@ -34,7 +35,7 @@ final class SendDateReminders extends Command
                 $db = DB::connection(Connections::cell());
                 $due = $db->table('tx_dates')->join('tx_deals', 'tx_deals.id', '=', 'tx_dates.deal_id')
                     ->whereNull('tx_dates.done_at')->whereIn('tx_deals.status', ['pre_contract', 'under_contract'])
-                    ->whereBetween('tx_dates.due_on', [$today->subDay()->toDateString(), $today->addDays(2)->toDateString()])
+                    ->whereBetween('tx_dates.due_on', [$today->subDay()->toDateString(), $today->addDays(app(Deadlines::class)->settings()['email_days'])->toDateString()])
                     ->where(fn ($q) => $q->whereNull('tx_dates.reminded_on')->orWhere('tx_dates.reminded_on', '<', $today->toDateString()))
                     ->orderBy('tx_dates.due_on')->get(['tx_dates.id', 'tx_dates.label', 'tx_dates.due_on', 'tx_deals.ulid', 'tx_deals.street', 'tx_deals.agent_user_id']);
                 foreach ($due->groupBy('ulid') as $ulid => $dates) {
