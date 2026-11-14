@@ -1,6 +1,7 @@
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
 
+import { confirmCredits } from '@/components/credit-consent';
 import { VoiceButton } from '@/components/crm/voice-button';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,6 +33,7 @@ export function QuickUpdate({ contactUlid }: { contactUlid: string }) {
 
     const preview = async (value = text) => {
         if (value.trim() === '') return;
+        if (!(await confirmCredits('ai.crm_voice_log'))) return;
         setBusy(true);
         setError(null);
         try {

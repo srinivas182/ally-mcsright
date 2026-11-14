@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
+import { confirmCredits } from '@/components/credit-consent';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
@@ -63,11 +64,17 @@ export function AiBrief({
         );
     };
 
+    const refreshWithConsent = () =>
+        void confirmCredits('ai.crm_brief').then((ok) => ok && refresh());
+
     // Out of date (something new happened): refresh once automatically.
     useEffect(() => {
         if (brief?.stale && !autoRefreshed.current) {
             autoRefreshed.current = true;
-            refresh();
+            // Only when the person has said small AI actions need not ask each time.
+            void confirmCredits('ai.crm_brief', {
+                onlyIfPreapproved: true,
+            }).then((ok) => ok && refresh());
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [brief?.stale]);
@@ -88,7 +95,7 @@ export function AiBrief({
                 <Button
                     size="sm"
                     className="justify-self-start"
-                    onClick={refresh}
+                    onClick={refreshWithConsent}
                     disabled={working}
                 >
                     {working ? 'Writing the brief…' : 'Create brief'}
@@ -126,7 +133,7 @@ export function AiBrief({
                     size="icon"
                     variant="ghost"
                     aria-label="Refresh brief"
-                    onClick={refresh}
+                    onClick={refreshWithConsent}
                     disabled={working}
                 >
                     <RefreshCwIcon className="size-4" />

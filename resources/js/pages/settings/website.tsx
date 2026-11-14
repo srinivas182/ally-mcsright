@@ -1,6 +1,7 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 
+import { confirmCredits } from '@/components/credit-consent';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -1072,7 +1073,9 @@ function AiPage() {
             className="flex flex-wrap items-center gap-2"
             onSubmit={(e) => {
                 e.preventDefault();
-                form.post('/settings/website/ai/page');
+                void confirmCredits('ai.site_page').then(
+                    (ok) => ok && form.post('/settings/website/ai/page'),
+                );
             }}
         >
             <Input

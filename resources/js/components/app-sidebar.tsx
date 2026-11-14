@@ -1,5 +1,6 @@
 import { Link, usePage } from '@inertiajs/react';
 
+import { CreditMeter } from '@/components/credit-meter';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
 import {
@@ -53,6 +54,7 @@ export function AppSidebar() {
             </SidebarContent>
 
             <SidebarFooter>
+                <CreditMeter />
                 <NavUser />
             </SidebarFooter>
         </Sidebar>

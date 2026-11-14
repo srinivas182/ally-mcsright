@@ -1,6 +1,7 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 
+import { confirmCredits } from '@/components/credit-consent';
 import { MediaPicker, type MediaItem } from '@/components/sites/media-picker';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -135,6 +136,9 @@ function Manage({
     const [bioBusy, setBioBusy] = useState(false);
     const [bioError, setBioError] = useState<string | null>(null);
     const writeBio = async () => {
+        if (!(await confirmCredits('ai.site_assist'))) {
+            return;
+        }
         setBioBusy(true);
         setBioError(null);
         try {

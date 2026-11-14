@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use Modules\Billing\Http\BillingController;
+use Modules\Billing\Http\Credits\CreditsController;
+use Modules\Billing\Http\Credits\HqCreditsController;
 use Modules\Billing\Http\PaymentsController;
 use Modules\Core\Http\Middleware\EnsureHqConsole;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
@@ -21,6 +23,10 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function
     Route::get('settings/billing/portal', [PaymentsController::class, 'brokeragePortal'])->middleware('throttle:10,1')->name('billing.brokerage.portal');
     Route::post('settings/agent-plans-subsidy', [PaymentsController::class, 'subsidy'])->name('billing.subsidy');
     Route::get('settings/partner', [PaymentsController::class, 'partner'])->name('billing.partner-earnings');
+    Route::get('settings/credits', [CreditsController::class, 'index'])->name('credits.index');
+    Route::get('credits/quote', [CreditsController::class, 'quote'])->middleware('throttle:120,1')->name('credits.quote');
+    Route::post('settings/credits/allot', [CreditsController::class, 'allot'])->name('credits.allot');
+    Route::post('settings/credits/policy', [CreditsController::class, 'policy'])->name('credits.policy');
     Route::post('settings/partner/connect', [PaymentsController::class, 'connect'])->middleware('throttle:10,1')->name('billing.connect');
 });
 
@@ -36,6 +42,12 @@ Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.tenants.manage
     Route::put('billing/plans/{plan}', [BillingController::class, 'hqSavePlan'])->name('billing.plans.update');
     Route::post('billing/tiers', [BillingController::class, 'hqSaveTiers'])->name('billing.tiers');
     Route::get('payments', [PaymentsController::class, 'hq'])->name('payments');
+    Route::get('credits', [HqCreditsController::class, 'index'])->name('credits');
+    Route::post('credits/enforce', [HqCreditsController::class, 'enforce'])->middleware('password.confirm')->name('credits.enforce');
+    Route::post('credits/value', [HqCreditsController::class, 'value'])->name('credits.value');
+    Route::post('credits/rates', [HqCreditsController::class, 'rate'])->name('credits.rate');
+    Route::post('credits/packages/{package}', [HqCreditsController::class, 'packageCredits'])->name('credits.package');
+    Route::post('credits/grant', [HqCreditsController::class, 'grant'])->name('credits.grant');
     Route::post('billing/packages', [PaymentsController::class, 'savePackage'])->name('billing.packages.store');
     Route::put('billing/packages/{package}', [PaymentsController::class, 'savePackage'])->name('billing.packages.update');
     Route::post('payments/options', [PaymentsController::class, 'setOptions'])->name('payments.options');
