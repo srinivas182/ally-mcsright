@@ -64,11 +64,17 @@ type PackagePlan = {
     included_map_views: number;
 };
 type UnitCosts = { texts: number; calls: number; maps: number };
-type Margins = { target: number; floor: number; usage_budget: number };
+type Margins = {
+    target: number;
+    floor: number;
+    usage_budget: number;
+    maps_alert_views: number;
+};
 type Props = {
     credit_value_microcents: number;
     enforced: boolean;
     margins: Margins;
+    map_views_total: number;
     actions: Action[];
     typical_cost_per_credit: number;
     worst_cost_per_credit: number;
@@ -215,6 +221,12 @@ function ActionRow({ a, floor }: { a: Action; floor: number }) {
                 </td>
                 <td className="p-2 text-right">
                     {a.suggested_credits === null ? '—' : a.suggested_credits}
+                    {a.action === 'usage.map_views_10' && (
+                        <div className="text-xs text-muted-foreground">
+                            now {dollars(a.revenue_microcents * 100)} per 1,000
+                            views
+                        </div>
+                    )}
                 </td>
                 <td
                     className={`p-2 text-right ${marginClass(a.margin_pct, floor)}`}
@@ -703,6 +715,7 @@ export default function HqCredits(props: Props) {
         target: String(props.margins.target),
         floor: String(props.margins.floor),
         usage_budget: String(props.margins.usage_budget),
+        maps_alert_views: String(props.margins.maps_alert_views),
     });
     const [grant, setGrant] = useState({ tenant: '', credits: '', note: '' });
     const below = props.actions.filter((a) => a.below_floor).length;
@@ -848,6 +861,20 @@ export default function HqCredits(props: Props) {
                                         setMargins({
                                             ...margins,
                                             usage_budget: e.target.value,
+                                        })
+                                    }
+                                />
+                            </label>
+                            <label className="grid gap-1">
+                                Email me past this many map views a month
+                                <Input
+                                    type="number"
+                                    className="w-28"
+                                    value={margins.maps_alert_views}
+                                    onChange={(e) =>
+                                        setMargins({
+                                            ...margins,
+                                            maps_alert_views: e.target.value,
                                         })
                                     }
                                 />
@@ -1107,10 +1134,12 @@ export default function HqCredits(props: Props) {
                         Website maps by brokerage ({props.period})
                     </h2>
                     <p className="text-sm text-muted-foreground">
-                        Map views beyond a package's allowance use the
-                        brokerage's credits, unless RightAlly covers them. When
-                        credits run out, the website keeps the list and shows a
-                        "map is resting" note instead of the map.
+                        {n(props.map_views_total)} map views across all websites
+                        this month. Views beyond a package's allowance use the
+                        brokerage's credits (with automatic top-up from its
+                        saved card) unless RightAlly covers them. Only a
+                        brokerage that doesn't pay has its own map paused;
+                        owners are told how many visitors tried to use it.
                     </p>
                     <ul className="divide-y rounded-lg border text-sm">
                         {props.tenants.length === 0 && (

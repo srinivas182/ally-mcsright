@@ -15,6 +15,7 @@ use Illuminate\Validation\ValidationException;
 use Modules\AI\Exceptions\InsufficientCredits;
 use Modules\Billing\Credits\Models\CreditAccount;
 use Modules\Billing\Credits\Models\CreditLedgerEntry;
+use Modules\Billing\Jobs\TopUpCredits;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Support\Connections;
@@ -96,6 +97,7 @@ final class CreditLedger
             throw $e;
         }
         $this->alertIfLow();
+        $this->topUpIfLow($user !== null && ! $usePoolFirst ? $user->id : null);
 
         return $credits;
     }
@@ -326,6 +328,16 @@ final class CreditLedger
         $account = $this->account($userId);
 
         return $account === null ? [] : CreditLedgerEntry::query()->where('account_id', $account->id)->orderByDesc('id')->limit($limit)->get()->values()->all();
+    }
+
+    /** Queues the automatic top-up when the account that paid (and the pool, which agents may fall back on) has one. */
+    private function topUpIfLow(?int $userId): void
+    {
+        $owners = DB::connection(Connections::cell())->table('credit_autopay')->where('tenant_id', $this->tenants->id())->where('enabled', true)
+            ->where(fn ($q) => $q->whereNull('user_id')->when($userId !== null, fn ($w) => $w->orWhere('user_id', $userId)))->pluck('user_id');
+        foreach ($owners as $owner) {
+            TopUpCredits::dispatch($this->tenants->id(), $owner !== null ? (int) $owner : null);
+        }
     }
 
     /** Emails owners once per month when the pool passes 80% used and when it runs out. */

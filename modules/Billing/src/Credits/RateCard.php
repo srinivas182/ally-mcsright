@@ -211,4 +211,17 @@ final class RateCard
         app(AuditLogger::class)->record('billing.credits.margins_changed', changes: ['margins' => ['old' => $old, 'new' => ['target' => $target, 'floor' => $floor, 'usage_budget' => $usageBudget]]],
             severity: 'notice');
     }
+
+    /** HQ is emailed once a month when all websites together pass this many map views (nothing pauses). */
+    public function mapsAlertViews(): int
+    {
+        return (int) (DB::connection(Connections::control())->table('credit_settings')->value('maps_alert_views') ?? 60_000);
+    }
+
+    public function saveMapsAlertViews(int $views, User $by): void
+    {
+        $values = ['maps_alert_views' => max(1000, min($views, 100_000_000)), 'updated_by' => $by->id, 'updated_at' => now()];
+        $db = DB::connection(Connections::control())->table('credit_settings');
+        $db->exists() ? $db->update($values) : $db->insert($values + ['created_at' => now()]);
+    }
 }

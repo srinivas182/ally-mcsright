@@ -8,8 +8,10 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Modules\Billing\Credits\AutoTopUp;
 use Modules\Billing\Credits\CreditLedger;
 use Modules\Billing\Credits\CreditPurchases;
 use Modules\Billing\Credits\Models\CreditLedgerEntry;
@@ -42,7 +44,9 @@ final class CreditsController
             'pool' => $this->ledger->poolSummary(), 'policy' => $this->ledger->policy(),
             'packs' => $this->purchases->packsFor($user), 'purchases' => $this->purchases->list($user),
             'checkout' => $request->query('checkout') === 'success' ? 'success' : ($request->query('checkout') === 'cancelled' ? 'cancelled' : null),
-            'value_microcents' => $this->rates->creditValueMicrocents()];
+            'value_microcents' => $this->rates->creditValueMicrocents(),
+            'autopay' => app(AutoTopUp::class)->settings($manager ? null : $user->id),
+            'map_price' => ['credits' => $this->rates->rate('usage.map_views_10')['credits'], 'per' => 10]];
         if ($manager) {
             $usage = $this->ledger->usage();
             $names = User::query()->whereIn('id', array_column($usage['people'], 'user_id'))->get()->keyBy('id');
@@ -87,6 +91,43 @@ final class CreditsController
         $this->ledger->savePolicy((bool) $data['agents_use_pool'], isset($data['agent_monthly_cap']) ? (int) $data['agent_monthly_cap'] : null, $user,
             isset($data['agents_can_buy']) ? (bool) $data['agents_can_buy'] : null);
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Saved.']);
+
+        return back();
+    }
+
+    /** One click: buys a pack on the saved card. */
+    public function buySaved(Request $request): RedirectResponse
+    {
+        $data = $request->validate(['pack' => ['required', 'string', 'size:26']]);
+        $status = $this->purchases->buyWithSavedCard(self::user($request), $data['pack']);
+        Inertia::flash('toast', match ($status) {
+            'succeeded' => ['type' => 'success', 'message' => 'Paid. The credits are in your balance.'],
+            'processing' => ['type' => 'success', 'message' => 'Payment is processing. The credits arrive as soon as it clears.'],
+            default => ['type' => 'error', 'message' => 'Your card was not charged. Use "Buy" to pay with another card.'],
+        });
+
+        return back();
+    }
+
+    /** Automatic top-up: on or off, the balance that triggers it, and which pack to buy. */
+    public function autopay(Request $request): RedirectResponse
+    {
+        $user = self::user($request);
+        $data = $request->validate(['enabled' => ['required', 'boolean'], 'threshold' => ['required', 'integer', 'min:0', 'max:10000000'], 'pack' => ['nullable', 'string', 'size:26']]);
+        if ($data['pack'] !== null && ! collect($this->purchases->packsFor($user))->contains('ulid', $data['pack'])) {
+            throw ValidationException::withMessages(['pack' => 'Choose one of the credit packs on this page.']);
+        }
+        app(AutoTopUp::class)->save(self::isManager($user) ? null : $user->id, (bool) $data['enabled'], (int) $data['threshold'], $data['pack'], $user);
+        Inertia::flash('toast', ['type' => 'success', 'message' => $data['enabled'] ? 'Automatic top-up is on.' : 'Automatic top-up is off.']);
+
+        return back();
+    }
+
+    public function removeCard(Request $request): RedirectResponse
+    {
+        $user = self::user($request);
+        app(AutoTopUp::class)->removeCard(self::isManager($user) ? null : $user->id, $user);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Saved card removed. Automatic top-up is off.']);
 
         return back();
     }

@@ -7,7 +7,7 @@ import { PageHeader } from '@/components/ui/page-header';
 
 type Props = {
     powered_by: { enabled: boolean; text: string; url: string };
-    maps: { configured: boolean; hint: string | null };
+    maps: { configured: boolean; hint: string | null; secret: boolean };
     tenants: {
         ulid: string;
         name: string;
@@ -22,6 +22,7 @@ const opts = { preserveScroll: true };
 export default function HqSites({ powered_by, maps, tenants }: Props) {
     const form = useForm(powered_by);
     const map = useForm({ mapbox_token: '' });
+    const secret = useForm({ mapbox_secret: '' });
     const choose = (ulid: string, value: string) =>
         router.post(
             `/hq/sites/powered-by/${ulid}`,
@@ -105,11 +106,11 @@ export default function HqSites({ powered_by, maps, tenants }: Props) {
                         )}
                     </div>
                     <p className="text-muted-foreground">
-                        Paste a Mapbox public token (starts with pk.).
-                        Visitors&apos; browsers see it, so restrict it in Mapbox
-                        to *.rightally.site and brokerages&apos; own domains. It
-                        is stored encrypted and not shown again. Leave empty and
-                        save to switch maps off.
+                        Paste a Mapbox public token (starts with pk.). It is
+                        used for the small map images on listing pages, and for
+                        the interactive map until a secret token is set below.
+                        It is stored encrypted and not shown again. Leave empty
+                        and save to switch maps off.
                     </p>
                     <Input
                         aria-label="Mapbox public token"
@@ -128,6 +129,59 @@ export default function HqSites({ powered_by, maps, tenants }: Props) {
                     <div>
                         <Button disabled={map.processing}>
                             Save map token
+                        </Button>
+                    </div>
+                </form>
+
+                <form
+                    className="grid gap-3 rounded-lg border p-4 text-sm"
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        secret.post('/hq/sites/maps/secret', {
+                            ...opts,
+                            onSuccess: () => secret.reset(),
+                        });
+                    }}
+                >
+                    <div className="flex flex-wrap items-center gap-2">
+                        <h2 className="font-semibold">
+                            Map tokens that expire within an hour
+                        </h2>
+                        {maps.secret ? (
+                            <Badge variant="secondary">On</Badge>
+                        ) : (
+                            <Badge variant="outline">Off</Badge>
+                        )}
+                    </div>
+                    <p className="text-muted-foreground">
+                        A token in a web page can always be read, so instead of
+                        hiding it, websites get a token that stops working
+                        within an hour. Create a Mapbox secret token (starts
+                        with sk.) with the tokens:write scope plus styles:tiles,
+                        styles:read, fonts:read, datasets:read and vision:read.
+                        It stays on the server, encrypted, and is never shown
+                        again. Saving asks for your password.
+                    </p>
+                    <Input
+                        aria-label="Mapbox secret token"
+                        type="password"
+                        autoComplete="off"
+                        placeholder="sk.…"
+                        value={secret.data.mapbox_secret}
+                        onChange={(e) =>
+                            secret.setData('mapbox_secret', e.target.value)
+                        }
+                    />
+                    {secret.errors.mapbox_secret && (
+                        <p className="text-destructive">
+                            {secret.errors.mapbox_secret}
+                        </p>
+                    )}
+                    <div>
+                        <Button disabled={secret.processing}>
+                            {maps.secret && secret.data.mapbox_secret === ''
+                                ? 'Remove secret token'
+                                : 'Save secret token'}
                         </Button>
                     </div>
                 </form>

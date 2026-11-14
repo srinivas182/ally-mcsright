@@ -103,7 +103,9 @@ class HandleInertiaRequests extends Middleware
                 $meter = app(CreditLedger::class)->meter($user);
 
                 // Owners and staff also see this month's included texts, call minutes and map views.
-                return $meter['scope'] === 'brokerage' ? $meter + ['usage' => app(UsageMeter::class)->summary()] : $meter;
+                return $meter['scope'] === 'brokerage'
+                    ? $meter + ['usage' => app(UsageMeter::class)->summary(), 'maps_paused' => app(UsageMeter::class)->mapsPaused()]
+                    : $meter;
             },
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];

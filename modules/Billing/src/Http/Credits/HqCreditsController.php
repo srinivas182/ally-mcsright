@@ -48,7 +48,8 @@ final class HqCreditsController
         return Inertia::render('hq/credits', [
             'credit_value_microcents' => $this->rates->creditValueMicrocents(),
             'enforced' => $this->rates->enforced(),
-            'margins' => $this->rates->margins(),
+            'margins' => $this->rates->margins() + ['maps_alert_views' => $this->rates->mapsAlertViews()],
+            'map_views_total' => (int) DB::connection(Connections::cell())->table('usage_meters')->where('period', $period)->where('meter', 'maps')->sum('used'),
             'actions' => array_values($this->economics->actions()),
             'typical_cost_per_credit' => $this->economics->typicalCostPerCredit(),
             'worst_cost_per_credit' => $this->economics->worstCostPerCredit(),
@@ -171,8 +172,11 @@ final class HqCreditsController
     public function margins(Request $request): RedirectResponse
     {
         $data = $request->validate(['target' => ['required', 'integer', 'min:0', 'max:95'], 'floor' => ['required', 'integer', 'min:0', 'max:95'],
-            'usage_budget' => ['required', 'integer', 'min:1', 'max:90']]);
+            'usage_budget' => ['required', 'integer', 'min:1', 'max:90'], 'maps_alert_views' => ['sometimes', 'integer', 'min:1000', 'max:100000000']]);
         $this->rates->saveMargins((int) $data['target'], (int) $data['floor'], (int) $data['usage_budget'], self::user($request));
+        if (isset($data['maps_alert_views'])) {
+            $this->rates->saveMapsAlertViews((int) $data['maps_alert_views'], self::user($request));
+        }
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Margin rules saved.']);
 
         return back();

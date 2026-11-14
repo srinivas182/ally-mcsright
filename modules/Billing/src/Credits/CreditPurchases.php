@@ -63,7 +63,17 @@ final class CreditPurchases
 
         return $this->gateway->oneTimeCheckout($buyer->email, $description, $pack['price_cents'],
             $returnBase.'/settings/credits?purchase='.$ulid.'&checkout=success', $returnBase.'/settings/credits?checkout=cancelled',
-            ['kind' => 'credit_pack', 'tenant_id' => (string) $this->tenants->id(), 'purchase' => $ulid], $this->settings->automaticTax());
+            ['kind' => 'credit_pack', 'tenant_id' => (string) $this->tenants->id(), 'purchase' => $ulid], $this->settings->automaticTax(),
+            app(AutoTopUp::class)->customer($forPool ? null : $buyer->id), saveCard: true);
+    }
+
+    /** One click: buys a pack on the card saved at an earlier checkout. */
+    public function buyWithSavedCard(User $buyer, string $packUlid): string
+    {
+        collect($this->packsFor($buyer))->firstWhere('ulid', $packUlid) ?? throw ValidationException::withMessages(['pack' => 'Choose one of the credit packs on this page.']);
+        $packId = (int) DB::connection(Connections::control())->table('credit_packs')->where('ulid', $packUlid)->value('id');
+
+        return app(AutoTopUp::class)->charge(self::isManager($buyer) ? null : $buyer->id, $packId, 'saved', $buyer);
     }
 
     /**
@@ -75,11 +85,15 @@ final class CreditPurchases
     {
         $db = DB::connection(Connections::cell());
         $p = $db->table('credit_purchases')->where('tenant_id', $this->tenants->id())->where('ulid', $purchaseUlid)->first();
-        if ($p === null || $p->status !== 'pending') {
-            return;
+        $customer = (string) ($session['customer'] ?? '');
+        if ($p !== null && $customer !== '' && $p->source === 'checkout') {
+            app(AutoTopUp::class)->rememberCard($p->account_user_id !== null ? (int) $p->account_user_id : null, $customer);
+        }
+        if ($p === null || ! in_array($p->status, ['pending', 'failed'], true)) {
+            return; // a late success for a top-up first reported as failed still adds the credits
         }
         $now = CarbonImmutable::now();
-        $claimed = $db->table('credit_purchases')->where('id', $p->id)->where('status', 'pending')->update(['status' => 'paid', 'paid_at' => $now,
+        $claimed = $db->table('credit_purchases')->where('id', $p->id)->whereIn('status', ['pending', 'failed'])->update(['status' => 'paid', 'paid_at' => $now,
             'expires_at' => $now->addMonthsNoOverflow(self::MONTHS_VALID), 'remaining' => (int) $p->credits,
             'gateway_session' => mb_substr((string) ($session['id'] ?? ''), 0, 120), 'gateway_payment' => mb_substr((string) ($session['payment_intent'] ?? ''), 0, 120),
             'total_cents' => (int) ($session['amount_total'] ?? $p->price_cents), 'tax_cents' => (int) ($session['total_details']['amount_tax'] ?? 0), 'updated_at' => now()]);
@@ -89,6 +103,18 @@ final class CreditPurchases
         $buyer = User::query()->find($p->buyer_id);
         $this->ledger->add($p->account_user_id !== null ? (int) $p->account_user_id : null, (int) $p->credits, 'purchase', 'Bought '.$p->pack_name,
             $buyer instanceof User ? $buyer : null, 'purchase:'.$purchaseUlid);
+    }
+
+    /** A saved-card payment the provider reports as failed after all (it was still processing). */
+    public function failed(string $purchaseUlid, string $error): void
+    {
+        $db = DB::connection(Connections::cell());
+        $p = $db->table('credit_purchases')->where('tenant_id', $this->tenants->id())->where('ulid', $purchaseUlid)->where('status', 'pending')->where('source', '!=', 'checkout')->first();
+        if ($p === null) {
+            return;
+        }
+        $db->table('credit_purchases')->where('id', $p->id)->update(['status' => 'failed', 'updated_at' => now()]);
+        app(AutoTopUp::class)->failed($p->account_user_id !== null ? (int) $p->account_user_id : null, $error);
     }
 
     /** A refund from the payment provider: takes back what is left of the pack, in proportion to the amount refunded. */
@@ -120,7 +146,7 @@ final class CreditPurchases
      */
     public function list(User $viewer, int $limit = 50): array
     {
-        $q = DB::connection(Connections::cell())->table('credit_purchases')->where('tenant_id', $this->tenants->id())->where('status', '!=', 'pending');
+        $q = DB::connection(Connections::cell())->table('credit_purchases')->where('tenant_id', $this->tenants->id())->whereIn('status', ['paid', 'refunded']);
         if (! self::isManager($viewer)) {
             $q->where('buyer_id', $viewer->id);
         }

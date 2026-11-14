@@ -50,6 +50,8 @@ type Props = {
     purchases: Purchase[];
     checkout: 'success' | 'cancelled' | null;
     value_microcents: number;
+    autopay: Autopay;
+    map_price: { credits: number; per: number };
     usage?: {
         people: { name: string; credits: number }[];
         automations: number;
@@ -70,6 +72,14 @@ type Pack = {
     name: string;
     credits: number;
     price_cents: number;
+};
+type Autopay = {
+    card: { brand: string; last4: string } | null;
+    enabled: boolean;
+    threshold: number;
+    pack: string | null;
+    failures: number;
+    last_error: string | null;
 };
 type Purchase = {
     ulid: string;
@@ -92,9 +102,116 @@ const usd = (cents: number) =>
     }).format(cents / 100);
 
 /** Credit packs to buy (payment on a secure checkout page), with the price per credit. */
-function BuyCredits({ packs, forPool }: { packs: Pack[]; forPool: boolean }) {
+/** Automatic top-up on the saved card: below this balance, buy this pack. */
+function AutoTopUpCard({
+    autopay,
+    packs,
+}: {
+    autopay: Autopay;
+    packs: Pack[];
+}) {
+    const [enabled, setEnabled] = useState(autopay.enabled);
+    const [threshold, setThreshold] = useState(String(autopay.threshold));
+    const [pack, setPack] = useState(autopay.pack ?? packs[0]?.ulid ?? '');
+    return (
+        <div className="grid gap-2 rounded-lg border p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="font-medium">
+                    Saved card and automatic top-up
+                </span>
+                {autopay.card ? (
+                    <span className="flex items-center gap-2 text-muted-foreground">
+                        <span className="capitalize">{autopay.card.brand}</span>{' '}
+                        •••• {autopay.card.last4}
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() =>
+                                router.delete('/settings/credits/card', {
+                                    preserveScroll: true,
+                                })
+                            }
+                        >
+                            Remove
+                        </Button>
+                    </span>
+                ) : (
+                    <span className="text-muted-foreground">
+                        Your card is saved the first time you buy a pack.
+                    </span>
+                )}
+            </div>
+            {autopay.last_error && (
+                <p className="text-destructive">
+                    The last automatic top-up failed: {autopay.last_error} Buy a
+                    pack with another card to fix it.
+                </p>
+            )}
+            <div className="flex flex-wrap items-center gap-2">
+                <label className="flex items-center gap-2">
+                    <Switch
+                        checked={enabled}
+                        onCheckedChange={setEnabled}
+                        disabled={!autopay.card}
+                    />
+                    When credits drop below
+                </label>
+                <Input
+                    aria-label="Top up below this many credits"
+                    type="number"
+                    min={0}
+                    className="h-8 w-24"
+                    value={threshold}
+                    onChange={(e) => setThreshold(e.target.value)}
+                />
+                <span>buy</span>
+                <select
+                    aria-label="Pack to buy automatically"
+                    className="h-8 rounded-md border bg-background px-2"
+                    value={pack}
+                    onChange={(e) => setPack(e.target.value)}
+                >
+                    {packs.map((p) => (
+                        <option key={p.ulid} value={p.ulid}>
+                            {p.name} ({n(p.credits)} for {usd(p.price_cents)})
+                        </option>
+                    ))}
+                </select>
+                <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={!autopay.card}
+                    onClick={() =>
+                        router.post(
+                            '/settings/credits/autopay',
+                            {
+                                enabled,
+                                threshold: parseInt(threshold || '0', 10),
+                                pack,
+                            },
+                            { preserveScroll: true },
+                        )
+                    }
+                >
+                    Save
+                </Button>
+            </div>
+        </div>
+    );
+}
+
+function BuyCredits({
+    packs,
+    forPool,
+    autopay,
+}: {
+    packs: Pack[];
+    forPool: boolean;
+    autopay: Autopay;
+}) {
     const [busy, setBusy] = useState<string | null>(null);
     if (packs.length === 0) return null;
+    const card = autopay.card;
     return (
         <section id="buy" className="grid gap-3 rounded-lg border p-4 text-sm">
             <h2 className="font-semibold">
@@ -117,8 +234,30 @@ function BuyCredits({ packs, forPool }: { packs: Pack[]; forPool: boolean }) {
                             {((p.price_cents / p.credits) * 1).toFixed(2)}¢
                             each)
                         </span>
+                        {card && (
+                            <Button
+                                size="sm"
+                                disabled={busy !== null}
+                                onClick={() => {
+                                    setBusy(p.ulid);
+                                    router.post(
+                                        '/settings/credits/buy-saved',
+                                        { pack: p.ulid },
+                                        {
+                                            preserveScroll: true,
+                                            onFinish: () => setBusy(null),
+                                        },
+                                    );
+                                }}
+                            >
+                                {busy === p.ulid
+                                    ? 'Paying…'
+                                    : `Buy with •••• ${card.last4}`}
+                            </Button>
+                        )}
                         <Button
                             size="sm"
+                            variant={card ? 'outline' : 'default'}
                             disabled={busy !== null}
                             onClick={() => {
                                 setBusy(p.ulid);
@@ -129,13 +268,16 @@ function BuyCredits({ packs, forPool }: { packs: Pack[]; forPool: boolean }) {
                                 );
                             }}
                         >
-                            {busy === p.ulid
-                                ? 'Opening checkout…'
-                                : `Buy for ${usd(p.price_cents)}`}
+                            {card
+                                ? 'Pay with another card'
+                                : busy === p.ulid
+                                  ? 'Opening checkout…'
+                                  : `Buy for ${usd(p.price_cents)}`}
                         </Button>
                     </div>
                 ))}
             </div>
+            <AutoTopUpCard autopay={autopay} packs={packs} />
             <p className="text-muted-foreground">
                 You pay on a secure checkout page and get an emailed receipt.
                 Credits arrive as soon as the payment is confirmed and last 12
@@ -429,7 +571,11 @@ export default function Credits(props: Props) {
                         </p>
                     </section>
                     <CheckoutNotice status={props.checkout} />
-                    <BuyCredits packs={props.packs} forPool={false} />
+                    <BuyCredits
+                        packs={props.packs}
+                        forPool={false}
+                        autopay={props.autopay}
+                    />
                     {props.packs.length === 0 && (
                         <p className="text-sm text-muted-foreground">
                             Need more? Ask your broker to give you credits.
@@ -474,7 +620,11 @@ export default function Credits(props: Props) {
                     </p>
                 </section>
                 <CheckoutNotice status={props.checkout} />
-                <BuyCredits packs={props.packs} forPool />
+                <BuyCredits
+                    packs={props.packs}
+                    forPool
+                    autopay={props.autopay}
+                />
                 {allowances && (
                     <section className="grid gap-3 rounded-lg border p-4 text-sm">
                         <h2 className="font-semibold">
@@ -517,9 +667,21 @@ export default function Credits(props: Props) {
                         </div>
                         <p className="text-muted-foreground">
                             Everything keeps working past the included amount:
-                            extra texts, call minutes and map views use credits
-                            (see "What each AI action costs" for the price).
-                            Website maps only load when a visitor opens them.
+                            extra texts, call minutes and map views use credits.
+                            Website map views beyond the package cost{' '}
+                            {props.map_price.credits} credits per{' '}
+                            {props.map_price.per} (about{' '}
+                            {usd(
+                                Math.round(
+                                    (props.map_price.credits *
+                                        props.value_microcents *
+                                        1000) /
+                                        props.map_price.per /
+                                        1_000_000,
+                                ),
+                            )}{' '}
+                            per 1,000). Turn on automatic top-up so your website
+                            map never pauses.
                         </p>
                     </section>
                 )}

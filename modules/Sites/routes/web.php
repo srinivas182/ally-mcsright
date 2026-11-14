@@ -84,5 +84,6 @@ Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.sites.manage']
         Route::get('/', [HqSitesController::class, 'index'])->name('index');
         Route::post('powered-by', [HqSitesController::class, 'powered'])->name('powered');
         Route::post('maps', [HqSitesController::class, 'maps'])->name('maps');
+        Route::post('maps/secret', [HqSitesController::class, 'mapsSecret'])->middleware('password.confirm')->name('maps.secret');
         Route::post('powered-by/{tenant}', [HqSitesController::class, 'tenant'])->name('powered.tenant');
     });
