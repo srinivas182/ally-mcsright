@@ -37,6 +37,9 @@ Settings the platform depends on in every environment. Each one was found by a t
 - Put the CDN in front of website hosts and honour origin `Cache-Control` (`SITES_CACHE_SECONDS`, `SITES_STALE_SECONDS`).
   Website responses set no cookies. Do not cache `/_lead` or `/_preview/*`.
 - `public/site-assets/` is served with long cache headers.
+- Maps (Sprint 17C-2a): create a Mapbox account and a public token (`pk.`) restricted to `*.rightally.site` and
+  brokerage domains; paste it in HQ → Websites → Maps (or set `MAPBOX_PUBLIC_TOKEN`). Without it, websites show lists.
+- `SITES_MORTGAGE_RATE` sets the default rate in listing-page payment estimates (default 6.5).
 
 ## MLS listings (Sprint 17A)
 

@@ -25,7 +25,21 @@ use Modules\Sites\Models\SitePage;
  */
 final class SiteSetup
 {
+    /** @var array<int, string|null> host of each brokerage's live website, per request */
+    private array $publicHosts = [];
+
     public function __construct(private readonly TenantContext $tenants) {}
+
+    /** The live website's host for links (null when the brokerage has no live site). */
+    public function publicHost(): ?string
+    {
+        $tenantId = $this->tenants->id();
+        if (! array_key_exists($tenantId, $this->publicHosts)) {
+            $this->publicHosts[$tenantId] = $this->brokerageSite()?->status === 'live' ? $this->liveHost() : null;
+        }
+
+        return $this->publicHosts[$tenantId];
+    }
 
     public function brokerageSite(): ?Site
     {
@@ -104,6 +118,7 @@ final class SiteSetup
     public function publish(Site $site, bool $live, User $by): void
     {
         self::guard($by);
+        $this->publicHosts = [];
         $site->forceFill(['status' => $live ? 'live' : 'draft', 'published_at' => $live ? ($site->published_at ?? CarbonImmutable::now()) : $site->published_at])->save();
         app(AuditLogger::class)->record($live ? 'sites.published' : 'sites.unpublished', $site, severity: 'notice');
     }
@@ -165,6 +180,7 @@ final class SiteSetup
         }
         $domain = TenantDomain::query()->create(['tenant_id' => $this->tenants->id(), 'host' => $host, 'kind' => DomainKind::Custom, 'is_primary' => false,
             'verification_status' => VerificationStatus::Pending, 'ssl_status' => SslStatus::Pending, 'purpose' => 'website']);
+        $this->publicHosts = [];
         app(AuditLogger::class)->record('sites.domain_added', metadata: ['host' => $host], severity: 'notice');
 
         return $domain;

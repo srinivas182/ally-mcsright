@@ -65,7 +65,7 @@ final class Sections
                     ['title' => 'Answers any time', 'body' => 'Ask our assistant about any home, day or night, and book a call when you are ready.'],
                 ]]],
                 ['type' => 'faq', 'id' => 'faq', 'props' => ['title' => 'Questions buyers and sellers ask', 'items' => [
-                    ['q' => 'How do I book a showing?', 'a' => 'Open any home and choose "Book a showing", or ask our assistant. An agent confirms a time that suits you, usually within the hour.'],
+                    ['q' => 'How do I book a showing?', 'a' => 'Open any home and send us a message, or call us. An agent confirms a time that suits you, usually within the hour.'],
                     ['q' => "Which areas does {$name} serve?", 'a' => "We help buyers and sellers across {$area}. Tell us where you are looking and we will match you with an agent who knows it well."],
                     ['q' => 'What is my home worth?', 'a' => 'Request a free valuation and one of our agents will prepare a price range from recent nearby sales, usually within one business day.'],
                 ]]],

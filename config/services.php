@@ -55,4 +55,9 @@ return [
         'from' => env('TWILIO_FROM'),
     ],
 
+    // Website maps (specs/websites/06). HQ normally sets the token in HQ > Websites; this is the fallback.
+    'mapbox' => [
+        'public_token' => env('MAPBOX_PUBLIC_TOKEN'),
+    ],
+
 ];

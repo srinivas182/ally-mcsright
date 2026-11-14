@@ -7,6 +7,7 @@ import { PageHeader } from '@/components/ui/page-header';
 
 type Props = {
     powered_by: { enabled: boolean; text: string; url: string };
+    maps: { configured: boolean; hint: string | null };
     tenants: {
         ulid: string;
         name: string;
@@ -18,8 +19,9 @@ type Props = {
 const opts = { preserveScroll: true };
 
 /** HQ → Websites: the "Powered by RightAlly" credit on every website and assistant, and each brokerage's addresses. */
-export default function HqSites({ powered_by, tenants }: Props) {
+export default function HqSites({ powered_by, maps, tenants }: Props) {
     const form = useForm(powered_by);
+    const map = useForm({ mapbox_token: '' });
     const choose = (ulid: string, value: string) =>
         router.post(
             `/hq/sites/powered-by/${ulid}`,
@@ -77,6 +79,56 @@ export default function HqSites({ powered_by, tenants }: Props) {
                     ))}
                     <div>
                         <Button disabled={form.processing}>Save</Button>
+                    </div>
+                </form>
+
+                <form
+                    className="grid gap-3 rounded-lg border p-4 text-sm"
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        map.post('/hq/sites/maps', {
+                            ...opts,
+                            onSuccess: () => map.reset(),
+                        });
+                    }}
+                >
+                    <div className="flex flex-wrap items-center gap-2">
+                        <h2 className="font-semibold">Maps (Mapbox)</h2>
+                        {maps.configured ? (
+                            <Badge variant="secondary">
+                                On · token ending {maps.hint}
+                            </Badge>
+                        ) : (
+                            <Badge variant="outline">
+                                Off: websites show lists only
+                            </Badge>
+                        )}
+                    </div>
+                    <p className="text-muted-foreground">
+                        Paste a Mapbox public token (starts with pk.).
+                        Visitors&apos; browsers see it, so restrict it in Mapbox
+                        to *.rightally.site and brokerages&apos; own domains. It
+                        is stored encrypted and not shown again. Leave empty and
+                        save to switch maps off.
+                    </p>
+                    <Input
+                        aria-label="Mapbox public token"
+                        autoComplete="off"
+                        placeholder="pk.…"
+                        value={map.data.mapbox_token}
+                        onChange={(e) =>
+                            map.setData('mapbox_token', e.target.value)
+                        }
+                    />
+                    {map.errors.mapbox_token && (
+                        <p className="text-destructive">
+                            {map.errors.mapbox_token}
+                        </p>
+                    )}
+                    <div>
+                        <Button disabled={map.processing}>
+                            Save map token
+                        </Button>
                     </div>
                 </form>
 

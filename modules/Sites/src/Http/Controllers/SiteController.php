@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Modules\Sites\Http\Controllers;
 
-use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -18,10 +17,12 @@ use Modules\Crm\Enums\Source;
 use Modules\Crm\Leads\LeadIntake;
 use Modules\Crm\Models\LeadSource;
 use Modules\Listings\Search\ListingSearch;
+use Modules\Listings\Search\MarketStats;
 use Modules\Sites\Models\Site;
 use Modules\Sites\Models\SitePage;
-use Modules\Sites\PoweredBy;
+use Modules\Sites\Rendering\Chrome;
 use Modules\Sites\Rendering\Seo;
+use Modules\Sites\Rendering\Urls;
 use Modules\Sites\Sections;
 
 /**
@@ -89,6 +90,23 @@ final class SiteController
             foreach (SitePage::query()->where('site_id', $site->id)->where('status', 'published')->where('noindex', false)->orderBy('position')->get() as $p) {
                 $urls[] = '<url><loc>'.e($base.$p->path).'</loc><lastmod>'.($p->updated_at?->toAtomString() ?? '').'</lastmod></url>';
             }
+            $tenantId = $this->tenants->id();
+            $places = app(MarketStats::class)->places($tenantId);
+            $urls[] = '<url><loc>'.e($base.'/homes').'</loc></url>';
+            if ($places !== []) {
+                $urls[] = '<url><loc>'.e($base.'/market').'</loc></url>';
+            }
+            foreach ($places as $place) {
+                $urls[] = '<url><loc>'.e($base.Urls::market($place['slug'])).'</loc></url>';
+            }
+            // Homes for sale (newest 5,000; a sitemap index takes over beyond that).
+            $search = app(ListingSearch::class);
+            $listings = $search->query($tenantId, ListingSearch::clean([]))->limit(5000)
+                ->get(['ulid', 'street_number', 'street_name', 'unit_number', 'city', 'state_or_province', 'postal_code', 'address_display_allowed', 'modification_timestamp']);
+            foreach ($listings as $l) {
+                $label = trim(implode(' ', array_filter([$l->address_display_allowed ? $l->address() : null, $l->city, $l->state_or_province, $l->postal_code])));
+                $urls[] = '<url><loc>'.e($base.Urls::listing($l->ulid, $label)).'</loc>'.($l->modification_timestamp !== null ? '<lastmod>'.$l->modification_timestamp->toAtomString().'</lastmod>' : '').'</url>';
+            }
         }
 
         return response('<?xml version="1.0" encoding="UTF-8"?>'."\n".'<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'.implode('', $urls).'</urlset>', 200,
@@ -124,6 +142,20 @@ final class SiteController
         foreach (SitePage::query()->where('site_id', $site->id)->where('status', 'published')->where('noindex', false)->orderBy('position')->get() as $p) {
             $out[] = '- ['.$p->title.']('.$base.$p->path.')'.($p->meta_description ? ': '.$p->meta_description : '');
         }
+        $out[] = '- [Homes for sale]('.$base.'/homes): every home for sale from the MLS, searchable by map, price and size';
+        $places = array_slice(app(MarketStats::class)->places($this->tenants->id()), 0, 12);
+        if ($places !== []) {
+            $out[] = '';
+            $out[] = '## Market reports';
+            foreach ($places as $place) {
+                $m = app(MarketStats::class)->forPlace($this->tenants->id(), $place['slug']);
+                if ($m !== null) {
+                    $out[] = '- ['.$m['name'].']('.$base.Urls::market($m['slug']).'): '.number_format($m['active']).' homes for sale'
+                        .($m['median_price'] !== null ? ', median list price $'.number_format($m['median_price']) : '').($m['median_dom'] !== null ? ', typically '.$m['median_dom'].' days on market' : '')
+                        .' (as of '.$m['as_of'].')';
+                }
+            }
+        }
         $out[] = '';
         $out[] = 'Listings come from the MLS and are updated every few minutes. Listing information is deemed reliable but not guaranteed.';
 
@@ -153,6 +185,19 @@ final class SiteController
             'message' => mb_substr((string) $request->input('message', ''), 0, 4000), 'intent' => (string) $request->input('intent', ''),
             'referrer' => mb_substr((string) $request->input('first_referrer', ''), 0, 500), 'landing_url' => mb_substr((string) $request->input('landing_url', ''), 0, 500),
             'sms_consent' => $request->boolean('sms_consent'), 'consent_text' => (string) $source->consent_wording];
+        // An enquiry from a listing page names the home (looked up here, never trusted from the form).
+        $listing = $request->input('listing');
+        if (is_string($listing) && preg_match('/^[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}$/', $listing) === 1) {
+            $home = app(ListingSearch::class)->find($this->tenants->id(), $listing);
+            if ($home !== null) {
+                $about = 'About '.(ListingSearch::label($home) ?: 'a listing').($home['mls_number'] ? ' (MLS# '.$home['mls_number'].')' : '')
+                    .($home['price'] !== null ? ', listed at $'.number_format((int) $home['price']) : '');
+                $in['message'] = mb_substr($about.".\n".$in['message'], 0, 4000);
+                $in['intent'] = $in['intent'] !== '' ? $in['intent'] : 'buy';
+                $in['price'] = (string) ($home['price'] ?? '');
+                $in['zip'] = (string) ($home['postal_code'] ?? '');
+            }
+        }
         foreach (['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'gclid'] as $k) {
             if (is_string($request->input($k)) && $request->input($k) !== '') {
                 $in[$k] = mb_substr((string) $request->input($k), 0, 150);
@@ -182,17 +227,25 @@ final class SiteController
             }
             $blocks[] = $s;
         }
-        $menu = SitePage::query()->where('site_id', $site->id)->where('status', 'published')->where('in_menu', true)->orderBy('position')->get(['path', 'title']);
         $page->sections = $sections;
 
         return response()->view('sites::page', [
-            'site' => $site, 'page' => $page, 'blocks' => $blocks, 'menu' => $menu, 'base' => $request->getSchemeAndHttpHost(),
+            'site' => $site, 'page' => $page, 'blocks' => $blocks, 'current' => $page->path, 'base' => $request->getSchemeAndHttpHost(),
             'seo' => Seo::forPage($site, $page, $request->getSchemeAndHttpHost(), $indexable),
-            'powered' => app(PoweredBy::class)->forTenant($tenantId), 'sent' => $request->query('sent') === '1',
-            'formError' => is_string($request->query('error')) ? mb_substr((string) $request->query('error'), 0, 200) : null,
-            't' => Crypt::encryptString((string) time()), 'year' => CarbonImmutable::now()->year, 'consent' => Consent::DEFAULT_SMS_WORDING,
-            'disclaimers' => collect($blocks)->pluck('listings')->flatten(1)->pluck('disclaimer')->filter()->unique()->values()->all(),
+            'chrome' => Chrome::for($site, $tenantId, collect($blocks)->pluck('listings')->flatten(1)->pluck('disclaimer')->filter()->values()->all()),
+            ...self::form($request),
         ]);
+    }
+
+    /**
+     * The lead form's state on any page: sent / error after a submission, the encrypted time trap, consent wording.
+     *
+     * @return array{sent: bool, formError: string|null, t: string, consent: string}
+     */
+    public static function form(Request $request): array
+    {
+        return ['sent' => $request->query('sent') === '1', 'formError' => is_string($request->query('error')) ? mb_substr((string) $request->query('error'), 0, 200) : null,
+            't' => Crypt::encryptString((string) time()), 'consent' => Consent::DEFAULT_SMS_WORDING];
     }
 
     private function site(): ?Site

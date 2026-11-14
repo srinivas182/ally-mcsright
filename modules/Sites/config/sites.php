@@ -10,6 +10,8 @@ return [
     // Edge cache for published pages (seconds); stale content may be served this long while refreshing.
     'cache_seconds' => (int) env('SITES_CACHE_SECONDS', 300),
     'stale_seconds' => (int) env('SITES_STALE_SECONDS', 86400),
+    // Mortgage estimate defaults on listing pages (visitors can change them).
+    'mortgage' => ['rate' => (float) env('SITES_MORTGAGE_RATE', 6.5), 'down_pct' => 20, 'years' => 30, 'tax_rate' => 1.2, 'insurance' => 150],
     'templates' => [
         'aurum' => ['name' => 'Aurum', 'description' => 'Dark luxury with gold accents and a full-screen hero.', 'fonts' => 'Cormorant Garamond + Inter'],
         'modern' => ['name' => 'Modern', 'description' => 'Light, clean and bright; the default for agents.', 'fonts' => 'Inter'],
