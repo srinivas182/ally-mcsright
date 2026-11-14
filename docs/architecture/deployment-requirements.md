@@ -28,6 +28,16 @@ Settings the platform depends on in every environment. Each one was found by a t
   other names).
 - A queue worker must run: uploaded deal documents are read by the `ReadDocument` job.
 
+## Lead intake (Sprint 16A)
+
+- Inbound email for forwarded portal leads: point an inbound-email provider (Postmark inbound format) for
+  `CRM_INBOUND_EMAIL_DOMAIN` (default `inbound.rightally.app`, MX records to the provider) at
+  `https://<any app host>/webhooks/inbound/lead-email`, with basic auth whose password is
+  `CRM_INBOUND_EMAIL_SECRET`. Without the secret the webhook refuses every email.
+- `crm:leads-reassign` runs every minute (scheduler); it moves leads nobody answered in time.
+- The speed-to-lead call uses the HQ Twilio account (Texts and calls); Twilio must be able to reach the
+  brokerage domains over HTTPS for the "press 1" step.
+
 ## Deadline texts and automated calls (Sprint 15D)
 
 - Twilio is set up in **RightAlly HQ → Texts and calls**: Account SID and auth token (stored encrypted), the

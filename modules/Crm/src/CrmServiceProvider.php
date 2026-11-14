@@ -51,6 +51,11 @@ final class CrmServiceProvider extends ServiceProvider
         $this->app->scoped(PersonalMemory::class);
         $this->app->scoped(Referrals::class);
         $this->app->scoped(LeadPond::class);
+        $this->app->scoped(Leads\LeadRouting::class);
+        $this->app->scoped(Leads\LeadIntake::class);
+        $this->app->scoped(Leads\LeadSources::class);
+        $this->app->scoped(Leads\SpeedToLead::class);
+        $this->app->scoped(Leads\PortalEmail::class);
         $this->app->scoped(Actions\MergeContacts::class);
     }
 
@@ -58,6 +63,7 @@ final class CrmServiceProvider extends ServiceProvider
     {
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
+        $this->loadViewsFrom(__DIR__.'/../resources/views', 'crm');
 
         // AI: prompts live with the module; features are declared for ai:sync-features.
         $this->app->make(PromptRegistry::class)->addPath(__DIR__.'/../prompts');
@@ -120,6 +126,10 @@ final class CrmServiceProvider extends ServiceProvider
             if ($contact !== null) {
                 $this->app->make(FollowUpPlans::class)->stopAllFor($contact, 'Contact responded');
             }
+            // Speed to lead: the first call, text or email answers the contact's open leads.
+            if ($activity !== null) {
+                $this->app->make(Leads\SpeedToLead::class)->activityLogged($activity);
+            }
             // Keep the opportunity score current (cheap, rule-based).
             $scored = Contact::query()->find($e->contactId);
             if ($scored !== null) {
@@ -143,16 +153,19 @@ final class CrmServiceProvider extends ServiceProvider
         $features->declare(VoiceUpdates::LOG, 'ai.crm_voice_log', 'Spoken or typed contact updates');
         $features->declare(VoiceUpdates::QUICK_ADD, 'ai.crm_quick_add', 'Spoken quick add');
         $features->declare(DatabaseIntelligence::FEATURE, 'ai.crm_intents', 'Reading plans and dates from notes');
+        $features->declare(Leads\PortalEmail::FEATURE, 'ai.crm_lead_email', 'Reading forwarded lead emails from any sender');
 
         $this->app->make(NavigationRegistry::class)->add(new NavItem('Grow', 'Contacts', '/contacts', 'contact', 10,
             kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant], mobile: true));
+        $this->app->make(NavigationRegistry::class)->add(new NavItem('Grow', 'Leads', '/leads', 'zap', 5,
+            kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent], mobile: true));
         $this->app->make(NavigationRegistry::class)->add(new NavItem('Overview', "Today's 10", '/today', 'target', 15,
             kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant], mobile: true));
         $this->app->make(NavigationRegistry::class)->add(new NavItem('Overview', 'Tasks', '/tasks', 'list-checks', 20,
             kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant], mobile: true));
 
         if ($this->app->runningInConsole()) {
-            $this->commands([SendTaskReminders::class, Console\RefreshBriefs::class, Console\RunPlans::class, Console\RunIntelligence::class, Console\SweepPonds::class]);
+            $this->commands([SendTaskReminders::class, Console\RefreshBriefs::class, Console\RunPlans::class, Console\RunIntelligence::class, Console\SweepPonds::class, Console\ReassignLeads::class]);
         }
     }
 }

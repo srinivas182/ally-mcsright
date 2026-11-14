@@ -19,16 +19,16 @@ function menuFor(User $user): array
 }
 
 it('shows owners the dashboard, people and finance', function (): void {
-    expect(menuFor(User::factory()->owner()->create()))->toBe(['Dashboard', "Today's 10", 'Tasks', 'Deals', 'Review queue', 'Risk', 'Contacts', 'Money received', 'Payouts', 'Agent billing', 'Tax (1099)', 'Trust reconciliation', 'Chart of accounts', 'Journals', 'Periods', 'People', 'Plans', 'Fees', 'Credits', 'Simulator', 'Revenue share', 'Profitability', 'Directory', 'Roster and compliance', 'Agent plans', 'Billing', 'Partner earnings', 'Transactions', 'Forms', 'Roles', 'Offices and teams', 'Audit log']);
+    expect(menuFor(User::factory()->owner()->create()))->toBe(['Dashboard', "Today's 10", 'Tasks', 'Deals', 'Review queue', 'Risk', 'Leads', 'Contacts', 'Money received', 'Payouts', 'Agent billing', 'Tax (1099)', 'Trust reconciliation', 'Chart of accounts', 'Journals', 'Periods', 'People', 'Plans', 'Fees', 'Credits', 'Simulator', 'Revenue share', 'Profitability', 'Directory', 'Roster and compliance', 'Agent plans', 'Billing', 'Partner earnings', 'Transactions', 'Forms', 'Roles', 'Offices and teams', 'Audit log']);
 });
 
 it('shows agents only their own pages', function (): void {
-    expect(menuFor(User::factory()->create()))->toBe(['Today', "Today's 10", 'Tasks', 'Deals', 'My plan', 'My money', 'My licences and onboarding', 'Revenue share', 'Contacts', 'Directory'])
+    expect(menuFor(User::factory()->create()))->toBe(['Today', "Today's 10", 'Tasks', 'Deals', 'My plan', 'My money', 'My licences and onboarding', 'Revenue share', 'Leads', 'Contacts', 'Directory'])
         ->and(menuFor(User::factory()->assistantOf(User::factory()->create())->create()))->toBe(['Today', "Today's 10", 'Tasks', 'Deals', 'Contacts']);
 });
 
 it('shows staff the dashboard but not owner-only pages', function (): void {
-    expect(menuFor(User::factory()->staff()->create()))->toBe(['Dashboard', "Today's 10", 'Tasks', 'Deals', 'Review queue', 'Risk', 'Contacts', 'Directory', 'Roster and compliance', 'Transactions', 'Forms']);
+    expect(menuFor(User::factory()->staff()->create()))->toBe(['Dashboard', "Today's 10", 'Tasks', 'Deals', 'Review queue', 'Risk', 'Leads', 'Contacts', 'Directory', 'Roster and compliance', 'Transactions', 'Forms']);
 });
 
 it('shows HQ staff the HQ console and people', function (): void {
@@ -41,13 +41,13 @@ it('shows HQ staff the HQ console and people', function (): void {
 });
 
 it('lets modules add items, grouped and ordered', function (): void {
-    app(NavigationRegistry::class)->add(new NavItem('Grow', 'Leads', '/leads', 'users', 5, kinds: [UserKind::Agent]));
+    app(NavigationRegistry::class)->add(new NavItem('Grow', 'Open houses', '/open-houses', 'users', 1, kinds: [UserKind::Agent]));
 
     $groups = app(NavigationRegistry::class)->for(User::factory()->create());
 
     expect(array_column($groups, 'label'))->toBe(['Overview', 'Grow', 'People'])
-        ->and($groups[1]['items'][0]['title'])->toBe('Leads')
-        ->and($groups[1]['items'][1]['title'])->toBe('Contacts');
+        ->and($groups[1]['items'][0]['title'])->toBe('Open houses')
+        ->and($groups[1]['items'][1]['title'])->toBe('Leads');
 });
 
 it('shares the brokerage name and the menu with every page', function (): void {
