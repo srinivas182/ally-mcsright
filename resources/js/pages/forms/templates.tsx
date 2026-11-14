@@ -1,4 +1,4 @@
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -32,6 +32,8 @@ type Template = {
     page_sizes: [number, number][];
     checklist_label: string | null;
     high_risk: boolean;
+    edition: string | null;
+    import_source: string | null;
 };
 type Props = {
     templates: Template[];
@@ -74,8 +76,9 @@ function FieldEditor({
     return (
         <details className="rounded-lg border p-3 text-sm">
             <summary className="cursor-pointer font-medium">
-                {t.name} · {t.pages} page(s) · version {t.version} ·{' '}
-                {t.fields.length} field(s)
+                {t.name}
+                {t.edition ? ` (edition ${t.edition})` : ''} · {t.pages} page(s)
+                · version {t.version} · {t.fields.length} field(s)
             </summary>
             <div
                 role="group"
@@ -306,7 +309,14 @@ export default function FormTemplates({
             <div className="flex flex-col gap-4">
                 <PageHeader
                     title="Forms"
-                    description="Your brokerage's forms, filled from each deal. Association forms plug in as licences arrive."
+                    description="Your brokerage's forms, filled from each deal."
+                    actions={
+                        <Button variant="outline" asChild>
+                            <Link href="/forms/libraries">
+                                Association libraries and imports
+                            </Link>
+                        </Button>
+                    }
                 />
                 <form
                     className="flex flex-wrap items-center gap-2 rounded-lg border p-4 text-sm"

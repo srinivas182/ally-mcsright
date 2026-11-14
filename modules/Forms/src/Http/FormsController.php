@@ -31,7 +31,7 @@ final class FormsController
         return Inertia::render('forms/templates', [
             'templates' => $db->table('form_templates')->where('active', true)->orderBy('name')->get()->map(fn ($t): array => ['ulid' => $t->ulid, 'name' => $t->name,
                 'pages' => (int) $t->pages, 'version' => (int) $t->version, 'fields' => json_decode((string) $t->fields, true), 'page_sizes' => json_decode((string) $t->page_sizes, true),
-                'checklist_label' => $t->checklist_label, 'high_risk' => (bool) $t->high_risk])->values(),
+                'checklist_label' => $t->checklist_label, 'high_risk' => (bool) $t->high_risk, 'edition' => $t->edition, 'import_source' => $t->import_source])->values(),
             'clauses' => $db->table('form_clauses')->orderBy('title')->get(['ulid', 'title', 'body']),
             'bindings' => Packets::bindings(), 'types' => Templates::TYPES,
             'identity' => app(IdentityChecks::class)->settings(),
@@ -121,6 +121,7 @@ final class FormsController
             'negotiation' => Negotiations::history($row),
             'risk' => self::risk($row, $user),
             'summary' => Summaries::forAgent($row),
+            'outdated' => $row->status === 'draft' ? Packets::outdated((int) $row->id) : [],
             'clause_review' => ['setting' => ClauseCheck::setting(), 'terms' => ClauseCheck::review((int) $row->id), 'approved' => ClauseCheck::approved($row),
                 'can_approve' => Templates::manages($user)],
             'changes' => $db->table('form_changes')->where('packet_id', $row->id)->orderByDesc('id')->get()->map(fn ($c): array => [
@@ -129,6 +130,14 @@ final class FormsController
                     ->whereNull('form_change_acks.at')->pluck('form_signers.name')->values()->all()])->values(),
             'templates' => $db->table('form_templates')->where('active', true)->orderBy('name')->get(['ulid', 'name']),
         ]);
+    }
+
+    public function newestEditions(Request $request, string $packet, Packets $packets): RedirectResponse
+    {
+        $n = $packets->useNewestEditions($packet, self::user($request));
+        Inertia::flash('toast', ['type' => 'success', 'message' => "{$n} form(s) switched to the newest edition; filled-in values were kept."]);
+
+        return back();
     }
 
     public function summary(Request $request, string $packet, Summaries $summaries): RedirectResponse

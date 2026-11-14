@@ -17,7 +17,7 @@ final class FormsServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        foreach ([Templates::class, Packets::class, Signing::class, Sealer::class, Negotiations::class, Identity\IdentityChecks::class, Summaries::class, ClauseCheck::class] as $service) {
+        foreach ([Templates::class, Packets::class, Signing::class, Sealer::class, Negotiations::class, Identity\IdentityChecks::class, Summaries::class, ClauseCheck::class, Library\Libraries::class, Library\Importer::class] as $service) {
             $this->app->scoped($service);
         }
         $this->app->bindIf(Identity\IdentityProvider::class, fn ($app): Identity\IdentityProvider => config('forms.identity_driver') === 'fake'
@@ -30,7 +30,7 @@ final class FormsServiceProvider extends ServiceProvider
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
         if ($this->app->runningInConsole()) {
-            $this->commands([Console\SigningReminders::class, Console\SealKey::class]);
+            $this->commands([Console\SigningReminders::class, Console\SealKey::class, Console\SyncLibraries::class]);
         }
         $this->app->make(PermissionRegistry::class)->register('Transactions', [
             'forms.manage' => ['Manage forms: templates, fields and clauses'],

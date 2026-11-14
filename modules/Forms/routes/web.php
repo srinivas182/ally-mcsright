@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Route;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
 use Modules\Forms\Http\FormsController;
+use Modules\Forms\Http\LibraryController;
 use Modules\Forms\Http\SigningController;
 
 Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('forms')->name('forms.')->group(function (): void {
@@ -15,6 +16,11 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('forms'
     Route::post('clauses', [FormsController::class, 'clause'])->name('clauses');
     Route::post('identity-settings', [FormsController::class, 'identitySettings'])->name('identity-settings');
     Route::post('clause-setting', [FormsController::class, 'clauseSetting'])->name('clause-setting');
+    Route::get('libraries', [LibraryController::class, 'index'])->name('libraries');
+    Route::post('libraries', [LibraryController::class, 'connect'])->middleware('throttle:10,1,forms-library')->name('libraries.connect');
+    Route::post('libraries/{library}/sync', [LibraryController::class, 'sync'])->middleware('throttle:10,1,forms-library')->name('libraries.sync');
+    Route::post('library-forms/{form}/import', [LibraryController::class, 'import'])->whereNumber('form')->name('library-forms.import');
+    Route::post('import', [LibraryController::class, 'importFiles'])->middleware('throttle:10,1,forms-import')->name('import');
     Route::post('templates/{template}/risk', [FormsController::class, 'templateRisk'])->name('templates.risk');
     Route::get('deals/{deal}', [FormsController::class, 'forDeal'])->name('deal');
     Route::post('deals/{deal}/packets', [FormsController::class, 'createPacket'])->name('packets.create');
@@ -26,6 +32,7 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('forms'
     Route::post('packets/{packet}/void', [FormsController::class, 'void'])->name('packets.void');
     Route::post('packets/{packet}/amend', [FormsController::class, 'amend'])->middleware('throttle:20,1')->name('packets.amend');
     Route::post('packets/{packet}/counter', [FormsController::class, 'counter'])->middleware('throttle:20,1')->name('packets.counter');
+    Route::post('packets/{packet}/newest-editions', [FormsController::class, 'newestEditions'])->name('packets.newest-editions');
     Route::post('packets/{packet}/summary', [FormsController::class, 'summary'])->middleware('throttle:10,1,forms-summary')->name('packets.summary');
     Route::post('packets/{packet}/summary/approve', [FormsController::class, 'approveSummary'])->name('packets.summary.approve');
     Route::post('packets/{packet}/dates', [FormsController::class, 'dates'])->name('packets.dates');

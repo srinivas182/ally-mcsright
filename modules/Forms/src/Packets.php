@@ -142,6 +142,11 @@ final class Packets
             }
         }
 
+        if ($packet->status === 'draft') {
+            foreach (self::outdated((int) $packet->id) as $o) {
+                $problems[] = "{$o['name']}: a newer edition ({$o['edition']}) is out. Switch to it before sending.";
+            }
+        }
         if ($packet->status === 'draft' && ($identity = app(Identity\IdentityChecks::class)->sendProblem((int) $packet->id)) !== null) {
             $problems[] = $identity;
         }
@@ -209,6 +214,55 @@ final class Packets
         }
 
         return $values;
+    }
+
+    /**
+     * Forms in this packet whose template has been replaced by a newer edition.
+     *
+     * @return list<array{form_id: int, name: string, edition: string, newest_id: int}>
+     */
+    public static function outdated(int $packetId): array
+    {
+        $db = DB::connection(Connections::cell());
+        $out = [];
+        foreach ($db->table('form_packet_forms')->where('packet_id', $packetId)->get() as $f) {
+            $t = $db->table('form_templates')->where('id', $f->template_id)->first();
+            if ($t === null || $t->superseded_by === null) {
+                continue;
+            }
+            $newest = $t;
+            for ($i = 0; $i < 20 && $newest->superseded_by !== null; $i++) {
+                $newest = $db->table('form_templates')->where('id', $newest->superseded_by)->first() ?? $newest;
+            }
+            $out[] = ['form_id' => (int) $f->id, 'name' => (string) $t->name, 'edition' => (string) ($newest->edition ?? 'new'), 'newest_id' => (int) $newest->id];
+        }
+
+        return $out;
+    }
+
+    /** Switches a draft's forms to their newest editions, keeping filled-in values whose fields still exist. */
+    public function useNewestEditions(string $packetUlid, User $by): int
+    {
+        [$packet, $deal] = $this->packet($packetUlid, $by);
+        if ($packet->status !== 'draft') {
+            throw ValidationException::withMessages(['packet' => 'Only a draft can change editions; a sent packet keeps the edition it was sent with.']);
+        }
+        $db = DB::connection(Connections::cell());
+        $outdated = self::outdated((int) $packet->id);
+        foreach ($outdated as $o) {
+            $form = $db->table('form_packet_forms')->where('id', $o['form_id'])->first();
+            $template = $db->table('form_templates')->where('id', $o['newest_id'])->first();
+            if ($form === null || $template === null) {
+                continue;
+            }
+            $fields = $this->fieldsFor((int) $template->id);
+            $keys = array_column($fields, 'key');
+            $values = array_intersect_key((array) json_decode((string) $form->values, true), array_flip($keys));
+            $values += $this->autofill($deal, $fields);
+            $db->table('form_packet_forms')->where('id', $form->id)->update(['template_id' => $template->id, 'template_version' => $template->version, 'values' => json_encode($values)]);
+        }
+
+        return count($outdated);
     }
 
     /** @return list<string> the bindings forms can use */
