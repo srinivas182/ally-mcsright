@@ -124,7 +124,7 @@ it('answers a repeated first question for free from the day\'s cache', function 
 
     aillySay(aillyChat(), 'what are your office hours')->assertJson(['reply' => 'Our office is open 9 to 5 on weekdays.']);
     expect($this->ai->requests)->toHaveCount(1)
-        ->and(DB::connection(Connections::cell())->table('ailly_conversations')->sum('cached_replies'))->toBe(1);
+        ->and((int) DB::connection(Connections::cell())->table('ailly_conversations')->sum('cached_replies'))->toBe(1);
 });
 
 it('ends chats that are not about homes after two tries', function (): void {
