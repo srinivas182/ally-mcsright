@@ -44,8 +44,8 @@ jobs:
           path: ~/.composer/cache/files
           key: composer-${{ hashFiles('composer.lock') }}
 
-      - name: PDF tools (qpdf normalises uploaded forms)
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq qpdf poppler-utils
+      - name: PDF and OCR tools (qpdf normalises forms; Tesseract reads scans)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq qpdf poppler-utils tesseract-ocr
 
       - run: composer install --no-interaction --no-progress --prefer-dist
 
@@ -100,8 +100,8 @@ jobs:
           path: ~/.composer/cache/files
           key: composer-${{ hashFiles('composer.lock') }}
 
-      - name: PDF tools (qpdf normalises uploaded forms)
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq qpdf poppler-utils
+      - name: PDF and OCR tools (qpdf normalises forms; Tesseract reads scans)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq qpdf poppler-utils tesseract-ocr
 
       - run: composer install --no-interaction --no-progress --prefer-dist
 

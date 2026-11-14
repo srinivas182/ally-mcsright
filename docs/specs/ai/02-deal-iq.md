@@ -25,6 +25,24 @@ Formerly "AI Transaction Coordinator" in the module catalogue. Positioned as
 | C, 53            | Listing-to-contract coordination; vendor scheduling and closing-day logistics                                                                                                        |
 | A, 53            | Client concierge in Spanish (multilingual concierge)                                                                                                                                 |
 
+## Delivery plan (approved November 2026)
+
+Leader review: Lone Wolf BoldTrail BackOffice ComplianceAI (required forms, blank fields, signatures and
+initials, inconsistencies; report on submission), SkySlope audits, ListedKit Ava (contract reading, timelines,
+intake compliance scan), MaxHome.ai (addendum-driven document requests, commission reconciliation). Approved
+additions: read every upload and file it; compliance scan; required documents triggered by contents;
+commission reconciliation; **continuous** scan with a broker-ready score; **cross-checks against RightAlly's own
+data** (licence and E&O on the contract date, form edition, signature certificate, CDA vs plan vs trust money);
+evidence on the page with one-click fixes; the brokerage's plain-English rules; finding accuracy tracking;
+wire-instruction detection with payout holds.
+
+| Sprint | Delivers                                                                                                                                                                                          |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 15A    | DocIQ reading (specs/ai/03): read, OCR, split and file, facts with checked quotes, required documents, safe copy, ask                                                                             |
+| 15B    | Compliance scan: findings graded blocker / warning / info with page evidence and fixes, broker-ready score, cross-checks against RightAlly data, plain-English brokerage rules, accuracy tracking |
+| 15C    | Money and wire fraud: settlement statement vs contract vs CDA vs trust ledger, wire-instruction alerts, payout holds                                                                              |
+| 15D    | Deadlines that cannot be missed: escalation ladder, at-risk prediction, broker risk view                                                                                                          |
+
 ## Market review (November 2026)
 
 | Capability                                                   | ProxiClose | Transaction Wingman | Deal-IQ                                                 |

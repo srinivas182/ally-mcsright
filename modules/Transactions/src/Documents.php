@@ -12,6 +12,7 @@ use Illuminate\Validation\ValidationException;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Transactions\Models\Deal;
 use Modules\Transactions\Models\Document;
+use Modules\Transactions\Models\DocumentReading;
 use Modules\Transactions\Models\Item;
 
 /**
@@ -47,6 +48,10 @@ final class Documents
             app(Reviews::class)->assign($item);
         }
         app(AuditLogger::class)->record('transactions.document.uploaded', $deal, metadata: ['item' => $item?->label, 'filename' => $doc->filename, 'version' => $version], label: $deal->street);
+        if (Reading\DocIq::readable($mime)) {
+            DocumentReading::query()->create(['document_id' => $doc->id, 'status' => 'queued']);
+            Jobs\ReadDocument::dispatch($doc->id)->afterCommit();
+        }
 
         return $doc;
     }

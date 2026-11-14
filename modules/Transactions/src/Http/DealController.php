@@ -24,7 +24,9 @@ use Modules\Transactions\Forecast;
 use Modules\Transactions\KeyDates;
 use Modules\Transactions\Models\Deal;
 use Modules\Transactions\Models\Document;
+use Modules\Transactions\Models\DocumentReading;
 use Modules\Transactions\Models\Item;
+use Modules\Transactions\Reading\DocIq;
 use Modules\Transactions\Referrals;
 use Modules\Transactions\Reviews;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -59,7 +61,11 @@ final class DealController
     {
         $user = $this->authorise($request, $deal);
         $db = DB::connection(Connections::cell());
-        $docs = Document::query()->where('deal_id', $deal->id)->orderBy('version')->get()->groupBy('item_id');
+        $all = Document::query()->where('deal_id', $deal->id)->orderBy('version')->get();
+        $docs = $all->groupBy('item_id');
+        $readings = DocumentReading::query()->whereIn('document_id', $all->pluck('id'))->get()->keyBy('document_id');
+        $doc = fn (Document $d): array => ['ulid' => $d->ulid, 'filename' => $d->filename, 'version' => $d->version, 'via' => $d->via,
+            'reading' => self::reading($readings->get($d->id), $d)];
 
         return Inertia::render('deals/show', [
             'deal' => ['ulid' => $deal->ulid, 'street' => $deal->street, 'city' => $deal->city, 'state_code' => $deal->state_code, 'postal_code' => $deal->postal_code,
@@ -69,11 +75,15 @@ final class DealController
             'parties' => $db->table('tx_parties')->where('deal_id', $deal->id)->get(['role', 'name', 'company', 'email', 'phone']),
             'items' => Item::query()->where('deal_id', $deal->id)->orderBy('sort')->get()->map(fn (Item $i): array => [
                 'ulid' => $i->ulid, 'label' => $i->label, 'required' => $i->required, 'stage' => $i->stage, 'status' => $i->status, 'fix_reason' => $i->fix_reason,
+                'added_reason' => $i->getAttribute('added_reason'),
                 'overdue' => $reviews->overdue($i),
-                'documents' => ($docs[$i->id] ?? collect())->map(fn (Document $d): array => ['ulid' => $d->ulid, 'filename' => $d->filename, 'version' => $d->version, 'via' => $d->via])->values(),
+                'documents' => ($docs[$i->id] ?? collect())->map($doc)->values(),
             ]),
             'missing' => $deals->missing($deal),
             'dates' => app(KeyDates::class)->forDeal($deal),
+            'unsorted' => $all->filter(fn (Document $d): bool => $d->item_id === null)->map($doc)->values(),
+            'facts' => DocIq::dealFacts($deal),
+            'docAnswer' => $request->session()->get('docAnswer'),
             'deposits' => app(EarnestMoney::class)->forDeal($deal),
             'referrals' => app(Referrals::class)->forDeal($deal),
             'cdas' => self::reviewer($user) ? app(Cdas::class)->forDeal($deal) : [],
@@ -205,6 +215,29 @@ final class DealController
     }
 
     /** Assistants work on the deals of the agent they assist. */
+    /**
+     * What DocIQ made of one document, for the deal page.
+     *
+     * @return array<string, mixed>|null
+     */
+    private static function reading(?DocumentReading $r, Document $d): ?array
+    {
+        if ($r === null) {
+            return null;
+        }
+        $methods = array_count_values((array) $r->methods);
+
+        return ['status' => $r->status, 'pages' => $r->pages, 'ocr_pages' => (int) ($methods['ocr'] ?? 0), 'type' => $r->title,
+            'split_into' => $d->getAttribute('split_into'), 'parent' => $d->getAttribute('parent_document_id') !== null,
+            'sensitive' => $r->sensitive, 'facts' => count((array) $r->facts)];
+    }
+
+    /** Whether the user may work on this deal: reviewers, or its agent (and their assistant). */
+    public static function canWork(User $user, Deal $deal): bool
+    {
+        return self::reviewer($user) || $deal->agent_user_id === self::actingFor($user);
+    }
+
     private static function actingFor(User $user): int
     {
         return $user->kind === UserKind::Assistant && $user->assisted_user_id !== null ? $user->assisted_user_id : $user->id;
