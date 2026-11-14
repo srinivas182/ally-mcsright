@@ -1,4 +1,5 @@
 import { Head, router, useForm } from '@inertiajs/react';
+import { useState } from 'react';
 
 import { RailSetup, type RailInfo } from '@/components/payouts/rail-setup';
 
@@ -31,6 +32,7 @@ type Run = {
     total_cents: number;
     approved_by: string | null;
     sent_at: string | null;
+    held?: { deal: string; street: string; reason: string }[];
     lines: Line[];
 };
 type Props = {
@@ -64,6 +66,7 @@ const method: Record<string, string> = {
 
 function RunCard({ run, canApprove }: { run: Run; canApprove: boolean }) {
     const opts = { preserveScroll: true };
+    const [override, setOverride] = useState('');
 
     return (
         <section className="grid gap-2 rounded-lg border p-4 text-sm">
@@ -138,19 +141,56 @@ function RunCard({ run, canApprove }: { run: Run; canApprove: boolean }) {
                     </tbody>
                 </table>
             </div>
+            {run.status === 'draft' && (run.held ?? []).length > 0 && (
+                <div
+                    role="alert"
+                    className="grid gap-1 rounded border border-red-300 bg-red-50 p-2 text-sm text-red-900"
+                >
+                    <p className="font-medium">
+                        Deal-IQ is holding payouts on these deals:
+                    </p>
+                    {(run.held ?? []).map((h) => (
+                        <p key={h.deal}>
+                            <a className="underline" href={`/deals/${h.deal}`}>
+                                {h.street}
+                            </a>
+                            : {h.reason}
+                        </p>
+                    ))}
+                    {canApprove && (
+                        <Input
+                            aria-label="Why you are paying anyway"
+                            placeholder="Why you are paying anyway (recorded in the audit log)"
+                            className="bg-background"
+                            value={override}
+                            onChange={(e) => setOverride(e.target.value)}
+                        />
+                    )}
+                </div>
+            )}
             <span className="flex flex-wrap gap-2">
                 {run.status === 'draft' && canApprove && (
                     <Button
                         size="sm"
+                        variant={
+                            (run.held ?? []).length > 0
+                                ? 'destructive'
+                                : 'default'
+                        }
+                        disabled={
+                            (run.held ?? []).length > 0 && override.length < 10
+                        }
                         onClick={() =>
                             router.post(
                                 `/finance/payouts/${run.ulid}/approve`,
-                                {},
+                                override ? { override } : {},
                                 opts,
                             )
                         }
                     >
-                        Approve
+                        {(run.held ?? []).length > 0
+                            ? 'Approve anyway'
+                            : 'Approve'}
                     </Button>
                 )}
                 {run.status === 'approved' && (

@@ -467,6 +467,7 @@ export default function ShowDeal({
                         ))}
                     </ul>
                 </section>
+                <div id="money-desk" />
                 <MoneyDesk
                     deal={deal}
                     deposits={deposits}

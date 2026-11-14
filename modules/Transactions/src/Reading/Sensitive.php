@@ -35,6 +35,26 @@ final class Sensitive
     }
 
     /**
+     * Bank accounts named in wiring instructions: routing number and the account's last four digits.
+     *
+     * @return list<array{routing: ?string, last4: string}>
+     */
+    public static function accounts(string $text): array
+    {
+        $out = [];
+        preg_match_all('/\b(?:account|acct)\.?\s*(?:number|no\.?|#)?\s*:?\s*(\d[\d -]{4,20}\d)/i', $text, $accounts, PREG_OFFSET_CAPTURE);
+        preg_match('/\b(?:routing|ABA)\s*(?:number|no\.?|#)?\s*:?\s*(\d{9})\b/i', $text, $routing);
+        foreach ($accounts[1] as [$number]) {
+            $digits = (string) preg_replace('/\D/', '', $number);
+            if (strlen($digits) >= 6) {
+                $out[] = ['routing' => $routing[1] ?? null, 'last4' => substr($digits, -4)];
+            }
+        }
+
+        return array_values(array_unique($out, SORT_REGULAR));
+    }
+
+    /**
      * Which words (in reading order) to black out: the number itself, never the label.
      *
      * @param  list<string>  $words

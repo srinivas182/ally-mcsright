@@ -41,12 +41,15 @@ final class DocIq
     public const ASK = 'docs.ask';
 
     public const FACTS = ['buyer_names', 'seller_names', 'property_address', 'price', 'earnest_money', 'contract_date', 'closing_date', 'option_period_end',
-        'inspection_deadline', 'financing_deadline', 'appraisal_deadline', 'year_built', 'title_company', 'lender'];
+        'inspection_deadline', 'financing_deadline', 'appraisal_deadline', 'year_built', 'title_company', 'lender',
+        'commission_total', 'commission_listing', 'commission_buyer', 'earnest_money_credit'];
 
     public const FACT_LABELS = ['buyer_names' => 'Buyers', 'seller_names' => 'Sellers', 'property_address' => 'Property', 'price' => 'Price',
         'earnest_money' => 'Earnest money', 'contract_date' => 'Contract date', 'closing_date' => 'Closing date', 'option_period_end' => 'Option period ends',
         'inspection_deadline' => 'Inspection deadline', 'financing_deadline' => 'Financing deadline', 'appraisal_deadline' => 'Appraisal deadline',
-        'year_built' => 'Year built', 'title_company' => 'Title company', 'lender' => 'Lender'];
+        'year_built' => 'Year built', 'title_company' => 'Title company', 'lender' => 'Lender',
+        'commission_total' => 'Total commission', 'commission_listing' => 'Listing-side commission', 'commission_buyer' => "Buyer's-side commission",
+        'earnest_money_credit' => 'Earnest money credited'];
 
     public const DATE_FACTS = ['contract_date', 'closing_date', 'option_period_end', 'inspection_deadline', 'financing_deadline', 'appraisal_deadline'];
 

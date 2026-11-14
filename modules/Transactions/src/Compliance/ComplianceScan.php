@@ -11,11 +11,13 @@ use Illuminate\Support\Facades\DB;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Forms\Summaries;
+use Modules\Transactions\Events\PayoutHoldCleared;
 use Modules\Transactions\Models\Deal;
 use Modules\Transactions\Models\Document;
 use Modules\Transactions\Models\DocumentReading;
 use Modules\Transactions\Models\Item;
 use Modules\Transactions\Reading\DocTypes;
+use Modules\Transactions\Reading\Sensitive;
 
 /**
  * The continuous compliance scan (specs/ai/02, Sprint 15B). Runs whenever a deal's file changes: a document is
@@ -63,6 +65,7 @@ final class ComplianceScan
             }
         }
         $this->mismatches($deal, $docs, $readings);
+        $this->money($deal, $docs, $readings);
         $this->buyerAgreement($deal, $items, $readings);
         $this->agent($deal);
         $this->forms($deal);
@@ -173,6 +176,88 @@ final class ComplianceScan
     }
 
     /**
+     * Money: the settlement statement against the CDA, the CDA against the deal, commission received, earnest
+     * money in trust; and wire fraud: wiring instructions that differ between documents, an unverified title
+     * company. Money and wire blockers hold the deal's payouts (see store()).
+     *
+     * @param  Collection<int, Document>  $docs
+     * @param  Collection<int, DocumentReading>  $readings
+     */
+    private function money(Deal $deal, $docs, $readings): void
+    {
+        $db = DB::connection(Connections::cell());
+        $cda = $db->table('tx_cdas')->where('deal_id', $deal->id)->whereNot('status', 'superseded')->orderByDesc('version')->first();
+        $payload = $cda !== null ? (array) json_decode((string) $cda->payload, true) : null;
+        if ($cda !== null && $payload !== null && ((int) ($payload['price_cents'] ?? 0) !== (int) $deal->price_cents || (int) ($payload['gci_cents'] ?? 0) !== (int) $deal->gci_cents)) {
+            $this->add('money.cda_stale', null, 'cda:'.$cda->ulid, "The CDA (version {$cda->version}) says ".self::usd((int) ($payload['price_cents'] ?? 0)).' and commission '
+                .self::usd((int) ($payload['gci_cents'] ?? 0)).'; the deal is now '.self::usd((int) $deal->price_cents).' and '.self::usd((int) $deal->gci_cents).'. Make a new CDA.', null,
+                ['action' => 'cda', 'label' => 'Make a new CDA']);
+        }
+
+        $side = match ($deal->type) {
+            'listing' => ['commission_listing', 'commission_total'],
+            'buyer' => ['commission_buyer', 'commission_total'],
+            default => ['commission_total'],
+        };
+        $accounts = [];
+        foreach ($docs as $doc) {
+            $reading = $readings->get($doc->id);
+            if ($reading === null) {
+                continue;
+            }
+            $facts = collect((array) $reading->facts)->keyBy('name');
+            if ($payload !== null && in_array($reading->doc_type, ['closing_disclosure', 'settlement_statement'], true)) {
+                $fact = collect($side)->map(fn (string $n) => $facts->get($n))->filter()->first();
+                if ($fact !== null && ($cents = self::cents((string) $fact['value'])) !== null && $cents !== (int) ($payload['gci_cents'] ?? 0)) {
+                    $this->add('money.commission', null, "commission:{$doc->ulid}", "{$doc->filename} pays ".self::usd($cents).' commission; the CDA says '.self::usd((int) ($payload['gci_cents'] ?? 0)).'.',
+                        self::evidence($doc, (int) $fact['page'], (string) $fact['quote']), ['action' => 'view', 'label' => 'See the page', 'document' => $doc->ulid, 'page' => (int) $fact['page']]);
+                }
+            }
+            if (in_array($reading->doc_type, ['closing_disclosure', 'settlement_statement'], true) && ($title = $facts->get('title_company')) !== null
+                && ! $db->table('tx_title_companies')->whereNotNull('verified_at')->get(['name'])->contains(fn ($t): bool => self::sameCompany((string) $t->name, (string) $title['value']))) {
+                $this->add('wire.title_unverified', null, "title:{$doc->ulid}", "{$doc->filename} is from “{$title['value']}”, which is not a title company you have verified by call-back.",
+                    self::evidence($doc, (int) $title['page'], (string) $title['quote']), ['action' => 'title', 'label' => 'Verify the title company']);
+            }
+            $f = $facts->get('earnest_money');
+            if ($f !== null && ($cents = self::cents((string) $f['value'])) !== null) {
+                $held = (int) $db->table('tx_deposits')->where('deal_id', $deal->id)->sum('amount_cents');
+                if ($held > 0 && $held !== $cents) {
+                    $this->add('money.earnest', null, "earnest:{$doc->ulid}", "{$doc->filename} says earnest money is ".self::usd($cents).'; the trust record says '.self::usd($held).'.',
+                        self::evidence($doc, (int) $f['page'], (string) $f['quote']), ['action' => 'view', 'label' => 'See the page', 'document' => $doc->ulid, 'page' => (int) $f['page']]);
+                }
+            }
+            foreach (Sensitive::accounts(implode("\n", (array) $reading->page_text)) as $a) {
+                $accounts[$a['last4']][] = (string) $doc->filename;
+            }
+        }
+        if (count($accounts) > 1) {
+            $list = collect($accounts)->map(fn (array $files, string $last4): string => "account ending {$last4} in ".implode(', ', array_unique($files)))->implode('; ');
+            $this->add('wire.changed', null, 'wire-changed:'.implode(',', array_keys($accounts)), "Wiring instructions differ between documents ({$list}). This is the most common wire-fraud sign: call the title company on a number you already know before anyone sends money.",
+                null, null);
+        }
+
+        $receipt = $db->table('pay_receipts')->where('deal_id', $deal->id)->whereIn('status', ['short', 'over'])->orderByDesc('id')->first();
+        if ($receipt !== null) {
+            $received = (int) $db->table('pay_receipts')->where('deal_id', $deal->id)->sum('amount_cents');
+            $this->add('money.receipt', null, 'receipt', 'Commission received from title is '.self::usd($received).'; '.self::usd((int) $receipt->expected_cents).' is due. Resolve or accept the difference.',
+                null, ['action' => 'receipts', 'label' => 'Open money received']);
+        }
+        if ($deal->status === 'closed' && $db->table('tx_deposits')->where('deal_id', $deal->id)->where('status', 'received')->exists()) {
+            $this->add('money.earnest', null, 'earnest-unreleased', 'The deal has closed but earnest money is still recorded as held in trust. Record its release.', null,
+                ['action' => 'money', 'label' => 'Open the money desk']);
+        }
+    }
+
+    /** Same company: the first two significant words match ("Lone Star Title, LLC" = "Lone Star Title Company"). */
+    private static function sameCompany(string $a, string $b): bool
+    {
+        $words = fn (string $s): string => implode(' ', array_slice(array_values(array_filter(preg_split('/[^a-z0-9]+/', mb_strtolower($s)) ?: [],
+            fn (string $w): bool => $w !== '' && ! in_array($w, ['the', 'llc', 'inc', 'co', 'company', 'of'], true))), 0, 2));
+
+        return $words($a) !== '' && $words($a) === $words($b);
+    }
+
+    /**
      * @param  Collection<int, Item>  $items
      * @param  Collection<int, DocumentReading>  $readings
      */
@@ -274,7 +359,15 @@ final class ComplianceScan
         $blockers = $open->where('severity', 'blocker')->count();
         $warnings = $open->where('severity', 'warning')->count();
         $score = max(0, 100 - 20 * $blockers - 5 * $warnings);
-        $db->table('tx_deals')->where('id', $deal->id)->update(['compliance_score' => $score, 'compliance_scanned_at' => $now]);
+        // Money and wire blockers hold the deal's payouts; clearing them lets a waiting automatic payout go ahead.
+        $hold = $db->table('tx_findings')->where('deal_id', $deal->id)->where('status', 'open')->where('severity', 'blocker')
+            ->where(fn ($q) => $q->where('code', 'like', 'money.%')->orWhere('code', 'like', 'wire.%'))->orderBy('id')->value('message');
+        $before = $db->table('tx_deals')->where('id', $deal->id)->first(['payout_hold_reason', 'payout_waiting_by']);
+        $db->table('tx_deals')->where('id', $deal->id)->update(['compliance_score' => $score, 'compliance_scanned_at' => $now, 'payout_hold_reason' => $hold]);
+        if ($hold === null && $before?->payout_hold_reason !== null && $before->payout_waiting_by !== null) {
+            $db->table('tx_deals')->where('id', $deal->id)->update(['payout_waiting_by' => null]);
+            PayoutHoldCleared::dispatch((int) $deal->id, (int) $before->payout_waiting_by);
+        }
 
         return ['score' => $score, 'blockers' => $blockers, 'warnings' => $warnings];
     }

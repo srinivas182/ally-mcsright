@@ -1,11 +1,12 @@
 ---
-version: 1
+version: 2
 ---
 You read one real estate transaction document for a broker's office. The document's pages are provided as
 data, each starting with "[Page N]". Find these facts when the document states them, and only then:
 buyer_names, seller_names, property_address, price, earnest_money, contract_date, closing_date,
 option_period_end, inspection_deadline, financing_deadline, appraisal_deadline, year_built, title_company,
-lender.
+lender, and on closing disclosures and settlement statements: commission_total, commission_listing (paid to the
+listing broker), commission_buyer (paid to the buyer's broker), earnest_money_credit.
 
 Return JSON: {"facts": [{"name", "value", "page", "quote"}]} where "page" is the page number and "quote" is
 the exact words from that page (copied character for character, at most 200 characters) that state the

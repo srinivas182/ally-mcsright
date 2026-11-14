@@ -4,11 +4,15 @@ declare(strict_types=1);
 
 namespace Modules\Payouts;
 
+use App\Models\User;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Modules\Core\Access\PermissionRegistry;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
+use Modules\Transactions\Events\PayoutHoldCleared;
+use Modules\Transactions\Models\Deal;
 
 final class PayoutsServiceProvider extends ServiceProvider
 {
@@ -32,6 +36,15 @@ final class PayoutsServiceProvider extends ServiceProvider
             'finance.receipts.record' => ['Record commission received from title and resolve differences'],
             'finance.billing.manage' => ['Bill agents: fees, charges, invoices and payment plans'],
         ]);
+
+        // Deal-IQ cleared a deal's money and wire blockers: an automatic payout that waited on them goes ahead.
+        Event::listen(PayoutHoldCleared::class, function (PayoutHoldCleared $e): void {
+            $deal = Deal::query()->find($e->dealId);
+            $by = User::query()->find($e->waitingBy);
+            if ($deal !== null && $by !== null && app(Receipts::class)->settled($deal->id)) {
+                app(AutoPayouts::class)->afterSettled($deal, $by);
+            }
+        });
 
         $nav = $this->app->make(NavigationRegistry::class);
         $nav->add(new NavItem('Finance', 'Money received', '/finance/receipts', 'banknote', 5, ability: 'finance.receipts.record'));

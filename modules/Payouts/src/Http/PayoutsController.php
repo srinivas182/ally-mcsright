@@ -131,6 +131,7 @@ final class PayoutsController
                 'ulid' => $r->ulid, 'kind' => $r->kind, 'rail' => $r->rail, 'failed' => $db->table('pay_run_lines')->where('run_id', $r->id)->where('rail_status', 'failed')->whereNull('reversal_journal_id')->count(),
                 'status' => $r->status, 'pay_on' => $r->pay_on, 'same_day' => (bool) $r->same_day, 'total_cents' => (int) $r->total_cents,
                 'approved_by' => $r->approved_by !== null ? User::query()->find((int) $r->approved_by)?->name : null, 'sent_at' => $r->sent_at,
+                'held' => $r->status === 'draft' ? PayoutRuns::held((int) $r->id) : [],
                 'lines' => $db->table('pay_run_lines')->where('run_id', $r->id)->orderBy('id')->get()->map(fn ($l): array => [
                     'name' => $l->name, 'type' => $l->payee_type, 'commission_cents' => (int) $l->commission_cents, 'revenue_share_cents' => (int) $l->revenue_share_cents,
                     'referral_cents' => (int) $l->referral_cents, 'amount_cents' => (int) $l->amount_cents, 'method' => $l->method, 'status' => $l->status,
@@ -166,7 +167,8 @@ final class PayoutsController
 
     public function approveRun(Request $request, string $run, PayoutRuns $runs): RedirectResponse
     {
-        $runs->approve($run, self::user($request));
+        $data = $request->validate(['override' => ['nullable', 'string', 'max:300']]);
+        $runs->approve($run, self::user($request), $data['override'] ?? null);
 
         return back();
     }

@@ -110,9 +110,32 @@ final class PayoutRuns
         app(AuditLogger::class)->record('payouts.run.auto_approved', metadata: ['run' => $ulid, 'total_cents' => $run['total_cents'], 'rule' => $rule], severity: 'warning');
     }
 
-    public function approve(string $ulid, User $by): void
+    /**
+     * Deals paid in this run whose payouts Deal-IQ holds (a money or wire-fraud blocker is open).
+     *
+     * @return list<array{deal: string, street: string, reason: string}>
+     */
+    public static function held(int $runId): array
+    {
+        $db = DB::connection(Connections::cell());
+        $payees = $db->table('pay_run_lines')->where('run_id', $runId)->where('status', 'included')->whereNotNull('user_id')->pluck('user_id')->all();
+        if ($payees === []) {
+            return [];
+        }
+
+        return array_values($db->table('tx_deals')->whereIn('agent_user_id', $payees)->whereNotNull('payout_hold_reason')
+            ->whereIn('id', $db->table('pay_recognitions')->select('deal_id'))->orderBy('id')->get(['ulid', 'street', 'payout_hold_reason'])
+            ->map(fn ($d): array => ['deal' => (string) $d->ulid, 'street' => (string) $d->street, 'reason' => (string) $d->payout_hold_reason])->all());
+    }
+
+    public function approve(string $ulid, User $by, ?string $override = null): void
     {
         $run = $this->run($ulid, 'draft');
+        $held = self::held((int) $run['id']);
+        if ($held !== [] && mb_strlen(trim((string) $override)) < 10) {
+            throw ValidationException::withMessages(['override' => 'Payouts are held on '.implode('; ', array_map(fn (array $h): string => "{$h['street']} ({$h['reason']})", $held))
+                .'. Resolve them on the deal, or explain why you are paying anyway (at least 10 characters).']);
+        }
         if (! ($by->isKind(UserKind::Owner) || $by->can('finance.payouts.approve'))) {
             throw ValidationException::withMessages(['run' => 'Approving payouts needs the "Approve payouts" permission.']);
         }
@@ -127,6 +150,9 @@ final class PayoutRuns
         }
         $db->table('pay_runs')->where('id', $run['id'])->update(['status' => 'approved', 'approved_by' => $by->id, 'approved_at' => now(), 'updated_at' => now()]);
         app(AuditLogger::class)->record('payouts.run.approved', metadata: ['run' => $ulid, 'total_cents' => $run['total_cents']], severity: 'warning');
+        if ($held !== []) {
+            app(AuditLogger::class)->record('payouts.run.hold_overridden', metadata: ['run' => $ulid, 'held' => $held, 'reason' => trim((string) $override)], severity: 'critical');
+        }
     }
 
     public function cancel(string $ulid, User $by): void
