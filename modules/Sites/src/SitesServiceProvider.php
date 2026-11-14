@@ -7,7 +7,10 @@ namespace Modules\Sites;
 use App\Models\User;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use Modules\AI\FeatureCatalog;
+use Modules\AI\Support\PromptRegistry;
 use Modules\Core\Identity\Enums\UserKind;
+use Modules\Core\Leads\VisitorJourneys;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
 
@@ -20,6 +23,12 @@ final class SitesServiceProvider extends ServiceProvider
         $this->app->scoped(SiteSetup::class);
         $this->app->singleton(PoweredBy::class);
         $this->app->scoped(Maps::class);
+        $this->app->scoped(Visitors\Visitors::class);
+        $this->app->scoped(Visitors\SignIn::class);
+        $this->app->scoped(Visitors\JourneySummary::class);
+        $this->app->scoped(Visitors\Valuation::class);
+        // The CRM shows website journeys on leads through Core's interface (specs/websites/07).
+        $this->app->bind(VisitorJourneys::class, Visitors\SiteVisitorJourneys::class);
         // Listing links in the back office, alerts and texts point at the brokerage's live website.
         $this->app->bind('listings.public_url', fn ($app) => function (string $ulid, ?string $label = null) use ($app): ?string {
             $host = $app->make(SiteSetup::class)->publicHost();
@@ -34,6 +43,8 @@ final class SitesServiceProvider extends ServiceProvider
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'sites');
+        $this->app->make(PromptRegistry::class)->addPath(__DIR__.'/../prompts');
+        $this->app->make(FeatureCatalog::class)->declare(Visitors\JourneySummary::FEATURE, 'ai.site_journey', 'Website visitor journey summary on new leads');
 
         Gate::define('hq.sites.manage', fn (User $user): bool => $user->kind === UserKind::HqStaff);
         $nav = $this->app->make(NavigationRegistry::class);

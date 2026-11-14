@@ -102,6 +102,9 @@ final class SiteSetup
             $changes['brand'] = ['primary' => $hex($b['primary'] ?? null, (string) ($site->brand['primary'] ?? '#1d4ed8')), 'accent' => $hex($b['accent'] ?? null, (string) ($site->brand['accent'] ?? '#0f172a')),
                 'logo_url' => $url($b['logo_url'] ?? null), 'hero_image' => $url($b['hero_image'] ?? null)];
         }
+        if (isset($in['settings']) && is_array($in['settings']) && array_key_exists('signup_after', $in['settings'])) {
+            $changes['settings'] = ['signup_after' => max(0, min(20, (int) $in['settings']['signup_after']))] + ($site->settings ?? []);
+        }
         if (array_key_exists('ai_crawlers', $in)) {
             $changes['ai_crawlers'] = (bool) $in['ai_crawlers'];
         }

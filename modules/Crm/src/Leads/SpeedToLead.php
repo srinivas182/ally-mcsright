@@ -195,8 +195,9 @@ final class SpeedToLead
             return $path;
         }
         $tenant = $this->tenants->current();
-        if ($tenant->domains()->where('host', request()->getHost())->exists()) {
-            return url($path); // inside a request on the brokerage's own domain
+        // Inside a request on the brokerage's own back-office domain (never a website host: alerts open the back office).
+        if ($tenant->domains()->where('host', request()->getHost())->where(fn ($q) => $q->whereNull('purpose')->orWhere('purpose', '!=', 'website'))->exists()) {
+            return url($path);
         }
         $host = $tenant->primaryDomain()?->host;
 

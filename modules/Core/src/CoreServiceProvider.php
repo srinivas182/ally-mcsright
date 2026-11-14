@@ -44,6 +44,8 @@ use Modules\Core\Identity\Events\RepeatedLoginFailures;
 use Modules\Core\Identity\Impersonation;
 use Modules\Core\Identity\Security\SignInSecurity;
 use Modules\Core\Identity\Security\TrustedDevices;
+use Modules\Core\Leads\NoVisitorJourneys;
+use Modules\Core\Leads\VisitorJourneys;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
 use Modules\Core\Tenancy\DomainResolver;
@@ -69,6 +71,7 @@ final class CoreServiceProvider extends ServiceProvider
         // change in HQ settings applies to the next request or job.
         $this->app->singleton(Messaging\MessagingSettings::class);
         $this->app->bindIf(DealOutcomes::class, NoDealOutcomes::class);
+        $this->app->bindIf(VisitorJourneys::class, NoVisitorJourneys::class);
         $this->app->bindIf(Messaging\SmsSender::class, function ($app): Messaging\SmsSender {
             $settings = $app->make(Messaging\MessagingSettings::class);
             $creds = $settings->credentials();

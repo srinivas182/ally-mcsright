@@ -120,6 +120,31 @@ final class IdxController
         ])->header('Cache-Control', 'public, max-age=60, s-maxage='.config('sites.cache_seconds').', stale-while-revalidate='.config('sites.stale_seconds'));
     }
 
+    /** Side by side, up to four homes (from the visitor's compare tray; never indexed). */
+    public function compare(Request $request): Response
+    {
+        $site = $this->site();
+        if (! $site instanceof Site) {
+            return $site;
+        }
+        $ids = array_slice(array_values(array_unique(array_filter(explode(',', strtoupper((string) $request->query('ids', ''))),
+            fn (string $u): bool => preg_match('/^[0-9A-HJKMNP-TV-Z]{26}$/', $u) === 1))), 0, 4);
+        $homes = [];
+        foreach ($ids as $u) {
+            $home = $this->search->find($this->tenants->id(), $u);
+            if ($home !== null) {
+                $homes[] = $home + ['baths' => self::baths($home), 'path' => Urls::listing($home['ulid'], ListingSearch::label($home)),
+                    'ppsf' => $home['price'] !== null && $home['sqft'] ? (int) round($home['price'] / $home['sqft']) : null];
+            }
+        }
+
+        return response()->view('sites::idx.compare', [
+            'site' => $site, 'current' => '/homes', 'homes' => $homes,
+            'seo' => Seo::build($site, $request->getSchemeAndHttpHost(), '/homes/compare', 'Compare homes | '.self::suffix($site), 'Compare homes side by side.', null, false, [['Homes for sale', '/homes'], ['Compare', '/homes/compare']]),
+            'chrome' => Chrome::for($site, $this->tenants->id(), array_column($homes, 'disclaimer')),
+        ])->header('Cache-Control', 'no-store')->header('X-Robots-Tag', 'noindex');
+    }
+
     public function markets(Request $request, MarketStats $stats): Response
     {
         $site = $this->site();

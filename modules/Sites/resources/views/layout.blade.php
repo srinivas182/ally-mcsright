@@ -26,7 +26,7 @@
     <style>:root{--brand: {{ $site->brand['primary'] ?? '#1d4ed8' }};--accent: {{ $site->brand['accent'] ?? '#0f172a' }};}</style>
     <script type="application/ld+json">{!! $seo['jsonld'] !!}</script>
 </head>
-<body>
+<body data-signup-after="{{ $chrome['signup_after'] }}">
 <a class="skip" href="#main">Skip to content</a>
 <header class="site-header" data-header>
     <div class="wrap header-row">
@@ -40,6 +40,7 @@
                 @endforeach
             </ul>
         </nav>
+        <button type="button" class="btn btn-ghost header-account" data-account>Sign in</button>
         @if (! empty($site->info['phone']))<a class="btn btn-ghost header-call" href="tel:{{ preg_replace('/[^0-9+]/', '', $site->info['phone']) }}">{{ $site->info['phone'] }}</a>@endif
     </div>
 </header>
@@ -67,16 +68,41 @@
         <div class="footer-legal">
             <p class="eho"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2 1 11h3v11h16V11h3L12 2zm-5 12h10v2H7v-2zm0 4h10v2H7v-2z"/></svg> Equal Housing Opportunity</p>
             @foreach ($chrome['disclaimers'] as $d)<p class="disclaimer">{{ $d }}</p>@endforeach
+            <p class="privacy">We keep a note of the homes you view here so our agents can help you better. No third-party trackers; your browser's Global Privacy Control is honored.</p>
             <p>&copy; {{ $chrome['year'] }} {{ $site->displayName() }}</p>
             @if ($chrome['powered'])<p class="powered"><a href="{{ $chrome['powered']['url'] }}" rel="noopener" target="_blank">{{ $chrome['powered']['text'] }}</a></p>@endif
         </div>
     </div>
 </footer>
+<dialog class="auth" data-auth aria-labelledby="auth-title">
+    <form method="dialog" class="auth-close"><button aria-label="Close">×</button></form>
+    <h2 id="auth-title" data-auth-title>Save homes and get price-drop alerts</h2>
+    <p class="lead-muted" data-auth-lead>Create a free account to save homes, compare them, and hear first when prices change.</p>
+    <form data-auth-start>
+        <label>Name <input name="name" autocomplete="name" required></label>
+        <label>Email <input type="email" name="email" autocomplete="email" required></label>
+        <label>Mobile phone (optional) <input type="tel" name="phone" autocomplete="tel"></label>
+        <label class="consent"><input type="checkbox" name="sms_consent" value="1"> <span>{{ $chrome['consent'] }}</span></label>
+        <button class="btn btn-primary" type="submit">Email me a code</button>
+    </form>
+    <form data-auth-verify hidden>
+        <label>6-digit code <input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" required></label>
+        <button class="btn btn-primary" type="submit">Sign in</button>
+    </form>
+    <div data-auth-me hidden>
+        <p data-auth-hello></p>
+        <p><a class="btn btn-primary" data-auth-saved href="/homes/compare">See saved homes</a></p>
+        <p><button type="button" class="btn btn-ghost" data-auth-out>Sign out on this device</button></p>
+    </div>
+    <p class="form-error" role="alert" data-auth-error hidden></p>
+</dialog>
+<div class="compare-tray" data-compare-tray hidden><span data-compare-count></span> <a class="btn btn-primary" data-compare-go href="/homes/compare">Compare</a> <button type="button" class="btn btn-ghost" data-compare-clear>Clear</button></div>
 <script>
 (function(){var h=document.querySelector('[data-header]');function s(){h&&h.classList.toggle('scrolled',window.scrollY>24)}s();window.addEventListener('scroll',s,{passive:true});
 try{var k='ra_first_touch',st=window.localStorage,v=JSON.parse(st.getItem(k)||'null');if(!v){v={r:document.referrer,l:location.href};st.setItem(k,JSON.stringify(v));}
 document.querySelectorAll('form[data-lead]').forEach(function(f){f.first_referrer.value=v.r;f.landing_url.value=v.l;});}catch(e){}})();
 </script>
+<script src="/site-assets/visitor.js?v=1" defer></script>
 @stack('scripts')
 </body>
 </html>

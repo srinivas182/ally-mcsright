@@ -35,7 +35,12 @@
 
     <div class="wrap listing-grid">
         <article class="listing-main">
+            <div hidden data-track="listing" data-listing="{{ $home['ulid'] }}"></div>
             <header class="listing-head">
+                <div class="listing-actions">
+                    <button type="button" class="btn btn-ghost" data-fav="{{ $home['ulid'] }}" aria-pressed="false">Save</button>
+                    <button type="button" class="btn btn-ghost" data-cmp="{{ $home['ulid'] }}" aria-pressed="false">Compare</button>
+                </div>
                 <p class="status-line">
                     <span class="tag tag-inline">{{ $home['status'] === 'Active' ? 'For sale' : $home['status'] }}</span>
                     @if ($home['days_on_market'] !== null)<span>{{ $home['days_on_market'] }} days on market</span>@endif
@@ -86,7 +91,7 @@
             @endif
 
             @if ($home['price'])
-                <section class="block" data-mortgage data-price="{{ $mortgage['price'] }}">
+                <section class="block" data-mortgage data-price="{{ $mortgage['price'] }}" data-listing="{{ $home['ulid'] }}">
                     <h2>Monthly cost estimate</h2>
                     <p class="monthly"><strong data-monthly>{{ $mortgage['monthly'] !== null ? '$'.number_format($mortgage['monthly']) : '' }}</strong> per month</p>
                     <div class="calc">

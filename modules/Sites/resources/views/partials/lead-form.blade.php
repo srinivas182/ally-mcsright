@@ -18,7 +18,7 @@
             <label>Message <textarea name="message" rows="4">{{ $message ?? '' }}</textarea></label>
             <label class="consent"><input type="checkbox" name="sms_consent" value="1"> <span>{{ $consent }}</span></label>
             <div class="hp" aria-hidden="true"><label>Leave empty <input name="website" tabindex="-1" autocomplete="off"></label></div>
-            <input type="hidden" name="first_referrer"><input type="hidden" name="landing_url">
+            <input type="hidden" name="first_referrer"><input type="hidden" name="landing_url"><input type="hidden" name="vid" data-vid>
             <input type="hidden" name="return" value="{{ $return }}"><input type="hidden" name="t" value="{{ $t }}">
             <button class="btn btn-primary" type="submit">{{ $button ?? 'Send' }}</button>
         </form>

@@ -108,6 +108,7 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoff
         Route::post('rules/order', [LeadController::class, 'orderRules'])->name('rules.order');
         Route::patch('rules/{rule}', [LeadController::class, 'updateRule'])->name('rules.update');
         Route::delete('rules/{rule}', [LeadController::class, 'destroyRule'])->name('rules.destroy');
+        Route::get('{lead}/journey', [LeadController::class, 'journey'])->name('journey');
         Route::post('{lead}/claim', [LeadController::class, 'claim'])->middleware('throttle:30,1,lead-claim')->name('claim');
     });
 

@@ -73,6 +73,11 @@
                 heading.textContent = data.heading;
                 cards.innerHTML = data.cards; // server-rendered, escaped by Blade
                 pager.innerHTML = data.pagination;
+                document.dispatchEvent(
+                    new CustomEvent('ra:results', {
+                        detail: { query: params.toString(), push: push },
+                    }),
+                );
                 var empty = root.querySelector('[data-empty]');
                 if (empty) empty.hidden = data.total > 0;
                 if (data.pins && map) showPins(data.pins);

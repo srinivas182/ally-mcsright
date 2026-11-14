@@ -31,6 +31,7 @@ final class WebsiteSettingsController
             'site' => $site === null ? null : [
                 'ulid' => $site->ulid, 'template' => $site->template, 'status' => $site->status, 'published_at' => $site->published_at?->toIso8601String(),
                 'info' => $site->info, 'brand' => $site->brand, 'seo' => $site->seo ?? [], 'ai_crawlers' => $site->ai_crawlers,
+                'signup_after' => (int) ($site->settings['signup_after'] ?? config('sites.signup_after', 3)),
                 'pages' => $site->pages()->orderBy('position')->get()->map(fn (SitePage $p): array => ['ulid' => $p->ulid, 'path' => $p->path, 'title' => $p->title,
                     'meta_description' => $p->meta_description, 'noindex' => $p->noindex, 'in_menu' => $p->in_menu])->values(),
             ],
@@ -63,6 +64,7 @@ final class WebsiteSettingsController
             'info.email' => ['nullable', 'email', 'max:150'], 'info.phone' => ['nullable', 'string', 'max:30'], 'info.social' => ['nullable', 'array'], 'info.social.*' => ['nullable', 'url:https', 'max:290'],
             'brand' => ['nullable', 'array'], 'brand.primary' => ['nullable', 'regex:/^#[0-9a-fA-F]{6}$/'], 'brand.accent' => ['nullable', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'brand.logo_url' => ['nullable', 'url:https', 'max:490'], 'brand.hero_image' => ['nullable', 'url:https', 'max:490'],
+            'settings' => ['nullable', 'array'], 'settings.signup_after' => ['nullable', 'integer', 'min:0', 'max:20'],
             'seo' => ['nullable', 'array'], 'seo.title_suffix' => ['nullable', 'string', 'max:60'], 'seo.description' => ['nullable', 'string', 'max:300']]);
         $sites->update($site, $data, $user);
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Website saved.']);

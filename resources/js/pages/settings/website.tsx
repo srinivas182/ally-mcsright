@@ -24,6 +24,7 @@ type Site = {
     brand: Record<string, string | null>;
     seo: { title_suffix?: string; description?: string };
     ai_crawlers: boolean;
+    signup_after: number;
     pages: Page[];
 };
 type Props = {
@@ -189,6 +190,7 @@ function Manage({
     const form = useForm({
         template: site.template,
         ai_crawlers: site.ai_crawlers,
+        settings: { signup_after: site.signup_after },
         info: {
             name: text(site.info.name),
             tagline: text(site.info.tagline),
@@ -385,6 +387,28 @@ function Manage({
                         </span>
                     </span>
                 </label>
+                <h2 className="font-semibold">Visitors</h2>
+                <label className="grid gap-1 sm:max-w-sm">
+                    Ask visitors to create a free account after viewing this
+                    many homes
+                    <Input
+                        type="number"
+                        min={0}
+                        max={20}
+                        value={form.data.settings.signup_after}
+                        onChange={(e) =>
+                            form.setData('settings', {
+                                signup_after: Number(e.target.value),
+                            })
+                        }
+                    />
+                    <span className="text-xs text-muted-foreground">
+                        0 turns the prompt off. Visitors can always close it.
+                        Accounts become leads in your CRM with everything they
+                        viewed.
+                    </span>
+                </label>
+
                 {Object.values(form.errors).map((m) => (
                     <p key={m} className="text-destructive">
                         {m}

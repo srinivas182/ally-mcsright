@@ -9,13 +9,9 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Crm\Consent;
-use Modules\Crm\Enums\Source;
-use Modules\Crm\Leads\LeadIntake;
-use Modules\Crm\Models\LeadSource;
 use Modules\Listings\Search\ListingSearch;
 use Modules\Listings\Search\MarketStats;
 use Modules\Sites\Models\Site;
@@ -24,6 +20,7 @@ use Modules\Sites\Rendering\Chrome;
 use Modules\Sites\Rendering\Seo;
 use Modules\Sites\Rendering\Urls;
 use Modules\Sites\Sections;
+use Modules\Sites\Visitors\SiteLeads;
 
 /**
  * Public website pages (specs/websites/05): rendered on the server as complete HTML (readable by every crawler,
@@ -163,7 +160,7 @@ final class SiteController
     }
 
     /** Contact and valuation forms on the website: a lead with its channel (AI search, SEO, …) and TCPA consent. */
-    public function lead(Request $request, LeadIntake $intake): RedirectResponse
+    public function lead(Request $request, SiteLeads $leads): RedirectResponse
     {
         $site = $this->site();
         // Back to the page the form was on, on this website's own host (never another site).
@@ -179,14 +176,14 @@ final class SiteController
         if (time() - $shown < 3 || ! RateLimiter::attempt('site-lead:'.$request->ip(), 10, fn (): bool => true)) {
             return redirect($back.'?sent=1', 303); // too fast for a person, or too many
         }
-        $source = LeadSource::query()->firstOrCreate(['kind' => 'form', 'name' => 'Website'],
-            ['source' => Source::Website, 'token' => Str::random(40), 'consent_wording' => Consent::DEFAULT_SMS_WORDING, 'heading' => 'Contact us', 'active' => true]);
+        $source = SiteLeads::source('Website', 'Contact us');
         $in = ['name' => (string) $request->input('name', ''), 'email' => (string) $request->input('email', ''), 'phone' => (string) $request->input('phone', ''),
             'message' => mb_substr((string) $request->input('message', ''), 0, 4000), 'intent' => (string) $request->input('intent', ''),
             'referrer' => mb_substr((string) $request->input('first_referrer', ''), 0, 500), 'landing_url' => mb_substr((string) $request->input('landing_url', ''), 0, 500),
             'sms_consent' => $request->boolean('sms_consent'), 'consent_text' => (string) $source->consent_wording];
         // An enquiry from a listing page names the home (looked up here, never trusted from the form).
         $listing = $request->input('listing');
+        $home = null;
         if (is_string($listing) && preg_match('/^[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}$/', $listing) === 1) {
             $home = app(ListingSearch::class)->find($this->tenants->id(), $listing);
             if ($home !== null) {
@@ -204,7 +201,7 @@ final class SiteController
             }
         }
         try {
-            $intake->receive($source, $in, $request);
+            $leads->capture($site, $source, $in, $request, 'lead', $home !== null ? (string) $home['ulid'] : null, $home !== null ? ['label' => ListingSearch::label($home)] : []);
         } catch (ValidationException $e) {
             return redirect($back.'?error='.urlencode((string) (collect($e->errors())->flatten()->first() ?? 'Please check the form.')).'#contact', 303);
         }
