@@ -15,6 +15,7 @@ use Modules\Compensation\Enums\PlanType;
 use Modules\Forms\Identity\FakeIdentity;
 use Modules\Forms\Identity\IdentityProvider;
 use Modules\Forms\Library\FieldMapper;
+use Modules\Forms\Library\FillableFields;
 use Modules\Forms\Library\FormUpdateAvailable;
 use Modules\Forms\Library\Importer;
 use Modules\Forms\Library\Libraries;
@@ -114,6 +115,7 @@ it('adds a library form with its fields placed, tracks editions, alerts once, sh
 
 it('imports fillable PDFs from other systems with fields placed, signers and deal details matched', function (): void {
     $pdf = (string) file_get_contents(base_path('tests/Fixtures/forms/fillable-listing.pdf'));
+    expect(FillableFields::read($pdf))->toHaveCount(10, 'qpdf: '.FillableFields::$lastError);
     $this->actingAs($this->owner)->post('/forms/import', ['source' => 'zipform', 'files' => [UploadedFile::fake()->createWithContent('Exclusive_Right_to_Sell.pdf', $pdf)]])
         ->assertSessionHasNoErrors();
     $t = DB::table('form_templates')->sole();

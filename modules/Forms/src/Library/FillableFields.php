@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Forms\Library;
 
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\Process\Process;
 
 /**
@@ -16,13 +17,19 @@ use Symfony\Component\Process\Process;
  */
 final class FillableFields
 {
+    /** Why the last read found nothing to read (for logs and support), or null. */
+    public static ?string $lastError = null;
+
     /**
      * @return list<array{name: string, type: string, page: int, rect: array{0: float, 1: float, 2: float, 3: float}}>
      */
     public static function read(string $pdf): array
     {
+        self::$lastError = null;
         $json = self::dump($pdf);
         if ($json === null) {
+            Log::warning('Forms import: could not read fillable fields', ['reason' => self::$lastError]);
+
             return [];
         }
         /** @var array<string, mixed> $objects */
@@ -121,12 +128,19 @@ final class FillableFields
             $process->run();
             // qpdf exits 3 for warnings with usable output.
             if (! in_array($process->getExitCode(), [0, 3], true)) {
+                self::$lastError = 'qpdf exit '.$process->getExitCode().': '.mb_substr(trim($process->getErrorOutput()), 0, 500);
+
                 return null;
             }
             $json = json_decode($process->getOutput(), true);
+            if (! is_array($json)) {
+                self::$lastError = 'qpdf output was not JSON: '.mb_substr($process->getOutput(), 0, 200).' / '.mb_substr(trim($process->getErrorOutput()), 0, 300);
+            }
 
             return is_array($json) ? $json : null;
-        } catch (\Throwable) {
+        } catch (\Throwable $e) {
+            self::$lastError = $e::class.': '.$e->getMessage();
+
             return null;
         } finally {
             @unlink($file);
