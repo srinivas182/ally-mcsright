@@ -59,6 +59,8 @@ use Modules\Listings\Access\MlsAccess;
  * @property bool $address_display_allowed
  * @property bool $avm_allowed
  * @property bool $comments_allowed
+ * @property string|null $cover_path
+ * @property CarbonImmutable|null $price_changed_at
  * @property MlsSource $source
  */
 final class Listing extends Model
@@ -82,7 +84,7 @@ final class Listing extends Model
     protected function casts(): array
     {
         return ['close_date' => 'immutable_date', 'on_market_date' => 'immutable_date', 'listing_contract_date' => 'immutable_date',
-            'modification_timestamp' => 'immutable_datetime', 'photos_change_timestamp' => 'immutable_datetime', 'off_market_at' => 'immutable_datetime',
+            'modification_timestamp' => 'immutable_datetime', 'photos_change_timestamp' => 'immutable_datetime', 'off_market_at' => 'immutable_datetime', 'price_changed_at' => 'immutable_datetime',
             'internet_display_allowed' => 'boolean', 'address_display_allowed' => 'boolean', 'avm_allowed' => 'boolean', 'comments_allowed' => 'boolean'];
     }
 

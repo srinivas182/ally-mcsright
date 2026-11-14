@@ -12,6 +12,8 @@ use Modules\Core\Support\Connections;
 use Modules\Listings\Events\ListingsChanged;
 use Modules\Listings\Feed\FeedThrottled;
 use Modules\Listings\Feed\ResoFeed;
+use Modules\Listings\Jobs\FetchListingPhotos;
+use Modules\Listings\Media\Photos;
 use Modules\Listings\Models\Listing;
 use Modules\Listings\Models\MlsSource;
 
@@ -26,7 +28,7 @@ final class ListingSync
 
     public const MAX_PAGES_PER_RUN = 50;
 
-    public function __construct(private readonly ResoFeed $feed) {}
+    public function __construct(private readonly ResoFeed $feed, private readonly Photos $photos) {}
 
     /**
      * @return array{kind: string, result: string, received: int, changed: int}
@@ -117,8 +119,9 @@ final class ListingSync
     private function commit(MlsSource $source, array $records, ?string $next): int
     {
         $changedIds = [];
+        $needPhotos = [];
         $cursor = $source->cursor;
-        DB::connection(Connections::listings())->transaction(function () use ($source, $records, $next, &$changedIds, &$cursor): void {
+        DB::connection(Connections::listings())->transaction(function () use ($source, $records, $next, &$changedIds, &$needPhotos, &$cursor): void {
             foreach ($records as $record) {
                 $row = ResoMapper::map($record, $source->key);
                 if (($row['listing_key'] ?? null) === null) {
@@ -130,7 +133,18 @@ final class ListingSync
                     continue; // already have this version (overlap)
                 }
                 $listing = $existing ?? new Listing(['mls_source_id' => $source->id, 'ulid' => (string) Str::ulid()]);
+                $oldPrice = $existing?->list_price_cents;
+                if ($existing !== null && $row['list_price_cents'] !== null && $oldPrice !== $row['list_price_cents']) {
+                    $row['price_changed_at'] = $row['modification_timestamp'] ?? now()->format('Y-m-d H:i:s');
+                }
                 $listing->forceFill($row + ['mls_source_id' => $source->id])->save();
+                if (isset($row['price_changed_at'])) {
+                    DB::connection(Connections::listings())->table('listing_price_changes')->insert(['listing_id' => $listing->id, 'old_cents' => $oldPrice,
+                        'new_cents' => $row['list_price_cents'], 'changed_at' => $row['price_changed_at']]);
+                }
+                if ($this->photos->syncList($listing, $record)) {
+                    $needPhotos[] = $listing->id;
+                }
                 DB::connection(Connections::listings())->table('listing_payloads')->updateOrInsert(['listing_id' => $listing->id],
                     ['payload' => json_encode($record, JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE), 'received_at' => now()]);
                 $changedIds[] = $listing->id;
@@ -142,6 +156,9 @@ final class ListingSync
             // The cursor and next page move only with the data they describe.
             $source->forceFill(['cursor' => $cursor, 'next_link' => $next])->save();
         });
+        foreach ($needPhotos as $id) {
+            FetchListingPhotos::dispatch($id);
+        }
         if ($changedIds !== []) {
             ListingsChanged::dispatch($source->id, $changedIds, 'changed');
         }
