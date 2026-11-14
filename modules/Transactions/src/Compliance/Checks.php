@@ -25,6 +25,12 @@ final class Checks
         'agent.eo' => ['The agent\'s E&O cover was current on the contract date', 'warning'],
         'forms.old_edition' => ['Forms were sent on the current edition', 'warning'],
         'forms.owner_override' => ['Ownership mismatches accepted by the brokerage are visible to the reviewer', 'info'],
+        'money.commission' => ['The settlement statement pays the commission the CDA says', 'blocker'],
+        'money.cda_stale' => ['The CDA matches the deal\'s current price and commission', 'blocker'],
+        'money.receipt' => ['Commission received from title matches what is due (or the difference is accepted)', 'blocker'],
+        'money.earnest' => ['Earnest money in trust matches the contract, and is released after closing', 'warning'],
+        'wire.changed' => ['Wiring instructions are the same in every document (a change is the classic wire-fraud sign)', 'blocker'],
+        'wire.title_unverified' => ['The title company on the settlement statement is one verified by call-back', 'warning'],
     ];
 
     public const SEVERITIES = ['blocker', 'warning', 'info'];

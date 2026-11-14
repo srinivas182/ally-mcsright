@@ -72,6 +72,22 @@ wire-instruction detection with payout holds.
   then re-checked). Rules that cannot be checked automatically are refused with the reason.
 - The compliance page (from the review queue) lists files sent for review and open files not yet broker-ready.
 
+## Delivered in Sprint 15C — money and wire fraud
+
+- **Money checks** (part of the continuous scan): the settlement statement or closing disclosure pays the
+  commission the CDA says (listing side, buyer side or total, read by DocIQ with page evidence); the CDA still
+  matches the deal's price and commission (otherwise "make a new CDA"); commission received from title matches
+  what is due or the difference is accepted; earnest money in the contract matches the trust record, and is
+  released after closing.
+- **Wire fraud**: wiring instructions that **change between documents** (different account numbers, listed with
+  the documents that carry each) are a blocker, the classic fraud sign; a settlement statement from a title
+  company not verified by call-back is a warning; documents with bank instructions keep their warning and safe
+  copy.
+- **Payout holds**: while a money or wire blocker is open the deal's payouts are held. An automatic payout
+  waits (owners are emailed why) and **goes ahead by itself** once the blocker is fixed or dismissed with a
+  reason; a manual payout run that pays an agent with a held deal shows the hold and can only be approved with a
+  written override (audited as critical). The hold is shown on the deal.
+
 ## Market review (November 2026)
 
 | Capability                                                   | ProxiClose | Transaction Wingman | Deal-IQ                                                 |

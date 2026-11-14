@@ -24,7 +24,7 @@ final class Findings
     public function __construct(private readonly TenantContext $tenants) {}
 
     /**
-     * @return array{score: ?int, scanned_at: ?string, submitted_at: ?string, can_submit: bool, open: list<array<string, mixed>>, dismissed: list<array<string, mixed>>}
+     * @return array{score: ?int, scanned_at: ?string, submitted_at: ?string, payout_hold: ?string, can_submit: bool, open: list<array<string, mixed>>, dismissed: list<array<string, mixed>>}
      */
     public static function forDeal(Deal $deal): array
     {
@@ -37,11 +37,12 @@ final class Findings
         $open = $rows->where('status', 'open')->values()->all();
         /** @var list<array<string, mixed>> $dismissed */
         $dismissed = $rows->where('status', 'dismissed')->values()->all();
-        $row = $db->table('tx_deals')->where('id', $deal->id)->first(['compliance_score', 'compliance_scanned_at', 'file_submitted_at']);
+        $row = $db->table('tx_deals')->where('id', $deal->id)->first(['compliance_score', 'compliance_scanned_at', 'file_submitted_at', 'payout_hold_reason']);
 
         return ['score' => $row?->compliance_score !== null ? (int) $row->compliance_score : null,
             'scanned_at' => $row?->compliance_scanned_at !== null ? (string) $row->compliance_scanned_at : null,
             'submitted_at' => $row?->file_submitted_at !== null ? (string) $row->file_submitted_at : null,
+            'payout_hold' => $row?->payout_hold_reason !== null ? (string) $row->payout_hold_reason : null,
             'can_submit' => collect($open)->whereIn('severity', ['blocker', 'warning'])->isEmpty(), 'open' => $open, 'dismissed' => $dismissed];
     }
 

@@ -16,6 +16,7 @@ use Modules\Ledger\ChartOfAccounts;
 use Modules\Ledger\JournalDraft;
 use Modules\Ledger\LedgerService;
 use Modules\Ledger\Money\Money;
+use Modules\Transactions\Compliance\ComplianceScan;
 use Modules\Transactions\Models\Deal;
 use Modules\Transactions\Referrals;
 
@@ -57,6 +58,7 @@ final class Receipts
 
             return $ulid;
         });
+        app(ComplianceScan::class)->run($deal); // money checks see the receipt; holds are current before paying
         if ($status === 'matched') {
             app(AutoPayouts::class)->afterSettled($deal, $by);
         }
@@ -86,6 +88,7 @@ final class Receipts
         });
         app(AuditLogger::class)->record('payouts.receipt.accepted', $deal, metadata: ['received_cents' => $received, 'expected_cents' => (int) $receipt->expected_cents, 'note' => $note],
             severity: 'warning', label: $deal->street);
+        app(ComplianceScan::class)->run($deal);
         app(AutoPayouts::class)->afterSettled($deal, $by);
     }
 

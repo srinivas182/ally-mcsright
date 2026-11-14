@@ -118,3 +118,9 @@ is approved under the owner's standing rule (audited with the rule; no person re
 automatic rail, sent at once with "You've been paid" emails; on the bank file, owners are emailed to send it; over
 the limit it waits for approval and owners are emailed. Anyone already in an unsent run is left out of new runs,
 so nothing is paid twice. The 72-hour bank-change hold and every other safeguard apply.
+
+## Deal-IQ payout holds (Sprint 15C)
+
+Payouts for a deal are held while Deal-IQ has an open money or wire-fraud blocker on it (specs/ai/02): automatic
+payouts wait and resume by themselves when it clears; manual runs paying an affected agent need a written
+override, recorded in the audit log.

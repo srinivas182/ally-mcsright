@@ -57,6 +57,15 @@ final class AutoPayouts
             return null;
         }
         $db = DB::connection(Connections::cell());
+        // Deal-IQ holds payouts while a money or wire-fraud blocker is open; the payout resumes when it clears.
+        $hold = $db->table('tx_deals')->where('id', $deal->id)->value('payout_hold_reason');
+        if ($hold !== null) {
+            $db->table('tx_deals')->where('id', $deal->id)->update(['payout_waiting_by' => $by->id]);
+            Notification::send(User::query()->where('kind', UserKind::Owner)->where('status', UserStatus::Active)->get(), new PayoutHeld((string) $deal->street, (string) $deal->ulid, (string) $hold));
+            app(AuditLogger::class)->record('payouts.auto.held', $deal, metadata: ['reason' => $hold], severity: 'warning', label: $deal->street);
+
+            return null;
+        }
         $payables = (array) json_decode((string) $db->table('pay_recognitions')->where('deal_id', $deal->id)->value('payables'), true);
         $userIds = array_map('intval', array_keys(array_filter($payables, fn ($c) => (int) $c > 0)));
         $referralIds = $db->table('tx_referrals')->where('deal_id', $deal->id)->where('direction', 'out')->where('paid_by', 'brokerage')->whereNull('paid_at')

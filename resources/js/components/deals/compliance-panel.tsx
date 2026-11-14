@@ -35,6 +35,7 @@ export type Compliance = {
     score: number | null;
     scanned_at: string | null;
     submitted_at: string | null;
+    payout_hold: string | null;
     can_submit: boolean;
     open: Finding[];
     dismissed: Finding[];
@@ -78,6 +79,13 @@ function FixButton({
             return fix.user ? link(`/roster/${fix.user}`) : null;
         case 'packet':
             return link(`/forms/packets/${fix.packet}`);
+        case 'cda':
+        case 'money':
+            return link('#money-desk');
+        case 'receipts':
+            return link('/finance/receipts');
+        case 'title':
+            return link('/settings/transactions');
         case 'apply_fact':
             return (
                 <Button
@@ -191,6 +199,15 @@ export function CompliancePanel({
                     )}
                 </span>
             </div>
+            {compliance.payout_hold && (
+                <p
+                    role="alert"
+                    className="rounded border border-red-300 bg-red-50 p-2 text-red-900"
+                >
+                    Payouts for this deal are held: {compliance.payout_hold}{' '}
+                    They go ahead automatically once this is resolved.
+                </p>
+            )}
             {compliance.open.length === 0 && (
                 <p className="text-emerald-800">
                     Nothing to fix. Deal-IQ checks again each time the file
