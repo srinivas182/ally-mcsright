@@ -452,7 +452,7 @@ final class AiGateway
             }
 
             $this->circuit->recordSuccess($provider->key);
-            $cost = $model->costMicrocents($response->tokensIn, $response->tokensOut, 0);
+            $cost = $model->transcriptionCostMicrocents($response->audioSeconds, $response->tokensIn, $response->tokensOut);
             $log = $this->log($task, $template, $model, ++$attempt, 'ok', null, [], $response, $cost, $this->ms($started), 'passed');
             AiRequestCompleted::dispatch($tenantId, $log->ulid, $featureKey, []);
 

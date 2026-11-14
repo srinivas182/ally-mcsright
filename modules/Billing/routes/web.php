@@ -44,6 +44,10 @@ Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.tenants.manage
     Route::get('payments', [PaymentsController::class, 'hq'])->name('payments');
     Route::get('credits', [HqCreditsController::class, 'index'])->name('credits');
     Route::post('credits/enforce', [HqCreditsController::class, 'enforce'])->middleware('password.confirm')->name('credits.enforce');
+    Route::post('credits/go-live', [HqCreditsController::class, 'goLive'])->middleware('password.confirm')->name('credits.go-live');
+    Route::post('credits/margins', [HqCreditsController::class, 'margins'])->name('credits.margins');
+    Route::post('credits/rates/apply-suggested', [HqCreditsController::class, 'applySuggested'])->name('credits.apply-suggested');
+    Route::post('credits/costs/{key}', [HqCreditsController::class, 'catalog'])->where('key', '[a-z0-9_.]+')->name('credits.costs');
     Route::post('credits/value', [HqCreditsController::class, 'value'])->name('credits.value');
     Route::post('credits/rates', [HqCreditsController::class, 'rate'])->name('credits.rate');
     Route::post('credits/packages/{package}', [HqCreditsController::class, 'packageCredits'])->name('credits.package');

@@ -9,6 +9,8 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Notification;
 use Modules\Core\Identity\Enums\UserKind;
+use Modules\Core\Tenancy\Attributes\CrossTenantAccess;
+use Modules\Core\Tenancy\CrossTenant;
 use Modules\Listings\Access\MlsAccess;
 use Modules\Listings\Models\MlsSource;
 use Modules\Listings\StaleFeedAlert;
@@ -18,6 +20,7 @@ use Modules\Listings\Sync\ListingSync;
  * Daily removal checks for each MLS, expired licences, and (every run) an alert to HQ when a feed is more than 30
  * minutes behind (at most once an hour per MLS).
  */
+#[CrossTenantAccess('Emails RightAlly HQ staff when an MLS feed falls behind')]
 final class ReconcileListings extends Command
 {
     protected $signature = 'listings:reconcile {--freshness-only}';
@@ -38,7 +41,7 @@ final class ReconcileListings extends Command
             $this->info($access->expire().' licence(s) expired.');
         }
 
-        $hq = User::query()->where('kind', UserKind::HqStaff)->where('status', 'active')->get();
+        $hq = CrossTenant::query(User::class, $this)->where('kind', UserKind::HqStaff)->where('status', 'active')->get();
         foreach (MlsSource::query()->where('status', '!=', 'paused')->where('full_sync_done', true)->get() as $source) {
             $behind = $source->minutesBehind();
             if (($behind === null || $behind > 30) && Cache::add('mls-stale-alert:'.$source->id, 1, 3600) && $hq->isNotEmpty()) {

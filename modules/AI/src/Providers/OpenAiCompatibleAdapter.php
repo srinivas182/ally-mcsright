@@ -157,10 +157,14 @@ final class OpenAiCompatibleAdapter implements ProviderAdapter, StreamingProvide
             throw new ProviderRejected("{$provider->name} rejected the audio (HTTP {$status}).");
         }
 
+        // Per-minute models (e.g. Whisper) report {"type":"duration","seconds":N}; token-billed ones report tokens.
+        $seconds = $response->json('usage.type') === 'duration' ? (float) $response->json('usage.seconds', 0) : 0.0;
+
         return new ProviderResponse(
             trim((string) $response->json('text')),
             (int) $response->json('usage.input_tokens', 0),
             (int) $response->json('usage.output_tokens', 0),
+            audioSeconds: $seconds,
         );
     }
 }

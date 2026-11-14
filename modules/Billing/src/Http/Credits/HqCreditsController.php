@@ -9,11 +9,11 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
-use Modules\AI\Models\AiFeatureRoute;
-use Modules\AI\Models\AiModel;
 use Modules\Billing\Credits\CreditLedger;
+use Modules\Billing\Credits\Economics;
 use Modules\Billing\Credits\RateCard;
 use Modules\Billing\Models\Package;
 use Modules\Core\Audit\AuditLogger;
@@ -23,66 +23,83 @@ use Modules\Core\Tenancy\Models\Tenant;
 use Modules\Core\Tenancy\TenantContext;
 
 /**
- * HQ → Credits (specs/billing/01): what a credit is worth, the price of every action, and the economics behind them —
- * the AI model each action uses, its token prices, the real average tokens and cost over the last 30 days, revenue
- * per use, margin, and how many tokens one credit buys. Also the credits included in each package, and manual grants.
+ * HQ → RightAlly credits (specs/billing/01, 02): what a credit sells for, HQ's margin rules, what each action really
+ * costs (model, tokens, real and planning cost, margin, suggested credits), the costs credits don't cover (texts,
+ * calls, maps, email, hosting), each package's margin for a typical customer and in the worst case, and the switch
+ * that makes running out of credits stop AI.
  */
-#[CrossTenantAccess('HQ sees average AI usage and cost across brokerages to price credits, and grants credits to a brokerage')]
+#[CrossTenantAccess('HQ sees AI usage and cost across brokerages to price credits, and grants credits to a brokerage')]
 final class HqCreditsController
 {
-    public function __construct(private readonly RateCard $rates) {}
+    public function __construct(private readonly RateCard $rates, private readonly Economics $economics) {}
 
     public function index(): Response
     {
-        $value = $this->rates->creditValueMicrocents();
-        $routes = AiFeatureRoute::query()->get()->keyBy('credit_action_key');
-        $models = AiModel::query()->with('provider')->get()->keyBy('id');
-        $since = CarbonImmutable::now()->subDays(30);
-        $stats = DB::connection(Connections::cell())->table('ai_requests')->where('created_at', '>=', $since)
-            ->selectRaw("feature_key, sum(case when status = 'ok' then 1 else 0 end) as ok, sum(tokens_in) as tin, sum(tokens_out) as tout, sum(cost_microcents) as cost")
-            ->groupBy('feature_key')->get()->keyBy('feature_key');
-
-        $actions = [];
-        foreach ($this->rates->all() as $key => $rate) {
-            $route = $routes->get($key);
-            $model = $route !== null ? $models->get($route->primary_model_id) : null;
-            $s = $route !== null ? $stats->get($route->feature_key) : null;
-            $uses = (int) ($s->ok ?? 0);
-            // All attempts' cost (retries, blocked output) spread over the successful uses.
-            $avgCost = $uses > 0 ? (int) round((int) ($s->cost ?? 0) / $uses) : null;
-            $avgIn = $uses > 0 ? (int) round((int) ($s->tin ?? 0) / $uses) : null;
-            $avgOut = $uses > 0 ? (int) round((int) ($s->tout ?? 0) / $uses) : null;
-            $revenue = $rate['credits'] * $value;
-            // Tokens one credit buys on this model, at this action's real in/out mix (3:1 when there is no data yet).
-            $tokensPerCredit = null;
-            if ($model !== null) {
-                $in = $avgIn ?? 3;
-                $out = $avgOut ?? 1;
-                $costPerToken = ($in * $model->input_cost_per_mtok_cents + $out * $model->output_cost_per_mtok_cents) / max(1, $in + $out); // cents per million tokens
-                $tokensPerCredit = $costPerToken > 0 ? (int) floor($value / $costPerToken) : null; // value is in millionths of a cent
-            }
-            $actions[] = ['action' => $key, 'label' => $rate['label'], 'credits' => $rate['credits'], 'automation' => $rate['automation'],
-                'feature' => $route?->feature_key, 'model' => $model !== null ? ['name' => $model->display_name, 'provider' => $model->provider->name ?? '',
-                    'input_per_mtok_cents' => $model->input_cost_per_mtok_cents, 'output_per_mtok_cents' => $model->output_cost_per_mtok_cents] : null,
-                'uses_30d' => $uses, 'avg_tokens_in' => $avgIn, 'avg_tokens_out' => $avgOut, 'avg_cost_microcents' => $avgCost, 'revenue_microcents' => $revenue,
-                'margin_pct' => $avgCost !== null && $revenue > 0 ? (int) round(($revenue - $avgCost) * 100 / $revenue) : null, 'tokens_per_credit' => $tokensPerCredit];
-        }
-
         $period = CreditLedger::period();
         $used = DB::connection(Connections::cell())->table('credit_ledger')->where('period', $period)->whereIn('entry_type', ['consume', 'refund'])
             ->selectRaw('tenant_id, -sum(amount) as credits')->groupBy('tenant_id')->orderByDesc('credits')->limit(50)->get();
         $tenants = Tenant::query()->whereIn('id', $used->pluck('tenant_id'))->pluck('name', 'id');
+        $packages = Package::query()->orderBy('monthly_cents')->get();
 
         return Inertia::render('hq/credits', [
-            'credit_value_microcents' => $value,
+            'credit_value_microcents' => $this->rates->creditValueMicrocents(),
             'enforced' => $this->rates->enforced(),
-            'actions' => $actions,
-            'packages' => Package::query()->orderBy('monthly_cents')->get()->map(fn (Package $p): array => ['id' => $p->ulid, 'name' => $p->name, 'monthly_cents' => $p->monthly_cents,
-                'included_credits' => (int) $p->getAttribute('included_credits')])->values(),
-            'top_usage' => $used->map(fn ($r): array => ['tenant' => $tenants[$r->tenant_id] ?? 'Unknown', 'credits' => (int) $r->credits])->values(),
+            'margins' => $this->rates->margins(),
+            'actions' => array_values($this->economics->actions()),
+            'typical_cost_per_credit' => $this->economics->typicalCostPerCredit(),
+            'worst_cost_per_credit' => $this->economics->worstCostPerCredit(),
+            'catalog' => DB::connection(Connections::control())->table('cost_catalog')->orderBy('kind')->orderBy('id')->get()
+                ->map(fn (object $c): array => ['key' => (string) $c->key, 'label' => (string) $c->label, 'unit' => (string) $c->unit, 'kind' => (string) $c->kind,
+                    'cost_microcents' => (int) $c->cost_microcents, 'free_units_monthly' => (int) $c->free_units_monthly, 'note' => $c->note !== null ? (string) $c->note : null,
+                    'source_url' => $c->source_url !== null ? (string) $c->source_url : null, 'checked_at' => $c->checked_at !== null ? (string) $c->checked_at : null])->values(),
+            'packages' => $packages->map(fn (Package $p): array => ['id' => $p->ulid, 'name' => $p->name, 'monthly_cents' => $p->monthly_cents, 'active' => (bool) $p->active,
+                'margin_override_reason' => $p->getAttribute('margin_override_reason')] + $this->economics->packagePlan($p))->values(),
+            'top_usage' => $used->map(fn (object $r): array => ['tenant' => $tenants[$r->tenant_id] ?? 'Unknown', 'credits' => (int) $r->credits])->values(),
             'tenants' => Tenant::query()->where('type', '!=', 'hq')->orderBy('name')->get(['ulid', 'name'])->map(fn (Tenant $t): array => ['ulid' => $t->ulid, 'name' => $t->name])->values(),
             'period' => $period,
         ]);
+    }
+
+    public function enforce(Request $request): RedirectResponse
+    {
+        $on = $request->boolean('enforce');
+        if ($on && ($missing = $this->packagesWithoutCredits()) !== []) {
+            throw ValidationException::withMessages(['enforce' => 'Give these active packages included credits first: '.implode(', ', $missing).'.']);
+        }
+        $this->rates->saveEnforced($on, self::user($request));
+        Inertia::flash('toast', ['type' => 'success', 'message' => $on ? 'Credits are now enforced.' : 'Credits are recorded but not enforced.']);
+
+        return back();
+    }
+
+    /**
+     * One step to go live: gives every active package its suggested included credits (where it has none, or all of
+     * them when asked), then turns enforcement on.
+     */
+    public function goLive(Request $request): RedirectResponse
+    {
+        $by = self::user($request);
+        $all = $request->boolean('replace_existing');
+        $changed = [];
+        foreach (Package::query()->where('active', true)->get() as $package) {
+            $current = (int) $package->getAttribute('included_credits');
+            if ($current > 0 && ! $all) {
+                continue;
+            }
+            $suggested = $this->economics->suggestedIncludedCredits($package);
+            if ($suggested > 0 && $suggested !== $current) {
+                $package->forceFill(['included_credits' => $suggested])->save();
+                $changed[$package->name] = ['old' => $current, 'new' => $suggested];
+            }
+        }
+        if (($missing = $this->packagesWithoutCredits()) !== []) {
+            throw ValidationException::withMessages(['enforce' => 'No suggestion for '.implode(', ', $missing).': add AI model prices (HQ → AI gateway) or set credits by hand.']);
+        }
+        app(AuditLogger::class)->record('billing.credits.go_live', metadata: ['included_credits' => $changed], severity: 'warning');
+        $this->rates->saveEnforced(true, $by);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Included credits set'.($changed === [] ? '' : ' for '.count($changed).' package(s)').' and credits switched on.']);
+
+        return back();
     }
 
     public function value(Request $request): RedirectResponse
@@ -95,10 +112,12 @@ final class HqCreditsController
         return back();
     }
 
-    public function enforce(Request $request): RedirectResponse
+    public function margins(Request $request): RedirectResponse
     {
-        $this->rates->saveEnforced($request->boolean('enforce'), self::user($request));
-        Inertia::flash('toast', ['type' => 'success', 'message' => $request->boolean('enforce') ? 'Credits are now enforced.' : 'Credits are recorded but not enforced.']);
+        $data = $request->validate(['target' => ['required', 'integer', 'min:0', 'max:95'], 'floor' => ['required', 'integer', 'min:0', 'max:95'],
+            'usage_budget' => ['required', 'integer', 'min:1', 'max:90']]);
+        $this->rates->saveMargins((int) $data['target'], (int) $data['floor'], (int) $data['usage_budget'], self::user($request));
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Margin rules saved.']);
 
         return back();
     }
@@ -106,18 +125,64 @@ final class HqCreditsController
     public function rate(Request $request): RedirectResponse
     {
         $data = $request->validate(['action' => ['required', 'string', 'max:80'], 'credits' => ['required', 'integer', 'min:0', 'max:100000'], 'automation' => ['required', 'boolean'],
-            'label' => ['nullable', 'string', 'max:120']]);
-        $this->rates->saveRate($data['action'], (int) $data['credits'], (bool) $data['automation'], (string) ($data['label'] ?? ''), self::user($request));
+            'label' => ['nullable', 'string', 'max:120'],
+            'tokens_in' => ['nullable', 'integer', 'min:0', 'max:2000000'], 'tokens_out' => ['nullable', 'integer', 'min:0', 'max:500000'],
+            'audio_seconds' => ['nullable', 'integer', 'min:0', 'max:3600']]);
+        $by = self::user($request);
+        $this->rates->saveRate($data['action'], (int) $data['credits'], (bool) $data['automation'], (string) ($data['label'] ?? ''), $by);
+        if (isset($data['tokens_in'])) {
+            $this->rates->saveEstimate($data['action'], (int) $data['tokens_in'], (int) ($data['tokens_out'] ?? 0), (int) ($data['audio_seconds'] ?? 0), $by);
+        }
 
         return back();
     }
 
+    /** Sets every action (or only those below the minimum margin) to its suggested credits. */
+    public function applySuggested(Request $request): RedirectResponse
+    {
+        $by = self::user($request);
+        $onlyBelow = $request->boolean('only_below_floor');
+        $n = 0;
+        foreach ($this->economics->actions() as $a) {
+            if ($a['suggested_credits'] === null || $a['suggested_credits'] === $a['credits'] || ($onlyBelow && ! $a['below_floor'])) {
+                continue;
+            }
+            $this->rates->saveRate($a['action'], $a['suggested_credits'], $a['automation'], $a['label'], $by);
+            $n++;
+        }
+        Inertia::flash('toast', ['type' => 'success', 'message' => $n === 0 ? 'Every price already matches.' : "Updated {$n} price(s)."]);
+
+        return back();
+    }
+
+    public function catalog(Request $request, string $key): RedirectResponse
+    {
+        $data = $request->validate(['cost' => ['required', 'numeric', 'min:0', 'max:10000'], 'free_units_monthly' => ['nullable', 'integer', 'min:0', 'max:100000000']]);
+        $db = DB::connection(Connections::control())->table('cost_catalog');
+        $row = (clone $db)->where('key', $key)->first() ?? abort(404);
+        $micro = (int) round((float) $data['cost'] * 100_000_000);
+        (clone $db)->where('key', $key)->update(['cost_microcents' => $micro, 'free_units_monthly' => (int) ($data['free_units_monthly'] ?? $row->free_units_monthly),
+            'checked_at' => CarbonImmutable::today()->toDateString(), 'updated_by' => self::user($request)->id, 'updated_at' => now()]);
+        app(AuditLogger::class)->record('billing.costs.changed', changes: ['cost_microcents' => ['old' => (int) $row->cost_microcents, 'new' => $micro]], metadata: ['item' => $key], severity: 'notice');
+
+        return back();
+    }
+
+    /** Sets a package's included credits. Below the minimum margin for a typical customer it needs a reason. */
     public function packageCredits(Request $request, Package $package): RedirectResponse
     {
-        $credits = (int) $request->validate(['included_credits' => ['required', 'integer', 'min:0', 'max:10000000']])['included_credits'];
+        $data = $request->validate(['included_credits' => ['required', 'integer', 'min:0', 'max:10000000'], 'reason' => ['nullable', 'string', 'max:255']]);
+        $credits = (int) $data['included_credits'];
+        $plan = $this->economics->packagePlan($package, $credits);
+        $reason = trim((string) ($data['reason'] ?? ''));
+        if ($plan['below_floor'] && mb_strlen($reason) < 10) {
+            throw ValidationException::withMessages(['reason' => 'At '.number_format($credits).' credits this package\'s margin is '.$plan['typical_margin_pct'].'%, below your minimum of '
+                .$this->rates->margins()['floor'].'%. Lower the credits, or give a reason (at least 10 characters).']);
+        }
         $old = (int) $package->getAttribute('included_credits');
-        $package->forceFill(['included_credits' => $credits])->save();
-        app(AuditLogger::class)->record('billing.package.credits', changes: ['included_credits' => ['old' => $old, 'new' => $credits]], metadata: ['package' => $package->name], severity: 'notice');
+        $package->forceFill(['included_credits' => $credits, 'margin_override_reason' => $plan['below_floor'] ? $reason : null])->save();
+        app(AuditLogger::class)->record('billing.package.credits', changes: ['included_credits' => ['old' => $old, 'new' => $credits]],
+            metadata: ['package' => $package->name, 'margin_pct' => $plan['typical_margin_pct'], 'reason' => $plan['below_floor'] ? $reason : null], severity: $plan['below_floor'] ? 'warning' : 'notice');
 
         return back();
     }
@@ -132,6 +197,13 @@ final class HqCreditsController
         Inertia::flash('toast', ['type' => 'success', 'message' => number_format((int) $data['credits']).' credits applied to '.$tenant->name.'.']);
 
         return back();
+    }
+
+    /** @return list<string> */
+    private function packagesWithoutCredits(): array
+    {
+        return array_values(Package::query()->where('active', true)->where('monthly_cents', '>', 0)->where('included_credits', '<=', 0)->pluck('name')
+            ->map(fn ($n): string => (string) $n)->all());
     }
 
     private static function user(Request $request): User
