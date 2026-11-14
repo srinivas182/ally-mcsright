@@ -16,6 +16,7 @@ use Modules\Core\Tenancy\Concerns\HasPublicUlid;
  *
  * @property int $id
  * @property string $ulid
+ * @property int $tenant_id
  * @property int $site_id
  * @property string $path
  * @property string $title

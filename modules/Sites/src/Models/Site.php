@@ -26,6 +26,7 @@ use Modules\Core\Tenancy\Concerns\HasPublicUlid;
  * @property array<string, mixed>|null $seo
  * @property bool $ai_crawlers
  * @property array{signup_after?: int}|null $settings
+ * @property array{main?: list<array{label: string, url: string}>, footer?: list<array{label: string, url: string}>}|null $menus
  * @property string $status
  * @property CarbonImmutable|null $published_at
  * @property CarbonImmutable|null $updated_at
@@ -37,7 +38,7 @@ final class Site extends Model
 
     protected $table = 'sites';
 
-    protected $fillable = ['kind', 'user_id', 'slug', 'template', 'brand', 'info', 'seo', 'ai_crawlers', 'settings', 'status', 'published_at'];
+    protected $fillable = ['kind', 'user_id', 'slug', 'template', 'brand', 'info', 'seo', 'ai_crawlers', 'settings', 'menus', 'status', 'published_at'];
 
     public function getConnectionName(): ?string
     {
@@ -49,7 +50,7 @@ final class Site extends Model
      */
     protected function casts(): array
     {
-        return ['brand' => 'array', 'info' => 'array', 'seo' => 'array', 'ai_crawlers' => 'boolean', 'settings' => 'array', 'published_at' => 'immutable_datetime'];
+        return ['brand' => 'array', 'info' => 'array', 'seo' => 'array', 'ai_crawlers' => 'boolean', 'settings' => 'array', 'menus' => 'array', 'published_at' => 'immutable_datetime'];
     }
 
     /**

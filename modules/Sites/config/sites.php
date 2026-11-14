@@ -10,6 +10,9 @@ return [
     // Edge cache for published pages (seconds); stale content may be served this long while refreshing.
     'cache_seconds' => (int) env('SITES_CACHE_SECONDS', 300),
     'stale_seconds' => (int) env('SITES_STALE_SECONDS', 86400),
+    // Website media library (specs/websites/08): where images are stored, and an optional CDN in front of them.
+    'media_disk' => env('SITES_MEDIA_DISK', 'public'),
+    'media_cdn_url' => env('SITES_MEDIA_CDN_URL'),
     // Visitor accounts and journeys (specs/websites/07): sign-up prompt after this many home views (0 = never),
     // and when to tell the agent a known visitor looks ready to act.
     'signup_after' => 3,

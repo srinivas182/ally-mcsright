@@ -17,6 +17,7 @@ use Modules\Core\Tenancy\TenantContext;
 use Modules\Crm\CrmAccess;
 use Modules\Sites\Models\Site;
 use Modules\Sites\Models\SitePage;
+use Modules\Sites\Models\SitePost;
 
 /**
  * Creating and managing the brokerage website (specs/websites/05): a starter site with home, about and contact pages
@@ -156,11 +157,20 @@ final class SiteSetup
      */
     public function previewUrl(SitePage $page, int $minutes = 60): ?string
     {
+        return $this->signedPreview('/_preview/'.$page->ulid, $minutes);
+    }
+
+    public function previewPostUrl(SitePost $post, int $minutes = 60): ?string
+    {
+        return $this->signedPreview('/_preview/post/'.$post->ulid, $minutes);
+    }
+
+    private function signedPreview(string $path, int $minutes): ?string
+    {
         $host = $this->liveHost();
         if ($host === null) {
             return null;
         }
-        $path = '/_preview/'.$page->ulid;
         $query = 'expires='.CarbonImmutable::now()->addMinutes($minutes)->getTimestamp();
         $signature = hash_hmac('sha256', $path.'?'.$query, (string) config('app.key'));
 

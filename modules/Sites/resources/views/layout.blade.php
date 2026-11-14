@@ -21,7 +21,7 @@
     @else
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
     @endif
-    <link rel="stylesheet" href="/site-assets/site.css?v=2">
+    <link rel="stylesheet" href="/site-assets/site.css?v=3">
     @stack('head')
     <style>:root{--brand: {{ $site->brand['primary'] ?? '#1d4ed8' }};--accent: {{ $site->brand['accent'] ?? '#0f172a' }};}</style>
     <script type="application/ld+json">{!! $seo['jsonld'] !!}</script>
@@ -56,8 +56,7 @@
         </div>
         <div>
             <ul class="footer-links">
-                @foreach ($chrome['menu'] as $item)<li><a href="{{ $item['path'] }}">{{ $item['title'] }}</a></li>@endforeach
-                <li><a href="/market">Market reports</a></li>
+                @foreach ($chrome['footer'] as $item)<li><a href="{{ $item['path'] }}">{{ $item['title'] }}</a></li>@endforeach
             </ul>
             @if (! empty($site->info['social']))
                 <ul class="social">
@@ -98,6 +97,8 @@
 </dialog>
 <div class="compare-tray" data-compare-tray hidden><span data-compare-count></span> <a class="btn btn-primary" data-compare-go href="/homes/compare">Compare</a> <button type="button" class="btn btn-ghost" data-compare-clear>Clear</button></div>
 <script>
+document.addEventListener('click',function(e){var b=e.target.closest('.video-play');if(!b)return;var v=b.parentNode,f=document.createElement('iframe');
+f.src=v.getAttribute('data-video');f.title=b.getAttribute('aria-label');f.allow='autoplay; encrypted-media; picture-in-picture; fullscreen';f.loading='lazy';v.replaceChildren(f);});
 (function(){var h=document.querySelector('[data-header]');function s(){h&&h.classList.toggle('scrolled',window.scrollY>24)}s();window.addEventListener('scroll',s,{passive:true});
 try{var k='ra_first_touch',st=window.localStorage,v=JSON.parse(st.getItem(k)||'null');if(!v){v={r:document.referrer,l:location.href};st.setItem(k,JSON.stringify(v));}
 document.querySelectorAll('form[data-lead]').forEach(function(f){f.first_referrer.value=v.r;f.landing_url.value=v.l;});}catch(e){}})();

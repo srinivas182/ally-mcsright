@@ -8,12 +8,16 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Core\Audit\AuditLogger;
+use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Crm\CrmAccess;
+use Modules\Sites\Content\Menus;
+use Modules\Sites\Content\Redirects;
 use Modules\Sites\Models\Site;
 use Modules\Sites\Models\SitePage;
 use Modules\Sites\PoweredBy;
@@ -40,6 +44,9 @@ final class WebsiteSettingsController
             'cname_target' => (string) config('sites.cname_target'),
             'templates' => collect((array) config('sites.templates'))->map(fn (array $t, string $k): array => ['key' => $k, 'name' => $t['name'], 'description' => $t['description']])->values(),
             'powered_by' => $powered->forTenant($tenants->id()),
+            'menus' => $site === null ? null : ['main' => $site->menus['main'] ?? Menus::defaults($site), 'footer' => $site->menus['footer'] ?? [], 'custom' => ! empty($site->menus['main'])],
+            'redirects' => $site === null ? [] : DB::connection(Connections::cell())->table('site_redirects')->where('site_id', $site->id)->orderBy('from_path')->limit(500)->get()
+                ->map(fn ($r): array => ['id' => (int) $r->id, 'from' => (string) $r->from_path, 'to' => (string) $r->to_url, 'code' => (int) $r->code, 'hits' => (int) $r->hits])->values(),
         ]);
     }
 
@@ -116,6 +123,44 @@ final class WebsiteSettingsController
         self::site($sites);
         $sites->addDomain((string) $request->validate(['host' => ['required', 'string', 'max:253']])['host'], $user);
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Domain added. Add the DNS record shown, and it goes live once verified.']);
+
+        return back();
+    }
+
+    public function menus(Request $request, SiteSetup $sites, Menus $menus): RedirectResponse
+    {
+        self::manager($request);
+        $data = $request->validate(['main' => ['nullable', 'array', 'max:10'], 'footer' => ['nullable', 'array', 'max:10'], 'main.*.label' => ['required', 'string', 'max:40'],
+            'main.*.url' => ['required', 'string', 'max:200'], 'footer.*.label' => ['required', 'string', 'max:40'], 'footer.*.url' => ['required', 'string', 'max:200']]);
+        $menus->save(self::site($sites), $data);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Menus saved.']);
+
+        return back();
+    }
+
+    public function redirect(Request $request, SiteSetup $sites, Redirects $redirects): RedirectResponse
+    {
+        self::manager($request);
+        $data = $request->validate(['from' => ['required', 'string', 'max:300'], 'to' => ['required', 'string', 'max:500'], 'code' => ['nullable', 'in:301,302']]);
+        $redirects->save(self::site($sites), $data['from'], $data['to'], (int) ($data['code'] ?? 301));
+
+        return back();
+    }
+
+    public function importRedirects(Request $request, SiteSetup $sites, Redirects $redirects): RedirectResponse
+    {
+        self::manager($request);
+        $r = $redirects->import(self::site($sites), (string) $request->validate(['lines' => ['required', 'string', 'max:200000']])['lines']);
+        Inertia::flash('toast', ['type' => $r['failed'] === [] ? 'success' : 'warning', 'message' => $r['saved'].' redirects added'
+            .($r['failed'] !== [] ? '; '.count($r['failed']).' lines skipped (e.g. "'.$r['failed'][0].'")' : '').'.']);
+
+        return back();
+    }
+
+    public function deleteRedirect(Request $request, SiteSetup $sites, int $redirect): RedirectResponse
+    {
+        self::manager($request);
+        DB::connection(Connections::cell())->table('site_redirects')->where('site_id', self::site($sites)->id)->where('id', $redirect)->delete();
 
         return back();
     }

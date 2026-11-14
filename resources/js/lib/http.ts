@@ -39,3 +39,30 @@ export async function postForm<T>(url: string, form: FormData): Promise<T> {
     });
     return handle<T>(response);
 }
+
+/** PUT, PATCH or DELETE with a JSON body (same CSRF handling as postJson). */
+export async function sendJson<T>(
+    method: 'PUT' | 'PATCH' | 'DELETE',
+    url: string,
+    data?: unknown,
+): Promise<T> {
+    const response = await fetch(url, {
+        method,
+        credentials: 'same-origin',
+        headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            'X-XSRF-TOKEN': xsrf(),
+        },
+        body: data === undefined ? undefined : JSON.stringify(data),
+    });
+    return handle<T>(response);
+}
+
+export async function getJson<T>(url: string): Promise<T> {
+    const response = await fetch(url, {
+        credentials: 'same-origin',
+        headers: { Accept: 'application/json' },
+    });
+    return handle<T>(response);
+}
