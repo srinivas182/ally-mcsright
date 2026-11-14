@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Core\Support\Connections;
+use Modules\Forms\Identity\IdentityChecks;
 use Modules\Forms\Negotiations;
 use Modules\Forms\Packets;
 use Modules\Forms\Signing;
@@ -28,9 +29,10 @@ final class FormsController
         return Inertia::render('forms/templates', [
             'templates' => $db->table('form_templates')->where('active', true)->orderBy('name')->get()->map(fn ($t): array => ['ulid' => $t->ulid, 'name' => $t->name,
                 'pages' => (int) $t->pages, 'version' => (int) $t->version, 'fields' => json_decode((string) $t->fields, true), 'page_sizes' => json_decode((string) $t->page_sizes, true),
-                'checklist_label' => $t->checklist_label])->values(),
+                'checklist_label' => $t->checklist_label, 'high_risk' => (bool) $t->high_risk])->values(),
             'clauses' => $db->table('form_clauses')->orderBy('title')->get(['ulid', 'title', 'body']),
             'bindings' => Packets::bindings(), 'types' => Templates::TYPES,
+            'identity' => app(IdentityChecks::class)->settings(),
         ]);
     }
 
@@ -107,17 +109,46 @@ final class FormsController
                 return ['id' => (int) $f->id, 'name' => (string) $t?->name, 'values' => (object) json_decode((string) $f->values, true),
                     'fields' => array_values(array_filter((array) json_decode((string) $t?->fields, true), fn ($x) => ! in_array($x['type'], Templates::SIGNER_FIELDS, true)))];
             })->values(),
-            'signers' => $db->table('form_signers')->where('packet_id', $row->id)->orderBy('sign_order')->get(['ulid', 'role', 'name', 'email', 'phone', 'sign_order', 'status', 'signed_at', 'decline_reason']),
+            'signers' => $db->table('form_signers')->where('packet_id', $row->id)->orderBy('sign_order')->get(['ulid', 'role', 'name', 'email', 'phone', 'sign_order', 'status', 'signed_at',
+                'decline_reason', 'met_in_person', 'id_required', 'id_status'])->map(fn ($s): array => ['met_in_person' => $s->met_in_person === null ? null : (bool) $s->met_in_person,
+                    'id_required' => (bool) $s->id_required] + (array) $s)->values(),
             'events' => $db->table('form_events')->where('packet_id', $row->id)->orderByDesc('id')->limit(50)->get(['action', 'detail', 'at']),
             'problems' => $packets->check($packet, $user),
             'clauses' => $db->table('form_clauses')->orderBy('title')->get(['title', 'body']),
             'negotiation' => Negotiations::history($row),
+            'risk' => self::risk($row, $user),
             'changes' => $db->table('form_changes')->where('packet_id', $row->id)->orderByDesc('id')->get()->map(fn ($c): array => [
                 'line' => Negotiations::line((string) $c->label, (string) $c->old_value, (string) $c->new_value), 'reason' => (string) $c->reason, 'at' => (string) $c->changed_at,
                 'waiting_on' => $db->table('form_change_acks')->join('form_signers', 'form_signers.id', '=', 'form_change_acks.signer_id')->where('change_id', $c->id)
                     ->whereNull('form_change_acks.at')->pluck('form_signers.name')->values()->all()])->values(),
             'templates' => $db->table('form_templates')->where('active', true)->orderBy('name')->get(['ulid', 'name']),
         ]);
+    }
+
+    public function ownerOverride(Request $request, string $packet, IdentityChecks $identity): RedirectResponse
+    {
+        $data = $request->validate(['reason' => ['required', 'string', 'max:300']]);
+        $identity->overrideOwner($packet, $data['reason'], self::user($request));
+
+        return back();
+    }
+
+    public function identitySettings(Request $request, IdentityChecks $identity): RedirectResponse
+    {
+        $data = $request->validate(['id_policy' => ['required', 'string'], 'owner_check' => ['required', 'boolean'], 'below_value_percent' => ['required', 'integer']]);
+        $identity->saveSettings($data['id_policy'], (bool) $data['owner_check'], (int) $data['below_value_percent'], self::user($request));
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Identity check settings saved.']);
+
+        return back();
+    }
+
+    public function templateRisk(Request $request, string $template): RedirectResponse
+    {
+        abort_unless(Templates::manages(self::user($request)), 403);
+        $data = $request->validate(['high_risk' => ['required', 'boolean']]);
+        DB::connection(Connections::cell())->table('form_templates')->where('ulid', $template)->update(['high_risk' => (bool) $data['high_risk']]);
+
+        return back();
     }
 
     /** Changes terms on a packet out for signature; earlier signers initial only the changes. */
@@ -162,7 +193,8 @@ final class FormsController
     public function signers(Request $request, string $packet, Packets $packets): RedirectResponse
     {
         $data = $request->validate(['signers' => ['present', 'array', 'max:12'], 'signers.*.role' => ['required', 'string', 'max:30'], 'signers.*.name' => ['required', 'string', 'max:160'],
-            'signers.*.email' => ['required', 'email'], 'signers.*.phone' => ['nullable', 'string', 'max:30'], 'signers.*.sign_order' => ['required', 'integer', 'min:1', 'max:12']]);
+            'signers.*.email' => ['required', 'email'], 'signers.*.phone' => ['nullable', 'string', 'max:30'], 'signers.*.sign_order' => ['required', 'integer', 'min:1', 'max:12'],
+            'signers.*.met_in_person' => ['nullable', 'boolean']]);
         $packets->setSigners($packet, array_values($data['signers']), self::user($request));
 
         return back();
@@ -171,6 +203,24 @@ final class FormsController
     public function preview(Request $request, string $packet, int $form, Packets $packets): \Symfony\Component\HttpFoundation\Response
     {
         return response($packets->preview($packet, $form, self::user($request)), 200, ['Content-Type' => 'application/pdf', 'Content-Disposition' => 'inline; filename="preview.pdf"']);
+    }
+
+    /**
+     * Seller-impersonation signals, the owner of record and the brokerage's identity policy for one packet.
+     *
+     * @return array{flags: list<string>, owner: mixed, override_reason: ?string, can_override: bool, policy: string}
+     */
+    private static function risk(\stdClass $row, User $user): array
+    {
+        $identity = app(IdentityChecks::class);
+        if ($row->status === 'draft') {
+            $identity->assess((int) $row->id);
+        }
+        $fresh = DB::connection(Connections::cell())->table('form_packets')->where('id', $row->id)->first();
+
+        return ['flags' => array_values(array_map('strval', (array) json_decode((string) ($fresh->risk_flags ?? '[]'), true))),
+            'owner' => json_decode((string) ($fresh->owner_record ?? 'null'), true), 'override_reason' => $row->owner_override_reason,
+            'can_override' => Templates::manages($user), 'policy' => $identity->settings()['id_policy']];
     }
 
     private static function user(Request $request): User

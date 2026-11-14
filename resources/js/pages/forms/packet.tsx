@@ -28,6 +28,9 @@ type Signer = {
     status: string;
     signed_at?: string | null;
     decline_reason?: string | null;
+    met_in_person?: boolean | null;
+    id_required?: boolean;
+    id_status?: string | null;
 };
 type Props = {
     packet: {
@@ -46,6 +49,13 @@ type Props = {
     negotiation: NegotiationStep[];
     changes: PacketChange[];
     templates: { ulid: string; name: string }[];
+    risk: {
+        flags: string[];
+        owner: { owners: string[]; source: string } | null;
+        override_reason: string | null;
+        can_override: boolean;
+        policy: string;
+    };
 };
 
 function FormValues({
@@ -174,16 +184,20 @@ export default function Packet({
     negotiation,
     changes,
     templates,
+    risk,
 }: Props) {
     const locked = packet.status !== 'draft';
     const signerForm = useForm<{ signers: Omit<Signer, 'status'>[] }>({
-        signers: signers.map(({ role, name, email, phone, sign_order }) => ({
-            role,
-            name,
-            email,
-            phone,
-            sign_order,
-        })),
+        signers: signers.map(
+            ({ role, name, email, phone, sign_order, met_in_person }) => ({
+                role,
+                name,
+                email,
+                phone,
+                sign_order,
+                met_in_person: met_in_person ?? null,
+            }),
+        ),
     });
     const setSigner = (i: number, patch: Partial<Signer>) =>
         signerForm.setData(
@@ -235,6 +249,7 @@ export default function Packet({
                             ))}
                     </section>
                 ) : null}
+                <RiskPanel packet={packet.ulid} risk={risk} signers={signers} />
                 {forms.map((f) => (
                     <FormValues
                         key={f.id}
@@ -296,6 +311,34 @@ export default function Packet({
                                     setSigner(i, { email: e.target.value })
                                 }
                             />
+                            {!s.role.endsWith('_agent') && (
+                                <select
+                                    aria-label="Met in person"
+                                    className="rounded border bg-background px-2 py-1.5"
+                                    disabled={locked}
+                                    value={
+                                        s.met_in_person == null
+                                            ? ''
+                                            : s.met_in_person
+                                              ? 'yes'
+                                              : 'no'
+                                    }
+                                    onChange={(e) =>
+                                        setSigner(i, {
+                                            met_in_person:
+                                                e.target.value === ''
+                                                    ? null
+                                                    : e.target.value === 'yes',
+                                        })
+                                    }
+                                >
+                                    <option value="">Met in person?</option>
+                                    <option value="yes">Met in person</option>
+                                    <option value="no">
+                                        Not met in person
+                                    </option>
+                                </select>
+                            )}
                             {!locked && (
                                 <Button
                                     size="sm"
@@ -327,6 +370,7 @@ export default function Packet({
                                             name: '',
                                             email: '',
                                             phone: null,
+                                            met_in_person: null,
                                             sign_order:
                                                 signerForm.data.signers.length +
                                                 1,
@@ -434,6 +478,27 @@ function SendPanel({
                             >
                                 {s.status}
                             </Badge>
+                            {s.id_required && (
+                                <Badge
+                                    variant={
+                                        s.id_status === 'verified'
+                                            ? 'secondary'
+                                            : s.id_status
+                                              ? 'destructive'
+                                              : 'outline'
+                                    }
+                                >
+                                    {s.id_status === 'verified'
+                                        ? 'ID verified'
+                                        : s.id_status === 'name_mismatch'
+                                          ? 'ID name does not match'
+                                          : s.id_status === 'owner_mismatch'
+                                            ? 'Not owner of record'
+                                            : s.id_status === 'failed'
+                                              ? 'ID check failed'
+                                              : 'ID check needed'}
+                                </Badge>
+                            )}
                             {s.decline_reason && (
                                 <span className="text-destructive">
                                     “{s.decline_reason}”
@@ -507,5 +572,78 @@ function SendPanel({
                 </details>
             )}
         </div>
+    );
+}
+
+/** Seller-impersonation signals and the owner of record; a manager can accept a mismatch with a reason. */
+function RiskPanel({
+    packet,
+    risk,
+    signers,
+}: {
+    packet: string;
+    risk: Props['risk'];
+    signers: Signer[];
+}) {
+    const [reason, setReason] = useState('');
+    const mismatch = signers.some((s) => s.id_status === 'owner_mismatch');
+    if (risk.flags.length === 0 && !risk.owner && !mismatch) return null;
+
+    return (
+        <section
+            className={`grid gap-1 rounded-lg border p-4 text-sm ${risk.flags.length ? 'border-red-300 bg-red-50 text-red-900' : ''}`}
+            role="status"
+        >
+            <p className="font-medium">
+                {risk.flags.length
+                    ? `Fraud check: ${risk.flags.length} warning sign(s)`
+                    : 'Fraud check: no warning signs'}
+            </p>
+            {risk.flags.map((f) => (
+                <p key={f}>• {f}</p>
+            ))}
+            {risk.owner && (
+                <p className="text-xs">
+                    Owner of record ({risk.owner.source}):{' '}
+                    {risk.owner.owners.join(', ')}
+                </p>
+            )}
+            {risk.flags.length > 0 && risk.policy !== 'off' && (
+                <p className="text-xs">
+                    Sellers will verify their identity (government ID and a live
+                    selfie) before signing.
+                </p>
+            )}
+            {risk.override_reason && (
+                <p className="text-xs">
+                    Accepted by the brokerage: {risk.override_reason}
+                </p>
+            )}
+            {mismatch && risk.can_override && (
+                <span className="flex flex-wrap gap-2 pt-1">
+                    <Input
+                        aria-label="Why this seller can sign"
+                        placeholder="Why this seller can sign (trust, estate…)"
+                        className="w-80 bg-background"
+                        value={reason}
+                        onChange={(e) => setReason(e.target.value)}
+                    />
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={reason.length < 10}
+                        onClick={() =>
+                            router.post(
+                                `/forms/packets/${packet}/owner-override`,
+                                { reason },
+                                { preserveScroll: true },
+                            )
+                        }
+                    >
+                        Accept and let them sign
+                    </Button>
+                </span>
+            )}
+        </section>
     );
 }

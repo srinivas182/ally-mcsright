@@ -14,4 +14,8 @@ return [
 
     // qpdf binary used to repair PDFs FPDI cannot read as uploaded.
     'qpdf' => env('FORMS_QPDF', 'qpdf'),
+
+    // Identity checks (government ID + live selfie): 'stripe' uses Stripe Identity on the brokerage's own Stripe
+    // account; 'fake' returns straight back as verified (local development only).
+    'identity_driver' => env('FORMS_IDENTITY_DRIVER', 'stripe'),
 ];

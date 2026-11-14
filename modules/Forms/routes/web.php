@@ -13,6 +13,8 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('forms'
     Route::post('templates/{template}/fields', [FormsController::class, 'fields'])->name('templates.fields');
     Route::get('templates/{template}/pages/{page}', [FormsController::class, 'page'])->whereNumber('page')->name('templates.page');
     Route::post('clauses', [FormsController::class, 'clause'])->name('clauses');
+    Route::post('identity-settings', [FormsController::class, 'identitySettings'])->name('identity-settings');
+    Route::post('templates/{template}/risk', [FormsController::class, 'templateRisk'])->name('templates.risk');
     Route::get('deals/{deal}', [FormsController::class, 'forDeal'])->name('deal');
     Route::post('deals/{deal}/packets', [FormsController::class, 'createPacket'])->name('packets.create');
     Route::get('packets/{packet}', [FormsController::class, 'packet'])->name('packets.show');
@@ -23,6 +25,7 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('forms'
     Route::post('packets/{packet}/void', [FormsController::class, 'void'])->name('packets.void');
     Route::post('packets/{packet}/amend', [FormsController::class, 'amend'])->middleware('throttle:20,1')->name('packets.amend');
     Route::post('packets/{packet}/counter', [FormsController::class, 'counter'])->middleware('throttle:20,1')->name('packets.counter');
+    Route::post('packets/{packet}/owner-override', [FormsController::class, 'ownerOverride'])->name('packets.owner-override');
     Route::post('packets/{packet}/addendum', [FormsController::class, 'addendum'])->name('packets.addendum');
     Route::post('packets/{packet}/in-person/{signer}', [FormsController::class, 'inPerson'])->name('packets.in-person');
     Route::get('packets/{packet}/signed.pdf', [FormsController::class, 'signed'])->name('packets.signed');
@@ -34,11 +37,13 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'throttle:60,1'])->group
         Route::get('/', [SigningController::class, 'show'])->name('show');
         Route::get('document.pdf', [SigningController::class, 'document'])->name('document');
         Route::post('consent', [SigningController::class, 'consent'])->name('consent');
-        Route::post('code', [SigningController::class, 'code'])->middleware('throttle:3,10')->name('code');
+        Route::post('code', [SigningController::class, 'code'])->middleware('throttle:3,10,sign-code')->name('code');
         Route::post('verify', [SigningController::class, 'verify'])->name('verify');
         Route::post('sign', [SigningController::class, 'sign'])->name('sign');
         Route::post('decline', [SigningController::class, 'decline'])->name('decline');
         Route::post('acknowledge', [SigningController::class, 'acknowledge'])->name('acknowledge');
+        Route::post('identity', [SigningController::class, 'identity'])->middleware('throttle:5,10,sign-identity')->name('identity');
+        Route::get('identity/return', [SigningController::class, 'identityReturn'])->name('identity.return');
     });
     Route::get('verify-document', [SigningController::class, 'verifyPage'])->name('verify-document');
     Route::post('verify-document', [SigningController::class, 'verifyUpload'])->middleware('throttle:20,1')->name('verify-document.check');

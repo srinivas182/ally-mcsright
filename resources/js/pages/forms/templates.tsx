@@ -5,6 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/ui/page-header';
 import { FieldCanvas } from '@/components/forms/field-canvas';
+import {
+    IdentitySettings,
+    type IdentitySettingsData,
+} from '@/components/forms/identity-settings';
 
 type Field = {
     key: string;
@@ -27,12 +31,14 @@ type Template = {
     fields: Field[];
     page_sizes: [number, number][];
     checklist_label: string | null;
+    high_risk: boolean;
 };
 type Props = {
     templates: Template[];
     clauses: { ulid: string; title: string; body: string }[];
     bindings: string[];
     types: string[];
+    identity: IdentitySettingsData;
 };
 
 const blank: Field = {
@@ -283,6 +289,7 @@ export default function FormTemplates({
     clauses,
     bindings,
     types,
+    identity,
 }: Props) {
     const upload = useForm<{
         name: string;
@@ -355,6 +362,7 @@ export default function FormTemplates({
                         types={types}
                     />
                 ))}
+                <IdentitySettings settings={identity} templates={templates} />
                 <section className="grid gap-2 rounded-lg border p-4 text-sm">
                     <h2 className="font-semibold">Clause library</h2>
                     {clauses.map((c) => (
