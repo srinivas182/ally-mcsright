@@ -47,11 +47,17 @@ final class AppRegistry
     public function setupComplete(App $app): bool
     {
         return match ($app->setup['needs'] ?? 'none') {
-            'provider' => Providers::configured((string) ($app->setup['provider'] ?? $app->oauth['provider'] ?? '')),
+            'provider' => Providers::configured((string) ($app->setup['provider'] ?? $app->oauth['provider'] ?? '')) && $this->keysSet($app),
             'app' => ($other = app(AppCatalog::class)->find((string) ($app->setup['app'] ?? ''))) !== null && $this->setupComplete($other),
-            'keys' => array_diff(array_column($app->setup['fields'] ?? [], 'key'), array_keys(array_filter($this->secrets($app), fn (string $v): bool => $v !== ''))) === [],
+            'keys' => $this->keysSet($app),
             default => true,
         };
+    }
+
+    /** Every RightAlly-level key the app asks HQ for is saved (none asked: true). */
+    private function keysSet(App $app): bool
+    {
+        return array_diff(array_column($app->setup['fields'] ?? [], 'key'), array_keys(array_filter($this->secrets($app), fn (string $v): bool => $v !== ''))) === [];
     }
 
     public function ready(App $app): bool
