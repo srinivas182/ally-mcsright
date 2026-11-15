@@ -3,7 +3,8 @@
  * hands the visitor to an agent. Everything from the server is inserted as text (never HTML). The chat starts only
  * when the visitor opens it, and continues across pages in this browser tab. Visitors can book a call, showing or
  * listing appointment in an agent's open times (specs/websites/13). The interface follows the browser's language
- * (English or Spanish); the assistant replies in whatever language the visitor writes.
+ * (English or Spanish); the assistant replies in whatever language the visitor writes. When an agent joins the chat
+ * (specs/websites/14), the widget checks for their messages every few seconds while it is open.
  */
 (function () {
     'use strict';
@@ -144,7 +145,7 @@
     root.querySelectorAll('[data-ailly-face]').forEach(function (slot) {
         slot.appendChild(face());
     });
-    var state = { id: null, items: [] };
+    var state = { id: null, items: [], last: 0 };
     try {
         state =
             JSON.parse(sessionStorage.getItem('ra_ailly') || 'null') || state;
@@ -156,7 +157,11 @@
         try {
             sessionStorage.setItem(
                 'ra_ailly',
-                JSON.stringify({ id: state.id, items: state.items.slice(-30) }),
+                JSON.stringify({
+                    id: state.id,
+                    items: state.items.slice(-30),
+                    last: state.last || 0,
+                }),
             );
         } catch (e) {
             /* ignore */
@@ -202,6 +207,17 @@
         if (item.role === 'contact')
             return log.appendChild(contactForm(item.want, item.listing));
         var b = el('div', 'ailly-msg ailly-' + item.role);
+        if (item.role === 'note') {
+            b.appendChild(el('p', null, item.text));
+            log.appendChild(b);
+            return;
+        }
+        if (item.role === 'agent') {
+            b.appendChild(el('strong', 'ailly-by', item.by || 'Agent'));
+            b.appendChild(el('p', null, item.text));
+            log.appendChild(b);
+            return;
+        }
         if (item.role === 'ailly') {
             var row0 = el('div', 'ailly-line');
             var f = el('span', 'ailly-face');
@@ -497,12 +513,36 @@
         });
     }
 
+    // An agent's messages, while the chat is open.
+    var agentMode = false;
+    var timer = null;
+    function poll() {
+        if (!state.id || panel.hidden) return;
+        post('/_ailly/poll', {
+            conversation: state.id,
+            after: state.last || 0,
+        }).then(function (d) {
+            if (d && d.ok) {
+                (d.messages || []).forEach(function (m) {
+                    state.last = Math.max(state.last || 0, m.id);
+                    add({ role: m.role, text: m.body, by: m.by });
+                });
+                agentMode = !!d.agent;
+                save();
+            }
+            clearTimeout(timer);
+            if (!panel.hidden && state.id)
+                timer = setTimeout(poll, agentMode ? 3000 : 8000);
+        });
+    }
+
     function open() {
         panel.hidden = false;
         openBtn.setAttribute('aria-expanded', 'true');
         if (!log.childElementCount) state.items.forEach(render);
         start().then(function () {
             input.focus();
+            poll();
         });
     }
     function close() {
@@ -536,6 +576,11 @@
             website: form.website.value,
         }).then(function (d) {
             typing.remove();
+            if (d && d.agent) {
+                agentMode = true;
+                poll();
+                return;
+            }
             if (!d || !d.reply) {
                 add({
                     role: 'ailly',

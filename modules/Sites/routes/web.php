@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 use Modules\Core\Http\Middleware\EnsureHqConsole;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
 use Modules\Sites\Http\Controllers\AillyController;
+use Modules\Sites\Http\Controllers\AillyLiveController;
 use Modules\Sites\Http\Controllers\BlogAdminController;
 use Modules\Sites\Http\Controllers\HqSitesController;
 use Modules\Sites\Http\Controllers\MediaController;
@@ -22,6 +23,13 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function
     Route::delete('settings/ailly/answers/{answer}', [AillyController::class, 'deleteAnswer'])->whereNumber('answer')->name('settings.ailly.answers.delete');
     Route::post('settings/ailly/questions/{question}/dismiss', [AillyController::class, 'dismissQuestion'])->whereNumber('question')->name('settings.ailly.questions.dismiss');
     Route::get('settings/ailly/audit', [AillyController::class, 'audit'])->middleware('throttle:20,1')->name('settings.ailly.audit');
+    Route::post('settings/ailly/test', [AillyController::class, 'startTest'])->name('settings.ailly.test');
+    Route::post('settings/ailly/test/stop', [AillyController::class, 'stopTest'])->name('settings.ailly.test.stop');
+    Route::get('ailly/chats', [AillyLiveController::class, 'index'])->name('ailly.chats');
+    Route::get('ailly/chats/{chat}', [AillyLiveController::class, 'show'])->where('chat', '[0-9A-Za-z]{26}')->name('ailly.chats.show');
+    Route::post('ailly/chats/{chat}/take', [AillyLiveController::class, 'take'])->where('chat', '[0-9A-Za-z]{26}')->name('ailly.chats.take');
+    Route::post('ailly/chats/{chat}/say', [AillyLiveController::class, 'say'])->where('chat', '[0-9A-Za-z]{26}')->middleware('throttle:60,1')->name('ailly.chats.say');
+    Route::post('ailly/chats/{chat}/hand-back', [AillyLiveController::class, 'handBack'])->where('chat', '[0-9A-Za-z]{26}')->name('ailly.chats.hand-back');
 });
 
 Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])

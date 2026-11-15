@@ -110,7 +110,10 @@ final class ClosingBrief
         }
 
         return DB::connection(Connections::cell())->table('ailly_messages')->whereIn('conversation_id', $ids)->orderBy('id')->limit(60)->get(['role', 'body'])
-            ->map(fn (object $m): string => ($m->role === 'visitor' ? 'Visitor: ' : 'Assistant: ').(string) $m->body)->implode("\n");
+            ->filter(fn (object $m): bool => $m->role !== 'note')
+            ->map(fn (object $m): string => match ($m->role) {
+                'visitor' => 'Visitor: ', 'agent' => 'Agent: ', default => 'Assistant: '
+            }.(string) $m->body)->implode("\n");
     }
 
     /**

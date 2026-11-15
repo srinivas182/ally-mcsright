@@ -125,10 +125,23 @@ final class LeadIntake
             } else {
                 $this->routing->route($lead);
             }
-            app(AiResponder::class)->leadReceived($lead->refresh());
+            app(AiResponder::class)->leadReceived($lead->refresh(), self::handoff($in['ai_handoff'] ?? null));
             app(LeadScoring::class)->score($lead->refresh());
         }
 
         return $lead->refresh();
+    }
+
+    /**
+     * What the website assistant tells the AI first responder about a lead (specs/websites/14).
+     *
+     * @return array{skip: bool, origin: string, assistant: string}
+     */
+    private static function handoff(mixed $h): array
+    {
+        $h = is_array($h) ? $h : [];
+
+        return ['skip' => (bool) ($h['skip'] ?? false), 'origin' => is_string($h['origin'] ?? null) ? $h['origin'] : '',
+            'assistant' => is_string($h['assistant'] ?? null) ? $h['assistant'] : ''];
     }
 }

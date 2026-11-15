@@ -1,6 +1,12 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 
+import {
+    AbTest,
+    type AbTestResults,
+    type AbTestSettings,
+} from '@/components/ailly/ab-test';
+import { LiveChats, type LiveChat } from '@/components/ailly/live-chats';
 import { MediaPicker, type MediaItem } from '@/components/sites/media-picker';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -71,6 +77,10 @@ type Props = {
         last_asked_at: string;
     }[];
     team_options: { id: number; name: string }[];
+    test: AbTestSettings;
+    test_results: AbTestResults;
+    current_greeting: string;
+    live: LiveChat[];
 };
 
 const outcomeLabel: Record<Conversation['outcome'], string> = {
@@ -167,6 +177,10 @@ export default function AillySettings({
     answers,
     open_questions,
     team_options,
+    test,
+    test_results,
+    current_greeting,
+    live,
     media: initialMedia,
 }: Props) {
     const form = useForm({ ...settings });
@@ -211,8 +225,22 @@ export default function AillySettings({
                                 ? ` (${open_questions.length} to add)`
                                 : ''}
                         </TabsTrigger>
+                        <TabsTrigger value="test">
+                            A/B test{test.on ? ' (running)' : ''}
+                        </TabsTrigger>
                         <TabsTrigger value="settings">Settings</TabsTrigger>
                     </TabsList>
+
+                    <TabsContent value="test">
+                        <AbTest
+                            test={test}
+                            results={test_results}
+                            current={{
+                                greeting: current_greeting,
+                                gate: settings.gate,
+                            }}
+                        />
+                    </TabsContent>
 
                     <TabsContent value="results" className="grid gap-4">
                         <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -336,6 +364,10 @@ export default function AillySettings({
                     </TabsContent>
 
                     <TabsContent value="chats" className="grid gap-3 text-sm">
+                        <section className="grid gap-2">
+                            <h2 className="font-medium">Live now</h2>
+                            <LiveChats live={live} />
+                        </section>
                         <div className="flex flex-wrap items-center gap-2">
                             <select
                                 aria-label="Outcome"
@@ -420,12 +452,23 @@ export default function AillySettings({
                                     </button>
                                     {open === c.ulid && (
                                         <div className="grid gap-1 rounded-md bg-muted/40 p-3">
+                                            <a
+                                                href={`/ailly/chats/${c.ulid}`}
+                                                className="justify-self-end text-xs underline-offset-4 hover:underline"
+                                            >
+                                                Open the chat
+                                            </a>
                                             {c.messages.map((m, i) => (
                                                 <p key={i}>
                                                     <strong>
                                                         {m.role === 'visitor'
                                                             ? 'Visitor'
-                                                            : 'AIlly'}
+                                                            : m.role === 'agent'
+                                                              ? 'Agent'
+                                                              : m.role ===
+                                                                  'note'
+                                                                ? 'Note'
+                                                                : 'AIlly'}
                                                         :
                                                     </strong>{' '}
                                                     {m.body}

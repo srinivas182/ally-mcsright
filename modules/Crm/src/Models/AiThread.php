@@ -19,6 +19,8 @@ use Modules\Core\Tenancy\Concerns\HasPublicUlid;
  * @property int $lead_id
  * @property int $contact_id
  * @property string $status
+ * @property string|null $origin
+ * @property string|null $assistant_name
  * @property string|null $channel
  * @property int $messages_sent
  * @property array<string, string>|null $qualification
@@ -37,7 +39,7 @@ final class AiThread extends Model
 
     protected $table = 'crm_ai_threads';
 
-    protected $fillable = ['lead_id', 'contact_id', 'status', 'channel', 'messages_sent', 'qualification', 'handoff_reason', 'handed_off_at', 'summary', 'next_message', 'last_reply_at'];
+    protected $fillable = ['lead_id', 'contact_id', 'status', 'origin', 'assistant_name', 'channel', 'messages_sent', 'qualification', 'handoff_reason', 'handed_off_at', 'summary', 'next_message', 'last_reply_at'];
 
     public function getConnectionName(): ?string
     {

@@ -22,6 +22,8 @@ use Modules\Core\Tenancy\TenantContext;
 use Modules\Sites\Ailly\AillySettings;
 use Modules\Sites\Ailly\Assistant;
 use Modules\Sites\Ailly\BrokerageAnswers;
+use Modules\Sites\Ailly\Experiments;
+use Modules\Sites\Ailly\LiveChat;
 use Modules\Sites\Content\MediaLibrary;
 use Modules\Sites\Models\Site;
 use Modules\Sites\Rendering\SiteContext;
@@ -77,6 +79,20 @@ final class AillyController
         }
 
         return response()->json(['ok' => true] + $done);
+    }
+
+    /** New messages from an agent who joined the chat (the widget asks every few seconds while it is open). */
+    public function poll(Request $request): JsonResponse
+    {
+        $data = $request->validate(['conversation' => ['required', 'string', 'size:26'], 'after' => ['nullable', 'integer', 'min:0']]);
+        if (! RateLimiter::attempt('ailly-poll:'.$request->ip(), 40, fn (): bool => true)) {
+            return response()->json(['ok' => false, 'messages' => []], 429);
+        }
+        try {
+            return response()->json(['ok' => true] + $this->ailly->poll($data['conversation'], (int) ($data['after'] ?? 0)));
+        } catch (ValidationException) {
+            return response()->json(['ok' => false, 'messages' => []]);
+        }
     }
 
     /** Open times to book a call, showing or listing appointment on this website. */
@@ -145,6 +161,10 @@ final class AillyController
                     array_filter(($messages->get($c->id) ?? collect())->all(), fn ($m): bool => $m instanceof \stdClass)))])->values(),
             'answers' => $answers->list(),
             'open_questions' => $answers->openQuestions(),
+            'test' => Experiments::for($site),
+            'current_greeting' => AillySettings::greeting(AillySettings::for($site), AillySettings::for($site)['name']),
+            'test_results' => app(Experiments::class)->results($site),
+            'live' => app(LiveChat::class)->live(self::manager($request)),
             'team_options' => User::query()->whereIn('kind', [UserKind::Agent, UserKind::Owner])->orderBy('first_name')->get()->filter(fn (User $u): bool => $u->isActive())
                 ->map(fn (User $u): array => ['id' => $u->id, 'name' => $u->name])->values(),
         ]);
@@ -225,6 +245,29 @@ final class AillyController
      * The website the chat is on: an agent's own domain (set by the middleware), an agent's pages at /agents/{slug}
      * on the brokerage's address (the widget sends the public slug), or the brokerage's.
      */
+    /** Starts an A/B test of a second greeting and/or a different moment to ask for details. */
+    public function startTest(Request $request, Experiments $experiments): RedirectResponse
+    {
+        $user = self::manager($request);
+        $data = $request->validate(['greeting_b' => ['nullable', 'string', 'max:240'], 'gate_b' => ['nullable', 'in:before,after,booking']]);
+        $site = Site::query()->where('kind', 'brokerage')->first() ?? throw ValidationException::withMessages(['greeting_b' => 'Set up your website first.']);
+        $experiments->start($site, (string) ($data['greeting_b'] ?? ''), $data['gate_b'] ?? null, $user);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Test started: half of new chats see version B.']);
+
+        return back();
+    }
+
+    public function stopTest(Request $request, Experiments $experiments): RedirectResponse
+    {
+        $user = self::manager($request);
+        $useB = (bool) $request->validate(['use_b' => ['required', 'boolean']])['use_b'];
+        $site = Site::query()->where('kind', 'brokerage')->firstOrFail();
+        $experiments->stop($site, $useB, $user);
+        Inertia::flash('toast', ['type' => 'success', 'message' => $useB ? 'Version B is now what every visitor sees.' : 'Test ended. Visitors see your settings.']);
+
+        return back();
+    }
+
     private static function site(Request $request): ?Site
     {
         $context = app(SiteContext::class)->agent();

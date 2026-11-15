@@ -90,15 +90,17 @@ final class Assistant
         $vid = $request->input('vid');
         $visitor = Visitors::validVid($vid) ? $this->visitors->resolve($site, (string) $vid) : null;
         $ulid = (string) Str::ulid();
+        $variant = Experiments::variant(self::brokerageSite(), $visitor !== null ? $visitor->vid : $ulid);
         DB::connection(Connections::cell())->table('ailly_conversations')->insert(['ulid' => $ulid, 'tenant_id' => $this->tenants->id(), 'site_id' => $site->id,
-            'visitor_id' => $visitor?->id, 'page' => mb_substr((string) $request->input('page', ''), 0, 300), 'ip_hash' => hash('sha256', (string) $request->ip().config('app.key')),
+            'visitor_id' => $visitor?->id, 'variant' => $variant, 'page' => mb_substr((string) $request->input('page', ''), 0, 300), 'ip_hash' => hash('sha256', (string) $request->ip().config('app.key')),
             'created_at' => now(), 'updated_at' => now()]);
         $persona = AillySettings::persona($site, self::brokerageSite());
         $back = $visitor !== null ? $this->welcomeBack($visitor) : null;
-        $greeting = $back['text'] ?? AillySettings::greeting($settings, $persona['name']);
+        $seen = Experiments::apply(self::brokerageSite(), $variant, $settings, $persona['name']);
+        $greeting = $back['text'] ?? $seen['greeting'];
         $this->say($ulid, 'ailly', $greeting);
 
-        return ['conversation' => $ulid, 'greeting' => $greeting, 'name' => $persona['name'], 'needs_contact' => $settings['gate'] === 'before',
+        return ['conversation' => $ulid, 'greeting' => $greeting, 'name' => $persona['name'], 'needs_contact' => $seen['gate'] === 'before',
             'search_url' => $back['url'] ?? null];
     }
 
@@ -133,7 +135,7 @@ final class Assistant
     /**
      * One visitor message and AIlly's answer.
      *
-     * @return array{reply: string, next_step: string, homes: list<array<string, mixed>>, needs_contact: bool, ended: bool, value: array<string, mixed>|null}
+     * @return array{reply: string, next_step: string, homes: list<array<string, mixed>>, needs_contact: bool, ended: bool, value: array<string, mixed>|null, agent: bool}
      */
     public function reply(Site $site, string $conversation, string $text, Request $request): array
     {
@@ -142,6 +144,15 @@ final class Assistant
         $text = mb_substr(trim(strip_tags($text)), 0, 800);
         if ($text === '' || $c->status !== 'open' || self::isBot($request)) {
             throw ValidationException::withMessages(['message' => 'Unavailable.']);
+        }
+        $settings['gate'] = Experiments::apply(self::brokerageSite(), $c->variant, $settings, '')['gate'];
+        if ($c->taken_by !== null) {
+            // An agent has the chat: AIlly stays quiet and the agent hears about it.
+            $this->say($conversation, 'visitor', $text);
+            DB::connection(Connections::cell())->table('ailly_conversations')->where('id', $c->id)->increment('visitor_messages');
+            app(LiveChat::class)->visitorWrote($c, $text);
+
+            return $this->out('', 'none', [], false, agent: true);
         }
         $hasContact = $c->lead_id !== null;
         $answered = (int) $c->ai_replies + (int) $c->cached_replies;
@@ -274,15 +285,21 @@ final class Assistant
             $lines[] = ($slot !== null ? 'Booked a showing of ' : 'Asked to see ').($home !== null ? ListingSearch::label($home).($home['mls_number'] ? ' (MLS# '.$home['mls_number'].')' : '') : 'a home')
                 .($slot !== null ? ': '.$when : '').'.';
         }
-        $lines[] = 'Chat with '.AillySettings::persona($site, self::brokerageSite())['name'].' on the website:';
+        $persona = AillySettings::persona($site, self::brokerageSite())['name'];
+        $lines[] = 'Chat with '.$persona.' on the website:';
         $lines[] = mb_substr($this->transcript((int) $c->id), -3000);
         $source = SiteLeads::source('AIlly chat', 'Website assistant');
         $lead = $leads->capture($site, $source, ['name' => (string) ($in['name'] ?? ''), 'email' => (string) ($in['email'] ?? ''), 'phone' => (string) ($in['phone'] ?? ''),
             'message' => mb_substr(implode("\n", $lines), 0, 4000), 'intent' => $want === 'showing' ? 'buy' : ($want === 'listing' ? 'sell' : (string) ($in['intent'] ?? '')),
-            'landing_url' => (string) ($c->page ?? ''), 'sms_consent' => (bool) ($in['sms_consent'] ?? false)], $request, 'ailly', $home['ulid'] ?? null, ['conversation' => $conversation], $agent);
+            'landing_url' => (string) ($c->page ?? ''), 'sms_consent' => (bool) ($in['sms_consent'] ?? false),
+            // Texts pick the chat up in the same name; a booked time needs no qualifying texts (the booking confirms it).
+            'ai_handoff' => ['skip' => $slot !== null, 'origin' => 'website_chat', 'assistant' => $persona]], $request, 'ailly', $home['ulid'] ?? null, ['conversation' => $conversation], $agent);
         $contact = $lead->contact_id !== null ? Contact::query()->find($lead->contact_id) : null;
         if ($slot !== null) {
-            app(Availability::class)->book($agent, $contact instanceof Contact ? $contact : null, $slot, $want, implode("\n", array_slice($lines, 0, -2)));
+            $task = app(Availability::class)->book($agent, $contact instanceof Contact ? $contact : null, $slot, $want, implode("\n", array_slice($lines, 0, -2)));
+            if ($contact instanceof Contact) {
+                BookingTexts::confirm($task, $contact, $persona);
+            }
             $email = (string) ($in['email'] ?? '');
             if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL) !== false) {
                 Mail::to($email)->send(new BookingConfirmedMail($want, $slot, $tz, $agent->name, $site->displayName(), $home !== null ? ListingSearch::label($home) : null,
@@ -397,10 +414,10 @@ final class Assistant
         DB::connection(Connections::cell())->table('ailly_conversations')->where('id', $c->id)->update(['hot_alerted_at' => now()]);
         $why = $c->outcome === 'call' ? 'asked for a call' : ($c->outcome === 'showing' ? 'asked to see a home' : 'looks ready to move (lead score '.(int) $c->lead_score.')');
         $speed = app(SpeedToLead::class);
-        $url = $speed->link('/leads');
-        $speed->textAgent($agent, 'RightAlly: hot website lead '.SpeedToLead::summary($lead).' '.$why.'. Closing brief: '.$url);
-        $agent->notify(new LeadAlert('Hot lead from your website chat', SpeedToLead::summary($lead).' '.$why.' in a chat with the website assistant. Their closing brief is on the lead.',
-            $url, 'Open the lead'));
+        $url = LiveChat::link((string) $c->ulid);
+        $speed->textAgent($agent, 'RightAlly: hot website lead '.SpeedToLead::summary($lead).' '.$why.'. Join the chat or read the closing brief: '.$url);
+        $agent->notify(new LeadAlert('Hot lead from your website chat', SpeedToLead::summary($lead).' '.$why.' in a chat with the website assistant. Join the chat while they are there, or read their closing brief.',
+            $url, 'Join the chat'));
     }
 
     /** The conversation (this brokerage's only). */
@@ -467,7 +484,10 @@ final class Assistant
     private function transcript(int $conversationId): string
     {
         return DB::connection(Connections::cell())->table('ailly_messages')->where('conversation_id', $conversationId)->orderByDesc('id')->limit(12)->get(['role', 'body'])
-            ->reverse()->map(fn (object $m): string => ($m->role === 'visitor' ? 'Visitor: ' : 'Assistant: ').(string) $m->body)->implode("\n");
+            ->reverse()->filter(fn (object $m): bool => $m->role !== 'note')
+            ->map(fn (object $m): string => match ($m->role) {
+                'visitor' => 'Visitor: ', 'agent' => 'Agent (a person on the team): ', default => 'Assistant: '
+            }.(string) $m->body)->implode("\n");
     }
 
     /**
@@ -517,10 +537,25 @@ final class Assistant
     /**
      * @param  list<array<string, mixed>>  $homes
      * @param  array<string, mixed>|null  $value
-     * @return array{reply: string, next_step: string, homes: list<array<string, mixed>>, needs_contact: bool, ended: bool, value: array<string, mixed>|null}
+     * @return array{reply: string, next_step: string, homes: list<array<string, mixed>>, needs_contact: bool, ended: bool, value: array<string, mixed>|null, agent: bool}
      */
-    private function out(string $reply, string $next, array $homes, bool $needsContact, bool $ended = false, ?array $value = null): array
+    private function out(string $reply, string $next, array $homes, bool $needsContact, bool $ended = false, ?array $value = null, bool $agent = false): array
     {
-        return ['reply' => $reply, 'next_step' => $next, 'homes' => $homes, 'needs_contact' => $needsContact, 'ended' => $ended, 'value' => $value];
+        return ['reply' => $reply, 'next_step' => $next, 'homes' => $homes, 'needs_contact' => $needsContact, 'ended' => $ended, 'value' => $value, 'agent' => $agent];
+    }
+
+    /**
+     * New messages for the widget since the last one it showed: an agent's replies and notes while they have the chat.
+     *
+     * @return array{messages: list<array{id: int, role: string, body: string, by: string|null}>, agent: string|null}
+     */
+    public function poll(string $conversation, int $after): array
+    {
+        $c = $this->conversation($conversation);
+        $agent = $c->taken_by !== null ? User::query()->whereKey((int) $c->taken_by)->first() : null;
+        $messages = array_values(array_filter(app(LiveChat::class)->messages((int) $c->id, $after), fn (array $m): bool => in_array($m['role'], ['agent', 'note'], true)));
+
+        return ['messages' => array_map(fn (array $m): array => ['id' => $m['id'], 'role' => $m['role'], 'body' => $m['body'], 'by' => $m['by']], $messages),
+            'agent' => $agent?->first_name];
     }
 }
