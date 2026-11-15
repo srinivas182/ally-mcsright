@@ -37,6 +37,9 @@ final class Designer
         'coming_soon' => ['Coming to market', 'listing', ['Coming Soon']],
         'under_contract' => ['Under contract', 'listing', ['Pending', 'Active Under Contract']],
         'just_sold' => ['Just sold', 'listing', ['Closed']],
+        'listing_feature' => ['Inside', 'listing', ['Active', 'Coming Soon']],
+        'neighbourhood' => ['The neighbourhood', 'listing', ['Active', 'Coming Soon']],
+        'just_closed' => ['Welcome home', 'agent', null],
         'market_update' => ['Market update', 'text', null],
         'testimonial' => ['Client words', 'text', null],
         'tip' => ['Tip', 'text', null],
@@ -99,7 +102,12 @@ final class Designer
         $photos = [];
         $listing = null;
         if ($kind === 'listing') {
-            [$listing, $facts, $photos] = $this->listing($by, (string) ($in['listing'] ?? ''), $moment);
+            [$listing, $facts, $photos] = $this->listing($by, (string) ($in['listing'] ?? ''), $moment, max(0, (int) ($in['photo_from'] ?? 0)));
+            if ($moment === 'neighbourhood') {
+                // About the area, not the home: no price or room counts.
+                $facts = ['headline' => (string) ($facts['area'] ?? $facts['sub'] ?? ''), 'sub' => 'Around '.$facts['headline'], 'attribution' => $facts['attribution'] ?? null];
+            }
+            unset($facts['area']);
             $content = $content + $facts; // the person's words win
             if ($moment === 'open_house') {
                 $when = trim(strip_tags((string) ($in['when'] ?? '')));
@@ -243,7 +251,7 @@ final class Designer
      *
      * @return array{0: string, 1: array<string, mixed>, 2: list<string>}
      */
-    private function listing(User $by, string $ulid, string $moment): array
+    private function listing(User $by, string $ulid, string $moment, int $from = 0): array
     {
         $home = app(ListingAds::class)->listing($by, $ulid) ?? throw ValidationException::withMessages(['listing' => 'Choose one of your listings.']);
         $fits = self::MOMENTS[$moment][2] ?? null;
@@ -255,7 +263,9 @@ final class Designer
         $disk = Storage::disk((string) config('listings.media_disk', 'public'));
         $hero = (int) (config('listings.sizes')['hero'] ?? 1600);
         $photos = [];
-        foreach (ListingMedia::query()->where('listing_id', $listing->id)->where('status', 'stored')->orderBy('position')->limit(8)->get() as $m) {
+        $media = ListingMedia::query()->where('listing_id', $listing->id)->where('status', 'stored')->orderBy('position')->limit(12)->get();
+        $media = $media->slice(min($from, max(0, $media->count() - 1)))->concat($media->take(min($from, max(0, $media->count() - 1)))); // start further in, wrap round
+        foreach ($media as $m) {
             $bytes = $m->storage_path !== null ? $disk->get($m->storage_path.'-'.$hero.'.webp') : null;
             if (is_string($bytes) && $this->director->photoProblem($bytes) === null) {
                 $photos[] = (string) Photos::url($m->storage_path, 'hero');
@@ -274,7 +284,8 @@ final class Designer
 
         return [$ulid, array_filter(['headline' => $street, 'sub' => trim(implode(', ', array_filter([$home['city'] ?? null, trim(($home['state'] ?? '').' '.($home['postal_code'] ?? ''))]))),
             'facts' => $facts, 'price' => is_numeric($home['price'] ?? null) && $moment !== 'under_contract' ? '$'.number_format((int) $home['price']) : null,
-            'attribution' => is_string($home['attribution'] ?? null) ? $home['attribution'] : null]), $photos];
+            'attribution' => is_string($home['attribution'] ?? null) ? $home['attribution'] : null,
+            'area' => is_string($home['subdivision'] ?? null) && $home['subdivision'] !== '' ? $home['subdivision'] : ($home['city'] ?? null)]), $photos];
     }
 
     /** @param array{heading: string, body: string} $fonts */

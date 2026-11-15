@@ -6,17 +6,24 @@ namespace Modules\Ads\Studio;
 
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
 use Modules\Ads\ListingAds;
+use Modules\Ads\Meta\MetaApi;
+use Modules\Ads\Social\SocialPost;
 use Modules\Ads\Social\SocialPosts;
 use Modules\AI\AiGateway;
 use Modules\AI\Data\AiTask;
 use Modules\Core\Audit\AuditLogger;
+use Modules\Core\Connect\ConnectorKit;
+use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Crm\FairHousing;
 use Modules\Listings\Models\Listing;
+use Modules\Transactions\Models\Deal;
 use Throwable;
 
 /**
@@ -32,23 +39,29 @@ final class Autopilot
 
     public const MODES = ['off' => 'Off', 'approve' => 'Approve first', 'auto' => 'Autopilot'];
 
-    public const KINDS = ['listings' => 'Listing news (new, price, under contract, sold)', 'market' => 'Weekly market update (Mondays)', 'holidays' => 'Holiday greetings'];
+    public const KINDS = ['listings' => 'Listing news (new, price, under contract, sold), with launch campaigns', 'market' => 'Weekly market update (Mondays)',
+        'closings' => 'Closings (only after your client says yes)', 'milestones' => 'Milestones and work anniversaries', 'holidays' => 'Holiday greetings',
+        'recruiting' => 'Recruiting (brokerage package, owners and staff)'];
+
+    /** Closed deals in a year that are worth celebrating. */
+    public const MILESTONES = [5, 10, 25, 50, 100, 150, 200];
 
     public const DEFAULT_TIMES = ['09:30', '18:00'];
 
     public function __construct(private readonly TenantContext $tenants, private readonly Designer $designer, private readonly StudioPlans $plans) {}
 
-    /** @return array{mode: string, places: list<string>|null, times: list<string>, per_week: int, moments: list<string>} */
+    /** @return array{mode: string, places: list<string>|null, times: list<string>, per_week: int, moments: list<string>, learn_voice: bool, voice: list<string>} */
     public function settings(User $user): array
     {
         $r = DB::connection(Connections::cell())->table('studio_autopilot')->where('tenant_id', $this->tenants->id())->where('user_id', $user->id)->first();
         $json = fn (mixed $v): ?array => is_string($v) && is_array($d = json_decode($v, true)) ? array_values(array_map('strval', $d)) : null;
 
         return ['mode' => (string) ($r->mode ?? 'approve'), 'places' => $json($r->places ?? null), 'times' => $json($r->times ?? null) ?? self::DEFAULT_TIMES,
-            'per_week' => (int) ($r->per_week ?? 5), 'moments' => $json($r->moments ?? null) ?? array_keys(self::KINDS)];
+            'per_week' => (int) ($r->per_week ?? 5), 'moments' => $json($r->moments ?? null) ?? array_keys(self::KINDS), 'learn_voice' => (bool) ($r->learn_voice ?? false),
+            'voice' => $json($r->voice ?? null) ?? []];
     }
 
-    /** @param array<string, mixed> $in mode, places[], times[], per_week, moments[] */
+    /** @param array<string, mixed> $in mode, places[], times[], per_week, moments[], learn_voice */
     public function save(User $user, array $in): void
     {
         $times = array_values(array_unique(array_filter(array_map('strval', (array) ($in['times'] ?? [])), fn (string $t): bool => preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $t) === 1)));
@@ -56,7 +69,14 @@ final class Autopilot
             array_column(app(SocialPosts::class)->places($user), 'key'))) : null;
         $values = ['mode' => isset(self::MODES[$in['mode'] ?? '']) ? (string) $in['mode'] : 'approve', 'places' => $places !== null ? json_encode($places) : null,
             'times' => json_encode($times !== [] ? array_slice($times, 0, 4) : self::DEFAULT_TIMES), 'per_week' => max(1, min(14, (int) ($in['per_week'] ?? 5))),
-            'moments' => json_encode(array_values(array_intersect(array_keys(self::KINDS), array_map('strval', (array) ($in['moments'] ?? []))))), 'updated_at' => now()];
+            'moments' => json_encode(array_values(array_intersect(array_keys(self::KINDS), array_map('strval', (array) ($in['moments'] ?? []))))),
+            'learn_voice' => (bool) ($in['learn_voice'] ?? false), 'updated_at' => now()];
+        if (! $values['learn_voice']) {
+            $values += ['voice' => null, 'voice_at' => null]; // forget the samples when the person says no
+        }
+        if ($values['mode'] === 'auto' && $this->rules()['require_review'] && $user->kind === UserKind::Agent) {
+            $values['mode'] = 'approve'; // the brokerage reviews agents' posts
+        }
         DB::connection(Connections::cell())->table('studio_autopilot')->updateOrInsert(['tenant_id' => $this->tenants->id(), 'user_id' => $user->id], $values + ['created_at' => now()]);
         app(AuditLogger::class)->record('studio.autopilot_saved', metadata: ['mode' => $values['mode']]);
     }
@@ -78,6 +98,18 @@ final class Autopilot
         }
         if (in_array('holidays', $s['moments'], true)) {
             $new += $this->holidayMoment($user, $local);
+        }
+        if (in_array('closings', $s['moments'], true)) {
+            $new += $this->closingMoments($user);
+        }
+        if (in_array('milestones', $s['moments'], true)) {
+            $new += $this->milestoneMoments($user, $local);
+        }
+        if (in_array('recruiting', $s['moments'], true) && $local->day === 1) {
+            $new += $this->recruitingMoment($user, $local);
+        }
+        if ($s['learn_voice'] && $this->plans->has($user, 'voice_learning')) {
+            $this->learnVoice($user);
         }
         $this->advance($user);
 
@@ -102,7 +134,7 @@ final class Autopilot
             }
             $this->caption($item, $ready, $user);
             $item->forceFill(['design_id' => $ready->id, 'post_at' => $item->post_at ?? $this->slot($user, $s), 'status' => 'awaiting'])->save();
-            if ($s['mode'] === 'auto') {
+            if ($s['mode'] === 'auto' && ! $item->needs_client_ok) {
                 $this->schedule($item, $user);
             }
         }
@@ -118,6 +150,9 @@ final class Autopilot
         abort_unless($item->user_id === $by->id, 404);
         if ($item->status !== 'awaiting') {
             throw ValidationException::withMessages(['post' => 'This post has already been scheduled or skipped.']);
+        }
+        if ($item->needs_client_ok && ! (bool) ($in['client_ok'] ?? false)) {
+            throw ValidationException::withMessages(['client_ok' => 'Please confirm your client said yes to this post.']);
         }
         if (is_string($in['caption'] ?? null) && trim($in['caption']) !== '') {
             $caption = mb_substr(trim(strip_tags($in['caption'])), 0, 2_000);
@@ -138,6 +173,77 @@ final class Autopilot
         return $this->schedule($item, $by, true);
     }
 
+    /**
+     * Posts agents approved that wait for the brokerage's review (owners and staff), when the brokerage asks for it.
+     *
+     * @return Collection<int, QueuedPost>
+     */
+    public function forReview(): Collection
+    {
+        return QueuedPost::query()->where('status', 'review')->orderBy('post_at')->limit(100)->get();
+    }
+
+    /** The brokerage approves (it is scheduled for the agent) or sends it back (skipped, with why). */
+    public function review(QueuedPost $item, User $by, bool $ok, string $why = ''): QueuedPost
+    {
+        abort_unless(in_array($by->kind, [UserKind::Owner, UserKind::Staff], true), 403);
+        if ($item->status !== 'review') {
+            throw ValidationException::withMessages(['post' => 'This post has already been reviewed.']);
+        }
+        $item->forceFill(['reviewed_by' => $by->id])->save();
+        $agent = User::query()->findOrFail($item->user_id);
+        app(AuditLogger::class)->record($ok ? 'studio.review_approved' : 'studio.review_declined', metadata: ['post' => $item->ulid, 'agent' => $agent->id], severity: 'notice');
+        if (! $ok) {
+            $item->forceFill(['status' => 'skipped', 'reason' => mb_substr('Not approved by the brokerage'.($why !== '' ? ': '.trim(strip_tags($why)) : '.'), 0, 300)])->save();
+
+            return $item;
+        }
+
+        return $this->schedule($item, $agent, true, true);
+    }
+
+    /** Moves a planned post to another day, keeping its time (the calendar). */
+    public function move(QueuedPost $item, User $by, string $date): QueuedPost
+    {
+        abort_unless($item->user_id === $by->id, 404);
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) !== 1 || ! in_array($item->status, ['awaiting', 'review', 'scheduled', 'designing'], true)) {
+            throw ValidationException::withMessages(['date' => 'This post can\'t be moved.']);
+        }
+        $local = ($item->post_at ?? CarbonImmutable::now())->setTimezone($this->tz());
+        $at = CarbonImmutable::parse($date.' '.$local->format('H:i'), $this->tz());
+        if ($at->lt(CarbonImmutable::now()->addMinutes(10)) || $at->gt(CarbonImmutable::now()->addDays(60))) {
+            throw ValidationException::withMessages(['date' => 'Choose a day in the next 60 days.']);
+        }
+        if ($item->status === 'scheduled' && $item->social_post_id !== null) {
+            $moved = SocialPost::query()->whereKey($item->social_post_id)->where('status', 'scheduled')->update(['post_at' => $at->utc()]);
+            if ($moved === 0) {
+                throw ValidationException::withMessages(['date' => 'This post has already gone out.']);
+            }
+        }
+        $item->forceFill(['post_at' => $at->utc()])->save();
+
+        return $item;
+    }
+
+    /** @return array{require_review: bool, caption_disclaimer: string} */
+    public function rules(): array
+    {
+        $r = DB::connection(Connections::cell())->table('studio_rules')->where('tenant_id', $this->tenants->id())->first();
+
+        return ['require_review' => (bool) ($r->require_review ?? false), 'caption_disclaimer' => (string) ($r->caption_disclaimer ?? '')];
+    }
+
+    /** @param array<string, mixed> $in require_review, caption_disclaimer */
+    public function saveRules(User $by, array $in): void
+    {
+        abort_unless($by->kind === UserKind::Owner, 403);
+        $disclaimer = mb_substr(trim(strip_tags((string) ($in['caption_disclaimer'] ?? ''))), 0, 300);
+        DB::connection(Connections::cell())->table('studio_rules')->updateOrInsert(['tenant_id' => $this->tenants->id()],
+            ['require_review' => (bool) ($in['require_review'] ?? false), 'caption_disclaimer' => $disclaimer !== '' ? $disclaimer : null, 'updated_by' => $by->id,
+                'updated_at' => now(), 'created_at' => now()]);
+        app(AuditLogger::class)->record('studio.rules_saved', metadata: ['require_review' => (bool) ($in['require_review'] ?? false)], severity: 'notice');
+    }
+
     public function skip(QueuedPost $item, User $by): void
     {
         abort_unless($item->user_id === $by->id, 404);
@@ -151,7 +257,7 @@ final class Autopilot
     {
         $tags = array_map(fn (string $t): string => '#'.$t, $item->hashtags ?? []);
 
-        return trim(implode("\n\n", array_filter([(string) $item->caption, (string) $item->caption_es, implode(' ', $tags)])));
+        return trim(implode("\n\n", array_filter([(string) $item->caption, (string) $item->caption_es, implode(' ', $tags), $this->rules()['caption_disclaimer']])));
     }
 
     private function listingMoments(User $user): int
@@ -188,7 +294,16 @@ final class Autopilot
             $db->table('studio_listing_seen')->updateOrInsert(['tenant_id' => $tenant, 'user_id' => $user->id, 'listing_ulid' => $l->ulid],
                 ['status' => $status, 'price_cents' => $l->list_price_cents, 'updated_at' => now(), 'created_at' => now()]);
             if ($moment !== null && $key !== null) {
-                $new += $this->enqueue($user, $key, $moment, ['moment' => $moment, 'listing' => $l->ulid]);
+                $made = $this->enqueue($user, $key, $moment, ['moment' => $moment, 'listing' => $l->ulid]);
+                $new += $made;
+                if ($made === 1 && $moment === 'just_listed' && $this->plans->has($user, 'launch_campaign')) {
+                    // The listing launch campaign: the inside, then the neighbourhood, across the first week.
+                    $s = $this->settings($user);
+                    $this->enqueue($user, 'launch:'.$l->ulid.':inside', 'listing_feature', ['moment' => 'listing_feature', 'listing' => $l->ulid, 'photo_from' => 3],
+                        $this->slot($user, $s, CarbonImmutable::now()->addDays(2)));
+                    $this->enqueue($user, 'launch:'.$l->ulid.':area', 'neighbourhood', ['moment' => 'neighbourhood', 'listing' => $l->ulid, 'photo_from' => 1],
+                        $this->slot($user, $s, CarbonImmutable::now()->addDays(4)));
+                }
             }
         }
 
@@ -236,6 +351,83 @@ final class Autopilot
         return 0;
     }
 
+    /** A deal closed in the last week becomes a "Welcome home" post that waits for the client's OK (address hidden). */
+    private function closingMoments(User $user): int
+    {
+        $new = 0;
+        foreach (Deal::query()->where('agent_user_id', $user->id)->where('status', 'closed')
+            ->where('closed_on', '>=', CarbonImmutable::now()->subDays(7)->toDateString())->get() as $deal) {
+            $made = $this->enqueue($user, 'closing:'.$deal->ulid, 'just_closed', ['moment' => 'just_closed', 'headline' => 'Another happy closing'.($deal->city ? ' in '.$deal->city : ''),
+                'body' => 'Thank you for trusting me with one of life\'s biggest moves.']);
+            if ($made === 1) {
+                QueuedPost::query()->where('user_id', $user->id)->where('source_key', 'closing:'.$deal->ulid)->update(['needs_client_ok' => true]);
+            }
+            $new += $made;
+        }
+
+        return $new;
+    }
+
+    /** Closings this year reaching a milestone, and the work anniversary with the brokerage. */
+    private function milestoneMoments(User $user, CarbonImmutable $local): int
+    {
+        $new = 0;
+        $closed = Deal::query()->where('agent_user_id', $user->id)->where('status', 'closed')
+            ->where('closed_on', '>=', $local->startOfYear()->toDateString())->count();
+        $reached = collect(self::MILESTONES)->filter(fn (int $m): bool => $closed >= $m)->last();
+        if (is_int($reached)) {
+            $new += $this->enqueue($user, 'milestone:'.$local->year.':'.$reached, 'milestone', ['moment' => 'milestone', 'headline' => $reached.' homes closed in '.$local->year,
+                'body' => 'Thank you to every client who made it possible.']);
+        }
+        $start = $user->created_at !== null ? CarbonImmutable::parse($user->created_at)->setTimezone($this->tz()) : null;
+        $years = $start !== null ? (int) $start->diffInYears($local) : 0;
+        if ($start !== null && $years >= 1 && $start->format('m-d') === $local->format('m-d')) {
+            $brokerage = (string) $this->tenants->current()->name;
+            $new += $this->enqueue($user, 'anniversary:'.$local->year, 'milestone', ['moment' => 'milestone', 'headline' => $years.' '.($years === 1 ? 'year' : 'years').' with '.$brokerage,
+                'body' => 'Grateful for every home, every family and every friend along the way.']);
+        }
+
+        return $new;
+    }
+
+    /** On the 1st, a recruiting post for owners and staff with the brokerage package. */
+    private function recruitingMoment(User $user, CarbonImmutable $local): int
+    {
+        if (! in_array($user->kind, [UserKind::Owner, UserKind::Staff], true) || ! $this->plans->has($user, 'recruiting')) {
+            return 0;
+        }
+        $closed = Deal::query()->where('status', 'closed')->where('closed_on', '>=', $local->startOfYear()->toDateString())->count();
+
+        return $this->enqueue($user, 'recruiting:'.$local->format('Y-m'), 'recruiting', ['moment' => 'recruiting', 'headline' => 'Grow your career with '.$this->tenants->current()->name,
+            'body' => ($closed > 0 ? $closed.' homes closed together this year. ' : '').'Great tools, real support, and a team that wins together. Let\'s talk.']);
+    }
+
+    /** Learns the agent's voice from their own recent Facebook Page posts (with their OK), once a week. */
+    private function learnVoice(User $user): void
+    {
+        $r = DB::connection(Connections::cell())->table('studio_autopilot')->where('tenant_id', $this->tenants->id())->where('user_id', $user->id)->first();
+        if ($r === null || ($r->voice_at !== null && CarbonImmutable::parse((string) $r->voice_at)->gt(CarbonImmutable::now()->subDays(7)))) {
+            return;
+        }
+        $samples = [];
+        foreach (app(ConnectorKit::class)->connections('facebook_pages') as $c) {
+            if ($c->ownerUserId !== $user->id) {
+                continue;
+            }
+            $tokens = json_decode((string) ($c->credentials['pages'] ?? '{}'), true);
+            foreach (is_array($tokens) ? $tokens : [] as $page => $token) {
+                $res = Http::timeout(15)->get(MetaApi::GRAPH.$page.'/posts', ['fields' => 'message', 'limit' => 15, 'access_token' => (string) $token]);
+                foreach ((array) ($res->successful() ? $res->json('data', []) : []) as $p) {
+                    $m = is_array($p) ? trim((string) ($p['message'] ?? '')) : '';
+                    if (mb_strlen($m) >= 40) {
+                        $samples[] = mb_substr($m, 0, 400);
+                    }
+                }
+            }
+        }
+        DB::connection(Connections::cell())->table('studio_autopilot')->where('id', $r->id)->update(['voice' => json_encode(array_slice($samples, 0, 5)), 'voice_at' => now()]);
+    }
+
     /**
      * Plans one post for a moment, once (by its source key), and starts its designs.
      *
@@ -275,7 +467,8 @@ final class Autopilot
         try {
             $r = app(AiGateway::class)->run(new AiTask(self::FEATURE, 'ads.studio_caption', 'studio-caption:'.$item->ulid,
                 inputs: ['spanish' => $spanish ? 'yes' : 'no', 'tagline' => (string) ($kit['details']['tagline'] ?? '')],
-                untrustedContent: [(string) json_encode(array_filter($facts))],
+                untrustedContent: array_values(array_filter([(string) json_encode(array_filter($facts)),
+                    ($voice = $this->settings($user)['voice']) !== [] && $this->plans->has($user, 'voice_learning') ? 'Voice samples (the agent\'s own past posts): '.json_encode($voice) : null])),
                 outputSchema: ['type' => 'object', 'properties' => ['caption' => ['type' => 'string'], 'caption_es' => ['type' => 'string'], 'hashtags' => ['type' => 'array', 'items' => ['type' => 'string']]]],
                 userId: $user->id));
             $caption = mb_substr(trim((string) ($r->json['caption'] ?? '')), 0, 900);
@@ -292,8 +485,13 @@ final class Autopilot
     }
 
     /** Schedules the post on every chosen place, counting it against the allowance. */
-    private function schedule(QueuedPost $item, User $user, bool $loud = false): QueuedPost
+    private function schedule(QueuedPost $item, User $user, bool $loud = false, bool $reviewed = false): QueuedPost
     {
+        if (! $reviewed && $user->kind === UserKind::Agent && $this->rules()['require_review']) {
+            $item->forceFill(['status' => 'review', 'reason' => null])->save(); // the brokerage looks first
+
+            return $item;
+        }
         $design = Design::query()->find($item->design_id);
         $s = $this->settings($user);
         $places = array_column(app(SocialPosts::class)->places($user), 'key');
@@ -322,11 +520,14 @@ final class Autopilot
      *
      * @param  array{times: list<string>, per_week: int}  $s
      */
-    private function slot(User $user, array $s): CarbonImmutable
+    private function slot(User $user, array $s, ?CarbonImmutable $notBefore = null): CarbonImmutable
     {
         $tz = $this->tz();
         $now = CarbonImmutable::now($tz);
-        $taken = QueuedPost::query()->where('user_id', $user->id)->whereIn('status', ['awaiting', 'scheduled'])->whereNotNull('post_at')->pluck('post_at')
+        if ($notBefore !== null && $notBefore->gt($now)) {
+            $now = $notBefore->setTimezone($tz)->startOfDay();
+        }
+        $taken = QueuedPost::query()->where('user_id', $user->id)->whereIn('status', ['designing', 'awaiting', 'review', 'scheduled'])->whereNotNull('post_at')->pluck('post_at')
             ->map(fn ($d): CarbonImmutable => CarbonImmutable::parse($d)->setTimezone($tz));
         for ($i = 0; $i < 21; $i++) {
             $day = $now->startOfDay()->addDays($i);
