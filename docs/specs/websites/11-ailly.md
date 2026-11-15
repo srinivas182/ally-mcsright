@@ -25,6 +25,17 @@ RightAlly credits only on real people.
     - when booking a call, "Best time"
     - a hidden honeypot field
 
+## Name and photo (Sprint 17D-1b)
+
+- **Default:** the assistant is called **"Ask Ally"** and uses a built-in illustration: a house with a chat face,
+  drawn in the website's brand colour. It is not a stock photo of a real person.
+- **The broker** can rename it and pick a profile photo from the website's media library in Settings → AIlly
+  assistant.
+- **Agents** can give the assistant on their own website their own name and photo (for example "Ask Jane") in
+  Settings → My website → "Your website assistant". If they leave either empty, the brokerage's is used.
+- The photo appears on the chat button, in the header and beside each answer. The name appears on the button and
+  in the greeting, and is used in the AI's instructions.
+
 ## Contact gate (Settings → AIlly assistant)
 
 | Setting         | When AIlly asks for name, email and phone                         |

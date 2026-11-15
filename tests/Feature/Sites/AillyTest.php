@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
 use Inertia\Testing\AssertableInertia as Assert;
 use Modules\AI\Exceptions\InsufficientCredits;
@@ -22,6 +24,7 @@ use Modules\Listings\Models\MlsSource;
 use Modules\Listings\Sync\ListingSync;
 use Modules\Sites\Ailly\AillySettings;
 use Modules\Sites\Ailly\Assistant;
+use Modules\Sites\Content\MediaLibrary;
 use Modules\Sites\SiteSetup;
 use Tests\Fixtures\FakeAiProvider;
 
@@ -173,4 +176,32 @@ it('lets owners and staff set AIlly up and read the latest chats', function (): 
     expect(AillySettings::for($this->site->fresh()))->toMatchArray(['name' => 'Rae', 'gate' => 'booking', 'greeting' => 'Hello!']);
 
     $this->actingAs(User::factory()->create())->get('/settings/ailly')->assertForbidden();
+});
+
+it('is "Ask Ally" with a built-in illustration by default, and brokers can rename it and add a photo', function (): void {
+    Storage::fake('public');
+    AillySettings::save($this->site->fresh(), ['enabled' => true], $this->owner);
+    $html = (string) $this->get($this->web.'/')->getContent();
+    expect($html)->toContain('data-ailly="Ask Ally"')->toContain('<svg class="ailly-avatar"');
+
+    $photo = app(MediaLibrary::class)->store($this->site, UploadedFile::fake()->image('ally.jpg', 600, 600), 'Our assistant', $this->owner);
+    $this->actingAs($this->owner)->post('/settings/ailly', ['enabled' => true, 'name' => 'Ask Acme', 'photo' => $photo->ulid, 'gate' => 'after', 'gate_after' => 2,
+        'visitor_daily' => 20, 'daily_cap' => 300])->assertSessionHasNoErrors();
+    $this->actingAs($this->owner)->post('/settings/ailly', ['enabled' => true, 'name' => 'Ask Acme', 'photo' => str_repeat('A', 26), 'gate' => 'after', 'gate_after' => 2,
+        'visitor_daily' => 20, 'daily_cap' => 300])->assertSessionHasErrors('photo');
+
+    $html = (string) $this->get($this->web.'/')->getContent();
+    expect($html)->toContain('data-ailly="Ask Acme"')->toContain('<img class="ailly-avatar"')->not->toContain('<svg class="ailly-avatar"');
+});
+
+it('uses an agent\'s own name and photo for it on their website, or the brokerage\'s', function (): void {
+    $jane = User::factory()->create(['first_name' => 'Jane', 'last_name' => 'Doe']);
+    $this->actingAs($jane)->post('/settings/my-website')->assertSessionHasNoErrors();
+    $this->actingAs($jane)->post('/settings/my-website/publish', ['live' => true])->assertSessionHasNoErrors();
+    expect((string) $this->get($this->web.'/agents/jane-doe')->getContent())->toContain('data-ailly="Ally"'); // the brokerage's
+
+    $this->actingAs($jane)->patch('/settings/my-website', ['name' => 'Jane Doe', 'ailly_name' => 'Ask Jane'])->assertSessionHasNoErrors();
+    expect((string) $this->get($this->web.'/agents/jane-doe')->getContent())->toContain('data-ailly="Ask Jane"')
+        ->and((string) $this->get($this->web.'/')->getContent())->toContain('data-ailly="Ally"');
+    $this->actingAs($jane)->get('/settings/my-website')->assertInertia(fn (Assert $p) => $p->where('site.ailly.name', 'Ask Jane')->where('site.ailly.default_name', 'Ally'));
 });

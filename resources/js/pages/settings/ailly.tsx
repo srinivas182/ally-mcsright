@@ -1,6 +1,7 @@
 import { Head, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 
+import { MediaPicker, type MediaItem } from '@/components/sites/media-picker';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 type Settings = {
     enabled: boolean;
     name: string;
+    photo: string | null;
     greeting: string;
     gate: 'before' | 'after' | 'booking';
     gate_after: number;
@@ -28,6 +30,9 @@ type Conversation = {
 };
 type Props = {
     site: { live: boolean; name: string } | null;
+    site_ulid: string | null;
+    photo_url: string | null;
+    media: MediaItem[];
     settings: Settings;
     month: {
         conversations: number;
@@ -49,11 +54,14 @@ const outcomeLabel: Record<Conversation['outcome'], string> = {
 /** Settings → AIlly assistant: the chat on the brokerage's website (and its agents' websites). */
 export default function AillySettings({
     site,
+    site_ulid,
     settings,
     month,
     conversations,
+    media: initialMedia,
 }: Props) {
     const form = useForm({ ...settings });
+    const [media, setMedia] = useState(initialMedia);
     const [open, setOpen] = useState<string | null>(null);
     const rate =
         month.conversations > 0
@@ -128,6 +136,18 @@ export default function AillySettings({
                                 }
                             />
                         </label>
+                        {site_ulid && (
+                            <div className="grid gap-1">
+                                <MediaPicker
+                                    label="Profile photo (optional; a friendly illustration is used otherwise)"
+                                    value={form.data.photo}
+                                    media={media}
+                                    site={site_ulid}
+                                    onChange={(v) => form.setData('photo', v)}
+                                    onUploaded={(m) => setMedia([m, ...media])}
+                                />
+                            </div>
+                        )}
                         <label className="grid gap-1 md:col-span-2">
                             Greeting (optional)
                             <Textarea

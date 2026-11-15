@@ -19,7 +19,7 @@ final class Chrome
 {
     /**
      * @param  array<int, mixed>  $disclaimers  MLS disclaimers of the listings on the page (empty and repeated ones dropped)
-     * @return array{agent: array{name: string, phone: string, email: string, photo: string|null, licence: array{state: string|null, number: string}|null, home: string, ulid: string}|null, template: string, brand: array<string, mixed>, menu: list<array{path: string, title: string}>, footer: list<array{path: string, title: string}>, powered: array{text: string, url: string}|null, year: int, mapbox: string|null, ailly: string|null, disclaimers: list<string>, signup_after: int, consent: string}
+     * @return array{agent: array{name: string, phone: string, email: string, photo: string|null, licence: array{state: string|null, number: string}|null, home: string, ulid: string}|null, template: string, brand: array<string, mixed>, menu: list<array{path: string, title: string}>, footer: list<array{path: string, title: string}>, powered: array{text: string, url: string}|null, year: int, mapbox: string|null, ailly: array{name: string, photo: string|null}|null, disclaimers: list<string>, signup_after: int, consent: string}
      */
     public static function for(Site $site, int $tenantId, array $disclaimers = []): array
     {
@@ -75,11 +75,16 @@ final class Chrome
             'signup_after' => max(0, min(20, (int) ($site->settings['signup_after'] ?? config('sites.signup_after', 3)))), 'consent' => Consent::DEFAULT_SMS_WORDING];
     }
 
-    /** AIlly's name when the brokerage has switched it on (shown on its website and its agents' websites). */
-    private static function ailly(): ?string
+    /**
+     * The assistant when the brokerage has switched it on: its name and photo on this website (an agent's own, or the
+     * brokerage's; null photo = the built-in illustration).
+     *
+     * @return array{name: string, photo: string|null}|null
+     */
+    private static function ailly(): ?array
     {
-        $s = AillySettings::for(Site::query()->where('kind', 'brokerage')->where('status', 'live')->first());
+        $brokerage = Site::query()->where('kind', 'brokerage')->where('status', 'live')->first();
 
-        return $s['enabled'] ? $s['name'] : null;
+        return AillySettings::for($brokerage)['enabled'] ? AillySettings::persona(app(SiteContext::class)->agent() ?? $brokerage, $brokerage) : null;
     }
 }

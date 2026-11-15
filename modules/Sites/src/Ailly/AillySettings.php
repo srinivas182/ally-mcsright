@@ -7,6 +7,7 @@ namespace Modules\Sites\Ailly;
 use App\Models\User;
 use Illuminate\Validation\ValidationException;
 use Modules\Core\Audit\AuditLogger;
+use Modules\Sites\Content\MediaLibrary;
 use Modules\Sites\Models\Site;
 
 /**
@@ -18,16 +19,19 @@ use Modules\Sites\Models\Site;
  */
 final class AillySettings
 {
-    public const DEFAULTS = ['enabled' => false, 'name' => 'Ally', 'greeting' => '', 'gate' => 'after', 'gate_after' => 2, 'visitor_daily' => 20, 'daily_cap' => 300];
+    public const DEFAULT_NAME = 'Ask Ally';
+
+    public const DEFAULTS = ['enabled' => false, 'name' => self::DEFAULT_NAME, 'photo' => null, 'greeting' => '', 'gate' => 'after', 'gate_after' => 2, 'visitor_daily' => 20, 'daily_cap' => 300];
 
     /**
-     * @return array{enabled: bool, name: string, greeting: string, gate: string, gate_after: int, visitor_daily: int, daily_cap: int}
+     * @return array{enabled: bool, name: string, photo: string|null, greeting: string, gate: string, gate_after: int, visitor_daily: int, daily_cap: int}
      */
     public static function for(?Site $brokerage): array
     {
         $s = (array) (($brokerage !== null ? ($brokerage->settings ?? []) : [])['ailly'] ?? []);
 
-        return ['enabled' => (bool) ($s['enabled'] ?? false), 'name' => (string) ($s['name'] ?? 'Ally') ?: 'Ally', 'greeting' => (string) ($s['greeting'] ?? ''),
+        return ['enabled' => (bool) ($s['enabled'] ?? false), 'name' => (string) ($s['name'] ?? self::DEFAULT_NAME) ?: self::DEFAULT_NAME,
+            'photo' => is_string($s['photo'] ?? null) && $s['photo'] !== '' ? $s['photo'] : null, 'greeting' => (string) ($s['greeting'] ?? ''),
             'gate' => in_array($s['gate'] ?? null, ['before', 'after', 'booking'], true) ? (string) $s['gate'] : 'after',
             'gate_after' => max(1, min(10, (int) ($s['gate_after'] ?? 2))), 'visitor_daily' => max(5, min(100, (int) ($s['visitor_daily'] ?? 20))),
             'daily_cap' => max(10, min(10_000, (int) ($s['daily_cap'] ?? 300)))];
@@ -36,12 +40,12 @@ final class AillySettings
     /** @param array<string, mixed> $in */
     public static function save(Site $brokerage, array $in, User $by): void
     {
-        $name = trim((string) ($in['name'] ?? 'Ally'));
+        $name = trim((string) ($in['name'] ?? self::DEFAULT_NAME));
         if (mb_strlen($name) > 30 || preg_match('/[<>{}]/', $name) === 1) {
             throw ValidationException::withMessages(['name' => 'Use a short name (up to 30 characters).']);
         }
         $old = self::for($brokerage);
-        $new = ['enabled' => (bool) ($in['enabled'] ?? false), 'name' => $name !== '' ? $name : 'Ally', 'greeting' => mb_substr(trim(strip_tags((string) ($in['greeting'] ?? ''))), 0, 240),
+        $new = ['enabled' => (bool) ($in['enabled'] ?? false), 'name' => $name !== '' ? $name : self::DEFAULT_NAME, 'photo' => self::photo($in['photo'] ?? null), 'greeting' => mb_substr(trim(strip_tags((string) ($in['greeting'] ?? ''))), 0, 240),
             'gate' => in_array($in['gate'] ?? null, ['before', 'after', 'booking'], true) ? (string) $in['gate'] : 'after',
             'gate_after' => max(1, min(10, (int) ($in['gate_after'] ?? 2))), 'visitor_daily' => max(5, min(100, (int) ($in['visitor_daily'] ?? 20))),
             'daily_cap' => max(10, min(10_000, (int) ($in['daily_cap'] ?? 300)))];
@@ -50,10 +54,51 @@ final class AillySettings
         app(AuditLogger::class)->record('sites.ailly.settings', $brokerage, changes: ['ailly' => ['old' => $old, 'new' => $new]], severity: 'notice');
     }
 
+    /**
+     * Who the assistant is on a website: on an agent's website the agent's own name and photo for it (if they set
+     * them), otherwise the brokerage's; the brokerage's default is "Ask Ally" with the built-in illustration.
+     *
+     * @return array{name: string, photo: string|null}
+     */
+    public static function persona(?Site $site, ?Site $brokerage): array
+    {
+        $b = self::for($brokerage);
+        $a = $site !== null && $site->kind === 'agent' ? (array) (($site->settings ?? [])['ailly'] ?? []) : [];
+        $name = trim((string) ($a['name'] ?? ''));
+        $photo = is_string($a['photo'] ?? null) && $a['photo'] !== '' ? $a['photo'] : $b['photo'];
+
+        return ['name' => $name !== '' ? $name : $b['name'], 'photo' => $photo !== null ? app(MediaLibrary::class)->url($photo, 'thumb') : null];
+    }
+
+    /** An agent's own name and photo for the assistant on their website (empty = the brokerage's). */
+    public static function saveAgentPersona(Site $agentSite, ?string $name, ?string $photo, User $by): void
+    {
+        $name = trim((string) $name);
+        if (mb_strlen($name) > 30 || preg_match('/[<>{}]/', $name) === 1) {
+            throw ValidationException::withMessages(['ailly_name' => 'Use a short name (up to 30 characters).']);
+        }
+        $agentSite->settings = [...($agentSite->settings ?? []), 'ailly' => ['name' => $name, 'photo' => self::photo($photo)]];
+        $agentSite->save();
+        app(AuditLogger::class)->record('sites.ailly.agent_persona', $agentSite, metadata: ['name' => $name], severity: 'info');
+    }
+
+    /** A photo from this brokerage's media library (by id), or none. */
+    private static function photo(mixed $value): ?string
+    {
+        if (! is_string($value) || $value === '') {
+            return null;
+        }
+        if (app(MediaLibrary::class)->find($value) === null) {
+            throw ValidationException::withMessages(['photo' => 'Choose a photo from your media library.']);
+        }
+
+        return $value;
+    }
+
     /** @param array{name: string, greeting: string} $s */
-    public static function greeting(array $s, Site $site): string
+    public static function greeting(array $s, string $name): string
     {
         return $s['greeting'] !== '' ? $s['greeting']
-            : 'Hi, I\'m '.$s['name'].'. I can help you find homes, answer questions about buying or selling, or connect you with an agent. What are you looking for?';
+            : 'Hi, I\'m '.$name.'. I can help you find homes, answer questions about buying or selling, or connect you with an agent. What are you looking for?';
     }
 }
