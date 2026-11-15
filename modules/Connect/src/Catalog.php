@@ -17,6 +17,8 @@ use Modules\Crm\Connect\Lofty;
 use Modules\Crm\Connect\Pipedrive;
 use Modules\Crm\Connect\Salesforce;
 use Modules\Crm\Connect\Sierra;
+use Modules\Ledger\Books\QuickBooks;
+use Modules\Ledger\Books\Xero;
 use Modules\Transactions\Connect\Brokermint;
 use Modules\Transactions\Connect\DocuSign;
 use Modules\Transactions\Connect\Dotloop;
@@ -380,6 +382,34 @@ final class Catalog
                 'docs' => 'https://developers.docusign.com/docs/esign-rest-api/'],
             guide: ['steps' => ['Press Connect and sign in to DocuSign.', 'Press Accept.', 'From now on, put the property address in each envelope\'s subject ("44 Pecan Dr purchase contract"); completed envelopes are filed on that deal.']]));
 
+        // Accounting: RightAlly's journals posted to the brokerage's books (specs/connect/13).
+        $catalog->add(new App('quickbooks', 'QuickBooks Online', 'accounting', 'Commissions, fees, revenue share and payouts post to your QuickBooks books automatically, as journal entries.',
+            scope: 'brokerage', auth: 'oauth', syncs: ['Every RightAlly journal from the day you connect, as a journal entry', 'Your accounts mapped once under Finance → Books', 'New journals every hour'],
+            driver: QuickBooks::class, vendorCost: 'Your QuickBooks plan', link: '/finance/books',
+            oauth: ['provider' => 'quickbooks', 'scopes' => ['com.intuit.quickbooks.accounting', 'openid', 'email'], 'authorize' => 'https://appcenter.intuit.com/connect/oauth2',
+                'token' => 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer', 'userinfo' => 'https://accounts.platform.intuit.com/v1/openid_connect/userinfo',
+                'response_type' => 'code', 'pkce' => false, 'token_auth' => 'basic'],
+            setup: ['needs' => 'keys', 'fields' => [['key' => 'client_id', 'label' => 'Client ID'], ['key' => 'client_secret', 'label' => 'Client secret', 'secret' => true]],
+                'steps' => ['At developer.intuit.com, create an app for QuickBooks Online and Payments with the Accounting scope.',
+                    'Under Keys & credentials (Production), add the return address shown above as a redirect URI.',
+                    'Complete Intuit\'s production questionnaire (app details, privacy policy and terms URLs), then copy the production client ID and secret here.', 'Switch QuickBooks Online on.'],
+                'partner' => 'Intuit reviews the production questionnaire before live companies can connect (free). A QuickBooks App Store listing is optional.',
+                'docs' => 'https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/journalentry'],
+            guide: ['steps' => ['Press Connect, sign in to QuickBooks as an admin, and choose your company.', 'Press Connect again in QuickBooks.', 'Then map your accounts once under Finance → Books. Journals start posting straight away.']]));
+        $catalog->add(new App('xero', 'Xero', 'accounting', 'Commissions, fees, revenue share and payouts post to your Xero books automatically, as manual journals.',
+            scope: 'brokerage', auth: 'oauth', syncs: ['Every RightAlly journal from the day you connect, as a manual journal', 'Your accounts mapped once under Finance → Books', 'New journals every hour'],
+            driver: Xero::class, vendorCost: 'Your Xero plan', link: '/finance/books',
+            oauth: ['provider' => 'xero', 'scopes' => ['openid', 'profile', 'email', 'offline_access', 'accounting.manualjournals', 'accounting.settings'],
+                'authorize' => 'https://login.xero.com/identity/connect/authorize', 'token' => 'https://identity.xero.com/connect/token',
+                'userinfo' => 'https://identity.xero.com/connect/userinfo', 'response_type' => 'code', 'pkce' => true, 'token_auth' => 'basic'],
+            setup: ['needs' => 'keys', 'fields' => [['key' => 'client_id', 'label' => 'Client ID'], ['key' => 'client_secret', 'label' => 'Client secret', 'secret' => true]],
+                'steps' => ['At developer.xero.com, create a Web app called RightAlly, with the return address shown above as its redirect URI.',
+                    'It uses Xero\'s granular scopes (accounting.manualjournals and accounting.settings).', 'Generate a client secret and paste the client ID and secret here.',
+                    'Switch Xero on. Connecting more than 25 organisations needs a Xero app partnership (certification).'],
+                'partner' => 'Free for up to 25 connected organisations; beyond that Xero requires its App Partner certification, and Xero\'s developer pricing applies.',
+                'docs' => 'https://developer.xero.com/documentation/api/accounting/manualjournals'],
+            guide: ['steps' => ['Press Connect, sign in to Xero, and choose your organisation.', 'Press Allow access.', 'Then map your accounts once under Finance → Books. Journals start posting straight away.']]));
+
         // On the roadmap (people can ask for them; HQ sees the demand). Some need a partner agreement first.
         foreach ([
             ['real_geeks', 'Real Geeks', 'crm', 'Bring over leads and their activity from Real Geeks.', 'both', 'Your Real Geeks plan'],
@@ -397,8 +427,6 @@ final class Catalog
             ['authentisign', 'Authentisign', 'transactions', 'Signed Authentisign documents filed on the right deal.', 'both', 'Your Authentisign plan'],
             ['zipform', 'zipForm', 'transactions', 'zipForm transactions and forms into RightAlly deals.', 'agent', 'Your zipForm plan'],
             ['form_simplicity', 'Form Simplicity', 'transactions', 'Form Simplicity transactions and forms into RightAlly deals.', 'agent', 'Your Form Simplicity plan'],
-            ['quickbooks', 'QuickBooks Online', 'accounting', 'Commissions, fees and payouts post to your books automatically.', 'brokerage', 'Your QuickBooks plan'],
-            ['xero', 'Xero', 'accounting', 'Commissions, fees and payouts post to Xero automatically.', 'brokerage', 'Your Xero plan'],
             ['showingtime', 'ShowingTime', 'showings', 'Showing requests and feedback on your listings, in RightAlly.', 'agent', 'Your ShowingTime plan'],
             ['brokerbay', 'BrokerBay', 'showings', 'Showing requests and feedback from BrokerBay on your listings.', 'both', 'Your BrokerBay plan'],
             ['aligned_showings', 'Aligned Showings', 'showings', 'Showing requests and feedback from Aligned Showings.', 'both', 'Your Aligned Showings plan'],

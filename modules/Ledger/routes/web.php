@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Route;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
 use Modules\Ledger\Http\Controllers\AccountController;
+use Modules\Ledger\Http\Controllers\BooksController;
 use Modules\Ledger\Http\Controllers\JournalController;
 use Modules\Ledger\Http\Controllers\PeriodController;
 
@@ -23,6 +24,9 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])
         Route::post('journals/{journal}/reverse', [JournalController::class, 'reverse'])->name('journals.reverse');
         Route::get('adjustments/create', [JournalController::class, 'createAdjustment'])->name('adjustments.create');
         Route::post('adjustments', [JournalController::class, 'storeAdjustment'])->name('adjustments.store');
+
+        Route::get('books', [BooksController::class, 'index'])->name('books.index');
+        Route::post('books/{connection}', [BooksController::class, 'save'])->where('connection', '[0-9A-HJKMNP-TV-Z]{26}')->name('books.save');
 
         Route::get('periods', [PeriodController::class, 'index'])->name('periods.index');
         Route::post('periods/{period}/close', [PeriodController::class, 'close'])->name('periods.close');
