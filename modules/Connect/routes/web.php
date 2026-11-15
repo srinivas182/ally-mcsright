@@ -8,6 +8,7 @@ use Modules\Connect\Http\AppsController;
 use Modules\Connect\Http\HqAppsController;
 use Modules\Connect\Http\McpConsentController;
 use Modules\Connect\Http\OAuthController;
+use Modules\Connect\Http\WebhookInController;
 use Modules\Connect\Mcp\RightAllyServer;
 use Modules\Core\Http\Middleware\EnsureHqConsole;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
@@ -45,6 +46,11 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function
     Route::post('apps/ai_assistants/settings', [McpConsentController::class, 'settings'])->name('connect.mcp.settings');
     Route::post('apps/ai_assistants/disconnect', [McpConsentController::class, 'disconnect'])->name('connect.mcp.disconnect');
 });
+
+// Webhooks from two-way apps: one address per connection, signature-checked (specs/connect/05).
+Route::domain((string) config('core.sso_host'))->middleware('throttle:600,1')
+    ->post('connect/hooks/{app}/{tenant}/{connection}', WebhookInController::class)
+    ->where(['app' => '[a-z0-9_]{2,40}', 'tenant' => '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}', 'connection' => '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}'])->name('connect.hooks');
 
 // The one address the sign-in services send people back to, for every brokerage (specs/connect/02).
 Route::domain((string) config('core.sso_host'))->middleware(['web', 'throttle:30,1'])

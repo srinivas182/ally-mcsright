@@ -12,15 +12,17 @@ use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
 use Modules\Core\Connect\ConnectionData;
-use Modules\Core\Connect\Connector;
 use Modules\Core\Connect\ConnectorKit;
 use Modules\Core\Connect\NeedsReconnect;
+use Modules\Core\Connect\TwoWay;
 use Modules\Crm\Actions\ManageContacts;
 use Modules\Crm\Actions\Tags;
 use Modules\Crm\Actions\Timeline;
 use Modules\Crm\ContactVisibility;
 use Modules\Crm\CrmAccess;
+use Modules\Crm\Models\Activity;
 use Modules\Crm\Models\Contact;
+use Throwable;
 
 /**
  * Follow Up Boss (specs/connect/04): brings people, their tags, stage, source and agent, and their notes into
@@ -32,12 +34,25 @@ use Modules\Crm\Models\Contact;
  *   with their agent, matched by email); an agent's own connection brings personal contacts.
  * - Texting consent doesn't come across: imported people are never texted automatically until they opt in here.
  * - A big account comes over in steps of 500 people or notes; each step queues the next.
+ *
+ * Live two-way sync (specs/connect/05):
+ * - In: once everything is over, RightAlly registers webhooks (people and notes) at the connection's own address.
+ *   Only the Follow Up Boss account owner may register them; for anyone else RightAlly checks for changes every 15
+ *   minutes instead. Every run also checks recently changed people, as a safety net. Deletions are not copied.
+ * - Out: new contacts and notes made in RightAlly go to Follow Up Boss (FollowUpBossOutbox). Anything that came from
+ *   Follow Up Boss is never sent back, so nothing bounces between the two.
  */
-final class FollowUpBoss implements Connector
+final class FollowUpBoss implements TwoWay
 {
     public const API = 'https://api.followupboss.com/v1/';
 
+    /** The Follow Up Boss changes RightAlly listens for. */
+    public const EVENTS = ['peopleCreated', 'peopleUpdated', 'peopleTagsCreated', 'peopleStageUpdated', 'notesCreated'];
+
     private const PAGES_PER_RUN = 5;
+
+    /** True while Follow Up Boss's own changes are being saved, so they are not sent back to it. */
+    public static bool $quiet = false;
 
     public function __construct(private readonly ConnectorKit $kit) {}
 
@@ -48,15 +63,21 @@ final class FollowUpBoss implements Connector
 
     public function sync(ConnectionData $connection): array
     {
-        $by = User::query()->find($this->kit->connectedBy($connection));
-        if (! $by instanceof User || ! $by->isActive()) {
-            throw new NeedsReconnect('The person who connected Follow Up Boss no longer has access. Please connect it again.');
-        }
+        return $this->quietly(fn (): array => $this->run($connection));
+    }
+
+    /** @return array{created: int, updated: int, skipped: int, cursor: string|null, note: string|null, more?: bool} */
+    private function run(ConnectionData $connection): array
+    {
+        $by = $this->by($connection);
         $cursor = json_decode((string) ($connection->cursor ?? ''), true);
         $cursor = is_array($cursor) && is_string($cursor['phase'] ?? null) ? $cursor : ['phase' => 'users'];
         $counts = ['created' => 0, 'updated' => 0, 'skipped' => 0];
         $http = $this->http($connection);
 
+        if ($cursor['phase'] === 'done') {
+            return $this->changes($connection, $http, $by, $cursor);
+        }
         if ($cursor['phase'] === 'users') {
             $this->users($http, $connection);
             $cursor = ['phase' => 'people'];
@@ -90,8 +111,223 @@ final class FollowUpBoss implements Connector
             }
         }
 
+        if ($cursor['phase'] === 'done') {
+            $cursor['since'] = CarbonImmutable::now()->subMinutes(5)->toIso8601String();
+            $this->subscribe($connection, $http);
+        }
+
         return $counts + ['cursor' => (string) json_encode($cursor), 'note' => $cursor['phase'] === 'done' ? 'Everything is over from Follow Up Boss.' : null,
             'more' => $cursor['phase'] !== 'done'];
+    }
+
+    /**
+     * After the import: people changed since the last check (newest first, stopping at the last check), and their
+     * new notes. This is the whole live sync when webhooks aren't allowed, and a safety net when they are.
+     *
+     * @param  array<string, mixed>  $cursor
+     * @return array{created: int, updated: int, skipped: int, cursor: string|null, note: string|null, more?: bool}
+     */
+    private function changes(ConnectionData $connection, PendingRequest $http, User $by, array $cursor): array
+    {
+        $counts = ['created' => 0, 'updated' => 0, 'skipped' => 0];
+        $since = is_string($cursor['since'] ?? null) ? CarbonImmutable::parse($cursor['since']) : CarbonImmutable::now()->subDay();
+        $started = CarbonImmutable::now();
+        $next = null;
+        for ($page = 0; $page < self::PAGES_PER_RUN; $page++) {
+            $r = $this->get($http, 'people', ['limit' => 100, 'sort' => '-updated', 'fields' => 'allFields'] + ($next !== null ? ['next' => $next] : []));
+            if ($r === null) {
+                return $counts + ['cursor' => (string) json_encode($cursor), 'note' => 'Follow Up Boss asked us to slow down; carrying on shortly.'];
+            }
+            $older = false;
+            foreach (array_values(array_filter((array) $r->json('people', []), 'is_array')) as $p) {
+                $updated = is_string($p['updated'] ?? null) ? CarbonImmutable::parse($p['updated']) : null;
+                if ($updated !== null && $updated->lte($since)) {
+                    $older = true;
+                    break;
+                }
+                $result = $this->person($connection, $p, $by);
+                $counts[$result]++;
+                if ($result !== 'skipped') {
+                    $this->notesFor($connection, $http, $by, (string) $p['id'], $counts);
+                }
+            }
+            $n = $r->json('_metadata.next');
+            $next = is_string($n) && $n !== '' ? $n : null;
+            if ($older || $next === null) {
+                break;
+            }
+        }
+        $cursor['since'] = $started->subMinutes(1)->toIso8601String(); // a little overlap: repeats are harmless
+
+        return $counts + ['cursor' => (string) json_encode($cursor), 'note' => $counts['created'] + $counts['updated'] > 0 ? 'Changes brought over from Follow Up Boss.' : null];
+    }
+
+    /** @param  array{created: int, updated: int, skipped: int}  $counts */
+    private function notesFor(ConnectionData $connection, PendingRequest $http, User $by, string $personId, array &$counts): void
+    {
+        $r = $this->get($http, 'notes', ['personId' => $personId, 'limit' => 100]);
+        foreach (array_values(array_filter((array) ($r?->json('notes', []) ?? []), 'is_array')) as $n) {
+            if ($this->note($connection, $n, $by) === 'created') {
+                $counts['created']++;
+            }
+        }
+    }
+
+    /** Registers RightAlly's webhooks once (only the Follow Up Boss account owner may); otherwise check every 15 minutes. */
+    private function subscribe(ConnectionData $connection, PendingRequest $http): void
+    {
+        if (isset($connection->settings['live'])) {
+            return;
+        }
+        $url = $this->kit->webhookUrl($connection);
+        $ids = [];
+        foreach (self::EVENTS as $event) {
+            $r = $http->post('webhooks', ['event' => $event, 'url' => $url]);
+            if (! $r->successful() || ! is_scalar($r->json('id'))) {
+                break;
+            }
+            $ids[] = (string) $r->json('id');
+        }
+        $live = count($ids) === count(self::EVENTS);
+        if (! $live) {
+            foreach ($ids as $id) {
+                $http->delete('webhooks/'.$id);
+            }
+            $ids = [];
+        }
+        $this->kit->saveSettings($connection, ['live' => $live, 'webhooks' => $ids, 'interval_minutes' => $live ? 60 : 15]);
+    }
+
+    public function verifyWebhook(string $raw, array $headers): bool
+    {
+        $key = (string) ($this->kit->secrets('follow_up_boss')['x_system_key'] ?? '');
+        $given = (string) ($headers['fub-signature'] ?? '');
+
+        return $key !== '' && $given !== '' && hash_equals(hash_hmac('sha256', base64_encode($raw), $key), $given);
+    }
+
+    public function webhook(ConnectionData $connection, array $payload): array
+    {
+        return $this->quietly(function () use ($connection, $payload): array {
+            $counts = ['created' => 0, 'updated' => 0, 'skipped' => 0];
+            $event = (string) ($payload['event'] ?? '');
+            $ids = array_slice(array_values(array_filter(array_map(fn ($v): string => is_scalar($v) ? (string) $v : '', (array) ($payload['resourceIds'] ?? [])),
+                fn (string $v): bool => ctype_digit($v))), 0, 100);
+            if ($ids === [] || ! in_array($event, self::EVENTS, true)) {
+                return $counts;
+            }
+            $by = $this->by($connection);
+            $http = $this->http($connection);
+            if ($event === 'notesCreated') {
+                foreach (array_slice($ids, 0, 20) as $id) {
+                    $r = $this->get($http, 'notes/'.$id, []);
+                    if ($r === null) {
+                        throw new \RuntimeException('Follow Up Boss asked us to slow down.'); // the job tries again
+                    }
+                    $counts[$this->note($connection, (array) $r->json(), $by)]++;
+                }
+
+                return $counts;
+            }
+            $r = $this->get($http, 'people', ['id' => implode(',', $ids), 'fields' => 'allFields', 'limit' => 100]);
+            if ($r === null) {
+                throw new \RuntimeException('Follow Up Boss asked us to slow down.');
+            }
+            foreach (array_values(array_filter((array) $r->json('people', []), 'is_array')) as $p) {
+                $counts[$this->person($connection, $p, $by)]++;
+            }
+
+            return $counts;
+        });
+    }
+
+    public function push(ConnectionData $connection, string $entity, int $localId): void
+    {
+        $http = $this->http($connection);
+        if ($entity === 'contact') {
+            $this->pushContact($connection, $http, $localId);
+        } elseif ($entity === 'note') {
+            $activity = Activity::query()->find($localId);
+            if ($activity === null || $activity->type !== 'note' || $this->kit->externalId($connection, 'note', $localId) !== null) {
+                return;
+            }
+            $person = $this->pushContact($connection, $http, (int) $activity->contact_id);
+            if ($person === null) {
+                return;
+            }
+            $r = $http->post('notes', ['personId' => (int) $person, 'subject' => 'From RightAlly', 'body' => mb_substr((string) $activity->body, 0, 9000), 'isHtml' => false]);
+            self::ok($r);
+            $this->kit->remember($connection, 'note', (string) $r->json('id'), $localId);
+        }
+    }
+
+    /** The person's Follow Up Boss id, adding them there first if needed. */
+    private function pushContact(ConnectionData $connection, PendingRequest $http, int $contactId): ?string
+    {
+        $known = $this->kit->externalId($connection, 'contact', $contactId);
+        $c = Contact::query()->find($contactId);
+        if ($known !== null || $c === null) {
+            return $known;
+        }
+        $agent = $c->owner_user_id !== null ? $this->kit->externalId($connection, 'user', (int) $c->owner_user_id) : null;
+        $r = $http->post('people', array_filter(['firstName' => $c->first_name, 'lastName' => $c->last_name, 'source' => 'RightAlly',
+            'emails' => $c->primary_email !== null ? [['value' => $c->primary_email]] : null, 'phones' => $c->primary_phone !== null ? [['value' => $c->primary_phone]] : null,
+            'assignedUserId' => $agent !== null ? (int) $agent : null], fn ($v) => $v !== null && $v !== ''));
+        self::ok($r);
+        $id = (string) $r->json('id');
+        $this->kit->remember($connection, 'contact', $id, $c->id);
+
+        return $id;
+    }
+
+    public function disconnected(ConnectionData $connection): void
+    {
+        try {
+            $http = $this->http($connection);
+            foreach ((array) ($connection->settings['webhooks'] ?? []) as $id) {
+                $http->delete('webhooks/'.(string) $id);
+            }
+        } catch (Throwable $e) {
+            report($e); // never stop someone disconnecting
+        }
+    }
+
+    /**
+     * @template T
+     *
+     * @param  callable(): T  $work
+     * @return T
+     */
+    private function quietly(callable $work): mixed
+    {
+        $was = self::$quiet;
+        self::$quiet = true;
+        try {
+            return $work();
+        } finally {
+            self::$quiet = $was;
+        }
+    }
+
+    private function by(ConnectionData $connection): User
+    {
+        $by = User::query()->find($this->kit->connectedBy($connection));
+        if (! $by instanceof User || ! $by->isActive()) {
+            throw new NeedsReconnect('The person who connected Follow Up Boss no longer has access. Please connect it again.');
+        }
+
+        return $by;
+    }
+
+    private static function ok(Response $r): void
+    {
+        if (in_array($r->status(), [401, 403], true)) {
+            throw new NeedsReconnect('Follow Up Boss no longer accepts the connection. Please connect it again.');
+        }
+        $r->throw(); // 429 and other errors: the job tries again
+        if (! is_scalar($r->json('id'))) {
+            throw new \RuntimeException('Follow Up Boss did not return an id.');
+        }
     }
 
     /** Follow Up Boss's users matched to RightAlly people by email (so contacts keep their agent). */
@@ -140,6 +376,18 @@ final class FollowUpBoss implements Connector
             }
         }
         $this->kit->remember($connection, 'contact', $id, $contact->id);
+        if ($result === 'updated') {
+            $names = array_filter(['first_name' => is_string($p['firstName'] ?? null) ? trim($p['firstName']) : null,
+                'last_name' => is_string($p['lastName'] ?? null) ? trim($p['lastName']) : null], fn ($v) => $v !== null && $v !== '');
+            if ($names !== [] && array_diff_assoc($names, ['first_name' => $contact->first_name, 'last_name' => $contact->last_name]) !== []) {
+                app(ManageContacts::class)->update($contact, $names, $by);
+            }
+        }
+        if (is_string($p['stage'] ?? null) && $p['stage'] !== '') { // one stage at a time
+            foreach ($contact->tags()->where('name', 'like', 'FUB stage: %')->where('name', '!=', mb_substr('FUB stage: '.$p['stage'], 0, 60))->get() as $old) {
+                app(Tags::class)->detach($contact, $old);
+            }
+        }
         $tags = array_filter([...array_map('strval', array_filter((array) ($p['tags'] ?? []), 'is_scalar')),
             isset($p['stage']) && is_string($p['stage']) && $p['stage'] !== '' ? 'FUB stage: '.$p['stage'] : null]);
         foreach (array_slice($tags, 0, 20) as $tag) {

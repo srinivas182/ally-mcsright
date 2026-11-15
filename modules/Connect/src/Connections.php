@@ -17,6 +17,7 @@ use Modules\Core\Connect\App;
 use Modules\Core\Connect\AppCatalog;
 use Modules\Core\Connect\Connector;
 use Modules\Core\Connect\Outbox;
+use Modules\Core\Connect\TwoWay;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Support\Connections as Databases;
 use Modules\Core\Tenancy\TenantContext;
@@ -142,6 +143,10 @@ final class Connections
     public function disconnect(Connection $c, User $by): void
     {
         $app = $this->catalog->find($c->app_key);
+        $driver = $app?->driver !== null ? app($app->driver) : null;
+        if ($driver instanceof TwoWay) {
+            $driver->disconnected($c->data()); // switch off the other app's webhooks while the sign-in still works
+        }
         if ($app !== null && $app->oauth !== null) {
             app(OAuth\OAuthFlow::class)->revoke($c, $app);
         }

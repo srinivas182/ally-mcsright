@@ -39,6 +39,7 @@ function fubConnect(User $as, array $api = []): TestResponse
         'api.followupboss.com/v1/users*' => Http::response(['users' => []]),
         'api.followupboss.com/v1/people*' => Http::response(['people' => [], '_metadata' => []]),
         'api.followupboss.com/v1/notes*' => Http::response(['notes' => []]),
+        'api.followupboss.com/v1/webhooks*' => Http::response(['id' => 11, 'status' => 'Active']),
     ]);
     $start = test()->actingAs($as)->post('/apps/follow_up_boss/oauth', [], ['X-Inertia' => 'true']);
     $start->assertStatus(409);
