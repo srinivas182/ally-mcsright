@@ -83,6 +83,23 @@ final class Kit implements ConnectorKit
         $c?->forceFill(['settings' => array_merge($c->settings ?? [], $settings)])->save();
     }
 
+    public function saveCredentials(ConnectionData $connection, array $credentials): void
+    {
+        $c = Connection::query()->find($connection->id);
+        $c?->forceFill(['credentials' => array_merge($c->credentials ?? [], $credentials)])->save();
+    }
+
+    public function routeTo(ConnectionData $connection, string $externalKey): void
+    {
+        DB::connection(Connections::control())->table('connect_routes')->updateOrInsert(['app_key' => $connection->appKey, 'external_key' => $externalKey],
+            ['tenant_id' => $this->tenants->id(), 'connection_id' => $connection->id, 'updated_at' => now(), 'created_at' => now()]);
+    }
+
+    public function unroute(ConnectionData $connection): void
+    {
+        DB::connection(Connections::control())->table('connect_routes')->where('tenant_id', $this->tenants->id())->where('connection_id', $connection->id)->delete();
+    }
+
     public function connectedBy(ConnectionData $connection): ?int
     {
         $by = Connection::query()->whereKey($connection->id)->value('connected_by');

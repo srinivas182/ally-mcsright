@@ -15,6 +15,7 @@ use Modules\Connect\OAuth\ClientSettings;
 use Modules\Connect\OAuth\Providers;
 use Modules\Core\Connect\App;
 use Modules\Core\Connect\AppCatalog;
+use Modules\Core\Connect\AppWebhooks;
 use Modules\Core\Support\Connections;
 
 /** HQ → App demand (specs/connect/00) and Connect setup (specs/connect/02). */
@@ -53,7 +54,8 @@ final class HqAppsController
                 'one_click' => $a->oauth !== null, 'needs' => $a->setup['needs'] ?? 'none', 'provider' => $a->setup['provider'] ?? null,
                 'fields' => array_map(fn (array $f): array => ['key' => $f['key'], 'label' => $f['label'], 'secret' => $f['secret'] ?? true], $a->setup['fields'] ?? []),
                 'steps' => $a->setup['steps'] ?? [], 'partner' => $a->setup['partner'] ?? null, 'docs' => $a->setup['docs'] ?? null,
-                'return_address' => $a->oauth !== null ? Providers::redirectUri() : null, 'request' => self::request($a)] + $registry->status($a), $catalog->all()),
+                'return_address' => $a->oauth !== null ? Providers::redirectUri() : null, 'request' => self::request($a),
+                'webhook_address' => $a->driver !== null && is_subclass_of($a->driver, AppWebhooks::class) ? 'https://'.config('core.sso_host').'/connect/apps/'.$a->key.'/webhook' : null] + $registry->status($a), $catalog->all()),
         ]);
     }
 

@@ -281,10 +281,23 @@ export default function AppScreen({
                     </form>
                 )}
 
-                {(app.key === 'lead_email' ||
-                    app.key === 'lead_api' ||
-                    app.key === 'zapier') && (
+                {[
+                    'lead_email',
+                    'lead_api',
+                    'zapier',
+                    'realtor_com',
+                    'zillow',
+                    'homes_com',
+                ].includes(app.key) && (
                     <section className="grid gap-3 rounded-lg border p-4">
+                        {app.auth === 'email' &&
+                            (app.guide?.steps ?? []).length > 0 && (
+                                <ol className="grid list-decimal gap-1 pl-5">
+                                    {(app.guide?.steps ?? []).map((step) => (
+                                        <li key={step}>{step}</li>
+                                    ))}
+                                </ol>
+                            )}
                         {app.key !== 'lead_api' && (
                             <>
                                 <h2 className="font-medium">

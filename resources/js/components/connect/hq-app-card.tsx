@@ -20,6 +20,7 @@ export type HqApp = {
     partner: string | null;
     docs: string | null;
     return_address: string | null;
+    webhook_address?: string | null;
     request: {
         to: string | null;
         url: string | null;
@@ -197,6 +198,12 @@ export function HqAppCard({ app }: { app: HqApp }) {
                         <p className="break-all">
                             <strong>Return address:</strong>{' '}
                             <code>{app.return_address}</code>
+                        </p>
+                    )}
+                    {app.webhook_address && (
+                        <p className="break-all">
+                            <strong>Webhook address:</strong>{' '}
+                            <code>{app.webhook_address}</code>
                         </p>
                     )}
                     {app.docs && (

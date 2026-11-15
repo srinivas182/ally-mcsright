@@ -38,4 +38,13 @@ interface ConnectorKit
 
     /** @param  array<string, mixed>  $settings  merged into the connection's settings */
     public function saveSettings(ConnectionData $connection, array $settings): void;
+
+    /** @param  array<string, string>  $credentials  merged into the connection's encrypted credentials */
+    public function saveCredentials(ConnectionData $connection, array $credentials): void;
+
+    /** App-level webhooks about this account (a page id, …) go to this connection (AppWebhooks). */
+    public function routeTo(ConnectionData $connection, string $externalKey): void;
+
+    /** Stops routing webhooks to this connection (all its accounts). */
+    public function unroute(ConnectionData $connection): void;
 }

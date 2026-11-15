@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Route;
 use Laravel\Mcp\Facades\Mcp;
 use Modules\Connect\Http\AppsController;
+use Modules\Connect\Http\AppWebhookController;
 use Modules\Connect\Http\CentralMcpController;
 use Modules\Connect\Http\CentralMcpToken;
 use Modules\Connect\Http\HqAppsController;
@@ -69,6 +70,12 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function
 Route::domain((string) config('core.sso_host'))->middleware('throttle:600,1')
     ->post('connect/hooks/{app}/{tenant}/{connection}', WebhookInController::class)
     ->where(['app' => '[a-z0-9_]{2,40}', 'tenant' => '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}', 'connection' => '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}'])->name('connect.hooks');
+
+// App-level webhooks (one address per app, e.g. Meta), routed by account (specs/connect/10).
+Route::domain((string) config('core.sso_host'))->middleware('throttle:1200,1')->group(function (): void {
+    Route::get('connect/apps/{app}/webhook', [AppWebhookController::class, 'handshake'])->where('app', '[a-z0-9_]{2,40}');
+    Route::post('connect/apps/{app}/webhook', [AppWebhookController::class, 'receive'])->where('app', '[a-z0-9_]{2,40}');
+});
 
 // The one address the sign-in services send people back to, for every brokerage (specs/connect/02).
 Route::domain((string) config('core.sso_host'))->middleware(['web', 'throttle:30,1'])
