@@ -6,20 +6,14 @@ namespace Modules\Crm\Connect;
 
 use App\Models\User;
 use Carbon\CarbonImmutable;
-use Carbon\Exceptions\InvalidFormatException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Validation\ValidationException;
 use Modules\Core\Connect\ConnectionData;
 use Modules\Core\Connect\ConnectorKit;
 use Modules\Core\Connect\NeedsReconnect;
 use Modules\Core\Connect\TwoWay;
-use Modules\Crm\Actions\ManageContacts;
 use Modules\Crm\Actions\Tags;
-use Modules\Crm\Actions\Timeline;
-use Modules\Crm\ContactVisibility;
-use Modules\Crm\CrmAccess;
 use Modules\Crm\Models\Activity;
 use Modules\Crm\Models\Contact;
 use Throwable;
@@ -359,10 +353,8 @@ final class FollowUpBoss implements TwoWay
     {
         $r = $this->get($http, 'users', ['limit' => 100]);
         foreach ((array) ($r?->json('users', []) ?? []) as $u) {
-            $email = is_array($u) ? mb_strtolower((string) ($u['email'] ?? '')) : '';
-            $local = $email !== '' ? User::query()->where('email', $email)->first() : null;
-            if ($local instanceof User && isset($u['id'])) {
-                $this->kit->remember($connection, 'user', (string) $u['id'], $local->id);
+            if (is_array($u) && is_scalar($u['id'] ?? null)) {
+                app(Importer::class)->user($connection, (string) $u['id'], (string) ($u['email'] ?? ''));
             }
         }
     }
@@ -373,55 +365,12 @@ final class FollowUpBoss implements TwoWay
      */
     private function person(ConnectionData $connection, array $p, User $by): string
     {
-        $id = (string) ($p['id'] ?? '');
-        if ($id === '') {
-            return 'skipped';
-        }
-        $email = self::primary($p['emails'] ?? null);
-        $phone = self::primary($p['phones'] ?? null);
-        $known = $this->kit->localId($connection, 'contact', $id);
-        $contact = $known !== null ? Contact::query()->find($known) : null;
-        $result = 'updated';
-        if ($contact === null) {
-            $contact = self::existing($email, $phone);
-            if ($contact !== null && ! app(ContactVisibility::class)->canSee($by, $contact)) {
-                return 'skipped'; // someone else's contact in the brokerage: left alone
-            }
-            $result = $contact !== null ? 'skipped' : 'created';
-        }
-        if ($contact === null) {
-            $agent = isset($p['assignedUserId']) ? $this->kit->localId($connection, 'user', (string) $p['assignedUserId']) : null;
-            try {
-                $contact = app(ManageContacts::class)->create(array_filter(['first_name' => (string) ($p['firstName'] ?? ''), 'last_name' => (string) ($p['lastName'] ?? ''),
-                    'email' => $email, 'phone' => $phone, 'source' => 'import', 'origin' => $connection->ownerUserId === null ? 'company' : 'personal',
-                    'owner_user_id' => $connection->ownerUserId === null && CrmAccess::manager($by) ? ($agent ?? $by->id) : null], fn ($v) => $v !== null), $by);
-            } catch (ValidationException) {
-                return 'skipped'; // no name, or no email or phone we can use
-            }
-        }
-        $this->kit->remember($connection, 'contact', $id, $contact->id);
-        if ($result === 'updated') {
-            $names = array_filter(['first_name' => is_string($p['firstName'] ?? null) ? trim($p['firstName']) : null,
-                'last_name' => is_string($p['lastName'] ?? null) ? trim($p['lastName']) : null], fn ($v) => $v !== null && $v !== '');
-            if ($names !== [] && array_diff_assoc($names, ['first_name' => $contact->first_name, 'last_name' => $contact->last_name]) !== []) {
-                app(ManageContacts::class)->update($contact, $names, $by);
-            }
-        }
-        if (is_string($p['stage'] ?? null) && $p['stage'] !== '') { // one stage at a time
-            foreach ($contact->tags()->where('name', 'like', 'FUB stage: %')->where('name', '!=', mb_substr('FUB stage: '.$p['stage'], 0, 60))->get() as $old) {
-                app(Tags::class)->detach($contact, $old);
-            }
-        }
-        $tags = array_filter([...array_map('strval', array_filter((array) ($p['tags'] ?? []), 'is_scalar')),
-            isset($p['stage']) && is_string($p['stage']) && $p['stage'] !== '' ? 'FUB stage: '.$p['stage'] : null]);
-        foreach (array_slice($tags, 0, 20) as $tag) {
-            app(Tags::class)->attach($contact, mb_substr($tag, 0, 60));
-        }
-        if ($result === 'created') {
-            $contact->forceFill(['source_detail' => mb_substr('Follow Up Boss'.(is_string($p['source'] ?? null) && $p['source'] !== '' ? ': '.$p['source'] : ''), 0, 150)])->save();
-        }
-
-        return $result;
+        return app(Importer::class)->person($connection, $by, ['id' => is_scalar($p['id'] ?? null) ? (string) $p['id'] : '',
+            'first_name' => is_string($p['firstName'] ?? null) ? $p['firstName'] : '', 'last_name' => is_string($p['lastName'] ?? null) ? $p['lastName'] : '',
+            'email' => self::primary($p['emails'] ?? null), 'phone' => self::primary($p['phones'] ?? null),
+            'tags' => array_values(array_map('strval', array_filter((array) ($p['tags'] ?? []), 'is_scalar'))),
+            'stage' => is_string($p['stage'] ?? null) ? $p['stage'] : null, 'source' => is_string($p['source'] ?? null) ? $p['source'] : null,
+            'agent_id' => is_scalar($p['assignedUserId'] ?? null) ? (string) $p['assignedUserId'] : null], 'Follow Up Boss', 'FUB stage');
     }
 
     /**
@@ -430,26 +379,9 @@ final class FollowUpBoss implements TwoWay
      */
     private function note(ConnectionData $connection, array $n, User $by): string
     {
-        $id = (string) ($n['id'] ?? '');
-        $contactId = isset($n['personId']) ? $this->kit->localId($connection, 'contact', (string) $n['personId']) : null;
-        $contact = $contactId !== null ? Contact::query()->find($contactId) : null;
-        if ($id === '' || $contact === null || $this->kit->localId($connection, 'note', $id) !== null) {
-            return 'skipped';
-        }
-        $body = trim(strip_tags((string) ($n['subject'] ?? '')."\n".(string) ($n['body'] ?? '')));
-        if ($body === '') {
-            return 'skipped';
-        }
-        try {
-            $when = is_string($n['created'] ?? null) ? CarbonImmutable::parse($n['created'])->utc() : null;
-            $activity = app(Timeline::class)->log($contact, ['type' => 'note', 'body' => mb_substr('From Follow Up Boss: '.$body, 0, 9000),
-                'occurred_at' => $when !== null && ! $when->isFuture() ? $when->format('Y-m-d H:i:s') : null], $by);
-        } catch (ValidationException|InvalidFormatException) {
-            return 'skipped';
-        }
-        $this->kit->remember($connection, 'note', $id, (int) $activity->id);
-
-        return 'created';
+        return app(Importer::class)->note($connection, $by, ['id' => is_scalar($n['id'] ?? null) ? (string) $n['id'] : '',
+            'person_id' => is_scalar($n['personId'] ?? null) ? (string) $n['personId'] : '',
+            'body' => (string) ($n['subject'] ?? '')."\n".(string) ($n['body'] ?? ''), 'created' => is_string($n['created'] ?? null) ? $n['created'] : null], 'Follow Up Boss');
     }
 
     private function http(ConnectionData $connection): PendingRequest
@@ -484,16 +416,5 @@ final class FollowUpBoss implements TwoWay
         $v = trim((string) ($items[0]['value'] ?? ''));
 
         return $v !== '' ? $v : null;
-    }
-
-    private static function existing(?string $email, ?string $phone): ?Contact
-    {
-        $phone164 = $phone !== null ? ManageContacts::e164($phone) : null;
-        if ($email === null && $phone164 === null) {
-            return null;
-        }
-
-        return Contact::query()->where(fn ($q) => $q->when($email !== null, fn ($w) => $w->orWhere('primary_email', mb_strtolower((string) $email)))
-            ->when($phone164 !== null, fn ($w) => $w->orWhere('primary_phone', $phone164)))->orderBy('id')->first();
     }
 }

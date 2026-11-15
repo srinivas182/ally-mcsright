@@ -410,6 +410,13 @@ export default function AppScreen({
                                     ? 'Add another'
                                     : 'Connect'}
                             </h2>
+                            {(app.guide?.steps ?? []).length > 0 && (
+                                <ol className="grid list-decimal gap-1 pl-5">
+                                    {(app.guide?.steps ?? []).map((step) => (
+                                        <li key={step}>{step}</li>
+                                    ))}
+                                </ol>
+                            )}
                             {app.fields.map((f) =>
                                 f.type === 'events' ? (
                                     <fieldset
