@@ -8,6 +8,7 @@ use Modules\Ads\Http\AutopilotController;
 use Modules\Ads\Http\HqStudioController;
 use Modules\Ads\Http\SocialController;
 use Modules\Ads\Http\StudioController;
+use Modules\Ads\Http\StudioFontsController;
 use Modules\Core\Http\Middleware\EnsureHqConsole;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
 
@@ -52,3 +53,6 @@ Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.tenants.manage
     Route::get('/', [HqStudioController::class, 'index'])->name('index');
     Route::post('packages/{package}', [HqStudioController::class, 'save'])->where('package', 'studio_[a-z]+')->name('packages.save');
 });
+
+// Ally Studio fonts for printers and previews (specs/grow/13): public, cached, only the bundled files.
+Route::get('studio-fonts/{file}.woff2', StudioFontsController::class)->where('file', '[a-z0-9-]{3,80}')->middleware('throttle:600,1')->name('studio.fonts');

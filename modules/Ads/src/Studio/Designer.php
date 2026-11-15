@@ -52,10 +52,20 @@ final class Designer
     /** size => [width, height, type scale] */
     public const SIZES = ['square' => [1080, 1080, 0.92], 'portrait' => [1080, 1350, 1.0], 'story' => [1080, 1920, 1.08]];
 
-    /** Font files bundled in modules/Ads/resources/fonts (SIL OFL). */
-    private const FONT_FILES = ['Playfair Display' => ['playfair-display', [600, 700]], 'Cormorant Garamond' => ['cormorant-garamond', [500, 600]],
-        'Libre Baskerville' => ['libre-baskerville', [400, 700]], 'DM Serif Display' => ['dm-serif-display', [400]], 'Inter' => ['inter', [400, 600]],
-        'Montserrat' => ['montserrat', [400, 600]], 'DM Sans' => ['dm-sans', [400, 600]], 'Lato' => ['lato', [400, 700]]];
+    /** Each collection's three signature layouts for listing designs (specs/grow/13, SA1c). */
+    public const LAYOUTS = ['luxury_noir' => ['cover', 'cinema', 'gallery'], 'estate' => ['frame', 'gallery', 'arch'], 'modern' => ['masthead', 'split', 'gallery'],
+        'coastal' => ['arch', 'split', 'cover']];
+
+    /** The type system, bundled in modules/Ads/resources/fonts (SIL OFL): family => [[file, weight, style]]. */
+    private const FONT_FILES = [
+        'Cormorant Garamond' => [['cormorant-garamond-latin-300-normal', 300, 'normal'], ['cormorant-garamond-latin-500-normal', 500, 'normal'],
+            ['cormorant-garamond-latin-300-italic', 300, 'italic'], ['cormorant-garamond-latin-400-italic', 400, 'italic'], ['cormorant-garamond-latin-500-italic', 500, 'italic']],
+        'Bodoni Moda' => [['bodoni-moda-latin-400-normal', 400, 'normal'], ['bodoni-moda-latin-500-normal', 500, 'normal'], ['bodoni-moda-latin-400-italic', 400, 'italic']],
+        'Cinzel' => [['cinzel-latin-400-normal', 400, 'normal'], ['cinzel-latin-500-normal', 500, 'normal']],
+        'Jost' => [['jost-latin-300-normal', 300, 'normal'], ['jost-latin-400-normal', 400, 'normal'], ['jost-latin-500-normal', 500, 'normal']],
+        'Pinyon Script' => [['pinyon-script-latin-400-normal', 400, 'normal']],
+        'Italiana' => [['italiana-latin-400-normal', 400, 'normal']],
+    ];
 
     public function __construct(private readonly StudioPlans $plans, private readonly BrandKits $kits, private readonly ArtDirector $director,
         private readonly TenantContext $tenants) {}
@@ -133,15 +143,19 @@ final class Designer
         }
 
         // Three designs: for a listing, three layouts on three different photos; otherwise three collections (one if brand-locked).
+        // Three designs: for a listing, the collection's three signature layouts, each leading with a different photo; otherwise three
+        // collections (one if brand-locked). A gallery needs three good photos, so with fewer it gives way to the cover.
+        $layouts = array_map(fn (string $l): string => $l === 'gallery' && count($photos) < 3 ? 'cover' : $l, self::LAYOUTS[$kit['collection']] ?? self::LAYOUTS['luxury_noir']);
         $plans = $kind === 'listing'
-            ? array_map(fn (string $v, int $i): array => [$kit['collection'], $v, $photos[$i % count($photos)]], ['full', 'split', 'frame'], [0, 1, 2])
-            : array_map(fn (string $col): array => [$col, 'type', null], $kit['locked'] ? [$kit['collection']]
+            ? array_map(fn (string $l, int $i): array => [$kit['collection'], $l, [...array_slice($photos, $i % max(1, count($photos))), ...array_slice($photos, 0, $i % max(1, count($photos)))]],
+                array_values(array_unique($layouts)), array_keys(array_values(array_unique($layouts))))
+            : array_map(fn (string $col): array => [$col, 'statement', []], $kit['locked'] ? [$kit['collection']]
                 : array_slice(array_values(array_unique([$kit['collection'], ...array_keys(BrandKits::COLLECTIONS)])), 0, 3));
         $batch = strtolower((string) Str::ulid());
         $made = [];
-        foreach ($plans as [$collection, $variant, $photo]) {
+        foreach ($plans as [$collection, $variant, $shots]) {
             $made[] = $d = Design::query()->create(['user_id' => $by->id, 'batch' => $batch, 'moment' => $moment, 'listing_ulid' => $listing, 'collection' => $collection,
-                'variant' => $variant, 'content' => $content + ['photo' => $photo], 'status' => 'rendering']);
+                'variant' => $variant, 'content' => $content + ['moment' => $moment, 'photo' => $shots[0] ?? null, 'photos' => array_slice($shots, 0, 3)], 'status' => 'rendering']);
             RenderDesign::dispatch($d->id);
         }
         app(AuditLogger::class)->record('studio.designs_made', metadata: ['moment' => $moment, 'listing' => $listing, 'designs' => count($made)]);
@@ -158,15 +172,19 @@ final class Designer
         }
         $kit = $this->kits->forUser($user);
         $p = $this->director->palette($kit['colors'], $design->collection);
-        $dark = ArtDirector::luminance($p['bg']) < 0.4;
+        $dark = $p['dark'];
+        $words = preg_split('/\s+/', trim((string) $kit['brokerage'])) ?: [];
+        $monogram = mb_strtoupper(implode('', array_map(fn (string $w): string => mb_substr($w, 0, 1), array_slice(array_values(array_filter($words, fn (string $w): bool => ! in_array(mb_strtolower($w), ['the', 'of', 'and', '&'], true))), 0, 2))));
         $kind = self::MOMENTS[$design->moment][1] ?? 'text';
         $files = [];
         $checks = [];
         try {
             foreach (self::SIZES as $size => [$w, $h, $scale]) {
-                $html = view('ads::studio.design', ['w' => $w, 'h' => $h, 'scale' => $scale, 'variant' => $design->variant, 'type' => $kind, 'collection' => $design->collection,
-                    'p' => $p, 'kit' => $kit, 'c' => $design->content, 'fonts' => $this->fontFaces($kit['fonts']), 'hero' => $design->content['photo'] ?? null,
-                    'agent' => $kit['cutout'] ?? $kit['headshot'], 'logo' => $dark ? ($kit['logo_dark'] ?? null) : ($kit['logo'] ?? $kit['logo_dark'])])->render();
+                $html = view('ads::studio.design', ['w' => $w, 'h' => $h, 'layout' => $design->variant, 'type' => $kind, 'collection' => $design->collection,
+                    'p' => $p, 'kit' => $kit, 'c' => $design->content + ['moment' => $design->moment], 'fonts' => self::fontFaces(),
+                    'photos' => array_values(array_filter((array) ($design->content['photos'] ?? [$design->content['photo'] ?? null]))),
+                    'agent' => $kit['cutout'] ?? $kit['headshot'], 'monogram' => $monogram !== '' ? $monogram : 'R',
+                    'logo' => in_array($design->variant, ['cover', 'masthead'], true) || $dark ? ($kit['logo_dark'] ?? null) : ($kit['logo'] ?? $kit['logo_dark'])])->render();
                 $png = app(StudioRenderer::class)->render($html, $w, $h);
                 if ($this->director->looksBlank($png)) {
                     $checks[] = "The {$size} design came out blank.";
@@ -270,7 +288,7 @@ final class Designer
             if (is_string($bytes) && $this->director->photoProblem($bytes) === null) {
                 $photos[] = (string) Photos::url($m->storage_path, 'hero');
             }
-            if (count($photos) === 3) {
+            if (count($photos) === 5) {
                 break;
             }
         }
@@ -288,15 +306,13 @@ final class Designer
             'area' => is_string($home['subdivision'] ?? null) && $home['subdivision'] !== '' ? $home['subdivision'] : ($home['city'] ?? null)]), $photos];
     }
 
-    /** @param array{heading: string, body: string} $fonts */
-    private function fontFaces(array $fonts): string
+    /** The premium type system every design uses (bundled, SIL OFL). */
+    public static function fontFaces(): string
     {
         $css = '';
-        foreach (array_unique([$fonts['heading'], $fonts['body']]) as $family) {
-            [$slug, $weights] = self::FONT_FILES[$family] ?? self::FONT_FILES['Inter'];
-            foreach ($weights as $w) {
-                $file = dirname(__DIR__, 2).'/resources/fonts/'.$slug.'-latin-'.$w.'-normal.woff2';
-                $css .= "@font-face{font-family:'".$family."';font-weight:".($w >= 600 ? '600 900' : '100 500').";src:url('file://".$file."') format('woff2')}";
+        foreach (self::FONT_FILES as $family => $faces) {
+            foreach ($faces as [$file, $weight, $style]) {
+                $css .= "@font-face{font-family:'".$family."';font-weight:".$weight.';font-style:'.$style.";src:url('file://".dirname(__DIR__, 2).'/resources/fonts/'.$file.".woff2') format('woff2')}";
             }
         }
 

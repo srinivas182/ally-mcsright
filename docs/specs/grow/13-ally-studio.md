@@ -40,6 +40,12 @@ monthly renewal, cancel at month end, "included in package X"):
 
 ## Designer collections and the studio
 
+**Quality bar (SA1c):** every design must look like a luxury brokerage's in-house studio made it: editorial
+typography, generous space, hairline rules, metallic accents from the brand colour, gentle photo grading and film
+grain, a signature and a monogram. No boxes, badges or generic templates. Each collection has three signature
+layouts for listings (Luxury Noir: cover, cinema, gallery; Estate: frame, gallery, arch; Modern: masthead, split,
+gallery; Coastal: arch, split, cover) and a statement layout for words, numbers, quotes and the agent's portrait.
+
 - **Collections** designed by RightAlly (not stock), refreshed each season: _Luxury Noir_ (black, gold, serif),
   _Modern_ (white space, sans), _Coastal_ (warm, light), _Estate_ (classic, framed), plus seasonal sets.
 - Each collection has layouts for: just listed, open house, price improvement, under contract, just sold, coming
@@ -108,15 +114,16 @@ monthly renewal, cancel at month end, "included in package X"):
 
 ## Sprints
 
-| Sprint   | What                                                                                                                                                                                                                                                                                      |
-| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **SA1a** | Packages (three add-ons), allowances and usage, extra-item credits, HQ cost and margin, brand kit with automatic headshot cut-out, brokerage brand lock                                                                                                                                   |
-| **SA1b** | Render workers, the four collections and their layouts in three sizes, AI art director, the studio page, download and post                                                                                                                                                                |
-| **SA2a** | Autopilot: listing moments (new, coming soon, price improvement, under contract, sold), weekly market update, holidays; AI captions (Spanish, hashtags, Fair Housing); good times; Approve first and Autopilot; daily brief; Your AI Assistant skills `studio_posts` and `studio_approve` |
-| **SA2b** | Calendar (drag to move), listing launch campaign, captions in the agent's voice, closings, reviews, milestones and recruiting moments, broker approval rules                                                                                                                              |
-| **SA3**  | Reels, Shorts and tours, music library, YouTube app                                                                                                                                                                                                                                       |
-| **SA4**  | Results, Studio report, learning                                                                                                                                                                                                                                                          |
-| **SA5**  | Photo enhancement, voice narration, comment and message replies                                                                                                                                                                                                                           |
+| Sprint   | What                                                                                                                                                                                                                                                                                                                                                   |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **SA1a** | Packages (three add-ons), allowances and usage, extra-item credits, HQ cost and margin, brand kit with automatic headshot cut-out, brokerage brand lock                                                                                                                                                                                                |
+| **SA1b** | Render workers, the four collections and their layouts in three sizes, AI art director, the studio page, download and post                                                                                                                                                                                                                             |
+| **SA1c** | Premium design system v2: editorial type (Cormorant Garamond, Bodoni Moda, Cinzel, Jost, Pinyon Script, Italiana), metallic accents from the brand colour, hairlines, film grain, photo grading; signature layouts per collection (cover, cinema, gallery, frame, arch, masthead, split, statement); premium postcards; public font route for printers |
+| **SA2a** | Autopilot: listing moments (new, coming soon, price improvement, under contract, sold), weekly market update, holidays; AI captions (Spanish, hashtags, Fair Housing); good times; Approve first and Autopilot; daily brief; Your AI Assistant skills `studio_posts` and `studio_approve`                                                              |
+| **SA2b** | Calendar (drag to move), listing launch campaign, captions in the agent's voice, closings, reviews, milestones and recruiting moments, broker approval rules                                                                                                                                                                                           |
+| **SA3**  | Reels, Shorts and tours, music library, YouTube app                                                                                                                                                                                                                                                                                                    |
+| **SA4**  | Results, Studio report, learning                                                                                                                                                                                                                                                                                                                       |
+| **SA5**  | Photo enhancement, voice narration, comment and message replies                                                                                                                                                                                                                                                                                        |
 
 ## For HQ (before go-live)
 

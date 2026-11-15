@@ -21,31 +21,39 @@ final class ArtDirector
     public const MAX_HEADLINE = 60;
 
     /**
-     * The colours a design uses, made readable: text and accent against the background, for this collection.
+     * The colours a design uses, from the brand kit and the collection's art direction: a deep or a paper ground,
+     * ink, a muted tone, hairline rules and a metallic accent (three tones of the brand colour, for gilded type and
+     * rules). Text is always readable: ink aims for 7:1 against the ground, the metal for 3:1.
      *
      * @param  array<string, string>  $colors  primary, accent, ink, paper (the brand kit's; defaults fill gaps)
-     * @return array{bg: string, fg: string, muted: string, accent: string, panel: string, rule: string, shade: string, shade0: string}
+     * @return array{dark: bool, bg: string, paper: string, fg: string, muted: string, rule: string, metal_light: string, metal: string, metal_deep: string, shade: string, bg_glow: string}
      */
     public function palette(array $colors, string $collection): array
     {
         $colors += BrandKits::DEFAULT_COLORS;
-        $dark = in_array($collection, ['luxury_noir'], true);
-        $bg = $dark ? $colors['primary'] : ($collection === 'coastal' ? self::mix($colors['paper'], '#F3EBDD', 0.6) : ($collection === 'estate' ? self::mix($colors['paper'], '#F7F3EA', 0.7) : $colors['paper']));
-        $fg = $dark ? $colors['paper'] : $colors['ink'];
-        if (self::contrast($fg, $bg) < 7.0) { // body text: aim high for a premium look
+        $dark = $collection === 'luxury_noir';
+        $bg = match ($collection) {
+            'luxury_noir' => self::luminance($colors['primary']) < 0.03 ? $colors['primary'] : self::mix($colors['primary'], '#0C0B09', 0.85),
+            'estate' => '#F2ECE1',
+            'coastal' => '#ECE4D6',
+            default => '#F3F2EF',
+        };
+        $paper = $dark ? self::mix($bg, '#FFFFFF', 0.06) : ($collection === 'coastal' ? '#F8F3EA' : '#FBF9F5');
+        $fg = $dark ? '#F3EEE5' : ($collection === 'coastal' ? '#1D2A2E' : '#1B1916');
+        if (self::contrast($fg, $bg) < 7.0) {
             $fg = self::contrast('#FFFFFF', $bg) >= self::contrast('#111111', $bg) ? '#FFFFFF' : '#111111';
         }
         $accent = $colors['accent'];
-        if (self::contrast($accent, $bg) < 3.0) { // large text and rules
-            $accent = $dark ? self::mix($accent, '#FFFFFF', 0.5) : self::mix($accent, '#000000', 0.45);
-            if (self::contrast($accent, $bg) < 3.0) {
-                $accent = $fg;
-            }
+        // The metal: lighter and brighter on a deep ground, deeper on paper, always readable as large type.
+        $metal = $dark ? self::mix($accent, '#FFFFFF', 0.08) : self::mix($accent, '#000000', 0.18);
+        for ($i = 0; $i < 6 && self::contrast($metal, $bg) < 3.0; $i++) {
+            $metal = self::mix($metal, $dark ? '#FFFFFF' : '#000000', 0.2);
         }
         [$r, $g, $b] = self::rgb($bg);
 
-        return ['bg' => $bg, 'fg' => $fg, 'muted' => self::mix($fg, $bg, 0.3), 'accent' => $accent, 'panel' => self::mix($accent, $bg, 0.82),
-            'rule' => self::mix($fg, $bg, 0.75), 'shade' => "rgba({$r},{$g},{$b},0.72)", 'shade0' => "rgba({$r},{$g},{$b},0)"];
+        return ['dark' => $dark, 'bg' => $bg, 'paper' => $paper, 'fg' => $fg, 'muted' => self::mix($fg, $bg, 0.42), 'rule' => self::mix($fg, $bg, 0.8),
+            'metal_light' => self::mix($metal, '#FFFFFF', $dark ? 0.55 : 0.35), 'metal' => $metal, 'metal_deep' => self::mix($metal, '#000000', $dark ? 0.3 : 0.35),
+            'shade' => "rgba({$r},{$g},{$b},0.82)", 'bg_glow' => self::mix($bg, $metal, $dark ? 0.14 : 0.06)];
     }
 
     /**
