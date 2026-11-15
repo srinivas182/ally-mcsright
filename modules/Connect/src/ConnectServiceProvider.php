@@ -24,6 +24,9 @@ final class ConnectServiceProvider extends ServiceProvider
         $this->app->scoped(Health::class);
         $this->app->scoped(WebhookOutbox::class);
         $this->app->bind(Outbox::class, WebhookOutbox::class);
+        $this->app->scoped(OAuth\OAuthFlow::class);
+        $this->app->scoped(Calendars\ConnectCalendars::class);
+        $this->app->bind(\Modules\Core\Connect\Calendars::class, Calendars\ConnectCalendars::class);
     }
 
     public function boot(): void
@@ -34,10 +37,12 @@ final class ConnectServiceProvider extends ServiceProvider
             $this->commands([Console\SyncConnections::class]);
         }
         Catalog::declare($this->app->make(AppCatalog::class));
+        OAuth\ClientSettings::apply();
 
         Gate::define('hq.apps.view', fn (User $user): bool => $user->kind === UserKind::HqStaff);
         $nav = $this->app->make(NavigationRegistry::class);
         $nav->add(new NavItem('Settings', 'Apps', '/apps', 'blocks', 61, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent]));
         $nav->add(new NavItem('HQ', 'App demand', '/hq/apps', 'blocks', 18, ability: 'hq.apps.view', kinds: [UserKind::HqStaff]));
+        $nav->add(new NavItem('HQ', 'Connect setup', '/hq/connect', 'key-round', 19, ability: 'hq.apps.view', kinds: [UserKind::HqStaff]));
     }
 }

@@ -11,6 +11,25 @@ re-typing anything.
 **Owner:** Team A. The sprint order and the plan items each sprint covers are in `docs/plan/delivery-plan.md`
 under "Connect".
 
+## Principles for every app (approved 2026-11-14)
+
+1. **Two-way sync goes directly through each vendor's own API.** CSV import and forwarding emails are only for a
+   one-time import, or for apps with no API.
+2. **One click, GoHighLevel-style.** The person presses **Connect**, signs in to their app, approves, and is back on
+   the Apps page, connected. There are no keys to copy and no settings to fill in. One-click (OAuth) is used
+   wherever the vendor offers it.
+3. **When a vendor only offers an API key,** the app's page walks through it in plain steps ("In Follow Up Boss, go
+   to Admin → API, copy the key, paste it here") with a short video, and the key is checked straight away.
+4. **Built for brokers and agents who don't want to learn anything new.** Most are over 50, so:
+    - big buttons, plain words, and nothing technical unless they ask;
+    - status shown as "Connected ✓, last synced 2 minutes ago", plus a **Connect again** button when something
+      breaks.
+5. **Their existing app keeps working.** RightAlly works alongside it, and on its own if they disconnect or never
+   connect anything (every module stands alone).
+6. **One return address for every brokerage domain.** One-click sign-in returns through RightAlly's central
+   address. The tokens are swapped for a single-use ticket there and handed back to the brokerage's own system,
+   the same way "Sign in with Google" works (specs/connect/02).
+
 ## Decisions (approved 2026-11-14)
 
 1. **We build our own connectors.** There is no embedded-integration vendor and no per-connection fee, and we keep

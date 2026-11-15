@@ -30,10 +30,16 @@ final class Catalog
         $catalog->add(new App('lead_email', 'Lead forwarding email', 'leads', 'Forward lead emails from Zillow, Realtor.com, Homes.com and other portals to your RightAlly address: each becomes a lead, routed and followed up.',
             auth: 'email', syncs: ['Leads in'], link: '/leads/settings'));
 
+        // One click: sign in with Google or Microsoft and approve. Ready once HQ has set up the Google and Microsoft sign-in apps.
+        $catalog->add(new App('google_calendar', 'Google Calendar', 'calendar', 'Bookings from your website only offer times you are free, and land in your Google Calendar.',
+            scope: 'agent', auth: 'oauth', syncs: ['Busy times (not what the events are)', 'New bookings into your calendar'],
+            oauth: ['provider' => 'google', 'scopes' => ['https://www.googleapis.com/auth/calendar.freebusy', 'https://www.googleapis.com/auth/calendar.events']]));
+        $catalog->add(new App('microsoft_calendar', 'Microsoft 365 Calendar', 'calendar', 'Bookings from your website only offer times you are free, and land in your Outlook calendar.',
+            scope: 'agent', auth: 'oauth', syncs: ['Busy times', 'New bookings into your calendar'],
+            oauth: ['provider' => 'microsoft', 'scopes' => ['Calendars.ReadWrite']]));
+
         // On the roadmap (people can ask for them; HQ sees the demand).
         foreach ([
-            ['google_calendar', 'Google Calendar', 'calendar', 'Two-way calendar: website bookings avoid your busy times and appear in your calendar.', 'agent', null],
-            ['microsoft_calendar', 'Microsoft 365 Calendar', 'calendar', 'Two-way Outlook calendar: website bookings avoid your busy times and appear in your calendar.', 'agent', null],
             ['follow_up_boss', 'Follow Up Boss', 'crm', 'Bring over people, notes, tags and stages, then keep them in sync while you move.', 'both', 'Your Follow Up Boss plan'],
             ['boldtrail', 'BoldTrail (kvCORE)', 'crm', 'Bring over contacts, notes and lead history from BoldTrail.', 'both', 'Your BoldTrail plan'],
             ['lofty', 'Lofty', 'crm', 'Bring over contacts, notes and lead history from Lofty (formerly Chime).', 'both', 'Your Lofty plan'],

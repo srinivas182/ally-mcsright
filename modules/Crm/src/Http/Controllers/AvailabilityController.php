@@ -9,6 +9,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Modules\Core\Connect\Calendars;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Crm\Booking\Availability;
 
@@ -24,6 +25,7 @@ final class AvailabilityController
         return Inertia::render('settings/availability', [
             'availability' => $this->availability->for($user->id),
             'timezone' => $this->availability->timezone(),
+            'calendar' => app(Calendars::class)->connected($user->id),
             'next' => array_map(fn ($s): string => $s->setTimezone($this->availability->timezone())->format('D M j, g:i A'), $this->availability->slots($user, 'call', 6, 6)),
         ]);
     }

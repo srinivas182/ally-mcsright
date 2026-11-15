@@ -1,4 +1,4 @@
-import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
 import { Monogram, type AppEntry } from '@/components/connect/monogram';
@@ -91,6 +91,7 @@ export default function AppScreen({
     const form = useForm<Record<string, string | string[]>>(initial);
     const upload = useForm<{ file: File | null }>({ file: null });
     const [copied, setCopied] = useState(false);
+    const errors = usePage().props.errors as Record<string, string>;
 
     return (
         <>
@@ -160,6 +161,57 @@ export default function AppScreen({
                                     : 'I want this app'}
                             </Button>
                         </div>
+                    </section>
+                )}
+
+                {app.one_click && app.status === 'available' && (
+                    <section className="grid gap-3 rounded-lg border p-5">
+                        {!app.ready ? (
+                            <p className="text-muted-foreground">
+                                {app.name} will be ready to connect soon. We're
+                                finishing the set-up with{' '}
+                                {app.name.split(' ')[0]}.
+                            </p>
+                        ) : !app.can_connect ? (
+                            <p className="text-muted-foreground">
+                                Your brokerage connects this app for everyone.
+                            </p>
+                        ) : (
+                            <>
+                                <p className="text-base">
+                                    {connections.length === 0
+                                        ? `Press the button, sign in to ${app.name.split(' ')[0]} and approve. That's all.`
+                                        : connections[0]?.status ===
+                                            'needs_reconnect'
+                                          ? 'The connection stopped working. Press the button to connect again.'
+                                          : `Connected as ${connections[0]?.label ?? ''}.`}
+                                </p>
+                                {(connections.length === 0 ||
+                                    connections[0]?.status ===
+                                        'needs_reconnect') && (
+                                    <div>
+                                        <Button
+                                            size="lg"
+                                            className="h-12 px-6 text-base"
+                                            onClick={() =>
+                                                router.post(
+                                                    `/apps/${app.key}/oauth`,
+                                                )
+                                            }
+                                        >
+                                            {connections.length === 0
+                                                ? `Connect ${app.name}`
+                                                : 'Connect again'}
+                                        </Button>
+                                    </div>
+                                )}
+                                {errors.app && (
+                                    <p className="text-destructive">
+                                        {errors.app}
+                                    </p>
+                                )}
+                            </>
+                        )}
                     </section>
                 )}
 

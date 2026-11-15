@@ -80,6 +80,7 @@ final class CoreServiceProvider extends ServiceProvider
         // Connect (specs/connect/00): the app catalog every module adds to, and events for outgoing webhooks.
         $this->app->singleton(Connect\AppCatalog::class);
         $this->app->bindIf(Connect\Outbox::class, Connect\NoOutbox::class);
+        $this->app->bindIf(Connect\Calendars::class, Connect\NoCalendars::class);
         $this->app->bindIf(Messaging\SmsSender::class, function ($app): Messaging\SmsSender {
             $settings = $app->make(Messaging\MessagingSettings::class);
             $creds = $settings->credentials();

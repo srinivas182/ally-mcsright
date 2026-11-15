@@ -9,6 +9,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Modules\Core\Audit\AuditLogger;
+use Modules\Core\Connect\Calendars;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
@@ -19,7 +20,8 @@ use Modules\Crm\Webhooks\CrmEvents;
 /**
  * Website booking (specs/crm/booking): each agent's weekly hours, open slots (their hours, minus their open calls,
  * showings and appointments in the CRM, minus a minimum notice), and booking a slot as a CRM task. Times are in the
- * brokerage's time zone. Calendar sync with Google or Outlook can be added later behind the same busy times.
+ * brokerage's time zone. A connected Google or Microsoft 365 calendar (specs/connect/02) adds its busy times, and each
+ * booking is put into it.
  */
 final class Availability
 {
@@ -76,6 +78,10 @@ final class Availability
         $busy = Task::query()->where('assigned_to', $agent->id)->whereNull('completed_at')->whereIn('type', ['call', 'showing', 'other'])
             ->whereBetween('due_at', [CarbonImmutable::now()->subHours(2), CarbonImmutable::now()->addDays($days + 1)])->get(['due_at', 'type'])
             ->map(fn (Task $task): array => [CarbonImmutable::parse($task->due_at)->setTimezone($tz), $task->type === 'call' ? $a['slot_minutes'] : 60]);
+        // Their own calendar's busy times (if connected; nothing if it can't be reached).
+        foreach (app(Calendars::class)->busy($agent->id, CarbonImmutable::now(), CarbonImmutable::now()->addDays($days + 1)) as [$from, $to]) {
+            $busy->push([$from->setTimezone($tz), max(1, (int) ceil($from->diffInMinutes($to)))]);
+        }
         $out = [];
         for ($d = 0; $d <= $days && count($out) < $max; $d++) {
             $day = CarbonImmutable::now($tz)->startOfDay()->addDays($d);
@@ -128,6 +134,11 @@ final class Availability
         $task = Task::query()->create(['contact_id' => $contact?->id, 'assigned_to' => $agent->id, 'type' => self::KINDS[$kind]['type'], 'title' => self::KINDS[$kind]['title'],
             'notes' => mb_substr($notes, 0, 2000), 'priority' => 'high', 'due_at' => $start->utc(), 'remind_at' => $start->utc()->subMinutes(30)]);
         CrmEvents::booking($task, $kind);
+        $minutes = self::KINDS[$kind]['minutes'] ?? $this->for($agent->id)['slot_minutes'];
+        $who = $contact !== null ? trim($contact->first_name.' '.$contact->last_name) : 'a website visitor';
+        app(Calendars::class)->addEvent($agent->id, self::KINDS[$kind]['title'].': '.$who, $start, $start->addMinutes($minutes),
+            trim(($contact?->primary_phone !== null ? 'Phone: '.$contact->primary_phone."\n" : '').($contact?->primary_email !== null ? 'Email: '.$contact->primary_email."\n" : '')
+                .'Booked through your website assistant. Details are on the task in RightAlly.'));
 
         return $task;
     }
