@@ -439,7 +439,32 @@ export default function AppScreen({
                                 </ol>
                             )}
                             {app.fields.map((f) =>
-                                f.type === 'events' ? (
+                                f.type === 'checkbox' ? (
+                                    <label
+                                        key={f.key}
+                                        className="flex items-start gap-2"
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            className="mt-1 size-4"
+                                            checked={form.data[f.key] === '1'}
+                                            onChange={(e) =>
+                                                form.setData(
+                                                    f.key,
+                                                    e.target.checked ? '1' : '',
+                                                )
+                                            }
+                                        />
+                                        <span>
+                                            {f.label}
+                                            {f.help && (
+                                                <span className="block text-sm text-muted-foreground">
+                                                    {f.help}
+                                                </span>
+                                            )}
+                                        </span>
+                                    </label>
+                                ) : f.type === 'events' ? (
                                     <fieldset
                                         key={f.key}
                                         className="grid gap-1"
