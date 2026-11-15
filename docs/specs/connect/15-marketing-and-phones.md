@@ -24,12 +24,18 @@ Sprint block **C7** (Team A, with D for consent and E for ads). Plan item: C39. 
   email address who hasn't opted out, after confirming they have permission; that choice is audited. Opted-out
   contacts never go.
 - **Push, hourly and on change:** contacts are added or updated by email (Mailchimp: PUT member by the hash of the
-  lower-cased email, status `subscribed`; Constant Contact: create-or-update into the chosen list). Their RightAlly
-  tags go as Mailchimp tags / Constant Contact tags.
+  lower-cased email, status `subscribed`, with their RightAlly tags as Mailchimp tags; Constant Contact:
+  create-or-update into the chosen list). Someone sent who later opts out here is unsubscribed in Mailchimp or taken
+  off the Constant Contact list.
+- **Whose contacts:** a brokerage connection sends the brokerage's contacts, never agents' personal ones; an
+  agent's own connection sends only their contacts.
 - **Unsubscribes come back:** Mailchimp list webhook (`unsubscribe`, `cleaned`) to the connection's own address
   (which also answers Mailchimp's GET check); Constant Contact hourly poll of unsubscribed contacts since the last
   run. Each becomes an email opt-out here (source `connected_app`, the app named).
-- **Status** on the app page: contacts in the audience, last push, unsubscribes received this month.
+- **Settings → Email marketing** (linked from the app): the audience, who goes, contacts sent, last push and
+  unsubscribes this month. Changing the audience sends everyone again to the new one.
+- Status (C7a built): Mailchimp tokens don't expire (kept as good for ten years); its webhook address answers
+  Mailchimp's GET check and takes form posts; Constant Contact tags follow in a later pass.
 
 ## C7b — Phones: RingCentral, Dialpad, Aircall (Mojo partner-only)
 
