@@ -90,7 +90,9 @@ final class OAuthFlow
         $account = $me !== null ? (string) ($me->json('email') ?? $me->json('mail') ?? $me->json('userPrincipalName') ?? $me->json('data.email') ?? '') : '';
         $ticket = Str::random(48);
         Cache::put('connect-oauth:'.hash('sha256', $ticket), Crypt::encryptString((string) json_encode(['t' => $state['t'], 'a' => $app->key, 'u' => $state['u'], 'n' => $state['n'],
-            'account' => mb_substr($account, 0, 120), 'tokens' => self::tokens($r->json())])), now()->addMinutes(2));
+            'account' => mb_substr($account, 0, 120), 'tokens' => self::tokens($r->json())
+                // QuickBooks names the company (realm) on the return address, not in the token answer.
+                + (is_string($query['realmId'] ?? null) && preg_match('/^\d{1,24}$/', $query['realmId']) === 1 ? ['realm_id' => $query['realmId']] : [])])), now()->addMinutes(2));
 
         return $back.'?'.http_build_query(['app' => $app->key, 'ticket' => $ticket]);
     }
@@ -164,7 +166,8 @@ final class OAuthFlow
         if (! $r->successful() || ! is_string($r->json('access_token'))) {
             throw new \RuntimeException($app->name.' did not answer (status '.$r->status().').');
         }
-        $c->forceFill(['credentials' => self::tokens($r->json()) + array_filter(['refresh_token' => (string) $t['refresh_token'], 'instance_url' => (string) ($t['instance_url'] ?? '')])])->save(); // a new refresh token, when sent, wins
+        $c->forceFill(['credentials' => self::tokens($r->json()) + array_filter(['refresh_token' => (string) $t['refresh_token'], 'instance_url' => (string) ($t['instance_url'] ?? ''),
+            'realm_id' => (string) ($t['realm_id'] ?? '')])])->save(); // a new refresh token, when sent, wins
 
         return (string) $r->json('access_token');
     }

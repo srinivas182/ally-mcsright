@@ -67,6 +67,7 @@ it('sends every brokerage page the data its component needs', function (string $
     'chart of accounts' => ['owner', '/finance/accounts', 'finance/accounts/index'],
     'journals' => ['owner', '/finance/journals', 'finance/journals/index'],
     'periods' => ['owner', '/finance/periods', 'finance/periods/index'],
+    'books' => ['owner', '/finance/books', 'finance/books'],
     'adjustment' => ['owner', '/finance/adjustments/create', 'finance/adjustments/create'],
     'apps' => ['owner', '/apps', 'apps/index'],
     'apps (agent)' => ['agent', '/apps', 'apps/index'],

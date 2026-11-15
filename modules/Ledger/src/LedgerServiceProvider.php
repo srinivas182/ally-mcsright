@@ -34,6 +34,7 @@ final class LedgerServiceProvider extends ServiceProvider
         $nav->add(new NavItem('Finance', 'Chart of accounts', '/finance/accounts', 'landmark', 10, ability: 'finance.ledger.view', mobile: true));
         $nav->add(new NavItem('Finance', 'Journals', '/finance/journals', 'book-open', 20, ability: 'finance.ledger.view'));
         $nav->add(new NavItem('Finance', 'Periods', '/finance/periods', 'calendar-check', 30, ability: 'finance.ledger.view'));
+        $nav->add(new NavItem('Finance', 'Books (QuickBooks, Xero)', '/finance/books', 'book-open', 35, ability: 'finance.ledger.view'));
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
 
         // Interim until roles and permissions (Sprints 5-6, specs/core/03): only the brokerage's
