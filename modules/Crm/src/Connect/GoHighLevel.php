@@ -89,7 +89,11 @@ final class GoHighLevel implements Connector
                 $next = ['phase' => 'changes', 'after' => null, 'since' => CarbonImmutable::parse((string) $cursor['started'])->subMinute()->toIso8601String(),
                     'started' => CarbonImmutable::now()->toIso8601String()];
 
-                return $counts + ['cursor' => (string) json_encode($next), 'note' => $live ? null : 'Everything is over from GoHighLevel.', 'more' => false];
+                // Caught up: keep the campaigns topped up (C7a-2).
+                $added = app(GhlCampaigns::class)->runAll($connection);
+
+                return $counts + ['cursor' => (string) json_encode($next), 'note' => $added > 0 ? $added.' added to your GoHighLevel campaigns.' : ($live ? null : 'Everything is over from GoHighLevel.'),
+                    'more' => false];
             }
             $cursor['after'] = $after;
         }
@@ -99,15 +103,18 @@ final class GoHighLevel implements Connector
 
     /**
      * @param  array<string, mixed>  $c
-     * @return array{id: string, first_name: string, last_name: string, email: string|null, phone: string|null, tags: list<string>, stage: string|null, source: string|null, agent_id: string|null}
+     * @return array{id: string, first_name: string, last_name: string, email: string|null, phone: string|null, tags: list<string>, stage: string|null, source: string|null, agent_id: string|null, sms_opt_out: bool, email_opt_out: bool, do_not_call: bool}
      */
     private static function person(array $c): array
     {
         $s = fn (string $k): ?string => is_scalar($c[$k] ?? null) && trim((string) $c[$k]) !== '' ? trim((string) $c[$k]) : null;
+        // "Do not disturb" in GoHighLevel (all channels, or per channel) stops that channel here too (specs/grow/11).
+        $dnd = ($c['dnd'] ?? false) === true;
+        $off = fn (string $ch): bool => $dnd || (($c['dndSettings'][$ch]['status'] ?? null) === 'active');
 
         return ['id' => $s('id') ?? '', 'first_name' => $s('firstName') ?? '', 'last_name' => $s('lastName') ?? '', 'email' => $s('email'), 'phone' => $s('phone'),
             'tags' => array_values(array_filter((array) ($c['tags'] ?? []), fn ($t): bool => is_string($t) && trim($t) !== '')), 'stage' => null,
-            'source' => $s('source'), 'agent_id' => $s('assignedTo')];
+            'source' => $s('source'), 'agent_id' => $s('assignedTo'), 'sms_opt_out' => $off('SMS'), 'email_opt_out' => $off('Email'), 'do_not_call' => $off('Call')];
     }
 
     /** @param  array{created: int, updated: int, skipped: int}  $counts */

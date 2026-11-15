@@ -173,7 +173,8 @@ Seven approved growth items are built before Connect C7 and C8, in this order:
 | AW1    | B           | Agent Wallet: year so far tied to statements, cap progress, deals on their way, revenue share, get paid now, owed                                                                           | specs/finance/03                 |
 | FH1    | D           | Fair Housing on every channel, logged by channel; monthly audit pack PDF to owners                                                                                                          | specs/grow/12                    |
 | C7a    | A with D    | Email marketing: Mailchimp and Constant Contact, consented contacts out, unsubscribes back as opt-outs                                                                                      | specs/connect/15                 |
-| Next   | A           | C7b phones, C7c direct mail, C7d Google Ads, Canva, social; then C8; then Movewise                                                                                                          | specs/connect/15, specs/movewise |
+| C7a-2  | A with D    | GoHighLevel campaigns: tags or smart lists into workflows, campaigns or trigger tags, consent per channel, DND back                                                                         | specs/connect/16                 |
+| Next   | A, D        | AI1 "Your AI Assistant" (one back-office assistant over every skill and connected app); then C7b, C7c, C7d, C8, Movewise                                                                    | specs/connect/15, specs/movewise |
 
 ## Movewise: HQ's consumer home site and lead marketplace (added 2026-11-15)
 
