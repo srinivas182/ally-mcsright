@@ -123,6 +123,7 @@ final class CoreServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        $this->app->make(Mcp\McpToolbox::class)->add(Mcp\DailyBrief::class); // sections come from each module
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'core');
         $this->loadRoutesFrom(__DIR__.'/../routes/hq.php');

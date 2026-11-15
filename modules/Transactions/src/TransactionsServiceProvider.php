@@ -54,6 +54,7 @@ final class TransactionsServiceProvider extends ServiceProvider
         // Tools for people's AI assistants (MCP, specs/connect/03): the same deal access rule as the screens.
         $this->app->make(McpToolbox::class)->add(Mcp\MyDeals::class);
         $this->app->make(McpToolbox::class)->add(Mcp\DealDetails::class);
+        $this->app->make(McpToolbox::class)->brief('deal_deadlines', Mcp\DealDeadlines::forBrief(...));
         Gate::define('transactions.queue', fn (User $user): bool => $user->isKind(UserKind::Owner, UserKind::Staff)
             || $user->can('transactions.review'));
         $nav->add(new NavItem('Overview', 'Deals', '/deals', 'briefcase', 25, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant], mobile: true));

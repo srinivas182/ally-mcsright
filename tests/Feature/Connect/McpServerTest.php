@@ -17,7 +17,10 @@ use Modules\Core\Connect\AppCatalog;
 use Modules\Core\Mcp\McpToolbox;
 use Modules\Core\Mcp\RightAllyTool;
 use Modules\Core\Support\Connections;
+use Modules\Crm\Actions\Tasks;
+use Modules\Crm\Models\Activity;
 use Modules\Crm\Models\Contact;
+use Modules\Crm\Models\Task;
 use Modules\Transactions\Models\Deal;
 
 /* Sprint M1: the RightAlly MCP server — people's AI assistants act as them, with exactly their access. */
@@ -37,6 +40,35 @@ final class McpTestWriteTool extends RightAllyTool
     protected function run(Request $request, User $user): Response|array
     {
         return ['wrote' => true];
+    }
+}
+
+/** A bulk tool, to prove confirm-first (a preview, then the person's yes). */
+final class McpTestBulkTool extends RightAllyTool
+{
+    public static int $runs = 0;
+
+    protected string $name = 'test_bulk';
+
+    protected bool $writes = true;
+
+    protected bool $confirmFirst = true;
+
+    protected function allows(User $user): bool
+    {
+        return true;
+    }
+
+    protected function preview(Request $request, User $user): array
+    {
+        return ['would_message' => 120];
+    }
+
+    protected function run(Request $request, User $user): Response|array
+    {
+        self::$runs++;
+
+        return ['sent' => 120];
     }
 }
 
@@ -195,4 +227,63 @@ it('gives each AI assistant its own tile with plain steps, and lets HQ switch on
     $r = $this->postJson('/mcp', ['jsonrpc' => '2.0', 'id' => 1, 'method' => 'tools/call', 'params' => ['name' => 'my_deals', 'arguments' => []]])->assertOk();
     expect($r->json('result.isError'))->toBeFalsy();
     $this->actingAs($this->ann)->get('/apps/ai_chatgpt')->assertInertia(fn (Assert $p) => $p->where('app.status', 'soon'));
+});
+
+/* Sprint M2a: write tools, confirm-first, and the daily brief. */
+
+it('lets an assistant add contacts, notes and tasks as the person, only where they could on the screens', function (): void {
+    $w = ['mcp:use', 'rightally:write'];
+    expect(collect(mcpCall($this->ann, 'tools/list', [], $w)->json('result.tools'))->pluck('name')->all())
+        ->toContain('add_contact', 'log_note', 'add_task', 'complete_task', 'daily_brief');
+
+    $added = mcpTool($this->ann, 'add_contact', ['first_name' => 'Rosa', 'last_name' => 'Diaz', 'email' => 'rosa@example.test', 'note' => 'Wants 3 beds in 78704'], $w);
+    $rosa = Contact::query()->where('primary_email', 'rosa@example.test')->sole();
+    expect($added['data']['added']['name'])->toBe('Rosa Diaz')->and($rosa->owner_user_id)->toBe($this->ann->id)->and($rosa->origin->value)->toBe('personal')
+        ->and(Activity::query()->where('contact_id', $rosa->id)->where('type', 'note')->value('body'))->toBe('Wants 3 beds in 78704');
+    expect(mcpTool($this->ann, 'add_contact', ['first_name' => 'Rosa', 'email' => 'rosa@example.test'], $w)['text'])->toContain('already have this contact');
+    expect(mcpTool($this->ann, 'add_contact', ['first_name' => 'X', 'email' => 'x@example.test'])['text'])->toContain('can only read'); // no write approval
+
+    $mark = Contact::query()->where('first_name', 'Mark')->sole(); // Bob's
+    expect(mcpTool($this->ann, 'log_note', ['contact_id' => $mark->ulid, 'note' => 'hi'], $w)['text'])->toContain('No contact with that id that you can see');
+    expect(mcpTool($this->ann, 'log_note', ['contact_id' => $rosa->ulid, 'note' => 'Called, loves Zilker', 'call_outcome' => 'connected'], $w)['data']['logged']['type'])->toBe('call');
+
+    $task = mcpTool($this->ann, 'add_task', ['title' => 'Send Rosa listings', 'due' => 'tomorrow', 'contact_id' => $rosa->ulid], $w);
+    expect($task['error'])->toBeFalse()->and($task['data']['added']['contact'])->toBe('Rosa Diaz');
+    expect(mcpTool($this->ann, 'add_task', ['title' => 'x', 'due' => 'whenever-ish'], $w)['text'])->toContain('Give the due date like');
+    $t = Task::query()->where('title', 'Send Rosa listings')->sole();
+    expect($t->assigned_to)->toBe($this->ann->id);
+    expect(mcpTool($this->bob, 'complete_task', ['task_id' => $t->ulid], $w)['text'])->toBe('No task with that id that you can see.');
+    mcpTool($this->ann, 'complete_task', ['task_id' => $t->ulid], $w);
+    expect($t->fresh()?->completed_at)->not->toBeNull();
+});
+
+it('asks for the person\'s yes before any bulk or costly action', function (): void {
+    app(McpToolbox::class)->add(McpTestBulkTool::class);
+    McpTestBulkTool::$runs = 0;
+    $w = ['mcp:use', 'rightally:write'];
+    $first = json_decode(mcpTool($this->ann, 'test_bulk', ['list' => 'buyers'], $w)['text'], true);
+    expect($first['preview'])->toBe(['would_message' => 120])->and($first['confirm'])->toBeString()->and($first['note'])->toContain('Nothing has changed yet')
+        ->and(McpTestBulkTool::$runs)->toBe(0);
+
+    mcpTool($this->ann, 'test_bulk', ['list' => 'sellers', 'confirm' => $first['confirm']], $w); // other arguments: a new preview
+    expect(McpTestBulkTool::$runs)->toBe(0);
+    mcpTool($this->bob, 'test_bulk', ['list' => 'buyers', 'confirm' => $first['confirm']], $w); // someone else's code
+    expect(McpTestBulkTool::$runs)->toBe(0);
+
+    expect(mcpTool($this->ann, 'test_bulk', ['list' => 'buyers', 'confirm' => $first['confirm']], $w)['data'])->toBe(['sent' => 120]);
+    mcpTool($this->ann, 'test_bulk', ['list' => 'buyers', 'confirm' => $first['confirm']], $w); // used up
+    expect(McpTestBulkTool::$runs)->toBe(1);
+});
+
+it('gives a daily brief of the person\'s own day', function (): void {
+    $this->travelTo(now()->utc()->setTime(16, 0)); // late morning in the agent's time zone
+    app(Tasks::class)->create(null, ['title' => 'Call the lender', 'due' => 'today'], $this->ann);
+    app(Tasks::class)->create(null, ['title' => 'Bob only', 'due' => 'today'], $this->bob);
+    $brief = mcpTool($this->ann, 'daily_brief')['data'];
+
+    expect($brief)->toHaveKeys(['for', 'date', 'call_today', 'tasks', 'new_leads', 'deal_deadlines'])
+        ->and($brief['for'])->toBe('Ann')
+        ->and(collect($brief['tasks']['today'])->pluck('title')->all())->toBe(['Call the lender'])
+        ->and(collect($brief['new_leads'])->pluck('name')->all())->toBe(['Maria Lopez'])
+        ->and($brief['deal_deadlines'])->toBeArray();
 });
