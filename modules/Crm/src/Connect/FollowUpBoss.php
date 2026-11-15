@@ -246,6 +246,8 @@ final class FollowUpBoss implements TwoWay
         $http = $this->http($connection);
         if ($entity === 'contact') {
             $this->pushContact($connection, $http, $localId);
+        } elseif ($entity === 'contact_update') {
+            $this->pushChange($connection, $http, $localId);
         } elseif ($entity === 'note') {
             $activity = Activity::query()->find($localId);
             if ($activity === null || $activity->type !== 'note' || $this->kit->externalId($connection, 'note', $localId) !== null) {
@@ -258,6 +260,28 @@ final class FollowUpBoss implements TwoWay
             $r = $http->post('notes', ['personId' => (int) $person, 'subject' => 'From RightAlly', 'body' => mb_substr((string) $activity->body, 0, 9000), 'isHtml' => false]);
             self::ok($r);
             $this->kit->remember($connection, 'note', (string) $r->json('id'), $localId);
+        }
+    }
+
+    /**
+     * Name and agent changes to a person who is already linked. Emails, phones, stage and tags are not sent: Follow
+     * Up Boss would replace its own lists, and its stages are each account's own.
+     */
+    private function pushChange(ConnectionData $connection, PendingRequest $http, int $contactId): void
+    {
+        $known = $this->kit->externalId($connection, 'contact', $contactId);
+        $c = Contact::query()->find($contactId);
+        if ($known === null || $c === null) {
+            return;
+        }
+        $agent = $c->owner_user_id !== null ? $this->kit->externalId($connection, 'user', (int) $c->owner_user_id) : null;
+        $r = $http->put('people/'.$known, array_filter(['firstName' => $c->first_name, 'lastName' => $c->last_name,
+            'assignedUserId' => $agent !== null ? (int) $agent : null], fn ($v) => $v !== null && $v !== ''));
+        if (in_array($r->status(), [401, 403], true)) {
+            throw new NeedsReconnect('Follow Up Boss no longer accepts the connection. Please connect it again.');
+        }
+        if ($r->status() !== 404) { // deleted in Follow Up Boss: nothing to update
+            $r->throw();
         }
     }
 

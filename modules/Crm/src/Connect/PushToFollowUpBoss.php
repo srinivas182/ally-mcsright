@@ -12,7 +12,7 @@ use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Modules\Core\Connect\ConnectorKit;
 use Modules\Core\Connect\NeedsReconnect;
 
-/** Sends one RightAlly contact or note to Follow Up Boss (specs/connect/05); safe to repeat. */
+/** Sends one RightAlly contact, contact change or note to Follow Up Boss (specs/connect/05); safe to repeat. */
 final class PushToFollowUpBoss implements ShouldQueue
 {
     use Dispatchable;
@@ -38,7 +38,7 @@ final class PushToFollowUpBoss implements ShouldQueue
     public function handle(ConnectorKit $kit, FollowUpBoss $driver): void
     {
         $c = $kit->connection($this->connectionId);
-        if ($c === null || ! in_array($this->entity, ['contact', 'note'], true)) {
+        if ($c === null || ! in_array($this->entity, ['contact', 'contact_update', 'note'], true)) {
             return;
         }
         try {
