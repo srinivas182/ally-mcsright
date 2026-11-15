@@ -215,7 +215,9 @@ final class OAuthFlow
         $j = is_array($json) ? $json : [];
 
         return array_filter(['access_token' => (string) ($j['access_token'] ?? ''), 'refresh_token' => (string) ($j['refresh_token'] ?? ''),
-            'expires_at' => (string) (CarbonImmutable::now()->getTimestamp() + max(60, (int) ($j['expires_in'] ?? 3600))), 'scope' => (string) ($j['scope'] ?? ''),
+            // Mailchimp's tokens never expire ("expires_in": 0): treated as good for ten years.
+            'expires_at' => (string) (CarbonImmutable::now()->getTimestamp() + (array_key_exists('expires_in', $j) && (int) $j['expires_in'] === 0 ? 315_360_000 : max(60, (int) ($j['expires_in'] ?? 3600)))),
+            'scope' => (string) ($j['scope'] ?? ''),
             // Salesforce: each org has its own API address, sent with every token.
             'instance_url' => is_string($j['instance_url'] ?? null) && str_starts_with($j['instance_url'], 'https://') ? $j['instance_url'] : ''],
             fn (string $v): bool => $v !== '');

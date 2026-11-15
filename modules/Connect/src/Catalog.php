@@ -8,12 +8,14 @@ use Modules\Ads\Meta\MetaAdsConnector;
 use Modules\Core\Connect\App;
 use Modules\Core\Connect\AppCatalog;
 use Modules\Crm\Connect\BoldTrail;
+use Modules\Crm\Connect\ConstantContact;
 use Modules\Crm\Connect\FacebookLeads;
 use Modules\Crm\Connect\FollowUpBoss;
 use Modules\Crm\Connect\GoHighLevel;
 use Modules\Crm\Connect\GoogleLsa;
 use Modules\Crm\Connect\HubSpot;
 use Modules\Crm\Connect\Lofty;
+use Modules\Crm\Connect\Mailchimp;
 use Modules\Crm\Connect\Pipedrive;
 use Modules\Crm\Connect\Salesforce;
 use Modules\Crm\Connect\Sierra;
@@ -410,6 +412,28 @@ final class Catalog
                 'docs' => 'https://developer.xero.com/documentation/api/accounting/manualjournals'],
             guide: ['steps' => ['Press Connect, sign in to Xero, and choose your organisation.', 'Press Allow access.', 'Then map your accounts once under Finance → Books. Journals start posting straight away.']]));
 
+        // Email marketing (specs/connect/15, C7a): consented contacts out, unsubscribes back.
+        $catalog->add(new App('mailchimp', 'Mailchimp', 'marketing', 'Contacts who agreed to email go to your Mailchimp audience with their tags; unsubscribes come back and stop email here.',
+            scope: 'both', auth: 'oauth', syncs: ['Contacts who agreed to email (or, if you choose, everyone not opted out), every hour', 'Their tags', 'Unsubscribes and cleaned addresses back, within seconds'],
+            driver: Mailchimp::class, vendorCost: 'Your Mailchimp plan', link: '/settings/email-marketing',
+            oauth: ['provider' => 'mailchimp', 'scopes' => [], 'authorize' => 'https://login.mailchimp.com/oauth2/authorize', 'token' => 'https://login.mailchimp.com/oauth2/token',
+                'userinfo' => '', 'response_type' => 'code', 'pkce' => false, 'token_auth' => 'post'],
+            setup: ['needs' => 'keys', 'fields' => [['key' => 'client_id', 'label' => 'Client ID'], ['key' => 'client_secret', 'label' => 'Client secret', 'secret' => true]],
+                'steps' => ['In Mailchimp, go to Account & billing → Extras → Registered apps and register an app called RightAlly.', 'Use the return address shown above as its redirect URI.',
+                    'Copy the client ID and secret here and switch Mailchimp on.'],
+                'partner' => 'Free. Listing in the Mailchimp Marketplace is optional and reviewed by Mailchimp.', 'docs' => 'https://mailchimp.com/developer/marketing/guides/access-user-data-oauth-2/'],
+            guide: ['steps' => ['Press Connect and sign in to Mailchimp.', 'Choose your audience and who goes under Settings → Email marketing.', 'Contacts start going on the next run (hourly).']]));
+        $catalog->add(new App('constant_contact', 'Constant Contact', 'marketing', 'Contacts who agreed to email go to your Constant Contact list; unsubscribes come back and stop email here.',
+            scope: 'both', auth: 'oauth', syncs: ['Contacts who agreed to email (or, if you choose, everyone not opted out), every hour', 'Unsubscribes back, every hour'],
+            driver: ConstantContact::class, vendorCost: 'Your Constant Contact plan', link: '/settings/email-marketing',
+            oauth: ['provider' => 'constant_contact', 'scopes' => ['contact_data', 'offline_access'], 'authorize' => 'https://authz.constantcontact.com/oauth2/default/v1/authorize',
+                'token' => 'https://authz.constantcontact.com/oauth2/default/v1/token', 'userinfo' => '', 'response_type' => 'code', 'pkce' => true, 'token_auth' => 'basic'],
+            setup: ['needs' => 'keys', 'fields' => [['key' => 'client_id', 'label' => 'API key (client ID)'], ['key' => 'client_secret', 'label' => 'Client secret', 'secret' => true]],
+                'steps' => ['At developer.constantcontact.com, create an application called RightAlly using the authorization code flow with PKCE and rotating refresh tokens.',
+                    'Add the return address shown above as its redirect URI.', 'Generate a client secret, copy the API key and secret here, and switch Constant Contact on.'],
+                'partner' => 'Free for your own app. Constant Contact\'s Technology Partner program is optional.', 'docs' => 'https://developer.constantcontact.com/api_guide/auth_overview.html'],
+            guide: ['steps' => ['Press Connect and sign in to Constant Contact.', 'Choose your list and who goes under Settings → Email marketing.', 'Contacts start going on the next run (hourly).']]));
+
         // On the roadmap (people can ask for them; HQ sees the demand). Some need a partner agreement first.
         foreach ([
             ['real_geeks', 'Real Geeks', 'crm', 'Bring over leads and their activity from Real Geeks.', 'both', 'Your Real Geeks plan'],
@@ -433,9 +457,7 @@ final class Catalog
             ['spacio', 'Spacio', 'showings', 'Open house sign-ins become contacts with consent recorded.', 'agent', 'Your Spacio plan'],
             ['canva', 'Canva', 'marketing', 'Design with your brand kit and listing photos, then use the designs in posts and ads.', 'agent', null],
             ['social_posting', 'Social posting', 'marketing', 'Post listings and market updates to Facebook, Instagram, LinkedIn and your Google Business Profile.', 'agent', null],
-            ['mailchimp', 'Mailchimp', 'marketing', 'Keep audiences in sync with your contacts and tags.', 'both', 'Your Mailchimp plan'],
             ['direct_mail', 'Direct mail', 'marketing', 'Just listed, just sold and farming postcards, printed and mailed from RightAlly.', 'agent', 'Printing and postage'],
-            ['constant_contact', 'Constant Contact', 'marketing', 'Keep email lists in sync with your contacts and tags.', 'both', 'Your Constant Contact plan'],
             ['bombbomb', 'BombBomb', 'marketing', 'Video emails logged on contacts, with views and replies.', 'agent', 'Your BombBomb plan'],
             ['corefact', 'Corefact', 'marketing', 'Printed farming and listing mail from your RightAlly lists.', 'agent', 'Printing and postage'],
             ['ringcentral', 'RingCentral', 'phones', 'Calls and texts from your RingCentral number logged on contacts.', 'both', 'Your RingCentral plan'],
