@@ -38,6 +38,14 @@ type Current = {
         email: string | null;
     };
     messages: Msg[];
+    nurture: {
+        status: string;
+        touches: number;
+        next_at: string | null;
+        ends_on: string;
+        last_reason: string | null;
+        stopped_reason: string | null;
+    } | null;
     ai: {
         status: string;
         reason: string | null;
@@ -300,6 +308,34 @@ function Thread({
                                 {current.ai.next_message}”
                             </p>
                         )}
+                </div>
+            )}
+            {current.nurture && (
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3">
+                    <p>
+                        <span className="font-medium">Long follow-up: </span>
+                        {current.nurture.status === 'active'
+                            ? `${current.nurture.touches} sent so far, next ${current.nurture.next_at ? time(current.nurture.next_at) : 'soon'}. Runs until ${current.nurture.ends_on} or until they reply.`
+                            : current.nurture.status === 'replied'
+                              ? 'they replied. Over to you.'
+                              : current.nurture.status === 'done'
+                                ? 'finished after 12 months.'
+                                : `stopped${current.nurture.stopped_reason ? ` (${current.nurture.stopped_reason.replaceAll('_', ' ')})` : ''}.`}
+                    </p>
+                    {current.nurture.status === 'active' && (
+                        <Button
+                            variant="outline"
+                            onClick={() =>
+                                router.post(
+                                    `/inbox/${current.ulid}/nurture/stop`,
+                                    {},
+                                    { preserveScroll: true },
+                                )
+                            }
+                        >
+                            Stop follow-up
+                        </Button>
+                    )}
                 </div>
             )}
             <ol

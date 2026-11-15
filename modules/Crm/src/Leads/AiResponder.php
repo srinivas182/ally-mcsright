@@ -45,13 +45,13 @@ final class AiResponder
     public function __construct(private readonly TenantContext $tenants, private readonly Timeline $timeline) {}
 
     /**
-     * @return array{enabled: bool, assistant_name: string, tone: string, max_messages: int, sources: list<string>|null, knowledge: string}
+     * @return array{enabled: bool, nurture_enabled: bool, assistant_name: string, tone: string, max_messages: int, sources: list<string>|null, knowledge: string}
      */
     public function settings(): array
     {
         $r = DB::connection(Connections::cell())->table('crm_ai_responder_settings')->where('tenant_id', $this->tenants->id())->first();
 
-        return ['enabled' => (bool) ($r->enabled ?? false), 'assistant_name' => (string) ($r->assistant_name ?? 'Ally'), 'tone' => (string) ($r->tone ?? 'friendly'),
+        return ['enabled' => (bool) ($r->enabled ?? false), 'nurture_enabled' => (bool) ($r->nurture_enabled ?? false), 'assistant_name' => (string) ($r->assistant_name ?? 'Ally'), 'tone' => (string) ($r->tone ?? 'friendly'),
             'max_messages' => (int) ($r->max_messages ?? 6), 'sources' => isset($r->sources) ? array_values((array) json_decode((string) $r->sources, true)) : null,
             'knowledge' => (string) ($r->knowledge ?? '')];
     }
@@ -84,11 +84,11 @@ final class AiResponder
             throw ValidationException::withMessages($errors);
         }
         DB::connection(Connections::cell())->table('crm_ai_responder_settings')->updateOrInsert(['tenant_id' => $this->tenants->id()], [
-            'enabled' => (bool) ($in['enabled'] ?? false), 'assistant_name' => $name, 'tone' => ($in['tone'] ?? '') === 'professional' ? 'professional' : 'friendly',
+            'enabled' => (bool) ($in['enabled'] ?? false), 'nurture_enabled' => (bool) ($in['nurture_enabled'] ?? false), 'assistant_name' => $name, 'tone' => ($in['tone'] ?? '') === 'professional' ? 'professional' : 'friendly',
             'max_messages' => $max, 'sources' => $sources !== null ? json_encode($sources) : null, 'knowledge' => $knowledge !== '' ? $knowledge : null,
             'updated_at' => now(), 'created_at' => now(),
         ]);
-        app(AuditLogger::class)->record('crm.ai_responder.saved', metadata: ['enabled' => (bool) ($in['enabled'] ?? false), 'max_messages' => $max], severity: 'notice');
+        app(AuditLogger::class)->record('crm.ai_responder.saved', metadata: ['enabled' => (bool) ($in['enabled'] ?? false), 'nurture' => (bool) ($in['nurture_enabled'] ?? false), 'max_messages' => $max], severity: 'notice');
     }
 
     /**

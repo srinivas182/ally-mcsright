@@ -166,7 +166,8 @@ Seven approved growth items are built before Connect C7 and C8, in this order:
 | ------ | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
 | LG1a   | E    | Lead Generation Engine 1: buyer and seller funnels (home value, new listings, first home, moving), value first, consented capture, saved search or value range, visits and leads per funnel | specs/grow/03                      |
 | LG1b   | E    | Monthly home-value report emails; promote a funnel with an own-account Meta ad or Boost                                                                                                     | specs/grow/03                      |
-| Next   | E    | Lead-IQ 12-month AI nurture; daily brief; buyer demand before listing; proof of consent; Agent Wallet; Fair Housing audit pack                                                              | docs/plan/market-2026-additions.md |
+| LN1    | E    | Lead-IQ long nurture: 12 months of AI follow-up for quiet leads, timed by engagement, handed to the agent on reply                                                                          | specs/grow/09                      |
+| Next   | E    | Daily brief; buyer demand before listing; proof of consent; Agent Wallet; Fair Housing audit pack                                                                                           | docs/plan/market-2026-additions.md |
 
 ## Movewise: HQ's consumer home site and lead marketplace (added 2026-11-15)
 

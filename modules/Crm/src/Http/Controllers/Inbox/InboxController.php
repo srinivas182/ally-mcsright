@@ -18,6 +18,7 @@ use Modules\Crm\Inbox\Inbox;
 use Modules\Crm\Inbox\SignCodes;
 use Modules\Crm\Inbox\Templates;
 use Modules\Crm\Leads\AiResponder;
+use Modules\Crm\Leads\LongNurture;
 use Modules\Crm\Models\Contact;
 use Modules\Crm\Models\Conversation;
 use Modules\Crm\Models\Message;
@@ -53,6 +54,7 @@ final class InboxController
                         'status' => $m->status, 'at' => $m->created_at->toIso8601String(), 'ai' => $m->ai_drafted,
                         'by' => $m->user_id !== null ? User::query()->find($m->user_id)?->first_name : null]),
                 'ai' => app(AiResponder::class)->brief($contact),
+                'nurture' => app(LongNurture::class)->state($contact),
                 // What stops a message right now (independent of what is written).
                 'blocks' => ['sms' => $inbox->check($contact, 'sms', 'ok'), 'email' => $inbox->check($contact, 'email', 'ok')],
                 'templates' => $templates->for($user)->map(fn (Template $t): array => ['ulid' => $t->ulid, 'name' => $t->name, 'channel' => $t->channel,
@@ -108,6 +110,16 @@ final class InboxController
 
             return response()->json(['message' => 'The AI assistant is unavailable right now. Please write the reply yourself.'], 422);
         }
+    }
+
+    /** Stops the long AI follow-up for this person (anyone who can see them). */
+    public function stopNurture(Request $request, Conversation $conversation, ContactVisibility $visibility, LongNurture $nurture): RedirectResponse
+    {
+        abort_unless($visibility->canSee(self::user($request), $conversation->contact), 404);
+        $nurture->stop($conversation->contact, 'stopped_by_agent');
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Long follow-up stopped.']);
+
+        return back();
     }
 
     public function assign(Request $request, Conversation $conversation): RedirectResponse
