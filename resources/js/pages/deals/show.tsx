@@ -14,6 +14,7 @@ import {
     type DealDocument,
     type Fact,
 } from '@/components/deals/doc-iq';
+import { DealPay, type PayOverrides } from '@/components/deals/deal-pay';
 import { KeyDates, type KeyDate } from '@/components/deals/key-dates';
 import {
     CompliancePanel,
@@ -53,6 +54,10 @@ type Props = {
         closed_on: string | null;
         locked: boolean;
         imported_from: string | null;
+        money_status: string | null;
+        money_note: string | null;
+        pay_overrides: PayOverrides;
+        agent_paid_outside: boolean;
         cancel_reason: string | null;
         agent: string | null;
     };
@@ -270,7 +275,12 @@ export default function ShowDeal({
     referrals: Referral[];
     cdas: Cda[];
     titles: { ulid: string; name: string }[];
-    can: { trust: boolean; approveCda: boolean; export: boolean };
+    can: {
+        trust: boolean;
+        approveCda: boolean;
+        export: boolean;
+        managePay?: boolean;
+    };
 }) {
     const contract = useForm({
         status: 'under_contract',
@@ -310,6 +320,16 @@ export default function ShowDeal({
                         </span>
                     )}
                 </section>
+                {deal.status === 'closed' && can.managePay && (
+                    <DealPay
+                        ulid={deal.ulid}
+                        status={deal.money_status}
+                        note={deal.money_note}
+                        overrides={deal.pay_overrides}
+                        importedFrom={deal.imported_from}
+                        paidOutside={deal.agent_paid_outside}
+                    />
+                )}
                 {deal.status === 'pre_contract' && (
                     <form
                         className="flex flex-wrap items-end gap-2 rounded-lg border p-4 text-sm"

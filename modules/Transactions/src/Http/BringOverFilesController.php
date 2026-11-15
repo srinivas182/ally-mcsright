@@ -12,10 +12,13 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
+use Modules\Core\Connect\ConnectorKit;
+use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Transactions\DealAccess;
 use Modules\Transactions\Jobs\BringOverFilesJob;
+use Modules\Transactions\Models\Deal;
 
 /**
  * Transactions → Bring over files (specs/connect/12): upload a SkySlope or Lone Wolf file export once; its PDFs are
@@ -23,9 +26,9 @@ use Modules\Transactions\Jobs\BringOverFilesJob;
  */
 final class BringOverFilesController
 {
-    public function index(Request $request): Response
+    public function index(Request $request, ConnectorKit $kit): Response
     {
-        self::reviewer($request);
+        $user = self::reviewer($request);
 
         return Inertia::render('deals/bring-over-files', [
             'imports' => DB::connection(Connections::cell())->table('tx_file_imports')->orderByDesc('id')->limit(20)->get()->map(fn (object $r): array => [
@@ -33,6 +36,14 @@ final class BringOverFilesController
                 'unmatched' => is_string($r->unmatched) ? (array) json_decode($r->unmatched, true) : [], 'error' => $r->error,
                 'at' => (string) $r->created_at])->all(),
             'limits' => ['max_mb' => 500],
+            // Close there, paid here (C5a-3): from when each connected app's closings are paid here, and how agents get
+            // their own commission on those deals.
+            'connections' => collect(['dotloop' => 'dotloop', 'skyslope' => 'SkySlope', 'lone_wolf' => 'Lone Wolf'])->flatMap(fn (string $name, string $key) => collect($kit->connections($key))
+                ->map(fn ($c): array => ['ulid' => $c->ulid, 'app' => $name, 'pay_from' => is_string($c->settings['pay_from'] ?? null) ? $c->settings['pay_from'] : null]))->values()->all(),
+            'syncedCommission' => (string) (DB::connection(Connections::cell())->table('tx_settings')->value('synced_commission') ?? 'outside'),
+            'owner' => $user->isKind(UserKind::Owner),
+            'waiting' => Deal::query()->whereIn('money_status', ['needs_gci', 'needs_review'])->orderBy('closed_on')->limit(50)->get()
+                ->map(fn (Deal $d): array => ['ulid' => $d->ulid, 'street' => $d->street, 'status' => $d->money_status, 'note' => $d->money_note, 'from' => $d->imported_from])->all(),
         ]);
     }
 

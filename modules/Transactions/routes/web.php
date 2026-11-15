@@ -10,12 +10,15 @@ use Modules\Transactions\Http\DeadlinesController;
 use Modules\Transactions\Http\DealController;
 use Modules\Transactions\Http\DocumentReadingController;
 use Modules\Transactions\Http\MoneyDeskController;
+use Modules\Transactions\Http\PayController;
 
 Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoffice.minimal'])->prefix('deals')->name('deals.')->group(function (): void {
     Route::get('/', [DealController::class, 'index'])->name('index');
     Route::get('review', [DealController::class, 'queue'])->name('review');
     Route::get('bring-over-files', [BringOverFilesController::class, 'index'])->name('files.index');
     Route::post('bring-over-files', [BringOverFilesController::class, 'store'])->middleware('throttle:10,1')->name('files.store');
+    Route::post('pay-settings', [PayController::class, 'settings'])->name('pay.settings');
+    Route::post('pay-from', [PayController::class, 'payFrom'])->name('pay.from');
     Route::get('compliance', [ComplianceController::class, 'settings'])->name('compliance');
     Route::get('risk', [DeadlinesController::class, 'risk'])->name('risk');
     Route::get('risk.csv', [DeadlinesController::class, 'export'])->name('risk.export');
@@ -29,6 +32,10 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoff
     Route::post('/', [DealController::class, 'store'])->name('store');
     Route::get('{deal}', [DealController::class, 'show'])->name('show');
     Route::post('{deal}/status', [DealController::class, 'status'])->name('status');
+    Route::post('{deal}/pay/override', [PayController::class, 'override'])->middleware('throttle:20,1')->name('pay.override');
+    Route::post('{deal}/pay/reverse', [PayController::class, 'reverse'])->middleware('throttle:20,1')->name('pay.reverse');
+    Route::post('{deal}/pay/again', [PayController::class, 'again'])->middleware('throttle:20,1')->name('pay.again');
+    Route::post('{deal}/pay/gci', [PayController::class, 'gci'])->middleware('throttle:20,1')->name('pay.gci');
     Route::post('{deal}/dates', [DealController::class, 'addDate'])->name('dates.store');
     Route::post('{deal}/facts', [DocumentReadingController::class, 'apply'])->name('facts.apply');
     Route::post('{deal}/compliance/scan', [ComplianceController::class, 'scan'])->middleware('throttle:20,1,compliance-scan')->name('compliance.scan');

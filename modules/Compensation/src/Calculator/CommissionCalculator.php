@@ -116,6 +116,10 @@ final class CommissionCalculator
         }
 
         $agentGross = $base->subtract($company);
+        if ($postCapFee !== null && $input->waiveFees) {
+            $postCapFee = null;
+            $steps[] = 'Post-cap fee waived by the broker.';
+        }
         if ($postCapFee !== null) {
             if ($postCapFee->greaterThan($agentGross)) {
                 $postCapFee = $agentGross;
@@ -142,6 +146,11 @@ final class CommissionCalculator
         $credit = $agent->creditCents;
         $creditUsed = 0;
         foreach ($plan->rules->postSplit as $deduction) {
+            if ($input->waiveFees) {
+                $steps[] = "Waived by the broker: {$deduction->name}.";
+
+                continue;
+            }
             $amount = $this->capped($deduction, $this->deductionAmount($deduction, $net, $agent->sharePercent, $currency, percentOf: $agentGross), $agent, $steps);
             if ($deduction->chargedTo === 'brokerage') {
                 $brokerageFees[] = new DeductionLine($deduction->code, $deduction->name, $amount, $deduction->payableTo);
@@ -219,6 +228,9 @@ final class CommissionCalculator
      */
     private function chooseSplit(DealSideInput $input, ResolvedPlan $plan): array
     {
+        if ($input->agentSplitPercent !== null) {
+            return [new Split(SplitMode::Percentage, $input->agentSplitPercent), 'broker\'s override ('.($input->overrideReason ?? 'no reason given').')'];
+        }
         if ($input->leadSource !== null && isset($plan->rules->leadSources[$input->leadSource])) {
             return [$plan->rules->leadSources[$input->leadSource], str_replace('_', ' ', $input->leadSource).' lead'];
         }
@@ -341,6 +353,9 @@ final class CommissionCalculator
             throw new InvalidArgumentException('Agent shares must add up to 100%.');
         }
 
+        if ($input->agentSplitPercent !== null && ! Percent::isValid($input->agentSplitPercent)) {
+            throw new InvalidArgumentException('The agent\'s split is a percent from 0 to 100.');
+        }
         if ($input->outsideReferralPercent !== null && ! Percent::isValid($input->outsideReferralPercent)) {
             throw new InvalidArgumentException('The outside referral fee is a percent from 0 to 100.');
         }

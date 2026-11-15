@@ -27,8 +27,9 @@ files, and keeps coming over until the brokerage switches the old app off. Nobod
       agent joins, on the next full read. Full reads happen at least weekly.
 4. **Open deals** (pre-contract and under contract) get the brokerage's checklist, like a deal started here.
    **Closed and fallen-through deals** are history: no checklist, and closed ones are locked.
-5. **No commission is calculated** for an imported deal, because it was paid in the old system. The GCI is kept for
-   reports.
+5. **Commission:** deals that closed before the connection's "pay from" date are history, paid in the old system,
+   so no commission is calculated for them. A deal that closes on or after that date is **paid in RightAlly
+   automatically** (C5a-3, below).
 6. **Parties:**
     - Buyers, sellers, the other side's agent, lender, title or escrow, attorneys and inspectors come over.
     - Admins and other vendors are left out.
@@ -95,7 +96,7 @@ changes back. Facebook Lead Ads and dotloop only receive.
 | Lone Wolf (TransactionDesk / brokerWOLF) | Partner only: Lone Wolf issues RightAlly's client ID. The brokerage creates a separate read-only Lone Wolf user for RightAlly             | Deals, with address, price, status and dates, client and business contacts, external agents and commission tiers; the roster (members, offices)                           | Login gives a 24-hour token. No webhooks: hourly. Documents are not in the Deals API                                                                                                      |
 
 **Files for SkySlope and Lone Wolf:** the brokerage asks the vendor for its full file export, a ZIP of PDFs by
-transaction, and uploads it once under **Transactions → Bring over files**. RightAlly matches each folder to the
+transaction, and uploads it once under **Deals → Switch from another app**. RightAlly matches each folder to the
 imported deal by address and files the PDFs into it. This is part of C5a-2.
 
 **How each one maps:**
@@ -124,7 +125,7 @@ imported deal by address and files the PDFs into it. This is part of C5a-2.
 - **Vendor requests:** neither vendor publishes a partner email address. The ready-written requests on the HQ cards
   have no address, and HQ adds the contact it gets from each vendor.
 
-**Bring over files** (Transactions → Bring over files, for owners, staff and deal reviewers):
+**Bring over files** (Deals → Switch from another app, for owners, staff and deal reviewers):
 
 - Upload the vendor's ZIP export (up to 500 MB). It is read in the background and deleted once read.
 - Each PDF, JPEG or PNG is filed into the deal whose street address its folder names, looking from the innermost
@@ -137,6 +138,58 @@ imported deal by address and files the PDFs into it. This is part of C5a-2.
 
 - SkySlope's access secret and the Lone Wolf user's password are encrypted and write-only, like every key.
 - The Lone Wolf password belongs to a dedicated integration user, never a person's own login.
+
+## C5a-3: close there, paid here (approved 2026-11-15)
+
+A brokerage that keeps dotloop, SkySlope or Lone Wolf for paperwork still runs its money in RightAlly. All
+transaction apps follow the same flow, because they share the deal import.
+
+1. **Automatic, with no approval queue.**
+    - A deal that closes in the other app on or after the connection's **pay-from date** is paid at once, on the
+      agent's own plan: split, fees, cap and revenue share, exactly as for a deal closed here.
+    - The pay-from date defaults to the day the app was connected. The owner can change it per connection under
+      Deals → Switch from another app.
+2. **The other app owns the deal.**
+    - If the deal's price, GCI, closing date, agent or type changes there after payment, the payment is reversed and
+      made again.
+    - If the deal is reopened or cancelled there, the payment is reversed.
+    - While a deal is under contract there, a pending calculation keeps forecasts and cap previews current.
+3. **The broker can override any closed deal**, in RightAlly only. This is open to the owner or anyone with
+   `compensation.calculations.manage`, and needs a reason, which is audited. The options are:
+    - the agent's split %;
+    - waive the deal's fees (post-split and post-cap);
+    - don't count the deal toward the cap;
+    - no revenue share on the deal.
+
+    Saving reverses the payment and pays again with the overrides. The overrides travel with the deal's
+    calculation, so later automatic re-payments keep them.
+
+4. **Reverse commission** undoes the split, fees, cap progress and revenue share in RightAlly only. Nothing is
+   written back to the other app. A reversed deal is not paid again until it changes in the other app, which
+   RightAlly reads and then pays again, or until the broker presses **Pay again**.
+5. **Nothing is guessed.**
+    - A closed deal with no GCI shows as "Needs the GCI". The broker enters it once and the deal is paid.
+    - A deal the plan can't pay, for example because the agent has no plan, shows as "Needs a fix" with the reason.
+    - Both are listed under Deals → Switch from another app.
+    - A sync never fails because of money.
+6. **How agents get their own commission on these deals** is chosen by the owner:
+    - **Paid outside RightAlly** (the default): at closing by title, or by the old back office. Nothing is
+      "on its way" in the agent's balance. Money received later creates no agent payable, so nothing is paid twice.
+    - **Paid through RightAlly payouts:** the agent's net becomes payable once the money received is recorded, then
+      paid in a payout run, automatically if the owner has turned automatic payouts on.
+
+    Either way, **revenue share and bonuses go to each wallet** and are paid in payout runs or with Get paid now.
+    RightAlly never holds the money: a wallet is what the brokerage owes, paid from the brokerage's own bank.
+
+## Acceptance (C5a-3)
+
+- A deal that closes there after the pay-from date is paid on the agent's plan, and its revenue share lands in the
+  sponsor's wallet. Running the import again changes nothing; deals that closed earlier are left as history.
+- A change there pays again; reopening there reverses.
+- Overrides (split, fees, cap, revenue share) and reversals work in RightAlly only, for the owner or a compensation
+  manager, with a reason. A reversed deal stays reversed until it changes there or the broker pays it again.
+- A deal with no GCI waits for the broker, then is paid. The owner chooses whether agents are paid outside or
+  through payouts, and moves the pay-from date.
 
 ## Acceptance (C5a-2)
 

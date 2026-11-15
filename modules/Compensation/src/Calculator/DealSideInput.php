@@ -24,7 +24,17 @@ final readonly class DealSideInput
         public ?string $leadSource = null,
         public ?string $outsideReferralPercent = null,
         public ?string $excludedReason = null, // excluded from plan progression and cap (audited)
+        // Broker overrides for this one deal (audited, with a reason; specs/connect/12, C5a-3):
+        public ?string $agentSplitPercent = null, // the agent's share of the split base, instead of the plan's split
+        public bool $waiveFees = false,           // no post-split fees and no post-cap fee on this deal
+        public bool $noRevenueShare = false,      // the deal pays no revenue share
+        public ?string $overrideReason = null,
     ) {}
+
+    public function overridden(): bool
+    {
+        return $this->agentSplitPercent !== null || $this->waiveFees || $this->noRevenueShare;
+    }
 
     /**
      * @return array<string, mixed> stored with the calculation so it can be recalculated
@@ -42,6 +52,10 @@ final readonly class DealSideInput
             'lead_source' => $this->leadSource,
             'outside_referral_percent' => $this->outsideReferralPercent,
             'excluded_reason' => $this->excludedReason,
+            'agent_split_percent' => $this->agentSplitPercent,
+            'waive_fees' => $this->waiveFees,
+            'no_revenue_share' => $this->noRevenueShare,
+            'override_reason' => $this->overrideReason,
         ];
     }
 
@@ -63,6 +77,10 @@ final readonly class DealSideInput
             isset($data['lead_source']) ? (string) $data['lead_source'] : null,
             isset($data['outside_referral_percent']) ? (string) $data['outside_referral_percent'] : null,
             excludedReason: isset($data['excluded_reason']) ? (string) $data['excluded_reason'] : null,
+            agentSplitPercent: isset($data['agent_split_percent']) ? (string) $data['agent_split_percent'] : null,
+            waiveFees: (bool) ($data['waive_fees'] ?? false),
+            noRevenueShare: (bool) ($data['no_revenue_share'] ?? false),
+            overrideReason: isset($data['override_reason']) ? (string) $data['override_reason'] : null,
         );
     }
 }

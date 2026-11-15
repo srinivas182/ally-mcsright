@@ -139,14 +139,21 @@ final class Deals
         $deal->update(['status' => 'fell_through', 'cancel_reason' => trim($reason)]);
     }
 
-    private function input(Deal $deal, int $gci, int $price, CarbonImmutable $closing): DealSideInput
+    /** The commission engine's input for a deal, with the broker's overrides for it (specs/connect/12). */
+    public function input(Deal $deal, int $gci, int $price, CarbonImmutable $closing): DealSideInput
     {
+        $o = $deal->pay_overrides ?? [];
+
         return new DealSideInput(Money::of($gci), $price, $closing, [new AgentShare($deal->agent_user_id)],
             $deal->type === 'buyer' ? Side::Buying : Side::Listing,
             match ($deal->type) {
                 'lease' => DealClass::Lease, 'referral' => DealClass::ReferralOnly, 'new_construction' => DealClass::NewConstruction, default => DealClass::Sale,
             },
             // Outgoing referral fees come off the top (referrals in and out, specs/transactions/01).
-            outsideReferralPercent: app(Referrals::class)->outPercent($deal));
+            outsideReferralPercent: app(Referrals::class)->outPercent($deal),
+            excludedReason: ($o['no_cap'] ?? false) === true ? (string) ($o['reason'] ?? 'Broker override') : null,
+            agentSplitPercent: isset($o['agent_split_percent']) && is_scalar($o['agent_split_percent']) ? (string) $o['agent_split_percent'] : null,
+            waiveFees: ($o['waive_fees'] ?? false) === true, noRevenueShare: ($o['no_revenue_share'] ?? false) === true,
+            overrideReason: isset($o['reason']) && is_string($o['reason']) ? $o['reason'] : null);
     }
 }

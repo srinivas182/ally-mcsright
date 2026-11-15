@@ -1,6 +1,7 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/ui/page-header';
 
 type Import = {
@@ -19,28 +20,129 @@ type Import = {
  * Bring over files (specs/connect/12): upload a SkySlope or Lone Wolf file export once; each PDF is filed into the
  * deal its folder names. Folders that match no deal are listed, never guessed.
  */
+type Linked = { ulid: string; app: string; pay_from: string | null };
+type Waiting = {
+    ulid: string;
+    street: string;
+    status: 'needs_gci' | 'needs_review';
+    note: string | null;
+    from: string | null;
+};
+
 export default function BringOverFiles({
     imports,
     limits,
+    connections = [],
+    syncedCommission = 'outside',
+    owner = false,
+    waiting = [],
 }: {
     imports: Import[];
     limits: { max_mb: number };
+    connections?: Linked[];
+    syncedCommission?: 'outside' | 'payouts';
+    owner?: boolean;
+    waiting?: Waiting[];
 }) {
     const form = useForm<{ file: File | null }>({ file: null });
 
     return (
         <>
-            <Head title="Bring over files" />
+            <Head title="Switch from another app" />
             <div className="grid max-w-3xl gap-6 p-4 text-base md:p-6">
                 <PageHeader
-                    title="Bring over files"
-                    description="Your old transaction app's documents, filed into the right deals."
+                    title="Switch from another app"
+                    description="Deals that close in dotloop, SkySlope or Lone Wolf are paid here, and their documents are filed into the right deals."
                     actions={
                         <Button variant="outline" asChild>
                             <Link href="/deals">Back to deals</Link>
                         </Button>
                     }
                 />
+
+                {waiting.length > 0 && (
+                    <section className="grid gap-2 rounded-lg border border-destructive p-4">
+                        <h2 className="font-medium">
+                            Closed deals waiting for you ({waiting.length})
+                        </h2>
+                        <ul className="grid gap-2">
+                            {waiting.map((w) => (
+                                <li key={w.ulid}>
+                                    <Link
+                                        href={`/deals/${w.ulid}`}
+                                        className="font-medium underline"
+                                    >
+                                        {w.street}
+                                    </Link>
+                                    {w.from ? ` (from ${w.from})` : ''}:{' '}
+                                    {w.note}
+                                </li>
+                            ))}
+                        </ul>
+                    </section>
+                )}
+
+                <section className="grid gap-3 rounded-lg border p-4">
+                    <h2 className="font-medium">
+                        Commission for deals that close in your old app
+                    </h2>
+                    <p>
+                        A deal that closes there is paid here automatically, on
+                        the agent's plan: split, fees, cap and revenue share.
+                        Deals that closed before the date below are history,
+                        paid in your old system.
+                    </p>
+                    {connections.length === 0 && (
+                        <p className="text-muted-foreground">
+                            Connect dotloop, SkySlope or Lone Wolf under Apps
+                            first.
+                        </p>
+                    )}
+                    {connections.map((c) => (
+                        <PayFrom key={c.ulid} linked={c} owner={owner} />
+                    ))}
+                    <fieldset className="grid gap-2" disabled={!owner}>
+                        <legend className="mb-1">
+                            The agent's own commission on these deals
+                        </legend>
+                        {(
+                            [
+                                [
+                                    'outside',
+                                    'Paid outside RightAlly (at closing, or by our old back office)',
+                                ],
+                                [
+                                    'payouts',
+                                    'Paid through RightAlly payouts, once we record the money received',
+                                ],
+                            ] as const
+                        ).map(([value, text]) => (
+                            <label
+                                key={value}
+                                className="flex items-center gap-3"
+                            >
+                                <input
+                                    type="radio"
+                                    className="size-5"
+                                    checked={syncedCommission === value}
+                                    onChange={() =>
+                                        router.post(
+                                            '/deals/pay-settings',
+                                            { synced_commission: value },
+                                            { preserveScroll: true },
+                                        )
+                                    }
+                                />
+                                {text}
+                            </label>
+                        ))}
+                        <p className="text-sm text-muted-foreground">
+                            Either way, revenue share and bonuses go to each
+                            agent's wallet, paid in your payout runs or with Get
+                            paid now.
+                        </p>
+                    </fieldset>
+                </section>
 
                 <section className="grid gap-3 rounded-lg border p-4">
                     <h2 className="font-medium">How it works</h2>
@@ -157,5 +259,45 @@ export default function BringOverFiles({
                 )}
             </div>
         </>
+    );
+}
+
+function PayFrom({ linked, owner }: { linked: Linked; owner: boolean }) {
+    const form = useForm({
+        connection: linked.ulid,
+        pay_from: linked.pay_from ?? '',
+    });
+
+    return (
+        <form
+            className="flex flex-wrap items-end gap-2"
+            onSubmit={(e) => {
+                e.preventDefault();
+                form.post('/deals/pay-from', { preserveScroll: true });
+            }}
+        >
+            <label className="grid gap-1">
+                {linked.app}: pay deals that close from
+                <Input
+                    type="date"
+                    value={form.data.pay_from}
+                    disabled={!owner}
+                    onChange={(e) => form.setData('pay_from', e.target.value)}
+                />
+            </label>
+            {owner && (
+                <Button
+                    variant="outline"
+                    disabled={form.processing || !form.data.pay_from}
+                >
+                    Save
+                </Button>
+            )}
+            {form.errors.pay_from && (
+                <p className="w-full text-destructive">
+                    {form.errors.pay_from}
+                </p>
+            )}
+        </form>
     );
 }

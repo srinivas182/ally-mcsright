@@ -31,7 +31,8 @@ use Throwable;
  *   once they join (the next sync).
  * - Open deals get the brokerage's checklist, like a deal started here. Closed and fallen-through deals are history:
  *   no checklist, and closed ones are locked.
- * - No commission is calculated for an imported deal: it was paid in the old system.
+ * - Commission: a deal that closes there on or after the connection's "pay from" date is paid here automatically
+ *   (SyncedPay, C5a-3); deals closed before it are history, paid in the old system.
  * - Parties are linked to existing CRM contacts by email; no contacts are created (the CRM import does that).
  */
 final class DealImporter
@@ -42,7 +43,10 @@ final class DealImporter
 
     public const ROLES = ['buyer', 'seller', 'co_op_agent', 'lender', 'title', 'escrow', 'attorney', 'inspector', 'other'];
 
-    public function __construct(private readonly ConnectorKit $kit, private readonly Checklists $checklists, private readonly Documents $documents) {}
+    /** @var array<int, string> connection id => the date from which closings are paid here */
+    private array $payFrom = [];
+
+    public function __construct(private readonly ConnectorKit $kit, private readonly Checklists $checklists, private readonly Documents $documents, private readonly SyncedPay $pay) {}
 
     /**
      * @param  array{id: string, type: string, status: string, agent_id: string|null, agent_email: string|null, street: string, city: string|null,
@@ -96,8 +100,27 @@ final class DealImporter
         if ($created) {
             app(AuditLogger::class)->record('transactions.deal.imported', $deal, metadata: ['from' => $app, 'status' => $deal->status], label: $deal->street);
         }
+        $this->pay->afterSync($deal, $this->payFrom($connection), $app);
 
         return ['result' => $created ? 'created' : 'updated', 'deal' => $deal];
+    }
+
+    /**
+     * The date from which deals that close in the other app are paid here (specs/connect/12, C5a-3): the day the app
+     * was connected, unless the broker set another. Closings before it are history, paid in the old system.
+     */
+    public function payFrom(ConnectionData $connection): string
+    {
+        if (! isset($this->payFrom[$connection->id])) {
+            $set = $connection->settings['pay_from'] ?? null;
+            if (! is_string($set) || DealImporter::date($set) === null) {
+                $set = CarbonImmutable::today()->toDateString();
+                $this->kit->saveSettings($connection, ['pay_from' => $set]);
+            }
+            $this->payFrom[$connection->id] = $set;
+        }
+
+        return $this->payFrom[$connection->id];
     }
 
     /**

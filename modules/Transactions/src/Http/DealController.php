@@ -80,7 +80,8 @@ final class DealController
                 'type' => $deal->type, 'status' => $deal->status, 'price_cents' => $deal->price_cents, 'gci_cents' => $deal->gci_cents, 'mls_number' => $deal->mls_number,
                 'contract_date' => $deal->contract_date?->toDateString(), 'closing_date' => $deal->closing_date?->toDateString(), 'closed_on' => $deal->closed_on?->toDateString(),
                 'locked' => $deal->locked_at !== null, 'cancel_reason' => $deal->cancel_reason, 'agent' => User::query()->find($deal->agent_user_id)?->name,
-                'imported_from' => $deal->imported_from],
+                'imported_from' => $deal->imported_from, 'money_status' => $deal->money_status, 'money_note' => $deal->money_note, 'pay_overrides' => $deal->pay_overrides,
+                'agent_paid_outside' => $deal->agent_paid_outside],
             'parties' => $db->table('tx_parties')->where('deal_id', $deal->id)->get(['role', 'name', 'company', 'email', 'phone']),
             'items' => Item::query()->where('deal_id', $deal->id)->orderBy('sort')->get()->map(fn (Item $i): array => [
                 'ulid' => $i->ulid, 'label' => $i->label, 'required' => $i->required, 'stage' => $i->stage, 'status' => $i->status, 'fix_reason' => $i->fix_reason,
@@ -103,7 +104,8 @@ final class DealController
             'cdas' => self::reviewer($user) ? app(Cdas::class)->forDeal($deal) : [],
             'titles' => self::reviewer($user) ? DB::connection(Connections::cell())->table('tx_title_companies')->whereNotNull('verified_at')->orderBy('name')->get(['ulid', 'name']) : [],
             'can' => ['trust' => $user->isKind(UserKind::Owner) || $user->can('transactions.trust.manage'), 'approveCda' => $user->isKind(UserKind::Owner) || $user->can('transactions.cda.approve'),
-                'export' => $user->isKind(UserKind::Owner) || $user->can('transactions.export'), 'owner' => $user->isKind(UserKind::Owner)],
+                'export' => $user->isKind(UserKind::Owner) || $user->can('transactions.export'), 'owner' => $user->isKind(UserKind::Owner),
+                'managePay' => $user->isKind(UserKind::Owner) || $user->can('compensation.calculations.manage')],
             'reviewer' => self::reviewer($user),
             'reasons' => self::reviewer($user) ? $reviews->reasons() : [],
         ]);
