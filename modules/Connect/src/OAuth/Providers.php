@@ -7,6 +7,7 @@ namespace Modules\Connect\OAuth;
 use Illuminate\Validation\ValidationException;
 use Modules\Connect\AppRegistry;
 use Modules\Core\Connect\App;
+use Modules\Core\Connect\AppCatalog;
 
 /**
  * The sign-in services behind one-click apps (specs/connect/02). Client IDs and secrets live only in the server's
@@ -55,7 +56,8 @@ final class Providers
         if (($o['authorize'] ?? '') === '' || ($o['token'] ?? '') === '') {
             throw ValidationException::withMessages(['app' => $app->name.' has no one-click sign-in.']);
         }
-        $keys = app(AppRegistry::class)->secrets($app);
+        $source = is_string($o['keys_from'] ?? null) ? app(AppCatalog::class)->find($o['keys_from']) : null;
+        $keys = app(AppRegistry::class)->secrets($source ?? $app); // e.g. Propertybase uses the Salesforce app's keys
         if (($keys['client_id'] ?? '') === '' || ($keys['client_secret'] ?? '') === '') {
             throw ValidationException::withMessages(['app' => 'This app isn\'t switched on yet. Please ask RightAlly support.']);
         }

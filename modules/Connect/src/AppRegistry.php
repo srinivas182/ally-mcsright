@@ -13,6 +13,7 @@ use Illuminate\Validation\ValidationException;
 use Modules\Connect\OAuth\Providers;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Connect\App;
+use Modules\Core\Connect\AppCatalog;
 use Modules\Core\Support\Connections;
 use Throwable;
 
@@ -47,6 +48,7 @@ final class AppRegistry
     {
         return match ($app->setup['needs'] ?? 'none') {
             'provider' => Providers::configured((string) ($app->setup['provider'] ?? $app->oauth['provider'] ?? '')),
+            'app' => ($other = app(AppCatalog::class)->find((string) ($app->setup['app'] ?? ''))) !== null && $this->setupComplete($other),
             'keys' => array_diff(array_column($app->setup['fields'] ?? [], 'key'), array_keys(array_filter($this->secrets($app), fn (string $v): bool => $v !== ''))) === [],
             default => true,
         };
