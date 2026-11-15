@@ -8,6 +8,7 @@ use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
 use Modules\Sites\Http\Controllers\AillyController;
 use Modules\Sites\Http\Controllers\AillyLiveController;
 use Modules\Sites\Http\Controllers\BlogAdminController;
+use Modules\Sites\Http\Controllers\FunnelAdminController;
 use Modules\Sites\Http\Controllers\HqSitesController;
 use Modules\Sites\Http\Controllers\MediaController;
 use Modules\Sites\Http\Controllers\MyWebsiteController;
@@ -25,6 +26,9 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function
     Route::get('settings/ailly/audit', [AillyController::class, 'audit'])->middleware('throttle:20,1')->name('settings.ailly.audit');
     Route::post('settings/ailly/test', [AillyController::class, 'startTest'])->name('settings.ailly.test');
     Route::post('settings/ailly/test/stop', [AillyController::class, 'stopTest'])->name('settings.ailly.test.stop');
+    Route::get('funnels', [FunnelAdminController::class, 'index'])->name('funnels.index');
+    Route::post('funnels', [FunnelAdminController::class, 'store'])->middleware('throttle:20,1')->name('funnels.store');
+    Route::patch('funnels/{funnel}', [FunnelAdminController::class, 'update'])->where('funnel', '[0-9A-HJKMNP-TV-Z]{26}')->name('funnels.update');
     Route::get('ailly/chats', [AillyLiveController::class, 'index'])->name('ailly.chats');
     Route::get('ailly/chats/{chat}', [AillyLiveController::class, 'show'])->where('chat', '[0-9A-Za-z]{26}')->name('ailly.chats.show');
     Route::post('ailly/chats/{chat}/take', [AillyLiveController::class, 'take'])->where('chat', '[0-9A-Za-z]{26}')->name('ailly.chats.take');

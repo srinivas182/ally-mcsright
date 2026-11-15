@@ -12,6 +12,7 @@ use Modules\Sites\Content\Redirects;
 use Modules\Sites\Http\Controllers\AgentSiteController;
 use Modules\Sites\Http\Controllers\AillyController;
 use Modules\Sites\Http\Controllers\BlogController;
+use Modules\Sites\Http\Controllers\FunnelController;
 use Modules\Sites\Http\Controllers\IdxController;
 use Modules\Sites\Http\Controllers\SiteController;
 use Modules\Sites\Http\Controllers\ValuationController;
@@ -39,6 +40,8 @@ final class SiteRouter
         $r->get('homes/compare', [IdxController::class, 'compare']);
         $r->get('home-value', [ValuationController::class, 'show']);
         $r->post('_valuation', [ValuationController::class, 'submit']);
+        $r->get('go/{slug}', [FunnelController::class, 'show'])->where('slug', '[a-z0-9-]{1,80}');
+        $r->post('_funnel/{slug}', [FunnelController::class, 'submit'])->where('slug', '[a-z0-9-]{1,80}');
         $r->post('_t', [VisitorController::class, 'track']);
         $r->post('_auth/start', [VisitorController::class, 'start']);
         $r->post('_auth/verify', [VisitorController::class, 'verify']);

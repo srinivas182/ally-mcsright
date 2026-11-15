@@ -158,6 +158,16 @@ sync. Deal-IQ gets its paperwork from synced transaction platforms, RightAlly fo
 
 Status: C1a, C1b and C1c are done; M1 (MCP server) is in progress. The full order, mixing Connect with growth work and the approved additions (daily brief, ad results in commission dollars with an automatic stop, buyer demand before listing, switch in a weekend, proof of consent, Fair Housing audit pack, Agent Wallet, seller-funded boost), is in `docs/plan/market-2026-additions.md`.
 
+## Growth catch-up before C7 (agreed 2026-11-15)
+
+Seven approved growth items are built before Connect C7 and C8, in this order:
+
+| Sprint | Team | Scope                                                                                                                                                                                       | Spec                               |
+| ------ | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| LG1a   | E    | Lead Generation Engine 1: buyer and seller funnels (home value, new listings, first home, moving), value first, consented capture, saved search or value range, visits and leads per funnel | specs/grow/03                      |
+| LG1b   | E    | Monthly home-value report emails; promote a funnel with an own-account Meta ad or Boost                                                                                                     | specs/grow/03                      |
+| Next   | E    | Lead-IQ 12-month AI nurture; daily brief; buyer demand before listing; proof of consent; Agent Wallet; Fair Housing audit pack                                                              | docs/plan/market-2026-additions.md |
+
 ## Movewise: HQ's consumer home site and lead marketplace (added 2026-11-15)
 
 Movewise is HQ's own buyer and seller site, which sells exclusive, consented introductions to agents and brokers
