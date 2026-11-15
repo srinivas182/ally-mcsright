@@ -112,7 +112,7 @@ final class FollowUpPlans
             if (trim($step['title']) === '') {
                 $errors["steps.{$i}.title"] = 'Describe the step.';
             }
-            $flags = FairHousing::flags($step['title'].' '.($step['message'] ?? ''));
+            $flags = FairHousing::screen($step['title'].' '.($step['message'] ?? ''), 'templates', 'blocked', 'Follow-up plan step');
             if ($flags !== []) {
                 $errors["steps.{$i}.message"] = 'Please reword: "'.implode('", "', $flags).'" could raise Fair Housing concerns.';
             }

@@ -106,7 +106,7 @@ final class ListingAds
             'days' => $days < 1 || $days > self::MAX_DAYS ? 'Run it for 1 to 60 days.' : null,
             'agree' => ($in['agree'] ?? false) === true || ($in['agree'] ?? null) === '1' ? null : 'Confirm the budget first.',
         ]);
-        if (($flags = FairHousing::flags($headline.' '.$body)) !== []) {
+        if (($flags = FairHousing::screen($headline.' '.$body, 'ads', 'blocked', 'Ad: '.$target['label'])) !== []) {
             $errors['body'] = 'Fair Housing: please remove "'.implode('", "', $flags).'". Describe the home, not who should live there.';
         }
         if ($errors !== []) {

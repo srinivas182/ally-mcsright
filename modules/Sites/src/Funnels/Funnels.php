@@ -170,7 +170,7 @@ final class Funnels
 
     private static function checkWords(string $text): void
     {
-        $flags = FairHousing::flags($text);
+        $flags = FairHousing::screen($text, 'websites', 'blocked', 'Funnel page');
         if ($flags !== []) {
             throw ValidationException::withMessages(['headline' => 'Describe homes and places, not who should live there (US Fair Housing). Please change: "'.implode('", "', $flags).'".']);
         }

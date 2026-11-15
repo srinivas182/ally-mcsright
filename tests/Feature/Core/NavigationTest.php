@@ -19,7 +19,7 @@ function menuFor(User $user): array
 }
 
 it('shows owners the dashboard, people and finance', function (): void {
-    expect(menuFor(User::factory()->owner()->create()))->toBe(['Dashboard', "Today's 10", 'Tasks', 'Deals', 'Review queue', 'Risk', 'Leads', 'Inbox', 'Listings', 'Buyer demand', 'Contacts', 'Funnels', 'Ads', 'Money received', 'Payouts', 'Agent billing', 'Tax (1099)', 'Trust reconciliation', 'Chart of accounts', 'Journals', 'Periods', 'Books (QuickBooks, Xero)', 'People', 'Plans', 'Fees', 'Credits', 'Simulator', 'Revenue share', 'Profitability', 'Directory', 'Roster and compliance', 'Apps', 'Website', 'AIlly assistant', 'MLS', 'My availability', 'Agent plans', 'RightAlly credits', 'Billing', 'Partner earnings', 'Transactions', 'Forms', 'Roles', 'Offices and teams', 'Audit log']);
+    expect(menuFor(User::factory()->owner()->create()))->toBe(['Dashboard', "Today's 10", 'Tasks', 'Deals', 'Review queue', 'Risk', 'Leads', 'Inbox', 'Listings', 'Buyer demand', 'Contacts', 'Funnels', 'Ads', 'Money received', 'Payouts', 'Agent billing', 'Tax (1099)', 'Trust reconciliation', 'Chart of accounts', 'Journals', 'Periods', 'Books (QuickBooks, Xero)', 'People', 'Plans', 'Fees', 'Credits', 'Simulator', 'Revenue share', 'Profitability', 'Directory', 'Roster and compliance', 'Apps', 'Website', 'AIlly assistant', 'MLS', 'My availability', 'Agent plans', 'RightAlly credits', 'Billing', 'Partner earnings', 'Transactions', 'Forms', 'Roles', 'Offices and teams', 'Fair Housing', 'Audit log']);
 });
 
 it('shows agents only their own pages', function (): void {

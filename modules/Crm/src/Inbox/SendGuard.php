@@ -36,7 +36,7 @@ final class SendGuard
         if (trim($body) === '') {
             $reasons[] = 'Write the message.';
         }
-        $flags = FairHousing::flags($body);
+        $flags = FairHousing::screen($body, 'messages', 'blocked', $channel === 'sms' ? 'Text' : 'Email');
         if ($flags !== []) {
             $reasons[] = 'Fair Housing: reword "'.implode('", "', $flags).'" (describe the home, not who should live there).';
         }

@@ -237,7 +237,7 @@ final class ContentStudio
      * @param  list<string>  $allowed  normalised numbers
      * @return array{0: string, 1: list<string>} the cleaned text and what was removed
      */
-    public static function guard(string $text, array $allowed): array
+    public static function guard(string $text, array $allowed, string $channel = 'websites'): array
     {
         $warnings = [];
         $lines = preg_split('/\r?\n/', $text) ?: [];
@@ -246,7 +246,7 @@ final class ContentStudio
             $keep = [];
             foreach ($parts as $sentence) {
                 $bad = array_values(array_map(fn (array $f): string => $f[0], array_filter(self::figures($sentence), fn (array $f): bool => ! self::allowedNumber($f[0], $f[1], $allowed))));
-                $flags = FairHousing::flags($sentence);
+                $flags = FairHousing::screen($sentence, $channel, 'removed', $channel === 'ailly' ? 'AIlly chat reply' : 'AI website content');
                 if ($bad !== []) {
                     $warnings[] = 'Removed a sentence with a figure we could not verify ('.$bad[0].'): "'.Str::limit(trim($sentence), 90).'"';
 

@@ -204,7 +204,7 @@ final class Assistant
         $value = is_array($json['valuation'] ?? null) ? $this->value($json['valuation']) : null;
         $allowed = ContentStudio::numbers($transcript.' '.implode(' ', [...$info, ...$facts['lines']]).' '.json_encode($homes).' '.json_encode($value));
         $allowed = [...$allowed, ...ContentStudio::numbers(app(BrokerageAnswers::class)->asContext())];
-        [$reply, $removed] = ContentStudio::guard(mb_substr(trim((string) ($json['reply'] ?? '')), 0, 1200), $allowed);
+        [$reply, $removed] = ContentStudio::guard(mb_substr(trim((string) ($json['reply'] ?? '')), 0, 1200), $allowed, 'ailly');
         $reply = $reply !== '' ? $reply : 'I can help with homes and real estate here. What would you like to know?';
         $next = in_array($json['next_step'] ?? null, self::NEXT_STEPS, true) ? (string) $json['next_step'] : 'none';
         $onTopic = (bool) ($json['on_topic'] ?? true);

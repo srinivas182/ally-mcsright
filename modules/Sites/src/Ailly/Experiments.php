@@ -52,7 +52,7 @@ final class Experiments
         if ($greeting === AillySettings::greeting($current, $current['name']) && ($gate === null || $gate === $current['gate'])) {
             throw ValidationException::withMessages(['greeting_b' => 'Version B is the same as what visitors see now.']);
         }
-        if (($flags = FairHousing::flags($greeting)) !== []) {
+        if (($flags = FairHousing::screen($greeting, 'ailly', 'blocked', 'AIlly greeting test')) !== []) {
             throw ValidationException::withMessages(['greeting_b' => 'Fair Housing: reword "'.implode('", "', $flags).'".']);
         }
         $this->store($brokerage, ['on' => true, 'greeting_b' => $greeting, 'gate_b' => $gate, 'started_at' => CarbonImmutable::now()->toIso8601String()]);

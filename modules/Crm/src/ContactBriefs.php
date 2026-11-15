@@ -218,7 +218,7 @@ final class ContactBriefs
             $channel = $channels[0];
         }
 
-        if (FairHousing::flags((string) ($brief['draft'] ?? '')) !== []) {
+        if (FairHousing::screen((string) ($brief['draft'] ?? ''), 'ai_content', 'removed', 'AI contact brief draft') !== []) {
             $brief['draft'] = '';
             $notes[] = 'The draft was removed because its wording could raise Fair Housing concerns. Please write your own.';
         }

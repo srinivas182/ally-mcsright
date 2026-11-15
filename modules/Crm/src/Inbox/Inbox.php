@@ -268,7 +268,7 @@ final class Inbox
             outputSchema: ['type' => 'object', 'required' => ['draft'], 'properties' => ['draft' => ['type' => 'string']]], userId: $by->id));
         $draft = mb_substr(trim((string) ($result->json['draft'] ?? '')), 0, $channel === 'sms' ? 600 : 4000);
 
-        return ['draft' => $draft, 'warnings' => FairHousing::flags($draft)];
+        return ['draft' => $draft, 'warnings' => FairHousing::screen($draft, 'ai_content', 'warned', 'AI reply draft')];
     }
 
     public function markRead(Conversation $conversation): void

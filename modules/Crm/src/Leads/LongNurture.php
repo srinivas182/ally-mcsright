@@ -181,7 +181,7 @@ final class LongNurture
 
             return false;
         }
-        if ($reply === '' || FairHousing::flags($reply) !== []) {
+        if ($reply === '' || FairHousing::screen($reply, 'messages', 'blocked', 'AI long follow-up message') !== []) {
             $n->forceFill(['next_at' => $now->addDay()])->save();
             $this->timeline->system($contact, 'Long follow-up skipped a message that needed a person to word it');
 
