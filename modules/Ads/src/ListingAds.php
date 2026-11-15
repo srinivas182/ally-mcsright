@@ -10,6 +10,8 @@ use Illuminate\Validation\ValidationException;
 use Modules\Ads\Jobs\PublishCampaign;
 use Modules\Ads\Meta\MetaApi;
 use Modules\Ads\Models\Campaign;
+use Modules\AI\Exceptions\InsufficientCredits;
+use Modules\Billing\Credits\CreditLedger;
 use Modules\Connect\Models\Connection;
 use Modules\Core\Agents\AgentCredentials;
 use Modules\Core\Audit\AuditLogger;
@@ -76,13 +78,21 @@ final class ListingAds
      */
     public function publish(User $by, array $in): Campaign
     {
-        $c = $this->connection($by) ?? throw ValidationException::withMessages(['account' => 'Connect Meta Ads first (Apps → Meta Ads).']);
+        $boost = ($in['pay'] ?? 'own') === 'boost';
+        if ($boost && ! app(Boost::class)->ready()) {
+            throw ValidationException::withMessages(['pay' => 'RightAlly Boost isn\'t switched on yet.']);
+        }
+        $c = $boost ? null : ($this->connection($by) ?? throw ValidationException::withMessages(['account' => 'Connect Meta Ads first (Apps → Meta Ads), or pay with credits.']));
+        if ($boost) {
+            $in['account'] = app(Boost::class)->account()['ad_account_id'];
+            $in['page'] = app(Boost::class)->account()['page_id'];
+        }
         $home = $this->listing($by, (string) ($in['listing'] ?? '')) ?? throw ValidationException::withMessages(['listing' => 'Choose one of your listings.']);
         if (($home['latitude'] ?? null) === null || ($home['longitude'] ?? null) === null) {
             throw ValidationException::withMessages(['listing' => 'This listing has no map location, so it can\'t be advertised by area.']);
         }
-        $accounts = array_column((array) ($c->settings['ad_accounts'] ?? []), 'id');
-        $pages = array_column((array) ($c->settings['pages'] ?? []), 'id');
+        $accounts = $boost ? [(string) $in['account']] : array_column((array) ($c->settings['ad_accounts'] ?? []), 'id');
+        $pages = $boost ? [(string) $in['page']] : array_column((array) ($c->settings['pages'] ?? []), 'id');
         $headline = trim((string) ($in['headline'] ?? ''));
         $body = trim((string) ($in['body'] ?? ''));
         $daily = (int) round((float) ($in['daily_budget'] ?? 0) * 100);
@@ -108,7 +118,9 @@ final class ListingAds
             throw ValidationException::withMessages(['listing' => 'This listing has no photos yet, and an ad needs one.']);
         }
         $start = CarbonImmutable::today($by->timezone ?: 'America/New_York');
-        $campaign = Campaign::query()->create(['user_id' => $by->id, 'connection_id' => $c->id, 'ad_account_id' => (string) $in['account'], 'page_id' => (string) $in['page'],
+        $margin = $boost ? app(Boost::class)->marginBps() : 0;
+        $campaign = Campaign::query()->create(['user_id' => $by->id, 'connection_id' => $c?->id, 'billing' => $boost ? 'boost' : 'own', 'margin_bps' => $margin,
+            'stop_loss' => ($in['stop_loss'] ?? true) !== false, 'ad_account_id' => (string) $in['account'], 'page_id' => (string) $in['page'],
             'listing_ulid' => (string) $home['ulid'], 'listing_label' => mb_substr(ListingSearch::label($home), 0, 200), 'headline' => $headline, 'body' => $body,
             'image_url' => str_starts_with($photo, 'http') ? $photo : url($photo),
             'link' => $site.Urls::listing((string) $home['ulid'], ListingSearch::label($home)).'?'.http_build_query(['utm_source' => 'facebook', 'utm_medium' => 'paid_social']),
@@ -116,6 +128,17 @@ final class ListingAds
             'radius_miles' => max(MetaApi::MIN_RADIUS_MILES, min(50, (int) ($in['radius'] ?? MetaApi::MIN_RADIUS_MILES))), 'daily_budget_cents' => $daily,
             'starts_on' => $start->toDateString(), 'ends_on' => $start->addDays($days - 1)->toDateString(), 'status' => 'publishing']);
         $campaign->forceFill(['link' => $campaign->link.'&utm_campaign=rightally-'.strtolower($campaign->ulid)])->save();
+        if ($boost) {
+            // Credits for the most it can spend, plus the margin, are reserved now; what isn't spent comes back.
+            $credits = app(Boost::class)->credits($campaign->maxSpendCents(), $margin);
+            try {
+                app(CreditLedger::class)->charge(Boost::ACTION, $by->id, 'boost:'.$campaign->ulid, $credits);
+            } catch (InsufficientCredits $e) {
+                $campaign->delete();
+                throw ValidationException::withMessages(['pay' => $e->getMessage().' This boost needs '.number_format($credits).' credits.']);
+            }
+            $campaign->forceFill(['credits_reserved' => $credits])->save();
+        }
         app(AuditLogger::class)->record('ads.publish', $campaign, metadata: ['max_spend_cents' => $campaign->maxSpendCents(), 'listing' => $campaign->listing_ulid], severity: 'notice');
         PublishCampaign::dispatch($campaign->id);
 
@@ -125,14 +148,36 @@ final class ListingAds
     public function setActive(Campaign $c, User $by, bool $active): void
     {
         $this->guard($c, $by);
-        $conn = Connection::query()->find($c->connection_id) ?? throw ValidationException::withMessages(['ad' => 'Reconnect Meta Ads first.']);
         try {
-            app(MetaApi::class)->setStatus($c, app(ConnectorKit::class)->accessToken($conn->data()), $active);
+            app(MetaApi::class)->setStatus($c, $this->token($c), $active);
         } catch (\RuntimeException $e) {
             throw ValidationException::withMessages(['ad' => $e->getMessage()]);
         }
-        $c->forceFill(['status' => $active ? 'active' : 'paused'])->save();
+        $c->forceFill(['status' => $active ? 'active' : 'paused', 'stopped_reason' => null])->save();
         app(AuditLogger::class)->record($active ? 'ads.resume' : 'ads.pause', $c, severity: 'notice');
+    }
+
+    /** Stops an ad for good; a Boost gives back its unspent credits straight away. */
+    public function end(Campaign $c, User $by): void
+    {
+        $this->guard($c, $by);
+        try {
+            app(Lifecycle::class)->end($c, 'Ended by '.$by->name.'.', $this->token($c));
+        } catch (\RuntimeException $e) {
+            throw ValidationException::withMessages(['ad' => $e->getMessage()]);
+        }
+        app(AuditLogger::class)->record('ads.end', $c, metadata: ['credits_refunded' => $c->credits_refunded], severity: 'notice');
+    }
+
+    /** The access token the ad runs with: the person's own Meta sign-in, or RightAlly's Boost account. */
+    public function token(Campaign $c): string
+    {
+        if ($c->isBoost()) {
+            return app(Boost::class)->account()['access_token'];
+        }
+        $conn = $c->connection_id !== null ? Connection::query()->find($c->connection_id) : null;
+
+        return app(ConnectorKit::class)->accessToken(($conn ?? throw new \RuntimeException('Reconnect Meta Ads first.'))->data());
     }
 
     /** Owners see every ad; others their own. */

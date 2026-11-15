@@ -17,8 +17,14 @@ use Modules\Core\Tenancy\Concerns\HasPublicUlid;
  * @property string $ulid
  * @property int $tenant_id
  * @property int $user_id
- * @property int $connection_id
+ * @property int|null $connection_id
  * @property string $channel
+ * @property string $billing
+ * @property int $margin_bps
+ * @property int $credits_reserved
+ * @property int $credits_refunded
+ * @property bool $stop_loss
+ * @property string|null $stopped_reason
  * @property string $ad_account_id
  * @property string $page_id
  * @property string $listing_ulid
@@ -63,9 +69,14 @@ final class Campaign extends Model
         return $this->daily_budget_cents * ((int) $this->starts_on->diffInDays($this->ends_on) + 1);
     }
 
+    public function isBoost(): bool
+    {
+        return $this->billing === 'boost';
+    }
+
     /** @return array<string, string> */
     protected function casts(): array
     {
-        return ['meta_ids' => 'array', 'starts_on' => 'immutable_date', 'ends_on' => 'immutable_date', 'results_at' => 'immutable_datetime', 'created_at' => 'immutable_datetime'];
+        return ['meta_ids' => 'array', 'stop_loss' => 'boolean', 'starts_on' => 'immutable_date', 'ends_on' => 'immutable_date', 'results_at' => 'immutable_datetime', 'created_at' => 'immutable_datetime'];
     }
 }

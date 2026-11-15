@@ -14,4 +14,5 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('ads')-
     Route::post('/', [AdsController::class, 'store'])->middleware('throttle:10,1')->name('store');
     Route::post('{campaign}/pause', [AdsController::class, 'pause'])->where('campaign', '[0-9A-Za-z]{26}')->name('pause');
     Route::post('{campaign}/resume', [AdsController::class, 'resume'])->where('campaign', '[0-9A-Za-z]{26}')->name('resume');
+    Route::post('{campaign}/end', [AdsController::class, 'end'])->where('campaign', '[0-9A-Za-z]{26}')->name('end');
 });
