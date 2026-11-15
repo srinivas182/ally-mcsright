@@ -146,11 +146,6 @@ final class FacebookLeads implements AppWebhooks
         return ['created' => 1, 'updated' => 0, 'skipped' => 0];
     }
 
-    public function push(ConnectionData $connection, string $entity, int $localId): void
-    {
-        // Leads only come in from Facebook.
-    }
-
     public function disconnected(ConnectionData $connection): void
     {
         try {

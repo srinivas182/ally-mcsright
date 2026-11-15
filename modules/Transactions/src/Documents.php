@@ -57,4 +57,43 @@ final class Documents
 
         return $doc;
     }
+
+    /**
+     * A document brought over from another transaction app (specs/connect/12). It goes into the deal's unsorted
+     * documents (the broker files it into the checklist), is not read by AI automatically (that costs credits; it
+     * can be read on request), and is added even to a closed, locked deal, because the file is the deal's history.
+     * The same file twice in one deal is kept once.
+     *
+     * @return Document|null null when it is not a PDF or image we keep, is too big, or is already there
+     */
+    public function imported(Deal $deal, string $filename, string $bytes): ?Document
+    {
+        $mime = self::sniff($bytes);
+        if ($mime === null || strlen($bytes) > self::MAX_BYTES) {
+            return null;
+        }
+        $sha = hash('sha256', $bytes);
+        if (Document::query()->where('deal_id', $deal->id)->where('sha256', $sha)->exists()) {
+            return null;
+        }
+        $ext = ['application/pdf' => 'pdf', 'image/jpeg' => 'jpg', 'image/png' => 'png'][$mime];
+        $path = "tx/{$deal->tenant_id}/{$deal->ulid}/".Str::ulid().'.'.$ext;
+        Storage::disk('local')->put($path, $bytes);
+        $name = trim(preg_replace('/[^\pL\pN ._()\-]+/u', '_', $filename) ?? '');
+        $name = $name === '' ? 'document.'.$ext : (str_ends_with(mb_strtolower($name), '.'.$ext) ? $name : $name.'.'.$ext);
+
+        return Document::query()->create(['deal_id' => $deal->id, 'item_id' => null, 'filename' => mb_substr($name, -200), 'path' => $path, 'mime' => $mime,
+            'size' => strlen($bytes), 'sha256' => $sha, 'version' => 1, 'via' => 'import', 'uploaded_by' => null]);
+    }
+
+    /** What the bytes really are (never the other app's word for it). */
+    private static function sniff(string $bytes): ?string
+    {
+        return match (true) {
+            str_starts_with($bytes, '%PDF-') => 'application/pdf',
+            str_starts_with($bytes, "\xFF\xD8\xFF") => 'image/jpeg',
+            str_starts_with($bytes, "\x89PNG\r\n\x1A\n") => 'image/png',
+            default => null,
+        };
+    }
 }

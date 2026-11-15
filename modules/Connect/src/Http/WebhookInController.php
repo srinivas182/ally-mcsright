@@ -10,7 +10,7 @@ use Modules\Connect\AppRegistry;
 use Modules\Connect\Jobs\HandleWebhook;
 use Modules\Connect\Models\Connection;
 use Modules\Core\Connect\AppCatalog;
-use Modules\Core\Connect\TwoWay;
+use Modules\Core\Connect\ReceivesWebhooks;
 use Modules\Core\Tenancy\Attributes\CrossTenantAccess;
 use Modules\Core\Tenancy\Models\Tenant;
 use Modules\Core\Tenancy\TenantContext;
@@ -31,7 +31,7 @@ final class WebhookInController
         $a = $catalog->find($app);
         $driver = $a?->driver !== null ? app($a->driver) : null;
         $raw = $request->getContent();
-        if ($a === null || ! $driver instanceof TwoWay || strlen($raw) > self::MAX_BYTES) {
+        if ($a === null || ! $driver instanceof ReceivesWebhooks || strlen($raw) > self::MAX_BYTES) {
             return response('', 404);
         }
         $headers = array_map(fn (array $v): string => (string) ($v[0] ?? ''), array_change_key_case($request->headers->all(), CASE_LOWER));

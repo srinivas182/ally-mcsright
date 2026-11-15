@@ -11,7 +11,7 @@ use Symfony\Component\HttpFoundation\Response;
  * (specs/connect/10). RightAlly's central address checks them and routes each part to the connection that owns the
  * other app's account (a page id, an account id), via the routes the driver records (ConnectorKit::route).
  */
-interface AppWebhooks extends TwoWay
+interface AppWebhooks extends ReceivesWebhooks
 {
     /**
      * The other app's one-time check when HQ sets the address up (e.g. Meta's hub.challenge); null if not one.

@@ -14,7 +14,7 @@ use Modules\Connect\Models\Connection;
 use Modules\Connect\Models\SyncRun;
 use Modules\Core\Connect\AppCatalog;
 use Modules\Core\Connect\NeedsReconnect;
-use Modules\Core\Connect\TwoWay;
+use Modules\Core\Connect\ReceivesWebhooks;
 
 /** One webhook from a connected app, handled by its driver and logged like a sync run (specs/connect/05). */
 final class HandleWebhook implements ShouldQueue
@@ -36,10 +36,11 @@ final class HandleWebhook implements ShouldQueue
         $c = Connection::query()->find($this->connectionId);
         $app = $c !== null ? $catalog->find($c->app_key) : null;
         $driver = $app?->driver !== null ? app($app->driver) : null;
-        if ($c === null || ! $driver instanceof TwoWay || ! in_array($c->status, ['connected', 'error'], true)) {
+        if ($c === null || ! $driver instanceof ReceivesWebhooks || ! in_array($c->status, ['connected', 'error'], true)) {
             return;
         }
-        $event = mb_substr((string) ($this->payload['event'] ?? 'update'), 0, 60);
+        $label = $this->payload['event'] ?? $this->payload['eventType'] ?? 'update'; // Follow Up Boss sends "event", dotloop "eventType"
+        $event = mb_substr(is_string($label) ? $label : (is_string($this->payload['eventType'] ?? null) ? $this->payload['eventType'] : 'update'), 0, 60);
         try {
             $r = $driver->webhook($c->data(), $this->payload);
         } catch (NeedsReconnect $e) {

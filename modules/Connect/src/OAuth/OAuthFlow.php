@@ -87,7 +87,7 @@ final class OAuthFlow
         }
         $access = (string) $r->json('access_token');
         $me = $p['userinfo'] !== '' ? Http::withToken($access)->withHeaders($p['headers'])->acceptJson()->timeout(10)->get($p['userinfo']) : null;
-        $account = $me !== null ? (string) ($me->json('email') ?? $me->json('mail') ?? $me->json('userPrincipalName') ?? '') : '';
+        $account = $me !== null ? (string) ($me->json('email') ?? $me->json('mail') ?? $me->json('userPrincipalName') ?? $me->json('data.email') ?? '') : '';
         $ticket = Str::random(48);
         Cache::put('connect-oauth:'.hash('sha256', $ticket), Crypt::encryptString((string) json_encode(['t' => $state['t'], 'a' => $app->key, 'u' => $state['u'], 'n' => $state['n'],
             'account' => mb_substr($account, 0, 120), 'tokens' => self::tokens($r->json())])), now()->addMinutes(2));
