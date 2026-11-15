@@ -77,7 +77,7 @@ it('keeps apps off until HQ switches them on and finishes their setup', function
 });
 
 it('cannot switch on an app that is not built yet', function (): void {
-    hqSaveApp('boldtrail', ['enabled' => true])->assertSessionHasErrors('enabled');
+    hqSaveApp('sierra', ['enabled' => true])->assertSessionHasErrors('enabled');
 });
 
 it('pauses every connection when HQ switches an app off, and resumes when it is back on', function (): void {

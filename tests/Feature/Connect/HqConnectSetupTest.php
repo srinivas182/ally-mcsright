@@ -65,6 +65,6 @@ it('gives HQ a ready-written request to send to Follow Up Boss, with the return 
             return $fub['request']['to'] === 'api@followupboss.com'
                 && str_contains($fub['request']['body'], 'https://auth.rightally.app/connect/oauth/callback')
                 && ! str_contains($fub['request']['body'], '{return_address}')
-                && collect($apps)->firstWhere('key', 'boldtrail')['request'] === null;
+                && collect($apps)->firstWhere('key', 'sierra')['request'] === null;
         }));
 });

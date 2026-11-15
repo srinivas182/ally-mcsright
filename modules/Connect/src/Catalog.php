@@ -6,7 +6,9 @@ namespace Modules\Connect;
 
 use Modules\Core\Connect\App;
 use Modules\Core\Connect\AppCatalog;
+use Modules\Crm\Connect\BoldTrail;
 use Modules\Crm\Connect\FollowUpBoss;
+use Modules\Crm\Connect\Lofty;
 
 /**
  * The apps Connect itself offers, and the apps on the roadmap (specs/connect/00). Apps that sync a module's data are
@@ -91,10 +93,25 @@ final class Catalog
                     'body' => "Hello Follow Up Boss team,\n\nRightAlly is an all-in-one platform for US real estate brokerages. We have registered RightAlly as a system and would like an OAuth app so brokers and agents can connect their Follow Up Boss accounts in one click (people, tags, stages, notes; two-way sync).\n\nPlease create an OAuth app for us with this redirect URL:\n{return_address}\n\nOnce it is ready, please send the client ID and client secret through a secure channel (not plain email).\n\nThank you,\nRightAlly HQ"],
                 'docs' => 'https://docs.followupboss.com/docs']));
 
+        // CRMs with a personal API key: paste it once (specs/connect/06).
+        $catalog->add(new App('lofty', 'Lofty', 'crm', 'Bring over your leads, tags, stages, agents and notes from Lofty (formerly Chime). New leads keep coming over every hour.',
+            scope: 'both', auth: 'api_key', syncs: ['Leads (names, emails, phones)', 'Tags and stage', 'Which agent each lead belongs to', 'Notes', 'New leads, hourly'],
+            fields: [['key' => 'api_key', 'label' => 'Lofty API key', 'type' => 'text', 'secret' => true, 'help' => 'It stays encrypted. Only RightAlly\'s import uses it.']],
+            driver: Lofty::class, vendorCost: 'Your Lofty plan',
+            setup: ['steps' => ['Nothing to set up: each broker or agent uses their own Lofty API key.', 'Switch Lofty on.'],
+                'partner' => null, 'docs' => 'https://developer.lofty.com/authentication/api-keys'],
+            guide: ['steps' => ['In Lofty, open Settings → Integrations → API.', 'Create or copy your API key.', 'Paste it below and press Connect. Your leads start coming over straight away.']]));
+        $catalog->add(new App('boldtrail', 'BoldTrail (kvCORE)', 'crm', 'Bring over your contacts, tags, status and agents from BoldTrail (kvCORE). New and changed contacts come over daily.',
+            scope: 'both', auth: 'api_key', syncs: ['Contacts (names, emails, phones)', 'Hashtags and status', 'Which agent each contact belongs to', 'New and changed contacts, daily'],
+            fields: [['key' => 'api_key', 'label' => 'BoldTrail "Contacts" API token', 'type' => 'text', 'secret' => true, 'help' => 'It stays encrypted. Only RightAlly\'s import uses it.']],
+            driver: BoldTrail::class, vendorCost: 'Your BoldTrail plan',
+            setup: ['steps' => ['Nothing to set up: each broker or agent uses their own BoldTrail API token.', 'Switch BoldTrail on.'],
+                'partner' => 'Notes and two-way sync need BoldTrail\'s partner API (Inside Real Estate). Apply through their marketplace to unlock them.',
+                'docs' => 'https://apidocs.kvcore.com/'],
+            guide: ['steps' => ['In BoldTrail, open Lead Engine → Lead Dropbox.', 'Under My API Tokens, choose "Contacts" and press Generate.', 'Copy the new token, paste it below and press Connect.']]));
+
         // On the roadmap (people can ask for them; HQ sees the demand).
         foreach ([
-            ['boldtrail', 'BoldTrail (kvCORE)', 'crm', 'Bring over contacts, notes and lead history from BoldTrail.', 'both', 'Your BoldTrail plan'],
-            ['lofty', 'Lofty', 'crm', 'Bring over contacts, notes and lead history from Lofty (formerly Chime).', 'both', 'Your Lofty plan'],
             ['sierra', 'Sierra Interactive', 'crm', 'Bring over leads, notes and saved searches from Sierra Interactive.', 'both', 'Your Sierra plan'],
             ['real_geeks', 'Real Geeks', 'crm', 'Bring over leads and their activity from Real Geeks.', 'both', 'Your Real Geeks plan'],
             ['boomtown', 'BoomTown', 'crm', 'Bring over leads and notes from BoomTown.', 'both', 'Your BoomTown plan'],
