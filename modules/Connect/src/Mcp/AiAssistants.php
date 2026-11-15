@@ -6,10 +6,13 @@ namespace Modules\Connect\Mcp;
 
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Laravel\Passport\AccessToken;
+use Laravel\Passport\Client;
 use Laravel\Passport\RefreshToken;
 use Laravel\Passport\Token;
 use Modules\Connect\AppRegistry;
 use Modules\Core\Audit\AuditLogger;
+use Modules\Core\Connect\App;
 use Modules\Core\Connect\AppCatalog;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Mcp\McpGate;
@@ -28,7 +31,37 @@ final class AiAssistants implements McpGate
     {
         $app = app(AppCatalog::class)->find('ai_assistants');
 
-        return $app !== null && app(AppRegistry::class)->enabled($app) && $this->settings()['enabled'];
+        if ($app === null || ! app(AppRegistry::class)->enabled($app) || ! $this->settings()['enabled']) {
+            return false;
+        }
+        // HQ can switch off one AI app (say ChatGPT) while the others stay on.
+        $client = self::clientOf($user);
+        $tile = $client !== null ? self::appFor($client) : null;
+
+        return $tile === null || app(AppRegistry::class)->enabled($tile);
+    }
+
+    /** The registered AI app behind the person's current token, if they came through one. */
+    public static function clientOf(User $user): ?Client
+    {
+        $token = $user->token();
+        $id = $token instanceof AccessToken ? (string) ($token->oauth_client_id ?? '') : '';
+        $client = $id !== '' ? Client::query()->find($id) : null;
+
+        return $client instanceof Client ? $client : null;
+    }
+
+    /** Which AI assistant tile a registered client belongs to, from where it sends people back. */
+    public static function appFor(Client $client): ?App
+    {
+        $hosts = array_map(fn ($u): string => strtolower((string) parse_url((string) $u, PHP_URL_HOST)), (array) $client->getAttribute('redirect_uris'));
+        foreach (app(AppCatalog::class)->all() as $a) {
+            if ($a->category === 'ai' && array_intersect($hosts, $a->guide['hosts'] ?? []) !== []) {
+                return $a;
+            }
+        }
+
+        return null;
     }
 
     public function writesAllowed(User $user): bool
@@ -61,7 +94,7 @@ final class AiAssistants implements McpGate
     /**
      * Connected assistants: one row per AI app per person (owners see everyone's; others their own).
      *
-     * @return list<array{client: string, client_id: string, user: string, user_ulid: string, mine: bool, can_write: bool, last_used: string|null, connected: string}>
+     * @return list<array{client: string, app: string|null, client_id: string, user: string, user_ulid: string, mine: bool, can_write: bool, last_used: string|null, connected: string}>
      */
     public function connected(User $viewer): array
     {
@@ -71,7 +104,8 @@ final class AiAssistants implements McpGate
             $tokens = Token::query()->with('client')->where('user_id', $person->id)->where('revoked', false)->where('expires_at', '>', now())->get();
             foreach ($tokens->groupBy('client_id') as $clientId => $group) {
                 $latest = $group->sortByDesc('created_at')->first();
-                $rows[] = ['client' => (string) ($latest?->client->name ?? 'AI assistant'), 'client_id' => (string) $clientId, 'user' => $person->name, 'user_ulid' => $person->ulid,
+                $client = $latest?->client;
+                $rows[] = ['client' => (string) ($client?->getAttribute('name') ?? 'AI assistant'), 'app' => $client instanceof Client ? self::appFor($client)?->key : null, 'client_id' => (string) $clientId, 'user' => $person->name, 'user_ulid' => $person->ulid,
                     'mine' => $person->id === $viewer->id, 'can_write' => $group->contains(fn (Token $t): bool => $t->can('rightally:write')),
                     'last_used' => $latest !== null ? (string) $latest->getAttribute('updated_at') : null, 'connected' => (string) $group->min('created_at')];
             }

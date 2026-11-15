@@ -10,8 +10,8 @@ use Illuminate\Validation\ValidationException;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Tool;
+use Laravel\Passport\AccessToken;
 use Laravel\Passport\Client;
-use Laravel\Passport\Token;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Tenancy\TenantContext;
@@ -110,7 +110,8 @@ abstract class RightAllyTool extends Tool
     private static function client(User $user): ?string
     {
         $token = $user->token();
-        $client = $token instanceof Token ? $token->client : null;
+        $id = $token instanceof AccessToken ? (string) ($token->oauth_client_id ?? '') : '';
+        $client = $id !== '' ? Client::query()->find($id) : null;
 
         return $client instanceof Client ? (string) $client->getAttribute('name') : null;
     }

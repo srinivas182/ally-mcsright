@@ -41,6 +41,7 @@ final readonly class App
      * @param  class-string<Connector>|null  $driver
      * @param  array{provider: string, scopes: list<string>}|null  $oauth
      * @param  array{needs?: string, provider?: string, fields?: list<array{key: string, label: string, secret?: bool}>, steps?: list<string>, partner?: string|null, docs?: string|null}  $setup
+     * @param  array{plans?: string, steps?: list<string>, open_url?: string|null, open_label?: string|null, hosts?: list<string>, admin?: bool}  $guide  what a broker or agent follows (AI assistant tiles)
      */
     public function __construct(
         public string $key,
@@ -59,6 +60,7 @@ final readonly class App
         public ?string $vendorCost = null,
         public ?array $oauth = null,
         public array $setup = [],
+        public array $guide = [],
     ) {}
 
     public function available(): bool
@@ -77,7 +79,7 @@ final readonly class App
     {
         return ['key' => $this->key, 'name' => $this->name, 'category' => $this->category, 'category_name' => self::CATEGORIES[$this->category] ?? $this->category,
             'summary' => $this->summary, 'scope' => $this->scope, 'auth' => $this->auth, 'syncs' => $this->syncs, 'cost' => $this->cost, 'vendor_cost' => $this->vendorCost,
-            'status' => $this->status, 'link' => $this->link, 'multiple' => $this->multiple, 'one_click' => $this->oauth !== null,
+            'status' => $this->status, 'link' => $this->link, 'multiple' => $this->multiple, 'one_click' => $this->oauth !== null, 'guide' => $this->guide === [] ? null : $this->guide,
             'fields' => array_map(fn (array $f): array => ['key' => $f['key'], 'label' => $f['label'], 'type' => $f['type'], 'secret' => $f['secret'] ?? false,
                 'help' => $f['help'] ?? null, 'options' => $f['options'] ?? null], $this->fields)];
     }

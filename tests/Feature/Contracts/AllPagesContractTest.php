@@ -75,6 +75,8 @@ it('sends every brokerage page the data its component needs', function (string $
     'an app: coming soon' => ['agent', '/apps/follow_up_boss', 'apps/show'],
     'AI assistants (owner)' => ['owner', '/apps/ai_assistants', 'apps/show'],
     'AI assistants (agent)' => ['agent', '/apps/ai_assistants', 'apps/show'],
+    'AI assistant tile: Claude' => ['agent', '/apps/ai_claude', 'apps/show'],
+    'AI assistant tile: Copilot' => ['owner', '/apps/ai_copilot', 'apps/show'],
 ]);
 
 it('sends record pages (a deal, a contact, a journal, an account statement) the data they need', function (): void {

@@ -3,6 +3,7 @@ import { useState } from 'react';
 
 import {
     AiAssistantsPanel,
+    type AiGuide,
     type McpPanel,
 } from '@/components/connect/ai-assistants';
 import { Monogram, type AppEntry } from '@/components/connect/monogram';
@@ -22,6 +23,7 @@ type App = Omit<AppEntry, 'connected' | 'problem'> & {
     link: string | null;
     multiple: boolean;
     fields: Field[];
+    guide?: AiGuide | null;
 };
 type Run = {
     status: string;
@@ -221,7 +223,16 @@ export default function AppScreen({
                     </section>
                 )}
 
-                {mcp && <AiAssistantsPanel mcp={mcp} />}
+                {mcp &&
+                    (app.status === 'available' ||
+                        app.key === 'ai_assistants') && (
+                        <AiAssistantsPanel
+                            mcp={mcp}
+                            appKey={app.key}
+                            name={app.name}
+                            guide={app.guide ?? null}
+                        />
+                    )}
 
                 {app.key === 'csv_import' && (
                     <form
