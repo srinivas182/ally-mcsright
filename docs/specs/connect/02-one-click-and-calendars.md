@@ -39,6 +39,21 @@
 - They are `services.google.*` and `services.microsoft.*`, the same apps as "Sign in with Google/Microsoft".
 - Until HQ sets them up, the app's page says "will be ready to connect soon" and the Connect button is hidden.
 
+**HQ → Connect setup** (`/hq/connect`, HQ staff only):
+
+- Shows the return addresses to add, each with a Copy button: one-click connect, Sign in with Google, and Sign in
+  with Microsoft.
+- Gives numbered steps for Google Cloud Console (Google Auth Platform) and the Microsoft Entra admin center, with
+  links.
+- Has the Client ID and Client secret boxes for each provider. Saving them needs a password confirmation and is
+  audited. The secret is encrypted in `hq_oauth_clients` on the control plane, is write-only, and is never shown
+  again.
+- What HQ saves takes priority over the server environment. The values go into `services.google` and
+  `services.microsoft` (`ClientSettings::apply`), so they serve both one-click connect and "Sign in with Google /
+  Microsoft".
+- Client IDs are checked for shape: Google IDs end in `.apps.googleusercontent.com`, Microsoft IDs are a GUID.
+- For Microsoft, HQ enters the secret's expiry date. The screen warns 30 days before it expires.
+
 **Business steps for HQ:**
 
 - **Google:** enable the Calendar API, add `https://{sso host}/connect/oauth/callback` as a redirect URI, and pass

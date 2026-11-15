@@ -27,7 +27,12 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->name('connect.
     Route::post('connections/{connection}/pause', [AppsController::class, 'pause'])->where('connection', $ulid)->name('connections.pause');
 });
 
-Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.apps.view'])->get('hq/apps', [HqAppsController::class, 'index'])->name('hq.apps');
+Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.apps.view'])->group(function (): void {
+    Route::get('hq/apps', [HqAppsController::class, 'index'])->name('hq.apps');
+    Route::get('hq/connect', [HqAppsController::class, 'setup'])->name('hq.connect');
+    // Saving RightAlly's sign-in apps: confirm the password first.
+    Route::post('hq/connect/{provider}', [HqAppsController::class, 'saveClient'])->whereIn('provider', ['google', 'microsoft'])->middleware('password.confirm')->name('hq.connect.save');
+});
 
 // The one address the sign-in services send people back to, for every brokerage (specs/connect/02).
 Route::domain((string) config('core.sso_host'))->middleware(['web', 'throttle:30,1'])

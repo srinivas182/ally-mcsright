@@ -37,10 +37,12 @@ final class ConnectServiceProvider extends ServiceProvider
             $this->commands([Console\SyncConnections::class]);
         }
         Catalog::declare($this->app->make(AppCatalog::class));
+        OAuth\ClientSettings::apply();
 
         Gate::define('hq.apps.view', fn (User $user): bool => $user->kind === UserKind::HqStaff);
         $nav = $this->app->make(NavigationRegistry::class);
         $nav->add(new NavItem('Settings', 'Apps', '/apps', 'blocks', 61, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent]));
         $nav->add(new NavItem('HQ', 'App demand', '/hq/apps', 'blocks', 18, ability: 'hq.apps.view', kinds: [UserKind::HqStaff]));
+        $nav->add(new NavItem('HQ', 'Connect setup', '/hq/connect', 'key-round', 19, ability: 'hq.apps.view', kinds: [UserKind::HqStaff]));
     }
 }
