@@ -106,7 +106,7 @@ it('publishes a Housing ad with a place-only audience, switching it on last', fu
     $this->actingAs($this->jane)->post('/ads', adInput($this))->assertRedirect('/ads');
 
     $c = Campaign::query()->sole();
-    expect($c->status)->toBe('active')->and($c->meta_ids)->toBe(['campaign' => 'c1', 'adset' => 's1', 'creative' => 'cr1', 'ad' => 'a1'])
+    expect($c->status)->toBe('active')->and($c->meta_ids)->toEqual(['campaign' => 'c1', 'adset' => 's1', 'creative' => 'cr1', 'ad' => 'a1']) // MySQL reorders JSON keys
         ->and($c->maxSpendCents())->toBe(20000)->and($c->link)->toStartWith('https://acme.rightally.site/homes/'.$this->janes->ulid.'/')->toContain('utm_source=facebook');
     Http::assertSent(fn (HttpRequest $r): bool => str_ends_with($r->url(), 'act_555/campaigns') && $r['special_ad_categories'] === ['HOUSING'] && $r['status'] === 'PAUSED');
     Http::assertSent(fn (HttpRequest $r): bool => str_ends_with($r->url(), 'act_555/adsets') && $r['daily_budget'] === 2000
