@@ -136,7 +136,7 @@ final class CoreServiceProvider extends ServiceProvider
         $this->registerMigrationMacros();
 
         if ($this->app->runningInConsole()) {
-            $this->commands([CompileDesignTokens::class, RunTenantLifecycle::class, BootstrapHq::class, Console\FlushAudit::class, Console\VerifyAudit::class, Console\AuditMaintenance::class, Console\ExpireAccess::class]);
+            $this->commands([CompileDesignTokens::class, RunTenantLifecycle::class, BootstrapHq::class, Console\FlushAudit::class, Console\VerifyAudit::class, Console\AuditMaintenance::class, Console\ExpireAccess::class, Console\RebuildDirectory::class]);
         }
     }
 
@@ -193,6 +193,15 @@ final class CoreServiceProvider extends ServiceProvider
 
             return $this->app->make(Permissions::class)->allows($user, $ability, $record instanceof Model ? $record : null);
         });
+
+        // The shared AI assistant address finds people's brokerage by email (specs/connect/03, M2b).
+        User::saved(function (User $u): void {
+            if ($u->wasRecentlyCreated || $u->wasChanged(['email', 'kind', 'deleted_at'])) {
+                Identity\Directory::sync($u);
+            }
+        });
+        User::deleted(fn (User $u) => Identity\Directory::forget($u));
+        User::restored(fn (User $u) => Identity\Directory::sync($u));
 
         Event::listen(Login::class, function (Login $event): void {
             // "Log in as" is not the person signing in: no last-login change or device alert.

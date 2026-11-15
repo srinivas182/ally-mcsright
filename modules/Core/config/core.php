@@ -49,10 +49,13 @@ return [
         'max' => 40,
         'reserved' => [
             'www', 'app', 'api', 'admin', 'hq', 'mail', 'support', 'help', 'status', 'docs',
-            'blog', 'cdn', 'static', 'assets', 'auth', 'login', 'billing', 'rightally',
+            'blog', 'cdn', 'static', 'assets', 'auth', 'login', 'billing', 'rightally', 'mcp',
         ],
     ],
 
     // Central host for Google/Microsoft sign-in redirects (one registered address for every brokerage).
     'sso_host' => env('CORE_SSO_HOST', 'auth.rightally.app'),
+
+    // One AI assistant (MCP) address for every brokerage (specs/connect/03, M2b): people pick their brokerage by email.
+    'mcp_host' => env('CORE_MCP_HOST', 'mcp.rightally.app'),
 ];

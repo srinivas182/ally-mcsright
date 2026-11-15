@@ -39,8 +39,8 @@ final class ResolveTenant
         /** @var list<string> $central */
         $central = (array) config('core.central_hosts', []);
 
-        // The central sign-in hand-off host (Google/Microsoft) belongs to no brokerage.
-        if (in_array($host, $central, true) || $host === Host::normalise((string) config('core.sso_host'))) {
+        // The central sign-in hand-off host (Google/Microsoft) and the shared AI assistant host belong to no brokerage.
+        if (in_array($host, $central, true) || in_array($host, [Host::normalise((string) config('core.sso_host')), Host::normalise((string) config('core.mcp_host'))], true)) {
             return $next($request);
         }
 

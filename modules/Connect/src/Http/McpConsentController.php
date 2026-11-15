@@ -11,6 +11,7 @@ use Inertia\Inertia;
 use Laravel\Passport\Client;
 use Laravel\Passport\Scope;
 use Modules\Connect\Mcp\AiAssistants;
+use Modules\Connect\Mcp\Central;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -27,6 +28,9 @@ final class McpConsentController
         $uris = $client instanceof Client ? (array) $client->getAttribute('redirect_uris') : [];
         $request = request();
         $redirect = is_string($request->query('redirect_uri')) ? (string) $request->query('redirect_uri') : (string) ($uris[0] ?? '');
+        if ($redirect === Central::returnUri()) { // came through the shared address: name the real AI app's site
+            $redirect = (string) (Central::pending((string) $request->query('state', ''))['redirect_uri'] ?? $redirect);
+        }
 
         return Inertia::render('mcp/consent', [
             'client' => $client instanceof Client ? (string) $client->getAttribute('name') : 'An AI assistant',

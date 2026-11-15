@@ -5,6 +5,8 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Route;
 use Laravel\Mcp\Facades\Mcp;
 use Modules\Connect\Http\AppsController;
+use Modules\Connect\Http\CentralMcpController;
+use Modules\Connect\Http\CentralMcpToken;
 use Modules\Connect\Http\HqAppsController;
 use Modules\Connect\Http\McpConsentController;
 use Modules\Connect\Http\OAuthController;
@@ -15,6 +17,22 @@ use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
 
 $app = '[a-z0-9_]{2,40}';
 $ulid = '[0-9A-Za-z]{26}';
+
+// The shared AI assistant address for every brokerage (specs/connect/03, M2b). Registered first, so these win over
+// the per-brokerage routes with the same paths.
+Route::domain((string) config('core.mcp_host'))->group(function (): void {
+    Route::get('.well-known/oauth-authorization-server{any?}', [CentralMcpController::class, 'authorizationServer'])->where('any', '(/.*)?');
+    Route::get('.well-known/oauth-protected-resource{any?}', [CentralMcpController::class, 'protectedResource'])->where('any', '(/.*)?');
+    Route::post('register', [CentralMcpController::class, 'register'])->middleware('throttle:20,1');
+    Route::post('token', [CentralMcpController::class, 'token'])->middleware('throttle:60,1');
+    Route::middleware(['web', 'throttle:30,1'])->group(function (): void {
+        Route::get('authorize', [CentralMcpController::class, 'authorize'])->name('connect.mcp.central.authorize');
+        Route::post('authorize/find', [CentralMcpController::class, 'find'])->middleware('throttle:10,1');
+        Route::post('authorize/choose', [CentralMcpController::class, 'choose']);
+        Route::get('oauth/return', [CentralMcpController::class, 'back']);
+    });
+    Mcp::web('mcp', RightAllyServer::class)->middleware([CentralMcpToken::class, 'auth:api', 'throttle:120,1']);
+});
 
 Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->name('connect.')->group(function () use ($app, $ulid): void {
     Route::get('apps', [AppsController::class, 'index'])->name('apps');
