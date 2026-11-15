@@ -104,6 +104,11 @@ final class Connections
                 continue;
             }
             $text = is_scalar($value) ? trim((string) $value) : '';
+            if ($f['type'] === 'checkbox') {
+                $settings[$f['key']] = in_array($text, ['1', 'true', 'on'], true);
+
+                continue;
+            }
             if ($text === '') {
                 $errors[$f['key']] = 'Enter the '.mb_strtolower($f['label']).'.';
 

@@ -7,6 +7,9 @@ namespace Modules\Connect;
 use Modules\Ads\Meta\MetaAdsConnector;
 use Modules\Core\Connect\App;
 use Modules\Core\Connect\AppCatalog;
+use Modules\Crm\Calls\Aircall;
+use Modules\Crm\Calls\Dialpad;
+use Modules\Crm\Calls\RingCentral;
 use Modules\Crm\Connect\BoldTrail;
 use Modules\Crm\Connect\ConstantContact;
 use Modules\Crm\Connect\FacebookLeads;
@@ -37,6 +40,7 @@ final class Catalog
 {
     /** Apps on the roadmap whose API is only open to partners: what HQ must apply for (shown as "Needs partner access"). */
     private const PARTNERS = [
+        'mojo' => 'Mojo Dialer has no public API. Ask Mojo (mojosells.com) for partner access; meanwhile agents can export a smart list to CSV and import it into Mojo.',
         'real_geeks' => 'Real Geeks shares leads only with approved partners (Lead Router). Apply through Real Geeks partner support.',
         'boomtown' => 'BoomTown\'s API is for approved partners only. Apply through BoomTown (Inside Real Estate) partner programme.',
         'top_producer' => 'Top Producer has no public API. Ask Constellation Real Estate Group for partner access.',
@@ -435,6 +439,31 @@ final class Catalog
                 'partner' => 'Free for your own app. Constant Contact\'s Technology Partner program is optional.', 'docs' => 'https://developer.constantcontact.com/api_guide/auth_overview.html'],
             guide: ['steps' => ['Press Connect and sign in to Constant Contact.', 'Choose your list and who goes under Settings → Email marketing.', 'Contacts start going on the next run (hourly).']]));
 
+        // Phones (specs/connect/15, C7b): calls and texts on the contact's timeline, hourly. Unknown numbers create nothing.
+        $catalog->add(new App('ringcentral', 'RingCentral', 'phones', 'Calls and texts from RingCentral logged on the matching contacts; a call to a new lead counts as your response.',
+            scope: 'both', auth: 'oauth', syncs: ['Calls (direction, length, outcome), hourly', 'Texts, hourly', 'Recording links, if you switch them on'],
+            driver: RingCentral::class, vendorCost: 'Your RingCentral plan',
+            oauth: ['provider' => 'ringcentral', 'scopes' => [], 'authorize' => 'https://platform.ringcentral.com/restapi/oauth/authorize', 'token' => 'https://platform.ringcentral.com/restapi/oauth/token',
+                'userinfo' => '', 'response_type' => 'code', 'pkce' => true, 'token_auth' => 'basic'],
+            setup: ['needs' => 'keys', 'fields' => [['key' => 'client_id', 'label' => 'Client ID'], ['key' => 'client_secret', 'label' => 'Client secret', 'secret' => true]],
+                'steps' => ['At developers.ringcentral.com, create a REST API app called RightAlly (server-side web app, 3-legged OAuth).', 'Give it the Read Call Log and Read Messages permissions, and the return address shown above as its redirect URI.',
+                    'Apply for production (RingCentral reviews it), then copy the client ID and secret here and switch RingCentral on.'],
+                'partner' => 'Free. RingCentral reviews the app before production; listing in the RingCentral App Gallery is optional.', 'docs' => 'https://developers.ringcentral.com/api-reference/Call-Log/readUserCallLog'],
+            guide: ['steps' => ['Press Connect and sign in to RingCentral. For the brokerage\'s whole account, a RingCentral admin signs in.', 'Calls and texts start appearing on contacts within the hour.']]));
+        $catalog->add(new App('dialpad', 'Dialpad', 'phones', 'Calls from Dialpad logged on the matching contacts; a call to a new lead counts as your response.',
+            scope: 'both', auth: 'api_key', syncs: ['Calls (direction, length, who took it), hourly', 'Recording links, if you switch them on'],
+            fields: [['key' => 'api_key', 'label' => 'API key', 'type' => 'text', 'secret' => true, 'help' => 'Admin settings → My company → Authentication → API keys.'], ['key' => 'recordings', 'label' => 'Show recording links on contacts', 'type' => 'checkbox', 'help' => 'Only if every call plays a recording notice (some states, like California and Florida, require all parties to agree). Recordings stay in your phone app; nothing is transcribed.']],
+            driver: Dialpad::class, vendorCost: 'Your Dialpad plan',
+            setup: ['steps' => ['Nothing to set up: each company uses its own Dialpad API key.', 'Switch Dialpad on.'], 'docs' => 'https://developers.dialpad.com/docs/call-events'],
+            guide: ['steps' => ['A Dialpad admin makes an API key (Admin settings → My company → Authentication → API keys).', 'Paste it below and press Connect.']]));
+        $catalog->add(new App('aircall', 'Aircall', 'phones', 'Calls from Aircall logged on the matching contacts, with recording links where allowed.',
+            scope: 'both', auth: 'api_key', syncs: ['Calls (direction, length, who took it, voicemail), hourly', 'Recording links, if you switch them on'],
+            fields: [['key' => 'api_id', 'label' => 'API ID', 'type' => 'text', 'secret' => true, 'help' => 'Integrations → API Keys in Aircall (admin).'],
+                ['key' => 'api_token', 'label' => 'API token', 'type' => 'text', 'secret' => true, 'help' => 'Shown once when you make the key.'], ['key' => 'recordings', 'label' => 'Show recording links on contacts', 'type' => 'checkbox', 'help' => 'Only if every call plays a recording notice (some states, like California and Florida, require all parties to agree). Recordings stay in your phone app; nothing is transcribed.']],
+            driver: Aircall::class, vendorCost: 'Your Aircall plan',
+            setup: ['steps' => ['Nothing to set up: each company uses its own Aircall API key.', 'Switch Aircall on.'], 'docs' => 'https://developer.aircall.io/docs/work-with-call-data'],
+            guide: ['steps' => ['An Aircall admin makes an API key under Integrations → API Keys.', 'Paste the API ID and token below and press Connect.']]));
+
         // On the roadmap (people can ask for them; HQ sees the demand). Some need a partner agreement first.
         foreach ([
             ['real_geeks', 'Real Geeks', 'crm', 'Bring over leads and their activity from Real Geeks.', 'both', 'Your Real Geeks plan'],
@@ -461,10 +490,7 @@ final class Catalog
             ['direct_mail', 'Direct mail', 'marketing', 'Just listed, just sold and farming postcards, printed and mailed from RightAlly.', 'agent', 'Printing and postage'],
             ['bombbomb', 'BombBomb', 'marketing', 'Video emails logged on contacts, with views and replies.', 'agent', 'Your BombBomb plan'],
             ['corefact', 'Corefact', 'marketing', 'Printed farming and listing mail from your RightAlly lists.', 'agent', 'Printing and postage'],
-            ['ringcentral', 'RingCentral', 'phones', 'Calls and texts from your RingCentral number logged on contacts.', 'both', 'Your RingCentral plan'],
             ['mojo', 'Mojo Dialer', 'phones', 'Dial your RightAlly lists and log every call.', 'agent', 'Your Mojo plan'],
-            ['dialpad', 'Dialpad', 'phones', 'Calls and texts from Dialpad logged on contacts.', 'both', 'Your Dialpad plan'],
-            ['aircall', 'Aircall', 'phones', 'Calls from Aircall logged on contacts, with recordings where allowed.', 'both', 'Your Aircall plan'],
             ['property_data', 'Property data (ATTOM)', 'data', 'Owner, sale history and likely-to-sell signals for better home values and prospecting lists.', 'brokerage', 'Usage, paid with credits'],
             ['batchdata', 'BatchData', 'data', 'Owner contact and property data for prospecting lists (with consent rules).', 'brokerage', 'Usage, paid with credits'],
             ['propstream', 'PropStream', 'data', 'Property and owner data lists from PropStream into your CRM.', 'agent', 'Your PropStream plan'],

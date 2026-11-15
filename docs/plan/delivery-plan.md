@@ -175,7 +175,8 @@ Seven approved growth items are built before Connect C7 and C8, in this order:
 | C7a    | A with D    | Email marketing: Mailchimp and Constant Contact, consented contacts out, unsubscribes back as opt-outs                                                                                      | specs/connect/15                 |
 | C7a-2  | A with D    | GoHighLevel campaigns: tags or smart lists into workflows, campaigns or trigger tags, consent per channel, DND back                                                                         | specs/connect/16                 |
 | AI1    | D with A    | "Your AI Assistant": bottom-right on every back-office page, every MCP skill and connected app, previews before changes, connect and carry on                                               | specs/know/03                    |
-| Next   | A           | C7b phones, C7c direct mail, C7d Google Ads, Canva, social; then C8; then Movewise                                                                                                          | specs/connect/15, specs/movewise |
+| C7b    | A with D    | Phones: RingCentral, Dialpad, Aircall calls (and RingCentral texts) on contacts, hourly; recording links only when switched on                                                              | specs/connect/17                 |
+| Next   | A           | C7c direct mail, C7d Google Ads, Canva, social; then C8; then Movewise                                                                                                                      | specs/connect/15, specs/movewise |
 
 ## Movewise: HQ's consumer home site and lead marketplace (added 2026-11-15)
 
