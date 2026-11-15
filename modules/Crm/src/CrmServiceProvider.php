@@ -24,11 +24,13 @@ use Modules\Crm\Console\SendTaskReminders;
 use Modules\Crm\Events\ActivityLogged;
 use Modules\Crm\Events\ContactCreated;
 use Modules\Crm\Events\ContactStageChanged;
+use Modules\Crm\Events\TaskCompleted;
 use Modules\Crm\Models\Activity;
 use Modules\Crm\Models\Contact;
 use Modules\Crm\Models\FollowUpPlan;
 use Modules\Crm\Models\PlanEnrollment;
 use Modules\Crm\Models\Stage;
+use Modules\Crm\Webhooks\CrmEvents;
 
 final class CrmServiceProvider extends ServiceProvider
 {
@@ -92,6 +94,11 @@ final class CrmServiceProvider extends ServiceProvider
                 $item->update(['result' => null]);
             }
         });
+
+        // Connected apps hear about company contacts, stage changes and completed tasks (specs/connect/01).
+        Event::listen(ContactCreated::class, fn (ContactCreated $e) => CrmEvents::contactCreated($e->contactId));
+        Event::listen(ContactStageChanged::class, fn (ContactStageChanged $e) => CrmEvents::stageChanged($e->contactId, $e->stageId));
+        Event::listen(TaskCompleted::class, fn (TaskCompleted $e) => CrmEvents::taskCompleted($e->taskId));
 
         // Follow-up plans: automatic enrolment by source or stage; stop when the person engages.
         Event::listen(ContactCreated::class, function (ContactCreated $e): void {

@@ -113,3 +113,35 @@ Change log: Deal-IQ, DocIQ, List-IQ, AI Networking Assistant, compensation addit
 ## Team E start
 
 Team E starts once identity (Sprints 3-4) and the CRM core (Team D, Sprints 4-7) are in place; until then it works on the solo plan and growth specifications.
+
+## Connect: the app marketplace (Team A, added 2026-11-14)
+
+Connect is owned by **Team A** (spec: `docs/specs/connect/00-overview.md`). It delivers several plan items that
+were already in the plan, so it is mostly not new scope:
+
+- Team A 27: API v1, webhooks, integration marketplace
+- Team A 35: one-click importers
+- Team A 53: switch in a weekend
+- Team A 54: QuickBooks and Xero
+- Team B 41: dotloop, SkySlope, Lone Wolf
+- Team C 39: ad campaigns
+- Team C 33: ShowingTime
+- Team D 13: lead sources
+
+| Connect sprint | Team     | Delivers                                                                                            | Plan items covered |
+| -------------- | -------- | --------------------------------------------------------------------------------------------------- | ------------------ |
+| C1a            | A        | Connect engine, Apps page, CSV import, outgoing webhooks, Zapier and Make, app requests (HQ demand) | A27 (part)         |
+| C1b            | A        | Google and Microsoft 365 calendar (two-way busy times for booking)                                  | D53 (part)         |
+| C2a            | A        | Follow Up Boss: import and two-way sync                                                             | A35                |
+| C2b            | A        | BoldTrail (kvCORE) and Lofty: import                                                                | A35                |
+| C2c            | A        | Sierra, Real Geeks, BoomTown and others: import                                                     | A35                |
+| C3             | A with E | Facebook Lead Ads, Realtor.com; Zillow partner application                                          | D13                |
+| C4a            | A with E | Meta ads from the agent's own account: listing boosts with AI copy, Fair Housing (Housing category) | C39                |
+| C4b            | A with E | RightAlly Boost (ads paid with credits) and commission-aware ad results with automatic stop-loss    | C39, E22           |
+| C5             | A with B | SkySlope, dotloop, Lone Wolf: switch in a weekend (deals, documents, agents)                        | A53, B41           |
+| C6             | A with B | QuickBooks Online and Xero                                                                          | A54                |
+| C7             | A        | Google Ads; social posting; Mailchimp; direct mail                                                  | C39                |
+| C8             | A        | ShowingTime, property data, lenders, title and escrow, reviews                                      | C33                |
+| Partner API    | A        | Public OAuth apps, so other companies can list their apps on Connect                                | A27                |
+
+Status: C1a is in progress. The full order, mixing Connect with growth work and the approved additions (daily brief, ad results in commission dollars with an automatic stop, buyer demand before listing, switch in a weekend, proof of consent, Fair Housing audit pack, Agent Wallet, seller-funded boost), is in `docs/plan/market-2026-additions.md`.

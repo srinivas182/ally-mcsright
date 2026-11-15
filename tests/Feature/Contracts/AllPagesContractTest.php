@@ -68,6 +68,11 @@ it('sends every brokerage page the data its component needs', function (string $
     'journals' => ['owner', '/finance/journals', 'finance/journals/index'],
     'periods' => ['owner', '/finance/periods', 'finance/periods/index'],
     'adjustment' => ['owner', '/finance/adjustments/create', 'finance/adjustments/create'],
+    'apps' => ['owner', '/apps', 'apps/index'],
+    'apps (agent)' => ['agent', '/apps', 'apps/index'],
+    'an app: webhooks' => ['owner', '/apps/webhooks', 'apps/show'],
+    'an app: lead forwarding email' => ['owner', '/apps/lead_email', 'apps/show'],
+    'an app: coming soon' => ['agent', '/apps/follow_up_boss', 'apps/show'],
 ]);
 
 it('sends record pages (a deal, a contact, a journal, an account statement) the data they need', function (): void {
@@ -106,6 +111,7 @@ it('sends every HQ console page the data its component needs', function (string 
     'payments' => ['/hq/payments', 'hq/payments'],
     'payout rails' => ['/hq/payout-rails', 'hq/payout-rails'],
     'texts and calls' => ['/hq/messaging', 'hq/messaging'],
+    'app demand' => ['/hq/apps', 'hq/apps'],
 ]);
 
 it('sends the sign-in pages the data they need', function (string $url, string $component): void {

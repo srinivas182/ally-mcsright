@@ -54,6 +54,7 @@
             "Modules\\Crm\\": "modules/Crm/src/",
             "Modules\\Listings\\": "modules/Listings/src/",
             "Modules\\Sites\\": "modules/Sites/src/",
+            "Modules\\Connect\\": "modules/Connect/src/",
             "Modules\\AI\\": "modules/AI/src/",
             "Modules\\AI\\Database\\Factories\\": "modules/AI/database/factories/"
         }

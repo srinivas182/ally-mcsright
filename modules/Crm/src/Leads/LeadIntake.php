@@ -20,6 +20,7 @@ use Modules\Crm\Enums\Source;
 use Modules\Crm\Models\Contact;
 use Modules\Crm\Models\Lead;
 use Modules\Crm\Models\LeadSource;
+use Modules\Crm\Webhooks\CrmEvents;
 
 /**
  * Every lead comes in here, whatever the source (specs/grow/04): it is matched to an existing contact by email
@@ -127,6 +128,7 @@ final class LeadIntake
             }
             app(AiResponder::class)->leadReceived($lead->refresh(), self::handoff($in['ai_handoff'] ?? null));
             app(LeadScoring::class)->score($lead->refresh());
+            CrmEvents::lead($lead);
         }
 
         return $lead->refresh();
