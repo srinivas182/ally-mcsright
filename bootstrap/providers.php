@@ -5,6 +5,7 @@ use App\Providers\FortifyServiceProvider;
 use Modules\AI\AiServiceProvider;
 use Modules\Billing\BillingServiceProvider;
 use Modules\Compensation\CompensationServiceProvider;
+use Modules\Connect\ConnectServiceProvider;
 use Modules\Core\CoreServiceProvider;
 use Modules\Crm\CrmServiceProvider;
 use Modules\Forms\FormsServiceProvider;
@@ -30,4 +31,5 @@ return [
     TransactionsServiceProvider::class,
     ListingsServiceProvider::class,
     SitesServiceProvider::class,
+    ConnectServiceProvider::class,
 ];

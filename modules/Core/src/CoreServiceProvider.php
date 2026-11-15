@@ -77,6 +77,9 @@ final class CoreServiceProvider extends ServiceProvider
         $this->app->bindIf(AgentCredentials::class, NoAgentCredentials::class);
         $this->app->bindIf(Usage\WebsiteMaps::class, Usage\UnlimitedWebsiteMaps::class);
         $this->app->bindIf(Credits\CreditSpend::class, Credits\NoCreditSpend::class);
+        // Connect (specs/connect/00): the app catalog every module adds to, and events for outgoing webhooks.
+        $this->app->singleton(Connect\AppCatalog::class);
+        $this->app->bindIf(Connect\Outbox::class, Connect\NoOutbox::class);
         $this->app->bindIf(Messaging\SmsSender::class, function ($app): Messaging\SmsSender {
             $settings = $app->make(Messaging\MessagingSettings::class);
             $creds = $settings->credentials();

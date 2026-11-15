@@ -14,6 +14,7 @@ use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Crm\Models\Contact;
 use Modules\Crm\Models\Task;
+use Modules\Crm\Webhooks\CrmEvents;
 
 /**
  * Website booking (specs/crm/booking): each agent's weekly hours, open slots (their hours, minus their open calls,
@@ -124,8 +125,11 @@ final class Availability
             throw ValidationException::withMessages(['slot' => 'That time was just taken. Please choose another.']);
         }
 
-        return Task::query()->create(['contact_id' => $contact?->id, 'assigned_to' => $agent->id, 'type' => self::KINDS[$kind]['type'], 'title' => self::KINDS[$kind]['title'],
+        $task = Task::query()->create(['contact_id' => $contact?->id, 'assigned_to' => $agent->id, 'type' => self::KINDS[$kind]['type'], 'title' => self::KINDS[$kind]['title'],
             'notes' => mb_substr($notes, 0, 2000), 'priority' => 'high', 'due_at' => $start->utc(), 'remind_at' => $start->utc()->subMinutes(30)]);
+        CrmEvents::booking($task, $kind);
+
+        return $task;
     }
 
     public function timezone(): string

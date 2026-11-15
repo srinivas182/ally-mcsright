@@ -1,4 +1,5 @@
 import {
+    Blocks,
     BookOpen,
     Coins,
     Phone,
@@ -47,6 +48,7 @@ const icons: Record<string, LucideIcon> = {
     'shield-alert': ShieldAlert,
     'building-2': Building2,
     'calendar-check': CalendarCheck,
+    blocks: Blocks,
     contact: Contact,
     landmark: Landmark,
     'layout-grid': LayoutGrid,

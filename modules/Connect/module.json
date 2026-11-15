@@ -1,0 +1,9 @@
+{
+    "id": "connect",
+    "name": "Connect",
+    "version": "0.1.0",
+    "provider": "Modules\\Connect\\ConnectServiceProvider",
+    "depends": ["core", "crm"],
+    "entitlement": null,
+    "description": "The app marketplace: connect other tools, sync data in, send events out (specs/connect/00)."
+}
