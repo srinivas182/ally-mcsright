@@ -123,7 +123,7 @@ it('reads a whole-file upload, splits it into documents, files each into the che
     $reading = DocumentReading::query()->where('document_id', $original->id)->sole();
     expect($reading->status)->toBe('read')->and($reading->pages)->toBe(4)->and($reading->methods)->toBe(['text', 'text', 'text', 'text'])
         ->and(array_map(fn ($s) => [$s['type'], $s['from'], $s['to']], $reading->segments))->toBe([['purchase_agreement', 1, 2], ['lead_paint', 3, 3], ['seller_disclosure', 4, 4]])
-        ->and((string) DB::table('tx_document_readings')->where('id', $reading->id)->value('page_text'))->not->toContain('Oak'); // encrypted at rest
+        ->and((string) DB::table('tx_document_readings')->where('id', $reading->id)->value('page_text'))->not->toContain('12 Oak St'); // encrypted at rest (a phrase with spaces can't appear in ciphertext by chance)
 
     $filed = fn (string $label) => Document::query()->where('item_id', Item::query()->where('deal_id', $this->deal->id)->where('label', $label)->value('id'))->first();
     expect($filed('Purchase contract')?->getAttribute('pages_from'))->toBe(1)->and($filed('Purchase contract')?->getAttribute('pages_to'))->toBe(2)
