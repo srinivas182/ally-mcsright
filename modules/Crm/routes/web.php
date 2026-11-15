@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
 use Modules\Crm\Http\Controllers\ActivityController;
 use Modules\Crm\Http\Controllers\AskController;
+use Modules\Crm\Http\Controllers\AvailabilityController;
 use Modules\Crm\Http\Controllers\BriefController;
 use Modules\Crm\Http\Controllers\ContactController;
 use Modules\Crm\Http\Controllers\DataController;
@@ -63,6 +64,8 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoff
     });
 
 Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function (): void {
+    Route::get('settings/availability', [AvailabilityController::class, 'show'])->name('crm.availability');
+    Route::post('settings/availability', [AvailabilityController::class, 'save'])->name('crm.availability.save');
     Route::post('activities/{activity}/pin', [ActivityController::class, 'pin'])->name('crm.activities.pin');
     Route::delete('memories/{memory}', [RelationshipController::class, 'removeMemory'])->name('crm.memories.destroy');
     Route::get('today', [TodayController::class, 'show'])->middleware('feature:crm.intelligence')->name('crm.today');

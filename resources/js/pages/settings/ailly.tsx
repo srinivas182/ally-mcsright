@@ -19,12 +19,14 @@ type Settings = {
     gate_after: number;
     visitor_daily: number;
     daily_cap: number;
+    team: number[];
+    nudge: boolean;
 };
 type Conversation = {
     ulid: string;
     at: string;
     page: string;
-    outcome: 'none' | 'lead' | 'call' | 'showing';
+    outcome: 'none' | 'lead' | 'call' | 'showing' | 'listing';
     score: number | null;
     answers: number;
     messages: { role: string; body: string; flagged: boolean }[];
@@ -34,6 +36,7 @@ type Results = {
     leads: number;
     calls: number;
     showings: number;
+    listings: number;
     lead_rate: number;
     answers: number;
     free_answers: number;
@@ -67,13 +70,15 @@ type Props = {
         times: number;
         last_asked_at: string;
     }[];
+    team_options: { id: number; name: string }[];
 };
 
 const outcomeLabel: Record<Conversation['outcome'], string> = {
     none: 'No details yet',
     lead: 'Lead',
     call: 'Call booked',
-    showing: 'Showing requested',
+    showing: 'Showing booked',
+    listing: 'Listing appointment',
 };
 
 const usd = (cents: number | null) =>
@@ -161,6 +166,7 @@ export default function AillySettings({
     conversations,
     answers,
     open_questions,
+    team_options,
     media: initialMedia,
 }: Props) {
     const form = useForm({ ...settings });
@@ -173,7 +179,8 @@ export default function AillySettings({
         ['Chats', results.chats.toLocaleString()],
         ['Leads', `${results.leads.toLocaleString()} (${results.lead_rate}%)`],
         ['Calls booked', results.calls.toLocaleString()],
-        ['Showings requested', results.showings.toLocaleString()],
+        ['Showings booked', results.showings.toLocaleString()],
+        ['Listing appointments', results.listings.toLocaleString()],
         ['Spent in credits', usd(results.spent_cents)],
         ['Cost per lead', usd(results.cost_per_lead_cents)],
         ['Cost per booked call', usd(results.cost_per_call_cents)],
@@ -340,8 +347,9 @@ export default function AillySettings({
                             >
                                 <option value="all">All chats</option>
                                 <option value="call">Calls booked</option>
-                                <option value="showing">
-                                    Showings requested
+                                <option value="showing">Showings booked</option>
+                                <option value="listing">
+                                    Listing appointments
                                 </option>
                                 <option value="lead">Leads</option>
                                 <option value="none">No details yet</option>
@@ -742,6 +750,71 @@ export default function AillySettings({
                                     />
                                 </label>
                             </div>
+                            <fieldset className="grid gap-2">
+                                <legend className="font-medium">
+                                    Who takes bookings from the brokerage
+                                    website
+                                </legend>
+                                <span className="text-muted-foreground">
+                                    Visitors pick an open time from these
+                                    agents' hours (each sets them in My
+                                    availability). Leave all unticked to use
+                                    every agent who has hours set. Agent
+                                    websites always book with that agent.
+                                </span>
+                                <div className="grid gap-1 sm:grid-cols-2 md:grid-cols-3">
+                                    {team_options.map((a) => (
+                                        <label
+                                            key={a.id}
+                                            className="flex items-center gap-2"
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={form.data.team.includes(
+                                                    a.id,
+                                                )}
+                                                onChange={(e) =>
+                                                    form.setData(
+                                                        'team',
+                                                        e.target.checked
+                                                            ? [
+                                                                  ...form.data
+                                                                      .team,
+                                                                  a.id,
+                                                              ]
+                                                            : form.data.team.filter(
+                                                                  (id) =>
+                                                                      id !==
+                                                                      a.id,
+                                                              ),
+                                                    )
+                                                }
+                                            />
+                                            {a.name}
+                                        </label>
+                                    ))}
+                                    {team_options.length === 0 && (
+                                        <span className="text-muted-foreground">
+                                            No active agents yet.
+                                        </span>
+                                    )}
+                                </div>
+                            </fieldset>
+                            <label className="flex items-center gap-3">
+                                <Switch
+                                    checked={form.data.nudge}
+                                    onCheckedChange={(v) =>
+                                        form.setData('nudge', v)
+                                    }
+                                />
+                                <span>
+                                    Offer help on home pages after 40 seconds
+                                    <span className="block text-muted-foreground">
+                                        A small bubble, once per visit. The chat
+                                        only starts if the visitor clicks it.
+                                    </span>
+                                </span>
+                            </label>
                             <p className="text-muted-foreground">
                                 To keep credits for real people, AIlly ignores
                                 bots, answers a repeated first question for

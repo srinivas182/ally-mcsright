@@ -8,6 +8,7 @@ use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Modules\AI\AiGateway;
@@ -15,15 +16,22 @@ use Modules\AI\Data\AiTask;
 use Modules\AI\Data\RetrievedRecord;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
+use Modules\Crm\Booking\Availability;
 use Modules\Crm\Leads\LeadAlert;
 use Modules\Crm\Leads\SpeedToLead;
+use Modules\Crm\Models\Contact;
 use Modules\Crm\Models\Lead;
+use Modules\Crm\Models\Task;
 use Modules\Listings\Search\ListingSearch;
 use Modules\Sites\Ai\ContentStudio;
 use Modules\Sites\Jobs\WriteClosingBrief;
+use Modules\Sites\Mail\BookingConfirmedMail;
 use Modules\Sites\Models\Site;
+use Modules\Sites\Models\SiteEvent;
 use Modules\Sites\Models\SiteVisitor;
+use Modules\Sites\Visitors\JourneySummary;
 use Modules\Sites\Visitors\SiteLeads;
+use Modules\Sites\Visitors\Valuation;
 use Modules\Sites\Visitors\Visitors;
 use Throwable;
 
@@ -48,10 +56,11 @@ final class Assistant
     private const SCHEMA = ['type' => 'object', 'required' => ['reply', 'on_topic', 'next_step'], 'properties' => [
         'reply' => ['type' => 'string'], 'on_topic' => ['type' => 'boolean'], 'next_step' => ['type' => 'string'], 'lead_score' => ['type' => 'integer'],
         'answered' => ['type' => 'boolean'],
+        'valuation' => ['type' => ['object', 'null'], 'properties' => ['zip' => ['type' => ['string', 'null']], 'beds' => ['type' => ['integer', 'null']], 'sqft' => ['type' => ['integer', 'null']]]],
         'search' => ['type' => ['object', 'null'], 'properties' => ['q' => ['type' => ['string', 'null']], 'min_price' => ['type' => ['integer', 'null']],
             'max_price' => ['type' => ['integer', 'null']], 'beds' => ['type' => ['integer', 'null']], 'baths' => ['type' => ['integer', 'null']]]]]];
 
-    private const NEXT_STEPS = ['book_call', 'see_homes', 'save_search', 'home_value', 'none'];
+    private const NEXT_STEPS = ['book_call', 'book_listing', 'see_homes', 'save_search', 'home_value', 'none'];
 
     public function __construct(private readonly AiGateway $gateway, private readonly TenantContext $tenants, private readonly Visitors $visitors,
         private readonly ListingSearch $search, private readonly ContentStudio $studio) {}
@@ -85,16 +94,46 @@ final class Assistant
             'visitor_id' => $visitor?->id, 'page' => mb_substr((string) $request->input('page', ''), 0, 300), 'ip_hash' => hash('sha256', (string) $request->ip().config('app.key')),
             'created_at' => now(), 'updated_at' => now()]);
         $persona = AillySettings::persona($site, self::brokerageSite());
-        $greeting = AillySettings::greeting($settings, $persona['name']);
+        $back = $visitor !== null ? $this->welcomeBack($visitor) : null;
+        $greeting = $back['text'] ?? AillySettings::greeting($settings, $persona['name']);
         $this->say($ulid, 'ailly', $greeting);
 
-        return ['conversation' => $ulid, 'greeting' => $greeting, 'name' => $persona['name'], 'needs_contact' => $settings['gate'] === 'before'];
+        return ['conversation' => $ulid, 'greeting' => $greeting, 'name' => $persona['name'], 'needs_contact' => $settings['gate'] === 'before',
+            'search_url' => $back['url'] ?? null];
+    }
+
+    /**
+     * A returning visitor's greeting: how many homes are new (or reduced) for their last search since their previous
+     * visit. Worked out in code, no AI.
+     *
+     * @return array{text: string, url: string}|null
+     */
+    private function welcomeBack(SiteVisitor $visitor): ?array
+    {
+        if ($visitor->visits < 2) {
+            return null;
+        }
+        $last = SiteEvent::query()->where('visitor_id', $visitor->id)->where('type', 'search')->latest('id')->first();
+        if ($last === null || ($last->created_at !== null && $last->created_at->gt(CarbonImmutable::now()->subHour()))) {
+            return null; // no search yet, or one from this same visit
+        }
+        $f = array_filter((array) ($last->data ?? []), fn ($v, $k): bool => in_array($k, ['q', 'min_price', 'max_price', 'beds', 'baths'], true) && $v !== null && $v !== '', ARRAY_FILTER_USE_BOTH);
+        $since = $last->created_at ?? CarbonImmutable::now()->subDays(7);
+        $found = $this->search->search($this->tenants->id(), $f + ['since' => CarbonImmutable::parse($since)->toIso8601String(), 'per_page' => 1]);
+        $about = JourneySummary::describeSearch($f);
+        if ($found['total'] === 0) {
+            return ['text' => 'Welcome back! Nothing new for '.($about ?: 'your last search').' since you looked. Want me to widen it, or set up alerts so you hear first?',
+                'url' => '/homes?'.http_build_query($f)];
+        }
+
+        return ['text' => 'Welcome back! '.$found['total'].' '.($found['total'] === 1 ? 'home is' : 'homes are').' new or reduced for '.($about ?: 'your last search')
+            .' since you looked. Want to see them, or tell me what to change?', 'url' => '/homes?'.http_build_query($f + ['sort' => 'newest'])];
     }
 
     /**
      * One visitor message and AIlly's answer.
      *
-     * @return array{reply: string, next_step: string, homes: list<array<string, mixed>>, needs_contact: bool, ended: bool}
+     * @return array{reply: string, next_step: string, homes: list<array<string, mixed>>, needs_contact: bool, ended: bool, value: array<string, mixed>|null}
      */
     public function reply(Site $site, string $conversation, string $text, Request $request): array
     {
@@ -151,7 +190,8 @@ final class Assistant
             return $this->out('I can\'t answer that right now. Leave your name, email and phone and an agent will get back to you shortly.', 'book_call', [], ! $hasContact);
         }
         $homes = is_array($json['search'] ?? null) ? $this->homes($json['search']) : [];
-        $allowed = ContentStudio::numbers($transcript.' '.implode(' ', [...$info, ...$facts['lines']]).' '.json_encode($homes));
+        $value = is_array($json['valuation'] ?? null) ? $this->value($json['valuation']) : null;
+        $allowed = ContentStudio::numbers($transcript.' '.implode(' ', [...$info, ...$facts['lines']]).' '.json_encode($homes).' '.json_encode($value));
         $allowed = [...$allowed, ...ContentStudio::numbers(app(BrokerageAnswers::class)->asContext())];
         [$reply, $removed] = ContentStudio::guard(mb_substr(trim((string) ($json['reply'] ?? '')), 0, 1200), $allowed);
         $reply = $reply !== '' ? $reply : 'I can help with homes and real estate here. What would you like to know?';
@@ -177,7 +217,25 @@ final class Assistant
             $this->remember($site, $hash, $reply, $next);
         }
 
-        return $this->out($reply, $next, $homes, false);
+        return $this->out($reply, $value !== null && $next === 'none' ? 'book_listing' : $next, $homes, false, value: $value);
+    }
+
+    /**
+     * A likely price range for the visitor's home from similar homes for sale in its ZIP (a starting point an agent
+     * confirms with recent sales; the widget says so).
+     *
+     * @param  array<string, mixed>  $v
+     * @return array{low: int, mid: int, high: int, comps: int, basis: string, zip: string}|null
+     */
+    private function value(array $v): ?array
+    {
+        $zip = is_string($v['zip'] ?? null) && preg_match('/^\d{5}$/', $v['zip']) === 1 ? $v['zip'] : null;
+        if ($zip === null) {
+            return null;
+        }
+        $e = app(Valuation::class)->estimate($this->tenants->id(), $zip, isset($v['beds']) ? (int) $v['beds'] : null, isset($v['sqft']) ? (int) $v['sqft'] : null);
+
+        return $e !== null ? ['low' => $e['low'], 'mid' => $e['mid'], 'high' => $e['high'], 'comps' => $e['comps'], 'basis' => $e['basis'], 'zip' => $zip] : null;
     }
 
     /**
@@ -185,27 +243,56 @@ final class Assistant
      *
      * @param  array<string, mixed>  $in
      */
-    public function capture(Site $site, string $conversation, array $in, Request $request, SiteLeads $leads): void
+    /**
+     * The visitor shared their details, perhaps booking a time: a lead in the CRM with the chat, and, when they chose a
+     * time, a call, showing or listing appointment in the agent's tasks with a confirmation email (calendar invite).
+     *
+     * @param  array<string, mixed>  $in
+     * @return array{booked: string|null}
+     */
+    public function capture(Site $site, string $conversation, array $in, Request $request, SiteLeads $leads): array
     {
         $c = $this->conversation($conversation);
-        $want = in_array($in['want'] ?? null, ['call', 'showing'], true) ? (string) $in['want'] : null;
+        $want = in_array($in['want'] ?? null, ['call', 'showing', 'listing'], true) ? (string) $in['want'] : null;
+        $slot = null;
+        $agent = null;
+        if ($want !== null && is_string($in['slot'] ?? null) && $in['slot'] !== '') {
+            [$agent, $slot] = $this->chosenSlot($site, (string) $in['slot'], (string) ($in['slot_agent'] ?? ''), $want);
+        }
+        $tz = app(Availability::class)->timezone();
+        $when = $slot !== null ? $slot->setTimezone($tz)->format('D M j, g:i A T') : mb_substr((string) ($in['when'] ?? ''), 0, 120);
         $lines = [];
         if ($want === 'call') {
-            $lines[] = 'Asked for a call'.(($in['when'] ?? '') !== '' ? ': '.mb_substr((string) $in['when'], 0, 120) : '').'.';
+            $lines[] = ($slot !== null ? 'Booked a call' : 'Asked for a call').($when !== '' ? ': '.$when : '').'.';
+        }
+        if ($want === 'listing') {
+            $lines[] = ($slot !== null ? 'Booked a listing appointment' : 'Asked about selling their home').($when !== '' ? ': '.$when : '').'.';
         }
         $home = null;
         if ($want === 'showing' && is_string($in['listing'] ?? null) && preg_match('/^[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}$/', $in['listing']) === 1) {
             $home = $this->search->find($this->tenants->id(), $in['listing']);
-            $lines[] = 'Asked to see '.($home !== null ? ListingSearch::label($home).($home['mls_number'] ? ' (MLS# '.$home['mls_number'].')' : '') : 'a home').'.';
+            $lines[] = ($slot !== null ? 'Booked a showing of ' : 'Asked to see ').($home !== null ? ListingSearch::label($home).($home['mls_number'] ? ' (MLS# '.$home['mls_number'].')' : '') : 'a home')
+                .($slot !== null ? ': '.$when : '').'.';
         }
         $lines[] = 'Chat with '.AillySettings::persona($site, self::brokerageSite())['name'].' on the website:';
         $lines[] = mb_substr($this->transcript((int) $c->id), -3000);
         $source = SiteLeads::source('AIlly chat', 'Website assistant');
         $lead = $leads->capture($site, $source, ['name' => (string) ($in['name'] ?? ''), 'email' => (string) ($in['email'] ?? ''), 'phone' => (string) ($in['phone'] ?? ''),
-            'message' => mb_substr(implode("\n", $lines), 0, 4000), 'intent' => $want === 'showing' ? 'buy' : (string) ($in['intent'] ?? ''),
-            'landing_url' => (string) ($c->page ?? ''), 'sms_consent' => (bool) ($in['sms_consent'] ?? false)], $request, 'ailly', $home['ulid'] ?? null, ['conversation' => $conversation]);
-        $outcome = $want === 'call' ? 'call' : ($want === 'showing' ? 'showing' : 'lead');
-        $rank = ['none' => 0, 'lead' => 1, 'showing' => 2, 'call' => 3];
+            'message' => mb_substr(implode("\n", $lines), 0, 4000), 'intent' => $want === 'showing' ? 'buy' : ($want === 'listing' ? 'sell' : (string) ($in['intent'] ?? '')),
+            'landing_url' => (string) ($c->page ?? ''), 'sms_consent' => (bool) ($in['sms_consent'] ?? false)], $request, 'ailly', $home['ulid'] ?? null, ['conversation' => $conversation], $agent);
+        $contact = $lead->contact_id !== null ? Contact::query()->find($lead->contact_id) : null;
+        if ($slot !== null) {
+            app(Availability::class)->book($agent, $contact instanceof Contact ? $contact : null, $slot, $want, implode("\n", array_slice($lines, 0, -2)));
+            $email = (string) ($in['email'] ?? '');
+            if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL) !== false) {
+                Mail::to($email)->send(new BookingConfirmedMail($want, $slot, $tz, $agent->name, $site->displayName(), $home !== null ? ListingSearch::label($home) : null,
+                    (string) ($agent->phone ?? '')));
+            }
+        }
+        $outcome = match ($want) {
+            'call' => 'call', 'listing' => 'listing', 'showing' => 'showing', default => 'lead'
+        };
+        $rank = ['none' => 0, 'lead' => 1, 'showing' => 2, 'call' => 3, 'listing' => 4];
         DB::connection(Connections::cell())->table('ailly_conversations')->where('id', $c->id)->update(['lead_id' => $lead->id,
             'outcome' => $rank[$outcome] >= ($rank[$c->outcome] ?? 0) ? $outcome : $c->outcome, 'updated_at' => now()]);
         $visitor = SiteVisitor::query()->where('contact_id', $lead->contact_id)->whereNull('merged_into')->orderBy('id')->first();
@@ -216,8 +303,80 @@ final class Assistant
             WriteClosingBrief::dispatch($visitor->id, true);
         }
         $this->hotAlert((int) $c->id, $want !== null);
-        $this->say($conversation, 'ailly', $want === 'call' ? 'Thanks! An agent will call you'.(($in['when'] ?? '') !== '' ? ' '.mb_substr((string) $in['when'], 0, 60) : ' soon').'.'
-            : ($want === 'showing' ? 'Thanks! An agent will be in touch to set up the showing.' : 'Thanks! I\'ve passed your details to an agent. What else can I help with?'));
+        $booked = $slot !== null ? $slot->setTimezone($tz)->format('l, F j \a\t g:i A T') : null;
+        $with = $agent !== null ? $agent->first_name : 'an agent';
+        $this->say($conversation, 'ailly', match (true) {
+            $booked !== null && $want === 'showing' => 'You\'re booked to see the home on '.$booked.' with '.$with.'. A confirmation is on its way.',
+            $booked !== null && $want === 'listing' => 'Your home value appointment is booked for '.$booked.' with '.$with.'. A confirmation is on its way.',
+            $booked !== null => 'Your call is booked for '.$booked.' with '.$with.'. A confirmation is on its way.',
+            $want === 'call' => 'Thanks! An agent will call you'.($when !== '' ? ' '.$when : ' soon').'.',
+            $want === 'showing' => 'Thanks! An agent will be in touch to set up the showing.',
+            $want === 'listing' => 'Thanks! An agent will be in touch about your home\'s value.',
+            default => 'Thanks! I\'ve passed your details to an agent. What else can I help with?',
+        });
+
+        return ['booked' => $booked];
+    }
+
+    /**
+     * Open times to book on this website: the agent's own on an agent's website; otherwise the booking team's, each
+     * time offered by the agent with the fewest upcoming bookings.
+     *
+     * @return list<array{start: string, label: string, agent: string, agent_name: string}>
+     */
+    public function slots(Site $site, string $kind): array
+    {
+        $kind = isset(Availability::KINDS[$kind]) ? $kind : 'call';
+        $booking = app(Availability::class);
+        $tz = $booking->timezone();
+        $all = [];
+        foreach ($this->bookingAgents($site) as $agent) {
+            $load = Task::query()->where('assigned_to', $agent->id)->whereNull('completed_at')->where('due_at', '>=', now())->count();
+            foreach ($booking->slots($agent, $kind) as $t) {
+                $key = $t->toIso8601String();
+                if (! isset($all[$key]) || $all[$key]['load'] > $load) {
+                    $all[$key] = ['t' => $t, 'agent' => $agent, 'load' => $load];
+                }
+            }
+        }
+        ksort($all);
+
+        return array_values(array_map(fn (array $x): array => ['start' => $x['t']->toIso8601String(), 'label' => $x['t']->setTimezone($tz)->format('D M j, g:i A'),
+            'agent' => (string) $x['agent']->ulid, 'agent_name' => (string) $x['agent']->first_name], array_slice($all, 0, 8)));
+    }
+
+    /** @return list<User> */
+    private function bookingAgents(Site $site): array
+    {
+        if ($site->kind === 'agent') {
+            $agent = User::query()->whereKey($site->user_id)->first();
+
+            return $agent instanceof User ? [$agent] : [];
+        }
+
+        return app(Availability::class)->team(AillySettings::for(self::brokerageSite())['team']);
+    }
+
+    /**
+     * The slot the visitor chose, checked against what this website offers.
+     *
+     * @return array{0: User, 1: CarbonImmutable}
+     */
+    private function chosenSlot(Site $site, string $slot, string $agentUlid, string $kind): array
+    {
+        try {
+            $start = CarbonImmutable::parse($slot);
+        } catch (Throwable) {
+            throw ValidationException::withMessages(['slot' => 'Choose a time.']);
+        }
+        $agent = collect($this->bookingAgents($site))->first(fn (User $u): bool => $u->ulid === $agentUlid)
+            ?? throw ValidationException::withMessages(['slot' => 'Choose one of the times shown.']);
+        // Checked before the lead is saved, so a taken time asks the visitor to choose again without a half-made lead.
+        if (! collect(app(Availability::class)->slots($agent, $kind, 14, 200))->contains(fn (CarbonImmutable $s): bool => $s->equalTo($start))) {
+            throw ValidationException::withMessages(['slot' => 'That time was just taken. Please choose another.']);
+        }
+
+        return [$agent, $start];
     }
 
     /**
@@ -357,10 +516,11 @@ final class Assistant
 
     /**
      * @param  list<array<string, mixed>>  $homes
-     * @return array{reply: string, next_step: string, homes: list<array<string, mixed>>, needs_contact: bool, ended: bool}
+     * @param  array<string, mixed>|null  $value
+     * @return array{reply: string, next_step: string, homes: list<array<string, mixed>>, needs_contact: bool, ended: bool, value: array<string, mixed>|null}
      */
-    private function out(string $reply, string $next, array $homes, bool $needsContact, bool $ended = false): array
+    private function out(string $reply, string $next, array $homes, bool $needsContact, bool $ended = false, ?array $value = null): array
     {
-        return ['reply' => $reply, 'next_step' => $next, 'homes' => $homes, 'needs_contact' => $needsContact, 'ended' => $ended];
+        return ['reply' => $reply, 'next_step' => $next, 'homes' => $homes, 'needs_contact' => $needsContact, 'ended' => $ended, 'value' => $value];
     }
 }

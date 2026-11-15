@@ -50,6 +50,7 @@ final class SiteRouter
         $r->post('_ailly/start', [AillyController::class, 'start']);
         $r->post('_ailly/message', [AillyController::class, 'message']);
         $r->post('_ailly/contact', [AillyController::class, 'contact']);
+        $r->post('_ailly/slots', [AillyController::class, 'slots']);
         $r->get('homes/{listing}/{slug?}', [IdxController::class, 'listing'])->where(['listing' => '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}', 'slug' => '[a-z0-9-]{0,140}']);
         $r->get('blog', [BlogController::class, 'index']);
         $r->get('blog/feed.xml', [BlogController::class, 'feed']);
