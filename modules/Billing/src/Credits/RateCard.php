@@ -42,6 +42,7 @@ final class RateCard
         'ai.closing_brief' => [2, true, 'Closing brief on a website lead'],
         'ai.ads_copy' => [1, false, 'AI listing ad copy'],
         'ads.boost' => [1, false, 'RightAlly Boost ad spend (keep at 1: the quantity is the credits)'],
+        'apps.addon' => [1, false, 'Paid app add-on, a month (keep at 1: the quantity is the credits)'],
         // Beyond a package's monthly allowances (specs/billing/03).
         'usage.text_segment' => [4, true, 'Text beyond the allowance (per segment)'],
         'usage.call_minute' => [4, true, 'Call minute beyond the allowance'],

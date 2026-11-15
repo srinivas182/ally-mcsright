@@ -1,7 +1,11 @@
 import { Head, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 
-import { HqAppCard, type HqApp } from '@/components/connect/hq-app-card';
+import {
+    HqAppCard,
+    type HqApp,
+    type HqPackage,
+} from '@/components/connect/hq-app-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,6 +27,7 @@ type Props = {
     providers: { google: Status; microsoft: Status };
     categories: Record<string, string>;
     apps: HqApp[];
+    packages?: HqPackage[];
 };
 
 function CopyRow({ label, value }: { label: string; value: string }) {
@@ -147,6 +152,7 @@ export default function HqConnect({
     providers,
     categories,
     apps,
+    packages = [],
 }: Props) {
     const badge = (s: Status) =>
         s.set ? (
@@ -332,7 +338,11 @@ export default function HqConnect({
                                 <h3 className="font-medium">{title}</h3>
                                 <ul className="grid gap-2">
                                     {list.map((a) => (
-                                        <HqAppCard key={a.key} app={a} />
+                                        <HqAppCard
+                                            key={a.key}
+                                            app={a}
+                                            packages={packages}
+                                        />
                                     ))}
                                 </ul>
                             </div>

@@ -48,6 +48,7 @@ Schedule::command('sites:market-updates')->monthlyOn(1, '11:20')->onOneServer();
 Schedule::command('ailly:weekly')->weeklyOn(1, '13:40')->onOneServer();
 // Connected apps: due syncs; webhook history kept 30 days (specs/connect/01).
 Schedule::command('connect:sync')->everyFifteenMinutes()->withoutOverlapping()->onOneServer();
+Schedule::command('connect:renew-addons')->hourly()->withoutOverlapping()->onOneServer();
 Schedule::command('ads:refresh-boosts')->hourly()->withoutOverlapping()->onOneServer();
 Schedule::command('crm:search-alerts')->everyFifteenMinutes()->withoutOverlapping()->onOneServer();
 Schedule::command('listings:sync')->everyMinute()->withoutOverlapping()->onOneServer();

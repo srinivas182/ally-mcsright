@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
+use Modules\Billing\Models\Package;
 use Modules\Connect\AppRegistry;
 use Modules\Connect\OAuth\ClientSettings;
 use Modules\Connect\OAuth\Providers;
@@ -55,7 +56,9 @@ final class HqAppsController
                 'fields' => array_map(fn (array $f): array => ['key' => $f['key'], 'label' => $f['label'], 'secret' => $f['secret'] ?? true], $a->setup['fields'] ?? []),
                 'steps' => $a->setup['steps'] ?? [], 'partner' => $a->setup['partner'] ?? null, 'docs' => $a->setup['docs'] ?? null,
                 'return_address' => $a->oauth !== null ? Providers::redirectUri() : null, 'request' => self::request($a),
-                'webhook_address' => $a->driver !== null && is_subclass_of($a->driver, AppWebhooks::class) ? 'https://'.config('core.sso_host').'/connect/apps/'.$a->key.'/webhook' : null] + $registry->status($a), $catalog->all()),
+                'webhook_address' => $a->driver !== null && is_subclass_of($a->driver, AppWebhooks::class) ? 'https://'.config('core.sso_host').'/connect/apps/'.$a->key.'/webhook' : null,
+                'price_cents' => $registry->price($a)['cents'] ?? null, 'included_packages' => $registry->price($a)['packages'] ?? []] + $registry->status($a), $catalog->all()),
+            'packages' => Package::query()->where('active', true)->orderBy('monthly_cents')->get(['id', 'name'])->map(fn (Package $p): array => ['id' => $p->id, 'name' => $p->name])->all(),
         ]);
     }
 
@@ -83,6 +86,21 @@ final class HqAppsController
         Inertia::flash('toast', ['type' => 'success', 'message' => $a->name.((bool) $data['enabled']
             ? ($registry->ready($a) ? ' is on. Brokers and agents can connect it now.' : ' is on, but its setup isn\'t finished yet.')
             : ' is off. Existing connections are paused.')]);
+
+        return back();
+    }
+
+    /** HQ sets an app free for everyone, or a monthly add-on with the packages that include it (specs/connect/14). */
+    public function savePrice(Request $request, string $app, AppCatalog $catalog, AppRegistry $registry): RedirectResponse
+    {
+        $user = $request->user();
+        abort_unless($user instanceof User, 403);
+        $a = $catalog->find($app) ?? abort(404);
+        $data = $request->validate(['paid' => ['required', 'boolean'], 'price' => ['nullable', 'required_if:paid,true', 'numeric', 'min:1', 'max:10000'],
+            'packages' => ['array'], 'packages.*' => ['integer']], ['price.required_if' => 'Enter the monthly price in dollars.']);
+        $cents = (bool) $data['paid'] ? (int) round((float) $data['price'] * 100) : null;
+        $registry->savePrice($a, $cents, array_values(array_map('intval', (array) ($data['packages'] ?? []))), $user);
+        Inertia::flash('toast', ['type' => 'success', 'message' => $cents === null ? $a->name.' is free for everyone.' : $a->name.' is now $'.number_format($cents / 100, 2).' a month.']);
 
         return back();
     }

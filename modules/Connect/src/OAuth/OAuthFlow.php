@@ -18,6 +18,7 @@ use Modules\Connect\Connections;
 use Modules\Connect\Health;
 use Modules\Connect\Jobs\SyncConnection;
 use Modules\Connect\Models\Connection;
+use Modules\Connect\PaidApps;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Connect\App;
 use Modules\Core\Connect\NeedsReconnect;
@@ -46,9 +47,11 @@ final class OAuthFlow
         if ($app->oauth === null || ! app(AppRegistry::class)->ready($app)) {
             throw ValidationException::withMessages(['app' => $app->name.' isn\'t switched on yet. Please ask RightAlly support.']);
         }
-        if ($this->connections->ownerFor($app, $user) === false) {
+        $owner = $this->connections->ownerFor($app, $user);
+        if ($owner === false) {
             throw ValidationException::withMessages(['app' => 'Your brokerage connects '.$app->name.' for everyone.']);
         }
+        app(PaidApps::class)->require($app, $owner); // a paid app needs its add-on first (specs/connect/14)
         $p = Providers::forApp($app);
         $nonce = Str::random(32);
         $verifier = Str::random(64);

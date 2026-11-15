@@ -27,16 +27,47 @@ final class AppRegistry
 {
     private const CACHE = 'hq-connect-apps';
 
-    /** @return array<string, array{enabled: bool, credentials: string|null, secret_expires_on: string|null, updated_at: string|null}> */
+    /** @return array<string, array{enabled: bool, credentials: string|null, secret_expires_on: string|null, updated_at: string|null, price_cents: int|null, included_packages: list<int>}> */
     private function rows(): array
     {
         try {
             return Cache::remember(self::CACHE, now()->addMinutes(5), fn (): array => DB::connection(Connections::control())->table('hq_connect_apps')->get()
                 ->mapWithKeys(fn (object $r): array => [(string) $r->app_key => ['enabled' => (bool) $r->enabled, 'credentials' => $r->credentials !== null ? (string) $r->credentials : null,
-                    'secret_expires_on' => $r->secret_expires_on !== null ? (string) $r->secret_expires_on : null, 'updated_at' => $r->updated_at !== null ? (string) $r->updated_at : null]])->all());
+                    'secret_expires_on' => $r->secret_expires_on !== null ? (string) $r->secret_expires_on : null, 'updated_at' => $r->updated_at !== null ? (string) $r->updated_at : null,
+                    'price_cents' => $r->price_cents !== null ? (int) $r->price_cents : null,
+                    'included_packages' => array_values(array_map('intval', (array) json_decode((string) ($r->included_packages ?? '[]'), true)))]])->all());
         } catch (Throwable) {
             return [];
         }
+    }
+
+    /**
+     * What HQ charges for an app (specs/connect/14): null when it is free for everyone, otherwise the monthly price
+     * and the packages that include it free.
+     *
+     * @return array{cents: int, packages: list<int>}|null
+     */
+    public function price(App $app): ?array
+    {
+        $row = $this->rows()[$app->key] ?? null;
+        $cents = $row['price_cents'] ?? null;
+
+        return is_int($cents) && $cents > 0 ? ['cents' => $cents, 'packages' => $row['included_packages'] ?? []] : null;
+    }
+
+    /**
+     * HQ sets an app free for everyone (null), or a monthly price with the packages that include it free.
+     *
+     * @param  list<int>  $packages
+     */
+    public function savePrice(App $app, ?int $cents, array $packages, User $by): void
+    {
+        $cents = $cents !== null && $cents > 0 ? min($cents, 10_000_000) : null;
+        DB::connection(Connections::control())->table('hq_connect_apps')->updateOrInsert(['app_key' => $app->key], [
+            'price_cents' => $cents, 'included_packages' => $cents !== null ? json_encode(array_values(array_unique(array_map('intval', $packages)))) : null,
+            'updated_by' => $by->id, 'updated_at' => now()]);
+        Cache::forget(self::CACHE);
+        app(AuditLogger::class)->record('connect.hq_app_price', metadata: ['app' => $app->key, 'price_cents' => $cents, 'packages' => $packages], severity: 'warning');
     }
 
     public function enabled(App $app): bool
