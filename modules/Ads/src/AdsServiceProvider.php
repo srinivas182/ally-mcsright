@@ -23,6 +23,8 @@ final class AdsServiceProvider extends ServiceProvider
         $this->app->scoped(Lifecycle::class);
         $this->app->scoped(Returns::class);
         $this->app->scoped(Social\SocialPosts::class);
+        $this->app->scoped(Studio\StudioPlans::class);
+        $this->app->scoped(Studio\BrandKits::class);
     }
 
     public function boot(): void
@@ -36,6 +38,8 @@ final class AdsServiceProvider extends ServiceProvider
         $this->app->make(FeatureCatalog::class)->declare(AdCopy::FEATURE, 'ai.ads_copy', 'AI listing ad copy');
         $this->app->make(NavigationRegistry::class)->add(new NavItem('Grow', 'Ads', '/ads', 'megaphone', 30, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent]));
         $this->app->make(NavigationRegistry::class)->add(new NavItem('Grow', 'Social posts', '/social', 'send', 27, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent]));
+        $this->app->make(NavigationRegistry::class)->add(new NavItem('Grow', 'Ally Studio', '/studio', 'sparkles', 24, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent]));
+        $this->app->make(NavigationRegistry::class)->add(new NavItem('Platform', 'Ally Studio', '/hq/studio', 'sparkles', 38, kinds: [UserKind::HqStaff]));
         $this->app->make(McpToolbox::class)->add(Mcp\SocialPostTool::class);
     }
 }
