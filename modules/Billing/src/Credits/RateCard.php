@@ -40,6 +40,7 @@ final class RateCard
         'ai.compliance_rule' => [2, false, 'Deal-IQ rule'],
         'ai.ailly' => [1, true, 'AIlly assistant reply'],
         'ai.closing_brief' => [2, true, 'Closing brief on a website lead'],
+        'ai.ads_copy' => [1, false, 'AI listing ad copy'],
         // Beyond a package's monthly allowances (specs/billing/03).
         'usage.text_segment' => [4, true, 'Text beyond the allowance (per segment)'],
         'usage.call_minute' => [4, true, 'Call minute beyond the allowance'],
@@ -51,6 +52,7 @@ final class RateCard
      * Generous on purpose (they include retries such as the SEO rewrite on drafts).
      */
     public const DEFAULT_ESTIMATES = [
+        'ai.ads_copy' => [1500, 300, 0],
         'ai.crm_brief' => [3000, 500, 0],
         'ai.crm_ask' => [2000, 300, 0],
         'ai.voice' => [0, 0, 30],

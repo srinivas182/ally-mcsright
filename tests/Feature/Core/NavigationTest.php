@@ -19,16 +19,16 @@ function menuFor(User $user): array
 }
 
 it('shows owners the dashboard, people and finance', function (): void {
-    expect(menuFor(User::factory()->owner()->create()))->toBe(['Dashboard', "Today's 10", 'Tasks', 'Deals', 'Review queue', 'Risk', 'Leads', 'Inbox', 'Listings', 'Contacts', 'Money received', 'Payouts', 'Agent billing', 'Tax (1099)', 'Trust reconciliation', 'Chart of accounts', 'Journals', 'Periods', 'People', 'Plans', 'Fees', 'Credits', 'Simulator', 'Revenue share', 'Profitability', 'Directory', 'Roster and compliance', 'Apps', 'Website', 'AIlly assistant', 'MLS', 'My availability', 'Agent plans', 'RightAlly credits', 'Billing', 'Partner earnings', 'Transactions', 'Forms', 'Roles', 'Offices and teams', 'Audit log']);
+    expect(menuFor(User::factory()->owner()->create()))->toBe(['Dashboard', "Today's 10", 'Tasks', 'Deals', 'Review queue', 'Risk', 'Leads', 'Inbox', 'Listings', 'Contacts', 'Ads', 'Money received', 'Payouts', 'Agent billing', 'Tax (1099)', 'Trust reconciliation', 'Chart of accounts', 'Journals', 'Periods', 'People', 'Plans', 'Fees', 'Credits', 'Simulator', 'Revenue share', 'Profitability', 'Directory', 'Roster and compliance', 'Apps', 'Website', 'AIlly assistant', 'MLS', 'My availability', 'Agent plans', 'RightAlly credits', 'Billing', 'Partner earnings', 'Transactions', 'Forms', 'Roles', 'Offices and teams', 'Audit log']);
 });
 
 it('shows agents only their own pages', function (): void {
-    expect(menuFor(User::factory()->create()))->toBe(['Today', "Today's 10", 'Tasks', 'Deals', 'My plan', 'My money', 'My licences and onboarding', 'Revenue share', 'Leads', 'Inbox', 'Listings', 'Contacts', 'Directory', 'Apps', 'My website', 'My availability', 'RightAlly credits'])
+    expect(menuFor(User::factory()->create()))->toBe(['Today', "Today's 10", 'Tasks', 'Deals', 'My plan', 'My money', 'My licences and onboarding', 'Revenue share', 'Leads', 'Inbox', 'Listings', 'Contacts', 'Ads', 'Directory', 'Apps', 'My website', 'My availability', 'RightAlly credits'])
         ->and(menuFor(User::factory()->assistantOf(User::factory()->create())->create()))->toBe(['Today', "Today's 10", 'Tasks', 'Deals', 'Inbox', 'Listings', 'Contacts']);
 });
 
 it('shows staff the dashboard but not owner-only pages', function (): void {
-    expect(menuFor(User::factory()->staff()->create()))->toBe(['Dashboard', "Today's 10", 'Tasks', 'Deals', 'Review queue', 'Risk', 'Leads', 'Inbox', 'Listings', 'Contacts', 'Directory', 'Roster and compliance', 'Apps', 'Website', 'AIlly assistant', 'My availability', 'RightAlly credits', 'Transactions', 'Forms']);
+    expect(menuFor(User::factory()->staff()->create()))->toBe(['Dashboard', "Today's 10", 'Tasks', 'Deals', 'Review queue', 'Risk', 'Leads', 'Inbox', 'Listings', 'Contacts', 'Ads', 'Directory', 'Roster and compliance', 'Apps', 'Website', 'AIlly assistant', 'My availability', 'RightAlly credits', 'Transactions', 'Forms']);
 });
 
 it('shows HQ staff the HQ console and people', function (): void {

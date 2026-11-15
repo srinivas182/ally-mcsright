@@ -36,6 +36,7 @@ import {
     Zap,
     Inbox,
     Home,
+    Megaphone,
 } from 'lucide-react';
 
 /** Icons the server may name for menu items. Unknown names fall back to a dot. */
@@ -75,6 +76,7 @@ const icons: Record<string, LucideIcon> = {
     sun: Sun,
     target: Target,
     users: Users,
+    megaphone: Megaphone,
 };
 
 export function NavIcon({
