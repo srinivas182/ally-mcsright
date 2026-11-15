@@ -33,6 +33,10 @@ Changing the price is password-confirmed and audited. A new price applies from e
     - **Credits** are charged at the credit value of the day.
     - **Card** uses the payer's card saved through Stripe, the same one used for automatic credit top-ups; the
       brokerage's card for the brokerage, the agent's own for an agent.
+    - **The card price includes the card processing fee** (approved 2026-11-15). The fee defaults to Stripe's
+      standard 2.9% + 30¢, and HQ can change it under HQ → Payments. The price is grossed up so RightAlly keeps the
+      same amount either way: $20.00 with credits is $20.91 by card. Both prices are shown before anyone pays.
+      US card-surcharge rules apply, so the fee stays at or below the real card cost.
     - The payer chooses when adding the add-on and can switch any time on the app page, with a fresh password. The
       change applies from the next month.
     - If no card is saved, the card option points to Billing → RightAlly credits to save one.

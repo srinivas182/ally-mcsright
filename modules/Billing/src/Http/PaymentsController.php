@@ -60,6 +60,15 @@ final class PaymentsController
         return back();
     }
 
+    /** HQ: the card processing fee added when a paid app is paid by card instead of credits. */
+    public function setCardFee(Request $request, PaymentSettings $settings): RedirectResponse
+    {
+        $data = $request->validate(['percent' => ['required', 'numeric', 'min:0', 'max:20'], 'fixed' => ['required', 'numeric', 'min:0', 'max:5']]);
+        $settings->setCardFee((int) round((float) $data['percent'] * 100), (int) round((float) $data['fixed'] * 100), self::user($request));
+
+        return back();
+    }
+
     /** HQ: "this brokerage pays for its agents" (it takes on the liability). */
     public function exception(Request $request, Tenant $tenant): RedirectResponse
     {

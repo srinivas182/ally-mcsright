@@ -14,6 +14,7 @@ export type AppPrice = {
     can_buy: boolean;
     pay_with: 'credits' | 'card';
     card: { brand: string; last4: string } | null;
+    card_cents: number | null;
     error: string | null;
 };
 
@@ -99,7 +100,7 @@ export function AddonPanel({
                                 }
                             }}
                         />
-                        RightAlly credits
+                        RightAlly credits · {usd(price.cents)} a month
                     </label>
                     <label className="flex items-center gap-3">
                         <input
@@ -121,6 +122,8 @@ export function AddonPanel({
                         {price.card
                             ? `My card (${price.card.brand} ending ${price.card.last4})`
                             : 'My card: save one under Billing → RightAlly credits first'}
+                        {price.card_cents !== null &&
+                            ` · ${usd(price.card_cents)} a month, including the card processing fee`}
                     </label>
                     {price.active && (
                         <span className="text-sm text-muted-foreground">

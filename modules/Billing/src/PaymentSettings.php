@@ -18,14 +18,32 @@ use Modules\Core\Support\Connections;
 final class PaymentSettings
 {
     /**
-     * @return array{mode: string, agent_pays_default: bool, automatic_tax: bool, test_set: bool, live_set: bool}
+     * @return array{mode: string, agent_pays_default: bool, automatic_tax: bool, test_set: bool, live_set: bool, card_fee_bps: int, card_fee_cents: int}
      */
     public function summary(): array
     {
         $row = $this->row();
 
         return ['mode' => (string) $row['mode'], 'agent_pays_default' => (bool) $row['agent_pays_default'], 'automatic_tax' => (bool) $row['automatic_tax'],
-            'test_set' => $row['test_keys'] !== null, 'live_set' => $row['live_keys'] !== null];
+            'test_set' => $row['test_keys'] !== null, 'live_set' => $row['live_keys'] !== null, 'card_fee_bps' => $row['card_fee_bps'], 'card_fee_cents' => $row['card_fee_cents']];
+    }
+
+    /**
+     * What a price becomes when paid by card: grossed up so that, after the card fee (percent + fixed), RightAlly
+     * keeps the full price (specs/connect/14). Zero fee settings give the same price.
+     */
+    public function cardPrice(int $cents): int
+    {
+        $row = $this->row();
+        $rate = min(0.2, max(0, $row['card_fee_bps']) / 10_000);
+
+        return (int) ceil(($cents + max(0, $row['card_fee_cents'])) / (1 - $rate));
+    }
+
+    public function setCardFee(int $bps, int $cents, User $by): void
+    {
+        $this->update(['card_fee_bps' => max(0, min($bps, 2000)), 'card_fee_cents' => max(0, min($cents, 500)), 'updated_by' => $by->id]);
+        app(AuditLogger::class)->record('billing.card_fee.changed', metadata: ['bps' => $bps, 'cents' => $cents], severity: 'warning');
     }
 
     public function mode(): string
@@ -90,7 +108,7 @@ final class PaymentSettings
     }
 
     /**
-     * @return array{mode: string, test_keys: string|null, live_keys: string|null, agent_pays_default: bool, automatic_tax: bool}
+     * @return array{mode: string, test_keys: string|null, live_keys: string|null, agent_pays_default: bool, automatic_tax: bool, card_fee_bps: int, card_fee_cents: int}
      */
     private function row(): array
     {
@@ -102,7 +120,8 @@ final class PaymentSettings
 
         return ['mode' => (string) $row['mode'], 'test_keys' => isset($row['test_keys']) ? (string) $row['test_keys'] : null,
             'live_keys' => isset($row['live_keys']) ? (string) $row['live_keys'] : null,
-            'agent_pays_default' => (bool) $row['agent_pays_default'], 'automatic_tax' => (bool) $row['automatic_tax']];
+            'agent_pays_default' => (bool) $row['agent_pays_default'], 'automatic_tax' => (bool) $row['automatic_tax'],
+            'card_fee_bps' => (int) ($row['card_fee_bps'] ?? 290), 'card_fee_cents' => (int) ($row['card_fee_cents'] ?? 30)];
     }
 
     /**

@@ -13,6 +13,7 @@ use Modules\Billing\Credits\CreditLedger;
 use Modules\Billing\Gateway\FakeGateway;
 use Modules\Billing\Gateway\PaymentGateway;
 use Modules\Billing\Models\Package;
+use Modules\Billing\PaymentSettings;
 use Modules\Connect\AppRegistry;
 use Modules\Connect\Models\AppAddon;
 use Modules\Connect\Models\Connection;
@@ -105,10 +106,10 @@ it('can be paid on the payer\'s saved card instead of credits, and switched eith
 
     $this->actingAs($this->owner)->withSession($confirm)->post('/apps/xero/addon', ['pay_with' => 'card'])->assertSessionHasErrors('addon'); // no saved card yet
     app(AutoTopUp::class)->rememberCard(null, 'cus_1');
-    $this->actingAs($this->owner)->get('/apps/xero')->assertInertia(fn (Assert $p) => $p->where('app.price.card.last4', '4242'));
+    $this->actingAs($this->owner)->get('/apps/xero')->assertInertia(fn (Assert $p) => $p->where('app.price.card.last4', '4242')->where('app.price.card_cents', 2091));
 
     $this->actingAs($this->owner)->withSession($confirm)->post('/apps/xero/addon', ['pay_with' => 'card'])->assertSessionHasNoErrors();
-    expect(AppAddon::query()->sole()->pay_with)->toBe('card')->and(array_values($gateway->charges)[0]['cents'])->toBe(2000)
+    expect(AppAddon::query()->sole()->pay_with)->toBe('card')->and(array_values($gateway->charges)[0]['cents'])->toBe(2091) // $20 plus Stripe's 2.9% + 30¢, grossed up
         ->and(app(CreditLedger::class)->balanceOf(null))->toBe(0); // no credits used
 
     $c = Connection::query()->create(['app_key' => 'xero', 'label' => 'Acme', 'status' => 'connected', 'credentials' => [], 'settings' => [], 'connected_by' => $this->owner->id]);
@@ -123,4 +124,13 @@ it('can be paid on the payer\'s saved card instead of credits, and switched eith
     expect(AppAddon::query()->sole()->pay_with)->toBe('credits')->and(app(CreditLedger::class)->balanceOf(null))->toBe(1000)->and($c->fresh()?->status)->toBe('connected');
     $this->actingAs($this->owner)->withSession(['auth.password_confirmed_at' => now()->getTimestamp()])->post('/apps/xero/addon/pay-with', ['pay_with' => 'card'])->assertSessionHasNoErrors();
     expect(AppAddon::query()->sole()->pay_with)->toBe('card');
+});
+
+it('lets HQ set the card fee, and a zero fee keeps the same price', function (): void {
+    $settings = app(PaymentSettings::class);
+    expect($settings->cardPrice(2000))->toBe(2091);
+    $settings->setCardFee(0, 0, $this->owner);
+    expect($settings->cardPrice(2000))->toBe(2000);
+    $settings->setCardFee(350, 50, $this->owner);
+    expect($settings->cardPrice(2000))->toBe(2125)->and($settings->summary()['card_fee_bps'])->toBe(350);
 });

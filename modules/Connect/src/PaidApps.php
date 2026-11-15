@@ -13,6 +13,7 @@ use Modules\Billing\Credits\AutoTopUp;
 use Modules\Billing\Credits\CreditLedger;
 use Modules\Billing\Credits\RateCard;
 use Modules\Billing\Gateway\PaymentGateway;
+use Modules\Billing\PaymentSettings;
 use Modules\Connect\Models\AppAddon;
 use Modules\Connect\Models\Connection;
 use Modules\Core\Audit\AuditLogger;
@@ -29,7 +30,8 @@ use Modules\Core\Tenancy\TenantContext;
  *   pool, bought by the owner); an agent's own connection by that agent (from their credits).
  * - Paid a month at a time, at the price in force when each month starts (HQ price changes apply from the next
  *   month), with RightAlly credits (the default: the dollar price at the credit value of the day) or the payer's
- *   saved card through Stripe (the card saved for credit top-ups). The payer can switch at any time; it applies from
+ *   saved card through Stripe (the card saved for credit top-ups; the card price includes the card processing fee
+ *   HQ sets, by default Stripe's 2.9% + 30¢, so RightAlly keeps the same either way). The payer can switch at any time; it applies from
  *   the next month. Each month is charged once (one idempotency key per add-on and month).
  * - Not paid at renewal (no credits): the add-on lapses and the app's connections for that payer pause; nothing
  *   already synced is touched. Adding it again resumes them. Cancelling keeps it to the end of the paid month.
@@ -42,14 +44,14 @@ final class PaidApps
      * What this person sees about the app's price.
      *
      * @return array{free: bool, cents: int|null, included: bool, active: bool, payer: 'brokerage'|'you'|null, period_end: string|null, cancel_at: string|null, can_buy: bool,
-     *     pay_with: string, card: array{brand: string, last4: string}|null, error: string|null}
+     *     pay_with: string, card: array{brand: string, last4: string}|null, card_cents: int|null, error: string|null}
      */
     public function state(App $app, User $user, int|false|null $owner): array
     {
         $price = $this->registry->price($app);
         if ($price === null || $owner === false) {
             return ['free' => $price === null, 'cents' => $price['cents'] ?? null, 'included' => false, 'active' => $price === null, 'payer' => null,
-                'period_end' => null, 'cancel_at' => null, 'can_buy' => false, 'pay_with' => 'credits', 'card' => null, 'error' => null];
+                'period_end' => null, 'cancel_at' => null, 'can_buy' => false, 'pay_with' => 'credits', 'card' => null, 'card_cents' => null, 'error' => null];
         }
         $addon = $this->addon($app, $owner);
         $included = $this->included($price);
@@ -57,6 +59,7 @@ final class PaidApps
         return ['free' => false, 'cents' => $price['cents'], 'included' => $included, 'active' => $included || ($addon?->paidUp() ?? false),
             'payer' => $owner === null ? 'brokerage' : 'you', 'period_end' => $addon?->period_end->toIso8601String(), 'cancel_at' => $addon?->cancel_at?->toIso8601String(),
             'can_buy' => $owner !== null || $user->kind === UserKind::Owner, 'pay_with' => $addon->pay_with ?? 'credits', 'card' => $this->card($owner),
+            'card_cents' => app(PaymentSettings::class)->cardPrice($price['cents']),
             'error' => $addon?->last_error];
     }
 
@@ -212,7 +215,7 @@ final class PaidApps
         if ($customer === null) {
             return 'There is no saved card. Save one under Billing → RightAlly credits, or pay with credits.';
         }
-        $r = app(PaymentGateway::class)->chargeSavedCard($customer, $cents, 'RightAlly '.$app->name.' add-on, one month',
+        $r = app(PaymentGateway::class)->chargeSavedCard($customer, app(PaymentSettings::class)->cardPrice($cents), 'RightAlly '.$app->name.' add-on, one month (card)',
             ['kind' => 'app_addon', 'tenant_id' => (string) $this->tenants->id(), 'app' => $app->key], $key);
 
         return in_array($r['status'], ['succeeded', 'processing'], true) ? null

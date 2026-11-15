@@ -12,6 +12,8 @@ type Props = {
         automatic_tax: boolean;
         test_set: boolean;
         live_set: boolean;
+        card_fee_bps: number;
+        card_fee_cents: number;
     };
     webhookUrl: string;
 };
@@ -186,8 +188,70 @@ export default function Payments({ settings, webhookUrl }: Props) {
                         Calculate sales tax automatically (Stripe Tax)
                     </label>
                 </section>
+                <CardFee
+                    bps={settings.card_fee_bps}
+                    cents={settings.card_fee_cents}
+                />
             </div>
         </>
+    );
+}
+
+/**
+ * The card processing fee added when a paid app is paid by card instead of credits (specs/connect/14), so
+ * RightAlly keeps the same amount either way. Stripe's standard US card fee by default.
+ */
+function CardFee({ bps, cents }: { bps: number; cents: number }) {
+    const form = useForm({
+        percent: String(bps / 100),
+        fixed: (cents / 100).toFixed(2),
+    });
+
+    return (
+        <form
+            className="grid gap-2 rounded-lg border p-4 text-sm"
+            onSubmit={(e) => {
+                e.preventDefault();
+                form.post('/hq/payments/card-fee', { preserveScroll: true });
+            }}
+        >
+            <p className="font-medium">Card processing fee on paid apps</p>
+            <p className="text-muted-foreground">
+                Added to an app add-on's price when it's paid by card instead of
+                RightAlly credits. US card-surcharge rules apply: keep it at or
+                below your real card cost, and it's shown before anyone pays.
+            </p>
+            <div className="flex flex-wrap items-end gap-3">
+                <label className="grid gap-1">
+                    Percent
+                    <Input
+                        className="w-28"
+                        inputMode="decimal"
+                        value={form.data.percent}
+                        onChange={(e) =>
+                            form.setData('percent', e.target.value)
+                        }
+                    />
+                </label>
+                <label className="grid gap-1">
+                    Plus, in dollars
+                    <Input
+                        className="w-28"
+                        inputMode="decimal"
+                        value={form.data.fixed}
+                        onChange={(e) => form.setData('fixed', e.target.value)}
+                    />
+                </label>
+                <Button variant="outline" disabled={form.processing}>
+                    Save
+                </Button>
+            </div>
+            {Object.values(form.errors).map((m) => (
+                <p key={m} className="text-destructive">
+                    {m}
+                </p>
+            ))}
+        </form>
     );
 }
 
