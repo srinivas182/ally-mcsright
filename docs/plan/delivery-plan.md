@@ -156,3 +156,22 @@ sync. Deal-IQ gets its paperwork from synced transaction platforms, RightAlly fo
 (specs/ai/02, section 7).
 
 Status: C1a, C1b and C1c are done; M1 (MCP server) is in progress. The full order, mixing Connect with growth work and the approved additions (daily brief, ad results in commission dollars with an automatic stop, buyer demand before listing, switch in a weekend, proof of consent, Fair Housing audit pack, Agent Wallet, seller-funded boost), is in `docs/plan/market-2026-additions.md`.
+
+## Movewise: HQ's consumer home site and lead marketplace (added 2026-11-15)
+
+Movewise is HQ's own buyer and seller site, which sells exclusive, consented introductions to agents and brokers
+(spec: `docs/specs/movewise/00-overview.md`). It launches in **Texas, Mississippi, Louisiana and Alabama**, where HQ
+has managing broker partners. The consumer chooses one of **three** matched agents after seeing their photo, rating
+and reviews. It is new scope, approved 2026-11-15, and starts after the remaining Connect sprints (C5a to C8).
+MW7 uses the review connectors from C8.
+
+| Sprint | Team     | Delivers                                                                                                                        |
+| ------ | -------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| MW1    | C with A | Movewise module and host, state switches and partners, legal notices, listing feeds for 4 states, search and home pages         |
+| MW2    | C with E | Passwordless consumer accounts, saves and alerts; AIlly for Movewise (monthly cost, value, net sheet, move planner); Spanish    |
+| MW3    | A with E | Agent and broker packages, licence checks, profile cards, areas, caps, credits; free Movewise Agent seat                        |
+| MW4    | E        | Readiness score and brief, choosing three agents, the "show 3" screen, consent, accept timer, charges and refunds               |
+| MW5    | E with A | Bridge: relay numbers and email, quiet hours, bulk-messaging block, pause, stop, change agent, number hand-over                 |
+| MW6    | E with B | Status flow-back, scorecard and tiers, per-appointment and share-at-close, referral agreements, partner settlements, HQ console |
+| MW7    | C with E | Verified and imported reviews; city, zip and neighbourhood pages, market reports, ads top-up with stop-loss                     |
+| MW8    | All      | Launch hardening and state legal sign-off; Texas first, then Louisiana, Mississippi and Alabama                                 |
