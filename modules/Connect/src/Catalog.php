@@ -17,8 +17,11 @@ use Modules\Crm\Connect\Lofty;
 use Modules\Crm\Connect\Pipedrive;
 use Modules\Crm\Connect\Salesforce;
 use Modules\Crm\Connect\Sierra;
+use Modules\Transactions\Connect\Brokermint;
+use Modules\Transactions\Connect\DocuSign;
 use Modules\Transactions\Connect\Dotloop;
 use Modules\Transactions\Connect\LoneWolf;
+use Modules\Transactions\Connect\OpenToClose;
 use Modules\Transactions\Connect\SkySlope;
 
 /**
@@ -38,6 +41,10 @@ final class Catalog
         'liondesk' => 'LionDesk\'s API (Lone Wolf) needs a partner agreement. Apply through the Lone Wolf partner programme.',
         'rechat' => 'Rechat shares data with approved partners. Ask Rechat for partner API access.',
         'cloze' => 'Cloze has a public API with a personal API key, but its people-feed reference is only in its OpenAPI file (api.cloze.com/api-docs). Built once that is confirmed with Cloze; one-click connect needs a Cloze partner app.',
+        'paperless_pipeline' => 'Paperless Pipeline offers no data API to other apps (only single sign-on and Zapier). Ask Paperless Pipeline for partner API access. Meanwhile its file export comes over with Deals → Switch from another app.',
+        'authentisign' => 'Authentisign is part of Lone Wolf Transactions (zipForm Edition). Its Transact API (signings and signed documents) is for Lone Wolf partners: the same partner access as the Lone Wolf card.',
+        'zipform' => 'zipForm (Lone Wolf Transactions, zipForm Edition) shares transactions and forms through Lone Wolf\'s Transact API, for Lone Wolf partners only: the same partner access as the Lone Wolf card.',
+        'form_simplicity' => 'Form Simplicity (Florida Realtors) has no public API. Ask Form Simplicity for partner access. Meanwhile signed PDFs can be uploaded to the deal, or brought over by file export.',
         'wise_agent' => 'Wise Agent issues API credentials (OAuth) only to partner integrations, not to agents. Request them at wiseagent.com/docs/api.asp (app name, logo, redirect domain, contacts scope).',
     ];
 
@@ -345,6 +352,34 @@ final class Catalog
             guide: ['steps' => ['In Lone Wolf, add a new user just for RightAlly with read-only access to deals and the roster.',
                 'Enter that user\'s email and password below and press Connect.', 'Your deals start coming over straight away; big brokerages take a few hours.']]));
 
+        $catalog->add(new App('open_to_close', 'Open to Close', 'transactions', 'Bring every Open to Close transaction over as a deal, with its agent, parties and dates. Changes keep coming over every hour.',
+            scope: 'brokerage', auth: 'api_key', syncs: ['Every transaction as a deal: address, price, status, agent', 'Buyers, sellers, lender, title and other contacts', 'Contract, closing and other dates', 'Changes, hourly'],
+            fields: [['key' => 'api_token', 'label' => 'Open to Close API token', 'type' => 'text', 'secret' => true, 'help' => 'It stays encrypted. Only RightAlly\'s import uses it.']],
+            driver: OpenToClose::class, vendorCost: 'Your Open to Close plan',
+            setup: ['steps' => ['Nothing to set up: each brokerage uses its own Open to Close API token.', 'Switch Open to Close on.'], 'partner' => null,
+                'docs' => 'https://docs.opentoclose.com/'],
+            guide: ['steps' => ['In Open to Close, open the Apps & API dashboard.', 'Create or copy your API token.', 'Paste it below and press Connect. Your deals start coming over straight away.']]));
+        $catalog->add(new App('brokermint', 'Brokermint', 'transactions', 'Bring every Brokermint transaction over as a deal, with its agent, contacts, dates and commission. Changes keep coming over every hour.',
+            scope: 'brokerage', auth: 'api_key', syncs: ['Every transaction as a deal: address, price, status, agent', 'Buyers, sellers, lender, title and other contacts', 'Acceptance and closing dates, gross commission', 'Changes, hourly'],
+            fields: [['key' => 'api_key', 'label' => 'Brokermint API token', 'type' => 'text', 'secret' => true, 'help' => 'It stays encrypted. Only RightAlly\'s import uses it.']],
+            driver: Brokermint::class, vendorCost: 'Your Brokermint plan',
+            setup: ['steps' => ['Nothing to set up: each brokerage asks Brokermint support for its own API token.', 'Switch Brokermint on.'],
+                'partner' => 'Brokermint issues API tokens through its support team (no partner agreement known). A listing in Brokermint\'s integrations is optional.',
+                'docs' => 'https://brokermint.com/api/'],
+            guide: ['steps' => ['Email Brokermint support and ask for your brokerage\'s API token.', 'Paste the token below and press Connect.', 'Your deals start coming over straight away.']]));
+        $catalog->add(new App('docusign', 'DocuSign', 'transactions', 'Every completed DocuSign envelope is filed on the right deal automatically, as one signed PDF with its certificate.',
+            scope: 'both', auth: 'oauth', syncs: ['Completed envelopes, filed on the deal their subject names (or their "RightAlly deal" field)', 'One signed PDF with the certificate', 'New envelopes every 15 minutes'],
+            driver: DocuSign::class, vendorCost: 'Your DocuSign plan',
+            oauth: ['provider' => 'docusign', 'scopes' => ['signature', 'extended'], 'authorize' => 'https://account.docusign.com/oauth/auth',
+                'token' => 'https://account.docusign.com/oauth/token', 'userinfo' => DocuSign::USERINFO, 'response_type' => 'code', 'pkce' => false, 'token_auth' => 'basic'],
+            setup: ['needs' => 'keys', 'fields' => [['key' => 'client_id', 'label' => 'Integration key'], ['key' => 'client_secret', 'label' => 'Secret key', 'secret' => true]],
+                'steps' => ['In a DocuSign developer account, open Apps and Keys → Add App and Integration Key, and name it RightAlly.',
+                    'Choose "Authorization Code Grant", add a secret key, and add the return address shown above as a redirect URI.',
+                    'Test it, then request Go-Live for the integration key (DocuSign reviews 20 successful test calls).', 'Paste the integration key and secret key here, then switch DocuSign on.'],
+                'partner' => 'DocuSign Go-Live review is needed before brokers outside the developer account can connect (free). Becoming a DocuSign partner is optional.',
+                'docs' => 'https://developers.docusign.com/docs/esign-rest-api/'],
+            guide: ['steps' => ['Press Connect and sign in to DocuSign.', 'Press Accept.', 'From now on, put the property address in each envelope\'s subject ("44 Pecan Dr purchase contract"); completed envelopes are filed on that deal.']]));
+
         // On the roadmap (people can ask for them; HQ sees the demand). Some need a partner agreement first.
         foreach ([
             ['real_geeks', 'Real Geeks', 'crm', 'Bring over leads and their activity from Real Geeks.', 'both', 'Your Real Geeks plan'],
@@ -358,10 +393,7 @@ final class Catalog
             ['cloze', 'Cloze', 'crm', 'Bring over contacts, notes and relationship history from Cloze.', 'agent', 'Your Cloze plan'],
             ['nextdoor_ads', 'Nextdoor Ads', 'ads', 'Neighbourhood ads for your listings and open houses.', 'both', 'Ad spend paid to Nextdoor'],
             ['google_ads', 'Google Ads', 'ads', 'Search, display and YouTube ads for your listings and your area, created and published from RightAlly.', 'both', 'Ad spend: your Google account, or RightAlly Boost credits'],
-            ['brokermint', 'Brokermint', 'transactions', 'Bring transactions and commission data from Brokermint.', 'brokerage', 'Your Brokermint plan'],
             ['paperless_pipeline', 'Paperless Pipeline', 'transactions', 'Bring transactions and documents from Paperless Pipeline.', 'brokerage', 'Your Paperless Pipeline plan'],
-            ['open_to_close', 'Open to Close', 'transactions', 'Bring transactions, tasks and documents from Open to Close.', 'brokerage', 'Your Open to Close plan'],
-            ['docusign', 'DocuSign', 'transactions', 'Signed DocuSign envelopes filed on the right deal automatically.', 'both', 'Your DocuSign plan'],
             ['authentisign', 'Authentisign', 'transactions', 'Signed Authentisign documents filed on the right deal.', 'both', 'Your Authentisign plan'],
             ['zipform', 'zipForm', 'transactions', 'zipForm transactions and forms into RightAlly deals.', 'agent', 'Your zipForm plan'],
             ['form_simplicity', 'Form Simplicity', 'transactions', 'Form Simplicity transactions and forms into RightAlly deals.', 'agent', 'Your Form Simplicity plan'],

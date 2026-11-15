@@ -76,7 +76,7 @@ final class BringOverFiles
         if ($unpacked > self::MAX_UNPACKED) {
             throw new RuntimeException('That ZIP unpacks to more than 4 GB. Split the export into smaller parts.');
         }
-        $deals = $this->addresses();
+        $deals = self::addresses();
         $files = 0;
         $filed = 0;
         $touched = [];
@@ -144,11 +144,14 @@ final class BringOverFiles
         return implode(' ', array_map(fn (string $w): string => self::WORDS[$w] ?? $w, $words));
     }
 
-    /** @return array<int, string> every deal's street (without its unit), normalised */
-    private function addresses(): array
+    /**
+     * @param  int|null  $agentId  only this agent's deals (an agent's own connection), or every deal
+     * @return array<int, string> deal id => street (without its unit), normalised
+     */
+    public static function addresses(?int $agentId = null): array
     {
         $out = [];
-        foreach (Deal::query()->get(['id', 'street']) as $deal) {
+        foreach (Deal::query()->when($agentId !== null, fn ($q) => $q->where('agent_user_id', $agentId))->get(['id', 'street']) as $deal) {
             $out[$deal->id] = self::normalise((string) preg_replace('/\s*#.*$/', '', $deal->street));
         }
 

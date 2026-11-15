@@ -181,6 +181,33 @@ transaction apps follow the same flow, because they share the deal import.
     Either way, **revenue share and bonuses go to each wallet** and are paid in payout runs or with Get paid now.
     RightAlly never holds the money: a wallet is what the brokerage owes, paid from the brokerage's own bank.
 
+## C5b: Open to Close, Brokermint and DocuSign; partner-only apps marked
+
+Every deal app here uses the shared deal import, so "close there, paid here" and every rule above apply unchanged.
+
+| App           | Access                                                                                                                                   | What comes over                                                                                                                                                                                                                           | Notes                                                                                                                                                                                                                                                                                                                                                                             |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Open to Close | The brokerage's own API token (Apps & API dashboard), sent as `api_token`                                                                | Properties as deals: address, price, status, client type, contract and closing dates, other `…_date`/`…_deadline` fields as key dates; contacts by role (our agent by email, buyers, sellers, lender, title, escrow, attorney, inspector) | 50 a page, newest change first. Hourly runs stop at properties already up to date, and everything is read again weekly. Fields are read whether sent flat or as field values (key, value).                                                                                                                                                                                        |
+| Brokermint    | The brokerage's API token, which Brokermint support issues on request (`api_key`)                                                        | Transactions as deals: address, price, status, side (`representing`), acceptance and closing dates, total gross commission; contacts by role; users matched by email                                                                      | 200 a page. Every hour the list is read in full (there's no "changed since" filter), and contacts are read only for transactions changed since the last pass. Dates are read as YYYY-MM-DD, ISO or Unix milliseconds. An API that ignores the offset is detected, so the run stops instead of looping.                                                                            |
+| DocuSign      | One click (OAuth authorisation code, scopes `signature extended`). HQ needs an integration key that has passed DocuSign's Go-Live review | Completed envelopes are filed on the right deal as one signed PDF, including the certificate                                                                                                                                              | Every 15 minutes, envelopes completed since the last check; the first run goes back a year. The deal is the one in the envelope's "RightAlly deal" custom field, otherwise the one address the subject names (matched like file exports, never guessed). Envelopes that name no deal yet are retried for 30 days. An agent's connection files only on their own deals. Read only. |
+
+**Partner-only apps** are marked on the HQ card with what to apply for:
+
+- **Paperless Pipeline:** no data API for other apps, only single sign-on and Zapier. Its file export comes over
+  with Deals → Switch from another app.
+- **Authentisign and zipForm:** Lone Wolf's Transact API covers transactions, forms, signings and signed documents,
+  for Lone Wolf partners only. This is the same partner access as the Lone Wolf card.
+- **Form Simplicity:** no public API. Signed PDFs can be uploaded or brought over by file export.
+
+## Acceptance (C5b)
+
+- Open to Close connects with a token, refuses a wrong one, and brings properties over with agent, parties and key
+  dates, whether fields come flat or as field values.
+- Brokermint brings transactions over with dates sent as milliseconds, and doesn't re-read contacts for unchanged
+  transactions.
+- DocuSign connects in one click and files completed envelopes on the deal the subject or custom field names, once
+  each. Unmatched envelopes are filed automatically once their deal exists.
+
 ## Acceptance (C5a-3)
 
 - A deal that closes there after the pay-from date is paid on the agent's plan, and its revenue share lands in the
