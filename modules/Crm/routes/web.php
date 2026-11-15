@@ -22,6 +22,7 @@ use Modules\Crm\Http\Controllers\Leads\LeadController;
 use Modules\Crm\Http\Controllers\Leads\LeadFormController;
 use Modules\Crm\Http\Controllers\PipelineController;
 use Modules\Crm\Http\Controllers\PlanController;
+use Modules\Crm\Http\Controllers\PostcardsController;
 use Modules\Crm\Http\Controllers\RelationshipController;
 use Modules\Crm\Http\Controllers\SavedSearchController;
 use Modules\Crm\Http\Controllers\TaskController;
@@ -161,6 +162,15 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function
         ->middleware('throttle:20,1')->name('crm.ghl-campaigns.store');
     Route::post('settings/ghl-campaigns/enrolments/{enrolment}/toggle', [GhlCampaignsController::class, 'toggle'])->where('enrolment', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')
         ->name('crm.ghl-campaigns.toggle');
+});
+
+// Postcards (specs/connect/18, C7c).
+Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('postcards')->name('crm.postcards.')->group(function (): void {
+    Route::get('/', [PostcardsController::class, 'index'])->name('index');
+    Route::post('/', [PostcardsController::class, 'store'])->middleware('throttle:20,1')->name('store');
+    Route::get('{run}/preview', [PostcardsController::class, 'preview'])->where('run', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('preview');
+    Route::post('{run}/approve', [PostcardsController::class, 'approve'])->where('run', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->middleware('throttle:10,1')->name('approve');
+    Route::post('{run}/cancel', [PostcardsController::class, 'cancel'])->where('run', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('cancel');
 });
 
 // Fair Housing audit packs (specs/grow/12).

@@ -40,6 +40,7 @@ final class Catalog
 {
     /** Apps on the roadmap whose API is only open to partners: what HQ must apply for (shown as "Needs partner access"). */
     private const PARTNERS = [
+        'corefact' => 'Corefact and ProspectsPLUS print for agents through their own sites; ask them for partner (API) access. RightAlly Postcards (Lob) works today.',
         'mojo' => 'Mojo Dialer has no public API. Ask Mojo (mojosells.com) for partner access; meanwhile agents can export a smart list to CSV and import it into Mojo.',
         'real_geeks' => 'Real Geeks shares leads only with approved partners (Lead Router). Apply through Real Geeks partner support.',
         'boomtown' => 'BoomTown\'s API is for approved partners only. Apply through BoomTown (Inside Real Estate) partner programme.',
@@ -464,6 +465,16 @@ final class Catalog
             setup: ['steps' => ['Nothing to set up: each company uses its own Aircall API key.', 'Switch Aircall on.'], 'docs' => 'https://developer.aircall.io/docs/work-with-call-data'],
             guide: ['steps' => ['An Aircall admin makes an API key under Integrations → API Keys.', 'Paste the API ID and token below and press Connect.']]));
 
+        // Direct mail (specs/connect/18, C7c): postcards through Lob on RightAlly's account, paid with credits.
+        $catalog->add(new App('direct_mail', 'Postcards', 'marketing', 'Just listed, just sold, open house and neighbourhood postcards to a smart list, printed and mailed for you, paid with RightAlly Credits.',
+            scope: 'both', auth: 'link', syncs: ['Addresses checked before printing', 'Price shown first; undeliverable and cancelled cards refunded', 'QR code to the listing or funnel'],
+            link: '/postcards', vendorCost: 'Printing and postage, paid with credits',
+            setup: ['needs' => 'keys', 'fields' => [['key' => 'api_key', 'label' => 'Lob live secret API key', 'secret' => true],
+                ['key' => 'price_4x6_cents', 'label' => 'Price per 4x6 card, in cents (printing, postage and margin)'], ['key' => 'price_6x9_cents', 'label' => 'Price per 6x9 card, in cents']],
+                'steps' => ['Open a Lob account for RightAlly (lob.com), add a payment method and verify it for live mail.', 'Copy the live secret API key here (use a test key first: test mail is never printed).',
+                    'Set the price per card (Lob\'s price plus your margin) and switch Postcards on.'],
+                'partner' => 'Lob bills RightAlly for printing and postage; brokerages pay RightAlly in credits.', 'docs' => 'https://docs.lob.com/#tag/Postcards']));
+
         // On the roadmap (people can ask for them; HQ sees the demand). Some need a partner agreement first.
         foreach ([
             ['real_geeks', 'Real Geeks', 'crm', 'Bring over leads and their activity from Real Geeks.', 'both', 'Your Real Geeks plan'],
@@ -487,7 +498,6 @@ final class Catalog
             ['spacio', 'Spacio', 'showings', 'Open house sign-ins become contacts with consent recorded.', 'agent', 'Your Spacio plan'],
             ['canva', 'Canva', 'marketing', 'Design with your brand kit and listing photos, then use the designs in posts and ads.', 'agent', null],
             ['social_posting', 'Social posting', 'marketing', 'Post listings and market updates to Facebook, Instagram, LinkedIn and your Google Business Profile.', 'agent', null],
-            ['direct_mail', 'Direct mail', 'marketing', 'Just listed, just sold and farming postcards, printed and mailed from RightAlly.', 'agent', 'Printing and postage'],
             ['bombbomb', 'BombBomb', 'marketing', 'Video emails logged on contacts, with views and replies.', 'agent', 'Your BombBomb plan'],
             ['corefact', 'Corefact', 'marketing', 'Printed farming and listing mail from your RightAlly lists.', 'agent', 'Printing and postage'],
             ['mojo', 'Mojo Dialer', 'phones', 'Dial your RightAlly lists and log every call.', 'agent', 'Your Mojo plan'],
