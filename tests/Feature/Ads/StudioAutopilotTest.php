@@ -13,6 +13,7 @@ use Illuminate\Support\Str;
 use Modules\Ads\Mcp\StudioQueueTool;
 use Modules\Ads\Social\SocialPost;
 use Modules\Ads\Studio\Autopilot;
+use Modules\Ads\Studio\Design;
 use Modules\Ads\Studio\QueuedPost;
 use Modules\Ads\Studio\Render\FakeRenderer;
 use Modules\Ads\Studio\Render\StudioRenderer;
@@ -35,6 +36,7 @@ use Modules\Listings\Models\MlsAuthorization;
 use Modules\Listings\Models\MlsSource;
 use Modules\Listings\Sync\ListingSync;
 use Modules\Sites\SiteSetup;
+use Modules\Transactions\Models\Deal;
 use Tests\Fixtures\FakeAiProvider;
 
 /* Sprint SA2: Ally Studio Autopilot — moments become designed, captioned posts at good times; Approve first or
@@ -97,7 +99,7 @@ beforeEach(function (): void {
     $model = AiModel::factory()->create(['capabilities' => ['chat']]);
     AiFeatureRoute::query()->create(['feature_key' => Autopilot::FEATURE, 'primary_model_id' => $model->id, 'fallback_model_ids' => [], 'credit_action_key' => 'ai.studio_caption']);
     app(ProviderRegistry::class)->fake($model->provider->key, $this->ai = new FakeAiProvider);
-    Http::fake(['graph.facebook.com/v21.0/111/*' => Http::response(['id' => '111_9'])]);
+    Http::fake(['graph.facebook.com/v21.0/111/feed' => Http::response(['id' => '111_9']), 'graph.facebook.com/v21.0/111/photos' => Http::response(['id' => '111_9'])]);
     $this->actingAs($this->jane)->post('/studio/brand', ['headshot' => UploadedFile::fake()->image('me.jpg', 800, 1000), 'details' => ['phone' => '512-555-0100',
         'licence_line' => 'TX #0123456']])->assertSessionHasNoErrors();
 });
@@ -158,4 +160,74 @@ it('schedules by itself on Autopilot, notices price improvements, and never uses
 it('knows the US holidays it greets', function (): void {
     $h = Autopilot::holidays(2026);
     expect($h['2026-11-26'][0])->toBe('thanksgiving')->and($h['2026-05-25'][0])->toBe('memorial_day')->and($h['2026-09-07'][0])->toBe('labor_day');
+});
+
+function studioLuxury(object $t): void
+{
+    $app = app(AppCatalog::class)->find('studio_luxury');
+    $hq = User::factory()->make(['id' => 999999]);
+    app(AppRegistry::class)->save($app, true, [], null, $hq);
+    app(AppRegistry::class)->savePrice($app, 7900, [], $hq);
+    app(CreditLedger::class)->add($t->jane->id, 10_000, 'adjust', 'More test credits', $t->owner);
+    $t->actingAs($t->jane)->withSession(['auth.password_confirmed_at' => now()->getTimestamp()])->post('/apps/studio_luxury/addon')->assertSessionHasNoErrors();
+}
+
+it('runs a listing launch campaign across the first week on Luxury, and moves posts on the calendar', function (): void {
+    studioLuxury($this);
+    foreach (range(1, 3) as $i) {
+        caption($this);
+    }
+    app(Autopilot::class)->runFor($this->jane);
+    $items = QueuedPost::query()->orderBy('id')->get();
+    expect($items->pluck('moment')->all())->toBe(['just_listed', 'listing_feature', 'neighbourhood'])->and($items->pluck('status')->unique()->all())->toBe(['awaiting'])
+        ->and($items->map(fn (QueuedPost $q): string => (string) $q->post_at?->toIso8601String())->all())
+        ->toBe(['2026-06-01T23:00:00+00:00', '2026-06-03T14:30:00+00:00', '2026-06-05T14:30:00+00:00'])
+        ->and(Design::query()->where('batch', $items[2]->batch)->first()?->content)->toMatchArray(['kicker' => 'The neighbourhood', 'headline' => 'Austin', 'sub' => 'Around 201 Pine Rd'])
+        ->and(Design::query()->where('batch', $items[2]->batch)->first()?->content)->not->toHaveKey('price');
+
+    $this->actingAs($this->jane)->post('/studio/autopilot/'.$items[1]->ulid.'/move', ['date' => '2026-06-10'])->assertSessionHasNoErrors();
+    expect($items[1]->fresh()?->post_at?->toIso8601String())->toBe('2026-06-10T14:30:00+00:00');
+    $this->actingAs($this->jane)->post('/studio/autopilot/'.$items[1]->ulid.'/move', ['date' => '2026-05-01'])->assertSessionHasErrors('date');
+    $this->actingAs($this->jane)->get('/studio/calendar?month=2026-06')->assertInertia(fn ($p) => $p->component('studio/calendar')->has('events', 3)->where('days', 30)->where('first_weekday', 1));
+});
+
+it('asks for the client\'s OK before a closing post, celebrates work anniversaries, and learns the agent\'s voice with their OK', function (): void {
+    $this->jane->forceFill(['created_at' => '2024-06-01 12:00:00'])->save();
+    Deal::query()->create(['type' => 'buyer', 'status' => 'closed', 'agent_user_id' => $this->jane->id, 'street' => '9 Elm St', 'city' => 'Austin', 'state_code' => 'TX',
+        'price_cents' => 40_000_000, 'gci_cents' => 1_200_000, 'closed_on' => '2026-05-29', 'created_by' => $this->jane->id]);
+    Http::fake(['graph.facebook.com/v21.0/111/posts*' => Http::response(['data' => [['message' => 'Sunday open house on Pine Rd was packed. Thank you, Austin, see you next week!'],
+        ['message' => 'Hi']]])]);
+    $this->actingAs($this->jane)->post('/studio/autopilot', ['mode' => 'approve', 'moments' => ['closings', 'milestones'], 'learn_voice' => true])->assertSessionHasNoErrors();
+    caption($this);
+    caption($this);
+    app(Autopilot::class)->runFor($this->jane);
+    $closing = QueuedPost::query()->where('moment', 'just_closed')->sole();
+    expect($closing->needs_client_ok)->toBeTrue()->and($closing->status)->toBe('awaiting')
+        ->and(Design::query()->where('batch', $closing->batch)->first()?->content['headline'])->toBe('Another happy closing in Austin') // never the address
+        ->and(QueuedPost::query()->where('source_key', 'anniversary:2026')->sole()->moment)->toBe('milestone')
+        ->and(app(Autopilot::class)->settings($this->jane)['voice'])->toBe(['Sunday open house on Pine Rd was packed. Thank you, Austin, see you next week!']);
+    $this->actingAs($this->jane)->post('/studio/autopilot/'.$closing->ulid.'/approve')->assertSessionHasErrors('client_ok');
+    $this->actingAs($this->jane)->post('/studio/autopilot/'.$closing->ulid.'/approve', ['client_ok' => true])->assertSessionHasNoErrors();
+    expect($closing->fresh()?->status)->toBe('scheduled');
+
+    $this->actingAs($this->jane)->post('/studio/autopilot', ['mode' => 'approve', 'moments' => ['closings'], 'learn_voice' => false]);
+    expect(app(Autopilot::class)->settings($this->jane)['voice'])->toBe([]); // forgotten when switched off
+});
+
+it('lets the brokerage review agents\' posts before they go out, with its own caption line', function (): void {
+    $this->actingAs($this->jane)->post('/studio/rules', ['require_review' => true])->assertForbidden();
+    $this->actingAs($this->owner)->post('/studio/rules', ['require_review' => true, 'caption_disclaimer' => 'Each office independently owned and operated.'])->assertSessionHasNoErrors();
+    $this->actingAs($this->jane)->post('/studio/autopilot', ['mode' => 'auto', 'moments' => ['listings']]);
+    expect(app(Autopilot::class)->settings($this->jane)['mode'])->toBe('approve'); // review means no Autopilot for agents
+    caption($this);
+    app(Autopilot::class)->runFor($this->jane);
+    $q = QueuedPost::query()->sole();
+    $this->actingAs($this->jane)->post('/studio/autopilot/'.$q->ulid.'/approve')->assertSessionHasNoErrors();
+    expect($q->fresh()?->status)->toBe('review')->and(SocialPost::query()->count())->toBe(0)
+        ->and(StudioBriefItems::items($this->owner)[0]['title'])->toBe('1 agent post needs your review');
+    $this->actingAs($this->jane)->get('/studio/review')->assertForbidden();
+    $this->actingAs($this->owner)->get('/studio/review')->assertInertia(fn ($p) => $p->component('studio/review')->has('items', 1)->where('items.0.agent', 'Jane'));
+    $this->actingAs($this->owner)->post('/studio/review/'.$q->ulid, ['ok' => true])->assertSessionHasNoErrors();
+    expect($q->fresh()?->status)->toBe('scheduled')->and(SocialPost::query()->sole()->text)->toContain('Each office independently owned and operated.')
+        ->and(SocialPost::query()->sole()->user_id)->toBe($this->jane->id);
 });

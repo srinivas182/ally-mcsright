@@ -29,6 +29,8 @@ use Modules\Core\Tenancy\Concerns\HasPublicUlid;
  * @property string $status
  * @property int|null $social_post_id
  * @property string|null $reason
+ * @property bool $needs_client_ok
+ * @property int|null $reviewed_by
  * @property CarbonImmutable $created_at
  */
 final class QueuedPost extends Model
@@ -47,6 +49,6 @@ final class QueuedPost extends Model
 
     protected function casts(): array
     {
-        return ['hashtags' => 'array', 'post_at' => 'immutable_datetime'];
+        return ['hashtags' => 'array', 'post_at' => 'immutable_datetime', 'needs_client_ok' => 'boolean'];
     }
 }

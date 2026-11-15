@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/ui/page-header';
 
 type Settings = {
+    learn_voice: boolean;
     mode: string;
     places: string[] | null;
     times: string[];
@@ -23,11 +24,13 @@ type Item = {
     caption: string;
     post_at: string | null;
     reason: string | null;
+    needs_client_ok: boolean;
 };
 
 function QueueItem({ item }: { item: Item }) {
     const [caption, setCaption] = useState(item.caption);
     const [at, setAt] = useState(item.post_at ?? '');
+    const [clientOk, setClientOk] = useState(false);
     const waiting = item.status === 'awaiting';
 
     return (
@@ -47,7 +50,11 @@ function QueueItem({ item }: { item: Item }) {
                 <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium">{item.moment}</span>
                     <Badge variant={waiting ? 'default' : 'outline'}>
-                        {waiting ? 'waiting for your OK' : item.status}
+                        {waiting
+                            ? 'waiting for your OK'
+                            : item.status === 'review'
+                              ? 'with your broker'
+                              : item.status}
                     </Badge>
                 </div>
                 {item.reason && (
@@ -68,8 +75,22 @@ function QueueItem({ item }: { item: Item }) {
                                 onChange={(e) => setAt(e.target.value)}
                             />
                         </label>
+                        {item.needs_client_ok && (
+                            <label className="flex items-center gap-2 text-sm">
+                                <input
+                                    type="checkbox"
+                                    className="size-5"
+                                    checked={clientOk}
+                                    onChange={(e) =>
+                                        setClientOk(e.target.checked)
+                                    }
+                                />
+                                My client said yes to this post
+                            </label>
+                        )}
                         <div className="flex gap-2">
                             <Button
+                                disabled={item.needs_client_ok && !clientOk}
                                 onClick={() =>
                                     router.post(
                                         `/studio/autopilot/${item.ulid}/approve`,
@@ -79,6 +100,7 @@ function QueueItem({ item }: { item: Item }) {
                                                     ? ''
                                                     : caption,
                                             post_at: at,
+                                            client_ok: clientOk,
                                         },
                                         { preserveScroll: true },
                                     )
@@ -122,6 +144,9 @@ export default function StudioAutopilot({
     kinds,
     places,
     timezone,
+    has_voice,
+    rules,
+    review_required,
     queue,
 }: {
     ready: boolean;
@@ -130,14 +155,22 @@ export default function StudioAutopilot({
     kinds: Record<string, string>;
     places: { key: string; label: string }[];
     timezone: string;
+    has_voice: boolean;
+    rules: { require_review: boolean; caption_disclaimer: string } | null;
+    review_required: boolean;
     queue: Item[];
 }) {
+    const firm = useForm({
+        require_review: rules?.require_review ?? false,
+        caption_disclaimer: rules?.caption_disclaimer ?? '',
+    });
     const form = useForm({
         mode: settings.mode,
         moments: settings.moments,
         places: settings.places ?? places.map((p) => p.key),
         times: settings.times,
         per_week: settings.per_week,
+        learn_voice: settings.learn_voice,
     });
     const toggle = (list: string[], key: string, on: boolean) =>
         on ? [...list, key] : list.filter((k) => k !== key);
@@ -286,12 +319,87 @@ export default function StudioAutopilot({
                             />
                         </label>
                     </div>
-                    <div>
+                    {has_voice && (
+                        <label className="flex items-center gap-2">
+                            <input
+                                type="checkbox"
+                                className="size-5"
+                                checked={form.data.learn_voice}
+                                onChange={(e) =>
+                                    form.setData(
+                                        'learn_voice',
+                                        e.target.checked,
+                                    )
+                                }
+                            />
+                            Learn my voice from my own recent Facebook posts
+                            (only the words; you can switch it off any time)
+                        </label>
+                    )}
+                    {review_required && (
+                        <p className="text-sm text-muted-foreground">
+                            Your brokerage reviews posts before they go out, so
+                            approved posts go to your broker first.
+                        </p>
+                    )}
+                    <div className="flex flex-wrap gap-3">
                         <Button type="submit" disabled={form.processing}>
                             Save Autopilot
                         </Button>
+                        <Button asChild variant="outline">
+                            <Link href="/studio/calendar">Calendar</Link>
+                        </Button>
                     </div>
                 </form>
+
+                {rules && (
+                    <form
+                        className="grid gap-3 rounded-lg border p-4"
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            firm.post('/studio/rules', {
+                                preserveScroll: true,
+                            });
+                        }}
+                    >
+                        <h2 className="font-medium">Brokerage rules</h2>
+                        <label className="flex items-center gap-2">
+                            <input
+                                type="checkbox"
+                                className="size-5"
+                                checked={firm.data.require_review}
+                                onChange={(e) =>
+                                    firm.setData(
+                                        'require_review',
+                                        e.target.checked,
+                                    )
+                                }
+                            />
+                            Review agents' Ally Studio posts before they go out
+                        </label>
+                        <label className="grid gap-1">
+                            Line added to every caption (optional)
+                            <Input
+                                maxLength={300}
+                                value={firm.data.caption_disclaimer}
+                                onChange={(e) =>
+                                    firm.setData(
+                                        'caption_disclaimer',
+                                        e.target.value,
+                                    )
+                                }
+                            />
+                        </label>
+                        <div className="flex gap-3">
+                            <Button type="submit" disabled={firm.processing}>
+                                Save rules
+                            </Button>
+                            <Button asChild variant="outline">
+                                <Link href="/studio/review">Review queue</Link>
+                            </Button>
+                        </div>
+                    </form>
+                )}
 
                 <section className="grid gap-3">
                     <h2 className="font-medium">Planned posts</h2>

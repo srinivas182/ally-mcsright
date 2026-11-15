@@ -40,6 +40,11 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('studio
     Route::get('autopilot', [AutopilotController::class, 'index'])->name('autopilot');
     Route::post('autopilot', [AutopilotController::class, 'save'])->name('autopilot.save');
     Route::post('autopilot/{item}/approve', [AutopilotController::class, 'approve'])->where('item', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('autopilot.approve');
+    Route::post('autopilot/{item}/move', [AutopilotController::class, 'move'])->where('item', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('autopilot.move');
+    Route::get('calendar', [AutopilotController::class, 'calendar'])->name('calendar');
+    Route::get('review', [AutopilotController::class, 'reviewList'])->name('review');
+    Route::post('review/{item}', [AutopilotController::class, 'review'])->where('item', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('review.decide');
+    Route::post('rules', [AutopilotController::class, 'saveRules'])->name('rules');
     Route::post('autopilot/{item}/skip', [AutopilotController::class, 'skip'])->where('item', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('autopilot.skip');
     Route::post('designs/{design}/post', [StudioController::class, 'post'])->where('design', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('designs.post');
 });
