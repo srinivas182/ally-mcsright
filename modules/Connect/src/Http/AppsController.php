@@ -13,6 +13,7 @@ use Modules\Connect\Connections;
 use Modules\Connect\Models\Connection;
 use Modules\Connect\Models\SyncRun;
 use Modules\Connect\Models\WebhookDelivery;
+use Modules\Connect\OAuth\Providers;
 use Modules\Core\Connect\App;
 use Modules\Core\Connect\AppCatalog;
 use Modules\Core\Connect\Outbox;
@@ -35,7 +36,7 @@ final class AppsController
             'categories' => App::CATEGORIES,
             'apps' => array_map(fn (App $a): array => [...$a->toArray(), 'connected' => $mine->get($a->key)?->count() ?? 0,
                 'problem' => (bool) $mine->get($a->key)?->contains(fn (Connection $c): bool => in_array($c->status, ['error', 'needs_reconnect'], true)),
-                'can_connect' => $this->connections->ownerFor($a, $user) !== false, 'requested' => isset($requested[$a->key])], $this->catalog->all()),
+                'can_connect' => $this->connections->ownerFor($a, $user) !== false, 'requested' => isset($requested[$a->key]), 'ready' => self::ready($a)], $this->catalog->all()),
         ]);
     }
 
@@ -49,7 +50,8 @@ final class AppsController
         $deliveries = $a->key === 'webhooks' ? WebhookDelivery::query()->whereIn('connection_id', $ids)->latest('id')->limit(30)->get() : collect();
 
         return Inertia::render('apps/show', [
-            'app' => [...$a->toArray(), 'can_connect' => $this->connections->ownerFor($a, $user) !== false, 'requested' => isset($this->connections->requested()[$a->key])],
+            'app' => [...$a->toArray(), 'can_connect' => $this->connections->ownerFor($a, $user) !== false, 'requested' => isset($this->connections->requested()[$a->key]),
+                'ready' => self::ready($a)],
             'connections' => array_map(fn (Connection $c): array => ['ulid' => $c->ulid, 'label' => $c->label, 'status' => $c->status, 'mine' => $c->owner_user_id !== null,
                 'last_synced_at' => $c->last_synced_at?->toIso8601String(), 'last_error' => $c->last_error, 'created_at' => $c->created_at->toIso8601String(),
                 'url' => $a->key === 'webhooks' ? (string) ($c->settings['url'] ?? '') : null, 'events' => $a->key === 'webhooks' ? array_values((array) ($c->settings['events'] ?? [])) : [],
@@ -133,6 +135,12 @@ final class AppsController
             'api_sources' => LeadSource::query()->where('kind', 'api')->where('active', true)->orderBy('name')->get()
                 ->map(fn (LeadSource $s): array => ['name' => $s->name, 'last4' => (string) $s->key_last4])->values()->all(),
             'api_url' => url('/api/leads'), 'settings_url' => '/leads/settings'];
+    }
+
+    /** A one-click app needs RightAlly's sign-in app with that provider set up by HQ. */
+    private static function ready(App $a): bool
+    {
+        return $a->oauth === null || Providers::configured($a->oauth['provider']);
     }
 
     private static function user(Request $request): User

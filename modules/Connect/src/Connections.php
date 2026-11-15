@@ -141,6 +141,10 @@ final class Connections
 
     public function disconnect(Connection $c, User $by): void
     {
+        $app = $this->catalog->find($c->app_key);
+        if ($app !== null && $app->oauth !== null) {
+            app(OAuth\OAuthFlow::class)->revoke($c, $app);
+        }
         $c->delete(); // its credentials go with it
         app(AuditLogger::class)->record('connect.disconnected', metadata: ['app' => $c->app_key, 'connection' => $c->ulid], severity: 'notice');
     }

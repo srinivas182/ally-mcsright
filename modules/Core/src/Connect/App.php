@@ -12,6 +12,7 @@ namespace Modules\Core\Connect;
  * - auth: oauth (sign in to the other app), api_key (paste a key), webhook (we send events to a URL),
  *   email (a forwarding address), link (a built-in RightAlly screen does the job).
  * - fields: what the connect form asks for (api_key and webhook apps); secret fields are write-only.
+ * - oauth: for one-click apps, {provider, scopes}: the person signs in to the other app and approves; nothing to copy.
  */
 final readonly class App
 {
@@ -35,6 +36,7 @@ final readonly class App
      * @param  list<string>  $syncs
      * @param  list<array{key: string, label: string, type: string, secret?: bool, help?: string, options?: array<string, string>}>  $fields
      * @param  class-string<Connector>|null  $driver
+     * @param  array{provider: string, scopes: list<string>}|null  $oauth
      */
     public function __construct(
         public string $key,
@@ -51,6 +53,7 @@ final readonly class App
         public array $fields = [],
         public ?string $driver = null,
         public ?string $vendorCost = null,
+        public ?array $oauth = null,
     ) {}
 
     public function available(): bool
@@ -63,7 +66,7 @@ final readonly class App
     {
         return ['key' => $this->key, 'name' => $this->name, 'category' => $this->category, 'category_name' => self::CATEGORIES[$this->category] ?? $this->category,
             'summary' => $this->summary, 'scope' => $this->scope, 'auth' => $this->auth, 'syncs' => $this->syncs, 'cost' => $this->cost, 'vendor_cost' => $this->vendorCost,
-            'status' => $this->status, 'link' => $this->link, 'multiple' => $this->multiple,
+            'status' => $this->status, 'link' => $this->link, 'multiple' => $this->multiple, 'one_click' => $this->oauth !== null,
             'fields' => array_map(fn (array $f): array => ['key' => $f['key'], 'label' => $f['label'], 'type' => $f['type'], 'secret' => $f['secret'] ?? false,
                 'help' => $f['help'] ?? null, 'options' => $f['options'] ?? null], $this->fields)];
     }

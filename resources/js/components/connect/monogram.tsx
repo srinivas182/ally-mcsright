@@ -14,6 +14,8 @@ export type AppEntry = {
     problem: boolean;
     can_connect: boolean;
     requested: boolean;
+    one_click: boolean;
+    ready: boolean;
 };
 
 /** The first letters of an app's name, as its tile (we don't show other companies' logos). */

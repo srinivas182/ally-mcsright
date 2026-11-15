@@ -24,6 +24,9 @@ final class ConnectServiceProvider extends ServiceProvider
         $this->app->scoped(Health::class);
         $this->app->scoped(WebhookOutbox::class);
         $this->app->bind(Outbox::class, WebhookOutbox::class);
+        $this->app->scoped(OAuth\OAuthFlow::class);
+        $this->app->scoped(Calendars\ConnectCalendars::class);
+        $this->app->bind(\Modules\Core\Connect\Calendars::class, Calendars\ConnectCalendars::class);
     }
 
     public function boot(): void

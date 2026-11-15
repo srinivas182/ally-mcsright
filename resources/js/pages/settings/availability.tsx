@@ -1,4 +1,4 @@
-import { Head, useForm } from '@inertiajs/react';
+import { Head, Link, useForm } from '@inertiajs/react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,12 @@ type Props = {
     };
     timezone: string;
     next: string[];
+    calendar: {
+        app: string;
+        name: string;
+        account: string | null;
+        status: string;
+    } | null;
 };
 
 const days: [Day, string][] = [
@@ -32,7 +38,12 @@ const days: [Day, string][] = [
  * Settings → My availability: the weekly hours the website assistant may book calls, showings and listing
  * appointments in. Booked times become CRM tasks, so anything already on the agent's task list stays free.
  */
-export default function Availability({ availability, timezone, next }: Props) {
+export default function Availability({
+    availability,
+    timezone,
+    next,
+    calendar,
+}: Props) {
     const form = useForm({ ...availability });
     const setDay = (day: Day, ranges: Range[]) =>
         form.setData('hours', { ...form.data.hours, [day]: ranges });
@@ -45,6 +56,40 @@ export default function Availability({ availability, timezone, next }: Props) {
                     title="My availability"
                     description={`When website visitors can book a call, showing or listing appointment with you. Times are in ${timezone}.`}
                 />
+                <section className="grid gap-2 rounded-lg border p-4 text-sm">
+                    <h2 className="font-medium">Your calendar</h2>
+                    {calendar && calendar.status !== 'needs_reconnect' ? (
+                        <p>
+                            {calendar.name} is connected
+                            {calendar.account ? ` (${calendar.account})` : ''}.
+                            Times you're busy there are never offered, and
+                            bookings appear in it.
+                        </p>
+                    ) : (
+                        <>
+                            <p className="text-muted-foreground">
+                                {calendar
+                                    ? `${calendar.name} stopped working. Connect it again so bookings avoid your busy times.`
+                                    : 'Connect your calendar so website bookings never clash with your appointments, and land in your calendar.'}
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                                <Link
+                                    href="/apps/google_calendar"
+                                    className="inline-flex h-10 items-center rounded-md border px-4 font-medium hover:bg-muted/40"
+                                >
+                                    Connect Google Calendar
+                                </Link>
+                                <Link
+                                    href="/apps/microsoft_calendar"
+                                    className="inline-flex h-10 items-center rounded-md border px-4 font-medium hover:bg-muted/40"
+                                >
+                                    Connect Outlook / Microsoft 365
+                                </Link>
+                            </div>
+                        </>
+                    )}
+                </section>
+
                 <form
                     className="grid gap-5 rounded-lg border p-4 text-sm"
                     onSubmit={(e) => {
