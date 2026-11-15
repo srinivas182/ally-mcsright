@@ -21,10 +21,14 @@ final class AillySettings
 {
     public const DEFAULT_NAME = 'Ask Ally';
 
-    public const DEFAULTS = ['enabled' => false, 'name' => self::DEFAULT_NAME, 'photo' => null, 'greeting' => '', 'gate' => 'after', 'gate_after' => 2, 'visitor_daily' => 20, 'daily_cap' => 300];
+    public const DEFAULTS = ['enabled' => false, 'name' => self::DEFAULT_NAME, 'photo' => null, 'greeting' => '', 'gate' => 'after', 'gate_after' => 2, 'visitor_daily' => 20, 'daily_cap' => 300,
+        'team' => [], 'nudge' => true];
 
     /**
-     * @return array{enabled: bool, name: string, photo: string|null, greeting: string, gate: string, gate_after: int, visitor_daily: int, daily_cap: int}
+     * team: the agents who take bookings from the brokerage's website (empty: everyone who set their hours).
+     * nudge: a gentle offer on listing pages after a while (no chat starts until the visitor clicks).
+     *
+     * @return array{enabled: bool, name: string, photo: string|null, greeting: string, gate: string, gate_after: int, visitor_daily: int, daily_cap: int, team: list<int>, nudge: bool}
      */
     public static function for(?Site $brokerage): array
     {
@@ -34,7 +38,8 @@ final class AillySettings
             'photo' => is_string($s['photo'] ?? null) && $s['photo'] !== '' ? $s['photo'] : null, 'greeting' => (string) ($s['greeting'] ?? ''),
             'gate' => in_array($s['gate'] ?? null, ['before', 'after', 'booking'], true) ? (string) $s['gate'] : 'after',
             'gate_after' => max(1, min(10, (int) ($s['gate_after'] ?? 2))), 'visitor_daily' => max(5, min(100, (int) ($s['visitor_daily'] ?? 20))),
-            'daily_cap' => max(10, min(10_000, (int) ($s['daily_cap'] ?? 300)))];
+            'daily_cap' => max(10, min(10_000, (int) ($s['daily_cap'] ?? 300))),
+            'team' => array_values(array_map('intval', array_filter(is_array($s['team'] ?? null) ? $s['team'] : [], 'is_numeric'))), 'nudge' => (bool) ($s['nudge'] ?? true)];
     }
 
     /** @param array<string, mixed> $in */
@@ -48,7 +53,9 @@ final class AillySettings
         $new = ['enabled' => (bool) ($in['enabled'] ?? false), 'name' => $name !== '' ? $name : self::DEFAULT_NAME, 'photo' => self::photo($in['photo'] ?? null), 'greeting' => mb_substr(trim(strip_tags((string) ($in['greeting'] ?? ''))), 0, 240),
             'gate' => in_array($in['gate'] ?? null, ['before', 'after', 'booking'], true) ? (string) $in['gate'] : 'after',
             'gate_after' => max(1, min(10, (int) ($in['gate_after'] ?? 2))), 'visitor_daily' => max(5, min(100, (int) ($in['visitor_daily'] ?? 20))),
-            'daily_cap' => max(10, min(10_000, (int) ($in['daily_cap'] ?? 300)))];
+            'daily_cap' => max(10, min(10_000, (int) ($in['daily_cap'] ?? 300))),
+            'team' => array_slice(array_values(array_unique(array_map('intval', array_filter(is_array($in['team'] ?? null) ? $in['team'] : [], 'is_numeric')))), 0, 200),
+            'nudge' => (bool) ($in['nudge'] ?? true)];
         $brokerage->settings = [...($brokerage->settings ?? []), 'ailly' => $new];
         $brokerage->save();
         app(AuditLogger::class)->record('sites.ailly.settings', $brokerage, changes: ['ailly' => ['old' => $old, 'new' => $new]], severity: 'notice');

@@ -19,7 +19,7 @@ final class Chrome
 {
     /**
      * @param  array<int, mixed>  $disclaimers  MLS disclaimers of the listings on the page (empty and repeated ones dropped)
-     * @return array{agent: array{name: string, phone: string, email: string, photo: string|null, licence: array{state: string|null, number: string}|null, home: string, ulid: string}|null, template: string, brand: array<string, mixed>, menu: list<array{path: string, title: string}>, footer: list<array{path: string, title: string}>, powered: array{text: string, url: string}|null, year: int, mapbox: string|null, ailly: array{name: string, photo: string|null}|null, disclaimers: list<string>, signup_after: int, consent: string}
+     * @return array{agent: array{name: string, phone: string, email: string, photo: string|null, licence: array{state: string|null, number: string}|null, home: string, ulid: string}|null, template: string, brand: array<string, mixed>, menu: list<array{path: string, title: string}>, footer: list<array{path: string, title: string}>, powered: array{text: string, url: string}|null, year: int, mapbox: string|null, ailly: array{name: string, photo: string|null, nudge: bool}|null, disclaimers: list<string>, signup_after: int, consent: string}
      */
     public static function for(Site $site, int $tenantId, array $disclaimers = []): array
     {
@@ -79,12 +79,13 @@ final class Chrome
      * The assistant when the brokerage has switched it on: its name and photo on this website (an agent's own, or the
      * brokerage's; null photo = the built-in illustration).
      *
-     * @return array{name: string, photo: string|null}|null
+     * @return array{name: string, photo: string|null, nudge: bool}|null
      */
     private static function ailly(): ?array
     {
         $brokerage = Site::query()->where('kind', 'brokerage')->where('status', 'live')->first();
+        $settings = AillySettings::for($brokerage);
 
-        return AillySettings::for($brokerage)['enabled'] ? AillySettings::persona(app(SiteContext::class)->agent() ?? $brokerage, $brokerage) : null;
+        return $settings['enabled'] ? AillySettings::persona(app(SiteContext::class)->agent() ?? $brokerage, $brokerage) + ['nudge' => $settings['nudge']] : null;
     }
 }

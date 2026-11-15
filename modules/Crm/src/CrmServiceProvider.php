@@ -34,6 +34,7 @@ final class CrmServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->app->scoped(Booking\Availability::class);
         $this->app->scoped(ContactVisibility::class);
         $this->app->scoped(ManageContacts::class);
         $this->app->scoped(Timeline::class);
@@ -178,6 +179,8 @@ final class CrmServiceProvider extends ServiceProvider
             kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant], mobile: true));
         $this->app->make(NavigationRegistry::class)->add(new NavItem('Overview', 'Tasks', '/tasks', 'list-checks', 20,
             kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant], mobile: true));
+        $this->app->make(NavigationRegistry::class)->add(new NavItem('Settings', 'My availability', '/settings/availability', 'calendar-check', 67,
+            kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent]));
 
         if ($this->app->runningInConsole()) {
             $this->commands([SendTaskReminders::class, Console\RefreshBriefs::class, Console\RunPlans::class, Console\RunIntelligence::class, Console\SweepPonds::class, Console\ReassignLeads::class, Console\SweepInbox::class, Console\ScoreLeads::class, Console\SendSearchAlerts::class]);

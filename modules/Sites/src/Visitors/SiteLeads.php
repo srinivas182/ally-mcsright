@@ -33,7 +33,7 @@ final class SiteLeads
      * @param  array<string, mixed>  $in  LeadIntake fields
      * @param  array<string, mixed>  $data  facts for the journey event
      */
-    public function capture(Site $site, LeadSource $source, array $in, Request $request, string $type, ?string $listingUlid = null, array $data = []): Lead
+    public function capture(Site $site, LeadSource $source, array $in, Request $request, string $type, ?string $listingUlid = null, array $data = [], ?User $assignTo = null): Lead
     {
         $vid = $request->input('vid');
         $visitor = Visitors::validVid($vid) ? $this->visitors->resolve($site, (string) $vid) : null;
@@ -46,7 +46,7 @@ final class SiteLeads
         if ($agentSite === null && is_string($request->input('agent')) && preg_match('/^[0-9A-HJKMNP-TV-Z]{26}$/', (string) $request->input('agent')) === 1) {
             $agentSite = Site::query()->where('ulid', $request->input('agent'))->where('kind', 'agent')->where('status', 'live')->first();
         }
-        $agent = $agentSite !== null ? User::query()->find($agentSite->user_id) : null;
+        $agent = $assignTo ?? ($agentSite !== null ? User::query()->find($agentSite->user_id) : null);
         $agent = $agent instanceof User && $agent->isActive() ? $agent : null;
         if ($agent !== null && $source->name === 'Website') {
             $source = self::source('Agent website', 'Contact the agent');
