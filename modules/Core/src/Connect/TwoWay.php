@@ -25,7 +25,7 @@ interface TwoWay extends Connector
      */
     public function webhook(ConnectionData $connection, array $payload): array;
 
-    /** Sends one of our records to the other app ("contact" or "note"); safe to repeat. */
+    /** Sends one of our records to the other app ("contact", "contact_update" or "note"); safe to repeat. */
     public function push(ConnectionData $connection, string $entity, int $localId): void;
 
     /** The connection is being removed: switch off anything we registered with the other app. Never throws. */

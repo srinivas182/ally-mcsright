@@ -174,3 +174,23 @@ it('switches off Follow Up Boss\'s webhooks when disconnected', function (): voi
         Http::assertSent(fn (HttpRequest $r): bool => $r->method() === 'DELETE' && $r->url() === 'https://api.followupboss.com/v1/webhooks/'.$id);
     }
 });
+
+it('sends name and agent changes to Follow Up Boss for linked people, and never echoes its own changes', function (): void {
+    $c = fubLive($this->owner);
+    Http::swap(new Factory);
+    Http::fake(['api.followupboss.com/v1/people' => Http::response(['id' => 501]), 'api.followupboss.com/v1/people/501' => Http::response(['id' => 501])]);
+    $sam = app(ManageContacts::class)->create(['first_name' => 'Sam', 'last_name' => 'Lee', 'email' => 'sam@x.test'], $this->owner);
+
+    app(ManageContacts::class)->update($sam, ['first_name' => 'Samuel'], $this->owner);
+    Http::assertSent(fn (HttpRequest $r): bool => $r->method() === 'PUT' && $r->url() === 'https://api.followupboss.com/v1/people/501' && $r['firstName'] === 'Samuel'
+        && ! isset($r['emails']));
+    app(ManageContacts::class)->assignOwner($sam->fresh(), $this->agent, $this->owner);
+    Http::assertSent(fn (HttpRequest $r): bool => $r->method() === 'PUT' && ($r->data()['assignedUserId'] ?? null) === 7);
+
+    // A change Follow Up Boss tells us about is not sent back.
+    Http::swap(new Factory);
+    Http::fake(['api.followupboss.com/v1/people?*' => Http::response(['people' => [['id' => 501, 'firstName' => 'Sammy', 'lastName' => 'Lee', 'emails' => [['value' => 'sam@x.test']]]]])]);
+    fubHook($c, ['event' => 'peopleUpdated', 'resourceIds' => [501]])->assertNoContent();
+    expect($sam->fresh()?->first_name)->toBe('Sammy');
+    Http::assertNotSent(fn (HttpRequest $r): bool => $r->method() === 'PUT');
+});

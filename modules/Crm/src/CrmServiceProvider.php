@@ -24,7 +24,9 @@ use Modules\Crm\Actions\Timeline;
 use Modules\Crm\Console\SendTaskReminders;
 use Modules\Crm\Events\ActivityLogged;
 use Modules\Crm\Events\ContactCreated;
+use Modules\Crm\Events\ContactOwnerChanged;
 use Modules\Crm\Events\ContactStageChanged;
+use Modules\Crm\Events\ContactUpdated;
 use Modules\Crm\Events\TaskCompleted;
 use Modules\Crm\Models\Activity;
 use Modules\Crm\Models\Contact;
@@ -108,6 +110,8 @@ final class CrmServiceProvider extends ServiceProvider
 
         // Two-way CRMs: new contacts and notes go to Follow Up Boss (specs/connect/05).
         Event::listen(ContactCreated::class, fn (ContactCreated $e) => Connect\FollowUpBossOutbox::contactCreated($e->contactId));
+        Event::listen(ContactUpdated::class, fn (ContactUpdated $e) => Connect\FollowUpBossOutbox::contactChanged($e->contactId));
+        Event::listen(ContactOwnerChanged::class, fn (ContactOwnerChanged $e) => Connect\FollowUpBossOutbox::contactChanged($e->contactId));
         Event::listen(ActivityLogged::class, function (ActivityLogged $e): void {
             if ($e->type === 'note') {
                 Connect\FollowUpBossOutbox::noteLogged($e->contactId, $e->activityId);

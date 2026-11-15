@@ -1,4 +1,4 @@
-# 05 — Live two-way sync (Sprint C2a-2, Team A; first app: Follow Up Boss)
+# 05 — Live two-way sync (Sprints C2a-2 and C2a-3, Team A; first app: Follow Up Boss)
 
 After the import (specs/connect/04), RightAlly and Follow Up Boss stay in step without anyone pressing anything.
 The engine pieces here are generic (`Core\Connect\TwoWay`), so the next two-way CRMs reuse them.
@@ -53,8 +53,12 @@ The engine pieces here are generic (`Core\Connect\TwoWay`), so the next two-way 
     - A failed send never breaks the save in RightAlly.
 - **No ping-pong:** changes that Follow Up Boss just told us about are saved "quietly"
   (`FollowUpBoss::$quiet`), so they are never sent back.
-- **Not yet:** edits in RightAlly to existing contacts (name, email, stage) going to Follow Up Boss. That is the
-  next part.
+- **Edits (C2a-3):** when a linked person's name or agent changes in RightAlly (an edit, or a reassignment),
+  RightAlly sends `PUT /v1/people/{id}` with first name, last name and assigned user.
+    - Emails, phones, stage and tags are not sent: Follow Up Boss would replace its own lists, and each account names
+      its own stages.
+    - A person deleted in Follow Up Boss (404) is left alone.
+    - Edits that Follow Up Boss itself sent us are never echoed back.
 
 ## Disconnecting
 
@@ -78,4 +82,5 @@ Follow Up Boss can't be reached.
 - new contacts and notes out, with their agent, never twice;
 - personal contacts kept out of the brokerage's account;
 - the changed-people check stops at the last check;
-- webhooks deleted on disconnect.
+- webhooks deleted on disconnect;
+- name and agent edits sent out, and never echoed.

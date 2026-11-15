@@ -10,7 +10,7 @@ use Modules\Crm\Enums\Origin;
 use Modules\Crm\Models\Contact;
 
 /**
- * Sends new RightAlly contacts and notes to Follow Up Boss (specs/connect/05), to each connection that covers the
+ * Sends new RightAlly contacts and notes, and name and agent changes, to Follow Up Boss (specs/connect/05), to each connection that covers the
  * contact: the brokerage's connection covers company contacts; an agent's own connection covers only their personal
  * contacts. Nothing that came from Follow Up Boss is sent back to it. Each send is a queued job, after the save.
  */
@@ -19,6 +19,12 @@ final class FollowUpBossOutbox
     public static function contactCreated(int $contactId): void
     {
         self::send($contactId, 'contact', $contactId);
+    }
+
+    /** A linked contact's name or agent changed in RightAlly. */
+    public static function contactChanged(int $contactId): void
+    {
+        self::send($contactId, 'contact_update', $contactId);
     }
 
     public static function noteLogged(int $contactId, int $activityId): void
