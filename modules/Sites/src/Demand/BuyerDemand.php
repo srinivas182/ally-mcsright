@@ -80,7 +80,7 @@ final class BuyerDemand
                 }
             }
             foreach ($leads as $l) {
-                if (($l->price_min === null || $l->price_min <= $p) && ($l->price_max === null || $l->price_max >= $p) && ! isset($who[$l->contact_id])) {
+                if (($l->price_min === null || $l->price_min <= $p) && ($l->price_max === null || $l->price_max >= $p) && ! isset($who[(int) $l->contact_id])) {
                     $who[(int) $l->contact_id] = null;
                 }
             }
