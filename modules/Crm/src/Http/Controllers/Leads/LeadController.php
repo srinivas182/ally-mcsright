@@ -166,7 +166,7 @@ final class LeadController
 
     public function saveAi(Request $request, AiResponder $ai): RedirectResponse
     {
-        $ai->saveSettings($request->only(['enabled', 'assistant_name', 'tone', 'max_messages', 'sources', 'knowledge']), self::user($request));
+        $ai->saveSettings($request->only(['enabled', 'nurture_enabled', 'assistant_name', 'tone', 'max_messages', 'sources', 'knowledge']), self::user($request));
         Inertia::flash('toast', ['type' => 'success', 'message' => 'AI assistant saved.']);
 
         return back();

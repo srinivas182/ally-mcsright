@@ -46,6 +46,7 @@ type Props = {
     newKey: { source: string; key: string } | null;
     ai: {
         enabled: boolean;
+        nurture_enabled: boolean;
         assistant_name: string;
         tone: string;
         max_messages: number;
@@ -369,6 +370,23 @@ export default function LeadSettings({
                                 }
                             />
                             Answer new leads automatically
+                        </label>
+                        <label className="flex items-center gap-2">
+                            <input
+                                type="checkbox"
+                                className="size-4"
+                                checked={assistant.data.nurture_enabled}
+                                onChange={(e) =>
+                                    assistant.setData(
+                                        'nurture_enabled',
+                                        e.target.checked,
+                                    )
+                                }
+                            />
+                            Keep in touch with quiet leads for 12 months (new
+                            homes for their search, price drops, their home's
+                            value, the market). It stops when they reply or you
+                            write to them.
                         </label>
                         <div className="flex flex-wrap gap-3">
                             <label className="grid gap-1">

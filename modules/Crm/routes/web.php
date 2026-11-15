@@ -140,6 +140,7 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoff
         Route::post('{conversation}/send', [InboxController::class, 'send'])->middleware('throttle:60,1,inbox-send')->name('send');
         Route::post('{conversation}/draft', [InboxController::class, 'draft'])->middleware(['feature:crm.ai', 'throttle:20,1,inbox-draft'])->name('draft');
         Route::post('{conversation}/assign', [InboxController::class, 'assign'])->name('assign');
+        Route::post('{conversation}/nurture/stop', [InboxController::class, 'stopNurture'])->name('nurture.stop');
     });
 Route::middleware('throttle:600,1,twilio-sms')->post('webhooks/twilio/sms', TwilioSmsController::class)->name('crm.inbox.twilio');
 

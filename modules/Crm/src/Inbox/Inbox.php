@@ -23,6 +23,7 @@ use Modules\Crm\FairHousing;
 use Modules\Crm\Leads\AiResponder;
 use Modules\Crm\Leads\LeadAlert;
 use Modules\Crm\Leads\LeadScoring;
+use Modules\Crm\Leads\LongNurture;
 use Modules\Crm\Leads\PortalEmail;
 use Modules\Crm\Leads\SpeedToLead;
 use Modules\Crm\Models\Activity;
@@ -115,6 +116,7 @@ final class Inbox
             $this->timeline->log($contact, ['type' => $channel === 'sms' ? 'text' : 'email', 'direction' => 'out', 'subject' => $subject, 'body' => $body], $by);
             // A person has taken over: the AI assistant steps back.
             app(AiResponder::class)->stop($contact, 'agent_replied');
+            app(LongNurture::class)->stop($contact, 'agent_replied');
         } else {
             throw ValidationException::withMessages(['body' => ['The message could not be sent. Please try again in a moment.']]);
         }
@@ -231,6 +233,8 @@ final class Inbox
         Lead::query()->where('contact_id', $contact->id)->whereNull('engaged_at')->update(['engaged_at' => CarbonImmutable::now()]);
         app(LeadScoring::class)->rescoreContact($contact->id);
 
+        // A reply to the long follow-up goes straight to their agent.
+        app(LongNurture::class)->onReply($contact);
         // The AI assistant answers while it is still working this lead (and the agent hears about it at hand-off).
         if ($alert && app(AiResponder::class)->onReply($contact, $channel)) {
             return $message;
