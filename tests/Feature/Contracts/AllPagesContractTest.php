@@ -77,6 +77,7 @@ it('sends every brokerage page the data its component needs', function (string $
     'deals: bring over files' => ['owner', '/deals/bring-over-files', 'deals/bring-over-files'],
     'ads: list' => ['agent', '/ads', 'ads/index'],
     'grow: funnels' => ['agent', '/funnels', 'grow/funnels'],
+    'grow: postcards' => ['agent', '/postcards', 'grow/postcards'],
     'listings: buyer demand' => ['agent', '/listings/demand', 'listings/demand'],
     'settings: fair housing' => ['owner', '/settings/fair-housing', 'settings/fair-housing'],
     'settings: email marketing' => ['owner', '/settings/email-marketing', 'settings/email-marketing'],

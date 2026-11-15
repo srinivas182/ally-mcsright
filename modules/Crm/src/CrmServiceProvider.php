@@ -211,6 +211,7 @@ final class CrmServiceProvider extends ServiceProvider
             kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant], mobile: true));
         $this->app->make(NavigationRegistry::class)->add(new NavItem('Settings', 'My availability', '/settings/availability', 'calendar-check', 67,
             kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent]));
+        $this->app->make(NavigationRegistry::class)->add(new NavItem('Grow', 'Postcards', '/postcards', 'mail', 26, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent]));
         $this->app->make(NavigationRegistry::class)->add(new NavItem('Settings', 'Fair Housing', '/settings/fair-housing', 'scale', 88, kinds: [UserKind::Owner]));
 
         if ($this->app->runningInConsole()) {
