@@ -6,6 +6,13 @@ import { PageHeader } from '@/components/ui/page-header';
 
 type Campaign = {
     ulid: string;
+    billing: 'own' | 'boost';
+    credits_reserved: number;
+    credits_refunded: number;
+    stopped_reason: string | null;
+    pending_commission: number;
+    earned_commission: number;
+    return: number | null;
     listing: string;
     headline: string;
     status: string;
@@ -38,10 +45,12 @@ const statusLabel: Record<string, string> = {
 /** Listing ads: what is running, what it has spent and brought in (specs/ads/01). */
 export default function Ads({
     ready,
+    boost,
     connected,
     campaigns,
 }: {
     ready: boolean;
+    boost: boolean;
     connected: boolean;
     campaigns: Campaign[];
 }) {
@@ -53,12 +62,12 @@ export default function Ads({
                     title="Ads"
                     description="Make a Facebook and Instagram ad for one of your listings in a minute. It runs from your own ad account; RightAlly never adds a fee."
                 />
-                {!ready ? (
+                {!ready && !boost ? (
                     <p className="rounded-lg border p-5">
                         Listing ads aren't switched on yet. Please ask RightAlly
                         support.
                     </p>
-                ) : !connected ? (
+                ) : !connected && !boost ? (
                     <section className="grid gap-3 rounded-lg border p-5">
                         <h2 className="font-medium">
                             First, connect your Meta ad account
@@ -102,6 +111,9 @@ export default function Ads({
                                         {c.listing}
                                         {c.by ? ` · ${c.by}` : ''}
                                     </span>
+                                    {c.billing === 'boost' && (
+                                        <Badge>Boost</Badge>
+                                    )}
                                     <Badge
                                         variant={
                                             c.status === 'failed'
@@ -117,6 +129,20 @@ export default function Ads({
                                     day, {c.starts_on} to {c.ends_on} (at most{' '}
                                     {money(c.max_spend)})
                                 </p>
+                                {c.stopped_reason && (
+                                    <p className="text-sm">
+                                        {c.stopped_reason}
+                                    </p>
+                                )}
+                                {c.billing === 'boost' && (
+                                    <p className="text-sm text-muted-foreground">
+                                        {c.credits_reserved.toLocaleString()}{' '}
+                                        credits reserved
+                                        {c.credits_refunded > 0
+                                            ? `, ${c.credits_refunded.toLocaleString()} given back`
+                                            : ''}
+                                    </p>
+                                )}
                                 {c.error && (
                                     <p className="text-sm text-destructive">
                                         {c.error}
@@ -160,6 +186,22 @@ export default function Ads({
                                         <dd>{c.leads}</dd>
                                     </div>
                                 </dl>
+                                {(c.pending_commission > 0 ||
+                                    c.earned_commission > 0) && (
+                                    <p className="text-sm">
+                                        Commission from these leads:{' '}
+                                        <strong>
+                                            {money(c.earned_commission)}
+                                        </strong>{' '}
+                                        closed
+                                        {c.pending_commission > 0
+                                            ? `, ${money(c.pending_commission)} under contract`
+                                            : ''}
+                                        {c.return !== null
+                                            ? ` · ${c.return}× what it cost`
+                                            : ''}
+                                    </p>
+                                )}
                                 {c.mine &&
                                     (c.status === 'active' ||
                                         c.status === 'paused') && (
@@ -179,6 +221,20 @@ export default function Ads({
                                                 {c.status === 'active'
                                                     ? 'Pause'
                                                     : 'Run again'}
+                                            </Button>{' '}
+                                            <Button
+                                                variant="ghost"
+                                                onClick={() =>
+                                                    router.post(
+                                                        `/ads/${c.ulid}/end`,
+                                                        {},
+                                                        {
+                                                            preserveScroll: true,
+                                                        },
+                                                    )
+                                                }
+                                            >
+                                                End it now
                                             </Button>
                                         </div>
                                     )}

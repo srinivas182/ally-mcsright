@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace Modules\Ads\Meta;
 
+use App\Models\User;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Modules\Ads\Models\Campaign;
 use Modules\Core\Connect\NeedsReconnect;
+use Modules\Core\Tenancy\TenantContext;
 use RuntimeException;
 
 /**
@@ -40,7 +42,7 @@ final class MetaApi
                 'start_time' => $c->starts_on->startOfDay()->toIso8601String(), 'end_time' => $c->ends_on->endOfDay()->toIso8601String(), 'status' => 'ACTIVE',
                 'targeting' => self::targeting($c)]));
             $made['creative'] = self::id(self::post($http, $account.'/adcreatives', ['name' => $c->listing_label, 'object_story_spec' => ['page_id' => $c->page_id,
-                'link_data' => ['link' => $c->link, 'message' => $c->body, 'name' => $c->headline, 'picture' => $c->image_url,
+                'link_data' => ['link' => $c->link, 'message' => $c->body, 'name' => $c->headline, 'picture' => $c->image_url, 'description' => self::disclosure($c),
                     'call_to_action' => ['type' => 'LEARN_MORE', 'value' => ['link' => $c->link]]]]]));
             $made['ad'] = self::id(self::post($http, $account.'/ads', ['name' => $c->listing_label, 'adset_id' => $made['adset'],
                 'creative' => ['creative_id' => $made['creative']], 'status' => 'ACTIVE']));
@@ -52,6 +54,14 @@ final class MetaApi
             throw $e;
         }
         $c->forceFill(['meta_ids' => $made])->save();
+    }
+
+    /** Who the listing is with, on every ad (state advertising rules name the brokerage). */
+    public static function disclosure(Campaign $c): string
+    {
+        $agent = User::query()->find($c->user_id)?->name;
+
+        return mb_substr('Listed by '.($agent !== null ? $agent.', ' : '').app(TenantContext::class)->current()->name, 0, 120);
     }
 
     /** @return array<string, mixed> place only, as Housing ads require */

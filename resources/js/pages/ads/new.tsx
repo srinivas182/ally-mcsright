@@ -23,6 +23,7 @@ const money = (n: number) =>
  */
 export default function NewAd({
     connected,
+    boost,
     accounts,
     pages,
     listings,
@@ -30,6 +31,12 @@ export default function NewAd({
     limits,
 }: {
     connected: boolean;
+    boost: {
+        credits_per_dollar: number;
+        margin_percent: number;
+        balance: number;
+        pool: boolean;
+    } | null;
     accounts: Option[];
     pages: Option[];
     listings: ListingOption[];
@@ -51,7 +58,17 @@ export default function NewAd({
         days: 14,
         radius: limits.min_radius,
         agree: false,
+        stop_loss: true,
+        pay: connected ? 'own' : 'boost',
     });
+    const boosting = form.data.pay === 'boost' && boost !== null;
+    const credits = boost
+        ? Math.ceil(
+              boost.credits_per_dollar *
+                  form.data.daily_budget *
+                  form.data.days,
+          )
+        : 0;
     const [drafting, setDrafting] = useState(false);
     const [note, setNote] = useState<string | null>(null);
     const total = form.data.daily_budget * form.data.days;
@@ -83,7 +100,7 @@ export default function NewAd({
             .finally(() => setDrafting(false));
     };
 
-    if (!connected) {
+    if (!connected && boost === null) {
         return (
             <div className="grid gap-4 p-4">
                 <Head title="New listing ad" />
@@ -236,57 +253,99 @@ export default function NewAd({
                                 Housing ads can't be aimed by age, gender or
                                 interests, and must cover at least 15 miles.
                             </p>
-                            <div className="grid gap-3 sm:grid-cols-2">
-                                <label className="grid gap-1">
-                                    Ad account
-                                    <select
-                                        className="h-12 rounded-md border bg-background px-3"
-                                        value={form.data.account}
-                                        onChange={(e) =>
-                                            form.setData(
-                                                'account',
-                                                e.target.value,
-                                            )
-                                        }
-                                    >
-                                        {accounts.map((a) => (
-                                            <option key={a.id} value={a.id}>
-                                                {a.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    {form.errors.account && (
-                                        <span className="text-destructive">
-                                            {form.errors.account}
-                                        </span>
-                                    )}
-                                </label>
-                                <label className="grid gap-1">
-                                    Facebook Page
-                                    <select
-                                        className="h-12 rounded-md border bg-background px-3"
-                                        value={form.data.page}
-                                        onChange={(e) =>
-                                            form.setData('page', e.target.value)
-                                        }
-                                    >
-                                        {pages.map((p) => (
-                                            <option key={p.id} value={p.id}>
-                                                {p.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    {form.errors.page && (
-                                        <span className="text-destructive">
-                                            {form.errors.page}
-                                        </span>
-                                    )}
-                                </label>
-                            </div>
+                            {!boosting && (
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                    <label className="grid gap-1">
+                                        Ad account
+                                        <select
+                                            className="h-12 rounded-md border bg-background px-3"
+                                            value={form.data.account}
+                                            onChange={(e) =>
+                                                form.setData(
+                                                    'account',
+                                                    e.target.value,
+                                                )
+                                            }
+                                        >
+                                            {accounts.map((a) => (
+                                                <option key={a.id} value={a.id}>
+                                                    {a.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {form.errors.account && (
+                                            <span className="text-destructive">
+                                                {form.errors.account}
+                                            </span>
+                                        )}
+                                    </label>
+                                    <label className="grid gap-1">
+                                        Facebook Page
+                                        <select
+                                            className="h-12 rounded-md border bg-background px-3"
+                                            value={form.data.page}
+                                            onChange={(e) =>
+                                                form.setData(
+                                                    'page',
+                                                    e.target.value,
+                                                )
+                                            }
+                                        >
+                                            {pages.map((p) => (
+                                                <option key={p.id} value={p.id}>
+                                                    {p.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {form.errors.page && (
+                                            <span className="text-destructive">
+                                                {form.errors.page}
+                                            </span>
+                                        )}
+                                    </label>
+                                </div>
+                            )}
                         </section>
 
                         <section className="grid gap-3">
                             <h2 className="font-medium">4. Budget</h2>
+                            {boost && (
+                                <fieldset className="grid gap-2">
+                                    <legend className="mb-1">Pay with</legend>
+                                    {connected && (
+                                        <label className="flex items-center gap-3">
+                                            <input
+                                                type="radio"
+                                                className="size-5"
+                                                checked={
+                                                    form.data.pay === 'own'
+                                                }
+                                                onChange={() =>
+                                                    form.setData('pay', 'own')
+                                                }
+                                            />
+                                            My own Meta ad account
+                                        </label>
+                                    )}
+                                    <label className="flex items-center gap-3">
+                                        <input
+                                            type="radio"
+                                            className="size-5"
+                                            checked={form.data.pay === 'boost'}
+                                            onChange={() =>
+                                                form.setData('pay', 'boost')
+                                            }
+                                        />
+                                        RightAlly credits (Boost): no ad account
+                                        needed
+                                    </label>
+                                    {form.errors.pay && (
+                                        <span className="text-destructive">
+                                            {form.errors.pay}
+                                        </span>
+                                    )}
+                                </fieldset>
+                            )}
                             <div className="grid gap-3 sm:grid-cols-2">
                                 <label className="grid gap-1">
                                     Per day (${limits.min_daily} to $
@@ -339,20 +398,55 @@ export default function NewAd({
                                         form.setData('agree', e.target.checked)
                                     }
                                 />
-                                <span>
-                                    I agree to spend up to{' '}
-                                    <strong>{money(total)}</strong> from my own
-                                    Meta ad account (
-                                    {money(form.data.daily_budget)} a day for{' '}
-                                    {form.data.days} days). I can pause it at
-                                    any time.
-                                </span>
+                                {boosting && boost ? (
+                                    <span>
+                                        I agree to use up to{' '}
+                                        <strong>
+                                            {credits.toLocaleString()} credits
+                                        </strong>{' '}
+                                        ({money(total)} of ads plus RightAlly's{' '}
+                                        {boost.margin_percent}%). Credits it
+                                        doesn't spend come back to me. You have{' '}
+                                        {boost.balance.toLocaleString()} credits
+                                        {boost.pool
+                                            ? ' (your brokerage can cover the rest)'
+                                            : ''}
+                                        .
+                                    </span>
+                                ) : (
+                                    <span>
+                                        I agree to spend up to{' '}
+                                        <strong>{money(total)}</strong> from my
+                                        own Meta ad account (
+                                        {money(form.data.daily_budget)} a day
+                                        for {form.data.days} days). I can pause
+                                        it at any time.
+                                    </span>
+                                )}
                             </label>
                             {form.errors.agree && (
                                 <span className="text-destructive">
                                     {form.errors.agree}
                                 </span>
                             )}
+                            <label className="flex items-start gap-3">
+                                <input
+                                    type="checkbox"
+                                    className="mt-1 size-5"
+                                    checked={form.data.stop_loss}
+                                    onChange={(e) =>
+                                        form.setData(
+                                            'stop_loss',
+                                            e.target.checked,
+                                        )
+                                    }
+                                />
+                                <span>
+                                    Stop-loss: pause it for me if half the
+                                    budget brings no lead, or leads cost more
+                                    than three times our usual.
+                                </span>
+                            </label>
                         </section>
 
                         <div>

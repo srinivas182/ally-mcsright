@@ -22,10 +22,11 @@ use Modules\Transactions\Models\Deal;
 beforeEach(function (): void {
     $this->travelTo(CarbonImmutable::parse('2026-09-01 09:00'));
     $this->tenant = $this->onTenantHost('acme');
-    $this->owner = User::factory()->owner()->create();
-    $this->staff = User::factory()->staff()->create();
+    // Fixed names so the directory search for "pat" can only find Pat Lee.
+    $this->owner = User::factory()->owner()->create(['first_name' => 'Olive', 'last_name' => 'Owner', 'email' => 'olive@example.test']);
+    $this->staff = User::factory()->staff()->create(['first_name' => 'Sam', 'last_name' => 'Staff', 'email' => 'sam@example.test']);
     $this->agent = User::factory()->create(['first_name' => 'Pat', 'last_name' => 'Lee']);
-    $this->other = User::factory()->create();
+    $this->other = User::factory()->create(['first_name' => 'Ola', 'last_name' => 'Other', 'email' => 'ola@example.test']);
     $this->roster = app(Roster::class);
     $this->ce = app(ContinuingEducation::class);
     $this->licence = $this->roster->add($this->agent, 'licence', ['state_code' => 'TX', 'number' => '0612345', 'expires_on' => '2026-12-31'], $this->owner);

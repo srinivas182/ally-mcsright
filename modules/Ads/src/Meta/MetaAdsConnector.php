@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Ads\Meta;
 
 use Illuminate\Support\Facades\Http;
+use Modules\Ads\Lifecycle;
 use Modules\Ads\Models\Campaign;
 use Modules\Core\Connect\ConnectionData;
 use Modules\Core\Connect\Connector;
@@ -47,10 +48,10 @@ final class MetaAdsConnector implements Connector
         $this->kit->saveSettings($connection, ['ad_accounts' => $list($accounts->json('data', []), 'account_id'), 'pages' => $list($pages->json('data', []), 'id')]);
 
         $updated = 0;
-        foreach (Campaign::query()->where('connection_id', $connection->id)->whereIn('status', ['active', 'paused'])->get() as $c) {
+        foreach (Campaign::query()->where('connection_id', $connection->id)->where('billing', 'own')->whereIn('status', ['active', 'paused'])->get() as $c) {
             $results = $this->api->results($c, $token);
             if ($results !== null) {
-                $c->forceFill($results + ['results_at' => now(), 'status' => $c->status === 'active' && $c->ends_on->endOfDay()->isPast() ? 'ended' : $c->status])->save();
+                app(Lifecycle::class)->apply($c, $results, $token);
                 $updated++;
             }
         }

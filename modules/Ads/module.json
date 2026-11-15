@@ -3,7 +3,15 @@
     "name": "Ads",
     "version": "0.1.0",
     "provider": "Modules\\Ads\\AdsServiceProvider",
-    "depends": ["core", "crm", "listings", "sites", "connect"],
+    "depends": [
+        "core",
+        "crm",
+        "listings",
+        "sites",
+        "connect",
+        "billing",
+        "transactions"
+    ],
     "entitlement": null,
     "description": "Listing ads made with AI and published from RightAlly: Meta first, from the agent's own ad account (specs/ads/01)."
 }

@@ -11,8 +11,11 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Ads\AdCopy;
+use Modules\Ads\Boost;
 use Modules\Ads\ListingAds;
 use Modules\Ads\Models\Campaign;
+use Modules\Ads\Returns;
+use Modules\Billing\Credits\CreditLedger;
 use Modules\Connect\AppRegistry;
 use Modules\Core\Connect\AppCatalog;
 use Modules\Core\Identity\Enums\UserKind;
@@ -30,6 +33,7 @@ final class AdsController
 
         return Inertia::render('ads/index', [
             'ready' => $app !== null && app(AppRegistry::class)->ready($app),
+            'boost' => app(Boost::class)->ready(),
             'connected' => $this->ads->connection($user) !== null,
             'campaigns' => Campaign::query()->when($user->kind !== UserKind::Owner, fn ($q) => $q->where('user_id', $user->id))->latest('id')->limit(100)->get()
                 ->map(fn (Campaign $c): array => self::row($c, $user))->values()->all(),
@@ -43,8 +47,12 @@ final class AdsController
         $ulid = (string) $request->query('listing', '');
         $home = $ulid !== '' ? $this->ads->listing($user, $ulid) : null;
 
+        $boost = app(Boost::class);
+
         return Inertia::render('ads/new', [
             'connected' => $conn !== null,
+            'boost' => $boost->ready() ? ['credits_per_dollar' => $boost->credits(100, $boost->marginBps()), 'margin_percent' => $boost->marginBps() / 100,
+                'balance' => app(CreditLedger::class)->balanceOf($user->id), 'pool' => app(CreditLedger::class)->policy()['agents_use_pool']] : null,
             'accounts' => (array) ($conn?->settings['ad_accounts'] ?? []),
             'pages' => (array) ($conn?->settings['pages'] ?? []),
             'listings' => $this->ads->listings($user),
@@ -70,7 +78,8 @@ final class AdsController
 
     public function store(Request $request): RedirectResponse
     {
-        $c = $this->ads->publish(self::user($request), $request->only(['listing', 'account', 'page', 'headline', 'body', 'daily_budget', 'days', 'radius']) + ['agree' => $request->boolean('agree')]);
+        $c = $this->ads->publish(self::user($request), $request->only(['listing', 'account', 'page', 'headline', 'body', 'daily_budget', 'days', 'radius', 'pay'])
+            + ['agree' => $request->boolean('agree'), 'stop_loss' => $request->boolean('stop_loss', true)]);
         $c->refresh();
         Inertia::flash('toast', $c->status === 'failed'
             ? ['type' => 'error', 'message' => 'Meta didn\'t accept the ad: '.$c->error]
@@ -95,6 +104,16 @@ final class AdsController
         return back();
     }
 
+    public function end(Request $request, string $campaign): RedirectResponse
+    {
+        $c = $this->find($request, $campaign);
+        $this->ads->end($c, self::user($request));
+        Inertia::flash('toast', ['type' => 'success', 'message' => $c->isBoost() && $c->credits_refunded > 0
+            ? 'Ended. '.number_format($c->credits_refunded).' unspent credits are back in your balance.' : 'Ended. It won\'t spend anything more.']);
+
+        return back();
+    }
+
     private function find(Request $request, string $ulid): Campaign
     {
         $c = Campaign::query()->where('ulid', $ulid)->first();
@@ -106,7 +125,11 @@ final class AdsController
     /** @return array<string, mixed> */
     private static function row(Campaign $c, User $viewer): array
     {
-        return ['ulid' => $c->ulid, 'listing' => $c->listing_label, 'headline' => $c->headline, 'status' => $c->status, 'error' => $c->error,
+        $returns = app(Returns::class)->for($c);
+
+        return ['ulid' => $c->ulid, 'listing' => $c->listing_label, 'billing' => $c->billing, 'credits_reserved' => $c->credits_reserved, 'credits_refunded' => $c->credits_refunded,
+            'stopped_reason' => $c->stopped_reason, 'stop_loss' => $c->stop_loss, 'pending_commission' => $returns['pending_cents'] / 100, 'earned_commission' => $returns['earned_cents'] / 100,
+            'return' => $c->spend_cents > 0 && $returns['earned_cents'] > 0 ? round($returns['earned_cents'] / $c->spend_cents, 1) : null, 'headline' => $c->headline, 'status' => $c->status, 'error' => $c->error,
             'daily_budget' => $c->daily_budget_cents / 100, 'max_spend' => $c->maxSpendCents() / 100, 'starts_on' => $c->starts_on->toDateString(), 'ends_on' => $c->ends_on->toDateString(),
             'spend' => $c->spend_cents / 100, 'impressions' => $c->impressions, 'clicks' => $c->clicks, 'leads' => $c->leads,
             'cost_per_click' => $c->clicks > 0 ? round($c->spend_cents / 100 / $c->clicks, 2) : null, 'results_at' => $c->results_at?->toIso8601String(),

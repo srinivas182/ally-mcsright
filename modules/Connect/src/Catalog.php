@@ -283,6 +283,17 @@ final class Catalog
                 'docs' => 'https://developers.facebook.com/docs/marketing-api/'],
             guide: ['steps' => ['Press Connect and sign in to Facebook.', 'Choose your ad account and Pages, and press Allow.', 'Then open Ads to make your first listing ad.']]));
 
+        $catalog->add(new App('rightally_boost', 'RightAlly Boost', 'ads', 'Boost a listing on Facebook and Instagram and pay with RightAlly credits: no ad account needed. Unspent credits come back.',
+            scope: 'both', auth: 'link', syncs: ['Ads paid with credits', 'Results with the leads and commission they brought'], link: '/ads',
+            setup: ['needs' => 'keys', 'fields' => [['key' => 'ad_account_id', 'label' => 'RightAlly\'s Meta ad account ID (digits)'], ['key' => 'page_id', 'label' => 'RightAlly\'s Facebook Page ID'],
+                ['key' => 'access_token', 'label' => 'System user access token (ads_management)', 'secret' => true], ['key' => 'margin_percent', 'label' => 'RightAlly margin, % of ad spend (default 15)']],
+                'steps' => ['In RightAlly\'s Meta Business Manager, make (or choose) the ad account Boosts run from, with a payment method, and the Facebook Page ads run as.',
+                    'Make a system user with the ads_management permission on that ad account and Page, and generate its access token.',
+                    'Paste the ad account ID, Page ID and token here. Set the margin (for example 15); you can change it any time and each boost keeps the margin it was bought with.',
+                    'Switch RightAlly Boost on.'],
+                'partner' => 'Uses the Meta app already approved for ads_management (Meta Ads card). RightAlly pays Meta for Boost spend.',
+                'docs' => 'https://developers.facebook.com/docs/marketing-api/system-users/']));
+
         // On the roadmap (people can ask for them; HQ sees the demand). Some need a partner agreement first.
         foreach ([
             ['real_geeks', 'Real Geeks', 'crm', 'Bring over leads and their activity from Real Geeks.', 'both', 'Your Real Geeks plan'],

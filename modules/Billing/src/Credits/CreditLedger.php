@@ -119,6 +119,27 @@ final class CreditLedger
         });
     }
 
+    /**
+     * Gives back part of a charge (once per charge): e.g. a Boost that spent less than the credits reserved for it.
+     * Never more than was charged; the credits go back to the account that paid.
+     */
+    public function refundPart(string $idempotencyKey, int $credits, string $reason): int
+    {
+        $entry = $this->entry($idempotencyKey);
+        if ($entry === null || $credits <= 0 || $this->entry('refund:'.$idempotencyKey) !== null) {
+            return 0;
+        }
+        $credits = min($credits, -$entry->amount);
+        DB::connection(Connections::cell())->transaction(function () use ($entry, $idempotencyKey, $credits, $reason): void {
+            $account = CreditAccount::query()->whereKey($entry->account_id)->lockForUpdate()->first();
+            if ($account !== null) {
+                $this->write($account->id, 'refund', $credits, 0, $entry->action_key, $entry->user_id, $entry->automation, 'refund:'.$idempotencyKey, mb_substr($reason, 0, 255), null);
+            }
+        });
+
+        return $credits;
+    }
+
     /** The month's included credits: expires what is left from earlier months, then grants the package's credits (once per month). */
     public function grantIncluded(int $credits, ?CarbonImmutable $at = null): bool
     {
