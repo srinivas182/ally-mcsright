@@ -120,6 +120,28 @@ Every tool extends `Core\Mcp\RightAllyTool`, so no tool can skip these checks.
 - **Tools:**
     - CRM: `search_contacts`, `get_contact`, `my_tasks`, `todays_list`, `open_times`.
     - Transactions: `my_deals`, `deal_details` (key dates and missing paperwork; no commission or bank figures).
+    - Everyone (M2a): `daily_brief`. Each module adds a section through `McpToolbox::brief()`:
+        - CRM: `call_today` (top five of Today's 10, with why), `tasks` (overdue and due today), `new_leads` (last 24
+          hours, visible only);
+        - Transactions: `deal_deadlines` (open key dates in the next 7 days, and overdue ones).
+
+        A section that fails is left out; the brief still answers.
+
+    - CRM writes (M2a; need the person's write approval and the brokerage's switch):
+        - `add_contact`: name and email or phone, with an optional first note. It uses the same duplicate check as
+          the screen, and texts or emails nobody.
+        - `log_note`: a note, or a call that happened, with its outcome.
+        - `add_task`: for yourself, optionally on a contact. Due takes a date and time in the person's time zone,
+          or `today`, `tomorrow` or `next_week`.
+        - `complete_task`.
+
+        Each write finds records with the screens' rules (ContactVisibility, `Tasks::canSee`) and goes through the
+        CRM's own services. Owners can't assign tasks to others through MCP; that stays on the screens.
+- **Confirm-first** (M2a; `RightAllyTool::$confirmFirst`) is for any bulk or costly tool, such as campaigns or
+  credits:
+    - The first call returns `preview()` and an 8-character code, and changes nothing.
+    - Only a second call with the same arguments and that code acts.
+    - Codes are per person, per tool and per set of arguments. They last 10 minutes and work once.
 - **Apps → AI assistants:**
     - how to connect, with the address and a Copy button;
     - your connected assistants, with Disconnect;
@@ -157,9 +179,12 @@ Every tool extends `Core\Mcp\RightAllyTool`, so no tool can skip these checks.
     - the owner switch and the connected-apps list;
     - auditing and rate limits;
     - a guide for Claude and ChatGPT.
-- **M2:**
+- **M2a (done):**
     - write tools;
-    - the daily brief tool;
+    - confirm-first for bulk or costly tools;
+    - the daily brief tool.
+- **M2b:**
+    - one fixed address for all brokerages (`mcp.rightally.app`), with email-first sign-in;
     - directory listings;
     - per-MLS widening.
 - **Later (optional):** an MCP _client_ in the RightAlly AI assistant, so a brokerage can plug in its own MCP
