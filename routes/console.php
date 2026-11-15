@@ -51,6 +51,7 @@ Schedule::command('ailly:weekly')->weeklyOn(1, '13:40')->onOneServer();
 Schedule::command('connect:sync')->everyFifteenMinutes()->withoutOverlapping()->onOneServer();
 Schedule::command('connect:renew-addons')->hourly()->withoutOverlapping()->onOneServer();
 Schedule::command('ads:refresh-boosts')->hourly()->withoutOverlapping()->onOneServer();
+Schedule::command('ai:assistant-prune')->dailyAt('03:41')->onOneServer();
 Schedule::command('core:daily-briefs')->hourlyAt(2)->weekdays()->withoutOverlapping()->onOneServer();
 Schedule::command('crm:fair-housing-pack')->monthlyOn(1, '08:17')->onOneServer();
 Schedule::command('crm:nurture')->hourlyAt(23)->withoutOverlapping()->onOneServer();

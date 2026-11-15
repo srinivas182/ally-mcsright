@@ -108,3 +108,11 @@ it('says plainly when it isn\'t switched on, and keeps HQ staff out', function (
     $this->actingAs($this->ann)->postJson('/assistant/ask', ['text' => 'Hi'])->assertOk()->assertJsonPath('turns.1.text', 'Your AI Assistant isn\'t switched on for your brokerage yet. Ask your broker or RightAlly support.');
     $this->actingAs(User::factory()->hqStaff()->create())->postJson('/assistant/ask', ['text' => 'Hi'])->assertForbidden();
 });
+
+it('forgets conversations after 30 days', function (): void {
+    says($this, ['step' => 'answer', 'text' => 'Hello.']);
+    $this->actingAs($this->ann)->postJson('/assistant/ask', ['text' => 'Hi'])->assertOk();
+    $this->travel(31)->days();
+    $this->artisan('ai:assistant-prune')->assertSuccessful();
+    expect(AssistantTurn::query()->count())->toBe(0);
+});
