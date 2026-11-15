@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Connect;
 
 use App\Models\User;
+use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Passport\Passport;
@@ -41,10 +42,14 @@ final class ConnectServiceProvider extends ServiceProvider
         config(['mcp.redirect_domains' => config('connect.mcp_redirect_domains', ['https://claude.ai', 'https://claude.com', 'https://chatgpt.com', 'https://chat.openai.com',
             'https://copilot.microsoft.com', 'https://copilotstudio.microsoft.com', 'https://gemini.google.com', 'https://www.perplexity.ai', 'https://perplexity.ai',
             'http://localhost', 'http://127.0.0.1']), 'mcp.custom_schemes' => ['cursor']]);
+        // The shared AI assistant address hands codes back through its own return address (M2b).
+        config(['mcp.redirect_domains' => [...(array) config('mcp.redirect_domains'), 'https://'.config('core.mcp_host')]]);
     }
 
     public function boot(): void
     {
+        // The shared AI assistant address names the brokerage before the token is checked (M2b).
+        $this->app->make(Kernel::class)->prependToMiddlewarePriority(Http\CentralMcpToken::class);
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
         if ($this->app->runningInConsole()) {

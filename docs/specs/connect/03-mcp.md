@@ -167,9 +167,58 @@ Every tool extends `Core\Mcp\RightAllyTool`, so no tool can skip these checks.
 - **HQ can switch each AI app off on its own.** It is recognised by where it sends people back (claude.ai,
   chatgpt.com and so on), and calls from a switched-off app are refused. The registration allow-list includes
   Copilot Studio and Perplexity, plus the `cursor://` scheme.
-- **Next (M2):** listings in the Claude and ChatGPT directories for true one-click connect, with one fixed address
-  for all brokerages (`https://mcp.rightally.app`). People enter their email at sign-in and are sent to their
-  brokerage's own sign-in page.
+
+## One address for every brokerage (M2b)
+
+`https://{core.mcp_host}/mcp` (default `mcp.rightally.app`) works for every brokerage, so RightAlly can be listed in
+the Claude and ChatGPT directories, where an app has one fixed address. Each brokerage's own `/mcp` keeps working.
+
+The shared address is only a router. It holds no brokerage data and issues no tokens of its own
+(`Connect\Mcp\Central`):
+
+1. **Discovery and registration.**
+    - `/.well-known/oauth-protected-resource` and `/.well-known/oauth-authorization-server` point to
+      `/authorize`, `/token` and `/register` on the shared host.
+    - AI apps register once (`mcp_central_clients`), under the same redirect allow-list as every brokerage. The
+      shared host itself is never accepted as a redirect.
+2. **Which brokerage?** `/authorize` checks the request (registered redirect, S256 PKCE) and keeps it for 15
+   minutes. Then it shows a plain page: "Enter the email you use to sign in to RightAlly".
+    - The **email directory** (`identity_directory`, control database) maps keyed hashes of sign-in emails
+      (HMAC-SHA256 with the app key) to brokerages. Emails are never stored in plain text, and HQ staff are never
+      listed. It is kept current as people are added, change their email or leave; `php artisan
+      identity:directory` fills it once at go-live.
+    - One brokerage: the browser goes straight there.
+    - Several: the person picks one. The choice is limited to the brokerages found for that email in this
+      session.
+    - None: "We couldn't find a RightAlly account with that email."
+    - The page is limited to 10 tries a minute, and lookups are audited (`connect.mcp_central_find`, with the
+      count only, never the email).
+    - This device remembers the brokerage (an encrypted, HTTP-only cookie for a year), so next time it offers
+      "Continue with Acme Realty".
+3. **The brokerage's own sign-in and "Allow" screen.**
+    - The first time an AI app is used at a brokerage, the brokerage registers its own copy of the app
+      (`mcp_central_links`), with the shared return address and the app's real addresses. The tile, the
+      connected-assistants list and HQ's per-app switch therefore all work as before.
+    - The consent screen names the AI app's real site, for example claude.ai.
+    - The brokerage's Passport issues the code, bound to the PKCE challenge.
+4. **Back to the AI app.**
+    - `/oauth/return` sends the code to the AI app's registered address with the brokerage's id in front,
+      `{brokerage ulid}~{code}`, together with the AI app's own `state`.
+5. **Tokens.**
+    - `/token` reads the brokerage from the code or refresh token and calls that brokerage's own OAuth server.
+      That server checks the client, PKCE, expiry and revocation.
+    - Access and refresh tokens are returned with the same prefix.
+6. **Calls.**
+    - `/mcp` on the shared host runs as the brokerage named in the token, and that brokerage checks the token.
+    - A token without its brokerage, or with another brokerage's id, is refused (401).
+    - All the guardrails above apply unchanged: who, what, writes, confirm-first, limits and audit.
+
+**Go-live:**
+
+- DNS and TLS for `mcp.rightally.app`;
+- run `php artisan identity:directory` once;
+- submit to the Claude and ChatGPT directories (HQ partner step), using
+  `https://mcp.rightally.app/mcp`.
 
 ## Sprints
 
@@ -183,9 +232,9 @@ Every tool extends `Core\Mcp\RightAllyTool`, so no tool can skip these checks.
     - write tools;
     - confirm-first for bulk or costly tools;
     - the daily brief tool.
-- **M2b:**
-    - one fixed address for all brokerages (`mcp.rightally.app`), with email-first sign-in;
-    - directory listings;
-    - per-MLS widening.
+- **M2b (done):** one fixed address for all brokerages (`mcp.rightally.app`), with email-first sign-in.
+- **Later:**
+    - the directory submissions themselves (an HQ partner step);
+    - per-MLS widening when a licence allows it.
 - **Later (optional):** an MCP _client_ in the RightAlly AI assistant, so a brokerage can plug in its own MCP
   tools.
