@@ -7,14 +7,19 @@ namespace Modules\Ads\Http;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
+use Modules\Ads\ListingAds;
 use Modules\Ads\Social\SocialPosts;
 use Modules\Ads\Studio\BrandKits;
+use Modules\Ads\Studio\Design;
+use Modules\Ads\Studio\Designer;
 use Modules\Ads\Studio\StudioPlans;
 use Modules\Connect\AppRegistry;
 use Modules\Core\Connect\AppCatalog;
 use Modules\Core\Identity\Enums\UserKind;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /** Grow → Ally Studio (specs/grow/13): the package and this month's use, the brand kit, and where posts go. */
 final class StudioController
@@ -73,6 +78,50 @@ final class StudioController
         Inertia::flash('toast', ['type' => 'success', 'message' => $brokerage ? 'Brokerage brand saved.' : 'Your brand kit is saved.']);
 
         return back();
+    }
+
+    /** Studio → Create: choose a moment (and a listing), get three designs, download or post one. */
+    public function create(Request $request, Designer $designer, ListingAds $ads): Response
+    {
+        $user = self::user($request);
+        $batch = $request->query('batch');
+        $row = fn (Design $d): array => ['ulid' => $d->ulid, 'status' => $d->status, 'collection' => BrandKits::COLLECTIONS[$d->collection] ?? $d->collection, 'variant' => $d->variant,
+            'moment' => Designer::MOMENTS[$d->moment][0] ?? $d->moment, 'checks' => $d->checks ?? [], 'used' => $d->used_at !== null,
+            'images' => array_map(fn (string $size): ?string => $designer->url($d, $size), array_combine(array_keys(Designer::SIZES), array_keys(Designer::SIZES)))];
+
+        return Inertia::render('studio/create', [
+            'ready' => $this->plans->current($user) !== null,
+            'moments' => $designer->moments($user),
+            'listings' => array_map(fn (array $l): array => ['ulid' => $l['ulid'], 'label' => $l['label']], $ads->listings($user)),
+            'batch' => is_string($batch) ? Design::query()->where('user_id', $user->id)->where('batch', $batch)->orderBy('id')->get()->map($row)->values()->all() : [],
+            'recent' => Design::query()->where('user_id', $user->id)->where('status', 'ready')->latest('id')->limit(12)->get()->map($row)->values()->all(),
+        ]);
+    }
+
+    public function makeDesigns(Request $request, Designer $designer): RedirectResponse
+    {
+        $made = $designer->create(self::user($request), $request->only(['moment', 'listing', 'headline', 'sub', 'body', 'by', 'when', 'stats']));
+
+        return redirect('/studio/create?batch='.$made[0]->batch);
+    }
+
+    public function download(Request $request, string $design, Designer $designer): StreamedResponse
+    {
+        $user = self::user($request);
+        $d = Design::query()->where('ulid', $design)->where('user_id', $user->id)->firstOrFail();
+        $size = isset(Designer::SIZES[(string) $request->query('size')]) ? (string) $request->query('size') : 'portrait';
+        $designer->use($d, $user);
+
+        return Storage::disk('public')->download((string) ($d->files[$size] ?? abort(404)), 'rightally-'.$d->moment.'-'.$size.'.jpg');
+    }
+
+    public function post(Request $request, string $design, Designer $designer): RedirectResponse
+    {
+        $user = self::user($request);
+        $d = Design::query()->where('ulid', $design)->where('user_id', $user->id)->firstOrFail();
+        $designer->use($d, $user);
+
+        return redirect('/social?design='.$d->ulid);
     }
 
     private static function user(Request $request): User

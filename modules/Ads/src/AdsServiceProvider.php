@@ -25,12 +25,16 @@ final class AdsServiceProvider extends ServiceProvider
         $this->app->scoped(Social\SocialPosts::class);
         $this->app->scoped(Studio\StudioPlans::class);
         $this->app->scoped(Studio\BrandKits::class);
+        $this->app->scoped(Studio\Designer::class);
+        $this->mergeConfigFrom(__DIR__.'/../config/studio.php', 'studio');
+        $this->app->bind(Studio\Render\StudioRenderer::class, fn () => config('studio.renderer') === 'fake' ? new Studio\Render\FakeRenderer : new Studio\Render\ChromeRenderer);
     }
 
     public function boot(): void
     {
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
+        $this->loadViewsFrom(__DIR__.'/../resources/views', 'ads');
         if ($this->app->runningInConsole()) {
             $this->commands([Console\RefreshBoosts::class, Console\SendSocialPosts::class]);
         }

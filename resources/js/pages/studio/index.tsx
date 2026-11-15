@@ -110,6 +110,17 @@ export default function StudioIndex({
                     </div>
                 </section>
 
+                {plan && (
+                    <div className="flex gap-3">
+                        <Button asChild size="lg">
+                            <Link href="/studio/create">Create a design</Link>
+                        </Button>
+                        <Button asChild size="lg" variant="outline">
+                            <Link href="/studio/brand">Brand kit</Link>
+                        </Button>
+                    </div>
+                )}
+
                 {missing.length > 0 && (
                     <section className="grid gap-2 rounded-lg border border-primary/40 p-4">
                         <h2 className="font-medium">

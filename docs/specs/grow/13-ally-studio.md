@@ -121,4 +121,9 @@ monthly renewal, cancel at month end, "included in package X"):
 
 - Prices, allowances and credits for each package and item; cost per item.
 - Render workers with Chromium and ffmpeg; a background-removal key (remove.bg or equal).
+    - SA1b: designs render on the queue workers with headless Chrome (`STUDIO_CHROME`, default
+      `/usr/bin/google-chrome`; `STUDIO_CHROME_NO_SANDBOX=true` only inside an isolated container that runs Chrome as
+      root). Fonts are bundled (SIL OFL, `modules/Ads/resources/fonts`), so workers need no font service. One design
+      set is nine renders (about 1 s each); size the workers for the expected design volume, and cap sets per person
+      per day with `STUDIO_DAILY_SETS` (default 40).
 - Music library licences; YouTube API audit; Meta review for engagement permissions (SA5); voice vendor (SA5).
