@@ -9,7 +9,9 @@ use Modules\Core\Connect\AppCatalog;
 use Modules\Crm\Connect\BoldTrail;
 use Modules\Crm\Connect\FollowUpBoss;
 use Modules\Crm\Connect\GoHighLevel;
+use Modules\Crm\Connect\HubSpot;
 use Modules\Crm\Connect\Lofty;
+use Modules\Crm\Connect\Pipedrive;
 use Modules\Crm\Connect\Sierra;
 
 /**
@@ -24,6 +26,13 @@ final class Catalog
         'real_geeks' => 'Real Geeks shares leads only with approved partners (Lead Router). Apply through Real Geeks partner support.',
         'boomtown' => 'BoomTown\'s API is for approved partners only. Apply through BoomTown (Inside Real Estate) partner programme.',
         'top_producer' => 'Top Producer has no public API. Ask Constellation Real Estate Group for partner access.',
+        'cinc' => 'CINC\'s API is for approved partners only. Apply through CINC (Fathom Realty) partner support.',
+        'brivity' => 'Brivity\'s API is for approved partners only. Ask Brivity for partner API access.',
+        'liondesk' => 'LionDesk\'s API (Lone Wolf) needs a partner agreement. Apply through the Lone Wolf partner programme.',
+        'rechat' => 'Rechat shares data with approved partners. Ask Rechat for partner API access.',
+        'cloze' => 'Cloze has a public API with a personal API key; planned next. For one-click connect, Cloze approves partner apps.',
+        'salesforce' => 'Needs RightAlly\'s own Salesforce connected app (free; set up by HQ). Planned next, together with Propertybase.',
+        'propertybase' => 'Runs on Salesforce: built with the Salesforce connector (planned next). Propertybase (Lone Wolf) partner listing is optional.',
         'wise_agent' => 'Wise Agent issues API credentials (OAuth) only to partner integrations, not to agents. Request them at wiseagent.com/docs/api.asp (app name, logo, redirect domain, contacts scope).',
     ];
 
@@ -139,6 +148,22 @@ final class Catalog
             guide: ['steps' => ['In your GoHighLevel sub-account, open Settings → Private Integrations and create one.', 'Tick "View Contacts" (and "View Users", so contacts keep their agent), then copy the token.',
                 'Copy the Location ID from Settings → Business Profile.', 'Paste both below and press Connect.']]));
 
+        $catalog->add(new App('hubspot', 'HubSpot', 'crm', 'Bring over your contacts, lead status, owners and notes from HubSpot. Changes keep coming over every hour.',
+            scope: 'both', auth: 'api_key', syncs: ['Contacts (names, emails, phones)', 'Lead status and lifecycle stage', 'Which owner each contact belongs to', 'Notes', 'Changes, hourly'],
+            fields: [['key' => 'api_key', 'label' => 'Private app access token', 'type' => 'text', 'secret' => true, 'help' => 'It stays encrypted. Only RightAlly\'s import uses it.']],
+            driver: HubSpot::class,
+            setup: ['steps' => ['Nothing to set up: each HubSpot account uses its own private app token.', 'Switch HubSpot on.'],
+                'partner' => 'One-click connect (instead of a token) needs a HubSpot public app: optional, free at developers.hubspot.com.', 'docs' => 'https://developers.hubspot.com/docs/api/private-apps'],
+            guide: ['steps' => ['In HubSpot, open Settings → Integrations → Private Apps and create a private app called RightAlly.',
+                'Under Scopes, tick crm.objects.contacts.read and crm.objects.owners.read, then create the app.', 'Copy its access token, paste it below and press Connect.']]));
+        $catalog->add(new App('pipedrive', 'Pipedrive', 'crm', 'Bring over your people, owners and notes from Pipedrive. Changes keep coming over every hour.',
+            scope: 'both', auth: 'api_key', syncs: ['People (names, emails, phones)', 'Which owner each person belongs to', 'Notes', 'Changes, hourly'],
+            fields: [['key' => 'api_key', 'label' => 'Pipedrive API token', 'type' => 'text', 'secret' => true, 'help' => 'It stays encrypted. Only RightAlly\'s import uses it.']],
+            driver: Pipedrive::class, vendorCost: 'Your Pipedrive plan',
+            setup: ['steps' => ['Nothing to set up: each person uses their own Pipedrive API token.', 'Switch Pipedrive on.'],
+                'partner' => 'One-click connect (instead of a token) needs a Pipedrive Marketplace app: optional, at developers.pipedrive.com.', 'docs' => 'https://developers.pipedrive.com/docs/api/v1'],
+            guide: ['steps' => ['In Pipedrive, click your avatar → Personal preferences → API.', 'Copy your personal API token.', 'Paste it below and press Connect.']]));
+
         // On the roadmap (people can ask for them; HQ sees the demand). Some need a partner agreement first.
         foreach ([
             ['real_geeks', 'Real Geeks', 'crm', 'Bring over leads and their activity from Real Geeks.', 'both', 'Your Real Geeks plan'],
@@ -151,8 +176,6 @@ final class Catalog
             ['liondesk', 'LionDesk', 'crm', 'Bring over contacts and notes from LionDesk.', 'agent', 'Your LionDesk plan'],
             ['rechat', 'Rechat', 'crm', 'Bring over contacts, deals and marketing history from Rechat.', 'both', 'Your Rechat plan'],
             ['cloze', 'Cloze', 'crm', 'Bring over contacts, notes and relationship history from Cloze.', 'agent', 'Your Cloze plan'],
-            ['pipedrive', 'Pipedrive', 'crm', 'Bring over people, deals and notes from Pipedrive.', 'both', 'Your Pipedrive plan'],
-            ['hubspot', 'HubSpot', 'crm', 'Bring over contacts, companies and notes from HubSpot.', 'brokerage', null],
             ['salesforce', 'Salesforce', 'crm', 'Bring over contacts, accounts and notes from Salesforce.', 'brokerage', null],
             ['realtor_com', 'Realtor.com', 'leads', 'Realtor.com leads (including ReadyConnect) arrive as leads, routed and followed up.', 'both', 'Paid to Realtor.com'],
             ['facebook_leads', 'Facebook Lead Ads', 'leads', 'Every Facebook and Instagram lead form arrives as a lead within seconds.', 'both', null],
