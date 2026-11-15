@@ -12,7 +12,9 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
+use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Identity\Enums\UserKind;
+use Modules\Core\Tenancy\TenantContext;
 use Modules\Crm\Actions\MergeContacts;
 use Modules\Crm\Consent;
 use Modules\Crm\ContactImporter;
@@ -165,8 +167,38 @@ final class DataController
     {
         /** @var list<array<string, mixed>> */
         return ConsentEvent::query()->where('contact_id', $contact->id)->orderByDesc('occurred_at')->limit(20)->get()
-            ->map(fn (ConsentEvent $e): array => ['channel' => $e->channel, 'action' => $e->action, 'method' => $e->method, 'occurred_at' => $e->occurred_at->toIso8601String()])
+            ->map(fn (ConsentEvent $e): array => ['channel' => $e->channel, 'action' => $e->action, 'method' => $e->method, 'source' => $e->source, 'source_ref' => $e->source_ref,
+                'occurred_at' => $e->occurred_at->toIso8601String()])
             ->all();
+    }
+
+    /**
+     * The consent report for one contact (specs/grow/11): every consent and opt-out with where it came from, the exact
+     * wording, IP and device, and the evidence fingerprint. Owners and staff; printable, or as CSV for a regulator.
+     */
+    public function consentReport(Request $request, Contact $contact, Consent $consent): \Symfony\Component\HttpFoundation\Response
+    {
+        $user = self::user($request);
+        abort_unless(CrmAccess::manager($user), 403);
+        $events = ConsentEvent::query()->where('contact_id', $contact->id)->orderBy('occurred_at')->orderBy('id')->get();
+        app(AuditLogger::class)->record('crm.consent.report', $contact, metadata: ['events' => $events->count(), 'format' => $request->query('format') === 'csv' ? 'csv' : 'html'], severity: 'notice');
+        if ($request->query('format') === 'csv') {
+            $out = fopen('php://temp', 'r+');
+            abort_if($out === false, 500);
+            fputcsv($out, ['When (UTC)', 'Channel', 'Action', 'Method', 'Source', 'Reference', 'Wording', 'Phone', 'IP', 'Device', 'Recorded by', 'Evidence SHA-256'], escape: '');
+            foreach ($events as $e) {
+                fputcsv($out, [$e->occurred_at->utc()->toDateTimeString(), $e->channel, $e->action, $e->method, $e->source, $e->source_ref, $e->consent_text, $e->phone, $e->ip,
+                    $e->user_agent, $e->user_id !== null ? (string) User::query()->whereKey($e->user_id)->value('email') : 'Automatic', $e->evidence_sha256], escape: '');
+            }
+            rewind($out);
+            $csv = (string) stream_get_contents($out);
+
+            return response($csv, 200, ['Content-Type' => 'text/csv; charset=utf-8',
+                'Content-Disposition' => 'attachment; filename="consent-'.$contact->ulid.'.csv"', 'Cache-Control' => 'no-store']);
+        }
+
+        return response()->view('crm::consent-report', ['contact' => $contact, 'events' => $events, 'status' => $consent->status($contact),
+            'auto' => $consent->canAutoText($contact), 'brokerage' => app(TenantContext::class)->current()->name])->header('X-Robots-Tag', 'noindex')->header('Cache-Control', 'no-store');
     }
 
     private static function user(Request $request): User

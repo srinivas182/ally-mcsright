@@ -13,6 +13,7 @@ use Modules\Core\Connect\ConnectorKit;
 use Modules\Crm\Actions\ManageContacts;
 use Modules\Crm\Actions\Tags;
 use Modules\Crm\Actions\Timeline;
+use Modules\Crm\Consent;
 use Modules\Crm\ContactVisibility;
 use Modules\Crm\CrmAccess;
 use Modules\Crm\Models\Contact;
@@ -26,13 +27,15 @@ use Modules\Crm\Models\Contact;
  * - Acts as the person who connected the app, through the same services as the screens. A brokerage connection
  *   brings company contacts with their agent; an agent's own connection brings personal contacts.
  * - No texting consent comes across (TCPA): imported people are never texted until they opt in here.
+ * - Opt-outs do come across (specs/grow/11): a "do not text / email / call" flag from the app, or a tag such as
+ *   "DNC", "Do not text", "Opted out" or "Unsubscribed", stops those messages here too.
  */
 final class Importer
 {
     public function __construct(private readonly ConnectorKit $kit) {}
 
     /**
-     * @param  array{id: string, first_name: string, last_name: string, email: string|null, phone: string|null, tags: list<string>, stage: string|null, source: string|null, agent_id: string|null}  $p
+     * @param  array{id: string, first_name: string, last_name: string, email: string|null, phone: string|null, tags: list<string>, stage: string|null, source: string|null, agent_id: string|null, sms_opt_out?: bool, email_opt_out?: bool, do_not_call?: bool}  $p
      * @return 'created'|'updated'|'skipped'
      */
     public function person(ConnectionData $connection, User $by, array $p, string $app, string $stagePrefix): string
@@ -46,6 +49,8 @@ final class Importer
         if ($contact === null) {
             $contact = self::existing($p['email'], $p['phone']);
             if ($contact !== null && ! app(ContactVisibility::class)->canSee($by, $contact)) {
+                self::optOuts($contact, $p, $app); // an opt-out is honoured even for someone else's contact
+
                 return 'skipped'; // someone else's contact in the brokerage: left alone
             }
             $result = $contact !== null ? 'skipped' : 'created';
@@ -76,6 +81,7 @@ final class Importer
         foreach (array_slice(array_values(array_filter([...$p['tags'], $stageTag], fn ($t) => is_string($t) && $t !== '')), 0, 20) as $tag) {
             app(Tags::class)->attach($contact, mb_substr($tag, 0, 60));
         }
+        self::optOuts($contact, $p, $app);
         if ($result === 'created') {
             $contact->forceFill(['source_detail' => mb_substr($app.($p['source'] !== null && $p['source'] !== '' ? ': '.$p['source'] : ''), 0, 150)])->save();
         }
@@ -130,5 +136,25 @@ final class Importer
 
         return Contact::query()->where(fn ($q) => $q->when($email !== null, fn ($w) => $w->orWhere('primary_email', $email))
             ->when($phone164 !== null, fn ($w) => $w->orWhere('primary_phone', $phone164)))->orderBy('id')->first();
+    }
+
+    /** The tags that mean "stop": texts, emails, calls. */
+    public const STOP_TAGS = [
+        'sms' => '/^(dnc|do ?not ?(text|contact)|no ?(text|sms)|sms ?opt(ed)? ?out|opt(ed)? ?out|stop)$/i',
+        'email' => '/^(unsubscribed|do ?not ?(email|contact)|no ?email|email ?opt(ed)? ?out|opt(ed)? ?out)$/i',
+        'call' => '/^(dnc|do ?not ?(call|contact)|no ?calls?)$/i',
+    ];
+
+    /** @param  array<string, mixed>  $p */
+    private static function optOuts(Contact $contact, array $p, string $app): void
+    {
+        $tags = array_map(fn ($t): string => trim((string) $t), (array) ($p['tags'] ?? []));
+        $has = fn (string $kind): bool => array_filter($tags, fn (string $t): bool => preg_match(self::STOP_TAGS[$kind], $t) === 1) !== [];
+        $sms = ($p['sms_opt_out'] ?? false) === true || $has('sms');
+        $email = ($p['email_opt_out'] ?? false) === true || $has('email');
+        $call = ($p['do_not_call'] ?? false) === true || $has('call');
+        if ($sms || $email || $call) {
+            app(Consent::class)->fromConnectedApp($contact, $app, $sms, $email, $call);
+        }
     }
 }

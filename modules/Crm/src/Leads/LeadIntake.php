@@ -109,7 +109,11 @@ final class LeadIntake
 
             $wording = trim((string) ($in['consent_text'] ?? ''));
             if ($phone !== null && ! empty($in['sms_consent']) && $wording !== '' && $contact->refresh()->primary_phone === $phone) {
-                $this->consent->optInSms($contact, 'web_form', mb_substr($wording, 0, 500), null, $request);
+                $chat = is_array($in['ai_handoff'] ?? null) && ($in['ai_handoff']['origin'] ?? null) === 'website_chat';
+                $how = $chat ? 'chat' : (in_array($source->kind, ['form', 'website'], true) || $source->source->value === 'website' ? 'web_form' : 'connected_app');
+                // Proof that travels with the contact (specs/grow/11): where they agreed, to what wording, from which page.
+                $this->consent->optInSms($contact, 'web_form', mb_substr($wording, 0, 500), null, $request, ['source' => $how, 'ref' => $landing ?: $source->name,
+                    'evidence' => ['form' => $source->name, 'page' => $landing, 'checked' => true, 'phone' => $phone]]);
             }
 
             $source->forceFill(['last_lead_at' => CarbonImmutable::now()])->save();

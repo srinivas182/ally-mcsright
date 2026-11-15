@@ -144,7 +144,7 @@ it('records consent as evidence; automated texts need written consent and stop a
     expect($consent->canCall($contact->fresh()))->toBeFalse()
         ->and(ConsentEvent::query()->where('contact_id', $contact->id)->count())->toBe(4);
 
-    $event = ConsentEvent::query()->first();
+    $event = ConsentEvent::query()->orderBy('id')->first(); // the first one recorded
     expect(fn () => $event?->update(['action' => 'opt_out']))->toThrow(LogicException::class)
         ->and(fn () => $event?->delete())->toThrow(LogicException::class);
 

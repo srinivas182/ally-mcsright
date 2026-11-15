@@ -151,6 +151,7 @@ final class ContactController
                 'consent' => [
                     'email' => $contact->email_opt_in, 'sms' => $contact->sms_opt_in, 'do_not_call' => $contact->do_not_call,
                     'sms_method' => $contact->sms_consent_method, 'auto_text_allowed' => app(Consent::class)->canAutoText($contact),
+                    'status' => app(Consent::class)->status($contact), 'report' => CrmAccess::manager($user) ? '/contacts/'.$contact->ulid.'/consent-report' : null,
                     'default_wording' => Consent::DEFAULT_SMS_WORDING, 'history' => DataController::consentHistory($contact),
                 ],
             ],
