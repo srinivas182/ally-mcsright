@@ -1,5 +1,6 @@
 import { Head, router, useForm } from '@inertiajs/react';
 
+import { AgentWallet, type Wallet } from '@/components/payouts/agent-wallet';
 import { W9Form } from '@/components/payouts/w9-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,6 +8,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { usd } from '@/lib/cents';
 
 type Props = {
+    wallet: Wallet;
     balances: {
         commission_cents: number;
         revenue_share_cents: number;
@@ -51,8 +53,9 @@ type Props = {
     } | null;
 };
 
-/** An agent's money: what's ready, what's on its way, and where it's paid. */
+/** An agent's money (the Agent Wallet, specs/finance/03): the year so far, what's ready, what's on its way, and where it's paid. */
 export default function MyMoney({
+    wallet,
     balances,
     bank,
     holdHours,
@@ -72,7 +75,11 @@ export default function MyMoney({
         <>
             <Head title="My money" />
             <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 p-4 md:p-6">
-                <PageHeader title="My money" />
+                <PageHeader
+                    title="My money"
+                    description="Your wallet: every figure comes from the brokerage's books and ties to your monthly statements."
+                />
+                <AgentWallet wallet={wallet} />
                 <section className="grid gap-3 sm:grid-cols-3">
                     <div className="rounded-lg border p-4 text-sm">
                         <p className="text-muted-foreground">Ready to pay</p>
