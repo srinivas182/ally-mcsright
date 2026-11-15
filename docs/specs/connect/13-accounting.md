@@ -52,7 +52,15 @@ payouts, referral fees and their reversals. Brokers and their bookkeepers keep w
 - Posting uses `ManualJournals` with status POSTED. Line amounts are positive for a debit and negative for a credit,
   by account code.
 - **HQ setup:** create a Web app with the return address as its redirect URI, then paste the client ID and secret.
-  Connecting more than 25 organisations needs Xero App Partner certification, and Xero's developer pricing applies.
+- **One RightAlly app for every brokerage (decided 2026-11-15).** Brokerages don't create their own Xero apps. That
+  would break one-click setup, and may conflict with Xero's terms, which exempt only an accountant's own or single-client
+  integrations. Xero bills per app by connected organisations, in AUD a month (2026):
+    - Starter: free, up to 5;
+    - Core: A$35, up to 50;
+    - Plus: A$245, up to 1,000.
+
+    RightAlly starts on Starter for testing, moves to Core at launch and to Plus after 50 brokerages. The cost is
+    covered in the brokerage plan.
 
 ## Acceptance
 

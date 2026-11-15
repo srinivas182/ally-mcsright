@@ -405,8 +405,8 @@ final class Catalog
             setup: ['needs' => 'keys', 'fields' => [['key' => 'client_id', 'label' => 'Client ID'], ['key' => 'client_secret', 'label' => 'Client secret', 'secret' => true]],
                 'steps' => ['At developer.xero.com, create a Web app called RightAlly, with the return address shown above as its redirect URI.',
                     'It uses Xero\'s granular scopes (accounting.manualjournals and accounting.settings).', 'Generate a client secret and paste the client ID and secret here.',
-                    'Switch Xero on. Connecting more than 25 organisations needs a Xero app partnership (certification).'],
-                'partner' => 'Free for up to 25 connected organisations; beyond that Xero requires its App Partner certification, and Xero\'s developer pricing applies.',
+                    'Switch Xero on, and choose the Xero developer tier as brokerages connect (see below).'],
+                'partner' => 'Xero charges per app by connected organisations (2026, AUD a month): Starter free up to 5, Core A$35 up to 50, Plus A$245 up to 1,000. RightAlly uses one app; listing on the Xero App Store needs App Partner certification.',
                 'docs' => 'https://developer.xero.com/documentation/api/accounting/manualjournals'],
             guide: ['steps' => ['Press Connect, sign in to Xero, and choose your organisation.', 'Press Allow access.', 'Then map your accounts once under Finance → Books. Journals start posting straight away.']]));
 
