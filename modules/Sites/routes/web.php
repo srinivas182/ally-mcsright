@@ -18,6 +18,10 @@ use Modules\Sites\Http\Controllers\WebsiteSettingsController;
 Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function (): void {
     Route::get('settings/ailly', [AillyController::class, 'settings'])->name('settings.ailly');
     Route::post('settings/ailly', [AillyController::class, 'save'])->name('settings.ailly.save');
+    Route::post('settings/ailly/answers', [AillyController::class, 'saveAnswer'])->name('settings.ailly.answers');
+    Route::delete('settings/ailly/answers/{answer}', [AillyController::class, 'deleteAnswer'])->whereNumber('answer')->name('settings.ailly.answers.delete');
+    Route::post('settings/ailly/questions/{question}/dismiss', [AillyController::class, 'dismissQuestion'])->whereNumber('question')->name('settings.ailly.questions.dismiss');
+    Route::get('settings/ailly/audit', [AillyController::class, 'audit'])->middleware('throttle:20,1')->name('settings.ailly.audit');
 });
 
 Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])

@@ -34,6 +34,8 @@ use Modules\Core\Tenancy\Concerns\HasPublicUlid;
  * @property bool $summary_ai
  * @property CarbonImmutable|null $summary_at
  * @property array<string, string>|null $alerts
+ * @property array<string, mixed>|null $brief
+ * @property CarbonImmutable|null $brief_at
  * @property CarbonImmutable|null $first_seen_at
  * @property CarbonImmutable|null $last_seen_at
  */
@@ -57,7 +59,7 @@ final class SiteVisitor extends Model
      */
     protected function casts(): array
     {
-        return ['verified_at' => 'immutable_datetime', 'events_day' => 'immutable_date', 'summary_ai' => 'boolean', 'summary_at' => 'immutable_datetime',
+        return ['verified_at' => 'immutable_datetime', 'events_day' => 'immutable_date', 'summary_ai' => 'boolean', 'summary_at' => 'immutable_datetime', 'brief' => 'array', 'brief_at' => 'immutable_datetime',
             'alerts' => 'array', 'first_seen_at' => 'immutable_datetime', 'last_seen_at' => 'immutable_datetime'];
     }
 }

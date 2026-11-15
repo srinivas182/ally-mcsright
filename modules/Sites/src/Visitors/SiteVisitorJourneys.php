@@ -53,6 +53,8 @@ final class SiteVisitorJourneys implements VisitorJourneys
             'stats' => ['homes_viewed' => $s['homes_viewed'], 'searches' => $s['searches'], 'favourites' => $s['favourites'], 'visits' => $s['visits']],
             'events' => array_values($events->map(fn (SiteEvent $e): array => ['at' => (string) $e->created_at?->toIso8601String(), 'type' => $e->type,
                 'text' => self::describe($e), 'url' => $e->listing_ulid !== null && $host !== null ? 'https://'.$host.Urls::listing($e->listing_ulid) : null])->all()),
+            'brief' => $v->brief,
+            'chat' => ClosingBrief::chat($v->id),
         ];
     }
 

@@ -170,7 +170,7 @@ it('lets owners and staff set AIlly up and read the latest chats', function (): 
     aillySay($c, 'Hi');
 
     $this->actingAs($this->owner)->get('/settings/ailly')->assertInertia(fn (Assert $p) => $p->component('settings/ailly')
-        ->where('settings.gate', 'after')->where('month.conversations', 1)->where('conversations.0.messages.1', ['role' => 'visitor', 'body' => 'Hi']));
+        ->where('settings.gate', 'after')->where('results.chats', 1)->where('conversations.0.messages.1', ['role' => 'visitor', 'body' => 'Hi', 'flagged' => false]));
     $this->actingAs($this->owner)->post('/settings/ailly', ['enabled' => true, 'name' => 'Rae', 'greeting' => 'Hello!', 'gate' => 'booking', 'gate_after' => 2,
         'visitor_daily' => 20, 'daily_cap' => 300])->assertRedirect();
     expect(AillySettings::for($this->site->fresh()))->toMatchArray(['name' => 'Rae', 'gate' => 'booking', 'greeting' => 'Hello!']);

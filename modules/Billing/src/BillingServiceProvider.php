@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Modules\AI\Contracts\CreditMeter;
 use Modules\Billing\Http\RequireFeature;
+use Modules\Core\Credits\CreditSpend;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Messaging\SmsSender;
 use Modules\Core\Messaging\VoiceCaller;
@@ -42,6 +43,7 @@ final class BillingServiceProvider extends ServiceProvider
         $this->app->extend(VoiceCaller::class, fn (VoiceCaller $caller, $app): VoiceCaller => $caller instanceof Usage\MeteredVoiceCaller ? $caller
             : new Usage\MeteredVoiceCaller($caller, $app->make(TenantContext::class)));
         $this->app->bind(WebsiteMaps::class, Usage\AllowanceWebsiteMaps::class);
+        $this->app->bind(CreditSpend::class, Credits\LedgerCreditSpend::class);
     }
 
     public function boot(): void

@@ -39,6 +39,7 @@ final class RateCard
         'ai.doc_ask' => [1, false, 'DocIQ question'],
         'ai.compliance_rule' => [2, false, 'Deal-IQ rule'],
         'ai.ailly' => [1, true, 'AIlly assistant reply'],
+        'ai.closing_brief' => [2, true, 'Closing brief on a website lead'],
         // Beyond a package's monthly allowances (specs/billing/03).
         'usage.text_segment' => [4, true, 'Text beyond the allowance (per segment)'],
         'usage.call_minute' => [4, true, 'Call minute beyond the allowance'],
@@ -69,6 +70,7 @@ final class RateCard
         'ai.doc_ask' => [6000, 300, 0],
         'ai.compliance_rule' => [1500, 400, 0],
         'ai.ailly' => [3000, 300, 0],
+        'ai.closing_brief' => [5000, 900, 0],
     ];
 
     /** @var array<string, array{credits: int, automation: bool, label: string}>|null */

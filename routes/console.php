@@ -45,6 +45,7 @@ Schedule::command('credits:margin-watch')->dailyAt('06:10')->onOneServer();
 Schedule::command('credits:expire-purchases')->dailyAt('00:40')->onOneServer();
 Schedule::command('credits:paused-maps')->dailyAt('14:05')->onOneServer();
 Schedule::command('sites:market-updates')->monthlyOn(1, '11:20')->onOneServer();
+Schedule::command('ailly:weekly')->weeklyOn(1, '13:40')->onOneServer();
 Schedule::command('crm:search-alerts')->everyFifteenMinutes()->withoutOverlapping()->onOneServer();
 Schedule::command('listings:sync')->everyMinute()->withoutOverlapping()->onOneServer();
 Schedule::command('listings:reconcile')->dailyAt('04:20')->onOneServer();
