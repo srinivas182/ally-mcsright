@@ -16,7 +16,14 @@ brokerage tenant. Its job is to:
 2. turn the people who are ready to move into **exclusive, warm, consented introductions** to one agent each. Agents
    and brokers buy these from HQ.
 
-"Movewise" is the working brand. The domain and trademark are cleared before public launch (section 14).
+**Brand and domain (approved 2026-11-15):** the site is **Movewise Homes** at **movewisehomes.com**. It is called
+"Movewise" for short in copy and in AIlly's voice.
+
+- **movewise.homes** and **movewiserealestate.com** are also registered. Both send visitors to movewisehomes.com
+  with a permanent (301) redirect that keeps the path. They are never a second copy of the site, which would split
+  search ranking.
+- "REALTOR®" is a National Association of Realtors trademark, so it is not used in the brand or the domains.
+- A trademark clearance for "Movewise Homes" is done before public launch (section 14).
 
 ## 2. Launch states
 
@@ -275,7 +282,7 @@ HQ can turn on any of these in each state and set the prices:
 
 - **Relay number and email.** Each connected person gets a **Movewise relay**:
     - a local number from HQ's number pool;
-    - a reply address on the Movewise domain.
+    - a reply address on a subdomain of movewisehomes.com, such as `reply.movewisehomes.com`.
 
     The agent texts, calls and emails through it from their RightAlly inbox. The person sees one Movewise number and
     one thread, and the agent's personal number is not needed.
@@ -350,7 +357,9 @@ HQ can turn on any of these in each state and set the prices:
 
 ## 14. Open items (to settle before or during MW1)
 
-1. Clear the domain and trademark for "Movewise", or choose the final name.
+1. Trademark clearance and a US filing for "Movewise Homes" in real estate and online services. A 2019 "MOVEWISE"
+   filing for relocation services was abandoned; the lawyer confirms no one still trading under that name holds
+   rights in it.
 2. Counsel review in all four states (section 12).
 3. Launch prices for each model and state, and the revenue-split percentage. HQ sets these in settings; the defaults
    are agreed before launch.
