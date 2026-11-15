@@ -153,15 +153,16 @@ final class Catalog
                 'partner' => 'Listing RightAlly in Sierra\'s own integrations directory is optional: email support@sierrainteractive.com with a product summary.',
                 'docs' => 'https://api.sierrainteractivedev.com/'],
             guide: ['steps' => ['In Sierra, click the gear icon, then Integrations → Sierra Interactive.', 'Copy your API key.', 'Paste it below and press Connect.']]));
-        $catalog->add(new App('gohighlevel', 'GoHighLevel', 'crm', 'Bring over your contacts, tags, source, agents and notes from a GoHighLevel sub-account. Changes keep coming over every hour.',
-            scope: 'both', auth: 'api_key', syncs: ['Contacts (names, emails, phones)', 'Tags and source', 'Which user each contact is assigned to', 'Notes', 'Changed contacts, hourly'],
+        $catalog->add(new App('gohighlevel', 'GoHighLevel', 'crm', 'Bring over your contacts, tags, source, agents and notes from a GoHighLevel sub-account, and put RightAlly contacts into your GoHighLevel campaigns.',
+            scope: 'both', auth: 'api_key', syncs: ['Contacts (names, emails, phones)', 'Tags and source', 'Which user each contact is assigned to', 'Notes', 'Do not disturb, as opt-outs', 'Changed contacts, hourly',
+                'RightAlly tags or smart lists into your workflows, campaigns or trigger tags (consent checked), hourly'], link: '/settings/ghl-campaigns',
             fields: [['key' => 'api_key', 'label' => 'Private Integration token', 'type' => 'text', 'secret' => true, 'help' => 'It stays encrypted. Only RightAlly\'s import uses it.'],
                 ['key' => 'location_id', 'label' => 'Location ID', 'type' => 'text', 'help' => 'Settings → Business Profile in the same sub-account.']],
             driver: GoHighLevel::class, vendorCost: 'Your GoHighLevel plan',
             setup: ['steps' => ['Nothing to set up: each sub-account uses its own Private Integration token.', 'Switch GoHighLevel on.'],
                 'partner' => 'One-click connect (instead of a token) needs a GoHighLevel Marketplace app: optional, apply at marketplace.gohighlevel.com.',
                 'docs' => 'https://marketplace.gohighlevel.com/docs/'],
-            guide: ['steps' => ['In your GoHighLevel sub-account, open Settings → Private Integrations and create one.', 'Tick "View Contacts" (and "View Users", so contacts keep their agent), then copy the token.',
+            guide: ['steps' => ['In your GoHighLevel sub-account, open Settings → Private Integrations and create one.', 'Tick "View Contacts" (and "View Users", so contacts keep their agent). To use campaigns, also tick "Edit Contacts", "View Workflows" and "View Campaigns". Then copy the token.',
                 'Copy the Location ID from Settings → Business Profile.', 'Paste both below and press Connect.']]));
 
         $catalog->add(new App('hubspot', 'HubSpot', 'crm', 'Bring over your contacts, lead status, owners and notes from HubSpot. Changes keep coming over every hour.',

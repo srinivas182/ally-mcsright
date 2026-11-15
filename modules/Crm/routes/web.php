@@ -12,6 +12,7 @@ use Modules\Crm\Http\Controllers\ContactController;
 use Modules\Crm\Http\Controllers\DataController;
 use Modules\Crm\Http\Controllers\EmailMarketingController;
 use Modules\Crm\Http\Controllers\FairHousingController;
+use Modules\Crm\Http\Controllers\GhlCampaignsController;
 use Modules\Crm\Http\Controllers\Inbox\InboxController;
 use Modules\Crm\Http\Controllers\Inbox\TwilioSmsController;
 use Modules\Crm\Http\Controllers\Leads\InboundEmailController;
@@ -151,6 +152,15 @@ Route::middleware('throttle:600,1,twilio-sms')->post('webhooks/twilio/sms', Twil
 Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function (): void {
     Route::get('settings/email-marketing', [EmailMarketingController::class, 'index'])->name('crm.email-marketing.index');
     Route::post('settings/email-marketing/{connection}', [EmailMarketingController::class, 'save'])->where('connection', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('crm.email-marketing.save');
+});
+
+// GoHighLevel campaigns (specs/connect/15, C7a-2).
+Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function (): void {
+    Route::get('settings/ghl-campaigns', [GhlCampaignsController::class, 'index'])->name('crm.ghl-campaigns.index');
+    Route::post('settings/ghl-campaigns/{connection}', [GhlCampaignsController::class, 'store'])->where('connection', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')
+        ->middleware('throttle:20,1')->name('crm.ghl-campaigns.store');
+    Route::post('settings/ghl-campaigns/enrolments/{enrolment}/toggle', [GhlCampaignsController::class, 'toggle'])->where('enrolment', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')
+        ->name('crm.ghl-campaigns.toggle');
 });
 
 // Fair Housing audit packs (specs/grow/12).
