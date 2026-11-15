@@ -18,7 +18,7 @@ Formerly "AI Transaction Coordinator" in the module catalogue. Positioned as
 | Team and sprints | Delivers                                                                                                                                                                             |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | D, 32–36         | Core: talk or type (voice and text), intake by upload, email, photo or voice, contract and addendum drafting, client concierge, all-party portal, deal health in the daily game plan |
-| D, 37–38         | Inbox intelligence (Gmail and Outlook) and the smart timeline engine with state rule packs                                                                                           |
+| D, 37–38         | Deal paperwork without inbox access (synced platforms, uploads, requests) and the smart timeline engine with state rule packs                                                        |
 | D, 39–40         | Multiple-offer management; inspection response and repair requests                                                                                                                   |
 | B, 53–54         | Continuous compliance scan, deadline escalation ladder, money milestones and wire-fraud safeguards, TC team mode, results dashboard, post-closing archive                            |
 | B, 55–56         | Special deal types (new construction, lease, short sale and bank-owned, probate and estates, 1031 exchange); MLS status compliance reminders                                         |
@@ -178,12 +178,25 @@ directly. Replaces email chasing; every view and upload is logged.
 At-risk deadlines, missing signatures and overdue documents appear among the agent's top actions
 each morning; the broker sees at-risk deals across the brokerage.
 
-### 7. Inbox intelligence
+### 7. Deal paperwork without inbox access (decision 2026-11-14)
 
-Agents connect Gmail or Outlook. Every deal email is filed to the right deal automatically (by
-parties, property references and thread history, even without the address in the subject),
-summarised, and turned into tasks and updates. Replies are drafted in the agent's voice and sent
-from the agent's own address after approval, with no AI branding.
+RightAlly does not read anyone's Gmail or Outlook mailbox. That means no restricted mail permissions, no yearly
+paid security assessment, and no "RightAlly wants to read your email" screen. Inbox intelligence is **deferred,
+not dropped**: we can revisit it later if it becomes worth that cost. Deal-IQ gets its documents and dates from:
+
+1. **Transaction platforms synced through Connect** (SkySlope, dotloop, Lone Wolf; specs/connect/00, C5), through
+   their own APIs.
+2. **RightAlly forms and e-signature**: anything drafted and signed in RightAlly is already on the deal.
+3. **Asking for what's missing.** The deal's checklist shows what's missing, and Deal-IQ asks the agent in plain
+   words ("The inspection report for 12 Oak St is missing. Tap here to upload it."). They can upload it, take a
+   phone photo, or text the photo in.
+4. **Asking the other side.** Deal-IQ sends a secure, single-purpose upload link (no account needed) to the lender,
+   title company or co-op agent. The file is filed on the right deal and read by DocIQ.
+5. **An optional per-deal forwarding address.** The agent forwards only the emails they choose. A forwarded email
+   is treated like an upload, and nothing else in their mailbox is touched.
+
+Each document is read by DocIQ, which updates the deal's dates and tasks. Replies to the other parties are drafted in
+the agent's voice and sent from RightAlly's inbox after the agent approves them.
 
 ### 8. Smart timeline engine
 
@@ -326,7 +339,7 @@ responsible for file review, so Deal-IQ is never marketed as a guarantee of comp
 ## Dependencies
 
 Transactions, Forms & e-Sign, DocIQ, client portal, compensation engine (CDA, TC fees), daily game plan,
-AI gateway (speech-to-text, text-to-speech), Gmail and Outlook connections, calendar sync, Twilio
+AI gateway (speech-to-text, text-to-speech), Connect (transaction platforms, calendar sync), Twilio
 texting and voice, credits, compliance rule library (state rule packs).
 
 ## Acceptance (module level)
