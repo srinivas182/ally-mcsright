@@ -20,6 +20,7 @@ screens, permissions, events, edge cases and acceptance criteria.
 | B — Back office              | [Protect 01: Broker Risk Dashboard](protect/01-broker-risk-dashboard.md) (module definition)        | B                            |
 | D — CRM and AI (with C)      | [Core 08: Brand Kit and Brand Voice](core/08-brand-kit-and-voice.md) (module definition)            | D, C                         |
 | C — Websites (with D, E)     | [Websites 03: AIlly assistant (Home-IQ)](websites/03-ailly-assistant.md) (module definition)        | C, D, E                      |
+| HQ (A, C, E)                 | [Movewise 00: HQ consumer home site and lead marketplace](movewise/00-overview.md) (overview)       | MW1–MW8                      |
 
 Next specs are added at least one sprint before the work starts (for example, Compensation plan
 builder before Team B Sprint 3, CRM core before Team D Sprint 4).
