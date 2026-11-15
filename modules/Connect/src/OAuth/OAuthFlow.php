@@ -164,7 +164,7 @@ final class OAuthFlow
         if (! $r->successful() || ! is_string($r->json('access_token'))) {
             throw new \RuntimeException($app->name.' did not answer (status '.$r->status().').');
         }
-        $c->forceFill(['credentials' => self::tokens($r->json()) + ['refresh_token' => (string) $t['refresh_token']]])->save(); // a new refresh token, when sent, wins
+        $c->forceFill(['credentials' => self::tokens($r->json()) + array_filter(['refresh_token' => (string) $t['refresh_token'], 'instance_url' => (string) ($t['instance_url'] ?? '')])])->save(); // a new refresh token, when sent, wins
 
         return (string) $r->json('access_token');
     }
@@ -209,7 +209,9 @@ final class OAuthFlow
         $j = is_array($json) ? $json : [];
 
         return array_filter(['access_token' => (string) ($j['access_token'] ?? ''), 'refresh_token' => (string) ($j['refresh_token'] ?? ''),
-            'expires_at' => (string) (CarbonImmutable::now()->getTimestamp() + max(60, (int) ($j['expires_in'] ?? 3600))), 'scope' => (string) ($j['scope'] ?? '')],
+            'expires_at' => (string) (CarbonImmutable::now()->getTimestamp() + max(60, (int) ($j['expires_in'] ?? 3600))), 'scope' => (string) ($j['scope'] ?? ''),
+            // Salesforce: each org has its own API address, sent with every token.
+            'instance_url' => is_string($j['instance_url'] ?? null) && str_starts_with($j['instance_url'], 'https://') ? $j['instance_url'] : ''],
             fn (string $v): bool => $v !== '');
     }
 }

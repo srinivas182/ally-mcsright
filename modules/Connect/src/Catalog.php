@@ -12,6 +12,7 @@ use Modules\Crm\Connect\GoHighLevel;
 use Modules\Crm\Connect\HubSpot;
 use Modules\Crm\Connect\Lofty;
 use Modules\Crm\Connect\Pipedrive;
+use Modules\Crm\Connect\Salesforce;
 use Modules\Crm\Connect\Sierra;
 
 /**
@@ -30,9 +31,7 @@ final class Catalog
         'brivity' => 'Brivity\'s API is for approved partners only. Ask Brivity for partner API access.',
         'liondesk' => 'LionDesk\'s API (Lone Wolf) needs a partner agreement. Apply through the Lone Wolf partner programme.',
         'rechat' => 'Rechat shares data with approved partners. Ask Rechat for partner API access.',
-        'cloze' => 'Cloze has a public API with a personal API key; planned next. For one-click connect, Cloze approves partner apps.',
-        'salesforce' => 'Needs RightAlly\'s own Salesforce connected app (free; set up by HQ). Planned next, together with Propertybase.',
-        'propertybase' => 'Runs on Salesforce: built with the Salesforce connector (planned next). Propertybase (Lone Wolf) partner listing is optional.',
+        'cloze' => 'Cloze has a public API with a personal API key, but its people-feed reference is only in its OpenAPI file (api.cloze.com/api-docs). Built once that is confirmed with Cloze; one-click connect needs a Cloze partner app.',
         'wise_agent' => 'Wise Agent issues API credentials (OAuth) only to partner integrations, not to agents. Request them at wiseagent.com/docs/api.asp (app name, logo, redirect domain, contacts scope).',
     ];
 
@@ -164,6 +163,28 @@ final class Catalog
                 'partner' => 'One-click connect (instead of a token) needs a Pipedrive Marketplace app: optional, at developers.pipedrive.com.', 'docs' => 'https://developers.pipedrive.com/docs/api/v1'],
             guide: ['steps' => ['In Pipedrive, click your avatar → Personal preferences → API.', 'Copy your personal API token.', 'Paste it below and press Connect.']]));
 
+        // Salesforce, and Propertybase on top of it: one click with RightAlly's connected app (specs/connect/09).
+        $catalog->add(new App('salesforce', 'Salesforce', 'crm', 'Bring over your Salesforce contacts and open leads, with their owner, status and source, in one click. Changes keep coming over every hour.',
+            scope: 'brokerage', auth: 'oauth', syncs: ['Contacts and open leads (names, emails, phones)', 'Lead status and source', 'Which owner each belongs to', 'Changes, hourly'],
+            driver: Salesforce::class, vendorCost: 'Your Salesforce plan (needs API access: Enterprise, Unlimited or Developer edition)',
+            oauth: ['provider' => 'salesforce', 'scopes' => ['api', 'refresh_token'], 'authorize' => 'https://login.salesforce.com/services/oauth2/authorize',
+                'token' => 'https://login.salesforce.com/services/oauth2/token', 'userinfo' => 'https://login.salesforce.com/services/oauth2/userinfo', 'pkce' => true],
+            setup: ['needs' => 'keys', 'fields' => [['key' => 'client_id', 'label' => 'Consumer key'], ['key' => 'client_secret', 'label' => 'Consumer secret', 'secret' => true]],
+                'steps' => ['In RightAlly\'s own Salesforce org (a free Developer Edition works), open Setup → App Manager → New Connected App (or External Client App).',
+                    'Name it RightAlly, tick "Enable OAuth Settings", and use the return address shown above as the callback URL.',
+                    'Add the scopes "Manage user data via APIs (api)" and "Perform requests at any time (refresh_token, offline_access)", and tick "Require PKCE".',
+                    'Save, then copy the consumer key and consumer secret here. Salesforce can take up to 10 minutes to activate a new app.', 'Switch Salesforce on. Propertybase uses the same app.'],
+                'partner' => 'No partner agreement needed. An AppExchange listing is optional.', 'docs' => 'https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/'],
+            guide: ['steps' => ['Press Connect and sign in to Salesforce as an admin.', 'Press Allow. Your contacts and open leads start coming over straight away.']]));
+        $catalog->add(new App('propertybase', 'Propertybase', 'crm', 'Bring over your Propertybase contacts and open leads, with their owner, status and source, in one click. Changes keep coming over every hour.',
+            scope: 'brokerage', auth: 'oauth', syncs: ['Contacts and open leads (names, emails, phones)', 'Lead status and source', 'Which owner each belongs to', 'Changes, hourly'],
+            driver: Salesforce::class, vendorCost: 'Your Propertybase plan',
+            oauth: ['provider' => 'salesforce', 'scopes' => ['api', 'refresh_token'], 'authorize' => 'https://login.salesforce.com/services/oauth2/authorize',
+                'token' => 'https://login.salesforce.com/services/oauth2/token', 'userinfo' => 'https://login.salesforce.com/services/oauth2/userinfo', 'pkce' => true, 'keys_from' => 'salesforce'],
+            setup: ['needs' => 'app', 'app' => 'salesforce', 'steps' => ['Propertybase runs on Salesforce: set up the Salesforce card first (the same connected app works).', 'Switch Propertybase on.'],
+                'partner' => 'A Propertybase (Lone Wolf) marketplace listing is optional.', 'docs' => 'https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/'],
+            guide: ['steps' => ['Press Connect and sign in to Propertybase (your Salesforce login) as an admin.', 'Press Allow. Your contacts and open leads start coming over straight away.']]));
+
         // On the roadmap (people can ask for them; HQ sees the demand). Some need a partner agreement first.
         foreach ([
             ['real_geeks', 'Real Geeks', 'crm', 'Bring over leads and their activity from Real Geeks.', 'both', 'Your Real Geeks plan'],
@@ -172,11 +193,9 @@ final class Catalog
             ['top_producer', 'Top Producer', 'crm', 'Bring over contacts and notes from Top Producer.', 'agent', 'Your Top Producer plan'],
             ['cinc', 'CINC', 'crm', 'Bring over leads, notes and activity from CINC.', 'both', 'Your CINC plan'],
             ['brivity', 'Brivity', 'crm', 'Bring over contacts and transactions from Brivity.', 'both', 'Your Brivity plan'],
-            ['propertybase', 'Propertybase', 'crm', 'Bring over contacts, listings and deals from Propertybase.', 'brokerage', 'Your Propertybase plan'],
             ['liondesk', 'LionDesk', 'crm', 'Bring over contacts and notes from LionDesk.', 'agent', 'Your LionDesk plan'],
             ['rechat', 'Rechat', 'crm', 'Bring over contacts, deals and marketing history from Rechat.', 'both', 'Your Rechat plan'],
             ['cloze', 'Cloze', 'crm', 'Bring over contacts, notes and relationship history from Cloze.', 'agent', 'Your Cloze plan'],
-            ['salesforce', 'Salesforce', 'crm', 'Bring over contacts, accounts and notes from Salesforce.', 'brokerage', null],
             ['realtor_com', 'Realtor.com', 'leads', 'Realtor.com leads (including ReadyConnect) arrive as leads, routed and followed up.', 'both', 'Paid to Realtor.com'],
             ['facebook_leads', 'Facebook Lead Ads', 'leads', 'Every Facebook and Instagram lead form arrives as a lead within seconds.', 'both', null],
             ['zillow', 'Zillow Premier Agent', 'leads', 'Two-way sync of Zillow leads, notes and status (RightAlly is applying as a Zillow partner; lead forwarding email works today).', 'both', 'Paid to Zillow'],
