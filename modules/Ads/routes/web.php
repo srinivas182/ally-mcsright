@@ -33,6 +33,10 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('studio
     Route::get('/', [StudioController::class, 'index'])->name('index');
     Route::get('brand', [StudioController::class, 'brand'])->name('brand');
     Route::post('brand', [StudioController::class, 'saveBrand'])->middleware('throttle:20,1')->name('brand.save');
+    Route::get('create', [StudioController::class, 'create'])->name('create');
+    Route::post('designs', [StudioController::class, 'makeDesigns'])->middleware('throttle:10,1')->name('designs.store');
+    Route::get('designs/{design}/download', [StudioController::class, 'download'])->where('design', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('designs.download');
+    Route::post('designs/{design}/post', [StudioController::class, 'post'])->where('design', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('designs.post');
 });
 Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.tenants.manage'])->prefix('hq/studio')->name('hq.studio.')->group(function (): void {
     Route::get('/', [HqStudioController::class, 'index'])->name('index');

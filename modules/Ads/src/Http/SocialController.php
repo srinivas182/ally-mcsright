@@ -13,6 +13,8 @@ use Modules\Ads\ListingAds;
 use Modules\Ads\Social\SocialPost;
 use Modules\Ads\Social\SocialPosts;
 use Modules\Ads\Social\SocialTarget;
+use Modules\Ads\Studio\Design;
+use Modules\Ads\Studio\Designer;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Tenancy\TenantContext;
 
@@ -25,13 +27,14 @@ final class SocialController
     {
         $user = self::user($request);
         $listing = $request->query('listing');
+        $design = is_string($request->query('design')) ? Design::query()->where('ulid', $request->query('design'))->where('user_id', $user->id)->where('status', 'ready')->first() : null;
         $tz = $tenants->current()->timezone ?: 'America/New_York';
 
         return Inertia::render('ads/social', [
             'apps' => $this->social->apps($user),
             'places' => array_map(fn (array $p): array => ['key' => $p['key'], 'channel' => $p['channel'], 'name' => $p['name'], 'brokerage' => $p['brokerage']], $this->social->places($user)),
             'listings' => array_map(fn (array $l): array => ['ulid' => $l['ulid'], 'label' => $l['label']], $ads->listings($user)),
-            'start' => is_string($listing) && $listing !== '' ? $this->social->fromListing($user, $listing) : null,
+            'start' => $design !== null ? $this->fromDesign($user, $design) : (is_string($listing) && $listing !== '' ? $this->social->fromListing($user, $listing) : null),
             'timezone' => $tz,
             'posts' => SocialPost::query()->where('user_id', $user->id)->with('targets')->latest('id')->limit(30)->get()->map(fn (SocialPost $p): array => [
                 'ulid' => $p->ulid, 'text' => mb_substr($p->text, 0, 280), 'status' => $p->status, 'post_at' => $p->post_at->setTimezone($tz)->format('M j, g:i A'),
@@ -56,6 +59,19 @@ final class SocialController
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Cancelled.']);
 
         return back();
+    }
+
+    /**
+     * A post started from an Ally Studio design: its portrait image, a caption to edit and, for a listing, its page.
+     *
+     * @return array{listing: string, text: string, link: string, image: string|null}
+     */
+    private function fromDesign(User $user, Design $design): array
+    {
+        $designer = app(Designer::class);
+        $link = $design->listing_ulid !== null ? ($this->social->fromListing($user, $design->listing_ulid)['link']) : '';
+
+        return ['listing' => $design->listing_ulid ?? '', 'text' => $designer->caption($design), 'link' => $link, 'image' => $designer->url($design, 'portrait')];
     }
 
     private static function user(Request $request): User
