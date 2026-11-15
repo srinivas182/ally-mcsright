@@ -84,7 +84,7 @@ it('gives each agent a website with their own listings, licence and brokerage cr
     $this->actingAs($this->jane)->post('/settings/my-website/publish', ['live' => true]);
 
     $html = (string) $this->get($this->web.'/agents/jane-doe')->assertOk()->getContent();
-    expect($html)->toContain('<title>Jane Doe | Real estate agent at '.$this->tenant->name)->toContain('South Austin specialist')
+    expect($html)->toContain('<title>Jane Doe | Real estate agent at ')->toContain('South Austin specialist') // long brokerage names are shortened in the title
         ->toContain('<small>'.e($this->tenant->name).'</small>')->toContain('Brokered by')->toContain('TX licence 0712345')
         ->toContain('tel:5125550177')->toContain('201 Pine Rd')->toContain('203 Pine Rd')->not->toContain('202 Pine Rd') // only her listings
         ->toContain('"@type":"RealEstateAgent","@id":"http://acme.rightally.site/agents/jane-doe#agent"')
