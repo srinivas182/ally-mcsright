@@ -7,6 +7,7 @@ namespace Modules\Connect;
 use Modules\Core\Connect\App;
 use Modules\Core\Connect\AppCatalog;
 use Modules\Crm\Connect\BoldTrail;
+use Modules\Crm\Connect\FacebookLeads;
 use Modules\Crm\Connect\FollowUpBoss;
 use Modules\Crm\Connect\GoHighLevel;
 use Modules\Crm\Connect\HubSpot;
@@ -185,6 +186,37 @@ final class Catalog
                 'partner' => 'A Propertybase (Lone Wolf) marketplace listing is optional.', 'docs' => 'https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/'],
             guide: ['steps' => ['Press Connect and sign in to Propertybase (your Salesforce login) as an admin.', 'Press Allow. Your contacts and open leads start coming over straight away.']]));
 
+        // Lead sources (specs/connect/10).
+        $catalog->add(new App('facebook_leads', 'Facebook Lead Ads', 'leads', 'Every Facebook and Instagram lead form arrives as a lead within seconds, routed and followed up. Connect once; all your Pages are included.',
+            scope: 'both', auth: 'oauth', syncs: ['New leads from every Page you manage, within seconds', 'Form answers, ad and campaign names'],
+            driver: FacebookLeads::class, vendorCost: 'Your ad spend with Meta',
+            oauth: ['provider' => 'meta', 'scopes' => ['pages_show_list', 'pages_read_engagement', 'pages_manage_metadata', 'pages_manage_ads', 'leads_retrieval'],
+                'authorize' => 'https://www.facebook.com/v21.0/dialog/oauth', 'token' => 'https://graph.facebook.com/v21.0/oauth/access_token',
+                'userinfo' => 'https://graph.facebook.com/v21.0/me?fields=name,email', 'pkce' => false],
+            setup: ['needs' => 'keys', 'fields' => [['key' => 'client_id', 'label' => 'Meta App ID'], ['key' => 'client_secret', 'label' => 'Meta App secret', 'secret' => true],
+                ['key' => 'verify_token', 'label' => 'Webhook verify token (any long random text)', 'secret' => true]],
+                'steps' => ['At developers.facebook.com, create a Business app called RightAlly, and verify the business (Business Verification).',
+                    'Add "Facebook Login for Business" and put the return address shown above under Valid OAuth Redirect URIs.',
+                    'Add "Webhooks", choose Page, use the webhook address shown above as the callback URL and your verify token, then subscribe to the "leadgen" field.',
+                    'Request Advanced Access (App Review) for leads_retrieval, pages_manage_metadata, pages_manage_ads, pages_read_engagement and pages_show_list.',
+                    'Paste the App ID, App secret and verify token here, then switch Facebook Lead Ads on.'],
+                'partner' => 'Meta App Review and Business Verification are needed before brokers outside your test users can connect (free, usually a few days).',
+                'docs' => 'https://developers.facebook.com/docs/marketing-api/guides/lead-ads/retrieving'],
+            guide: ['steps' => ['Press Connect and sign in to Facebook.', 'Choose the Pages your lead ads run on, and press Allow.', 'That\'s all. New leads arrive here within seconds.']]));
+
+        $catalog->add(new App('realtor_com', 'Realtor.com', 'leads', 'Realtor.com leads (including ReadyConnect Concierge) arrive as leads within a minute, routed and followed up.',
+            scope: 'both', auth: 'email', syncs: ['New leads, within a minute of the portal\'s email'], link: '/leads/settings', vendorCost: 'Paid to Realtor.com',
+            setup: ['partner' => 'A direct Realtor.com lead feed (instead of email) needs Realtor.com partner access: optional, ask Move, Inc.'],
+            guide: ['steps' => ['Copy your RightAlly lead address below (or make one under Leads → Settings).', 'In Realtor.com Professional, open Settings → Lead delivery and add that address as a lead recipient.', 'New Realtor.com leads now arrive here, read and routed automatically.']]));
+        $catalog->add(new App('zillow', 'Zillow Premier Agent', 'leads', 'Zillow and Trulia leads arrive as leads within a minute, routed and followed up. Two-way sync comes with Zillow partner access.',
+            scope: 'both', auth: 'email', syncs: ['New leads, within a minute of the portal\'s email'], link: '/leads/settings', vendorCost: 'Paid to Zillow',
+            setup: ['partner' => 'Two-way sync (notes and status back to Zillow) is only for Zillow CRM partners. RightAlly must apply as a Zillow partner.'],
+            guide: ['steps' => ['Copy your RightAlly lead address below (or make one under Leads → Settings).', 'In Zillow Premier Agent, open Settings → Contact delivery (or your CRM settings) and add that address.', 'New Zillow leads now arrive here, read and routed automatically.']]));
+        $catalog->add(new App('homes_com', 'Homes.com', 'leads', 'Homes.com leads arrive as leads within a minute, routed and followed up.',
+            scope: 'both', auth: 'email', syncs: ['New leads, within a minute of the portal\'s email'], link: '/leads/settings', vendorCost: 'Paid to Homes.com',
+            setup: ['partner' => null],
+            guide: ['steps' => ['Copy your RightAlly lead address below (or make one under Leads → Settings).', 'In your Homes.com agent account, add that address where new leads are emailed.', 'New Homes.com leads now arrive here, read and routed automatically.']]));
+
         // On the roadmap (people can ask for them; HQ sees the demand). Some need a partner agreement first.
         foreach ([
             ['real_geeks', 'Real Geeks', 'crm', 'Bring over leads and their activity from Real Geeks.', 'both', 'Your Real Geeks plan'],
@@ -196,10 +228,6 @@ final class Catalog
             ['liondesk', 'LionDesk', 'crm', 'Bring over contacts and notes from LionDesk.', 'agent', 'Your LionDesk plan'],
             ['rechat', 'Rechat', 'crm', 'Bring over contacts, deals and marketing history from Rechat.', 'both', 'Your Rechat plan'],
             ['cloze', 'Cloze', 'crm', 'Bring over contacts, notes and relationship history from Cloze.', 'agent', 'Your Cloze plan'],
-            ['realtor_com', 'Realtor.com', 'leads', 'Realtor.com leads (including ReadyConnect) arrive as leads, routed and followed up.', 'both', 'Paid to Realtor.com'],
-            ['facebook_leads', 'Facebook Lead Ads', 'leads', 'Every Facebook and Instagram lead form arrives as a lead within seconds.', 'both', null],
-            ['zillow', 'Zillow Premier Agent', 'leads', 'Two-way sync of Zillow leads, notes and status (RightAlly is applying as a Zillow partner; lead forwarding email works today).', 'both', 'Paid to Zillow'],
-            ['homes_com', 'Homes.com', 'leads', 'Homes.com leads arrive as leads.', 'both', 'Paid to Homes.com'],
             ['ylopo', 'Ylopo', 'leads', 'Ylopo leads and their activity arrive as leads.', 'both', 'Paid to Ylopo'],
             ['google_lsa', 'Google Local Services Ads', 'leads', 'Calls and messages from Google Local Services Ads arrive as leads.', 'both', 'Paid to Google'],
             ['redfin_partner', 'Redfin Partner Agent', 'leads', 'Redfin partner referrals arrive as leads.', 'agent', 'Referral fee to Redfin'],
