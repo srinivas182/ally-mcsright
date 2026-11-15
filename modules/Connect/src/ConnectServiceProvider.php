@@ -15,6 +15,7 @@ use Modules\Core\Connect\ConnectorKit;
 use Modules\Core\Connect\Outbox;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Mcp\McpGate;
+use Modules\Core\Mcp\McpToolbox;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
 
@@ -51,6 +52,10 @@ final class ConnectServiceProvider extends ServiceProvider
         // The shared AI assistant address names the brokerage before the token is checked (M2b).
         $this->app->make(Kernel::class)->prependToMiddlewarePriority(Http\CentralMcpToken::class);
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
+        // Skills for AI assistants: connected apps of every category (specs/know/03).
+        foreach ([Mcp\ConnectedApps::class, Mcp\SyncAppNow::class] as $tool) {
+            $this->app->make(McpToolbox::class)->add($tool);
+        }
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
         if ($this->app->runningInConsole()) {
             $this->commands([Console\SyncConnections::class, Console\RenewAddons::class]);

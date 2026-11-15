@@ -61,6 +61,52 @@ abstract class RightAllyTool extends Tool
     /** May this person use the tool? (Same rules as the screens.) */
     abstract protected function allows(User $user): bool;
 
+    public function usableBy(User $user): bool
+    {
+        return $user->isActive() && $user->kind !== UserKind::HqStaff && $this->allows($user);
+    }
+
+    public function changesThings(): bool
+    {
+        return $this->writes;
+    }
+
+    /**
+     * The same skill inside RightAlly, for "Your AI Assistant" (specs/know/03): the signed-in person's own rules.
+     * Anything that changes data first returns a preview; it runs only when the person pressed "Do it".
+     *
+     * @param  array<string, mixed>  $arguments
+     * @return array{data?: mixed, preview?: array<mixed>, error?: string}
+     */
+    public function forAssistant(User $user, array $arguments, bool $confirmed): array
+    {
+        if (! $this->usableBy($user)) {
+            return ['error' => 'You don\'t have access to this in RightAlly.'];
+        }
+        $request = new Request($arguments);
+        try {
+            if ($this->writes && ! $confirmed) {
+                $preview = $this->preview($request, $user);
+
+                return ['preview' => $preview !== [] ? $preview : ['action' => $this->title(), 'details' => $arguments]];
+            }
+            $result = $this->run($request, $user);
+        } catch (ValidationException $e) {
+            return ['error' => (string) collect($e->errors())->flatten()->first()];
+        } catch (Throwable $e) {
+            report($e);
+
+            return ['error' => 'That didn\'t work. Please try again, or do it on the page.'];
+        }
+        app(AuditLogger::class)->record('assistant.skill', metadata: ['skill' => $this->name(), 'writes' => $this->writes, 'arguments' => array_keys($arguments)],
+            severity: $this->writes ? 'notice' : 'info');
+        if ($result instanceof Response) {
+            return $result->isError() ? ['error' => (string) $result->content()] : ['data' => (string) $result->content()];
+        }
+
+        return ['data' => $result];
+    }
+
     /** @return Response|array<mixed> */
     abstract protected function run(Request $request, User $user): Response|array;
 

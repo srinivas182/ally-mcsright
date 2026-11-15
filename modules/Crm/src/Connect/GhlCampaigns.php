@@ -6,6 +6,7 @@ namespace Modules\Crm\Connect;
 
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\DB;
@@ -15,6 +16,7 @@ use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Connect\ConnectionData;
 use Modules\Core\Connect\ConnectorKit;
 use Modules\Core\Connect\NeedsReconnect;
+use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Support\Connections;
 use Modules\Crm\Consent;
 use Modules\Crm\ContactVisibility;
@@ -90,6 +92,57 @@ final class GhlCampaigns
         return $e;
     }
 
+    /** This person's GoHighLevel connection (the brokerage's for owners and staff, else their own), or null. */
+    public function connectionFor(User $user): ?ConnectionData
+    {
+        $manager = in_array($user->kind, [UserKind::Owner, UserKind::Staff], true);
+        $mine = null;
+        foreach ($this->kit->connections('gohighlevel') as $c) {
+            if ($c->ownerUserId === $user->id) {
+                $mine = $c;
+            } elseif ($c->ownerUserId === null && $manager) {
+                return $c;
+            }
+        }
+
+        return $mine;
+    }
+
+    /**
+     * What adding these people would do, before anything is sent (for "Your AI Assistant" and previews).
+     *
+     * @param  array<string, mixed>  $in  source_type, source_value, channel
+     * @return array{matching: int, will_add: int, left_out: int}
+     */
+    public function preview(ConnectionData $connection, User $by, array $in): array
+    {
+        $channel = in_array($in['channel'] ?? null, ['email', 'sms', 'any'], true) ? (string) $in['channel'] : 'email';
+        $q = $this->candidates($connection, $by, (string) ($in['source_type'] ?? ''), (string) ($in['source_value'] ?? ''), []);
+        if ($q === null) {
+            throw ValidationException::withMessages(['source_value' => 'Choose a tag or a smart list.']);
+        }
+        $all = $q->limit(5000)->get();
+        $ok = $all->filter(fn (Contact $c): bool => $this->allowed($c, $channel))->count();
+
+        return ['matching' => $all->count(), 'will_add' => $ok, 'left_out' => $all->count() - $ok];
+    }
+
+    /**
+     * @param  list<int>  $exclude
+     * @return Builder<Contact>|null
+     */
+    private function candidates(ConnectionData $connection, User $by, string $sourceType, string $sourceValue, array $exclude): ?Builder
+    {
+        $q = app(ContactVisibility::class)->query($by)->whereNotIn('id', $exclude)
+            ->when($connection->ownerUserId === null, fn ($q) => $q->where('origin', '!=', Origin::Personal->value), fn ($q) => $q->where('owner_user_id', $connection->ownerUserId));
+        if ($sourceType === 'tag' && $sourceValue !== '') {
+            return $q->whereHas('tags', fn ($t) => $t->where('name', $sourceValue));
+        }
+        $filters = $sourceType === 'smart_list' ? app(SmartLists::class)->filtersFor($sourceValue, $by) : null;
+
+        return $filters === null ? null : app(SmartLists::class)->apply($q, $filters);
+    }
+
     /** Runs every active enrolment for this connection. Returns the people added. */
     public function runAll(ConnectionData $connection): int
     {
@@ -110,19 +163,12 @@ final class GhlCampaigns
             return 0;
         }
         $db = DB::connection(Connections::cell());
-        $done = $db->table('crm_ghl_enrolled')->where('enrolment_id', $e->id)->pluck('contact_id')->all();
-        $q = app(ContactVisibility::class)->query($by)->whereNotIn('id', $done)
-            ->when($connection->ownerUserId === null, fn ($q) => $q->where('origin', '!=', Origin::Personal->value), fn ($q) => $q->where('owner_user_id', $connection->ownerUserId));
-        if ($e->source_type === 'tag') {
-            $q->whereHas('tags', fn ($t) => $t->where('name', $e->source_value));
-        } else {
-            $filters = app(SmartLists::class)->filtersFor($e->source_value, $by);
-            if ($filters === null) {
-                $e->forceFill(['active' => false, 'last_error' => 'Paused: the smart list was removed.'])->save();
+        $done = array_values(array_map('intval', $db->table('crm_ghl_enrolled')->where('enrolment_id', $e->id)->pluck('contact_id')->all()));
+        $q = $this->candidates($connection, $by, $e->source_type, $e->source_value, $done);
+        if ($q === null) {
+            $e->forceFill(['active' => false, 'last_error' => 'Paused: the smart list was removed.'])->save();
 
-                return 0;
-            }
-            app(SmartLists::class)->apply($q, $filters);
+            return 0;
         }
         $added = 0;
         $left = 0;

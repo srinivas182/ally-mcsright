@@ -5,6 +5,10 @@ Engagement).
 
 ## Broker-branded AI assistant
 
+**Replaced (2026-11-15):** the back-office assistant has a fixed name, **"Your AI Assistant"**, and no broker
+branding (specs/know/03). Only the public website assistant ("Ask Ally") takes a name and photo. The section
+below is kept for history.
+
 Agents see the assistant with **the broker's photo and name** (e.g. "Sarah's AI assistant") and
 can text or speak to it. It answers from the brokerage's policies, training and Compliance
 Knowledge, and hands anything it cannot answer to the real broker or staff. Always labelled as AI.
