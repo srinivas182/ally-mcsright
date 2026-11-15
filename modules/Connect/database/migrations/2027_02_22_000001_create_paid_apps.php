@@ -10,7 +10,8 @@ use Modules\Core\Support\Connections;
 /**
  * Paid apps (specs/connect/14, Sprint C6b). HQ chooses per app: free for everyone, or a monthly add-on (with the
  * packages that include it free). A brokerage (or an agent, for their own connection) buys the add-on before
- * connecting; it is charged monthly in RightAlly credits and pauses the app's connections when unpaid.
+ * connecting; it is charged monthly in RightAlly credits (or on the payer's saved card) and pauses the app's
+ * connections when unpaid.
  */
 return new class extends Migration
 {
@@ -29,6 +30,8 @@ return new class extends Migration
             $table->string('status', 12); // active, cancelled, lapsed
             $table->unsignedInteger('price_cents');
             $table->unsignedInteger('credits');
+            $table->string('pay_with', 8)->default('credits'); // credits, or card (the payer's saved card, through Stripe)
+            $table->string('last_error', 300)->nullable();
             $table->dateTime('period_start');
             $table->dateTime('period_end');
             $table->dateTime('cancel_at')->nullable();

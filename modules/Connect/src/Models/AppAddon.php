@@ -20,6 +20,8 @@ use Modules\Core\Tenancy\Concerns\HasPublicUlid;
  * @property string $status
  * @property int $price_cents
  * @property int $credits
+ * @property string $pay_with
+ * @property string|null $last_error
  * @property CarbonImmutable $period_start
  * @property CarbonImmutable $period_end
  * @property CarbonImmutable|null $cancel_at
@@ -32,7 +34,7 @@ final class AppAddon extends Model
 
     protected $table = 'connect_app_addons';
 
-    protected $fillable = ['app_key', 'payer_user_id', 'status', 'price_cents', 'credits', 'period_start', 'period_end', 'cancel_at', 'created_by'];
+    protected $fillable = ['app_key', 'payer_user_id', 'status', 'price_cents', 'credits', 'pay_with', 'last_error', 'period_start', 'period_end', 'cancel_at', 'created_by'];
 
     public function getConnectionName(): ?string
     {

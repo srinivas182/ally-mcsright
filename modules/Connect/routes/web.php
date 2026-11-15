@@ -46,6 +46,7 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->name('connect.
     Route::post('apps/{app}/request', [AppsController::class, 'request'])->where('app', $app)->middleware('throttle:20,1')->name('apps.request');
     Route::post('apps/{app}/addon', [AppsController::class, 'addAddon'])->where('app', $app)->middleware(['password.confirm', 'throttle:10,1'])->name('apps.addon');
     Route::delete('apps/{app}/addon', [AppsController::class, 'cancelAddon'])->where('app', $app)->name('apps.addon.cancel');
+    Route::post('apps/{app}/addon/pay-with', [AppsController::class, 'addonPayWith'])->where('app', $app)->middleware('password.confirm')->name('apps.addon.pay_with');
     Route::delete('connections/{connection}', [AppsController::class, 'disconnect'])->where('connection', $ulid)->name('connections.delete');
     Route::post('connections/{connection}/sync', [AppsController::class, 'sync'])->where('connection', $ulid)->middleware('throttle:10,1')->name('connections.sync');
     Route::post('connections/{connection}/ping', [AppsController::class, 'ping'])->where('connection', $ulid)->middleware('throttle:10,1')->name('connections.ping');

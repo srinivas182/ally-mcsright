@@ -92,8 +92,22 @@ final class AppsController
         $a = $this->connections->app($app);
         $owner = $this->connections->ownerFor($a, $user);
         abort_if($owner === false, 403);
-        app(PaidApps::class)->buy($a, $user, $owner);
+        app(PaidApps::class)->buy($a, $user, $owner, $request->input('pay_with') === 'card' ? 'card' : 'credits');
         Inertia::flash('toast', ['type' => 'success', 'message' => $a->name.' is added. You can connect it now.']);
+
+        return back();
+    }
+
+    /** Switches a paid app's add-on between RightAlly credits and the saved card, from the next month. */
+    public function addonPayWith(Request $request, string $app): RedirectResponse
+    {
+        $user = self::user($request);
+        $a = $this->connections->app($app);
+        $owner = $this->connections->ownerFor($a, $user);
+        abort_if($owner === false, 403);
+        $data = $request->validate(['pay_with' => ['required', 'in:credits,card']]);
+        app(PaidApps::class)->payWith($a, $user, $owner, (string) $data['pay_with']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Saved. From next month '.$a->name.' is paid with '.($data['pay_with'] === 'card' ? 'your card.' : 'RightAlly credits.')]);
 
         return back();
     }

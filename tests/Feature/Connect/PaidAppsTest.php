@@ -8,7 +8,10 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Testing\TestResponse;
 use Inertia\Testing\AssertableInertia as Assert;
+use Modules\Billing\Credits\AutoTopUp;
 use Modules\Billing\Credits\CreditLedger;
+use Modules\Billing\Gateway\FakeGateway;
+use Modules\Billing\Gateway\PaymentGateway;
 use Modules\Billing\Models\Package;
 use Modules\Connect\AppRegistry;
 use Modules\Connect\Models\AppAddon;
@@ -92,4 +95,32 @@ it('cancels at the end of the paid month, then pauses the connection', function 
     $this->artisan('connect:renew-addons');
     expect(AppAddon::query()->sole()->status)->toBe('cancelled')->and($c->fresh()?->status)->toBe('paused')
         ->and(app(CreditLedger::class)->balanceOf(null))->toBe(3000); // no second month charged
+});
+
+it('can be paid on the payer\'s saved card instead of credits, and switched either way', function (): void {
+    $gateway = new FakeGateway;
+    $gateway->cards['cus_1'] = ['brand' => 'visa', 'last4' => '4242'];
+    app()->instance(PaymentGateway::class, $gateway);
+    $confirm = ['auth.password_confirmed_at' => now()->getTimestamp()];
+
+    $this->actingAs($this->owner)->withSession($confirm)->post('/apps/xero/addon', ['pay_with' => 'card'])->assertSessionHasErrors('addon'); // no saved card yet
+    app(AutoTopUp::class)->rememberCard(null, 'cus_1');
+    $this->actingAs($this->owner)->get('/apps/xero')->assertInertia(fn (Assert $p) => $p->where('app.price.card.last4', '4242'));
+
+    $this->actingAs($this->owner)->withSession($confirm)->post('/apps/xero/addon', ['pay_with' => 'card'])->assertSessionHasNoErrors();
+    expect(AppAddon::query()->sole()->pay_with)->toBe('card')->and(array_values($gateway->charges)[0]['cents'])->toBe(2000)
+        ->and(app(CreditLedger::class)->balanceOf(null))->toBe(0); // no credits used
+
+    $c = Connection::query()->create(['app_key' => 'xero', 'label' => 'Acme', 'status' => 'connected', 'credentials' => [], 'settings' => [], 'connected_by' => $this->owner->id]);
+    $gateway->chargeStatus = 'failed';
+    $this->travel(31)->days();
+    $this->artisan('connect:renew-addons');
+    expect(AppAddon::query()->sole()->status)->toBe('lapsed')->and($c->fresh()?->status)->toBe('paused');
+
+    // Back on credits.
+    app(CreditLedger::class)->add(null, 3000, 'purchase', 'Credits', $this->owner);
+    $this->actingAs($this->owner)->withSession(['auth.password_confirmed_at' => now()->getTimestamp()])->post('/apps/xero/addon', ['pay_with' => 'credits'])->assertSessionHasNoErrors();
+    expect(AppAddon::query()->sole()->pay_with)->toBe('credits')->and(app(CreditLedger::class)->balanceOf(null))->toBe(1000)->and($c->fresh()?->status)->toBe('connected');
+    $this->actingAs($this->owner)->withSession(['auth.password_confirmed_at' => now()->getTimestamp()])->post('/apps/xero/addon/pay-with', ['pay_with' => 'card'])->assertSessionHasNoErrors();
+    expect(AppAddon::query()->sole()->pay_with)->toBe('card');
 });
