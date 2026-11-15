@@ -77,7 +77,7 @@ it('keeps apps off until HQ switches them on and finishes their setup', function
 });
 
 it('cannot switch on an app that is not built yet', function (): void {
-    hqSaveApp('sierra', ['enabled' => true])->assertSessionHasErrors('enabled');
+    hqSaveApp('cinc', ['enabled' => true])->assertSessionHasErrors('enabled');
 });
 
 it('pauses every connection when HQ switches an app off, and resumes when it is back on', function (): void {
@@ -108,7 +108,7 @@ it('lists every app with its steps for HQ, and is HQ-only and password-confirmed
     $this->actingAs($this->staff)->get($this->hq.'/hq/connect')->assertInertia(fn (Assert $p) => $p
         ->where('apps', fn ($apps): bool => collect($apps)->count() >= 75
             && collect($apps)->firstWhere('key', 'google_calendar')['return_address'] === 'https://auth.rightally.app/connect/oauth/callback'
-            && collect($apps)->firstWhere('key', 'gohighlevel')['built'] === false));
+            && collect($apps)->firstWhere('key', 'cinc')['built'] === false));
     $this->actingAs($this->staff)->post($this->hq.'/hq/connect/apps/webhooks', ['enabled' => false])->assertRedirect();
     expect(DB::connection(Connections::control())->table('hq_connect_apps')->count())->toBe(0);
 });

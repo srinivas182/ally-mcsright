@@ -91,7 +91,7 @@ function hookEndpoint(array $events = ['lead.created']): Connection
 it('lists the apps by category, with what each person may connect', function (): void {
     $this->actingAs($this->owner)->get('/apps')->assertInertia(fn (Assert $p) => $p->component('apps/index')
         ->where('apps', fn ($apps): bool => collect($apps)->firstWhere('key', 'webhooks')['can_connect'] === true
-            && collect($apps)->firstWhere('key', 'sierra')['status'] === 'soon'
+            && collect($apps)->firstWhere('key', 'cinc')['status'] === 'soon'
             && collect($apps)->pluck('category')->unique()->count() >= 8));
     $this->actingAs($this->agent)->get('/apps')->assertInertia(fn (Assert $p) => $p
         ->where('apps', fn ($apps): bool => collect($apps)->firstWhere('key', 'webhooks')['can_connect'] === false
@@ -210,10 +210,10 @@ it('asks for the password before storing sign-in details', function (): void {
 });
 
 it('records which coming apps brokerages want, for HQ', function (): void {
-    $this->actingAs($this->owner)->post('/apps/sierra/request')->assertSessionHasNoErrors();
-    $this->actingAs($this->agent)->post('/apps/sierra/request')->assertSessionHasNoErrors();
-    expect(DB::connection(Connections::control())->table('hq_app_requests')->where('app_key', 'sierra')->value('requests'))->toBe(2);
-    $this->actingAs($this->agent)->get('/apps/sierra')->assertInertia(fn (Assert $p) => $p->where('app.requested', true)->where('app.status', 'soon'));
+    $this->actingAs($this->owner)->post('/apps/cinc/request')->assertSessionHasNoErrors();
+    $this->actingAs($this->agent)->post('/apps/cinc/request')->assertSessionHasNoErrors();
+    expect(DB::connection(Connections::control())->table('hq_app_requests')->where('app_key', 'cinc')->value('requests'))->toBe(2);
+    $this->actingAs($this->agent)->get('/apps/cinc')->assertInertia(fn (Assert $p) => $p->where('app.requested', true)->where('app.status', 'soon'));
 });
 
 it('shows forwarding addresses and the lead API on the built-in lead apps', function (): void {
