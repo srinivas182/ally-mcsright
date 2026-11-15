@@ -194,7 +194,8 @@ final class CommissionService
         }
 
         $stateful = new DealSideInput($input->gci, $input->salePriceCents, $input->closingDate, $agents, $input->side,
-            $input->dealClass, $input->leadSource, $input->outsideReferralPercent, $input->excludedReason);
+            $input->dealClass, $input->leadSource, $input->outsideReferralPercent, $input->excludedReason,
+            $input->agentSplitPercent, $input->waiveFees, $input->noRevenueShare, $input->overrideReason);
 
         return $this->calculator->calculate($stateful, fn (int $userId): ResolvedPlan => $resolved[$userId]);
     }

@@ -32,6 +32,11 @@ use Modules\Core\Tenancy\Concerns\HasPublicUlid;
  * @property int|null $calculation_id
  * @property CarbonImmutable|null $locked_at
  * @property string|null $imported_from
+ * @property array<string, mixed>|null $pay_overrides
+ * @property string|null $money_status
+ * @property string|null $money_note
+ * @property string|null $paid_fingerprint
+ * @property bool $agent_paid_outside
  */
 final class Deal extends Model
 {
@@ -40,7 +45,7 @@ final class Deal extends Model
 
     protected $table = 'tx_deals';
 
-    protected $fillable = ['type', 'status', 'agent_user_id', 'contact_id', 'street', 'city', 'state_code', 'postal_code', 'mls_number', 'price_cents', 'gci_cents', 'contract_date', 'closing_date', 'closed_on', 'cancel_reason', 'calculation_id', 'locked_at', 'created_by', 'imported_from'];
+    protected $fillable = ['type', 'status', 'agent_user_id', 'contact_id', 'street', 'city', 'state_code', 'postal_code', 'mls_number', 'price_cents', 'gci_cents', 'contract_date', 'closing_date', 'closed_on', 'cancel_reason', 'calculation_id', 'locked_at', 'created_by', 'imported_from', 'pay_overrides', 'money_status', 'money_note', 'paid_fingerprint', 'agent_paid_outside'];
 
     public function getConnectionName(): ?string
     {
@@ -52,6 +57,6 @@ final class Deal extends Model
      */
     protected function casts(): array
     {
-        return ['contract_date' => 'immutable_date', 'closing_date' => 'immutable_date', 'closed_on' => 'immutable_date', 'locked_at' => 'immutable_datetime'];
+        return ['pay_overrides' => 'array', 'agent_paid_outside' => 'boolean', 'contract_date' => 'immutable_date', 'closing_date' => 'immutable_date', 'closed_on' => 'immutable_date', 'locked_at' => 'immutable_datetime'];
     }
 }

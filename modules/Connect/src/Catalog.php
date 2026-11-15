@@ -315,7 +315,7 @@ final class Catalog
                 'Your loops start coming over straight away, with their documents. Big offices take a few hours; you can keep working meanwhile.']]));
 
         $catalog->add(new App('skyslope', 'SkySlope', 'transactions', 'Bring every SkySlope sale and listing over as a deal, with its agent, parties, dates and commission. Changes keep coming over every hour.',
-            scope: 'brokerage', auth: 'api_key', syncs: ['Every sale and listing as a deal: address, price, status, agent', 'Buyers, sellers, title, escrow, lender and attorney', 'Contract and closing dates, office commission', 'Changes, hourly', 'Documents: from SkySlope\'s file export (Transactions → Bring over files)'],
+            scope: 'brokerage', auth: 'api_key', syncs: ['Every sale and listing as a deal: address, price, status, agent', 'Buyers, sellers, title, escrow, lender and attorney', 'Contract and closing dates, office commission', 'Changes, hourly', 'Documents: from SkySlope\'s file export (Deals → Switch from another app)'],
             fields: [['key' => 'access_key', 'label' => 'SkySlope access key', 'type' => 'text', 'secret' => true, 'help' => 'It stays encrypted. Only RightAlly\'s import uses it.'],
                 ['key' => 'access_secret', 'label' => 'SkySlope access secret', 'type' => 'text', 'secret' => true, 'help' => 'It stays encrypted and is never shown again.']],
             driver: SkySlope::class, vendorCost: 'Your SkySlope plan',
@@ -330,7 +330,7 @@ final class Catalog
             guide: ['steps' => ['In SkySlope, open My Account → Integrations, and generate an access key (a broker or admin login brings the whole brokerage).',
                 'Copy the access key and the access secret.', 'Paste both below and press Connect. Your deals start coming over straight away; big brokerages take a few hours.']]));
         $catalog->add(new App('lone_wolf', 'Lone Wolf', 'transactions', 'Bring every Lone Wolf deal (TransactionDesk and brokerWOLF) over, with its agent, contacts, dates and price. Changes keep coming over every hour.',
-            scope: 'brokerage', auth: 'api_key', syncs: ['Every deal: address, price, status, agent', 'Client and business contacts, other-side agents', 'Offer, firm, closing and finalised dates', 'Your roster, to match agents', 'Changes, hourly', 'Documents: from Lone Wolf\'s file export (Transactions → Bring over files)'],
+            scope: 'brokerage', auth: 'api_key', syncs: ['Every deal: address, price, status, agent', 'Client and business contacts, other-side agents', 'Offer, firm, closing and finalised dates', 'Your roster, to match agents', 'Changes, hourly', 'Documents: from Lone Wolf\'s file export (Deals → Switch from another app)'],
             fields: [['key' => 'email', 'label' => 'Email of the RightAlly user in Lone Wolf', 'type' => 'text'],
                 ['key' => 'password', 'label' => 'That user\'s password', 'type' => 'text', 'secret' => true, 'help' => 'Use a separate, read-only Lone Wolf user made just for RightAlly, never a person\'s own login. It stays encrypted and is never shown again.']],
             driver: LoneWolf::class, vendorCost: 'Your Lone Wolf plan',

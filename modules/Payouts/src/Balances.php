@@ -32,7 +32,7 @@ final class Balances
         $pending = 0;
         $deals = 0;
         $settled = DB::connection(Connections::cell())->table('pay_recognitions')->pluck('deal_id')->all();
-        foreach (Deal::query()->whereIn('status', ['under_contract', 'closed'])->whereNotIn('id', $settled)->whereNotNull('calculation_id')->get() as $deal) {
+        foreach (Deal::query()->whereIn('status', ['under_contract', 'closed'])->whereNotIn('id', $settled)->whereNotNull('calculation_id')->where('agent_paid_outside', false)->get() as $deal) {
             $calc = Calculation::query()->find($deal->calculation_id);
             foreach ((array) ($calc?->result['agents'] ?? []) as $row) {
                 if ((int) $row['user_id'] === $user->id) {

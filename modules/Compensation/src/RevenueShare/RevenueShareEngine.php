@@ -42,6 +42,9 @@ final class RevenueShareEngine
     public function distribute(Calculation $final): void
     {
         $input = DealSideInput::fromArray($final->inputs);
+        if ($input->noRevenueShare) {
+            return; // the broker turned revenue share off for this deal (audited with the override)
+        }
         $date = $input->closingDate;
         $this->credits = [];
         $this->unlocking->forget();

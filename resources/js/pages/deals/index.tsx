@@ -96,7 +96,7 @@ export default function Deals({
                             {canBringOverFiles && (
                                 <Button variant="outline" asChild>
                                     <Link href="/deals/bring-over-files">
-                                        Bring over files
+                                        Switch from another app
                                     </Link>
                                 </Button>
                             )}

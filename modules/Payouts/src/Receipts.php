@@ -159,6 +159,9 @@ final class Receipts
         foreach (array_keys($paidByTitle) as $userId) {
             unset($payables[(int) $userId]);
         }
+        if ($deal->agent_paid_outside) {
+            $payables = []; // a deal from another app whose agents were paid outside RightAlly (specs/connect/12)
+        }
         $basis = $received ?? $expected;
         // Referral fees the brokerage pays itself become referral payables (paid in a payout run).
         $referrals = array_filter(app(Referrals::class)->amounts($deal, (int) ($calc->result['outside_referral_cents'] ?? 0)), fn ($r) => $r['paid_by'] === 'brokerage');
