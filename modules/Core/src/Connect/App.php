@@ -14,7 +14,8 @@ namespace Modules\Core\Connect;
  * - fields: what the connect form asks for (api_key and webhook apps); secret fields are write-only.
  * - oauth: for one-click apps, {provider, scopes}: the person signs in to the other app and approves; nothing to copy.
  * - setup: what HQ does once so everyone can use the app (HQ → Connect setup): needs (none, provider: a shared
- *   Google/Microsoft sign-in app, keys: RightAlly-level keys below), fields, plain steps, partner programme, docs.
+ *   Google/Microsoft sign-in app, keys: RightAlly-level keys below), fields, plain steps, partner programme, docs, and a
+ *   ready-written request to the vendor (email or form; {return_address} is filled in) that HQ sends in one click.
  */
 final readonly class App
 {
@@ -40,7 +41,7 @@ final readonly class App
      * @param  list<array{key: string, label: string, type: string, secret?: bool, help?: string, options?: array<string, string>}>  $fields
      * @param  class-string<Connector>|null  $driver
      * @param  array{provider: string, scopes: list<string>, authorize?: string, token?: string, userinfo?: string, response_type?: string, pkce?: bool, token_auth?: string, token_state?: bool, params?: array<string, string>, headers?: array<string, string>}|null  $oauth
-     * @param  array{needs?: string, provider?: string, fields?: list<array{key: string, label: string, secret?: bool}>, steps?: list<string>, partner?: string|null, docs?: string|null}  $setup
+     * @param  array{needs?: string, provider?: string, fields?: list<array{key: string, label: string, secret?: bool}>, steps?: list<string>, partner?: string|null, docs?: string|null, request?: array{to?: string, url?: string, subject: string, body: string}}  $setup
      * @param  array{plans?: string, steps?: list<string>, open_url?: string|null, open_label?: string|null, hosts?: list<string>, admin?: bool}  $guide  what a broker or agent follows (AI assistant tiles)
      */
     public function __construct(

@@ -87,6 +87,8 @@ final class Catalog
                     'Ask Follow Up Boss (api@followupboss.com) to create an OAuth app for RightAlly, with the return address shown above as its redirect URL.',
                     'Paste the system name, system key, client ID and client secret here, and save.', 'Switch Follow Up Boss on.'],
                 'partner' => 'Free system registration. Being listed in Follow Up Boss\'s integrations directory is optional (apply through their partner team).',
+                'request' => ['to' => 'api@followupboss.com', 'subject' => 'OAuth app for RightAlly (registered system)',
+                    'body' => "Hello Follow Up Boss team,\n\nRightAlly is an all-in-one platform for US real estate brokerages. We have registered RightAlly as a system and would like an OAuth app so brokers and agents can connect their Follow Up Boss accounts in one click (people, tags, stages, notes; two-way sync).\n\nPlease create an OAuth app for us with this redirect URL:\n{return_address}\n\nOnce it is ready, please send the client ID and client secret through a secure channel (not plain email).\n\nThank you,\nRightAlly HQ"],
                 'docs' => 'https://docs.followupboss.com/docs']));
 
         // On the roadmap (people can ask for them; HQ sees the demand).

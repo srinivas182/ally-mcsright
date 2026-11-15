@@ -66,6 +66,21 @@ Rules:
 
 ## HQ setup (HQ → Connect setup → Follow Up Boss)
 
+The card opens with a **go-live tip**, a short checklist that ticks itself off:
+
+1. **Send the request to Follow Up Boss.** Press **Email Follow Up Boss**. HQ's own email opens with a
+   ready-written message: what RightAlly is, what it needs, and the return address already filled in. There is
+   also **Copy the message** for sending another way. RightAlly itself sends nothing, and HQ can change the
+   address before sending. (api@followupboss.com is our best guess: check it with Follow Up Boss.) The message
+   asks for the keys through a secure channel.
+2. **Paste the keys they send back.** This is ticked once every key is saved.
+3. **Switch Follow Up Boss on.** The card then shows "Live for everyone".
+
+Until the app is live, its row shows a "Tip: request to send" badge. Every app can carry its own request
+(`setup.request`: `to` or `url`, `subject`, `body` with `{return_address}`), so each new app comes with its own tip.
+
+The full steps:
+
 1. Register RightAlly as a system at apps.followupboss.com/system-registration (free). Copy the system name
    and key.
 2. Ask Follow Up Boss to create an OAuth app for RightAlly, using the return address shown on the card.

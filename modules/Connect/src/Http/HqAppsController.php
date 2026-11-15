@@ -53,8 +53,21 @@ final class HqAppsController
                 'one_click' => $a->oauth !== null, 'needs' => $a->setup['needs'] ?? 'none', 'provider' => $a->setup['provider'] ?? null,
                 'fields' => array_map(fn (array $f): array => ['key' => $f['key'], 'label' => $f['label'], 'secret' => $f['secret'] ?? true], $a->setup['fields'] ?? []),
                 'steps' => $a->setup['steps'] ?? [], 'partner' => $a->setup['partner'] ?? null, 'docs' => $a->setup['docs'] ?? null,
-                'return_address' => $a->oauth !== null ? Providers::redirectUri() : null] + $registry->status($a), $catalog->all()),
+                'return_address' => $a->oauth !== null ? Providers::redirectUri() : null, 'request' => self::request($a)] + $registry->status($a), $catalog->all()),
         ]);
+    }
+
+    /**
+     * The ready-written request to the vendor (HQ sends it from their own mail, or opens the vendor's form).
+     *
+     * @return array{to: string|null, url: string|null, subject: string, body: string}|null
+     */
+    private static function request(App $a): ?array
+    {
+        $r = $a->setup['request'] ?? null;
+
+        return $r === null ? null : ['to' => $r['to'] ?? null, 'url' => $r['url'] ?? null, 'subject' => $r['subject'],
+            'body' => str_replace('{return_address}', Providers::redirectUri(), $r['body'])];
     }
 
     /** HQ switches an app on or off and saves its RightAlly-level keys. */

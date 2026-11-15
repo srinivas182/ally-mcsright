@@ -20,6 +20,12 @@ export type HqApp = {
     partner: string | null;
     docs: string | null;
     return_address: string | null;
+    request: {
+        to: string | null;
+        url: string | null;
+        subject: string;
+        body: string;
+    } | null;
     enabled: boolean;
     ready: boolean;
     setup_complete: boolean;
@@ -27,7 +33,99 @@ export type HqApp = {
     secret_expires_on: string | null;
 };
 
-/** One app on HQ → Connect setup: its state, the steps to set it up, its keys, and the on/off switch. */
+/**
+ * The go-live checklist for one app: send the ready-written request to the vendor (one click opens HQ's own email,
+ * or the vendor's form), paste the keys they send back, switch it on. Each step ticks itself off.
+ */
+function GoLive({ app }: { app: HqApp }) {
+    const [copied, setCopied] = useState(false);
+    const request = app.request;
+    const keysDone =
+        app.fields.length === 0 || app.fields.every((f) => app.keys_set[f.key]);
+    const href = request
+        ? (request.url ??
+          `mailto:${request.to ?? ''}?subject=${encodeURIComponent(request.subject)}&body=${encodeURIComponent(request.body)}`)
+        : null;
+    const steps: { label: string; done: boolean }[] = [
+        ...(request
+            ? [
+                  {
+                      label: `Send the request to ${app.name}`,
+                      done: keysDone && app.fields.length > 0,
+                  },
+              ]
+            : []),
+        ...(app.fields.length > 0
+            ? [{ label: 'Paste the keys they send back', done: keysDone }]
+            : []),
+        { label: `Switch ${app.name} on`, done: app.enabled },
+    ];
+
+    return (
+        <section
+            className="grid gap-2 rounded-md bg-muted p-3"
+            aria-label={`Go-live tip for ${app.name}`}
+        >
+            <span className="font-medium">Tip: going live with {app.name}</span>
+            <ol className="grid gap-1">
+                {steps.map((s, i) => (
+                    <li key={s.label} className="flex items-center gap-2">
+                        <span aria-hidden>{s.done ? '✓' : `${i + 1}.`}</span>
+                        <span className={s.done ? 'text-muted-foreground' : ''}>
+                            {s.label}
+                        </span>
+                    </li>
+                ))}
+            </ol>
+            {request && href && (
+                <div className="flex flex-wrap items-center gap-2">
+                    <a
+                        href={href}
+                        target={request.url ? '_blank' : undefined}
+                        rel="noreferrer"
+                        className="inline-flex h-10 items-center rounded-md bg-primary px-4 font-medium text-primary-foreground"
+                    >
+                        {request.url
+                            ? `Open ${app.name}'s request form`
+                            : `Email ${app.name}`}
+                    </a>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                            void navigator.clipboard
+                                .writeText(
+                                    `${request.subject}\n\n${request.body}`,
+                                )
+                                .then(() => setCopied(true));
+                        }}
+                    >
+                        {copied ? 'Copied' : 'Copy the message'}
+                    </Button>
+                    {request.to && (
+                        <span className="text-sm text-muted-foreground">
+                            To: {request.to}
+                        </span>
+                    )}
+                </div>
+            )}
+            {request && (
+                <details>
+                    <summary className="cursor-pointer text-sm">
+                        See the message
+                    </summary>
+                    <pre className="mt-2 text-sm whitespace-pre-wrap">
+                        {request.subject}
+                        {'\n\n'}
+                        {request.body}
+                    </pre>
+                </details>
+            )}
+        </section>
+    );
+}
+
+/** One app on HQ → Connect setup: its state, the go-live tip, the steps, its keys, and the on/off switch. */
 export function HqAppCard({ app }: { app: HqApp }) {
     const [open, setOpen] = useState(false);
     const keys: Record<string, string> = {};
@@ -59,6 +157,9 @@ export function HqAppCard({ app }: { app: HqApp }) {
             >
                 <span className="font-medium">{app.name}</span>
                 <span className="flex items-center gap-2">
+                    {app.request && !app.ready && (
+                        <Badge variant="outline">Tip: request to send</Badge>
+                    )}
                     {app.partner && (
                         <Badge variant="outline">Needs partner access</Badge>
                     )}
@@ -76,6 +177,7 @@ export function HqAppCard({ app }: { app: HqApp }) {
                         });
                     }}
                 >
+                    {app.built && !app.built_in && <GoLive app={app} />}
                     {app.steps.length > 0 && (
                         <div className="grid gap-1">
                             <span className="font-medium">Steps</span>
