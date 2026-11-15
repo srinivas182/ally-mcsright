@@ -22,6 +22,7 @@ final class ConnectServiceProvider extends ServiceProvider
         $this->app->scoped(Connections::class);
         $this->app->scoped(SyncRunner::class);
         $this->app->scoped(Health::class);
+        $this->app->singleton(AppRegistry::class);
         $this->app->scoped(WebhookOutbox::class);
         $this->app->bind(Outbox::class, WebhookOutbox::class);
         $this->app->scoped(OAuth\OAuthFlow::class);

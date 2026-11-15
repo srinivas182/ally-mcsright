@@ -22,7 +22,7 @@ final class SyncRunner
     public function run(Connection $c): ?SyncRun
     {
         $app = $this->catalog->find($c->app_key);
-        if ($app === null || $app->driver === null || in_array($c->status, ['paused', 'needs_reconnect'], true)) {
+        if ($app === null || $app->driver === null || in_array($c->status, ['paused', 'needs_reconnect'], true) || ! app(AppRegistry::class)->enabled($app)) {
             return null;
         }
         $run = SyncRun::query()->create(['connection_id' => $c->id, 'status' => 'running', 'started_at' => CarbonImmutable::now()]);

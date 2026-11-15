@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Notification;
 use Illuminate\Testing\TestResponse;
 use Illuminate\Validation\ValidationException;
 use Inertia\Testing\AssertableInertia as Assert;
+use Modules\Connect\AppRegistry;
 use Modules\Connect\Jobs\DeliverWebhook;
 use Modules\Connect\Jobs\SyncConnection;
 use Modules\Connect\Models\Connection;
@@ -72,6 +73,7 @@ beforeEach(function (): void {
     FakeCrmConnector::$script = [];
     app(AppCatalog::class)->add(new App('fake_crm', 'Fake CRM', 'crm', 'A CRM for tests.', scope: 'both', auth: 'api_key', syncs: ['Contacts'],
         fields: [['key' => 'api_key', 'label' => 'API key', 'type' => 'text', 'secret' => true]], driver: FakeCrmConnector::class));
+    app(AppRegistry::class)->save(app(AppCatalog::class)->find('fake_crm'), true, [], null, $this->owner);
 });
 
 function connectAs(User $user, string $app, array $input): TestResponse

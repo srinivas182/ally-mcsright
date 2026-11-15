@@ -6,6 +6,7 @@ namespace Modules\Connect\Calendars;
 
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
+use Modules\Connect\AppRegistry;
 use Modules\Connect\Health;
 use Modules\Connect\Jobs\AddCalendarEvent;
 use Modules\Connect\Models\Connection;
@@ -74,6 +75,9 @@ final class ConnectCalendars implements Calendars
 
     private function connection(int $userId): ?Connection
     {
-        return Connection::query()->whereIn('app_key', self::APPS)->where('owner_user_id', $userId)->whereIn('status', ['connected', 'error'])->latest('id')->first();
+        $c = Connection::query()->whereIn('app_key', self::APPS)->where('owner_user_id', $userId)->whereIn('status', ['connected', 'error'])->latest('id')->first();
+        $app = $c !== null ? app(AppCatalog::class)->find($c->app_key) : null;
+
+        return $app !== null && app(AppRegistry::class)->enabled($app) ? $c : null; // switched off by HQ: paused
     }
 }

@@ -13,6 +13,8 @@ namespace Modules\Core\Connect;
  *   email (a forwarding address), link (a built-in RightAlly screen does the job).
  * - fields: what the connect form asks for (api_key and webhook apps); secret fields are write-only.
  * - oauth: for one-click apps, {provider, scopes}: the person signs in to the other app and approves; nothing to copy.
+ * - setup: what HQ does once so everyone can use the app (HQ → Connect setup): needs (none, provider: a shared
+ *   Google/Microsoft sign-in app, keys: RightAlly-level keys below), fields, plain steps, partner programme, docs.
  */
 final readonly class App
 {
@@ -37,6 +39,7 @@ final readonly class App
      * @param  list<array{key: string, label: string, type: string, secret?: bool, help?: string, options?: array<string, string>}>  $fields
      * @param  class-string<Connector>|null  $driver
      * @param  array{provider: string, scopes: list<string>}|null  $oauth
+     * @param  array{needs?: string, provider?: string, fields?: list<array{key: string, label: string, secret?: bool}>, steps?: list<string>, partner?: string|null, docs?: string|null}  $setup
      */
     public function __construct(
         public string $key,
@@ -54,11 +57,18 @@ final readonly class App
         public ?string $driver = null,
         public ?string $vendorCost = null,
         public ?array $oauth = null,
+        public array $setup = [],
     ) {}
 
     public function available(): bool
     {
         return $this->status === 'available';
+    }
+
+    /** Apps RightAlly runs itself need no HQ step and are on unless HQ switches them off. */
+    public function builtIn(): bool
+    {
+        return in_array($this->auth, ['link', 'webhook', 'email'], true);
     }
 
     /** @return array<string, mixed> */

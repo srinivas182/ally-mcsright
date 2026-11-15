@@ -1,6 +1,7 @@
 import { Head, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 
+import { HqAppCard, type HqApp } from '@/components/connect/hq-app-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,6 +21,8 @@ type Props = {
         microsoft_sign_in: string;
     };
     providers: { google: Status; microsoft: Status };
+    categories: Record<string, string>;
+    apps: HqApp[];
 };
 
 function CopyRow({ label, value }: { label: string; value: string }) {
@@ -139,7 +142,12 @@ function ClientForm({
 /**
  * HQ → Connect setup: RightAlly's Google and Microsoft sign-in apps, the return addresses to add, and the steps.
  */
-export default function HqConnect({ return_addresses, providers }: Props) {
+export default function HqConnect({
+    return_addresses,
+    providers,
+    categories,
+    apps,
+}: Props) {
     const badge = (s: Status) =>
         s.set ? (
             <Badge>
@@ -155,7 +163,7 @@ export default function HqConnect({ return_addresses, providers }: Props) {
             <div className="grid max-w-3xl gap-6 p-4 text-sm">
                 <PageHeader
                     title="Connect setup"
-                    description="Set up RightAlly's Google and Microsoft apps once, and every brokerage and agent can connect their calendars in one click (and sign in with Google or Microsoft)."
+                    description="Everything brokers and agents can connect, in one place: switch each app on or off, follow its setup steps, and save RightAlly's keys. Set up the Google and Microsoft sign-in apps once for one-click calendars and sign-in."
                 />
 
                 <section className="grid gap-3 rounded-lg border p-4">
@@ -307,6 +315,29 @@ export default function HqConnect({ return_addresses, providers }: Props) {
                         provider="microsoft"
                         status={providers.microsoft}
                     />
+                </section>
+                <section className="grid gap-3">
+                    <h2 className="text-base font-semibold">Apps</h2>
+                    <p className="text-muted-foreground">
+                        Brokers and agents can only connect apps that are on
+                        here and fully set up. Open an app for its steps, the
+                        return address, any partner programme, and its keys.
+                    </p>
+                    {Object.entries(categories).map(([key, title]) => {
+                        const list = apps.filter((a) => a.category === key);
+                        if (list.length === 0) return null;
+
+                        return (
+                            <div key={key} className="grid gap-2">
+                                <h3 className="font-medium">{title}</h3>
+                                <ul className="grid gap-2">
+                                    {list.map((a) => (
+                                        <HqAppCard key={a.key} app={a} />
+                                    ))}
+                                </ul>
+                            </div>
+                        );
+                    })}
                 </section>
             </div>
         </>

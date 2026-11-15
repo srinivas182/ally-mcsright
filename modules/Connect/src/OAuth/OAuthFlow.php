@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Modules\Connect\AppRegistry;
 use Modules\Connect\Connections;
 use Modules\Connect\Health;
 use Modules\Connect\Models\Connection;
@@ -40,8 +41,8 @@ final class OAuthFlow
     /** Step 1: where to send the browser. */
     public function start(App $app, User $user, Request $request): string
     {
-        if ($app->oauth === null || $app->status !== 'available') {
-            throw ValidationException::withMessages(['app' => $app->name.' can\'t be connected here yet.']);
+        if ($app->oauth === null || ! app(AppRegistry::class)->ready($app)) {
+            throw ValidationException::withMessages(['app' => $app->name.' isn\'t switched on yet. Please ask RightAlly support.']);
         }
         if ($this->connections->ownerFor($app, $user) === false) {
             throw ValidationException::withMessages(['app' => 'Your brokerage connects '.$app->name.' for everyone.']);

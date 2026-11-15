@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Modules\Connect\Webhooks;
 
+use Modules\Connect\AppRegistry;
 use Modules\Connect\Jobs\DeliverWebhook;
 use Modules\Connect\Models\Connection;
 use Modules\Connect\Models\WebhookDelivery;
+use Modules\Core\Connect\AppCatalog;
 use Modules\Core\Connect\Outbox;
 
 /** Queues one delivery per webhook endpoint that asked for the event (specs/connect/01). */
@@ -14,7 +16,8 @@ final class WebhookOutbox implements Outbox
 {
     public function emit(string $event, array $data): void
     {
-        if (! isset(self::EVENTS[$event])) {
+        $app = app(AppCatalog::class)->find('webhooks');
+        if (! isset(self::EVENTS[$event]) || $app === null || ! app(AppRegistry::class)->enabled($app)) {
             return;
         }
         try {
