@@ -39,7 +39,7 @@ final readonly class App
      * @param  list<string>  $syncs
      * @param  list<array{key: string, label: string, type: string, secret?: bool, help?: string, options?: array<string, string>}>  $fields
      * @param  class-string<Connector>|null  $driver
-     * @param  array{provider: string, scopes: list<string>}|null  $oauth
+     * @param  array{provider: string, scopes: list<string>, authorize?: string, token?: string, userinfo?: string, response_type?: string, pkce?: bool, token_auth?: string, token_state?: bool, params?: array<string, string>, headers?: array<string, string>}|null  $oauth
      * @param  array{needs?: string, provider?: string, fields?: list<array{key: string, label: string, secret?: bool}>, steps?: list<string>, partner?: string|null, docs?: string|null}  $setup
      * @param  array{plans?: string, steps?: list<string>, open_url?: string|null, open_label?: string|null, hosts?: list<string>, admin?: bool}  $guide  what a broker or agent follows (AI assistant tiles)
      */

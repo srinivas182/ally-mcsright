@@ -36,6 +36,9 @@ final class SyncRunner
                 'finished_at' => CarbonImmutable::now()])->save();
             $c->forceFill(['cursor' => $r['cursor'] ?? $c->cursor, 'last_synced_at' => CarbonImmutable::now()])->save();
             $this->health->succeeded($c);
+            if ($r['more'] ?? false) {
+                Jobs\SyncConnection::dispatch($c->id)->delay(now()->addSeconds(5)); // carry on with a big first import
+            }
         } catch (NeedsReconnect $e) {
             $run->forceFill(['status' => 'failed', 'note' => mb_substr($e->getMessage(), 0, 500), 'finished_at' => CarbonImmutable::now()])->save();
             $this->health->failed($c, $e->getMessage() !== '' ? $e->getMessage() : 'The sign-in was revoked or expired.', true);
