@@ -68,6 +68,7 @@ Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.tenants.manage
     Route::post('billing/packages', [PaymentsController::class, 'savePackage'])->name('billing.packages.store');
     Route::put('billing/packages/{package}', [PaymentsController::class, 'savePackage'])->name('billing.packages.update');
     Route::post('payments/options', [PaymentsController::class, 'setOptions'])->name('payments.options');
+    Route::post('payments/card-fee', [PaymentsController::class, 'setCardFee'])->name('payments.card_fee');
     Route::post('tenants/{tenant}/billing-exception', [PaymentsController::class, 'exception'])->name('tenants.billing-exception');
     Route::middleware('password.confirm')->group(function (): void {
         Route::post('payments/keys', [PaymentsController::class, 'saveKeys'])->name('payments.keys');

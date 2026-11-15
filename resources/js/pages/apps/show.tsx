@@ -6,6 +6,7 @@ import {
     type AiGuide,
     type McpPanel,
 } from '@/components/connect/ai-assistants';
+import { AddonPanel, type AppPrice } from '@/components/connect/addon-panel';
 import { Monogram, type AppEntry } from '@/components/connect/monogram';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -24,6 +25,7 @@ type App = Omit<AppEntry, 'connected' | 'problem'> & {
     multiple: boolean;
     fields: Field[];
     guide?: AiGuide | null;
+    price?: AppPrice;
 };
 type Run = {
     status: string;
@@ -133,7 +135,11 @@ export default function AppScreen({
                     <div>
                         <dt className="text-muted-foreground">Cost</dt>
                         <dd>
-                            Free in RightAlly
+                            {app.price && !app.price.free && app.price.cents
+                                ? app.price.included
+                                    ? 'Included in your package'
+                                    : `Add-on: $${(app.price.cents / 100).toFixed(2)} a month`
+                                : 'Free in RightAlly'}
                             {app.vendor_cost ? ` · ${app.vendor_cost}` : ''}
                         </dd>
                     </div>
@@ -144,6 +150,14 @@ export default function AppScreen({
                         <dd>{scopeLabel[app.scope]}</dd>
                     </div>
                 </dl>
+
+                {app.price && app.ready && (
+                    <AddonPanel
+                        name={app.name}
+                        slug={app.key}
+                        price={app.price}
+                    />
+                )}
 
                 {app.status === 'soon' && (
                     <section className="grid gap-2 rounded-lg border p-4">

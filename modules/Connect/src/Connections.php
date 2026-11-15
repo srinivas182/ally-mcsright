@@ -91,6 +91,7 @@ final class Connections
         if (! app(AppRegistry::class)->ready($app) || ! in_array($app->auth, ['api_key', 'webhook'], true)) {
             throw ValidationException::withMessages(['app' => $app->name.' can\'t be connected here yet.']);
         }
+        app(PaidApps::class)->require($app, $owner); // a paid app needs its add-on first (specs/connect/14)
         $credentials = [];
         $settings = [];
         $errors = [];

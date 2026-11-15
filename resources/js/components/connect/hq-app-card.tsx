@@ -32,7 +32,11 @@ export type HqApp = {
     setup_complete: boolean;
     keys_set: Record<string, boolean>;
     secret_expires_on: string | null;
+    price_cents?: number | null;
+    included_packages?: number[];
 };
+
+export type HqPackage = { id: number; name: string };
 
 /**
  * The go-live checklist for one app: send the ready-written request to the vendor (one click opens HQ's own email,
@@ -127,7 +131,13 @@ function GoLive({ app }: { app: HqApp }) {
 }
 
 /** One app on HQ → Connect setup: its state, the go-live tip, the steps, its keys, and the on/off switch. */
-export function HqAppCard({ app }: { app: HqApp }) {
+export function HqAppCard({
+    app,
+    packages = [],
+}: {
+    app: HqApp;
+    packages?: HqPackage[];
+}) {
     const [open, setOpen] = useState(false);
     const keys: Record<string, string> = {};
     app.fields.forEach((f) => {
@@ -278,6 +288,115 @@ export function HqAppCard({ app }: { app: HqApp }) {
                     </div>
                 </form>
             )}
+            {open && app.built && !app.built_in && (
+                <Price app={app} packages={packages} />
+            )}
         </li>
+    );
+}
+
+/**
+ * What brokerages pay for the app (specs/connect/14): free for everyone, or a monthly add-on bought before
+ * connecting (charged in RightAlly credits), with the packages that include it free.
+ */
+function Price({ app, packages }: { app: HqApp; packages: HqPackage[] }) {
+    const form = useForm({
+        paid: (app.price_cents ?? 0) > 0,
+        price: app.price_cents ? String(app.price_cents / 100) : '',
+        packages: app.included_packages ?? [],
+    });
+
+    return (
+        <form
+            className="grid gap-3 border-t p-3"
+            onSubmit={(e) => {
+                e.preventDefault();
+                form.post(`/hq/connect/apps/${app.key}/price`, {
+                    preserveScroll: true,
+                });
+            }}
+        >
+            <p className="font-medium">Price for brokerages</p>
+            <label className="flex items-center gap-3">
+                <input
+                    type="radio"
+                    className="size-5"
+                    checked={!form.data.paid}
+                    onChange={() => form.setData('paid', false)}
+                />
+                Free for everyone
+            </label>
+            <label className="flex items-center gap-3">
+                <input
+                    type="radio"
+                    className="size-5"
+                    checked={form.data.paid}
+                    onChange={() => form.setData('paid', true)}
+                />
+                Monthly add-on: the brokerage (or the agent, for their own
+                connection) adds it before connecting
+            </label>
+            {form.data.paid && (
+                <div className="grid gap-3 pl-8">
+                    <label className="grid max-w-48 gap-1">
+                        Dollars a month
+                        <Input
+                            inputMode="decimal"
+                            value={form.data.price}
+                            onChange={(e) =>
+                                form.setData('price', e.target.value)
+                            }
+                        />
+                    </label>
+                    {packages.length > 0 && (
+                        <fieldset className="grid gap-2">
+                            <legend className="mb-1">Included free in</legend>
+                            {packages.map((p) => (
+                                <label
+                                    key={p.id}
+                                    className="flex items-center gap-3"
+                                >
+                                    <input
+                                        type="checkbox"
+                                        className="size-5"
+                                        checked={form.data.packages.includes(
+                                            p.id,
+                                        )}
+                                        onChange={(e) =>
+                                            form.setData(
+                                                'packages',
+                                                e.target.checked
+                                                    ? [
+                                                          ...form.data.packages,
+                                                          p.id,
+                                                      ]
+                                                    : form.data.packages.filter(
+                                                          (x) => x !== p.id,
+                                                      ),
+                                            )
+                                        }
+                                    />
+                                    {p.name}
+                                </label>
+                            ))}
+                        </fieldset>
+                    )}
+                    <p className="text-sm text-muted-foreground">
+                        Charged monthly in RightAlly credits. A new price
+                        applies from each brokerage's next month.
+                    </p>
+                </div>
+            )}
+            {Object.values(form.errors).map((m) => (
+                <p key={m} className="text-destructive">
+                    {m}
+                </p>
+            ))}
+            <div>
+                <Button variant="outline" disabled={form.processing}>
+                    Save price
+                </Button>
+            </div>
+        </form>
     );
 }

@@ -53,7 +53,7 @@ final class ConnectServiceProvider extends ServiceProvider
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
         if ($this->app->runningInConsole()) {
-            $this->commands([Console\SyncConnections::class]);
+            $this->commands([Console\SyncConnections::class, Console\RenewAddons::class]);
         }
         Catalog::declare($this->app->make(AppCatalog::class));
         Passport::tokensCan(['mcp:use' => 'See your contacts, tasks, deals and open times in RightAlly',

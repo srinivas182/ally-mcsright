@@ -5,7 +5,10 @@ declare(strict_types=1);
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
+use Modules\Billing\Models\Package;
+use Modules\Connect\AppRegistry;
 use Modules\Connect\OAuth\Providers;
+use Modules\Core\Connect\AppCatalog;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\Models\Tenant;
 use Modules\Core\Tenancy\TenantContext;
@@ -67,4 +70,18 @@ it('gives HQ a ready-written request to send to Follow Up Boss, with the return 
                 && ! str_contains($fub['request']['body'], '{return_address}')
                 && collect($apps)->firstWhere('key', 'cinc')['request'] === null;
         }));
+});
+
+it('lets HQ make an app a monthly add-on, with the packages that include it, or free for everyone', function (): void {
+    $pkg = Package::query()->create(['name' => 'Enterprise', 'monthly_cents' => 49_900, 'yearly_cents' => 0, 'ailly_conversations' => 0, 'features' => [], 'active' => true]);
+    $save = fn (array $in) => $this->actingAs($this->staff)->withSession(['auth.password_confirmed_at' => time()])->post($this->hq.'/hq/connect/apps/xero/price', $in);
+    $save(['paid' => true])->assertSessionHasErrors('price');
+    $save(['paid' => true, 'price' => '25', 'packages' => [$pkg->id]])->assertSessionHasNoErrors();
+    $xero = app(AppCatalog::class)->find('xero');
+    expect(app(AppRegistry::class)->price($xero))->toBe(['cents' => 2500, 'packages' => [$pkg->id]]);
+    $this->actingAs($this->staff)->get($this->hq.'/hq/connect')->assertInertia(fn (Assert $p) => $p->where('packages.0.name', 'Enterprise')
+        ->where('apps', fn ($apps) => collect($apps)->firstWhere('key', 'xero')['price_cents'] === 2500));
+
+    $save(['paid' => false])->assertSessionHasNoErrors();
+    expect(app(AppRegistry::class)->price($xero))->toBeNull();
 });

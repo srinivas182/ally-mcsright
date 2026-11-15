@@ -15,6 +15,7 @@ use Modules\Connect\Mcp\AiAssistants;
 use Modules\Connect\Models\Connection;
 use Modules\Connect\Models\SyncRun;
 use Modules\Connect\Models\WebhookDelivery;
+use Modules\Connect\PaidApps;
 use Modules\Core\Connect\App;
 use Modules\Core\Connect\AppCatalog;
 use Modules\Core\Connect\Outbox;
@@ -39,7 +40,8 @@ final class AppsController
             'categories' => App::CATEGORIES,
             'apps' => array_map(fn (App $a): array => [...$a->toArray(), 'connected' => $a->category === 'ai' ? (int) ($ai[$a->key] ?? 0) : ($mine->get($a->key)?->count() ?? 0),
                 'problem' => (bool) $mine->get($a->key)?->contains(fn (Connection $c): bool => in_array($c->status, ['error', 'needs_reconnect'], true)),
-                'can_connect' => $this->connections->ownerFor($a, $user) !== false, 'requested' => isset($requested[$a->key]), 'ready' => self::ready($a), 'status' => self::ready($a) ? 'available' : 'soon'], $this->catalog->all()),
+                'can_connect' => $this->connections->ownerFor($a, $user) !== false, 'requested' => isset($requested[$a->key]), 'ready' => self::ready($a), 'status' => self::ready($a) ? 'available' : 'soon',
+                'price_cents' => app(AppRegistry::class)->price($a)['cents'] ?? null], $this->catalog->all()),
         ]);
     }
 
@@ -54,7 +56,7 @@ final class AppsController
 
         return Inertia::render('apps/show', [
             'app' => [...$a->toArray(), 'can_connect' => $this->connections->ownerFor($a, $user) !== false, 'requested' => isset($this->connections->requested()[$a->key]),
-                'ready' => self::ready($a), 'status' => self::ready($a) ? 'available' : 'soon'],
+                'ready' => self::ready($a), 'status' => self::ready($a) ? 'available' : 'soon', 'price' => app(PaidApps::class)->state($a, $user, $this->connections->ownerFor($a, $user))],
             'connections' => array_map(fn (Connection $c): array => ['ulid' => $c->ulid, 'label' => $c->label, 'status' => $c->status, 'mine' => $c->owner_user_id !== null,
                 'last_synced_at' => $c->last_synced_at?->toIso8601String(), 'last_error' => $c->last_error, 'created_at' => $c->created_at->toIso8601String(),
                 'url' => $a->key === 'webhooks' ? (string) ($c->settings['url'] ?? '') : null, 'events' => $a->key === 'webhooks' ? array_values((array) ($c->settings['events'] ?? [])) : [],
@@ -79,6 +81,46 @@ final class AppsController
             $request->session()->flash('connect.secret', ['connection' => $done['connection']->ulid, 'secret' => $done['secret']]);
         }
         Inertia::flash('toast', ['type' => 'success', 'message' => $done['connection']->label.' is connected.']);
+
+        return back();
+    }
+
+    /** Adds a paid app's monthly add-on (charged now in credits), so it can be connected (specs/connect/14). */
+    public function addAddon(Request $request, string $app): RedirectResponse
+    {
+        $user = self::user($request);
+        $a = $this->connections->app($app);
+        $owner = $this->connections->ownerFor($a, $user);
+        abort_if($owner === false, 403);
+        app(PaidApps::class)->buy($a, $user, $owner, $request->input('pay_with') === 'card' ? 'card' : 'credits');
+        Inertia::flash('toast', ['type' => 'success', 'message' => $a->name.' is added. You can connect it now.']);
+
+        return back();
+    }
+
+    /** Switches a paid app's add-on between RightAlly credits and the saved card, from the next month. */
+    public function addonPayWith(Request $request, string $app): RedirectResponse
+    {
+        $user = self::user($request);
+        $a = $this->connections->app($app);
+        $owner = $this->connections->ownerFor($a, $user);
+        abort_if($owner === false, 403);
+        $data = $request->validate(['pay_with' => ['required', 'in:credits,card']]);
+        app(PaidApps::class)->payWith($a, $user, $owner, (string) $data['pay_with']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Saved. From next month '.$a->name.' is paid with '.($data['pay_with'] === 'card' ? 'your card.' : 'RightAlly credits.')]);
+
+        return back();
+    }
+
+    /** Cancels a paid app's add-on at the end of the paid month. */
+    public function cancelAddon(Request $request, string $app): RedirectResponse
+    {
+        $user = self::user($request);
+        $a = $this->connections->app($app);
+        $owner = $this->connections->ownerFor($a, $user);
+        abort_if($owner === false, 403);
+        app(PaidApps::class)->cancel($a, $user, $owner);
+        Inertia::flash('toast', ['type' => 'success', 'message' => $a->name.' stays on until the end of the month you paid for, then pauses.']);
 
         return back();
     }
