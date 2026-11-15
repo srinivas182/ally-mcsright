@@ -62,3 +62,30 @@ publish.
 - Funnel results show visits, leads and conversion. Leads keep the funnel as their source for commission
   reporting.
 - A paused funnel shows a friendly "no longer available" page and links to the website's home search.
+
+## Monthly home-value report (LG1b)
+
+- Starts when a homeowner asks a home-value funnel and gives an email. The funnel page says so before they submit
+  ("We'll email you an updated range once a month. Stop any time with one click.").
+- Once a month, from 8am brokerage time (`sites:home-reports`, hourly): the updated range for their home, how it
+  moved since last month, and three homes for sale in their ZIP with MLS attribution. Sent as their agent (the
+  contact's owner, else the funnel's agent, else the first owner), replies go to the inbox.
+- Never after an email opt-out. One-click stop (signed link, `List-Unsubscribe` and one-click POST). Skipped for a
+  month when there is neither a range nor homes nearby. Each send is on the contact's timeline.
+- The range comes from homes for sale, so the email says asking prices can differ from sale prices and the agent
+  confirms with recent sales. Equal Housing Opportunity on every email.
+
+## Promote a funnel (LG1b)
+
+- "Promote with an ad" on each live funnel opens the ad builder with the funnel chosen. Pay from the person's own
+  Meta ad account or with RightAlly Boost credits, exactly as listing ads (budget agreement, stop-loss, results).
+- The ad links to the funnel's page with `utm_source=facebook`, `utm_medium=paid_social`,
+  `utm_campaign=rightally-{ad}`, so leads carry the ad and reach commission reports.
+- The picture is a home for sale in the funnel's area; the ad reaches everyone within the chosen radius (at least
+  15 miles) of the middle of those homes. Housing ads use no other targeting.
+- Agents promote their own funnels; owners and staff any funnel. Headline and text pass the Fair Housing check.
+
+## Acceptance (LG1b)
+
+- A home-value lead gets a report a month later with the new range and the change; none after stop or opt-out.
+- A funnel ad publishes with no listing, links to `/go/{slug}` with the UTM tags and reaches the funnel's area.

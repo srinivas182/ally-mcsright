@@ -238,6 +238,15 @@ export default function Funnels({
                                             </Button>
                                         </>
                                     )}
+                                    {f.status === 'live' && f.url && (
+                                        <Button variant="outline" asChild>
+                                            <Link
+                                                href={`/ads/new?funnel=${f.ulid}`}
+                                            >
+                                                Promote with an ad
+                                            </Link>
+                                        </Button>
+                                    )}
                                     {f.source !== null && (
                                         <Button variant="outline" asChild>
                                             <Link

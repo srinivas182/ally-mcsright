@@ -44,6 +44,7 @@ Schedule::command('credits:grant-monthly')->dailyAt('00:20')->onOneServer();
 Schedule::command('credits:margin-watch')->dailyAt('06:10')->onOneServer();
 Schedule::command('credits:expire-purchases')->dailyAt('00:40')->onOneServer();
 Schedule::command('credits:paused-maps')->dailyAt('14:05')->onOneServer();
+Schedule::command('sites:home-reports')->hourlyAt(7)->withoutOverlapping()->onOneServer();
 Schedule::command('sites:market-updates')->monthlyOn(1, '11:20')->onOneServer();
 Schedule::command('ailly:weekly')->weeklyOn(1, '13:40')->onOneServer();
 // Connected apps: due syncs; webhook history kept 30 days (specs/connect/01).

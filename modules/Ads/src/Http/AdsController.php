@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Ads\AdCopy;
@@ -46,6 +47,17 @@ final class AdsController
         $conn = $this->ads->connection($user);
         $ulid = (string) $request->query('listing', '');
         $home = $ulid !== '' ? $this->ads->listing($user, $ulid) : null;
+        $funnelUlid = (string) $request->query('funnel', '');
+        $funnel = $funnelUlid !== '' ? $this->ads->funnel($user, $funnelUlid) : null;
+        $funnelTarget = null;
+        $funnelError = null;
+        if ($funnel !== null) {
+            try {
+                $funnelTarget = $this->ads->funnelTarget($funnel);
+            } catch (ValidationException $e) {
+                $funnelError = (string) (collect($e->errors())->flatten()->first() ?? '');
+            }
+        }
 
         $boost = app(Boost::class);
 
@@ -56,6 +68,9 @@ final class AdsController
             'accounts' => (array) ($conn?->settings['ad_accounts'] ?? []),
             'pages' => (array) ($conn?->settings['pages'] ?? []),
             'listings' => $this->ads->listings($user),
+            'funnels' => $this->ads->funnels($user),
+            'funnel' => $funnel === null ? null : ['ulid' => $funnel->ulid, 'label' => $funnel->headline, 'photo' => $funnelTarget['photo'] ?? null, 'error' => $funnelError,
+                'headline' => mb_substr($funnel->headline, 0, 40), 'body' => (string) $funnel->intro],
             'listing' => $home === null ? null : ['ulid' => $home['ulid'], 'label' => ListingSearch::label($home), 'price' => $home['price'] ?? null,
                 'photo' => $home['photo'] ?? ($home['photos'][0]['hero'] ?? null), 'mapped' => ($home['latitude'] ?? null) !== null],
             'limits' => ['min_daily' => ListingAds::MIN_DAILY_CENTS / 100, 'max_daily' => ListingAds::MAX_DAILY_CENTS / 100, 'max_days' => ListingAds::MAX_DAYS, 'min_radius' => 15],
@@ -78,7 +93,7 @@ final class AdsController
 
     public function store(Request $request): RedirectResponse
     {
-        $c = $this->ads->publish(self::user($request), $request->only(['listing', 'account', 'page', 'headline', 'body', 'daily_budget', 'days', 'radius', 'pay'])
+        $c = $this->ads->publish(self::user($request), $request->only(['listing', 'funnel', 'account', 'page', 'headline', 'body', 'daily_budget', 'days', 'radius', 'pay'])
             + ['agree' => $request->boolean('agree'), 'stop_loss' => $request->boolean('stop_loss', true)]);
         $c->refresh();
         Inertia::flash('toast', $c->status === 'failed'

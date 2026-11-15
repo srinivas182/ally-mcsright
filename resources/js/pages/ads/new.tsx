@@ -14,12 +14,22 @@ type ListingOption = {
     photo: string | null;
 };
 
+type FunnelTarget = {
+    ulid: string;
+    label: string;
+    photo: string | null;
+    error: string | null;
+    headline: string;
+    body: string;
+};
+
 const money = (n: number) =>
     n.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 
 /**
- * The listing ad builder (specs/ads/01): pick a listing, let the AI write the ad, check it, set a budget, agree,
- * publish. Housing ads reach everyone within a radius of the home (at least 15 miles); nothing else narrows them.
+ * The ad builder (specs/ads/01, specs/grow/03): pick a listing or a funnel, write the ad (the AI drafts listing
+ * ads; a funnel starts from its own headline), check it, set a budget, agree, publish. Housing ads reach everyone
+ * within a radius of the home or area (at least 15 miles); nothing else narrows them.
  */
 export default function NewAd({
     connected,
@@ -28,6 +38,8 @@ export default function NewAd({
     pages,
     listings,
     listing,
+    funnels,
+    funnel,
     limits,
 }: {
     connected: boolean;
@@ -41,6 +53,8 @@ export default function NewAd({
     pages: Option[];
     listings: ListingOption[];
     listing: (ListingOption & { mapped: boolean }) | null;
+    funnels: { ulid: string; label: string }[];
+    funnel: FunnelTarget | null;
     limits: {
         min_daily: number;
         max_daily: number;
@@ -49,11 +63,12 @@ export default function NewAd({
     };
 }) {
     const form = useForm({
-        listing: listing?.ulid ?? '',
+        listing: funnel ? '' : (listing?.ulid ?? ''),
+        funnel: funnel?.ulid ?? '',
         account: accounts[0]?.id ?? '',
         page: pages[0]?.id ?? '',
-        headline: '',
-        body: '',
+        headline: funnel?.headline ?? '',
+        body: funnel?.body ?? '',
         daily_budget: 20,
         days: 14,
         radius: limits.min_radius,
@@ -103,7 +118,7 @@ export default function NewAd({
     if (!connected && boost === null) {
         return (
             <div className="grid gap-4 p-4">
-                <Head title="New listing ad" />
+                <Head title="New ad" />
                 <p>First connect your Meta ad account.</p>
                 <Link href="/apps/meta_ads" className="underline">
                     Connect Meta Ads
@@ -114,16 +129,47 @@ export default function NewAd({
 
     return (
         <>
-            <Head title="New listing ad" />
+            <Head title="New ad" />
             <div className="grid max-w-2xl gap-6 p-4 text-base">
                 <PageHeader
-                    title="New listing ad"
+                    title={funnel ? 'Promote a funnel' : 'New listing ad'}
                     description="Runs on Facebook and Instagram from your own ad account."
                 />
 
                 <section className="grid gap-2">
-                    <h2 className="font-medium">1. Which listing?</h2>
-                    {listings.length === 0 ? (
+                    <h2 className="font-medium">
+                        1. {funnel ? 'Which funnel?' : 'Which listing?'}
+                    </h2>
+                    {funnels.length > 0 && (
+                        <select
+                            aria-label="Funnel"
+                            className="h-12 rounded-md border bg-background px-3"
+                            value={form.data.funnel}
+                            onChange={(e) =>
+                                router.get(
+                                    '/ads/new',
+                                    e.target.value === ''
+                                        ? {}
+                                        : { funnel: e.target.value },
+                                    { preserveState: false },
+                                )
+                            }
+                        >
+                            <option value="">A listing, not a funnel</option>
+                            {funnels.map((f) => (
+                                <option key={f.ulid} value={f.ulid}>
+                                    Funnel: {f.label}
+                                </option>
+                            ))}
+                        </select>
+                    )}
+                    {funnel?.error && (
+                        <p className="text-destructive">{funnel.error}</p>
+                    )}
+                    {form.errors.funnel && (
+                        <p className="text-destructive">{form.errors.funnel}</p>
+                    )}
+                    {funnel ? null : listings.length === 0 ? (
                         <p className="text-muted-foreground">
                             No active listings of yours were found. Check your
                             MLS ID under My profile.
@@ -165,7 +211,7 @@ export default function NewAd({
                     )}
                 </section>
 
-                {listing && (
+                {(funnel ? !funnel.error : listing) && (
                     <form
                         className="grid gap-6"
                         onSubmit={(e) => {
@@ -175,14 +221,14 @@ export default function NewAd({
                     >
                         <section className="grid gap-3">
                             <h2 className="font-medium">2. The ad</h2>
-                            {listing.photo && (
+                            {(funnel?.photo ?? listing?.photo) && (
                                 <img
-                                    src={listing.photo}
-                                    alt={listing.label}
+                                    src={funnel?.photo ?? listing?.photo ?? ''}
+                                    alt={funnel?.label ?? listing?.label ?? ''}
                                     className="max-h-64 w-full rounded-md object-cover"
                                 />
                             )}
-                            <div>
+                            <div hidden={funnel !== null}>
                                 <Button
                                     type="button"
                                     variant="outline"
@@ -226,16 +272,18 @@ export default function NewAd({
                             </label>
                             <p className="text-sm text-muted-foreground">
                                 Describe the home, not who should live there (US
-                                Fair Housing). The ad links to the listing's
-                                page on your website.
+                                Fair Housing).{' '}
+                                {funnel
+                                    ? "The ad links to the funnel's page on your website."
+                                    : "The ad links to the listing's page on your website."}
                             </p>
                         </section>
 
                         <section className="grid gap-3">
                             <h2 className="font-medium">3. Who sees it</h2>
                             <label className="grid gap-1">
-                                Everyone within {form.data.radius} miles of the
-                                home
+                                Everyone within {form.data.radius} miles of{' '}
+                                {funnel ? 'the area' : 'the home'}
                                 <input
                                     type="range"
                                     min={limits.min_radius}

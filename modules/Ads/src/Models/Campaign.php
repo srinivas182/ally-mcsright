@@ -27,7 +27,8 @@ use Modules\Core\Tenancy\Concerns\HasPublicUlid;
  * @property string|null $stopped_reason
  * @property string $ad_account_id
  * @property string $page_id
- * @property string $listing_ulid
+ * @property string|null $listing_ulid
+ * @property int|null $site_funnel_id
  * @property string $listing_label
  * @property string $headline
  * @property string $body

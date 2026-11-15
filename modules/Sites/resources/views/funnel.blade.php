@@ -62,6 +62,7 @@
                     <label>Name <input name="name" required autocomplete="name"></label>
                     <label>Email <input type="email" name="email" required autocomplete="email"></label>
                     <label>Mobile phone <input type="tel" name="phone" autocomplete="tel"></label>
+                    @if ($funnel->kind === 'home_value')<p class="lead-muted">We'll email you an updated range once a month. Stop any time with one click.</p>@endif
                     <label class="consent"><input type="checkbox" name="sms_consent" value="1"> <span>{{ $consent }}</span></label>
                     <div class="hp" aria-hidden="true"><label>Leave empty <input name="website" tabindex="-1" autocomplete="off"></label></div>
                     <input type="hidden" name="first_referrer"><input type="hidden" name="landing_url"><input type="hidden" name="vid" data-vid>
