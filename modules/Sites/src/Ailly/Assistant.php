@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Sites\Ailly;
 
+use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -14,9 +15,14 @@ use Modules\AI\Data\AiTask;
 use Modules\AI\Data\RetrievedRecord;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
+use Modules\Crm\Leads\LeadAlert;
+use Modules\Crm\Leads\SpeedToLead;
+use Modules\Crm\Models\Lead;
 use Modules\Listings\Search\ListingSearch;
 use Modules\Sites\Ai\ContentStudio;
+use Modules\Sites\Jobs\WriteClosingBrief;
 use Modules\Sites\Models\Site;
+use Modules\Sites\Models\SiteVisitor;
 use Modules\Sites\Visitors\SiteLeads;
 use Modules\Sites\Visitors\Visitors;
 use Throwable;
@@ -41,6 +47,7 @@ final class Assistant
 
     private const SCHEMA = ['type' => 'object', 'required' => ['reply', 'on_topic', 'next_step'], 'properties' => [
         'reply' => ['type' => 'string'], 'on_topic' => ['type' => 'boolean'], 'next_step' => ['type' => 'string'], 'lead_score' => ['type' => 'integer'],
+        'answered' => ['type' => 'boolean'],
         'search' => ['type' => ['object', 'null'], 'properties' => ['q' => ['type' => ['string', 'null']], 'min_price' => ['type' => ['integer', 'null']],
             'max_price' => ['type' => ['integer', 'null']], 'beds' => ['type' => ['integer', 'null']], 'baths' => ['type' => ['integer', 'null']]]]]];
 
@@ -117,6 +124,14 @@ final class Assistant
             return $this->out($hit['answer'], $hit['next_step'], [], false);
         }
 
+        // The brokerage's own answer to this question: word for word, free.
+        if (($own = app(BrokerageAnswers::class)->match($text)) !== null) {
+            DB::connection(Connections::cell())->table('ailly_conversations')->where('id', $c->id)->increment('cached_replies');
+            $this->say($conversation, 'ailly', $own, from: 'answers');
+
+            return $this->out($own, 'none', [], false);
+        }
+
         $transcript = $this->transcript((int) $c->id);
         $facts = $this->studio->facts($site, null);
         $info = $this->siteFacts($site);
@@ -126,7 +141,8 @@ final class Assistant
                     'today' => CarbonImmutable::now()->toFormattedDateString(), 'page' => (string) ($c->page ?: 'the home page'),
                     'contact' => $hasContact ? 'the visitor already shared them; do not ask again.'
                         : ($settings['gate'] === 'booking' ? 'only ask when they want to book a call or a showing.' : 'do not ask in your reply; the website asks at the right moment.')],
-                context: [RetrievedRecord::fromModel($site, ['website_facts' => implode("\n", [...$info, ...$facts['lines']])])],
+                context: [RetrievedRecord::fromModel($site, ['website_facts' => implode("\n", [...$info, ...$facts['lines']]),
+                    'brokerage_answers' => app(BrokerageAnswers::class)->asContext()])],
                 untrustedContent: [$transcript], outputSchema: self::SCHEMA));
             $json = (array) ($result->json ?? []);
         } catch (Throwable $e) {
@@ -136,7 +152,8 @@ final class Assistant
         }
         $homes = is_array($json['search'] ?? null) ? $this->homes($json['search']) : [];
         $allowed = ContentStudio::numbers($transcript.' '.implode(' ', [...$info, ...$facts['lines']]).' '.json_encode($homes));
-        [$reply] = ContentStudio::guard(mb_substr(trim((string) ($json['reply'] ?? '')), 0, 1200), $allowed);
+        $allowed = [...$allowed, ...ContentStudio::numbers(app(BrokerageAnswers::class)->asContext())];
+        [$reply, $removed] = ContentStudio::guard(mb_substr(trim((string) ($json['reply'] ?? '')), 0, 1200), $allowed);
         $reply = $reply !== '' ? $reply : 'I can help with homes and real estate here. What would you like to know?';
         $next = in_array($json['next_step'] ?? null, self::NEXT_STEPS, true) ? (string) $json['next_step'] : 'none';
         $onTopic = (bool) ($json['on_topic'] ?? true);
@@ -144,7 +161,13 @@ final class Assistant
 
         DB::connection(Connections::cell())->table('ailly_conversations')->where('id', $c->id)
             ->incrementEach(['ai_replies' => 1, 'off_topic' => $onTopic ? 0 : 1], ['lead_score' => $score ?? $c->lead_score, 'updated_at' => now()]);
-        $this->say($conversation, 'ailly', $reply, $homes);
+        $this->say($conversation, 'ailly', $reply, $homes, flags: $removed);
+        if ($onTopic && ($json['answered'] ?? true) === false) {
+            app(BrokerageAnswers::class)->unanswered($text);
+        }
+        if ($score !== null && $hasContact) {
+            $this->hotAlert((int) $c->id);
+        }
         if (! $onTopic && (int) $c->off_topic >= 1) {
             DB::connection(Connections::cell())->table('ailly_conversations')->where('id', $c->id)->update(['status' => 'ended', 'ended_at' => now()]);
 
@@ -185,8 +208,40 @@ final class Assistant
         $rank = ['none' => 0, 'lead' => 1, 'showing' => 2, 'call' => 3];
         DB::connection(Connections::cell())->table('ailly_conversations')->where('id', $c->id)->update(['lead_id' => $lead->id,
             'outcome' => $rank[$outcome] >= ($rank[$c->outcome] ?? 0) ? $outcome : $c->outcome, 'updated_at' => now()]);
+        $visitor = SiteVisitor::query()->where('contact_id', $lead->contact_id)->whereNull('merged_into')->orderBy('id')->first();
+        if ($visitor !== null && $c->visitor_id !== null && $visitor->id !== (int) $c->visitor_id) {
+            DB::connection(Connections::cell())->table('ailly_conversations')->where('id', $c->id)->update(['visitor_id' => $visitor->id]);
+        }
+        if ($visitor !== null) {
+            WriteClosingBrief::dispatch($visitor->id, true);
+        }
+        $this->hotAlert((int) $c->id, $want !== null);
         $this->say($conversation, 'ailly', $want === 'call' ? 'Thanks! An agent will call you'.(($in['when'] ?? '') !== '' ? ' '.mb_substr((string) $in['when'], 0, 60) : ' soon').'.'
             : ($want === 'showing' ? 'Thanks! An agent will be in touch to set up the showing.' : 'Thanks! I\'ve passed your details to an agent. What else can I help with?'));
+    }
+
+    /**
+     * Tells the lead's agent right away when the chat shows they are ready (lead score 70+, or they asked for a call or
+     * a showing): a text if they opted in to lead texts, and an email. Once per conversation.
+     */
+    private function hotAlert(int $conversationId, bool $asked = false): void
+    {
+        $c = DB::connection(Connections::cell())->table('ailly_conversations')->where('id', $conversationId)->first();
+        if ($c === null || $c->lead_id === null || $c->hot_alerted_at !== null || (! $asked && (int) ($c->lead_score ?? 0) < 70)) {
+            return;
+        }
+        $lead = Lead::query()->whereKey((int) $c->lead_id)->first();
+        $agent = $lead !== null && $lead->assigned_user_id !== null ? User::query()->whereKey($lead->assigned_user_id)->first() : null;
+        if (! $lead instanceof Lead || ! $agent instanceof User || ! $agent->isActive()) {
+            return;
+        }
+        DB::connection(Connections::cell())->table('ailly_conversations')->where('id', $c->id)->update(['hot_alerted_at' => now()]);
+        $why = $c->outcome === 'call' ? 'asked for a call' : ($c->outcome === 'showing' ? 'asked to see a home' : 'looks ready to move (lead score '.(int) $c->lead_score.')');
+        $speed = app(SpeedToLead::class);
+        $url = $speed->link('/leads');
+        $speed->textAgent($agent, 'RightAlly: hot website lead '.SpeedToLead::summary($lead).' '.$why.'. Closing brief: '.$url);
+        $agent->notify(new LeadAlert('Hot lead from your website chat', SpeedToLead::summary($lead).' '.$why.' in a chat with the website assistant. Their closing brief is on the lead.',
+            $url, 'Open the lead'));
     }
 
     /** The conversation (this brokerage's only). */
@@ -256,12 +311,16 @@ final class Assistant
             ->reverse()->map(fn (object $m): string => ($m->role === 'visitor' ? 'Visitor: ' : 'Assistant: ').(string) $m->body)->implode("\n");
     }
 
-    /** @param list<array<string, mixed>> $homes */
-    private function say(string $conversation, string $role, string $body, array $homes = [], bool $cached = false): void
+    /**
+     * @param  list<array<string, mixed>>  $homes
+     * @param  list<string>  $flags  what the content guard removed (the Fair Housing audit)
+     */
+    private function say(string $conversation, string $role, string $body, array $homes = [], bool $cached = false, array $flags = [], ?string $from = null): void
     {
         $id = (int) DB::connection(Connections::cell())->table('ailly_conversations')->where('tenant_id', $this->tenants->id())->where('ulid', $conversation)->value('id');
         DB::connection(Connections::cell())->table('ailly_messages')->insert(['tenant_id' => $this->tenants->id(), 'conversation_id' => $id, 'role' => $role, 'body' => $body,
-            'listings' => $homes !== [] ? json_encode(array_column($homes, 'ulid')) : null, 'cached' => $cached, 'created_at' => CarbonImmutable::now()->format('Y-m-d H:i:s.u')]);
+            'listings' => $homes !== [] ? json_encode(array_column($homes, 'ulid')) : null, 'cached' => $cached, 'flags' => $flags !== [] ? json_encode($flags) : null,
+            'answered_from' => $role === 'ailly' ? ($from ?? ($cached ? 'cache' : 'ai')) : null, 'created_at' => CarbonImmutable::now()->format('Y-m-d H:i:s.u')]);
         DB::connection(Connections::cell())->table('ailly_conversations')->where('id', $id)->update(['updated_at' => now()]);
     }
 

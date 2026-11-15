@@ -46,7 +46,7 @@ final class SitesServiceProvider extends ServiceProvider
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'sites');
         if ($this->app->runningInConsole()) {
-            $this->commands([Console\WriteMarketUpdates::class]);
+            $this->commands([Console\WriteMarketUpdates::class, Console\AillyWeekly::class]);
         }
         $this->app->make(PromptRegistry::class)->addPath(__DIR__.'/../prompts');
         $features = $this->app->make(FeatureCatalog::class);
@@ -56,6 +56,7 @@ final class SitesServiceProvider extends ServiceProvider
         $features->declare(Ai\ContentStudio::ASSIST, 'ai.site_assist', 'AI editing help on websites (rewrite, FAQ, meta, bio)');
         $features->declare(Ai\ContentStudio::MARKET, 'ai.site_market', 'Monthly AI market update drafts');
         $features->declare(Ailly\Assistant::FEATURE, 'ai.ailly', 'AIlly website assistant replies');
+        $features->declare(Visitors\ClosingBrief::FEATURE, 'ai.closing_brief', 'Closing brief on website leads (chat and journey)');
 
         Gate::define('hq.sites.manage', fn (User $user): bool => $user->kind === UserKind::HqStaff);
         $nav = $this->app->make(NavigationRegistry::class);

@@ -29,7 +29,136 @@ type Journey = {
         visits: number;
     };
     events: JourneyEvent[];
+    brief: Brief | null;
+    chat: string;
 };
+type Home = {
+    ulid: string;
+    label: string;
+    price: number | null;
+    url: string | null;
+};
+type Brief = {
+    ai: boolean;
+    summary: string;
+    budget: string;
+    timeline: string;
+    financing: string;
+    must_haves: string[];
+    concerns: string[];
+    best_time: string;
+    opening_line: string;
+    checklist: string[];
+    top_homes: (Home & { views: number })[];
+    send_next: Home[];
+};
+
+const money = (v: number | null) =>
+    v === null ? '' : ` · $${v.toLocaleString('en-US')}`;
+
+function HomeLink({ home }: { home: Home }) {
+    return home.url ? (
+        <a
+            href={home.url}
+            target="_blank"
+            rel="noreferrer"
+            className="underline"
+        >
+            {home.label}
+            {money(home.price)}
+        </a>
+    ) : (
+        <span>
+            {home.label}
+            {money(home.price)}
+        </span>
+    );
+}
+
+/** What the agent needs to close: wants, budget, timeline, homes, an opening line and a checklist. */
+function ClosingBriefCard({ brief }: { brief: Brief }) {
+    const facts: [string, string][] = [
+        ['Budget', brief.budget],
+        ['Timeline', brief.timeline],
+        ['Financing', brief.financing],
+        ['Best time to reach', brief.best_time],
+    ];
+    return (
+        <section className="grid gap-2 rounded-md border bg-background p-3 text-sm">
+            <div className="flex items-center gap-2">
+                <span className="font-semibold">Closing brief</span>
+                {!brief.ai && (
+                    <Badge variant="outline">
+                        From their activity (AI unavailable)
+                    </Badge>
+                )}
+            </div>
+            <p>{brief.summary}</p>
+            <dl className="grid gap-x-4 gap-y-1 sm:grid-cols-2">
+                {facts.map(([k, v]) => (
+                    <div key={k} className="flex gap-1">
+                        <dt className="text-muted-foreground">{k}:</dt>
+                        <dd>{v}</dd>
+                    </div>
+                ))}
+            </dl>
+            {brief.must_haves.length > 0 && (
+                <p>
+                    <span className="text-muted-foreground">Must-haves:</span>{' '}
+                    {brief.must_haves.join(' · ')}
+                </p>
+            )}
+            {brief.concerns.length > 0 && (
+                <p>
+                    <span className="text-muted-foreground">Concerns:</span>{' '}
+                    {brief.concerns.join(' · ')}
+                </p>
+            )}
+            {brief.opening_line !== '' && (
+                <p className="rounded bg-muted/50 p-2">
+                    <span className="text-muted-foreground">Open with: </span>“
+                    {brief.opening_line}”
+                </p>
+            )}
+            {brief.checklist.length > 0 && (
+                <div>
+                    <p className="text-muted-foreground">Do next:</p>
+                    <ol className="ml-5 list-decimal">
+                        {brief.checklist.map((c, i) => (
+                            <li key={i}>{c}</li>
+                        ))}
+                    </ol>
+                </div>
+            )}
+            {brief.top_homes.length > 0 && (
+                <div>
+                    <p className="text-muted-foreground">
+                        Homes they care about:
+                    </p>
+                    <ul className="ml-5 list-disc">
+                        {brief.top_homes.map((h) => (
+                            <li key={h.ulid}>
+                                <HomeLink home={h} />
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
+            {brief.send_next.length > 0 && (
+                <div>
+                    <p className="text-muted-foreground">Send them next:</p>
+                    <ul className="ml-5 list-disc">
+                        {brief.send_next.map((h) => (
+                            <li key={h.ulid}>
+                                <HomeLink home={h} />
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
+        </section>
+    );
+}
 
 const icon: Record<string, string> = {
     listing: '🏠',
@@ -100,7 +229,7 @@ export function VisitorJourney({
                     onClick={load}
                     aria-expanded={open}
                 >
-                    {open ? 'Hide' : 'See everything'}
+                    {open ? 'Hide' : 'Closing brief and everything they did'}
                 </Button>
             </div>
             {journey.summary !== '' && (
@@ -109,6 +238,17 @@ export function VisitorJourney({
             {open && (
                 <div className="grid gap-1">
                     {busy && <p className="text-muted-foreground">Loading…</p>}
+                    {detail?.brief && <ClosingBriefCard brief={detail.brief} />}
+                    {detail?.chat && (
+                        <details className="rounded-md border p-2">
+                            <summary className="cursor-pointer font-medium">
+                                Chat with the website assistant
+                            </summary>
+                            <p className="mt-1 whitespace-pre-line">
+                                {detail.chat}
+                            </p>
+                        </details>
+                    )}
                     {detail?.ai === false && detail.summary !== '' && (
                         <p className="text-muted-foreground">
                             Summary written from the visitor's activity (AI

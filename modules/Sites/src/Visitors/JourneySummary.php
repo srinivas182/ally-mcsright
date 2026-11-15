@@ -12,6 +12,7 @@ use Modules\Core\Tenancy\TenantContext;
 use Modules\Crm\Actions\Timeline;
 use Modules\Crm\Leads\Attribution;
 use Modules\Crm\Models\Contact;
+use Modules\Sites\Jobs\WriteClosingBrief;
 use Modules\Sites\Models\SiteEvent;
 use Modules\Sites\Models\SiteVisitor;
 
@@ -64,6 +65,9 @@ final class JourneySummary
         $visitor->forceFill(['summary' => $summary, 'summary_ai' => $ai, 'summary_at' => CarbonImmutable::now()])->save();
         if ($contact !== null && $first) {
             app(Timeline::class)->system($contact, 'Website journey: '.$summary);
+        }
+        if ($contact !== null) {
+            WriteClosingBrief::dispatch($visitor->id); // a lead's journey changed: refresh their closing brief
         }
     }
 

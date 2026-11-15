@@ -22,7 +22,10 @@ interface VisitorJourneys
     /**
      * The full journey for one contact, newest first (null when there is none).
      *
-     * @return array{summary: string, summary_at: string|null, ai: bool, stats: array{homes_viewed: int, searches: int, favourites: int, visits: int}, events: list<array{at: string, type: string, text: string, url: string|null}>}|null
+     * The closing brief (what they want, budget, timeline, financing, homes they care about, homes to send next, an
+     * opening line and a checklist) and their chat with the website assistant come with it when there are any.
+     *
+     * @return array{summary: string, summary_at: string|null, ai: bool, stats: array{homes_viewed: int, searches: int, favourites: int, visits: int}, events: list<array{at: string, type: string, text: string, url: string|null}>, brief: array<string, mixed>|null, chat: string}|null
      */
     public function forContact(int $contactId): ?array;
 }

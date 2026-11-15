@@ -14,15 +14,19 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Modules\Core\Audit\AuditLogger;
+use Modules\Core\Credits\CreditSpend;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Sites\Ailly\AillySettings;
 use Modules\Sites\Ailly\Assistant;
+use Modules\Sites\Ailly\BrokerageAnswers;
 use Modules\Sites\Content\MediaLibrary;
 use Modules\Sites\Models\Site;
 use Modules\Sites\Rendering\SiteContext;
 use Modules\Sites\Visitors\SiteLeads;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * AIlly (specs/websites/11): the website chat endpoints (JSON, no cookies) and Settings → AIlly for owners and staff.
@@ -70,15 +74,38 @@ final class AillyController
         return response()->json(['ok' => true]);
     }
 
-    /** Settings → AIlly: switch it on, its name and greeting, when it asks for contact details, and limits. */
-    public function settings(Request $request, TenantContext $tenants, MediaLibrary $media): Response
+    /**
+     * Settings → AIlly assistant: results (chats, leads, calls, credits, cost per lead and per booked call, by page and
+     * by website), the chats with filters, the brokerage's answers and questions AIlly couldn't answer, and settings.
+     */
+    public function settings(Request $request, TenantContext $tenants, MediaLibrary $media, BrokerageAnswers $answers, CreditSpend $spend): Response
     {
         self::manager($request);
+        $f = $request->validate(['days' => ['nullable', 'in:7,30,90'], 'outcome' => ['nullable', 'in:all,none,lead,call,showing'], 'score' => ['nullable', 'integer', 'min:0', 'max:100']]);
+        $days = (int) ($f['days'] ?? 30);
+        $from = CarbonImmutable::now()->subDays($days)->startOfDay();
         $site = Site::query()->where('kind', 'brokerage')->first();
-        $recent = DB::connection(Connections::cell())->table('ailly_conversations')->where('tenant_id', $tenants->id())->orderByDesc('id')->limit(30)->get();
-        $messages = DB::connection(Connections::cell())->table('ailly_messages')->whereIn('conversation_id', $recent->pluck('id'))->orderBy('id')->get()->groupBy('conversation_id');
-        $since = CarbonImmutable::now()->startOfMonth();
-        $month = DB::connection(Connections::cell())->table('ailly_conversations')->where('tenant_id', $tenants->id())->where('created_at', '>=', $since);
+        $db = fn () => DB::connection(Connections::cell())->table('ailly_conversations')->where('tenant_id', $tenants->id())->where('created_at', '>=', $from);
+
+        $chats = $db()->count();
+        $leads = $db()->where('outcome', '!=', 'none')->count();
+        $calls = $db()->where('outcome', 'call')->count();
+        $showings = $db()->where('outcome', 'showing')->count();
+        $cost = $spend->spent('ai.ailly', $from, CarbonImmutable::now()->addMinute());
+        $brief = $spend->spent('ai.closing_brief', $from, CarbonImmutable::now()->addMinute());
+        $total = $cost['microcents'] + $brief['microcents'];
+        $rate = fn (int $n, int $of): int => $of > 0 ? (int) round($n * 100 / $of) : 0;
+
+        $byPage = $db()->selectRaw("coalesce(page, '/') as page, count(*) as chats, sum(case when outcome != 'none' then 1 else 0 end) as leads")
+            ->groupBy('page')->orderByDesc('chats')->limit(10)->get();
+        $bySite = $db()->selectRaw("site_id, count(*) as chats, sum(case when outcome != 'none' then 1 else 0 end) as leads, sum(case when outcome = 'call' then 1 else 0 end) as calls")
+            ->groupBy('site_id')->get();
+        $siteNames = Site::query()->whereIn('id', $bySite->pluck('site_id'))->get()->mapWithKeys(fn (Site $s): array => [$s->id => $s->kind === 'brokerage' ? 'Brokerage website' : (string) ($s->info['name'] ?? 'Agent website')]);
+
+        $list = $db()->when(($f['outcome'] ?? 'all') !== 'all', fn ($q) => $q->where('outcome', $f['outcome']))
+            ->when(isset($f['score']), fn ($q) => $q->where('lead_score', '>=', (int) $f['score']))->orderByDesc('id')->limit(50)->get();
+        $messages = DB::connection(Connections::cell())->table('ailly_messages')->whereIn('conversation_id', $list->pluck('id'))->orderBy('id')->get()->groupBy('conversation_id');
+        $flagged = DB::connection(Connections::cell())->table('ailly_messages')->where('tenant_id', $tenants->id())->where('created_at', '>=', $from)->whereNotNull('flags')->count();
 
         return Inertia::render('settings/ailly', [
             'site' => $site !== null ? ['live' => $site->status === 'live', 'name' => $site->displayName()] : null,
@@ -86,14 +113,77 @@ final class AillyController
             'photo_url' => $site !== null ? AillySettings::persona($site, $site)['photo'] : null,
             'site_ulid' => $site?->ulid,
             'media' => $site !== null ? PageEditorController::mediaList($site, $media) : [],
-            'month' => ['conversations' => (clone $month)->count(), 'leads' => (clone $month)->where('outcome', '!=', 'none')->count(),
-                'calls' => (clone $month)->where('outcome', 'call')->count(), 'answers' => (int) (clone $month)->sum('ai_replies'),
-                'free_answers' => (int) (clone $month)->sum('cached_replies')],
-            'conversations' => $recent->map(fn (object $c): array => ['ulid' => (string) $c->ulid, 'at' => (string) $c->created_at, 'page' => (string) ($c->page ?? ''),
+            'filters' => ['days' => $days, 'outcome' => $f['outcome'] ?? 'all', 'score' => isset($f['score']) ? (int) $f['score'] : null],
+            'results' => ['chats' => $chats, 'leads' => $leads, 'calls' => $calls, 'showings' => $showings, 'lead_rate' => $rate($leads, $chats),
+                'answers' => (int) $db()->sum('ai_replies'), 'free_answers' => (int) $db()->sum('cached_replies'), 'credits' => $cost['credits'] + $brief['credits'],
+                'spent_cents' => (int) round($total / 1_000_000), 'cost_per_lead_cents' => $leads > 0 ? (int) round($total / 1_000_000 / $leads) : null,
+                'cost_per_call_cents' => $calls > 0 ? (int) round($total / 1_000_000 / $calls) : null, 'flagged' => $flagged],
+            'by_page' => $byPage->map(fn (object $r): array => ['page' => (string) $r->page, 'chats' => (int) $r->chats, 'leads' => (int) $r->leads, 'rate' => $rate((int) $r->leads, (int) $r->chats)])->values(),
+            'by_site' => $bySite->map(fn (object $r): array => ['site' => (string) ($siteNames[$r->site_id] ?? 'Website'), 'chats' => (int) $r->chats, 'leads' => (int) $r->leads,
+                'calls' => (int) $r->calls, 'rate' => $rate((int) $r->leads, (int) $r->chats)])->sortByDesc('chats')->values(),
+            'conversations' => $list->map(fn (object $c): array => ['ulid' => (string) $c->ulid, 'at' => (string) $c->created_at, 'page' => (string) ($c->page ?? ''),
                 'outcome' => (string) $c->outcome, 'score' => $c->lead_score !== null ? (int) $c->lead_score : null, 'answers' => (int) $c->ai_replies,
-                'messages' => array_values(array_map(fn (\stdClass $m): array => ['role' => (string) $m->role, 'body' => (string) $m->body],
+                'messages' => array_values(array_map(fn (\stdClass $m): array => ['role' => (string) $m->role, 'body' => (string) $m->body, 'flagged' => $m->flags !== null],
                     array_filter(($messages->get($c->id) ?? collect())->all(), fn ($m): bool => $m instanceof \stdClass)))])->values(),
+            'answers' => $answers->list(),
+            'open_questions' => $answers->openQuestions(),
         ]);
+    }
+
+    public function saveAnswer(Request $request, BrokerageAnswers $answers): RedirectResponse
+    {
+        $user = self::manager($request);
+        $data = $request->validate(['id' => ['nullable', 'integer'], 'question' => ['required', 'string', 'max:200'], 'answer' => ['required', 'string', 'max:1200']]);
+        $answers->save(isset($data['id']) ? (int) $data['id'] : null, $data['question'], $data['answer'], $user);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Answer saved. AIlly uses it from now on.']);
+
+        return back();
+    }
+
+    public function deleteAnswer(Request $request, BrokerageAnswers $answers, int $answer): RedirectResponse
+    {
+        self::manager($request);
+        $answers->delete($answer);
+
+        return back();
+    }
+
+    public function dismissQuestion(Request $request, BrokerageAnswers $answers, int $question): RedirectResponse
+    {
+        self::manager($request);
+        $answers->dismiss($question);
+
+        return back();
+    }
+
+    /**
+     * The Fair Housing audit for a month (CSV): every AIlly answer the content guard changed, with the visitor's
+     * question, the answer sent and what was removed. Formula-safe.
+     */
+    public function audit(Request $request, TenantContext $tenants): StreamedResponse
+    {
+        self::manager($request);
+        $month = (string) ($request->validate(['month' => ['nullable', 'regex:/^\d{4}-(0[1-9]|1[0-2])$/']])['month'] ?? CarbonImmutable::now()->format('Y-m'));
+        $start = CarbonImmutable::createFromFormat('Y-m-d', $month.'-01')?->startOfDay() ?? CarbonImmutable::now()->startOfMonth();
+        $rows = DB::connection(Connections::cell())->table('ailly_messages')->where('tenant_id', $tenants->id())->where('role', 'ailly')
+            ->where('created_at', '>=', $start)->where('created_at', '<', $start->addMonth())->orderBy('id')->limit(50_000)->get();
+        $convs = DB::connection(Connections::cell())->table('ailly_conversations')->whereIn('id', $rows->pluck('conversation_id')->unique())->pluck('ulid', 'id');
+        $cell = fn (string $v): string => $v !== '' && in_array($v[0], ['=', '+', '-', '@', "\t", "\r"], true) ? "'".$v : $v;
+        app(AuditLogger::class)->record('sites.ailly.audit_exported', metadata: ['month' => $month, 'answers' => $rows->count()], severity: 'notice');
+
+        return response()->streamDownload(function () use ($rows, $convs, $cell): void {
+            $out = fopen('php://output', 'w');
+            if ($out === false) {
+                return;
+            }
+            fputcsv($out, ['Date (UTC)', 'Chat', 'Answered from', 'Answer sent', 'Removed by the Fair Housing and figure check'], escape: '');
+            foreach ($rows as $m) {
+                $flags = $m->flags !== null ? (array) json_decode((string) $m->flags, true) : [];
+                fputcsv($out, [(string) $m->created_at, (string) ($convs[$m->conversation_id] ?? ''), (string) ($m->answered_from ?? 'ai'), $cell((string) $m->body),
+                    $cell(implode(' | ', array_map('strval', $flags)))], escape: '');
+            }
+            fclose($out);
+        }, 'ailly-audit-'.$month.'.csv', ['Content-Type' => 'text/csv; charset=UTF-8', 'Cache-Control' => 'no-store']);
     }
 
     public function save(Request $request): RedirectResponse
