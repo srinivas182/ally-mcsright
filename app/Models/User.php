@@ -75,6 +75,7 @@ class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable,
 
     /** @use HasFactory<UserFactory> */
     use HasFactory;
+
     use HasPublicUlid;
     use Notifiable;
     use PasskeyAuthenticatable;
