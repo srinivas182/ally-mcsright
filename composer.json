@@ -16,6 +16,8 @@
         "inertiajs/inertia-laravel": "^3.0",
         "laravel/fortify": "^1.37.2",
         "laravel/framework": "^13.17",
+        "laravel/mcp": "^1.2",
+        "laravel/passport": "^13.10",
         "laravel/socialite": "^5.32",
         "laravel/tinker": "^3.0",
         "laravel/wayfinder": "^0.1.14",

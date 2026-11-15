@@ -14,6 +14,7 @@ use Modules\AI\Models\AiBatch;
 use Modules\AI\Support\PromptRegistry;
 use Modules\Core\Access\PermissionRegistry;
 use Modules\Core\Identity\Enums\UserKind;
+use Modules\Core\Mcp\McpToolbox;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
 use Modules\Crm\Actions\ManageContacts;
@@ -94,6 +95,11 @@ final class CrmServiceProvider extends ServiceProvider
                 $item->update(['result' => null]);
             }
         });
+
+        // Tools for people's AI assistants (MCP, specs/connect/03): same visibility rules as the screens.
+        foreach ([Mcp\SearchContacts::class, Mcp\GetContact::class, Mcp\MyTasks::class, Mcp\TodaysList::class, Mcp\OpenTimes::class] as $tool) {
+            $this->app->make(McpToolbox::class)->add($tool);
+        }
 
         // Connected apps hear about company contacts, stage changes and completed tasks (specs/connect/01).
         Event::listen(ContactCreated::class, fn (ContactCreated $e) => CrmEvents::contactCreated($e->contactId));

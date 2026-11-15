@@ -7,10 +7,12 @@ namespace Modules\Connect;
 use App\Models\User;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Passport\Passport;
 use Modules\Connect\Webhooks\WebhookOutbox;
 use Modules\Core\Connect\AppCatalog;
 use Modules\Core\Connect\Outbox;
 use Modules\Core\Identity\Enums\UserKind;
+use Modules\Core\Mcp\McpGate;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
 
@@ -28,6 +30,13 @@ final class ConnectServiceProvider extends ServiceProvider
         $this->app->scoped(OAuth\OAuthFlow::class);
         $this->app->scoped(Calendars\ConnectCalendars::class);
         $this->app->bind(\Modules\Core\Connect\Calendars::class, Calendars\ConnectCalendars::class);
+        $this->app->scoped(Mcp\AiAssistants::class);
+        $this->app->bind(McpGate::class, Mcp\AiAssistants::class);
+        // OAuth for AI assistants (Passport): tokens live with the brokerage's own data.
+        config(['passport.connection' => config('core.connections.cell'), 'passport.guard' => 'web']);
+        // Only these AI apps may register (and localhost, for desktop apps); HQ can add more in config.
+        config(['mcp.redirect_domains' => config('connect.mcp_redirect_domains', ['https://claude.ai', 'https://claude.com', 'https://chatgpt.com', 'https://chat.openai.com',
+            'https://copilot.microsoft.com', 'https://gemini.google.com', 'http://localhost', 'http://127.0.0.1'])]);
     }
 
     public function boot(): void
@@ -38,6 +47,11 @@ final class ConnectServiceProvider extends ServiceProvider
             $this->commands([Console\SyncConnections::class]);
         }
         Catalog::declare($this->app->make(AppCatalog::class));
+        Passport::tokensCan(['mcp:use' => 'See your contacts, tasks, deals and open times in RightAlly',
+            'rightally:write' => 'Add leads, notes and tasks, and book times, as you']);
+        Passport::tokensExpireIn(now()->addHours(8));
+        Passport::refreshTokensExpireIn(now()->addDays(60));
+        Passport::authorizationView(fn (array $p) => Http\McpConsentController::render($p));
         OAuth\ClientSettings::apply();
 
         Gate::define('hq.apps.view', fn (User $user): bool => $user->kind === UserKind::HqStaff);

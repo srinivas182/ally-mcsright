@@ -155,4 +155,4 @@ it becomes worth the yearly security-assessment fee. The only Google and Microso
 sync. Deal-IQ gets its paperwork from synced transaction platforms, RightAlly forms, uploads and document requests
 (specs/ai/02, section 7).
 
-Status: C1a and C1b are done. The full order, mixing Connect with growth work and the approved additions (daily brief, ad results in commission dollars with an automatic stop, buyer demand before listing, switch in a weekend, proof of consent, Fair Housing audit pack, Agent Wallet, seller-funded boost), is in `docs/plan/market-2026-additions.md`.
+Status: C1a, C1b and C1c are done; M1 (MCP server) is in progress. The full order, mixing Connect with growth work and the approved additions (daily brief, ad results in commission dollars with an automatic stop, buyer demand before listing, switch in a weekend, proof of consent, Fair Housing audit pack, Agent Wallet, seller-funded boost), is in `docs/plan/market-2026-additions.md`.

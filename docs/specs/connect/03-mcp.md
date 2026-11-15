@@ -65,6 +65,70 @@ data inside third-party AI apps without the MLS's permission. HQ can widen this 
   data-protection rules (specs/ai).
 - **Usage:** MCP calls don't use RightAlly credits, because the person's own AI app does the thinking.
 
+## Guardrails (as built in M1)
+
+Every tool extends `Core\Mcp\RightAllyTool`, so no tool can skip these checks.
+
+1. **Who.** Every call acts as the person behind the token.
+    - The account is looked up inside the brokerage's own data, so a token issued at another brokerage finds no one.
+    - The account must be active and must not be HQ staff.
+    - AI assistant access must be on at HQ (the `ai_assistants` app) and at the brokerage (the owner's switch).
+2. **What.** Each tool's `allows()` and its queries use the same rules as the screens:
+    - `ContactVisibility` for contacts (an agent's personal contacts stay theirs, even from owners);
+    - `Transactions\DealAccess` for deals (the one deal rule, now shared by the screens and MCP);
+    - ownership for tasks and availability.
+
+    A tool a person's role can't use isn't listed for them. Every other refusal answers with the reason in plain
+    words.
+
+3. **Writes.** A write tool needs all three of these:
+    - the token's `rightally:write` permission, which the person approves;
+    - the brokerage allowing changes (the owner's second switch);
+    - the module's own services, which only change what that person can change.
+
+    There are no delete tools, and nothing moves money or messages people in bulk.
+    - **Future modules:** campaigns, ads and anything else must register their write tools through the toolbox and
+      call their own services. They then inherit these checks automatically.
+    - **Bulk or costly actions** (for example, starting a campaign or spending credits) must return a preview first
+      and only act on a second, confirmed call (M2).
+
+4. **Limits and records.**
+    - Each person can make 60 tool calls a minute, and the endpoint takes 120 requests a minute.
+    - Every call is audited as `mcp.tool` (tool, AI app, argument names; writes at notice level).
+    - Errors come back as plain messages.
+5. **Data, not instructions.** The server's instructions, and a note on every result, tell the AI app that text
+   inside records is information, not instructions.
+6. **Registration.** Only known AI apps may register through dynamic client registration:
+    - claude.ai, claude.com, chatgpt.com, chat.openai.com, copilot.microsoft.com and gemini.google.com;
+    - localhost, for desktop apps.
+
+    HQ can extend the list (`connect.mcp_redirect_domains`). The consent screen names the app and the site it
+    returns to.
+
+7. **Tokens.**
+    - Access tokens last 8 hours and refresh tokens 60 days.
+    - They are stored in the brokerage's own data.
+    - Disconnecting, or the owner switching access off, revokes the access token and its refresh token straight
+      away.
+
+## M1 (built)
+
+- **Endpoint:** `POST /mcp` (Streamable HTTP, `laravel/mcp`), protected by `auth:api` (Laravel Passport).
+- **Discovery:** `/.well-known/oauth-protected-resource` and `/.well-known/oauth-authorization-server`.
+- **Registration:** `/oauth/register`.
+- **Consent:** `/oauth/authorize`, shown as `mcp/consent`.
+- **Tools:**
+    - CRM: `search_contacts`, `get_contact`, `my_tasks`, `todays_list`, `open_times`.
+    - Transactions: `my_deals`, `deal_details` (key dates and missing paperwork; no commission or bank figures).
+- **Apps → AI assistants:**
+    - how to connect, with the address and a Copy button;
+    - your connected assistants, with Disconnect;
+    - for owners: the two switches, and everyone's assistants.
+- **Go-live:**
+    - run `php artisan passport:keys` once per environment, or set `PASSPORT_PRIVATE_KEY` and
+      `PASSPORT_PUBLIC_KEY`;
+    - HQ keeps the `ai_assistants` app on.
+
 ## Sprints
 
 - **M1:**

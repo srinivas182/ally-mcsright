@@ -16,6 +16,8 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\Contracts\PasskeyUser;
 use Laravel\Fortify\PasskeyAuthenticatable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
+use Laravel\Passport\Contracts\OAuthenticatable;
+use Laravel\Passport\HasApiTokens;
 use Modules\Core\Audit\Auditable;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Identity\Enums\UserStatus;
@@ -55,7 +57,7 @@ use Modules\Core\Tenancy\Concerns\HasPublicUlid;
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  */
-class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
+class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable, PasskeyUser
 {
     protected static string $auditAction = 'core.user';
 
@@ -67,6 +69,9 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
 
     use Auditable;
     use BelongsToTenant;
+
+    // AI assistants connect as this person through the MCP server (specs/connect/03).
+    use HasApiTokens;
 
     /** @use HasFactory<UserFactory> */
     use HasFactory;
