@@ -511,6 +511,24 @@ final class Catalog
                 'docs' => 'https://developers.google.com/my-business/content/posts-data'],
             guide: ['steps' => ['Press Connect and sign in with the Google account that manages your Business Profile.', 'Then open Grow → Social posts.']]));
 
+        // Ally Studio (specs/grow/13): your AI social team, three monthly packages (HQ prices them; unpriced means not on sale).
+        foreach ([
+            ['studio_essentials', 'Ally Studio Essentials', 'agent', 'Designed posts with your photo and brand, a content calendar and Autopilot, every month.',
+                ['Your brand kit and every designer collection', 'Designed posts and Reels/Shorts each month', 'Calendar, Approve first or Autopilot']],
+            ['studio_luxury', 'Ally Studio Luxury', 'agent', 'Everything in Essentials, more posts and Reels/Shorts, YouTube listing tours, listing launch campaigns, Spanish and photo enhancement.',
+                ['More posts and Reels/Shorts each month', 'YouTube listing tours and launch campaigns', 'Spanish captions, photo enhancement, voice narration']],
+            ['studio_brokerage', 'Ally Studio for the brokerage', 'brokerage', 'Ally Studio Luxury for every agent, plus the brokerage\'s own Pages, recruiting posts, approval rules and team reporting.',
+                ['Luxury for every agent', 'Brokerage Pages and recruiting posts', 'Approval rules and team reporting']],
+        ] as [$key, $name, $scope, $summary, $syncs]) {
+            $catalog->add(new App($key, $name, 'marketing', $summary, scope: $scope, auth: 'link', syncs: $syncs, link: '/studio', vendorCost: 'Monthly add-on, paid with credits or card',
+                guide: ['steps' => ['Add the package (it renews monthly; cancel any time).', 'Open Grow → Ally Studio and fill in your brand kit.', 'Connect where you post: Facebook Pages and Instagram, LinkedIn, Google Business Profile.']]));
+        }
+        $catalog->add(new App('studio_cutout', 'Headshot cut-out', 'marketing', 'Removes the background from headshots, so your photo sits beautifully on every Ally Studio design.',
+            scope: 'both', auth: 'link', syncs: ['Headshots with the background removed, on upload'], link: '/studio/brand', vendorCost: 'Included with Ally Studio',
+            setup: ['needs' => 'keys', 'fields' => [['key' => 'api_key', 'label' => 'remove.bg API key', 'secret' => true]],
+                'steps' => ['Open a remove.bg account for RightAlly and buy a subscription or credits.', 'Copy the API key here and switch Headshot cut-out on.'],
+                'partner' => 'remove.bg bills RightAlly per image.', 'docs' => 'https://www.remove.bg/api']));
+
         // On the roadmap (people can ask for them; HQ sees the demand). Some need a partner agreement first.
         foreach ([
             ['real_geeks', 'Real Geeks', 'crm', 'Bring over leads and their activity from Real Geeks.', 'both', 'Your Real Geeks plan'],

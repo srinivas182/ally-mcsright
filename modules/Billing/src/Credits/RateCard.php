@@ -46,6 +46,12 @@ final class RateCard
         'ads.boost' => [1, false, 'RightAlly Boost ad spend (keep at 1: the quantity is the credits)'],
         'mail.postcards' => [1, false, 'Postcards, printed and mailed (keep at 1: the quantity is the credits)'],
         'apps.addon' => [1, false, 'Paid app add-on, a month (keep at 1: the quantity is the credits)'],
+        // Ally Studio beyond a Studio package's monthly allowance (specs/grow/13).
+        'studio.post' => [10, false, 'Ally Studio designed post beyond the allowance'],
+        'studio.reel' => [60, false, 'Ally Studio Reel or Short beyond the allowance'],
+        'studio.tour' => [120, false, 'Ally Studio YouTube listing tour beyond the allowance'],
+        'studio.enhance' => [40, false, 'Ally Studio photo enhancement beyond the allowance'],
+        'studio.voice' => [25, false, 'Ally Studio voice narration beyond the allowance'],
         // Beyond a package's monthly allowances (specs/billing/03).
         'usage.text_segment' => [4, true, 'Text beyond the allowance (per segment)'],
         'usage.call_minute' => [4, true, 'Call minute beyond the allowance'],

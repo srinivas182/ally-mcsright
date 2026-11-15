@@ -35,6 +35,11 @@ final class Economics
         'usage.text_segment' => ['twilio.sms_segment', 1],
         'usage.call_minute' => ['twilio.call_minute', 1],
         'usage.map_views_10' => ['mapbox.map_load', 10],
+        'studio.post' => ['studio.post', 1],
+        'studio.reel' => ['studio.reel', 1],
+        'studio.tour' => ['studio.tour', 1],
+        'studio.enhance' => ['studio.enhance', 1],
+        'studio.voice' => ['studio.voice', 1],
     ];
 
     /** Package allowance columns and the cost item each is priced at. */
