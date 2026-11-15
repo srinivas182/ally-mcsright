@@ -48,6 +48,41 @@ final class Kit implements ConnectorKit
             ['tenant_id' => $this->tenants->id(), 'local_id' => $localId, 'updated_at' => now(), 'created_at' => now()]);
     }
 
+    public function externalId(ConnectionData $connection, string $entity, int $localId): ?string
+    {
+        $id = DB::connection(Connections::cell())->table('connect_external_ids')->where('connection_id', $connection->id)->where('entity', $entity)
+            ->where('local_id', $localId)->value('external_id');
+
+        return $id !== null ? (string) $id : null;
+    }
+
+    public function connections(string $appKey): array
+    {
+        $app = app(AppCatalog::class)->find($appKey);
+        if ($app === null || ! app(AppRegistry::class)->ready($app)) {
+            return [];
+        }
+
+        return array_values(Connection::query()->where('app_key', $appKey)->whereIn('status', ['connected', 'error'])->orderBy('id')->get()
+            ->map(fn (Connection $c): ConnectionData => $c->data())->all());
+    }
+
+    public function connection(int $id): ?ConnectionData
+    {
+        return Connection::query()->find($id)?->data();
+    }
+
+    public function webhookUrl(ConnectionData $connection): string
+    {
+        return 'https://'.config('core.sso_host').'/connect/hooks/'.$connection->appKey.'/'.$this->tenants->current()->ulid.'/'.$connection->ulid;
+    }
+
+    public function saveSettings(ConnectionData $connection, array $settings): void
+    {
+        $c = Connection::query()->find($connection->id);
+        $c?->forceFill(['settings' => array_merge($c->settings ?? [], $settings)])->save();
+    }
+
     public function connectedBy(ConnectionData $connection): ?int
     {
         $by = Connection::query()->whereKey($connection->id)->value('connected_by');

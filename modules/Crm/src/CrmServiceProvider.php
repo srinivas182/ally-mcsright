@@ -106,6 +106,14 @@ final class CrmServiceProvider extends ServiceProvider
         Event::listen(ContactStageChanged::class, fn (ContactStageChanged $e) => CrmEvents::stageChanged($e->contactId, $e->stageId));
         Event::listen(TaskCompleted::class, fn (TaskCompleted $e) => CrmEvents::taskCompleted($e->taskId));
 
+        // Two-way CRMs: new contacts and notes go to Follow Up Boss (specs/connect/05).
+        Event::listen(ContactCreated::class, fn (ContactCreated $e) => Connect\FollowUpBossOutbox::contactCreated($e->contactId));
+        Event::listen(ActivityLogged::class, function (ActivityLogged $e): void {
+            if ($e->type === 'note') {
+                Connect\FollowUpBossOutbox::noteLogged($e->contactId, $e->activityId);
+            }
+        });
+
         // Follow-up plans: automatic enrolment by source or stage; stop when the person engages.
         Event::listen(ContactCreated::class, function (ContactCreated $e): void {
             $contact = Contact::query()->find($e->contactId);

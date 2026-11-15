@@ -24,4 +24,18 @@ interface ConnectorKit
 
     /** Who connected the app (imports act as this person, with their access). */
     public function connectedBy(ConnectionData $connection): ?int;
+
+    /** The other app's id for one of our records, if it was synced before. */
+    public function externalId(ConnectionData $connection, string $entity, int $localId): ?string;
+
+    /** @return list<ConnectionData> this brokerage's working connections to an app (only while HQ has the app on) */
+    public function connections(string $appKey): array;
+
+    public function connection(int $id): ?ConnectionData;
+
+    /** The connection's own address for the other app's webhooks (central host; no secrets in it). */
+    public function webhookUrl(ConnectionData $connection): string;
+
+    /** @param  array<string, mixed>  $settings  merged into the connection's settings */
+    public function saveSettings(ConnectionData $connection, array $settings): void;
 }
