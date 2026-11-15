@@ -8,7 +8,9 @@ use Modules\Core\Connect\App;
 use Modules\Core\Connect\AppCatalog;
 use Modules\Crm\Connect\BoldTrail;
 use Modules\Crm\Connect\FollowUpBoss;
+use Modules\Crm\Connect\GoHighLevel;
 use Modules\Crm\Connect\Lofty;
+use Modules\Crm\Connect\Sierra;
 
 /**
  * The apps Connect itself offers, and the apps on the roadmap (specs/connect/00). Apps that sync a module's data are
@@ -17,6 +19,14 @@ use Modules\Crm\Connect\Lofty;
  */
 final class Catalog
 {
+    /** Apps on the roadmap whose API is only open to partners: what HQ must apply for (shown as "Needs partner access"). */
+    private const PARTNERS = [
+        'real_geeks' => 'Real Geeks shares leads only with approved partners (Lead Router). Apply through Real Geeks partner support.',
+        'boomtown' => 'BoomTown\'s API is for approved partners only. Apply through BoomTown (Inside Real Estate) partner programme.',
+        'top_producer' => 'Top Producer has no public API. Ask Constellation Real Estate Group for partner access.',
+        'wise_agent' => 'Wise Agent issues API credentials (OAuth) only to partner integrations, not to agents. Request them at wiseagent.com/docs/api.asp (app name, logo, redirect domain, contacts scope).',
+    ];
+
     public static function declare(AppCatalog $catalog): void
     {
         // Available now.
@@ -110,14 +120,31 @@ final class Catalog
                 'docs' => 'https://apidocs.kvcore.com/'],
             guide: ['steps' => ['In BoldTrail, open Lead Engine → Lead Dropbox.', 'Under My API Tokens, choose "Contacts" and press Generate.', 'Copy the new token, paste it below and press Connect.']]));
 
-        // On the roadmap (people can ask for them; HQ sees the demand).
+        $catalog->add(new App('sierra', 'Sierra Interactive', 'crm', 'Bring over your leads, tags, status, agents and notes from Sierra Interactive. Changes keep coming over every hour.',
+            scope: 'both', auth: 'api_key', syncs: ['Leads (names, emails, phones)', 'Tags and status', 'Which agent each lead belongs to', 'Notes', 'Changed leads, hourly'],
+            fields: [['key' => 'api_key', 'label' => 'Sierra API key', 'type' => 'text', 'secret' => true, 'help' => 'It stays encrypted. Only RightAlly\'s import uses it.']],
+            driver: Sierra::class, vendorCost: 'Your Sierra plan (API access may depend on it)',
+            setup: ['steps' => ['Nothing to set up: each site uses its own Sierra API key.', 'Switch Sierra Interactive on.'],
+                'partner' => 'Listing RightAlly in Sierra\'s own integrations directory is optional: email support@sierrainteractive.com with a product summary.',
+                'docs' => 'https://api.sierrainteractivedev.com/'],
+            guide: ['steps' => ['In Sierra, click the gear icon, then Integrations → Sierra Interactive.', 'Copy your API key.', 'Paste it below and press Connect.']]));
+        $catalog->add(new App('gohighlevel', 'GoHighLevel', 'crm', 'Bring over your contacts, tags, source, agents and notes from a GoHighLevel sub-account. Changes keep coming over every hour.',
+            scope: 'both', auth: 'api_key', syncs: ['Contacts (names, emails, phones)', 'Tags and source', 'Which user each contact is assigned to', 'Notes', 'Changed contacts, hourly'],
+            fields: [['key' => 'api_key', 'label' => 'Private Integration token', 'type' => 'text', 'secret' => true, 'help' => 'It stays encrypted. Only RightAlly\'s import uses it.'],
+                ['key' => 'location_id', 'label' => 'Location ID', 'type' => 'text', 'help' => 'Settings → Business Profile in the same sub-account.']],
+            driver: GoHighLevel::class, vendorCost: 'Your GoHighLevel plan',
+            setup: ['steps' => ['Nothing to set up: each sub-account uses its own Private Integration token.', 'Switch GoHighLevel on.'],
+                'partner' => 'One-click connect (instead of a token) needs a GoHighLevel Marketplace app: optional, apply at marketplace.gohighlevel.com.',
+                'docs' => 'https://marketplace.gohighlevel.com/docs/'],
+            guide: ['steps' => ['In your GoHighLevel sub-account, open Settings → Private Integrations and create one.', 'Tick "View Contacts" (and "View Users", so contacts keep their agent), then copy the token.',
+                'Copy the Location ID from Settings → Business Profile.', 'Paste both below and press Connect.']]));
+
+        // On the roadmap (people can ask for them; HQ sees the demand). Some need a partner agreement first.
         foreach ([
-            ['sierra', 'Sierra Interactive', 'crm', 'Bring over leads, notes and saved searches from Sierra Interactive.', 'both', 'Your Sierra plan'],
             ['real_geeks', 'Real Geeks', 'crm', 'Bring over leads and their activity from Real Geeks.', 'both', 'Your Real Geeks plan'],
             ['boomtown', 'BoomTown', 'crm', 'Bring over leads and notes from BoomTown.', 'both', 'Your BoomTown plan'],
             ['wise_agent', 'Wise Agent', 'crm', 'Bring over contacts and notes from Wise Agent.', 'agent', 'Your Wise Agent plan'],
             ['top_producer', 'Top Producer', 'crm', 'Bring over contacts and notes from Top Producer.', 'agent', 'Your Top Producer plan'],
-            ['gohighlevel', 'GoHighLevel', 'crm', 'Bring over contacts, conversations, pipelines and tags from GoHighLevel, and keep them in sync.', 'both', 'Your GoHighLevel plan'],
             ['cinc', 'CINC', 'crm', 'Bring over leads, notes and activity from CINC.', 'both', 'Your CINC plan'],
             ['brivity', 'Brivity', 'crm', 'Bring over contacts and transactions from Brivity.', 'both', 'Your Brivity plan'],
             ['propertybase', 'Propertybase', 'crm', 'Bring over contacts, listings and deals from Propertybase.', 'brokerage', 'Your Propertybase plan'],
@@ -184,7 +211,8 @@ final class Catalog
             ['icloud_calendar', 'Apple iCloud Calendar', 'calendar', 'Bookings avoid your busy times in iCloud Calendar (with an app-specific password).', 'agent', null],
         ] as [$key, $name, $category, $summary, $scope, $vendorCost]) {
             $catalog->add(new App($key, $name, $category, $summary, scope: $scope, auth: 'oauth', status: 'soon', vendorCost: $vendorCost,
-                setup: ['steps' => ['Not built yet. Its setup steps (where to register, the return address, keys and any partner agreement) appear here when it is built.']]));
+                setup: ['steps' => ['Not built yet. Its setup steps (where to register, the return address, keys and any partner agreement) appear here when it is built.'],
+                    'partner' => self::PARTNERS[$key] ?? null]));
         }
     }
 }
