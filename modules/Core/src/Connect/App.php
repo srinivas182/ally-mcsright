@@ -21,6 +21,7 @@ final readonly class App
     public const CATEGORIES = [
         'import' => 'Import and automation',
         'calendar' => 'Calendar',
+        'ai' => 'AI assistants',
         'crm' => 'CRM',
         'leads' => 'Lead sources',
         'ads' => 'Ads',

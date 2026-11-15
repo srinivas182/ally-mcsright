@@ -30,6 +30,11 @@ final class Catalog
         $catalog->add(new App('lead_email', 'Lead forwarding email', 'leads', 'Forward lead emails from Zillow, Realtor.com, Homes.com and other portals to your RightAlly address: each becomes a lead, routed and followed up.',
             auth: 'email', syncs: ['Leads in'], link: '/leads/settings'));
 
+        // AI assistants (MCP, specs/connect/03): built in, on unless HQ or the brokerage switches it off.
+        $catalog->add(new App('ai_assistants', 'AI assistants (Claude, ChatGPT, Copilot, Gemini)', 'ai',
+            'Ask your own AI assistant about your contacts, tasks, deals and calendar. It sees and changes only what you can in RightAlly.',
+            scope: 'both', auth: 'link', syncs: ['Contacts you can see', 'Your tasks and Today\'s 10', 'Your deals and key dates', 'Your open times'], link: '/apps/ai_assistants'));
+
         // One click: sign in with Google or Microsoft and approve. Ready once HQ has set up the Google and Microsoft sign-in apps.
         $catalog->add(new App('google_calendar', 'Google Calendar', 'calendar', 'Bookings from your website only offer times you are free, and land in your Google Calendar.',
             scope: 'agent', auth: 'oauth', syncs: ['Busy times (not what the events are)', 'New bookings into your calendar'],

@@ -1,6 +1,10 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
+import {
+    AiAssistantsPanel,
+    type McpPanel,
+} from '@/components/connect/ai-assistants';
 import { Monogram, type AppEntry } from '@/components/connect/monogram';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -77,12 +81,14 @@ export default function AppScreen({
     events,
     secret,
     help,
+    mcp,
 }: {
     app: App;
     connections: ConnectionRow[];
     events: Record<string, string>;
     secret: { connection: string; secret: string } | null;
     help: Help;
+    mcp: McpPanel | null;
 }) {
     const initial: Record<string, string | string[]> = {};
     app.fields.forEach((f) => {
@@ -214,6 +220,8 @@ export default function AppScreen({
                         )}
                     </section>
                 )}
+
+                {mcp && <AiAssistantsPanel mcp={mcp} />}
 
                 {app.key === 'csv_import' && (
                     <form

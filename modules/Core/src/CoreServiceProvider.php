@@ -81,6 +81,20 @@ final class CoreServiceProvider extends ServiceProvider
         $this->app->singleton(Connect\AppCatalog::class);
         $this->app->bindIf(Connect\Outbox::class, Connect\NoOutbox::class);
         $this->app->bindIf(Connect\Calendars::class, Connect\NoCalendars::class);
+        // MCP (specs/connect/03): the tools modules offer to people's AI assistants; off unless Connect allows it.
+        $this->app->singleton(Mcp\McpToolbox::class);
+        $this->app->bindIf(Mcp\McpGate::class, fn (): Mcp\McpGate => new class implements Mcp\McpGate
+        {
+            public function allowed(User $user): bool
+            {
+                return false;
+            }
+
+            public function writesAllowed(User $user): bool
+            {
+                return false;
+            }
+        });
         $this->app->bindIf(Messaging\SmsSender::class, function ($app): Messaging\SmsSender {
             $settings = $app->make(Messaging\MessagingSettings::class);
             $creds = $settings->credentials();

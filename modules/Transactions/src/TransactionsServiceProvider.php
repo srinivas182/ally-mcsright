@@ -12,6 +12,7 @@ use Modules\AI\Support\PromptRegistry;
 use Modules\Core\Access\PermissionRegistry;
 use Modules\Core\Deals\DealOutcomes;
 use Modules\Core\Identity\Enums\UserKind;
+use Modules\Core\Mcp\McpToolbox;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
 
@@ -50,6 +51,9 @@ final class TransactionsServiceProvider extends ServiceProvider
 
         $nav = $this->app->make(NavigationRegistry::class);
         // The review queue follows the same rule as the pages: owners, staff, or the review permission.
+        // Tools for people's AI assistants (MCP, specs/connect/03): the same deal access rule as the screens.
+        $this->app->make(McpToolbox::class)->add(Mcp\MyDeals::class);
+        $this->app->make(McpToolbox::class)->add(Mcp\DealDetails::class);
         Gate::define('transactions.queue', fn (User $user): bool => $user->isKind(UserKind::Owner, UserKind::Staff)
             || $user->can('transactions.review'));
         $nav->add(new NavItem('Overview', 'Deals', '/deals', 'briefcase', 25, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant], mobile: true));

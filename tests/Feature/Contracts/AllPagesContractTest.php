@@ -73,6 +73,8 @@ it('sends every brokerage page the data its component needs', function (string $
     'an app: webhooks' => ['owner', '/apps/webhooks', 'apps/show'],
     'an app: lead forwarding email' => ['owner', '/apps/lead_email', 'apps/show'],
     'an app: coming soon' => ['agent', '/apps/follow_up_boss', 'apps/show'],
+    'AI assistants (owner)' => ['owner', '/apps/ai_assistants', 'apps/show'],
+    'AI assistants (agent)' => ['agent', '/apps/ai_assistants', 'apps/show'],
 ]);
 
 it('sends record pages (a deal, a contact, a journal, an account statement) the data they need', function (): void {

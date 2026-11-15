@@ -11,6 +11,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Connect\AppRegistry;
 use Modules\Connect\Connections;
+use Modules\Connect\Mcp\AiAssistants;
 use Modules\Connect\Models\Connection;
 use Modules\Connect\Models\SyncRun;
 use Modules\Connect\Models\WebhookDelivery;
@@ -63,6 +64,8 @@ final class AppsController
             'events' => Outbox::EVENTS,
             'secret' => $request->session()->get('connect.secret'),
             'help' => self::help($a, $user),
+            'mcp' => $a->key === 'ai_assistants' ? ['address' => url('/mcp'), 'settings' => app(AiAssistants::class)->settings(),
+                'allowed' => app(AiAssistants::class)->allowed($user), 'connected' => app(AiAssistants::class)->connected($user), 'is_owner' => $user->kind === UserKind::Owner] : null,
         ]);
     }
 

@@ -3,9 +3,12 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
+use Laravel\Mcp\Facades\Mcp;
 use Modules\Connect\Http\AppsController;
 use Modules\Connect\Http\HqAppsController;
+use Modules\Connect\Http\McpConsentController;
 use Modules\Connect\Http\OAuthController;
+use Modules\Connect\Mcp\RightAllyServer;
 use Modules\Core\Http\Middleware\EnsureHqConsole;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
 
@@ -33,6 +36,14 @@ Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.apps.view'])->
     // Saving RightAlly's sign-in apps: confirm the password first.
     Route::post('hq/connect/apps/{app}', [HqAppsController::class, 'saveApp'])->where('app', '[a-z0-9_]{2,40}')->middleware('password.confirm')->name('hq.connect.app');
     Route::post('hq/connect/{provider}', [HqAppsController::class, 'saveClient'])->whereIn('provider', ['google', 'microsoft'])->middleware('password.confirm')->name('hq.connect.save');
+});
+
+// AI assistants (MCP, specs/connect/03): the server, OAuth discovery and client registration, per brokerage address.
+Mcp::web('mcp', RightAllyServer::class)->middleware(['auth:api', 'throttle:120,1']);
+Mcp::oauthRoutes();
+Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function (): void {
+    Route::post('apps/ai_assistants/settings', [McpConsentController::class, 'settings'])->name('connect.mcp.settings');
+    Route::post('apps/ai_assistants/disconnect', [McpConsentController::class, 'disconnect'])->name('connect.mcp.disconnect');
 });
 
 // The one address the sign-in services send people back to, for every brokerage (specs/connect/02).

@@ -21,6 +21,7 @@ use Modules\Transactions\Cdas;
 use Modules\Transactions\Compliance\ComplianceScan;
 use Modules\Transactions\Compliance\Findings;
 use Modules\Transactions\Deadlines\Deadlines;
+use Modules\Transactions\DealAccess;
 use Modules\Transactions\Deals;
 use Modules\Transactions\Documents;
 use Modules\Transactions\EarnestMoney;
@@ -220,7 +221,7 @@ final class DealController
     private function authorise(Request $request, Deal $deal): User
     {
         $user = self::user($request);
-        abort_unless(self::reviewer($user) || $deal->agent_user_id === self::actingFor($user), 403);
+        abort_unless(DealAccess::canSee($user, $deal), 403);
 
         return $user;
     }
@@ -277,12 +278,12 @@ final class DealController
 
     private static function actingFor(User $user): int
     {
-        return $user->kind === UserKind::Assistant && $user->assisted_user_id !== null ? $user->assisted_user_id : $user->id;
+        return DealAccess::actingFor($user);
     }
 
     private static function reviewer(User $user): bool
     {
-        return $user->isKind(UserKind::Owner, UserKind::Staff) || $user->can('transactions.review');
+        return DealAccess::reviewer($user);
     }
 
     private static function user(Request $request): User
