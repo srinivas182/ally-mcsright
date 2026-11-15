@@ -41,6 +41,7 @@ type Props = {
     forecast?: Forecast;
     atRisk: AtRiskItem[];
     alerts: AlertPrefs;
+    canBringOverFiles?: boolean;
 };
 
 const columns: [string, string][] = [
@@ -65,6 +66,7 @@ export default function Deals({
     forecast,
     atRisk,
     alerts,
+    canBringOverFiles = false,
 }: Props) {
     const params = new URLSearchParams(
         typeof window !== 'undefined' ? window.location.search : '',
@@ -90,9 +92,18 @@ export default function Deals({
                     title="Deals"
                     description="Every deal from first contact to closing."
                     actions={
-                        <Button onClick={() => setCreating(!creating)}>
-                            New deal
-                        </Button>
+                        <div className="flex flex-wrap gap-2">
+                            {canBringOverFiles && (
+                                <Button variant="outline" asChild>
+                                    <Link href="/deals/bring-over-files">
+                                        Bring over files
+                                    </Link>
+                                </Button>
+                            )}
+                            <Button onClick={() => setCreating(!creating)}>
+                                New deal
+                            </Button>
+                        </div>
                     }
                 />
                 <AtRisk items={atRisk} alerts={alerts} />

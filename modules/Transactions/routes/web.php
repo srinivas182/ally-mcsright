@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
+use Modules\Transactions\Http\BringOverFilesController;
 use Modules\Transactions\Http\ComplianceController;
 use Modules\Transactions\Http\DeadlinesController;
 use Modules\Transactions\Http\DealController;
@@ -13,6 +14,8 @@ use Modules\Transactions\Http\MoneyDeskController;
 Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoffice.minimal'])->prefix('deals')->name('deals.')->group(function (): void {
     Route::get('/', [DealController::class, 'index'])->name('index');
     Route::get('review', [DealController::class, 'queue'])->name('review');
+    Route::get('bring-over-files', [BringOverFilesController::class, 'index'])->name('files.index');
+    Route::post('bring-over-files', [BringOverFilesController::class, 'store'])->middleware('throttle:10,1')->name('files.store');
     Route::get('compliance', [ComplianceController::class, 'settings'])->name('compliance');
     Route::get('risk', [DeadlinesController::class, 'risk'])->name('risk');
     Route::get('risk.csv', [DeadlinesController::class, 'export'])->name('risk.export');

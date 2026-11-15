@@ -18,6 +18,8 @@ use Modules\Crm\Connect\Pipedrive;
 use Modules\Crm\Connect\Salesforce;
 use Modules\Crm\Connect\Sierra;
 use Modules\Transactions\Connect\Dotloop;
+use Modules\Transactions\Connect\LoneWolf;
+use Modules\Transactions\Connect\SkySlope;
 
 /**
  * The apps Connect itself offers, and the apps on the roadmap (specs/connect/00). Apps that sync a module's data are
@@ -312,6 +314,37 @@ final class Catalog
             guide: ['steps' => ['Press Connect and sign in to dotloop (a broker or admin login brings the whole office).', 'Press Allow.',
                 'Your loops start coming over straight away, with their documents. Big offices take a few hours; you can keep working meanwhile.']]));
 
+        $catalog->add(new App('skyslope', 'SkySlope', 'transactions', 'Bring every SkySlope sale and listing over as a deal, with its agent, parties, dates and commission. Changes keep coming over every hour.',
+            scope: 'brokerage', auth: 'api_key', syncs: ['Every sale and listing as a deal: address, price, status, agent', 'Buyers, sellers, title, escrow, lender and attorney', 'Contract and closing dates, office commission', 'Changes, hourly', 'Documents: from SkySlope\'s file export (Transactions → Bring over files)'],
+            fields: [['key' => 'access_key', 'label' => 'SkySlope access key', 'type' => 'text', 'secret' => true, 'help' => 'It stays encrypted. Only RightAlly\'s import uses it.'],
+                ['key' => 'access_secret', 'label' => 'SkySlope access secret', 'type' => 'text', 'secret' => true, 'help' => 'It stays encrypted and is never shown again.']],
+            driver: SkySlope::class, vendorCost: 'Your SkySlope plan',
+            setup: ['needs' => 'keys', 'fields' => [['key' => 'client_id', 'label' => 'SkySlope client ID'], ['key' => 'client_secret', 'label' => 'SkySlope client secret', 'secret' => true]],
+                'steps' => ['Ask SkySlope\'s integrations team to onboard RightAlly as an API partner. They issue a client ID and client secret.',
+                    'Paste the client ID and secret here, and save.', 'Switch SkySlope on. Each brokerage then pastes its own access key and secret.'],
+                'partner' => 'SkySlope issues API client credentials through partner onboarding (no listing fee known). Each brokerage still uses its own access key.',
+                'request' => [// address: SkySlope's integrations contact (not published)
+                    'subject' => 'API partner onboarding for RightAlly (Transaction Management API)',
+                    'body' => "Hello SkySlope team,\n\nRightAlly is an all-in-one platform for US real estate brokerages. Brokerages moving to RightAlly want to bring their SkySlope sales, listings, parties and dates over with their own access keys (read only).\n\nPlease onboard RightAlly as a Transaction Management API partner and issue a client ID and client secret.\n\nPlease send the credentials through a secure channel (not plain email).\n\nThank you,\nRightAlly HQ"],
+                'docs' => 'https://api.skyslope.com/api/docs/openid/SkySlopeApi.html'],
+            guide: ['steps' => ['In SkySlope, open My Account → Integrations, and generate an access key (a broker or admin login brings the whole brokerage).',
+                'Copy the access key and the access secret.', 'Paste both below and press Connect. Your deals start coming over straight away; big brokerages take a few hours.']]));
+        $catalog->add(new App('lone_wolf', 'Lone Wolf', 'transactions', 'Bring every Lone Wolf deal (TransactionDesk and brokerWOLF) over, with its agent, contacts, dates and price. Changes keep coming over every hour.',
+            scope: 'brokerage', auth: 'api_key', syncs: ['Every deal: address, price, status, agent', 'Client and business contacts, other-side agents', 'Offer, firm, closing and finalised dates', 'Your roster, to match agents', 'Changes, hourly', 'Documents: from Lone Wolf\'s file export (Transactions → Bring over files)'],
+            fields: [['key' => 'email', 'label' => 'Email of the RightAlly user in Lone Wolf', 'type' => 'text'],
+                ['key' => 'password', 'label' => 'That user\'s password', 'type' => 'text', 'secret' => true, 'help' => 'Use a separate, read-only Lone Wolf user made just for RightAlly, never a person\'s own login. It stays encrypted and is never shown again.']],
+            driver: LoneWolf::class, vendorCost: 'Your Lone Wolf plan',
+            setup: ['needs' => 'keys', 'fields' => [['key' => 'client_id', 'label' => 'Lone Wolf client ID']],
+                'steps' => ['Apply to become a Lone Wolf API partner (Lone Wolf partner team). They issue RightAlly a client ID for the Deals and Roster APIs.',
+                    'Paste the client ID here, and save.', 'Switch Lone Wolf on. Each brokerage then adds a read-only user for RightAlly in Lone Wolf and enters its login.'],
+                'partner' => 'Partner only: Lone Wolf must approve RightAlly as an API partner before any brokerage can connect.',
+                'request' => [// address: from Lone Wolf's partner team (not published)
+                    'subject' => 'API partner access for RightAlly (Deals and Roster APIs)',
+                    'body' => "Hello Lone Wolf partner team,\n\nRightAlly is an all-in-one platform for US real estate brokerages. Brokerages that use TransactionDesk and brokerWOLF and are moving to RightAlly want to bring their deals, contacts and roster over (read only).\n\nWe would like to become a Lone Wolf API partner and receive a client ID for the Deals and Roster APIs, plus sandbox access to test.\n\nPlease send the credentials through a secure channel (not plain email).\n\nThank you,\nRightAlly HQ"],
+                'docs' => 'https://apidocs.lwolf.com/'],
+            guide: ['steps' => ['In Lone Wolf, add a new user just for RightAlly with read-only access to deals and the roster.',
+                'Enter that user\'s email and password below and press Connect.', 'Your deals start coming over straight away; big brokerages take a few hours.']]));
+
         // On the roadmap (people can ask for them; HQ sees the demand). Some need a partner agreement first.
         foreach ([
             ['real_geeks', 'Real Geeks', 'crm', 'Bring over leads and their activity from Real Geeks.', 'both', 'Your Real Geeks plan'],
@@ -325,8 +358,6 @@ final class Catalog
             ['cloze', 'Cloze', 'crm', 'Bring over contacts, notes and relationship history from Cloze.', 'agent', 'Your Cloze plan'],
             ['nextdoor_ads', 'Nextdoor Ads', 'ads', 'Neighbourhood ads for your listings and open houses.', 'both', 'Ad spend paid to Nextdoor'],
             ['google_ads', 'Google Ads', 'ads', 'Search, display and YouTube ads for your listings and your area, created and published from RightAlly.', 'both', 'Ad spend: your Google account, or RightAlly Boost credits'],
-            ['skyslope', 'SkySlope', 'transactions', 'Bring deals, dates, parties and documents into RightAlly transactions and commissions.', 'brokerage', 'Your SkySlope plan'],
-            ['lone_wolf', 'Lone Wolf', 'transactions', 'TransactionDesk and back-office data into RightAlly transactions and commissions.', 'brokerage', 'Your Lone Wolf plan'],
             ['brokermint', 'Brokermint', 'transactions', 'Bring transactions and commission data from Brokermint.', 'brokerage', 'Your Brokermint plan'],
             ['paperless_pipeline', 'Paperless Pipeline', 'transactions', 'Bring transactions and documents from Paperless Pipeline.', 'brokerage', 'Your Paperless Pipeline plan'],
             ['open_to_close', 'Open to Close', 'transactions', 'Bring transactions, tasks and documents from Open to Close.', 'brokerage', 'Your Open to Close plan'],

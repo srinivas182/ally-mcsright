@@ -87,7 +87,7 @@ files, and keeps coming over until the brokerage switches the old app off. Nobod
 **Engine change:** a read-only webhook contract, `ReceivesWebhooks`, is split out of `TwoWay`. TwoWay adds sending
 changes back. Facebook Lead Ads and dotloop only receive.
 
-## C5a-2: SkySlope and Lone Wolf (next)
+## C5a-2: SkySlope and Lone Wolf
 
 | App                                      | Access                                                                                                                                    | What comes over                                                                                                                                                           | Limits                                                                                                                                                                                    |
 | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -98,10 +98,55 @@ changes back. Facebook Lead Ads and dotloop only receive.
 transaction, and uploads it once under **Transactions → Bring over files**. RightAlly matches each folder to the
 imported deal by address and files the PDFs into it. This is part of C5a-2.
 
+**How each one maps:**
+
+- **SkySlope:**
+    - Status: active and incomplete → pre-contract; pending → under contract; closed → closed; cancelled and expired →
+      fell through; archived → closed when it has an actual closing date, otherwise fell through.
+    - A sale made from a listing carries the listing's id. The listing and its sale stay **one deal**, and a listing
+      that is already pending or closed is left to its sale.
+    - Office gross commission is kept as the GCI.
+    - First run: users, then every sale, then every listing (10 a page, 10 pages a run). Then hourly: the bulk export of
+      files changed since the last pass. Everything again weekly.
+- **Lone Wolf:**
+    - Lone Wolf does not publish its status and class codes, so the state comes from the deal's dates:
+        - finalised, or closed on a past date with a price → closed;
+        - firm or offer date → under contract;
+        - otherwise pre-contract.
+
+        Only a status that says cancelled, collapsed, void or terminated counts as fallen through.
+
+    - Type: lease classes → lease; two ends → dual; listing classes → listing; otherwise buyer.
+    - The agent is the first commission agent, matched through the roster's email.
+    - 20 deals a run with their contacts. Then hourly, deals changed since the last pass (`modifiedTimestamp`).
+      Everything again weekly, roster included.
+    - The codes are checked in Lone Wolf's partner sandbox before go-live.
+- **Vendor requests:** neither vendor publishes a partner email address. The ready-written requests on the HQ cards
+  have no address, and HQ adds the contact it gets from each vendor.
+
+**Bring over files** (Transactions → Bring over files, for owners, staff and deal reviewers):
+
+- Upload the vendor's ZIP export (up to 500 MB). It is read in the background and deleted once read.
+- Each PDF, JPEG or PNG is filed into the deal whose street address its folder names, looking from the innermost
+  folder out. "Drive", "Street" and similar words are matched to their short forms.
+- A folder that names no deal, or two deals at the same address, is listed for the broker and never guessed.
+- Uploading again skips files already filed.
+- Limits: 20,000 files, 4 GB unpacked, 25 MB a file. Nothing is written to disk under the ZIP's own paths.
+
 **Credentials:**
 
 - SkySlope's access secret and the Lone Wolf user's password are encrypted and write-only, like every key.
 - The Lone Wolf password belongs to a dedicated integration user, never a person's own login.
+
+## Acceptance (C5a-2)
+
+- SkySlope signs in with RightAlly's client pair signed by the brokerage's access secret, and refuses a wrong key.
+- Sales and open listings come over with agent, parties, dates and office commission. A listing and its sale are one
+  deal. Then only changes arrive, hourly.
+- Lone Wolf signs in with the read-only user, matches agents through the roster, and brings deals with client and
+  business contacts and other-side agents. Then only changed deals arrive.
+- A file export ZIP files each document into the deal its folder names, keeps each file once, lists unmatched
+  folders, and is deleted once read. Only reviewers can use it.
 
 ## Acceptance (C5a-1)
 

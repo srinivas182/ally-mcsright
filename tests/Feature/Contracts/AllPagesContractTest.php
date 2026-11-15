@@ -73,6 +73,7 @@ it('sends every brokerage page the data its component needs', function (string $
     'an app: webhooks' => ['owner', '/apps/webhooks', 'apps/show'],
     'an app: lead forwarding email' => ['owner', '/apps/lead_email', 'apps/show'],
     'an app: coming soon' => ['agent', '/apps/cinc', 'apps/show'],
+    'deals: bring over files' => ['owner', '/deals/bring-over-files', 'deals/bring-over-files'],
     'ads: list' => ['agent', '/ads', 'ads/index'],
     'ads: builder' => ['agent', '/ads/new', 'ads/new'],
     'AI assistants (owner)' => ['owner', '/apps/ai_assistants', 'apps/show'],
