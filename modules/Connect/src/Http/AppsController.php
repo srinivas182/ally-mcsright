@@ -31,11 +31,13 @@ final class AppsController
     {
         $user = self::user($request);
         $mine = collect($this->connections->visible($user))->groupBy('app_key');
+        // AI assistants connect with sign-in tokens, not connections: count the person's own per AI app.
+        $ai = collect(app(AiAssistants::class)->connected($user))->where('mine', true)->countBy('app');
         $requested = $this->connections->requested();
 
         return Inertia::render('apps/index', [
             'categories' => App::CATEGORIES,
-            'apps' => array_map(fn (App $a): array => [...$a->toArray(), 'connected' => $mine->get($a->key)?->count() ?? 0,
+            'apps' => array_map(fn (App $a): array => [...$a->toArray(), 'connected' => $a->category === 'ai' ? (int) ($ai[$a->key] ?? 0) : ($mine->get($a->key)?->count() ?? 0),
                 'problem' => (bool) $mine->get($a->key)?->contains(fn (Connection $c): bool => in_array($c->status, ['error', 'needs_reconnect'], true)),
                 'can_connect' => $this->connections->ownerFor($a, $user) !== false, 'requested' => isset($requested[$a->key]), 'ready' => self::ready($a), 'status' => self::ready($a) ? 'available' : 'soon'], $this->catalog->all()),
         ]);
@@ -64,7 +66,7 @@ final class AppsController
             'events' => Outbox::EVENTS,
             'secret' => $request->session()->get('connect.secret'),
             'help' => self::help($a, $user),
-            'mcp' => $a->key === 'ai_assistants' ? ['address' => url('/mcp'), 'settings' => app(AiAssistants::class)->settings(),
+            'mcp' => $a->category === 'ai' ? ['address' => url('/mcp'), 'settings' => app(AiAssistants::class)->settings(),
                 'allowed' => app(AiAssistants::class)->allowed($user), 'connected' => app(AiAssistants::class)->connected($user), 'is_owner' => $user->kind === UserKind::Owner] : null,
         ]);
     }

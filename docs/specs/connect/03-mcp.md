@@ -129,6 +129,26 @@ Every tool extends `Core\Mcp\RightAllyTool`, so no tool can skip these checks.
       `PASSPORT_PUBLIC_KEY`;
     - HQ keeps the `ai_assistants` app on.
 
+## M1b: one tile per AI assistant (built)
+
+- Under Connect → **AI assistants** there is a tile for each app: **Claude**, **ChatGPT**, **Gemini**,
+  **Microsoft 365 Copilot**, **Perplexity**, and **Cursor and desktop apps**. A separate **AI assistant settings**
+  tile holds the owner's switches and every connected assistant.
+- **Each tile shows:**
+    - who can use it, in plain words. This is set by each AI company: for example, ChatGPT needs a paid plan with
+      Developer mode, Gemini works for US personal accounts only, and Copilot is added once by the company's IT
+      admin in Copilot Studio;
+    - big numbered steps;
+    - an **Open … settings** button that goes straight to the right page;
+    - the person's address, with Copy;
+    - **Connected ✓** with Disconnect, once linked.
+- **HQ can switch each AI app off on its own.** It is recognised by where it sends people back (claude.ai,
+  chatgpt.com and so on), and calls from a switched-off app are refused. The registration allow-list includes
+  Copilot Studio and Perplexity, plus the `cursor://` scheme.
+- **Next (M2):** listings in the Claude and ChatGPT directories for true one-click connect, with one fixed address
+  for all brokerages (`https://mcp.rightally.app`). People enter their email at sign-in and are sent to their
+  brokerage's own sign-in page.
+
 ## Sprints
 
 - **M1:**

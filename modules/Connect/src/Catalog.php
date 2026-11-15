@@ -30,10 +30,33 @@ final class Catalog
         $catalog->add(new App('lead_email', 'Lead forwarding email', 'leads', 'Forward lead emails from Zillow, Realtor.com, Homes.com and other portals to your RightAlly address: each becomes a lead, routed and followed up.',
             auth: 'email', syncs: ['Leads in'], link: '/leads/settings'));
 
-        // AI assistants (MCP, specs/connect/03): built in, on unless HQ or the brokerage switches it off.
-        $catalog->add(new App('ai_assistants', 'AI assistants (Claude, ChatGPT, Copilot, Gemini)', 'ai',
-            'Ask your own AI assistant about your contacts, tasks, deals and calendar. It sees and changes only what you can in RightAlly.',
+        // AI assistants (MCP, specs/connect/03). "ai_assistants" holds the brokerage's settings and HQ's master switch;
+        // each AI app has its own tile with its own steps, and HQ can switch each one off.
+        $catalog->add(new App('ai_assistants', 'AI assistant settings', 'ai',
+            'Who can connect an AI assistant, whether assistants may add records, and every connected assistant.',
             scope: 'both', auth: 'link', syncs: ['Contacts you can see', 'Your tasks and Today\'s 10', 'Your deals and key dates', 'Your open times'], link: '/apps/ai_assistants'));
+        $ask = 'Then ask things like "Who should I call today?" or "When does the inspection period end on 12 Oak St?"';
+        foreach ([
+            ['ai_claude', 'Claude', 'Any Claude plan (the free plan includes one custom connector).', ['claude.ai', 'claude.com'], 'https://claude.ai/settings/connectors', 'Open Claude settings', false, [
+                'Press "Open Claude settings" (or in Claude, go to Settings → Connectors).', 'Press "Add custom connector", name it RightAlly and paste your address below.',
+                'Press Connect, sign in to RightAlly and press Allow.']],
+            ['ai_chatgpt', 'ChatGPT', 'ChatGPT Plus, Pro, Business, Enterprise or Edu (not the free plan). On Business and Enterprise, an admin may need to allow connectors first.', ['chatgpt.com', 'chat.openai.com'], 'https://chatgpt.com/', 'Open ChatGPT', false, [
+                'In ChatGPT, open Settings → Apps & Connectors → Advanced settings, and turn on Developer mode.', 'Go back to Apps & Connectors and press Create. Name it RightAlly, paste your address below, and choose OAuth.',
+                'Press Create, sign in to RightAlly and press Allow. ChatGPT asks you before it makes any change.']],
+            ['ai_gemini', 'Gemini', 'The Gemini app with a personal Google account in the US (Google limits custom apps to this for now). Gemini Enterprise: your Google admin adds it.', ['gemini.google.com'], 'https://gemini.google.com/', 'Open Gemini', false, [
+                'In Gemini, open Settings → Apps (or Extensions) and choose to add an app by its address.', 'Paste your address below and continue.', 'Sign in to RightAlly and press Allow.']],
+            ['ai_copilot', 'Microsoft 365 Copilot', 'Microsoft 365 Copilot at work, added once by your IT admin in Copilot Studio (the free Copilot app cannot connect to other apps).', ['copilot.microsoft.com', 'copilotstudio.microsoft.com'], 'https://copilotstudio.microsoft.com/', 'Open Copilot Studio (admins)', true, [
+                'Your IT admin opens Copilot Studio and creates an agent (or opens your company\'s agent).', 'They add a tool → Model Context Protocol, paste the address below and choose OAuth.',
+                'Each person then signs in to RightAlly once and presses Allow.']],
+            ['ai_perplexity', 'Perplexity', 'Perplexity Pro or Max.', ['perplexity.ai', 'www.perplexity.ai'], 'https://www.perplexity.ai/', 'Open Perplexity', false, [
+                'In Perplexity, open Settings → Connectors and add a custom connector.', 'Paste your address below.', 'Sign in to RightAlly and press Allow.']],
+            ['ai_cursor', 'Cursor and desktop apps', 'Cursor, Claude Desktop and other desktop apps that accept an MCP server address.', ['localhost', '127.0.0.1'], null, null, false, [
+                'In the app\'s settings, add an MCP server.', 'Paste your address below (it connects over the web; nothing to install).', 'Sign in to RightAlly in the browser window that opens and press Allow.']],
+        ] as [$key, $name, $plans, $hosts, $url, $label, $admin, $steps]) {
+            $catalog->add(new App($key, $name, 'ai', 'Ask '.$name.' about your contacts, tasks, deals and calendar. It sees and changes only what you can in RightAlly.',
+                scope: 'both', auth: 'link', syncs: ['Contacts you can see', 'Your tasks and Today\'s 10', 'Your deals and key dates', 'Your open times'], link: '/apps/'.$key,
+                guide: ['plans' => $plans, 'steps' => [...$steps, $ask], 'open_url' => $url, 'open_label' => $label, 'hosts' => $hosts, 'admin' => $admin]));
+        }
 
         // One click: sign in with Google or Microsoft and approve. Ready once HQ has set up the Google and Microsoft sign-in apps.
         $catalog->add(new App('google_calendar', 'Google Calendar', 'calendar', 'Bookings from your website only offer times you are free, and land in your Google Calendar.',

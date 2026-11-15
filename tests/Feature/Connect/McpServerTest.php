@@ -8,6 +8,8 @@ use Illuminate\Testing\TestResponse;
 use Inertia\Testing\AssertableInertia as Assert;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
+use Laravel\Passport\AccessToken;
+use Laravel\Passport\ClientRepository;
 use Laravel\Passport\Passport;
 use Modules\Connect\AppRegistry;
 use Modules\Connect\Mcp\AiAssistants;
@@ -165,4 +167,32 @@ it('shows each person their connected assistants, and owners can switch access',
     $this->actingAs($this->ann)->post('/apps/ai_assistants/settings', ['enabled' => false, 'allow_writes' => true])->assertForbidden();
     $this->actingAs($this->owner)->post('/apps/ai_assistants/settings', ['enabled' => true, 'allow_writes' => false])->assertSessionHasNoErrors();
     expect(app(AiAssistants::class)->settings())->toBe(['enabled' => true, 'allow_writes' => false]);
+});
+
+/** Acts as the person through a real registered AI app (its client decides which tile it belongs to). */
+function mcpAs(User $user, string $redirect, array $scopes = ['mcp:use']): void
+{
+    $client = app(ClientRepository::class)->createAuthorizationCodeGrantClient('An assistant', [$redirect], false);
+    $user->withAccessToken(new AccessToken(['oauth_client_id' => (string) $client->getKey(), 'oauth_scopes' => $scopes, 'oauth_user_id' => (string) $user->id,
+        'oauth_access_token_id' => 'test']));
+    app('auth')->guard('api')->setUser($user);
+    app('auth')->shouldUse('api');
+}
+
+it('gives each AI assistant its own tile with plain steps, and lets HQ switch one off', function (): void {
+    $this->actingAs($this->ann)->get('/apps')->assertInertia(fn (Assert $p) => $p
+        ->where('apps', fn ($apps): bool => collect($apps)->where('category', 'ai')->pluck('key')->sort()->values()->all()
+            === ['ai_assistants', 'ai_chatgpt', 'ai_claude', 'ai_copilot', 'ai_cursor', 'ai_gemini', 'ai_perplexity']));
+    $this->actingAs($this->ann)->get('/apps/ai_claude')->assertInertia(fn (Assert $p) => $p->where('app.guide.open_url', 'https://claude.ai/settings/connectors')
+        ->where('app.guide.plans', fn (string $v): bool => str_contains($v, 'free plan'))->where('mcp.address', 'http://acme.rightally.app/mcp'));
+
+    app(AppRegistry::class)->save(app(AppCatalog::class)->find('ai_chatgpt'), false, [], null, $this->owner);
+    mcpAs($this->ann, 'https://chatgpt.com/connector_platform_oauth_redirect');
+    $r = $this->postJson('/mcp', ['jsonrpc' => '2.0', 'id' => 1, 'method' => 'tools/call', 'params' => ['name' => 'my_deals', 'arguments' => []]])->assertOk();
+    expect($r->json('result.content.0.text'))->toBe('Your brokerage has switched off AI assistant access.');
+
+    mcpAs($this->ann, 'https://claude.ai/api/mcp/auth_callback');
+    $r = $this->postJson('/mcp', ['jsonrpc' => '2.0', 'id' => 1, 'method' => 'tools/call', 'params' => ['name' => 'my_deals', 'arguments' => []]])->assertOk();
+    expect($r->json('result.isError'))->toBeFalsy();
+    $this->actingAs($this->ann)->get('/apps/ai_chatgpt')->assertInertia(fn (Assert $p) => $p->where('app.status', 'soon'));
 });

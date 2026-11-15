@@ -36,7 +36,8 @@ final class ConnectServiceProvider extends ServiceProvider
         config(['passport.connection' => config('core.connections.cell'), 'passport.guard' => 'web']);
         // Only these AI apps may register (and localhost, for desktop apps); HQ can add more in config.
         config(['mcp.redirect_domains' => config('connect.mcp_redirect_domains', ['https://claude.ai', 'https://claude.com', 'https://chatgpt.com', 'https://chat.openai.com',
-            'https://copilot.microsoft.com', 'https://gemini.google.com', 'http://localhost', 'http://127.0.0.1'])]);
+            'https://copilot.microsoft.com', 'https://copilotstudio.microsoft.com', 'https://gemini.google.com', 'https://www.perplexity.ai', 'https://perplexity.ai',
+            'http://localhost', 'http://127.0.0.1']), 'mcp.custom_schemes' => ['cursor']]);
     }
 
     public function boot(): void
