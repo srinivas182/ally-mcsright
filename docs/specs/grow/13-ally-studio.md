@@ -1,6 +1,6 @@
 # Grow 13 — Ally Studio: your AI social team
 
-Sprints **SA1a, SA1b, SA2, SA3, SA4, SA5** (Team A with D). Builds on social posting (specs/connect/19, C7d-1),
+Sprints **SA1a, SA1b, SA2a, SA2b, SA3, SA4, SA5** (Team A with D). Builds on social posting (specs/connect/19, C7d-1),
 paid apps (specs/connect/14) and RightAlly Credits. Runs before C7d-2 (Google Ads and YouTube ads).
 
 **Promise:** a marketing agency for an agent or a brokerage, for the price of a plan. Every post looks designed
@@ -108,14 +108,15 @@ monthly renewal, cancel at month end, "included in package X"):
 
 ## Sprints
 
-| Sprint   | What                                                                                                                                                    |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **SA1a** | Packages (three add-ons), allowances and usage, extra-item credits, HQ cost and margin, brand kit with automatic headshot cut-out, brokerage brand lock |
-| **SA1b** | Render workers, the four collections and their layouts in three sizes, AI art director, the studio page, download and post                              |
-| **SA2**  | Moments, launch campaign, captions (voice, Spanish, hashtags), calendar, Approve first and Autopilot, broker rules, recruiting                          |
-| **SA3**  | Reels, Shorts and tours, music library, YouTube app                                                                                                     |
-| **SA4**  | Results, Studio report, learning                                                                                                                        |
-| **SA5**  | Photo enhancement, voice narration, comment and message replies                                                                                         |
+| Sprint   | What                                                                                                                                                                                                                                                                                      |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **SA1a** | Packages (three add-ons), allowances and usage, extra-item credits, HQ cost and margin, brand kit with automatic headshot cut-out, brokerage brand lock                                                                                                                                   |
+| **SA1b** | Render workers, the four collections and their layouts in three sizes, AI art director, the studio page, download and post                                                                                                                                                                |
+| **SA2a** | Autopilot: listing moments (new, coming soon, price improvement, under contract, sold), weekly market update, holidays; AI captions (Spanish, hashtags, Fair Housing); good times; Approve first and Autopilot; daily brief; Your AI Assistant skills `studio_posts` and `studio_approve` |
+| **SA2b** | Calendar (drag to move), listing launch campaign, captions in the agent's voice, closings, reviews, milestones and recruiting moments, broker approval rules                                                                                                                              |
+| **SA3**  | Reels, Shorts and tours, music library, YouTube app                                                                                                                                                                                                                                       |
+| **SA4**  | Results, Studio report, learning                                                                                                                                                                                                                                                          |
+| **SA5**  | Photo enhancement, voice narration, comment and message replies                                                                                                                                                                                                                           |
 
 ## For HQ (before go-live)
 

@@ -200,8 +200,9 @@ final class Designer
     public function url(Design $design, string $size): ?string
     {
         $path = $design->files[$size] ?? null;
+        $cdn = config('listings.cdn_url');
 
-        return $path !== null ? Storage::disk('public')->url($path) : null;
+        return $path === null ? null : (is_string($cdn) && $cdn !== '' ? rtrim($cdn, '/').'/'.$path : Storage::disk('public')->url($path));
     }
 
     /** A plain caption to start from (Studio's AI captions arrive with Autopilot, SA2). */
