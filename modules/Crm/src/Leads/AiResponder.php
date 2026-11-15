@@ -91,19 +91,28 @@ final class AiResponder
         app(AuditLogger::class)->record('crm.ai_responder.saved', metadata: ['enabled' => (bool) ($in['enabled'] ?? false), 'max_messages' => $max], severity: 'notice');
     }
 
-    /** A new lead was routed: queue the first reply (the job runs within seconds). */
-    public function leadReceived(Lead $lead): void
+    /**
+     * A new lead was routed: queue the first reply (the job runs within seconds).
+     *
+     * $handoff (from the website assistant, specs/websites/14): skip (they booked a time, the booking confirms it),
+     * origin "website_chat" (the first text picks up the chat) and assistant (the name they were chatting with).
+     *
+     * @param  array{skip?: bool, origin?: string, assistant?: string}  $handoff
+     */
+    public function leadReceived(Lead $lead, array $handoff = []): void
     {
         $s = $this->settings();
         $contact = $lead->contact;
-        if (! $s['enabled'] || $contact === null || ! $lead->new_contact || $lead->status === 'pond' || $lead->source === 'sign') {
+        if (($handoff['skip'] ?? false) || ! $s['enabled'] || $contact === null || ! $lead->new_contact || $lead->status === 'pond' || $lead->source === 'sign') {
             return; // returning contacts have a relationship with their agent: a person answers
         }
         $source = $lead->source_id !== null ? LeadSource::query()->find($lead->source_id) : null;
         if ($s['sources'] !== null && ($source === null || ! in_array($source->ulid, $s['sources'], true))) {
             return;
         }
-        AiThread::query()->firstOrCreate(['lead_id' => $lead->id], ['contact_id' => $contact->id, 'status' => 'active']);
+        $name = mb_substr(trim(strip_tags((string) ($handoff['assistant'] ?? ''))), 0, 40);
+        AiThread::query()->firstOrCreate(['lead_id' => $lead->id], ['contact_id' => $contact->id, 'status' => 'active',
+            'origin' => ($handoff['origin'] ?? null) === 'website_chat' ? 'website_chat' : null, 'assistant_name' => $name !== '' ? $name : null]);
         RespondToLead::dispatch($lead->id);
     }
 
@@ -136,6 +145,7 @@ final class AiResponder
             return;
         }
         $s = $this->settings();
+        $s['assistant_name'] = $thread->assistant_name ?? $s['assistant_name'];
         $lead = $thread->lead;
         $contact = $thread->contact->refresh();
         $agent = $lead->assigned_user_id !== null ? User::query()->find($lead->assigned_user_id) : ($contact->owner_user_id !== null ? User::query()->find($contact->owner_user_id) : null);
@@ -173,6 +183,7 @@ final class AiResponder
             $result = app(AiGateway::class)->run(new AiTask(self::FEATURE, 'crm.ai_responder', 'crm-ai-responder:'.$thread->ulid.':'.$thread->messages_sent.':'.Message::query()->where('contact_id', $contact->id)->count(),
                 inputs: ['assistant' => $s['assistant_name'], 'agent' => $agent->first_name ?? 'our team', 'brokerage' => $this->tenants->current()->name,
                     'tone' => $s['tone'], 'channel' => $channel === 'sms' ? 'text message' : 'email', 'first_message' => $thread->messages_sent === 0 ? 'yes' : 'no',
+                    'continuing' => $thread->origin === 'website_chat' ? 'yes: they were just chatting with you on the website (their inquiry holds the chat); pick up where it left off' : 'no',
                     'first_name' => $contact->first_name, 'interest' => SpeedToLead::summary($lead), 'known' => (string) json_encode($thread->qualification ?? []),
                     'facts' => $s['knowledge'] !== '' ? $s['knowledge'] : 'none provided'],
                 untrustedContent: $history !== [] ? $history : ['(they have not written yet; their inquiry: '.($lead->message ?? 'none').')'],
@@ -264,7 +275,9 @@ final class AiResponder
     private function disclose(string $reply, AiThread $thread, string $name, ?User $agent, string $channel): string
     {
         if ($thread->messages_sent === 0 && stripos($reply, 'AI') === false && stripos($reply, 'assistant') === false) {
-            $reply = "Hi, this is {$name}, ".($agent !== null ? "{$agent->first_name}'s" : 'the').' AI assistant at '.$this->tenants->current()->name.'. '.$reply;
+            $reply = $thread->origin === 'website_chat'
+                ? "Hi, it's {$name}, the AI assistant from the ".$this->tenants->current()->name.' website chat. '.$reply
+                : "Hi, this is {$name}, ".($agent !== null ? "{$agent->first_name}'s" : 'the').' AI assistant at '.$this->tenants->current()->name.'. '.$reply;
         }
 
         return mb_substr($reply, 0, $channel === 'sms' ? 480 : 4000);

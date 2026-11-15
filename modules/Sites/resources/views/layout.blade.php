@@ -139,7 +139,7 @@ document.querySelectorAll('form[data-lead]').forEach(function(f){f.first_referre
     </section>
     <button type="button" class="ailly-open" data-ailly-open aria-expanded="false"><span class="ailly-face" data-ailly-face></span><span>{{ $ally['name'] }}</span></button>
 </div>
-<script src="/site-assets/ailly.js?v=3" defer></script>
+<script src="/site-assets/ailly.js?v=4" defer></script>
 @endif
 @stack('scripts')
 </body>
