@@ -19,6 +19,10 @@ use Modules\Core\Tenancy\Concerns\BelongsToTenant;
  * @property string $action
  * @property string $method
  * @property string|null $consent_text
+ * @property string|null $source
+ * @property string|null $source_ref
+ * @property string|null $evidence
+ * @property string|null $evidence_sha256
  * @property string|null $phone
  * @property string|null $ip
  * @property string|null $user_agent
@@ -33,7 +37,7 @@ final class ConsentEvent extends Model
 
     protected $table = 'crm_consent_events';
 
-    protected $fillable = ['contact_id', 'channel', 'action', 'method', 'consent_text', 'phone', 'ip', 'user_agent', 'user_id', 'occurred_at'];
+    protected $fillable = ['contact_id', 'channel', 'action', 'method', 'consent_text', 'source', 'source_ref', 'evidence', 'evidence_sha256', 'phone', 'ip', 'user_agent', 'user_id', 'occurred_at'];
 
     public function getConnectionName(): ?string
     {

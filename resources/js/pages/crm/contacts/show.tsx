@@ -58,11 +58,15 @@ type Contact = {
         do_not_call: boolean;
         sms_method: string | null;
         auto_text_allowed: boolean;
+        status: 'yes' | 'verbal' | 'no' | 'unknown';
+        report: string | null;
         default_wording: string;
         history: {
             channel: string;
             action: string;
             method: string;
+            source: string | null;
+            source_ref: string | null;
             occurred_at: string;
         }[];
     };
@@ -465,10 +469,24 @@ function ConsentPanel({
             <p className="font-medium">Consent</p>
             <p>
                 Texting:{' '}
-                {consent.sms
-                    ? `yes (${(consent.sms_method ?? '').replace('_', ' ')}${consent.auto_text_allowed ? ', automated texts allowed' : ', manual texts only'})`
-                    : 'not given'}
+                {consent.status === 'yes'
+                    ? `yes, written with proof${consent.auto_text_allowed ? ', automated texts allowed' : ''}`
+                    : consent.status === 'verbal'
+                      ? 'verbal only (manual texts only)'
+                      : consent.status === 'no'
+                        ? 'opted out'
+                        : 'unknown (never given here)'}
             </p>
+            {consent.report && (
+                <a
+                    href={consent.report}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-sm underline"
+                >
+                    Consent report (print or CSV)
+                </a>
+            )}
             <div className="flex flex-wrap gap-2">
                 {consent.sms ? (
                     <Button
@@ -526,7 +544,8 @@ function ConsentPanel({
                             <li key={h.occurred_at + h.channel + h.action}>
                                 {new Date(h.occurred_at).toLocaleString()} ·{' '}
                                 {h.channel} {h.action.replace('_', ' ')} (
-                                {h.method.replace('_', ' ')})
+                                {(h.source ?? h.method).replaceAll('_', ' ')}
+                                {h.source_ref ? `: ${h.source_ref}` : ''})
                             </li>
                         ))}
                     </ul>

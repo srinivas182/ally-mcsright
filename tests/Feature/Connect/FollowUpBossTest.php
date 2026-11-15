@@ -16,7 +16,9 @@ use Modules\Connect\Models\SyncRun;
 use Modules\Connect\SyncRunner;
 use Modules\Core\Connect\AppCatalog;
 use Modules\Crm\Actions\ManageContacts;
+use Modules\Crm\Consent;
 use Modules\Crm\Models\Activity;
+use Modules\Crm\Models\ConsentEvent;
 use Modules\Crm\Models\Contact;
 
 /* Sprint C2a: Follow Up Boss — connect in one click, and people, tags, stages, agents and notes come over. */
@@ -141,4 +143,17 @@ it('carries on later when Follow Up Boss asks to slow down, and asks to reconnec
 it('cannot be connected while HQ has Follow Up Boss switched off', function (): void {
     app(AppRegistry::class)->save(app(AppCatalog::class)->find('follow_up_boss'), false, [], null, User::factory()->make(['id' => 999999]));
     $this->actingAs($this->owner)->post('/apps/follow_up_boss/oauth')->assertSessionHasErrors('app');
+});
+
+it('carries an opt-out over: a "Do not text" or "DNC" tag in Follow Up Boss stops texts and calls here (specs/grow/11)', function (): void {
+    $sam = app(ManageContacts::class)->create(['first_name' => 'Sam', 'last_name' => 'Known', 'email' => 'sam@x.test', 'phone' => '3125550102'], $this->owner);
+    app(Consent::class)->optInSms($sam, 'web_form', Consent::DEFAULT_SMS_WORDING);
+    fubConnect($this->owner, [
+        'api.followupboss.com/v1/people*' => Http::response(['people' => [fubPerson(2, 'Sam', 'sam@x.test', ['tags' => ['Buyer', 'DNC']]),
+            fubPerson(3, 'Ula', 'ula@x.test', ['tags' => ['Unsubscribed']])], '_metadata' => []]),
+    ])->assertRedirect('/apps/follow_up_boss');
+    $sam->refresh();
+    expect($sam->sms_opt_in)->toBeFalse()->and($sam->do_not_call)->toBeTrue()->and(app(Consent::class)->canAutoText($sam))->toBeFalse()
+        ->and(ConsentEvent::query()->where('contact_id', $sam->id)->where('action', 'opt_out')->pluck('source_ref', 'channel')->all())->toEqual(['sms' => 'Follow Up Boss', 'call' => 'Follow Up Boss'])
+        ->and(ConsentEvent::query()->where('contact_id', Contact::query()->where('first_name', 'Ula')->value('id'))->where('channel', 'email')->value('action'))->toBe('opt_out');
 });
