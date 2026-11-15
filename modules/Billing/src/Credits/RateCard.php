@@ -47,6 +47,7 @@ final class RateCard
         'mail.postcards' => [1, false, 'Postcards, printed and mailed (keep at 1: the quantity is the credits)'],
         'apps.addon' => [1, false, 'Paid app add-on, a month (keep at 1: the quantity is the credits)'],
         // Ally Studio beyond a Studio package's monthly allowance (specs/grow/13).
+        'ai.studio_caption' => [0, true, 'Ally Studio caption (included in each post)'],
         'studio.post' => [10, false, 'Ally Studio designed post beyond the allowance'],
         'studio.reel' => [60, false, 'Ally Studio Reel or Short beyond the allowance'],
         'studio.tour' => [120, false, 'Ally Studio YouTube listing tour beyond the allowance'],

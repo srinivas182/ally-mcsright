@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use Modules\Ads\Http\AdsController;
+use Modules\Ads\Http\AutopilotController;
 use Modules\Ads\Http\HqStudioController;
 use Modules\Ads\Http\SocialController;
 use Modules\Ads\Http\StudioController;
@@ -36,6 +37,10 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('studio
     Route::get('create', [StudioController::class, 'create'])->name('create');
     Route::post('designs', [StudioController::class, 'makeDesigns'])->middleware('throttle:10,1')->name('designs.store');
     Route::get('designs/{design}/download', [StudioController::class, 'download'])->where('design', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('designs.download');
+    Route::get('autopilot', [AutopilotController::class, 'index'])->name('autopilot');
+    Route::post('autopilot', [AutopilotController::class, 'save'])->name('autopilot.save');
+    Route::post('autopilot/{item}/approve', [AutopilotController::class, 'approve'])->where('item', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('autopilot.approve');
+    Route::post('autopilot/{item}/skip', [AutopilotController::class, 'skip'])->where('item', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('autopilot.skip');
     Route::post('designs/{design}/post', [StudioController::class, 'post'])->where('design', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('designs.post');
 });
 Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.tenants.manage'])->prefix('hq/studio')->name('hq.studio.')->group(function (): void {

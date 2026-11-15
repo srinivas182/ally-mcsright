@@ -52,6 +52,7 @@ Schedule::command('connect:sync')->everyFifteenMinutes()->withoutOverlapping()->
 Schedule::command('connect:renew-addons')->hourly()->withoutOverlapping()->onOneServer();
 Schedule::command('ads:refresh-boosts')->hourly()->withoutOverlapping()->onOneServer();
 Schedule::command('ads:social-posts')->everyMinute()->withoutOverlapping()->onOneServer();
+Schedule::command('ads:studio-autopilot')->hourlyAt(11)->withoutOverlapping()->onOneServer();
 Schedule::command('ai:assistant-prune')->dailyAt('03:41')->onOneServer();
 Schedule::command('core:daily-briefs')->hourlyAt(2)->weekdays()->withoutOverlapping()->onOneServer();
 Schedule::command('crm:fair-housing-pack')->monthlyOn(1, '08:17')->onOneServer();
