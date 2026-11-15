@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Modules\AI\Contracts\CreditMeter;
 use Modules\Billing\Http\RequireFeature;
+use Modules\Core\Brief\DailyBriefs;
 use Modules\Core\Credits\CreditSpend;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Messaging\SmsSender;
@@ -48,6 +49,7 @@ final class BillingServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        Brief\CreditsBriefItems::register($this->app->make(DailyBriefs::class));
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
         $this->app->make(Router::class)->aliasMiddleware('feature', RequireFeature::class);

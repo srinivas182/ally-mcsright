@@ -10,6 +10,7 @@ use Illuminate\Support\ServiceProvider;
 use Modules\AI\FeatureCatalog;
 use Modules\AI\Support\PromptRegistry;
 use Modules\Core\Access\PermissionRegistry;
+use Modules\Core\Brief\DailyBriefs;
 use Modules\Core\Deals\DealOutcomes;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Mcp\McpToolbox;
@@ -29,6 +30,7 @@ final class TransactionsServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        Brief\DealBriefItems::register($this->app->make(DailyBriefs::class));
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
         // DocIQ: prompts live with the module; features are declared for ai:sync-features.

@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Modules\Core\Access\PermissionRegistry;
+use Modules\Core\Brief\DailyBriefs;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
@@ -29,6 +30,7 @@ final class PayoutsServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        Brief\MoneyBriefItems::register($this->app->make(DailyBriefs::class));
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
 

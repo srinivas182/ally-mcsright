@@ -1,10 +1,21 @@
 import { Head } from '@inertiajs/react';
 
-import { EmptyState } from '@/components/ui/empty-state';
+import { type BriefItem, DailyBrief } from '@/components/brief/daily-brief';
 
-type Props = { firstName: string; assisting: string | null };
+type Props = {
+    firstName: string;
+    assisting: string | null;
+    brief: BriefItem[];
+    briefEmail: boolean;
+};
 
-export default function AgentHome({ firstName, assisting }: Props) {
+/** Agents' (and their assistants') home: the daily brief (specs/core/09). */
+export default function AgentHome({
+    firstName,
+    assisting,
+    brief,
+    briefEmail,
+}: Props) {
     return (
         <>
             <Head title="Today" />
@@ -19,10 +30,7 @@ export default function AgentHome({ firstName, assisting }: Props) {
                         </p>
                     )}
                 </header>
-                <EmptyState
-                    title="Your day starts here"
-                    description="Your daily game plan, deals and leads will appear on this page as RightAlly's modules switch on."
-                />
+                <DailyBrief items={brief} email={briefEmail} />
             </div>
         </>
     );

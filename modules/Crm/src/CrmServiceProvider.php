@@ -13,6 +13,7 @@ use Modules\AI\FeatureCatalog;
 use Modules\AI\Models\AiBatch;
 use Modules\AI\Support\PromptRegistry;
 use Modules\Core\Access\PermissionRegistry;
+use Modules\Core\Brief\DailyBriefs;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Mcp\McpToolbox;
 use Modules\Core\Navigation\NavigationRegistry;
@@ -104,6 +105,7 @@ final class CrmServiceProvider extends ServiceProvider
             $this->app->make(McpToolbox::class)->add($tool);
         }
         Mcp\CrmBrief::register($this->app->make(McpToolbox::class));
+        Brief\CrmBriefItems::register($this->app->make(DailyBriefs::class));
 
         // Connected apps hear about company contacts, stage changes and completed tasks (specs/connect/01).
         Event::listen(ContactCreated::class, fn (ContactCreated $e) => CrmEvents::contactCreated($e->contactId));

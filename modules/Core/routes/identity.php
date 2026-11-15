@@ -8,8 +8,8 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\ValidationException;
 use Modules\Core\Access\AccessController;
 use Modules\Core\Audit\AuditController;
+use Modules\Core\Brief\BriefController;
 use Modules\Core\Identity\EmailChange;
-use Modules\Core\Identity\Http\Controllers\AgentHomeController;
 use Modules\Core\Identity\Http\Controllers\ImpersonationController;
 use Modules\Core\Identity\Http\Controllers\InvitationController;
 use Modules\Core\Identity\Http\Controllers\SignInSecurityController;
@@ -36,7 +36,8 @@ Route::middleware(['web', EnsureTenantHost::class, 'auth'])->group(function (): 
     Route::post('users/{user}/security-reset', [UserController::class, 'resetSecurity'])->name('users.security-reset');
     Route::post('users/{user}/sign-out-everywhere', [UserController::class, 'signOutEverywhere'])->name('users.sign-out-everywhere');
 
-    Route::get('agent', AgentHomeController::class)->name('agent.home');
+    Route::get('agent', [BriefController::class, 'agent'])->name('agent.home');
+    Route::post('brief/email', [BriefController::class, 'email'])->name('brief.email');
 
     Route::get('users', [UserController::class, 'index'])->name('users.index');
     Route::post('users/invitations', [UserController::class, 'invite'])->name('users.invite');

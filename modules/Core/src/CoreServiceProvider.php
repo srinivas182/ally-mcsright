@@ -83,6 +83,7 @@ final class CoreServiceProvider extends ServiceProvider
         $this->app->bindIf(Connect\Calendars::class, Connect\NoCalendars::class);
         // MCP (specs/connect/03): the tools modules offer to people's AI assistants; off unless Connect allows it.
         $this->app->singleton(Mcp\McpToolbox::class);
+        $this->app->singleton(Brief\DailyBriefs::class);
         $this->app->bindIf(Mcp\McpGate::class, fn (): Mcp\McpGate => new class implements Mcp\McpGate
         {
             public function allowed(User $user): bool
@@ -136,7 +137,7 @@ final class CoreServiceProvider extends ServiceProvider
         $this->registerMigrationMacros();
 
         if ($this->app->runningInConsole()) {
-            $this->commands([CompileDesignTokens::class, RunTenantLifecycle::class, BootstrapHq::class, Console\FlushAudit::class, Console\VerifyAudit::class, Console\AuditMaintenance::class, Console\ExpireAccess::class, Console\RebuildDirectory::class]);
+            $this->commands([CompileDesignTokens::class, RunTenantLifecycle::class, BootstrapHq::class, Console\FlushAudit::class, Console\VerifyAudit::class, Console\AuditMaintenance::class, Console\ExpireAccess::class, Console\RebuildDirectory::class, Console\SendDailyBriefs::class]);
         }
     }
 
