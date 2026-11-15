@@ -19,6 +19,7 @@ use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Sites\Ailly\AillySettings;
 use Modules\Sites\Ailly\Assistant;
+use Modules\Sites\Content\MediaLibrary;
 use Modules\Sites\Models\Site;
 use Modules\Sites\Rendering\SiteContext;
 use Modules\Sites\Visitors\SiteLeads;
@@ -70,7 +71,7 @@ final class AillyController
     }
 
     /** Settings → AIlly: switch it on, its name and greeting, when it asks for contact details, and limits. */
-    public function settings(Request $request, TenantContext $tenants): Response
+    public function settings(Request $request, TenantContext $tenants, MediaLibrary $media): Response
     {
         self::manager($request);
         $site = Site::query()->where('kind', 'brokerage')->first();
@@ -82,6 +83,9 @@ final class AillyController
         return Inertia::render('settings/ailly', [
             'site' => $site !== null ? ['live' => $site->status === 'live', 'name' => $site->displayName()] : null,
             'settings' => AillySettings::for($site),
+            'photo_url' => $site !== null ? AillySettings::persona($site, $site)['photo'] : null,
+            'site_ulid' => $site?->ulid,
+            'media' => $site !== null ? PageEditorController::mediaList($site, $media) : [],
             'month' => ['conversations' => (clone $month)->count(), 'leads' => (clone $month)->where('outcome', '!=', 'none')->count(),
                 'calls' => (clone $month)->where('outcome', 'call')->count(), 'answers' => (int) (clone $month)->sum('ai_replies'),
                 'free_answers' => (int) (clone $month)->sum('cached_replies')],
@@ -95,7 +99,8 @@ final class AillyController
     public function save(Request $request): RedirectResponse
     {
         $user = self::manager($request);
-        $data = $request->validate(['enabled' => ['required', 'boolean'], 'name' => ['required', 'string', 'max:30'], 'greeting' => ['nullable', 'string', 'max:240'],
+        $data = $request->validate(['enabled' => ['required', 'boolean'], 'name' => ['required', 'string', 'max:30'], 'photo' => ['nullable', 'string', 'size:26'],
+            'greeting' => ['nullable', 'string', 'max:240'],
             'gate' => ['required', 'in:before,after,booking'], 'gate_after' => ['required', 'integer', 'min:1', 'max:10'],
             'visitor_daily' => ['required', 'integer', 'min:5', 'max:100'], 'daily_cap' => ['required', 'integer', 'min:10', 'max:10000']]);
         $site = Site::query()->where('kind', 'brokerage')->first() ?? throw ValidationException::withMessages(['enabled' => 'Set up your website first.']);

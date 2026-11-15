@@ -15,6 +15,15 @@
     var form = root.querySelector('[data-ailly-form]');
     var input = form.querySelector('input[name="message"]');
     var closeBtn = root.querySelector('[data-ailly-close]');
+    var avatar = root.querySelector('[data-ailly-avatar]');
+    function face() {
+        return avatar && avatar.content.firstElementChild
+            ? avatar.content.firstElementChild.cloneNode(true)
+            : el('span');
+    }
+    root.querySelectorAll('[data-ailly-face]').forEach(function (slot) {
+        slot.appendChild(face());
+    });
     var state = { id: null, items: [] };
     try {
         state =
@@ -69,7 +78,16 @@
         if (item.role === 'contact')
             return log.appendChild(contactForm(item.want, item.listing));
         var b = el('div', 'ailly-msg ailly-' + item.role);
-        b.appendChild(el('p', null, item.text));
+        if (item.role === 'ailly') {
+            var row0 = el('div', 'ailly-line');
+            var f = el('span', 'ailly-face');
+            f.appendChild(face());
+            row0.appendChild(f);
+            row0.appendChild(el('p', null, item.text));
+            b.appendChild(row0);
+        } else {
+            b.appendChild(el('p', null, item.text));
+        }
         (item.homes || []).forEach(function (h) {
             var card = el('div', 'ailly-home');
             var a = el('a');

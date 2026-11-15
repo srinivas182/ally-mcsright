@@ -122,9 +122,11 @@ document.querySelectorAll('form[data-lead]').forEach(function(f){f.first_referre
 </script>
 <script src="/site-assets/visitor.js?v=1" defer></script>
 @if (! empty($chrome['ailly']))
-<div class="ailly" data-ailly="{{ $chrome['ailly'] }}" data-consent="{{ $chrome['consent'] }}">
-    <section class="ailly-panel" data-ailly-panel role="dialog" aria-label="Chat with {{ $chrome['ailly'] }}" hidden>
-        <header class="ailly-head"><strong>{{ $chrome['ailly'] }}</strong> <span>AI assistant · an agent can take over any time</span>
+@php($ally = $chrome['ailly'])
+<div class="ailly" data-ailly="{{ $ally['name'] }}" data-consent="{{ $chrome['consent'] }}">
+    <template data-ailly-avatar>@if ($ally['photo'])<img class="ailly-avatar" src="{{ $ally['photo'] }}" alt="" width="32" height="32">@else<svg class="ailly-avatar" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><circle cx="32" cy="32" r="32" fill="var(--brand)"/><path d="M16 31 32 18l16 13" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 29v15h22V29" fill="none" stroke="#fff" stroke-width="4" stroke-linejoin="round"/><rect x="26" y="33" width="12" height="7" rx="3.5" fill="#fff"/><circle cx="29.5" cy="36.5" r="1.3" fill="var(--brand)"/><circle cx="34.5" cy="36.5" r="1.3" fill="var(--brand)"/></svg>@endif</template>
+    <section class="ailly-panel" data-ailly-panel role="dialog" aria-label="Chat with {{ $ally['name'] }}" hidden>
+        <header class="ailly-head"><span class="ailly-face" data-ailly-face></span><span class="ailly-who"><strong>{{ $ally['name'] }}</strong> <span>AI assistant · an agent can take over any time</span></span>
             <button type="button" class="ailly-x" data-ailly-close aria-label="Close chat">&times;</button></header>
         <div class="ailly-log" data-ailly-log aria-live="polite"></div>
         <form class="ailly-form" data-ailly-form>
@@ -135,9 +137,9 @@ document.querySelectorAll('form[data-lead]').forEach(function(f){f.first_referre
         </form>
         <p class="ailly-note">Answers are AI-generated and may be wrong. Don't share financial details here.</p>
     </section>
-    <button type="button" class="ailly-open btn btn-primary" data-ailly-open aria-expanded="false">Chat with {{ $chrome['ailly'] }}</button>
+    <button type="button" class="ailly-open" data-ailly-open aria-expanded="false"><span class="ailly-face" data-ailly-face></span><span>{{ $ally['name'] }}</span></button>
 </div>
-<script src="/site-assets/ailly.js?v=1" defer></script>
+<script src="/site-assets/ailly.js?v=2" defer></script>
 @endif
 @stack('scripts')
 </body>

@@ -30,6 +30,12 @@ type Site = {
         licence: { state: string | null; number: string } | null;
         mls_ids: string[];
     };
+    ailly: {
+        name: string;
+        photo: string | null;
+        default_name: string;
+        enabled: boolean;
+    };
 };
 type Props = {
     available: boolean;
@@ -126,6 +132,8 @@ function Manage({
         areas: str(site.info.areas),
         languages: str(site.info.languages),
         photo: (site.info.photo as string | null) ?? null,
+        ailly_name: site.ailly.name,
+        ailly_photo: site.ailly.photo,
         template: site.template,
         brand: {
             primary: str(site.brand.primary) || '#1d4ed8',
@@ -355,6 +363,35 @@ function Manage({
                           '.'
                         : ' Add your MLS ID in your roster profile to show your listings.'}
                 </p>
+                {site.ailly.enabled && (
+                    <fieldset className="grid gap-3 rounded-md border p-3">
+                        <legend className="px-1 font-medium">
+                            Your website assistant
+                        </legend>
+                        <p className="text-muted-foreground">
+                            The chat on your website. Give it your own name and
+                            photo (for example "Ask Jane"), or leave them empty
+                            to use the brokerage's ({site.ailly.default_name}).
+                        </p>
+                        <Input
+                            aria-label="Assistant name"
+                            maxLength={30}
+                            placeholder={site.ailly.default_name}
+                            value={form.data.ailly_name}
+                            onChange={(e) =>
+                                form.setData('ailly_name', e.target.value)
+                            }
+                        />
+                        <MediaPicker
+                            label="Assistant photo"
+                            value={form.data.ailly_photo}
+                            media={media}
+                            site={site.ulid}
+                            onChange={(v) => form.setData('ailly_photo', v)}
+                            onUploaded={(m) => setMedia([m, ...media])}
+                        />
+                    </fieldset>
+                )}
                 {Object.values(form.errors).map((m) => (
                     <p key={m} className="text-destructive">
                         {m}

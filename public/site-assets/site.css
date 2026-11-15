@@ -1687,8 +1687,45 @@ h3 {
     gap: 0.75rem;
 }
 .ailly-open {
-    box-shadow: var(--shadow);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.4rem 1rem 0.4rem 0.4rem;
+    border: 0;
     border-radius: 999px;
+    background: var(--brand);
+    color: #fff;
+    font: 600 0.95rem/1 var(--font-body);
+    box-shadow: var(--shadow);
+    cursor: pointer;
+}
+.ailly-face {
+    display: inline-flex;
+    flex: none;
+}
+.ailly-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: var(--bg);
+}
+.ailly-open .ailly-avatar {
+    box-shadow: 0 0 0 2px #fff;
+}
+.ailly-who {
+    display: grid;
+    flex: 1;
+    line-height: 1.25;
+}
+.ailly-line {
+    display: flex;
+    gap: 0.45rem;
+    align-items: flex-end;
+}
+.ailly-line .ailly-avatar {
+    width: 26px;
+    height: 26px;
 }
 .ailly-panel {
     width: min(380px, calc(100vw - 2rem));
@@ -1713,9 +1750,9 @@ h3 {
     border-bottom: 1px solid var(--line);
     font-size: 0.85rem;
 }
-.ailly-head span {
+.ailly-who span {
     color: var(--muted);
-    flex: 1;
+    font-size: 0.78rem;
 }
 .ailly-x {
     background: none;

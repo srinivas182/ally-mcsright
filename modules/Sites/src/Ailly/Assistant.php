@@ -77,10 +77,11 @@ final class Assistant
         DB::connection(Connections::cell())->table('ailly_conversations')->insert(['ulid' => $ulid, 'tenant_id' => $this->tenants->id(), 'site_id' => $site->id,
             'visitor_id' => $visitor?->id, 'page' => mb_substr((string) $request->input('page', ''), 0, 300), 'ip_hash' => hash('sha256', (string) $request->ip().config('app.key')),
             'created_at' => now(), 'updated_at' => now()]);
-        $greeting = AillySettings::greeting($settings, $site);
+        $persona = AillySettings::persona($site, self::brokerageSite());
+        $greeting = AillySettings::greeting($settings, $persona['name']);
         $this->say($ulid, 'ailly', $greeting);
 
-        return ['conversation' => $ulid, 'greeting' => $greeting, 'name' => $settings['name'], 'needs_contact' => $settings['gate'] === 'before'];
+        return ['conversation' => $ulid, 'greeting' => $greeting, 'name' => $persona['name'], 'needs_contact' => $settings['gate'] === 'before'];
     }
 
     /**
@@ -121,7 +122,7 @@ final class Assistant
         $info = $this->siteFacts($site);
         try {
             $result = $this->gateway->run(new AiTask(self::FEATURE, 'sites.ailly', 'ailly:'.$conversation.':'.((int) $c->visitor_messages + 1),
-                inputs: ['name' => $settings['name'], 'brokerage' => $site->displayName(), 'area' => (string) ($site->info['area'] ?? $site->info['areas'] ?? 'the area'),
+                inputs: ['name' => AillySettings::persona($site, self::brokerageSite())['name'], 'brokerage' => $site->displayName(), 'area' => (string) ($site->info['area'] ?? $site->info['areas'] ?? 'the area'),
                     'today' => CarbonImmutable::now()->toFormattedDateString(), 'page' => (string) ($c->page ?: 'the home page'),
                     'contact' => $hasContact ? 'the visitor already shared them; do not ask again.'
                         : ($settings['gate'] === 'booking' ? 'only ask when they want to book a call or a showing.' : 'do not ask in your reply; the website asks at the right moment.')],
@@ -174,7 +175,7 @@ final class Assistant
             $home = $this->search->find($this->tenants->id(), $in['listing']);
             $lines[] = 'Asked to see '.($home !== null ? ListingSearch::label($home).($home['mls_number'] ? ' (MLS# '.$home['mls_number'].')' : '') : 'a home').'.';
         }
-        $lines[] = 'Chat with '.AillySettings::for(self::brokerageSite())['name'].' on the website:';
+        $lines[] = 'Chat with '.AillySettings::persona($site, self::brokerageSite())['name'].' on the website:';
         $lines[] = mb_substr($this->transcript((int) $c->id), -3000);
         $source = SiteLeads::source('AIlly chat', 'Website assistant');
         $lead = $leads->capture($site, $source, ['name' => (string) ($in['name'] ?? ''), 'email' => (string) ($in['email'] ?? ''), 'phone' => (string) ($in['phone'] ?? ''),

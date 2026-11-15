@@ -7,10 +7,12 @@ namespace Modules\Sites\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Core\Tenancy\Models\TenantDomain;
 use Modules\Sites\AgentSites;
+use Modules\Sites\Ailly\AillySettings;
 use Modules\Sites\Content\MediaLibrary;
 use Modules\Sites\Models\Site;
 use Modules\Sites\Models\SitePage;
@@ -41,6 +43,8 @@ final class MyWebsiteController
                 'domains' => TenantDomain::query()->where('site_ulid', $site->ulid)->get()->map(fn (TenantDomain $d): array => ['host' => $d->host,
                     'verified' => $d->verification_status->value === 'verified'])->values(),
                 'credentials' => ['licence' => AgentSites::profile($site)['licence'], 'mls_ids' => AgentSites::profile($site)['mls_ids']],
+                'ailly' => ['name' => (string) (($site->settings ?? [])['ailly']['name'] ?? ''), 'photo' => ($site->settings ?? [])['ailly']['photo'] ?? null,
+                    'default_name' => AillySettings::for($brokerage)['name'], 'enabled' => AillySettings::for($brokerage)['enabled']],
             ],
             'templates' => collect((array) config('sites.templates'))->map(fn (array $t, string $k): array => ['key' => $k, 'name' => $t['name']])->values(),
             'media' => $site !== null ? PageEditorController::mediaList($site, $media) : [],
@@ -62,8 +66,13 @@ final class MyWebsiteController
         $data = $request->validate(['name' => ['nullable', 'string', 'max:120'], 'tagline' => ['nullable', 'string', 'max:160'], 'bio' => ['nullable', 'string', 'max:4000'],
             'phone' => ['nullable', 'string', 'max:30'], 'email' => ['nullable', 'email', 'max:150'], 'areas' => ['nullable', 'string', 'max:200'], 'languages' => ['nullable', 'string', 'max:120'],
             'photo' => ['nullable', 'string', 'size:26'], 'template' => ['nullable', 'string'], 'brand' => ['nullable', 'array'],
-            'brand.primary' => ['nullable', 'regex:/^#[0-9a-fA-F]{6}$/'], 'brand.accent' => ['nullable', 'regex:/^#[0-9a-fA-F]{6}$/']]);
-        $this->agents->saveProfile(self::mine($this->agents, $user), $data, $user);
+            'brand.primary' => ['nullable', 'regex:/^#[0-9a-fA-F]{6}$/'], 'brand.accent' => ['nullable', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'ailly_name' => ['nullable', 'string', 'max:30'], 'ailly_photo' => ['nullable', 'string', 'size:26']]);
+        $site = self::mine($this->agents, $user);
+        $this->agents->saveProfile($site, Arr::except($data, ['ailly_name', 'ailly_photo']), $user);
+        if ($request->has('ailly_name') || $request->has('ailly_photo')) {
+            AillySettings::saveAgentPersona($site->fresh() ?? $site, $data['ailly_name'] ?? null, $data['ailly_photo'] ?? null, $user);
+        }
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Saved.']);
 
         return back();
