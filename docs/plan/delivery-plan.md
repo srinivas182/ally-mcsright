@@ -162,16 +162,17 @@ Status: C1a, C1b and C1c are done; M1 (MCP server) is in progress. The full orde
 
 Seven approved growth items are built before Connect C7 and C8, in this order:
 
-| Sprint | Team        | Scope                                                                                                                                                                                       | Spec                               |
-| ------ | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
-| LG1a   | E           | Lead Generation Engine 1: buyer and seller funnels (home value, new listings, first home, moving), value first, consented capture, saved search or value range, visits and leads per funnel | specs/grow/03                      |
-| LG1b   | E           | Monthly home-value report emails; promote a funnel with an own-account Meta ad or Boost                                                                                                     | specs/grow/03                      |
-| LN1    | E           | Lead-IQ long nurture: 12 months of AI follow-up for quiet leads, timed by engagement, handed to the agent on reply                                                                          | specs/grow/09                      |
-| DB1    | A with D, E | Daily brief across the whole business: one ranked list on Today and Dashboard, 7am weekday email                                                                                            | specs/core/09                      |
-| BD1    | C with E    | Buyer demand before listing: counts by price, agents with matching buyers, competition, seller report in English and Spanish                                                                | specs/grow/10                      |
-| PC1    | D with A    | Proof of consent: source, page, evidence fingerprint; automated texts need proof; opt-outs from connected apps; consent report                                                              | specs/grow/11                      |
-| AW1    | B           | Agent Wallet: year so far tied to statements, cap progress, deals on their way, revenue share, get paid now, owed                                                                           | specs/finance/03                   |
-| Next   | D           | Fair Housing audit pack                                                                                                                                                                     | docs/plan/market-2026-additions.md |
+| Sprint | Team        | Scope                                                                                                                                                                                       | Spec                          |
+| ------ | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| LG1a   | E           | Lead Generation Engine 1: buyer and seller funnels (home value, new listings, first home, moving), value first, consented capture, saved search or value range, visits and leads per funnel | specs/grow/03                 |
+| LG1b   | E           | Monthly home-value report emails; promote a funnel with an own-account Meta ad or Boost                                                                                                     | specs/grow/03                 |
+| LN1    | E           | Lead-IQ long nurture: 12 months of AI follow-up for quiet leads, timed by engagement, handed to the agent on reply                                                                          | specs/grow/09                 |
+| DB1    | A with D, E | Daily brief across the whole business: one ranked list on Today and Dashboard, 7am weekday email                                                                                            | specs/core/09                 |
+| BD1    | C with E    | Buyer demand before listing: counts by price, agents with matching buyers, competition, seller report in English and Spanish                                                                | specs/grow/10                 |
+| PC1    | D with A    | Proof of consent: source, page, evidence fingerprint; automated texts need proof; opt-outs from connected apps; consent report                                                              | specs/grow/11                 |
+| AW1    | B           | Agent Wallet: year so far tied to statements, cap progress, deals on their way, revenue share, get paid now, owed                                                                           | specs/finance/03              |
+| FH1    | D           | Fair Housing on every channel, logged by channel; monthly audit pack PDF to owners                                                                                                          | specs/grow/12                 |
+| Next   | A           | Connect C7, then C8, then Movewise MW1 to MW8                                                                                                                                               | specs/connect, specs/movewise |
 
 ## Movewise: HQ's consumer home site and lead marketplace (added 2026-11-15)
 

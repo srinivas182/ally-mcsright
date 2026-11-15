@@ -113,7 +113,7 @@ final class DatabaseIntelligence
             }
             $kind = (string) ($item['kind'] ?? '');
             $summary = mb_substr(trim((string) ($item['summary'] ?? '')), 0, 300);
-            if (! in_array($kind, Intent::KINDS, true) || $summary === '' || FairHousing::flags($summary) !== []) {
+            if (! in_array($kind, Intent::KINDS, true) || $summary === '' || FairHousing::screen($summary, 'ai_content', 'removed', 'AI database insight') !== []) {
                 continue;
             }
 

@@ -34,6 +34,6 @@ final class AdCopy
         $headline = mb_substr(trim((string) ($result->json['headline'] ?? '')), 0, 40);
         $body = mb_substr(trim((string) ($result->json['body'] ?? '')), 0, 400);
 
-        return ['headline' => $headline, 'body' => $body, 'flags' => FairHousing::flags($headline.' '.$body)];
+        return ['headline' => $headline, 'body' => $body, 'flags' => FairHousing::screen($headline.' '.$body, 'ads', 'warned', 'AI ad draft')];
     }
 }

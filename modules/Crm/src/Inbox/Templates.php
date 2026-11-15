@@ -46,7 +46,7 @@ final class Templates
         }
         if ($body === '') {
             $errors['body'] = 'Write the message.';
-        } elseif (($flags = FairHousing::flags($body)) !== []) {
+        } elseif (($flags = FairHousing::screen($body, 'templates', 'blocked', 'Message template')) !== []) {
             $errors['body'] = 'Fair Housing: reword "'.implode('", "', $flags).'".';
         }
         if (preg_match_all('/\{(\w+)\}/', $body.' '.($in['subject'] ?? ''), $m) > 0 && ($bad = array_diff($m[1], self::FIELDS)) !== []) {

@@ -76,7 +76,7 @@ final class AiResponder
         }
         if (mb_strlen($knowledge) > 5000) {
             $errors['knowledge'] = 'Keep the brokerage facts under 5,000 characters.';
-        } elseif (($flags = FairHousing::flags($knowledge)) !== []) {
+        } elseif (($flags = FairHousing::screen($knowledge, 'ai_content', 'blocked', 'AI assistant brokerage facts')) !== []) {
             $errors['knowledge'] = 'Fair Housing: reword "'.implode('", "', $flags).'".';
         }
         $sources = isset($in['sources']) && is_array($in['sources']) ? array_values(array_intersect(array_map('strval', $in['sources']), LeadSource::query()->pluck('ulid')->all())) : null;
@@ -202,7 +202,7 @@ final class AiResponder
             'next_message' => mb_substr(trim((string) ($json['agent_next_message'] ?? '')), 0, 600) ?: $thread->next_message])->save();
 
         $reason = (bool) ($json['handoff'] ?? false) ? (in_array($json['handoff_reason'] ?? '', ['qualified', 'asked_for_person', 'negotiation', 'legal_or_financial', 'unhappy', 'other'], true) ? (string) $json['handoff_reason'] : 'other') : null;
-        if ($reply === '' || FairHousing::flags($reply) !== []) {
+        if ($reply === '' || FairHousing::screen($reply, 'messages', 'blocked', 'AI first responder message') !== []) {
             $this->handOff($thread, $agent, $reply === '' ? ($reason ?? 'other') : 'fair_housing_check', null, null);
 
             return;

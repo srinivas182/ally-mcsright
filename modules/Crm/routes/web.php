@@ -10,6 +10,7 @@ use Modules\Crm\Http\Controllers\AvailabilityController;
 use Modules\Crm\Http\Controllers\BriefController;
 use Modules\Crm\Http\Controllers\ContactController;
 use Modules\Crm\Http\Controllers\DataController;
+use Modules\Crm\Http\Controllers\FairHousingController;
 use Modules\Crm\Http\Controllers\Inbox\InboxController;
 use Modules\Crm\Http\Controllers\Inbox\TwilioSmsController;
 use Modules\Crm\Http\Controllers\Leads\InboundEmailController;
@@ -144,6 +145,12 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoff
         Route::post('{conversation}/nurture/stop', [InboxController::class, 'stopNurture'])->name('nurture.stop');
     });
 Route::middleware('throttle:600,1,twilio-sms')->post('webhooks/twilio/sms', TwilioSmsController::class)->name('crm.inbox.twilio');
+
+// Fair Housing audit packs (specs/grow/12).
+Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function (): void {
+    Route::get('settings/fair-housing', [FairHousingController::class, 'index'])->name('crm.fair-housing.index');
+    Route::get('settings/fair-housing/{month}.pdf', [FairHousingController::class, 'pdf'])->name('crm.fair-housing.pdf');
+});
 
 // Saved searches (specs/grow/08).
 Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoffice.basic'])->group(function (): void {

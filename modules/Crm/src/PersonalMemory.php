@@ -65,6 +65,6 @@ final class PersonalMemory
             }
         }
 
-        return FairHousing::flags($text) !== [];
+        return FairHousing::screen($text, 'ai_content', 'blocked', 'Personal memory note') !== [];
     }
 }

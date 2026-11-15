@@ -43,7 +43,7 @@ final class SignCodes
         if (trim($details) === '') {
             $errors['details'] = 'Write the details to text back (price, beds, baths, a link).';
         }
-        if (($flags = FairHousing::flags($details)) !== []) {
+        if (($flags = FairHousing::screen($details, 'templates', 'blocked', 'Sign code details')) !== []) {
             $errors['details'] = 'Fair Housing: reword "'.implode('", "', $flags).'".';
         }
         if ($errors !== []) {
