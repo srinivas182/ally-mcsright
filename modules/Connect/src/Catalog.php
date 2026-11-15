@@ -10,6 +10,7 @@ use Modules\Crm\Connect\BoldTrail;
 use Modules\Crm\Connect\FacebookLeads;
 use Modules\Crm\Connect\FollowUpBoss;
 use Modules\Crm\Connect\GoHighLevel;
+use Modules\Crm\Connect\GoogleLsa;
 use Modules\Crm\Connect\HubSpot;
 use Modules\Crm\Connect\Lofty;
 use Modules\Crm\Connect\Pipedrive;
@@ -217,6 +218,57 @@ final class Catalog
             setup: ['partner' => null],
             guide: ['steps' => ['Copy your RightAlly lead address below (or make one under Leads → Settings).', 'In your Homes.com agent account, add that address where new leads are emailed.', 'New Homes.com leads now arrive here, read and routed automatically.']]));
 
+        // Google Local Services Ads: one click with Google; leads every 15 minutes (specs/connect/11).
+        $catalog->add(new App('google_lsa', 'Google Local Services Ads', 'leads', 'Every call, message and booking from your Google Guaranteed ads becomes a lead within 15 minutes, routed and followed up.',
+            scope: 'both', auth: 'oauth', syncs: ['Calls, messages and bookings from Local Services Ads', 'Checked every 15 minutes'],
+            driver: GoogleLsa::class, vendorCost: 'Your ad spend with Google',
+            oauth: ['provider' => 'google', 'scopes' => ['https://www.googleapis.com/auth/adwords']],
+            setup: ['needs' => 'provider', 'provider' => 'google', 'fields' => [['key' => 'developer_token', 'label' => 'Google Ads developer token', 'secret' => true]],
+                'steps' => ['Set up the Google sign-in app at the top of this page (return addresses, client ID and secret), and add the Google Ads API to it.',
+                    'In RightAlly\'s Google Ads manager account, open API Center and apply for a developer token (Basic access is enough).',
+                    'Add the "adwords" scope to the Google app\'s verification (it is a sensitive scope: Google reviews it, free).', 'Paste the developer token here and switch Google Local Services Ads on.'],
+                'partner' => 'Google Ads API developer token (free; Basic access review) and Google OAuth verification for the adwords scope.',
+                'docs' => 'https://developers.google.com/google-ads/api/docs/local-services/leads'],
+            guide: ['steps' => ['Press Connect and sign in with the Google account that runs your Local Services Ads.', 'Press Allow. New leads arrive here within 15 minutes.']]));
+
+        // Other lead vendors: their leads come in through your lead address (email) or the Lead API (Zapier); a direct
+        // feed needs a partner agreement with each vendor (shown to HQ).
+        $catalog->add(new App('ylopo', 'Ylopo', 'leads', 'Ylopo leads (and the ones its AI texts with) arrive as leads within a minute.',
+            scope: 'both', auth: 'email', syncs: ['New leads, within a minute of the vendor\'s email'], link: '/leads/settings', vendorCost: 'Paid to Ylopo',
+            setup: ['partner' => 'A direct Ylopo feed (with lead activity) is for Ylopo\'s integration partners. RightAlly can apply through Ylopo.'],
+            guide: ['steps' => ['Copy your RightAlly lead address below (or make one under Leads → Settings).', 'In Ylopo, add that address where new leads are emailed (or ask Ylopo support to send new leads to it).',
+                'New leads now arrive here, read and routed automatically. Using Zapier instead? Use the Lead API app.']]));
+        $catalog->add(new App('redfin_partner', 'Redfin Partner Agent', 'leads', 'Redfin partner referrals arrive as leads within a minute, routed and followed up.',
+            scope: 'both', auth: 'email', syncs: ['New leads, within a minute of the vendor\'s email'], link: '/leads/settings', vendorCost: 'Referral fee to Redfin',
+            setup: ['partner' => null],
+            guide: ['steps' => ['Copy your RightAlly lead address below (or make one under Leads → Settings).', 'In Redfin Partner Agent, add that address where new leads are emailed (or ask Redfin Partner Agent support to send new leads to it).',
+                'New leads now arrive here, read and routed automatically. Using Zapier instead? Use the Lead API app.']]));
+        $catalog->add(new App('market_leader', 'Market Leader', 'leads', 'Market Leader leads arrive as leads within a minute.',
+            scope: 'both', auth: 'email', syncs: ['New leads, within a minute of the vendor\'s email'], link: '/leads/settings', vendorCost: 'Paid to Market Leader',
+            setup: ['partner' => 'A direct Market Leader feed needs a partner agreement with Market Leader (Constellation Real Estate Group).'],
+            guide: ['steps' => ['Copy your RightAlly lead address below (or make one under Leads → Settings).', 'In Market Leader, add that address where new leads are emailed (or ask Market Leader support to send new leads to it).',
+                'New leads now arrive here, read and routed automatically. Using Zapier instead? Use the Lead API app.']]));
+        $catalog->add(new App('landvoice', 'Landvoice', 'leads', 'Expired, FSBO and pre-foreclosure leads from Landvoice arrive as leads.',
+            scope: 'both', auth: 'email', syncs: ['New leads, within a minute of the vendor\'s email'], link: '/leads/settings', vendorCost: 'Paid to Landvoice',
+            setup: ['partner' => 'A direct Landvoice feed needs a partner agreement with Landvoice.'],
+            guide: ['steps' => ['Copy your RightAlly lead address below (or make one under Leads → Settings).', 'In Landvoice, add that address where new leads are emailed (or ask Landvoice support to send new leads to it).',
+                'New leads now arrive here, read and routed automatically. Using Zapier instead? Use the Lead API app.']]));
+        $catalog->add(new App('smartzip', 'SmartZip', 'leads', 'Likely-seller leads from SmartZip arrive as leads within a minute.',
+            scope: 'both', auth: 'email', syncs: ['New leads, within a minute of the vendor\'s email'], link: '/leads/settings', vendorCost: 'Paid to SmartZip',
+            setup: ['partner' => 'A direct SmartZip feed needs a partner agreement with SmartZip.'],
+            guide: ['steps' => ['Copy your RightAlly lead address below (or make one under Leads → Settings).', 'In SmartZip, add that address where new leads are emailed (or ask SmartZip support to send new leads to it).',
+                'New leads now arrive here, read and routed automatically. Using Zapier instead? Use the Lead API app.']]));
+        $catalog->add(new App('redx', 'REDX', 'leads', 'Expired, FSBO and pre-foreclosure leads from REDX arrive as leads.',
+            scope: 'both', auth: 'email', syncs: ['New leads, within a minute of the vendor\'s email'], link: '/leads/settings', vendorCost: 'Paid to REDX',
+            setup: ['partner' => 'A direct REDX feed needs a partner agreement with REDX.'],
+            guide: ['steps' => ['Copy your RightAlly lead address below (or make one under Leads → Settings).', 'In REDX, add that address where new leads are emailed (or ask REDX support to send new leads to it).',
+                'New leads now arrive here, read and routed automatically. Using Zapier instead? Use the Lead API app.']]));
+        $catalog->add(new App('vulcan7', 'Vulcan7', 'leads', 'Expired and FSBO leads from Vulcan7 arrive as leads.',
+            scope: 'both', auth: 'email', syncs: ['New leads, within a minute of the vendor\'s email'], link: '/leads/settings', vendorCost: 'Paid to Vulcan7',
+            setup: ['partner' => 'A direct Vulcan7 feed needs a partner agreement with Vulcan7.'],
+            guide: ['steps' => ['Copy your RightAlly lead address below (or make one under Leads → Settings).', 'In Vulcan7, add that address where new leads are emailed (or ask Vulcan7 support to send new leads to it).',
+                'New leads now arrive here, read and routed automatically. Using Zapier instead? Use the Lead API app.']]));
+
         // On the roadmap (people can ask for them; HQ sees the demand). Some need a partner agreement first.
         foreach ([
             ['real_geeks', 'Real Geeks', 'crm', 'Bring over leads and their activity from Real Geeks.', 'both', 'Your Real Geeks plan'],
@@ -228,14 +280,6 @@ final class Catalog
             ['liondesk', 'LionDesk', 'crm', 'Bring over contacts and notes from LionDesk.', 'agent', 'Your LionDesk plan'],
             ['rechat', 'Rechat', 'crm', 'Bring over contacts, deals and marketing history from Rechat.', 'both', 'Your Rechat plan'],
             ['cloze', 'Cloze', 'crm', 'Bring over contacts, notes and relationship history from Cloze.', 'agent', 'Your Cloze plan'],
-            ['ylopo', 'Ylopo', 'leads', 'Ylopo leads and their activity arrive as leads.', 'both', 'Paid to Ylopo'],
-            ['google_lsa', 'Google Local Services Ads', 'leads', 'Calls and messages from Google Local Services Ads arrive as leads.', 'both', 'Paid to Google'],
-            ['redfin_partner', 'Redfin Partner Agent', 'leads', 'Redfin partner referrals arrive as leads.', 'agent', 'Referral fee to Redfin'],
-            ['market_leader', 'Market Leader', 'leads', 'Market Leader leads arrive as leads.', 'both', 'Paid to Market Leader'],
-            ['landvoice', 'Landvoice', 'leads', 'Expired, FSBO and pre-foreclosure leads from Landvoice in your CRM.', 'agent', 'Paid to Landvoice'],
-            ['smartzip', 'SmartZip', 'leads', 'Likely-seller leads from SmartZip arrive as leads.', 'both', 'Paid to SmartZip'],
-            ['redx', 'REDX', 'leads', 'Expired, FSBO and pre-foreclosure leads from REDX in your CRM and dialer.', 'agent', 'Paid to REDX'],
-            ['vulcan7', 'Vulcan7', 'leads', 'Expired and FSBO leads from Vulcan7 in your CRM.', 'agent', 'Paid to Vulcan7'],
             ['meta_ads', 'Meta Ads (Facebook and Instagram)', 'ads', 'Create listing ads with AI from your MLS listings and publish them without leaving RightAlly. Use your own ad account or RightAlly Boost.', 'both', 'Ad spend: your Meta account, or RightAlly Boost credits'],
             ['nextdoor_ads', 'Nextdoor Ads', 'ads', 'Neighbourhood ads for your listings and open houses.', 'both', 'Ad spend paid to Nextdoor'],
             ['google_ads', 'Google Ads', 'ads', 'Search, display and YouTube ads for your listings and your area, created and published from RightAlly.', 'both', 'Ad spend: your Google account, or RightAlly Boost credits'],

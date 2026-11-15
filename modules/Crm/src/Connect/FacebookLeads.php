@@ -4,17 +4,13 @@ declare(strict_types=1);
 
 namespace Modules\Crm\Connect;
 
-use App\Models\User;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
 use Modules\Core\Connect\AppWebhooks;
 use Modules\Core\Connect\ConnectionData;
 use Modules\Core\Connect\ConnectorKit;
 use Modules\Core\Connect\NeedsReconnect;
 use Modules\Crm\Enums\Source;
-use Modules\Crm\Leads\LeadIntake;
-use Modules\Crm\Models\LeadSource;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
@@ -135,18 +131,15 @@ final class FacebookLeads implements AppWebhooks
                 $fields[strtolower($f['name'])] = trim((string) (((array) ($f['values'] ?? []))[0] ?? ''));
             }
         }
-        $by = User::query()->find($this->kit->connectedBy($connection));
-        $assign = $connection->ownerUserId !== null ? User::query()->find($connection->ownerUserId) : null;
         $extra = array_diff_key($fields, array_flip(['full_name', 'first_name', 'last_name', 'email', 'phone_number', 'zip_code', 'post_code']));
-        try {
-            app(LeadIntake::class)->receive($this->source($by), [
-                'external_id' => (string) $payload['leadgen_id'], 'name' => $fields['full_name'] ?? '', 'first_name' => $fields['first_name'] ?? '', 'last_name' => $fields['last_name'] ?? '',
-                'email' => $fields['email'] ?? '', 'phone' => $fields['phone_number'] ?? '', 'zip' => $fields['zip_code'] ?? $fields['post_code'] ?? '', 'source' => 'facebook',
-                'message' => implode("\n", array_map(fn (string $k, string $v): string => Str::headline($k).': '.$v, array_keys($extra), $extra)),
-                'utm_source' => 'facebook', 'utm_medium' => 'lead_ad', 'utm_campaign' => is_string($r->json('campaign_name')) ? $r->json('campaign_name') : null,
-                'utm_content' => is_string($r->json('ad_name')) ? $r->json('ad_name') : null,
-            ], null, $assign instanceof User ? $assign : null);
-        } catch (ValidationException) {
+        $taken = app(ConnectedLeads::class)->receive($connection, 'Facebook Lead Ads', Source::Facebook, [
+            'external_id' => (string) $payload['leadgen_id'], 'name' => $fields['full_name'] ?? '', 'first_name' => $fields['first_name'] ?? '', 'last_name' => $fields['last_name'] ?? '',
+            'email' => $fields['email'] ?? '', 'phone' => $fields['phone_number'] ?? '', 'zip' => $fields['zip_code'] ?? $fields['post_code'] ?? '',
+            'message' => implode("\n", array_map(fn (string $k, string $v): string => Str::headline($k).': '.$v, array_keys($extra), $extra)),
+            'utm_source' => 'facebook', 'utm_medium' => 'lead_ad', 'utm_campaign' => is_string($r->json('campaign_name')) ? $r->json('campaign_name') : null,
+            'utm_content' => is_string($r->json('ad_name')) ? $r->json('ad_name') : null,
+        ]);
+        if (! $taken) {
             return ['created' => 0, 'updated' => 0, 'skipped' => 1]; // a test lead or one without a name, email or phone
         }
 
@@ -169,12 +162,5 @@ final class FacebookLeads implements AppWebhooks
             report($e); // never stop someone disconnecting
         }
         $this->kit->unroute($connection);
-    }
-
-    /** The brokerage's "Facebook Lead Ads" lead source (made once), so reports and routing see where leads came from. */
-    private function source(?User $by): LeadSource
-    {
-        return LeadSource::query()->where('name', 'Facebook Lead Ads')->where('source', Source::Facebook->value)->first()
-            ?? LeadSource::query()->create(['name' => 'Facebook Lead Ads', 'kind' => 'api', 'source' => Source::Facebook, 'token' => Str::random(40), 'created_by' => $by?->id]);
     }
 }
