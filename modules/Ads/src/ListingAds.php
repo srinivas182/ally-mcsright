@@ -1,0 +1,173 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\Ads;
+
+use App\Models\User;
+use Carbon\CarbonImmutable;
+use Illuminate\Validation\ValidationException;
+use Modules\Ads\Jobs\PublishCampaign;
+use Modules\Ads\Meta\MetaApi;
+use Modules\Ads\Models\Campaign;
+use Modules\Connect\Models\Connection;
+use Modules\Core\Agents\AgentCredentials;
+use Modules\Core\Audit\AuditLogger;
+use Modules\Core\Connect\ConnectorKit;
+use Modules\Core\Identity\Enums\UserKind;
+use Modules\Core\Tenancy\Models\TenantDomain;
+use Modules\Core\Tenancy\TenantContext;
+use Modules\Crm\FairHousing;
+use Modules\Listings\Models\Listing;
+use Modules\Listings\Search\ListingSearch;
+use Modules\Sites\Rendering\Urls;
+
+/**
+ * Listing ads (specs/ads/01): which listings a person may advertise, the builder's choices, publishing (from their
+ * own Meta ad account), pausing and resuming.
+ *
+ * - Agents advertise their own listings (MLS rules); owners and staff any listing of the brokerage's agents.
+ * - Every ad links to the listing's page on the brokerage website, so leads come in through the website.
+ * - The person sees the most it can spend and agrees before anything is published.
+ */
+final class ListingAds
+{
+    public const MIN_DAILY_CENTS = 500;
+
+    public const MAX_DAILY_CENTS = 50_000;
+
+    public const MAX_DAYS = 60;
+
+    public function __construct(private readonly TenantContext $tenants, private readonly ListingSearch $search) {}
+
+    /** The person's own Meta Ads connection, if any. */
+    public function connection(User $user): ?Connection
+    {
+        return Connection::query()->where('app_key', 'meta_ads')->where('owner_user_id', $user->id)->first();
+    }
+
+    /** @return list<array<string, mixed>> listings this person may advertise (active, with a mapped address) */
+    public function listings(User $user): array
+    {
+        $ids = $this->mlsIds($user);
+        $rows = [];
+        foreach (array_slice($ids, 0, 50) as $id) {
+            foreach ($this->search->search($this->tenants->id(), ['agent_mls_id' => $id, 'per_page' => 50, 'sort' => 'newest'])['results'] as $home) {
+                $rows[(string) $home['ulid']] = ['ulid' => (string) $home['ulid'], 'label' => ListingSearch::label($home), 'price' => $home['price'] ?? null, 'photo' => $home['photo'] ?? null];
+            }
+        }
+
+        return array_values($rows);
+    }
+
+    /** @return array<string, mixed>|null the listing, if this person may advertise it */
+    public function listing(User $user, string $ulid): ?array
+    {
+        $home = $this->search->find($this->tenants->id(), $ulid);
+        if ($home === null || ! in_array((string) ($home['list_agent_mls_id'] ?? $this->agentOf($ulid)), $this->mlsIds($user), true)) {
+            return null;
+        }
+
+        return $home;
+    }
+
+    /**
+     * @param  array<string, mixed>  $in
+     */
+    public function publish(User $by, array $in): Campaign
+    {
+        $c = $this->connection($by) ?? throw ValidationException::withMessages(['account' => 'Connect Meta Ads first (Apps → Meta Ads).']);
+        $home = $this->listing($by, (string) ($in['listing'] ?? '')) ?? throw ValidationException::withMessages(['listing' => 'Choose one of your listings.']);
+        if (($home['latitude'] ?? null) === null || ($home['longitude'] ?? null) === null) {
+            throw ValidationException::withMessages(['listing' => 'This listing has no map location, so it can\'t be advertised by area.']);
+        }
+        $accounts = array_column((array) ($c->settings['ad_accounts'] ?? []), 'id');
+        $pages = array_column((array) ($c->settings['pages'] ?? []), 'id');
+        $headline = trim((string) ($in['headline'] ?? ''));
+        $body = trim((string) ($in['body'] ?? ''));
+        $daily = (int) round((float) ($in['daily_budget'] ?? 0) * 100);
+        $days = (int) ($in['days'] ?? 0);
+        $errors = array_filter([
+            'account' => in_array((string) ($in['account'] ?? ''), $accounts, true) ? null : 'Choose one of your ad accounts.',
+            'page' => in_array((string) ($in['page'] ?? ''), $pages, true) ? null : 'Choose the Facebook Page the ad runs as.',
+            'headline' => $headline === '' || mb_strlen($headline) > 40 ? 'Write a headline of up to 40 characters.' : null,
+            'body' => $body === '' || mb_strlen($body) > 600 ? 'Write the ad text (up to 600 characters).' : null,
+            'daily_budget' => $daily < self::MIN_DAILY_CENTS || $daily > self::MAX_DAILY_CENTS ? 'Choose a daily budget from $5 to $500.' : null,
+            'days' => $days < 1 || $days > self::MAX_DAYS ? 'Run it for 1 to 60 days.' : null,
+            'agree' => ($in['agree'] ?? false) === true || ($in['agree'] ?? null) === '1' ? null : 'Confirm the budget first.',
+        ]);
+        if (($flags = FairHousing::flags($headline.' '.$body)) !== []) {
+            $errors['body'] = 'Fair Housing: please remove "'.implode('", "', $flags).'". Describe the home, not who should live there.';
+        }
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+        $site = $this->websiteBase() ?? throw ValidationException::withMessages(['listing' => 'Publish your brokerage website first: the ad links to the listing\'s page on it.']);
+        $photo = (string) ($home['photo'] ?? ($home['photos'][0]['hero'] ?? ''));
+        if ($photo === '') {
+            throw ValidationException::withMessages(['listing' => 'This listing has no photos yet, and an ad needs one.']);
+        }
+        $start = CarbonImmutable::today($by->timezone ?: 'America/New_York');
+        $campaign = Campaign::query()->create(['user_id' => $by->id, 'connection_id' => $c->id, 'ad_account_id' => (string) $in['account'], 'page_id' => (string) $in['page'],
+            'listing_ulid' => (string) $home['ulid'], 'listing_label' => mb_substr(ListingSearch::label($home), 0, 200), 'headline' => $headline, 'body' => $body,
+            'image_url' => str_starts_with($photo, 'http') ? $photo : url($photo),
+            'link' => $site.Urls::listing((string) $home['ulid'], ListingSearch::label($home)).'?'.http_build_query(['utm_source' => 'facebook', 'utm_medium' => 'paid_social']),
+            'latitude' => (string) $home['latitude'], 'longitude' => (string) $home['longitude'],
+            'radius_miles' => max(MetaApi::MIN_RADIUS_MILES, min(50, (int) ($in['radius'] ?? MetaApi::MIN_RADIUS_MILES))), 'daily_budget_cents' => $daily,
+            'starts_on' => $start->toDateString(), 'ends_on' => $start->addDays($days - 1)->toDateString(), 'status' => 'publishing']);
+        $campaign->forceFill(['link' => $campaign->link.'&utm_campaign=rightally-'.strtolower($campaign->ulid)])->save();
+        app(AuditLogger::class)->record('ads.publish', $campaign, metadata: ['max_spend_cents' => $campaign->maxSpendCents(), 'listing' => $campaign->listing_ulid], severity: 'notice');
+        PublishCampaign::dispatch($campaign->id);
+
+        return $campaign;
+    }
+
+    public function setActive(Campaign $c, User $by, bool $active): void
+    {
+        $this->guard($c, $by);
+        $conn = Connection::query()->find($c->connection_id) ?? throw ValidationException::withMessages(['ad' => 'Reconnect Meta Ads first.']);
+        try {
+            app(MetaApi::class)->setStatus($c, app(ConnectorKit::class)->accessToken($conn->data()), $active);
+        } catch (\RuntimeException $e) {
+            throw ValidationException::withMessages(['ad' => $e->getMessage()]);
+        }
+        $c->forceFill(['status' => $active ? 'active' : 'paused'])->save();
+        app(AuditLogger::class)->record($active ? 'ads.resume' : 'ads.pause', $c, severity: 'notice');
+    }
+
+    /** Owners see every ad; others their own. */
+    public function canSee(Campaign $c, User $user): bool
+    {
+        return $c->user_id === $user->id || $user->kind === UserKind::Owner;
+    }
+
+    private function guard(Campaign $c, User $by): void
+    {
+        if ($c->user_id !== $by->id) {
+            throw ValidationException::withMessages(['ad' => 'Only the person who made this ad can change it (it runs on their ad account).']);
+        }
+    }
+
+    /** @return list<string> */
+    private function mlsIds(User $user): array
+    {
+        $creds = app(AgentCredentials::class);
+        if (! in_array($user->kind, [UserKind::Owner, UserKind::Staff], true)) {
+            return $creds->mlsIds($user->id);
+        }
+
+        return array_values(array_unique(User::query()->pluck('id')->flatMap(fn (int $id): array => $creds->mlsIds($id))->all()));
+    }
+
+    private function agentOf(string $ulid): string
+    {
+        return (string) Listing::query()->where('ulid', $ulid)->value('list_agent_mls_id');
+    }
+
+    private function websiteBase(): ?string
+    {
+        $host = TenantDomain::query()->where('tenant_id', $this->tenants->id())->where('purpose', 'website')->orderByDesc('is_primary')->orderBy('id')->value('host');
+
+        return is_string($host) ? 'https://'.$host : null;
+    }
+}

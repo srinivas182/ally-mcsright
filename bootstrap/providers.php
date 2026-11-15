@@ -2,6 +2,7 @@
 
 use App\Providers\AppServiceProvider;
 use App\Providers\FortifyServiceProvider;
+use Modules\Ads\AdsServiceProvider;
 use Modules\AI\AiServiceProvider;
 use Modules\Billing\BillingServiceProvider;
 use Modules\Compensation\CompensationServiceProvider;
@@ -32,4 +33,5 @@ return [
     ListingsServiceProvider::class,
     SitesServiceProvider::class,
     ConnectServiceProvider::class,
+    AdsServiceProvider::class,
 ];

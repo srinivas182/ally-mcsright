@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Connect;
 
+use Modules\Ads\Meta\MetaAdsConnector;
 use Modules\Core\Connect\App;
 use Modules\Core\Connect\AppCatalog;
 use Modules\Crm\Connect\BoldTrail;
@@ -269,6 +270,19 @@ final class Catalog
             guide: ['steps' => ['Copy your RightAlly lead address below (or make one under Leads → Settings).', 'In Vulcan7, add that address where new leads are emailed (or ask Vulcan7 support to send new leads to it).',
                 'New leads now arrive here, read and routed automatically. Using Zapier instead? Use the Lead API app.']]));
 
+        // Ads from the person's own ad account (specs/ads/01).
+        $catalog->add(new App('meta_ads', 'Meta Ads (Facebook and Instagram)', 'ads', 'Make listing ads with AI and publish them to Facebook and Instagram from your own ad account, without leaving RightAlly. Results come back here.',
+            scope: 'agent', auth: 'oauth', syncs: ['Your ad accounts and Pages', 'Ads you publish from RightAlly', 'Spend, clicks and results, hourly'], link: '/ads',
+            driver: MetaAdsConnector::class, vendorCost: 'Your ad spend, billed by Meta to your ad account',
+            oauth: ['provider' => 'meta', 'scopes' => ['ads_management', 'ads_read', 'pages_show_list', 'pages_read_engagement', 'pages_manage_ads'],
+                'authorize' => 'https://www.facebook.com/v21.0/dialog/oauth', 'token' => 'https://graph.facebook.com/v21.0/oauth/access_token',
+                'userinfo' => 'https://graph.facebook.com/v21.0/me?fields=name,email', 'pkce' => false, 'keys_from' => 'facebook_leads'],
+            setup: ['needs' => 'app', 'app' => 'facebook_leads', 'steps' => ['Meta Ads uses the same Meta app as Facebook Lead Ads: set that card up first.',
+                'In the Meta app, request Advanced Access (App Review) for ads_management and ads_read as well.', 'Switch Meta Ads on.'],
+                'partner' => 'Meta App Review for ads_management and ads_read (free). Ads run as Housing ads, so Meta limits targeting to place.',
+                'docs' => 'https://developers.facebook.com/docs/marketing-api/'],
+            guide: ['steps' => ['Press Connect and sign in to Facebook.', 'Choose your ad account and Pages, and press Allow.', 'Then open Ads to make your first listing ad.']]));
+
         // On the roadmap (people can ask for them; HQ sees the demand). Some need a partner agreement first.
         foreach ([
             ['real_geeks', 'Real Geeks', 'crm', 'Bring over leads and their activity from Real Geeks.', 'both', 'Your Real Geeks plan'],
@@ -280,7 +294,6 @@ final class Catalog
             ['liondesk', 'LionDesk', 'crm', 'Bring over contacts and notes from LionDesk.', 'agent', 'Your LionDesk plan'],
             ['rechat', 'Rechat', 'crm', 'Bring over contacts, deals and marketing history from Rechat.', 'both', 'Your Rechat plan'],
             ['cloze', 'Cloze', 'crm', 'Bring over contacts, notes and relationship history from Cloze.', 'agent', 'Your Cloze plan'],
-            ['meta_ads', 'Meta Ads (Facebook and Instagram)', 'ads', 'Create listing ads with AI from your MLS listings and publish them without leaving RightAlly. Use your own ad account or RightAlly Boost.', 'both', 'Ad spend: your Meta account, or RightAlly Boost credits'],
             ['nextdoor_ads', 'Nextdoor Ads', 'ads', 'Neighbourhood ads for your listings and open houses.', 'both', 'Ad spend paid to Nextdoor'],
             ['google_ads', 'Google Ads', 'ads', 'Search, display and YouTube ads for your listings and your area, created and published from RightAlly.', 'both', 'Ad spend: your Google account, or RightAlly Boost credits'],
             ['skyslope', 'SkySlope', 'transactions', 'Bring deals, dates, parties and documents into RightAlly transactions and commissions.', 'brokerage', 'Your SkySlope plan'],

@@ -10,7 +10,7 @@ namespace Modules\Crm;
  */
 final class FairHousing
 {
-    private const FLAGS = ['safe neighborhood', 'safe neighbourhood', 'safe area', 'safe community', 'safe place to live', 'family-friendly', 'family friendly', 'good for families',
+    private const FLAGS = ['safe neighborhood', 'safe neighbourhood', 'safe area', 'safe community', 'safe place to live', 'family-friendly', 'family friendly', 'good for families', 'perfect for families', 'ideal for families', 'young professionals', 'empty nesters',
         'perfect for young', 'great for kids', 'church', 'mosque', 'synagogue', 'integrated', 'exclusive neighborhood', 'no children',
         'adults only', 'walking distance to temple', 'traditional neighborhood', 'ethnic', 'bachelor pad', 'handicap'];
 
