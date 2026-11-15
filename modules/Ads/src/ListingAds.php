@@ -22,6 +22,8 @@ use Modules\Core\Tenancy\TenantContext;
 use Modules\Crm\FairHousing;
 use Modules\Listings\Models\Listing;
 use Modules\Listings\Search\ListingSearch;
+use Modules\Sites\Funnels\Funnels;
+use Modules\Sites\Models\SiteFunnel;
 use Modules\Sites\Rendering\Urls;
 
 /**
@@ -87,10 +89,8 @@ final class ListingAds
             $in['account'] = app(Boost::class)->account()['ad_account_id'];
             $in['page'] = app(Boost::class)->account()['page_id'];
         }
-        $home = $this->listing($by, (string) ($in['listing'] ?? '')) ?? throw ValidationException::withMessages(['listing' => 'Choose one of your listings.']);
-        if (($home['latitude'] ?? null) === null || ($home['longitude'] ?? null) === null) {
-            throw ValidationException::withMessages(['listing' => 'This listing has no map location, so it can\'t be advertised by area.']);
-        }
+        $funnel = is_string($in['funnel'] ?? null) && $in['funnel'] !== '' ? ($this->funnel($by, $in['funnel']) ?? throw ValidationException::withMessages(['funnel' => 'Choose one of your funnels.'])) : null;
+        $target = $funnel !== null ? $this->funnelTarget($funnel) : $this->listingTarget($by, (string) ($in['listing'] ?? ''));
         $accounts = $boost ? [(string) $in['account']] : array_column((array) ($c->settings['ad_accounts'] ?? []), 'id');
         $pages = $boost ? [(string) $in['page']] : array_column((array) ($c->settings['pages'] ?? []), 'id');
         $headline = trim((string) ($in['headline'] ?? ''));
@@ -112,19 +112,16 @@ final class ListingAds
         if ($errors !== []) {
             throw ValidationException::withMessages($errors);
         }
-        $site = $this->websiteBase() ?? throw ValidationException::withMessages(['listing' => 'Publish your brokerage website first: the ad links to the listing\'s page on it.']);
-        $photo = (string) ($home['photo'] ?? ($home['photos'][0]['hero'] ?? ''));
-        if ($photo === '') {
-            throw ValidationException::withMessages(['listing' => 'This listing has no photos yet, and an ad needs one.']);
-        }
+        $site = $this->websiteBase() ?? throw ValidationException::withMessages([$target['field'] => 'Publish your brokerage website first: the ad links to a page on it.']);
+        $photo = $target['photo'];
         $start = CarbonImmutable::today($by->timezone ?: 'America/New_York');
         $margin = $boost ? app(Boost::class)->marginBps() : 0;
         $campaign = Campaign::query()->create(['user_id' => $by->id, 'connection_id' => $c?->id, 'billing' => $boost ? 'boost' : 'own', 'margin_bps' => $margin,
             'stop_loss' => ($in['stop_loss'] ?? true) !== false, 'ad_account_id' => (string) $in['account'], 'page_id' => (string) $in['page'],
-            'listing_ulid' => (string) $home['ulid'], 'listing_label' => mb_substr(ListingSearch::label($home), 0, 200), 'headline' => $headline, 'body' => $body,
+            'listing_ulid' => $target['listing'], 'listing_label' => mb_substr($target['label'], 0, 200), 'site_funnel_id' => $funnel?->id, 'headline' => $headline, 'body' => $body,
             'image_url' => str_starts_with($photo, 'http') ? $photo : url($photo),
-            'link' => $site.Urls::listing((string) $home['ulid'], ListingSearch::label($home)).'?'.http_build_query(['utm_source' => 'facebook', 'utm_medium' => 'paid_social']),
-            'latitude' => (string) $home['latitude'], 'longitude' => (string) $home['longitude'],
+            'link' => $site.$target['path'].'?'.http_build_query(['utm_source' => 'facebook', 'utm_medium' => 'paid_social']),
+            'latitude' => $target['latitude'], 'longitude' => $target['longitude'],
             'radius_miles' => max(MetaApi::MIN_RADIUS_MILES, min(50, (int) ($in['radius'] ?? MetaApi::MIN_RADIUS_MILES))), 'daily_budget_cents' => $daily,
             'starts_on' => $start->toDateString(), 'ends_on' => $start->addDays($days - 1)->toDateString(), 'status' => 'publishing']);
         $campaign->forceFill(['link' => $campaign->link.'&utm_campaign=rightally-'.strtolower($campaign->ulid)])->save();
@@ -139,10 +136,77 @@ final class ListingAds
             }
             $campaign->forceFill(['credits_reserved' => $credits])->save();
         }
-        app(AuditLogger::class)->record('ads.publish', $campaign, metadata: ['max_spend_cents' => $campaign->maxSpendCents(), 'listing' => $campaign->listing_ulid], severity: 'notice');
+        app(AuditLogger::class)->record('ads.publish', $campaign, metadata: ['max_spend_cents' => $campaign->maxSpendCents(), 'listing' => $campaign->listing_ulid, 'funnel' => $funnel?->ulid], severity: 'notice');
         PublishCampaign::dispatch($campaign->id);
 
         return $campaign;
+    }
+
+    /** A funnel this person may promote: their own, or (owners and staff) any of the brokerage's. */
+    public function funnel(User $user, string $ulid): ?SiteFunnel
+    {
+        $f = SiteFunnel::query()->where('ulid', $ulid)->where('status', 'live')->first();
+        $manager = in_array($user->kind, [UserKind::Owner, UserKind::Staff], true);
+
+        return $f !== null && ($manager || $f->owner_user_id === $user->id) ? $f : null;
+    }
+
+    /** @return list<array{ulid: string, label: string}> live funnels this person may promote */
+    public function funnels(User $user): array
+    {
+        $manager = in_array($user->kind, [UserKind::Owner, UserKind::Staff], true);
+
+        $out = [];
+        foreach (SiteFunnel::query()->where('status', 'live')->when(! $manager, fn ($q) => $q->where('owner_user_id', $user->id))->orderByDesc('id')->limit(50)->get() as $f) {
+            $out[] = ['ulid' => $f->ulid, 'label' => $f->headline];
+        }
+
+        return $out;
+    }
+
+    /**
+     * Where a funnel ad points and whom it reaches: the funnel's page, a photo of a home for sale in its area, and
+     * the middle of the homes it shows (housing ads reach everyone within a radius; nothing else narrows them).
+     *
+     * @return array{field: string, listing: string|null, label: string, path: string, photo: string, latitude: string, longitude: string}
+     */
+    public function funnelTarget(SiteFunnel $funnel): array
+    {
+        $homes = $this->search->search($this->tenants->id(), ['per_page' => 24] + Funnels::filters($funnel))['results'];
+        $mapped = array_values(array_filter($homes, fn (array $h): bool => is_numeric($h['latitude'] ?? null) && is_numeric($h['longitude'] ?? null)));
+        $photo = '';
+        foreach ($homes as $h) {
+            $photo = (string) ($h['photo'] ?? ($h['photos'][0]['hero'] ?? ''));
+            if ($photo !== '') {
+                break;
+            }
+        }
+        if ($mapped === [] || $photo === '') {
+            throw ValidationException::withMessages(['funnel' => 'There are no homes for sale with photos in this funnel\'s area right now, so the ad has no picture or map area. Try a wider area.']);
+        }
+        $lat = array_sum(array_map(fn (array $h): float => (float) $h['latitude'], $mapped)) / count($mapped);
+        $lng = array_sum(array_map(fn (array $h): float => (float) $h['longitude'], $mapped)) / count($mapped);
+
+        return ['field' => 'funnel', 'listing' => null, 'label' => 'Funnel: '.$funnel->headline, 'path' => '/go/'.$funnel->slug, 'photo' => $photo,
+            'latitude' => (string) round($lat, 6), 'longitude' => (string) round($lng, 6)];
+    }
+
+    /**
+     * @return array{field: string, listing: string|null, label: string, path: string, photo: string, latitude: string, longitude: string}
+     */
+    private function listingTarget(User $by, string $ulid): array
+    {
+        $home = $this->listing($by, $ulid) ?? throw ValidationException::withMessages(['listing' => 'Choose one of your listings.']);
+        if (($home['latitude'] ?? null) === null || ($home['longitude'] ?? null) === null) {
+            throw ValidationException::withMessages(['listing' => 'This listing has no map location, so it can\'t be advertised by area.']);
+        }
+        $photo = (string) ($home['photo'] ?? ($home['photos'][0]['hero'] ?? ''));
+        if ($photo === '') {
+            throw ValidationException::withMessages(['listing' => 'This listing has no photos yet, and an ad needs one.']);
+        }
+
+        return ['field' => 'listing', 'listing' => (string) $home['ulid'], 'label' => ListingSearch::label($home), 'path' => Urls::listing((string) $home['ulid'], ListingSearch::label($home)),
+            'photo' => $photo, 'latitude' => (string) $home['latitude'], 'longitude' => (string) $home['longitude']];
     }
 
     public function setActive(Campaign $c, User $by, bool $active): void

@@ -110,6 +110,7 @@ final class Funnels
         $estimate = null;
         $notes = [];
         $data = ['funnel' => $funnel->ulid];
+        $home = null;
         if ($funnel->kind === 'home_value') {
             $address = mb_substr(trim(strip_tags((string) ($in['address'] ?? ''))), 0, 150);
             $zip = preg_match('/^\d{5}$/', trim((string) ($in['zip'] ?? ''))) === 1 ? trim((string) $in['zip']) : null;
@@ -123,6 +124,7 @@ final class Funnels
                 ? 'Estimate: $'.number_format($estimate['low']).' to $'.number_format($estimate['high']).' from '.$estimate['comps'].' similar homes for sale.'
                 : 'Not enough similar homes for sale to estimate; please prepare a price range.');
             $data += ['address' => $address.' '.$zip, 'mid' => $estimate['mid'] ?? null];
+            $home = ['address' => $address, 'zip' => $zip, 'beds' => $beds, 'sqft' => $sqft];
             $in['property'] = $address.' '.$zip;
             $in['zip'] = $zip;
             $in['price'] = $estimate['mid'] ?? null;
@@ -147,6 +149,10 @@ final class Funnels
         ] + array_filter(array_intersect_key($in, array_flip(['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'gclid'])), 'is_string'),
             $request, 'funnel', null, $data, $owner instanceof User ? $owner : null);
         $funnel->increment('leads');
+        if ($home !== null && $lead->contact_id !== null && ($contact = Contact::query()->find($lead->contact_id)) !== null) {
+            app(HomeReports::class)->start($contact, $funnel, $home['address'], $home['zip'], $home['beds'], $home['sqft'], $estimate['mid'] ?? null,
+                $contact->owner_user_id ?? $funnel->owner_user_id);
+        }
         if ($funnel->kind !== 'home_value') {
             $contact = $lead->contact_id !== null ? Contact::query()->find($lead->contact_id) : null;
             if ($contact !== null && $contact->primary_email !== null) {

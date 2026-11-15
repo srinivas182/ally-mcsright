@@ -9,6 +9,7 @@ use Modules\Sites\Http\Controllers\AillyController;
 use Modules\Sites\Http\Controllers\AillyLiveController;
 use Modules\Sites\Http\Controllers\BlogAdminController;
 use Modules\Sites\Http\Controllers\FunnelAdminController;
+use Modules\Sites\Http\Controllers\HomeReportController;
 use Modules\Sites\Http\Controllers\HqSitesController;
 use Modules\Sites\Http\Controllers\MediaController;
 use Modules\Sites\Http\Controllers\MyWebsiteController;
@@ -109,3 +110,7 @@ Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.sites.manage']
         Route::post('maps/secret', [HqSitesController::class, 'mapsSecret'])->middleware('password.confirm')->name('maps.secret');
         Route::post('powered-by/{tenant}', [HqSitesController::class, 'tenant'])->name('powered.tenant');
     });
+
+// The monthly home-value report's one-click stop (specs/grow/03).
+Route::middleware(['tenant', EnsureTenantWorkspace::class, 'throttle:30,1,home-report-stop'])->match(['get', 'post'], 'home-reports/{report}/stop', [HomeReportController::class, 'stop'])
+    ->where('report', '[0-9A-HJKMNP-TV-Z]{26}')->name('sites.home-reports.stop');
