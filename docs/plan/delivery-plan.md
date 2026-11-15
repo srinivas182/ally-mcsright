@@ -170,7 +170,8 @@ Seven approved growth items are built before Connect C7 and C8, in this order:
 | DB1    | A with D, E | Daily brief across the whole business: one ranked list on Today and Dashboard, 7am weekday email                                                                                            | specs/core/09                      |
 | BD1    | C with E    | Buyer demand before listing: counts by price, agents with matching buyers, competition, seller report in English and Spanish                                                                | specs/grow/10                      |
 | PC1    | D with A    | Proof of consent: source, page, evidence fingerprint; automated texts need proof; opt-outs from connected apps; consent report                                                              | specs/grow/11                      |
-| Next   | B, D        | Agent Wallet; Fair Housing audit pack                                                                                                                                                       | docs/plan/market-2026-additions.md |
+| AW1    | B           | Agent Wallet: year so far tied to statements, cap progress, deals on their way, revenue share, get paid now, owed                                                                           | specs/finance/03                   |
+| Next   | D           | Fair Housing audit pack                                                                                                                                                                     | docs/plan/market-2026-additions.md |
 
 ## Movewise: HQ's consumer home site and lead marketplace (added 2026-11-15)
 

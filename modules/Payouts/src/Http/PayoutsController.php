@@ -34,6 +34,7 @@ use Modules\Payouts\Statements;
 use Modules\Payouts\Tax1099;
 use Modules\Payouts\TrustReconciliation;
 use Modules\Payouts\W9s;
+use Modules\Payouts\Wallet;
 use Modules\Transactions\Models\Deal;
 
 final class PayoutsController
@@ -85,7 +86,7 @@ final class PayoutsController
     {
         $user = self::user($request);
 
-        return Inertia::render('finance/my-money', ['balances' => $balances->for($user), 'bank' => $accounts->current($user), 'holdHours' => BankAccounts::HOLD_HOURS,
+        return Inertia::render('finance/my-money', ['wallet' => app(Wallet::class)->for($user), 'balances' => $balances->for($user), 'bank' => $accounts->current($user), 'holdHours' => BankAccounts::HOLD_HOURS,
             'instant' => app(GetPaidNow::class)->quote($user),
             'invoices' => app(AgentBilling::class)->invoicesFor($user->id),
             'payOnline' => (bool) app(TenantContext::class)->current()->getAttribute('connect_ready'),
