@@ -8,6 +8,9 @@ re-typing anything.
 
 - **Connecting is free.** People pay only when real money moves: ad spend, or leads bought from a vendor.
 
+**Owner:** Team A. The sprint order and the plan items each sprint covers are in `docs/plan/delivery-plan.md`
+under "Connect".
+
 ## Decisions (approved 2026-11-14)
 
 1. **We build our own connectors.** There is no embedded-integration vendor and no per-connection fee, and we keep
