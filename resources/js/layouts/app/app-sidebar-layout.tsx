@@ -1,4 +1,5 @@
 import { AppContent } from '@/components/app-content';
+import { YourAiAssistant } from '@/components/assistant/your-ai-assistant';
 import { AppShell } from '@/components/app-shell';
 import { AppSidebar } from '@/components/app-sidebar';
 import { AppSidebarHeader } from '@/components/app-sidebar-header';
@@ -27,6 +28,7 @@ export default function AppSidebarLayout({
             <MobileNav />
             <PasskeyPrompt />
             <CreditConsentHost />
+            <YourAiAssistant />
         </AppShell>
     );
 }

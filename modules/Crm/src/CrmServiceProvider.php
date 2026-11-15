@@ -101,7 +101,7 @@ final class CrmServiceProvider extends ServiceProvider
 
         // Tools for people's AI assistants (MCP, specs/connect/03): same visibility rules as the screens.
         foreach ([Mcp\SearchContacts::class, Mcp\GetContact::class, Mcp\MyTasks::class, Mcp\TodaysList::class, Mcp\OpenTimes::class,
-            Mcp\AddContact::class, Mcp\LogNote::class, Mcp\AddTask::class, Mcp\CompleteTask::class] as $tool) {
+            Mcp\AddContact::class, Mcp\LogNote::class, Mcp\AddTask::class, Mcp\CompleteTask::class, Mcp\GhlCampaignList::class, Mcp\GhlAddToCampaign::class] as $tool) {
             $this->app->make(McpToolbox::class)->add($tool);
         }
         Mcp\CrmBrief::register($this->app->make(McpToolbox::class));

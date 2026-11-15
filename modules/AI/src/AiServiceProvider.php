@@ -59,6 +59,8 @@ final class AiServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->loadRoutesFrom(__DIR__.'/../routes/hq.php');
+        $this->loadRoutesFrom(__DIR__.'/../routes/assistant.php');
+        $this->app->make(FeatureCatalog::class)->declare(Assistant\YourAiAssistant::FEATURE, 'ai.assistant', 'Your AI Assistant: answers and acts in the back office');
         Gate::define('hq.ai.manage', fn (User $user): bool => $user->kind === UserKind::HqStaff);
         $this->app->make(NavigationRegistry::class)->add(new NavItem('HQ', 'AI gateway', '/hq/ai', 'sparkles', 20, ability: 'hq.ai.manage', kinds: [UserKind::HqStaff]));
         if ($this->app->runningInConsole()) {
