@@ -31,6 +31,7 @@ use Modules\Core\Tenancy\Concerns\HasPublicUlid;
  * @property string|null $cancel_reason
  * @property int|null $calculation_id
  * @property CarbonImmutable|null $locked_at
+ * @property string|null $imported_from
  */
 final class Deal extends Model
 {
@@ -39,7 +40,7 @@ final class Deal extends Model
 
     protected $table = 'tx_deals';
 
-    protected $fillable = ['type', 'status', 'agent_user_id', 'contact_id', 'street', 'city', 'state_code', 'postal_code', 'mls_number', 'price_cents', 'gci_cents', 'contract_date', 'closing_date', 'closed_on', 'cancel_reason', 'calculation_id', 'locked_at', 'created_by'];
+    protected $fillable = ['type', 'status', 'agent_user_id', 'contact_id', 'street', 'city', 'state_code', 'postal_code', 'mls_number', 'price_cents', 'gci_cents', 'contract_date', 'closing_date', 'closed_on', 'cancel_reason', 'calculation_id', 'locked_at', 'created_by', 'imported_from'];
 
     public function getConnectionName(): ?string
     {

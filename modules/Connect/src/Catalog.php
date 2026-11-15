@@ -17,6 +17,7 @@ use Modules\Crm\Connect\Lofty;
 use Modules\Crm\Connect\Pipedrive;
 use Modules\Crm\Connect\Salesforce;
 use Modules\Crm\Connect\Sierra;
+use Modules\Transactions\Connect\Dotloop;
 
 /**
  * The apps Connect itself offers, and the apps on the roadmap (specs/connect/00). Apps that sync a module's data are
@@ -294,6 +295,23 @@ final class Catalog
                 'partner' => 'Uses the Meta app already approved for ads_management (Meta Ads card). RightAlly pays Meta for Boost spend.',
                 'docs' => 'https://developers.facebook.com/docs/marketing-api/system-users/']));
 
+        // Transaction management: switch in a weekend (specs/connect/12).
+        $catalog->add(new App('dotloop', 'dotloop', 'transactions', 'Bring every loop over as a deal, with its people, contract dates and documents, in one click. Changes keep coming over within seconds.',
+            scope: 'both', auth: 'oauth', syncs: ['Every loop as a deal: address, price, status, agent', 'Buyers, sellers, lender, title and other parties', 'Contract dates and deadlines', 'Documents (PDF)', 'Changes, within seconds'],
+            driver: Dotloop::class, vendorCost: 'Your dotloop plan',
+            oauth: ['provider' => 'dotloop', 'scopes' => [], // dotloop grants scopes to the app (account:read, profile:read, loop:read), not per request
+                'authorize' => 'https://auth.dotloop.com/oauth/authorize',
+                'token' => 'https://auth.dotloop.com/oauth/token', 'userinfo' => 'https://api-gateway.dotloop.com/public/v2/account', 'response_type' => 'code', 'pkce' => false,
+                'token_auth' => 'basic', 'token_state' => true, 'params' => ['redirect_on_deny' => 'true']],
+            setup: ['needs' => 'keys', 'fields' => [['key' => 'client_id', 'label' => 'Client ID'], ['key' => 'client_secret', 'label' => 'Client secret', 'secret' => true]],
+                'steps' => ['Register RightAlly at info.dotloop.com/developers and accept the dotloop API License Agreement.',
+                    'When dotloop approves the app, ask for the scopes account:read, profile:read and loop:read, and set its redirect URL to the return address shown above.',
+                    'Paste the client ID and client secret here, and save.', 'Switch dotloop on. Live updates use the webhook address shown above automatically.'],
+                'partner' => 'dotloop reviews each API app before issuing a client ID and secret (free). A listing in dotloop\'s integrations directory is optional.',
+                'docs' => 'https://dotloop.github.io/public-api/'],
+            guide: ['steps' => ['Press Connect and sign in to dotloop (a broker or admin login brings the whole office).', 'Press Allow.',
+                'Your loops start coming over straight away, with their documents. Big offices take a few hours; you can keep working meanwhile.']]));
+
         // On the roadmap (people can ask for them; HQ sees the demand). Some need a partner agreement first.
         foreach ([
             ['real_geeks', 'Real Geeks', 'crm', 'Bring over leads and their activity from Real Geeks.', 'both', 'Your Real Geeks plan'],
@@ -308,7 +326,6 @@ final class Catalog
             ['nextdoor_ads', 'Nextdoor Ads', 'ads', 'Neighbourhood ads for your listings and open houses.', 'both', 'Ad spend paid to Nextdoor'],
             ['google_ads', 'Google Ads', 'ads', 'Search, display and YouTube ads for your listings and your area, created and published from RightAlly.', 'both', 'Ad spend: your Google account, or RightAlly Boost credits'],
             ['skyslope', 'SkySlope', 'transactions', 'Bring deals, dates, parties and documents into RightAlly transactions and commissions.', 'brokerage', 'Your SkySlope plan'],
-            ['dotloop', 'dotloop', 'transactions', 'Bring loops, dates, parties and documents into RightAlly transactions.', 'both', 'Your dotloop plan'],
             ['lone_wolf', 'Lone Wolf', 'transactions', 'TransactionDesk and back-office data into RightAlly transactions and commissions.', 'brokerage', 'Your Lone Wolf plan'],
             ['brokermint', 'Brokermint', 'transactions', 'Bring transactions and commission data from Brokermint.', 'brokerage', 'Your Brokermint plan'],
             ['paperless_pipeline', 'Paperless Pipeline', 'transactions', 'Bring transactions and documents from Paperless Pipeline.', 'brokerage', 'Your Paperless Pipeline plan'],

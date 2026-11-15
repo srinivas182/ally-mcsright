@@ -52,6 +52,7 @@ type Props = {
         closing_date: string | null;
         closed_on: string | null;
         locked: boolean;
+        imported_from: string | null;
         cancel_reason: string | null;
         agent: string | null;
     };
@@ -286,7 +287,7 @@ export default function ShowDeal({
             <div className="flex max-w-4xl flex-col gap-4 p-4 md:p-6">
                 <PageHeader
                     title={deal.street}
-                    description={`${[deal.city, deal.state_code, deal.postal_code].filter(Boolean).join(', ')} · ${deal.agent ?? ''}${deal.locked ? ' · Closed and locked' : ''}`}
+                    description={`${[deal.city, deal.state_code, deal.postal_code].filter(Boolean).join(', ')} · ${deal.agent ?? ''}${deal.locked ? ' · Closed and locked' : ''}${deal.imported_from ? ` · Brought over from ${deal.imported_from}` : ''}`}
                 />
                 <section className="grid gap-2 rounded-lg border p-4 text-sm md:grid-cols-4">
                     <span>

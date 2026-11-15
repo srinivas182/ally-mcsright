@@ -78,7 +78,8 @@ final class DealController
             'deal' => ['ulid' => $deal->ulid, 'street' => $deal->street, 'city' => $deal->city, 'state_code' => $deal->state_code, 'postal_code' => $deal->postal_code,
                 'type' => $deal->type, 'status' => $deal->status, 'price_cents' => $deal->price_cents, 'gci_cents' => $deal->gci_cents, 'mls_number' => $deal->mls_number,
                 'contract_date' => $deal->contract_date?->toDateString(), 'closing_date' => $deal->closing_date?->toDateString(), 'closed_on' => $deal->closed_on?->toDateString(),
-                'locked' => $deal->locked_at !== null, 'cancel_reason' => $deal->cancel_reason, 'agent' => User::query()->find($deal->agent_user_id)?->name],
+                'locked' => $deal->locked_at !== null, 'cancel_reason' => $deal->cancel_reason, 'agent' => User::query()->find($deal->agent_user_id)?->name,
+                'imported_from' => $deal->imported_from],
             'parties' => $db->table('tx_parties')->where('deal_id', $deal->id)->get(['role', 'name', 'company', 'email', 'phone']),
             'items' => Item::query()->where('deal_id', $deal->id)->orderBy('sort')->get()->map(fn (Item $i): array => [
                 'ulid' => $i->ulid, 'label' => $i->label, 'required' => $i->required, 'stage' => $i->stage, 'status' => $i->status, 'fix_reason' => $i->fix_reason,
