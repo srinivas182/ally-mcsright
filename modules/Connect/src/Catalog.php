@@ -6,6 +6,7 @@ namespace Modules\Connect;
 
 use Modules\Core\Connect\App;
 use Modules\Core\Connect\AppCatalog;
+use Modules\Crm\Connect\FollowUpBoss;
 
 /**
  * The apps Connect itself offers, and the apps on the roadmap (specs/connect/00). Apps that sync a module's data are
@@ -72,9 +73,26 @@ final class Catalog
                 'Verify the publisher (free with a Microsoft partner ID), so people see "verified" when they approve.', 'Switch Microsoft 365 Calendar on.'],
                 'docs' => 'https://learn.microsoft.com/graph/outlook-calendar-concept-overview']));
 
+        // CRMs: one click (sign in to the other app and approve), then everything comes over (specs/connect/04).
+        $catalog->add(new App('follow_up_boss', 'Follow Up Boss', 'crm', 'Bring over your people, tags, stages, agents and notes from Follow Up Boss with one click.',
+            scope: 'both', auth: 'oauth', syncs: ['People (names, emails, phones)', 'Tags and stage', 'Which agent each person belongs to', 'Notes'],
+            driver: FollowUpBoss::class, vendorCost: 'Your Follow Up Boss plan',
+            oauth: ['provider' => 'follow_up_boss', 'scopes' => [], 'authorize' => 'https://app.followupboss.com/oauth/authorize', 'token' => 'https://app.followupboss.com/oauth/token',
+                'userinfo' => 'https://api.followupboss.com/v1/me', 'response_type' => 'auth_code', 'pkce' => false, 'token_auth' => 'basic', 'token_state' => true,
+                'params' => ['prompt' => 'login'], 'headers' => ['X-System' => 'x_system', 'X-System-Key' => 'x_system_key']],
+            setup: ['needs' => 'keys', 'fields' => [
+                ['key' => 'x_system', 'label' => 'System name (X-System)'], ['key' => 'x_system_key', 'label' => 'System key (X-System-Key)', 'secret' => true],
+                ['key' => 'client_id', 'label' => 'OAuth client ID'], ['key' => 'client_secret', 'label' => 'OAuth client secret', 'secret' => true]],
+                'steps' => ['Register RightAlly as a system at apps.followupboss.com/system-registration (free). Copy the system name and system key.',
+                    'Ask Follow Up Boss (api@followupboss.com) to create an OAuth app for RightAlly, with the return address shown above as its redirect URL.',
+                    'Paste the system name, system key, client ID and client secret here, and save.', 'Switch Follow Up Boss on.'],
+                'partner' => 'Free system registration. Being listed in Follow Up Boss\'s integrations directory is optional (apply through their partner team).',
+                'request' => ['to' => 'api@followupboss.com', 'subject' => 'OAuth app for RightAlly (registered system)',
+                    'body' => "Hello Follow Up Boss team,\n\nRightAlly is an all-in-one platform for US real estate brokerages. We have registered RightAlly as a system and would like an OAuth app so brokers and agents can connect their Follow Up Boss accounts in one click (people, tags, stages, notes; two-way sync).\n\nPlease create an OAuth app for us with this redirect URL:\n{return_address}\n\nOnce it is ready, please send the client ID and client secret through a secure channel (not plain email).\n\nThank you,\nRightAlly HQ"],
+                'docs' => 'https://docs.followupboss.com/docs']));
+
         // On the roadmap (people can ask for them; HQ sees the demand).
         foreach ([
-            ['follow_up_boss', 'Follow Up Boss', 'crm', 'Bring over people, notes, tags and stages, then keep them in sync while you move.', 'both', 'Your Follow Up Boss plan'],
             ['boldtrail', 'BoldTrail (kvCORE)', 'crm', 'Bring over contacts, notes and lead history from BoldTrail.', 'both', 'Your BoldTrail plan'],
             ['lofty', 'Lofty', 'crm', 'Bring over contacts, notes and lead history from Lofty (formerly Chime).', 'both', 'Your Lofty plan'],
             ['sierra', 'Sierra Interactive', 'crm', 'Bring over leads, notes and saved searches from Sierra Interactive.', 'both', 'Your Sierra plan'],

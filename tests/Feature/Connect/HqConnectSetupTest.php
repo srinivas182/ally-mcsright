@@ -56,3 +56,15 @@ it('asks for the password before saving, and is for HQ only', function (): void 
     $this->actingAs($this->staff)->post($this->hq.'/hq/connect/google', ['client_id' => '1-a.apps.googleusercontent.com', 'client_secret' => 'GOCSPX-abcdefghijklmnop'])->assertRedirect();
     expect(DB::connection(Connections::control())->table('hq_oauth_clients')->count())->toBe(0);
 });
+
+it('gives HQ a ready-written request to send to Follow Up Boss, with the return address filled in', function (): void {
+    $this->actingAs($this->staff)->get($this->hq.'/hq/connect')->assertInertia(fn (Assert $p) => $p
+        ->where('apps', function ($apps): bool {
+            $fub = collect($apps)->firstWhere('key', 'follow_up_boss');
+
+            return $fub['request']['to'] === 'api@followupboss.com'
+                && str_contains($fub['request']['body'], 'https://auth.rightally.app/connect/oauth/callback')
+                && ! str_contains($fub['request']['body'], '{return_address}')
+                && collect($apps)->firstWhere('key', 'boldtrail')['request'] === null;
+        }));
+});

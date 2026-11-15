@@ -10,6 +10,7 @@ use Illuminate\Support\ServiceProvider;
 use Laravel\Passport\Passport;
 use Modules\Connect\Webhooks\WebhookOutbox;
 use Modules\Core\Connect\AppCatalog;
+use Modules\Core\Connect\ConnectorKit;
 use Modules\Core\Connect\Outbox;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Mcp\McpGate;
@@ -30,6 +31,8 @@ final class ConnectServiceProvider extends ServiceProvider
         $this->app->scoped(OAuth\OAuthFlow::class);
         $this->app->scoped(Calendars\ConnectCalendars::class);
         $this->app->bind(\Modules\Core\Connect\Calendars::class, Calendars\ConnectCalendars::class);
+        $this->app->scoped(Kit::class);
+        $this->app->bind(ConnectorKit::class, Kit::class);
         $this->app->scoped(Mcp\AiAssistants::class);
         $this->app->bind(McpGate::class, Mcp\AiAssistants::class);
         // OAuth for AI assistants (Passport): tokens live with the brokerage's own data.

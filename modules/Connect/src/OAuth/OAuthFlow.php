@@ -6,6 +6,7 @@ namespace Modules\Connect\OAuth;
 
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\Client\Response;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
@@ -15,6 +16,7 @@ use Illuminate\Validation\ValidationException;
 use Modules\Connect\AppRegistry;
 use Modules\Connect\Connections;
 use Modules\Connect\Health;
+use Modules\Connect\Jobs\SyncConnection;
 use Modules\Connect\Models\Connection;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Connect\App;
@@ -47,16 +49,19 @@ final class OAuthFlow
         if ($this->connections->ownerFor($app, $user) === false) {
             throw ValidationException::withMessages(['app' => 'Your brokerage connects '.$app->name.' for everyone.']);
         }
-        $p = Providers::get($app->oauth['provider']);
+        $p = Providers::forApp($app);
         $nonce = Str::random(32);
         $verifier = Str::random(64);
         $request->session()->put('connect.oauth.nonce', $nonce);
         $state = Crypt::encryptString((string) json_encode(['t' => $this->tenants->id(), 'h' => $request->getHost(), 'a' => $app->key, 'u' => $user->id,
             'n' => $nonce, 'v' => $verifier, 'e' => CarbonImmutable::now()->addMinutes(10)->getTimestamp()]));
 
-        return $p['authorize'].'?'.http_build_query([...$p['params'], 'client_id' => $p['client_id'], 'redirect_uri' => Providers::redirectUri(), 'response_type' => 'code',
-            'scope' => implode(' ', array_values(array_unique([...$p['base_scopes'], ...$app->oauth['scopes']]))), 'state' => $state,
-            'code_challenge' => rtrim(strtr(base64_encode(hash('sha256', $verifier, true)), '+/', '-_'), '='), 'code_challenge_method' => 'S256']);
+        $scopes = array_values(array_unique([...$p['base_scopes'], ...$app->oauth['scopes']]));
+
+        return $p['authorize'].'?'.http_build_query(array_filter([...$p['params'], 'client_id' => $p['client_id'], 'redirect_uri' => Providers::redirectUri(),
+            'response_type' => $p['response_type'], 'scope' => $scopes !== [] ? implode(' ', $scopes) : null, 'state' => $state,
+            'code_challenge' => $p['pkce'] ? rtrim(strtr(base64_encode(hash('sha256', $verifier, true)), '+/', '-_'), '=') : null,
+            'code_challenge_method' => $p['pkce'] ? 'S256' : null], fn ($v): bool => $v !== null));
     }
 
     /**
@@ -74,15 +79,15 @@ final class OAuthFlow
         if ($app->oauth === null || ! is_string($query['code'] ?? null)) {
             return $back.'?'.http_build_query(['app' => $app->key, 'error' => 'failed']);
         }
-        $p = Providers::get($app->oauth['provider']);
-        $r = Http::asForm()->acceptJson()->timeout(15)->post($p['token'], ['grant_type' => 'authorization_code', 'code' => $query['code'], 'redirect_uri' => Providers::redirectUri(),
-            'client_id' => $p['client_id'], 'client_secret' => $p['client_secret'], 'code_verifier' => (string) $state['v']]);
+        $p = Providers::forApp($app);
+        $r = self::tokenRequest($p, ['grant_type' => 'authorization_code', 'code' => $query['code'], 'redirect_uri' => Providers::redirectUri()]
+            + ($p['pkce'] ? ['code_verifier' => (string) $state['v']] : []) + ($p['token_state'] ? ['state' => (string) ($query['state'] ?? '')] : []));
         if (! $r->successful() || ! is_string($r->json('access_token'))) {
             return $back.'?'.http_build_query(['app' => $app->key, 'error' => 'failed']);
         }
         $access = (string) $r->json('access_token');
-        $me = Http::withToken($access)->acceptJson()->timeout(10)->get($p['userinfo']);
-        $account = (string) ($me->json('email') ?? $me->json('mail') ?? $me->json('userPrincipalName') ?? '');
+        $me = $p['userinfo'] !== '' ? Http::withToken($access)->withHeaders($p['headers'])->acceptJson()->timeout(10)->get($p['userinfo']) : null;
+        $account = $me !== null ? (string) ($me->json('email') ?? $me->json('mail') ?? $me->json('userPrincipalName') ?? '') : '';
         $ticket = Str::random(48);
         Cache::put('connect-oauth:'.hash('sha256', $ticket), Crypt::encryptString((string) json_encode(['t' => $state['t'], 'a' => $app->key, 'u' => $state['u'], 'n' => $state['n'],
             'account' => mb_substr($account, 0, 120), 'tokens' => self::tokens($r->json())])), now()->addMinutes(2));
@@ -129,6 +134,9 @@ final class OAuthFlow
             'failures' => 0, 'last_error' => null, 'connected_by' => $user->id])->save();
         app(AuditLogger::class)->record('connect.connected', metadata: ['app' => $app->key, 'connection' => $c->ulid, 'for' => $owner === null ? 'brokerage' : 'self', 'one_click' => true],
             severity: 'notice');
+        if ($app->driver !== null) {
+            SyncConnection::dispatch($c->id); // bring everything over straight away
+        }
 
         return $c;
     }
@@ -147,9 +155,8 @@ final class OAuthFlow
         if (($t['refresh_token'] ?? '') === '' || $app->oauth === null) {
             throw new NeedsReconnect('The sign-in for '.$app->name.' expired.');
         }
-        $p = Providers::get($app->oauth['provider']);
-        $r = Http::asForm()->acceptJson()->timeout(15)->post($p['token'], ['grant_type' => 'refresh_token', 'refresh_token' => (string) $t['refresh_token'],
-            'client_id' => $p['client_id'], 'client_secret' => $p['client_secret']]);
+        $p = Providers::forApp($app);
+        $r = self::tokenRequest($p, ['grant_type' => 'refresh_token', 'refresh_token' => (string) $t['refresh_token']]);
         if (in_array($r->status(), [400, 401], true)) {
             app(Health::class)->failed($c, 'The sign-in for '.$app->name.' was removed or expired.', true);
             throw new NeedsReconnect('The sign-in for '.$app->name.' was removed or expired.');
@@ -157,7 +164,7 @@ final class OAuthFlow
         if (! $r->successful() || ! is_string($r->json('access_token'))) {
             throw new \RuntimeException($app->name.' did not answer (status '.$r->status().').');
         }
-        $c->forceFill(['credentials' => self::tokens($r->json()) + ['refresh_token' => (string) $t['refresh_token']]])->save();
+        $c->forceFill(['credentials' => self::tokens($r->json()) + ['refresh_token' => (string) $t['refresh_token']]])->save(); // a new refresh token, when sent, wins
 
         return (string) $r->json('access_token');
     }
@@ -165,7 +172,7 @@ final class OAuthFlow
     /** Best effort: tells the provider to forget the sign-in when someone disconnects. */
     public function revoke(Connection $c, App $app): void
     {
-        $p = $app->oauth !== null && Providers::configured($app->oauth['provider']) ? Providers::get($app->oauth['provider']) : null;
+        $p = $app->oauth !== null && Providers::configured($app->oauth['provider']) ? Providers::get($app->oauth['provider']) : null; // only Google offers revoke
         $token = (string) (($c->credentials ?? [])['refresh_token'] ?? ($c->credentials ?? [])['access_token'] ?? '');
         if ($p === null || $p['revoke'] === null || $token === '') {
             return;
@@ -175,6 +182,22 @@ final class OAuthFlow
         } catch (Throwable) {
             // the connection is deleted either way
         }
+    }
+
+    /**
+     * The token endpoint, with the client's credentials the way the provider wants them (in the form, or as HTTP
+     * Basic like Follow Up Boss).
+     *
+     * @param  array{token: string, client_id: string, client_secret: string, token_auth: string}  $p
+     * @param  array<string, string>  $form
+     */
+    private static function tokenRequest(array $p, array $form): Response
+    {
+        $http = Http::asForm()->acceptJson()->timeout(15);
+
+        return $p['token_auth'] === 'basic'
+            ? $http->withBasicAuth($p['client_id'], $p['client_secret'])->post($p['token'], $form)
+            : $http->post($p['token'], $form + ['client_id' => $p['client_id'], 'client_secret' => $p['client_secret']]);
     }
 
     /**

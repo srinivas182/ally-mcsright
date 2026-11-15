@@ -91,7 +91,7 @@ function hookEndpoint(array $events = ['lead.created']): Connection
 it('lists the apps by category, with what each person may connect', function (): void {
     $this->actingAs($this->owner)->get('/apps')->assertInertia(fn (Assert $p) => $p->component('apps/index')
         ->where('apps', fn ($apps): bool => collect($apps)->firstWhere('key', 'webhooks')['can_connect'] === true
-            && collect($apps)->firstWhere('key', 'follow_up_boss')['status'] === 'soon'
+            && collect($apps)->firstWhere('key', 'boldtrail')['status'] === 'soon'
             && collect($apps)->pluck('category')->unique()->count() >= 8));
     $this->actingAs($this->agent)->get('/apps')->assertInertia(fn (Assert $p) => $p
         ->where('apps', fn ($apps): bool => collect($apps)->firstWhere('key', 'webhooks')['can_connect'] === false
@@ -210,10 +210,10 @@ it('asks for the password before storing sign-in details', function (): void {
 });
 
 it('records which coming apps brokerages want, for HQ', function (): void {
-    $this->actingAs($this->owner)->post('/apps/follow_up_boss/request')->assertSessionHasNoErrors();
-    $this->actingAs($this->agent)->post('/apps/follow_up_boss/request')->assertSessionHasNoErrors();
-    expect(DB::connection(Connections::control())->table('hq_app_requests')->where('app_key', 'follow_up_boss')->value('requests'))->toBe(2);
-    $this->actingAs($this->agent)->get('/apps/follow_up_boss')->assertInertia(fn (Assert $p) => $p->where('app.requested', true)->where('app.status', 'soon'));
+    $this->actingAs($this->owner)->post('/apps/boldtrail/request')->assertSessionHasNoErrors();
+    $this->actingAs($this->agent)->post('/apps/boldtrail/request')->assertSessionHasNoErrors();
+    expect(DB::connection(Connections::control())->table('hq_app_requests')->where('app_key', 'boldtrail')->value('requests'))->toBe(2);
+    $this->actingAs($this->agent)->get('/apps/boldtrail')->assertInertia(fn (Assert $p) => $p->where('app.requested', true)->where('app.status', 'soon'));
 });
 
 it('shows forwarding addresses and the lead API on the built-in lead apps', function (): void {

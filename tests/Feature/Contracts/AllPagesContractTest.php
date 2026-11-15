@@ -72,7 +72,7 @@ it('sends every brokerage page the data its component needs', function (string $
     'apps (agent)' => ['agent', '/apps', 'apps/index'],
     'an app: webhooks' => ['owner', '/apps/webhooks', 'apps/show'],
     'an app: lead forwarding email' => ['owner', '/apps/lead_email', 'apps/show'],
-    'an app: coming soon' => ['agent', '/apps/follow_up_boss', 'apps/show'],
+    'an app: coming soon' => ['agent', '/apps/boldtrail', 'apps/show'],
     'AI assistants (owner)' => ['owner', '/apps/ai_assistants', 'apps/show'],
     'AI assistants (agent)' => ['agent', '/apps/ai_assistants', 'apps/show'],
     'AI assistant tile: Claude' => ['agent', '/apps/ai_claude', 'apps/show'],

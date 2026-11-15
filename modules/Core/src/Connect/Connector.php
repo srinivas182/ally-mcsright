@@ -26,7 +26,9 @@ interface Connector
     /**
      * One sync run. Must be safe to repeat (upsert by the other app's ids) and return what it did.
      *
-     * @return array{created: int, updated: int, skipped: int, cursor: string|null, note: string|null}
+     * "more" means there is more to bring over now (a big first import): the next run starts straight away.
+     *
+     * @return array{created: int, updated: int, skipped: int, cursor: string|null, note: string|null, more?: bool}
      */
     public function sync(ConnectionData $connection): array;
 }
