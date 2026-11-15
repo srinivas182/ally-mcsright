@@ -8,6 +8,7 @@ use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
 use Modules\Sites\Http\Controllers\AillyController;
 use Modules\Sites\Http\Controllers\AillyLiveController;
 use Modules\Sites\Http\Controllers\BlogAdminController;
+use Modules\Sites\Http\Controllers\DemandController;
 use Modules\Sites\Http\Controllers\FunnelAdminController;
 use Modules\Sites\Http\Controllers\HomeReportController;
 use Modules\Sites\Http\Controllers\HqSitesController;
@@ -27,6 +28,10 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function
     Route::get('settings/ailly/audit', [AillyController::class, 'audit'])->middleware('throttle:20,1')->name('settings.ailly.audit');
     Route::post('settings/ailly/test', [AillyController::class, 'startTest'])->name('settings.ailly.test');
     Route::post('settings/ailly/test/stop', [AillyController::class, 'stopTest'])->name('settings.ailly.test.stop');
+    Route::get('listings/demand', [DemandController::class, 'index'])->name('demand.index');
+    Route::post('listings/demand', [DemandController::class, 'store'])->middleware('throttle:20,1')->name('demand.store');
+    Route::get('listings/demand/{report}/print', [DemandController::class, 'print'])->where('report', '[0-9A-HJKMNP-TV-Z]{26}')->name('demand.print');
+    Route::post('listings/demand/{report}/tell', [DemandController::class, 'tell'])->where('report', '[0-9A-HJKMNP-TV-Z]{26}')->name('demand.tell');
     Route::get('funnels', [FunnelAdminController::class, 'index'])->name('funnels.index');
     Route::post('funnels', [FunnelAdminController::class, 'store'])->middleware('throttle:20,1')->name('funnels.store');
     Route::patch('funnels/{funnel}', [FunnelAdminController::class, 'update'])->where('funnel', '[0-9A-HJKMNP-TV-Z]{26}')->name('funnels.update');

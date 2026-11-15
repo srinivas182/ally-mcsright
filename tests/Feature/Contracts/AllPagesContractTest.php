@@ -77,6 +77,7 @@ it('sends every brokerage page the data its component needs', function (string $
     'deals: bring over files' => ['owner', '/deals/bring-over-files', 'deals/bring-over-files'],
     'ads: list' => ['agent', '/ads', 'ads/index'],
     'grow: funnels' => ['agent', '/funnels', 'grow/funnels'],
+    'listings: buyer demand' => ['agent', '/listings/demand', 'listings/demand'],
     'ads: builder' => ['agent', '/ads/new', 'ads/new'],
     'AI assistants (owner)' => ['owner', '/apps/ai_assistants', 'apps/show'],
     'AI assistants (agent)' => ['agent', '/apps/ai_assistants', 'apps/show'],

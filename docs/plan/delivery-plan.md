@@ -168,7 +168,8 @@ Seven approved growth items are built before Connect C7 and C8, in this order:
 | LG1b   | E           | Monthly home-value report emails; promote a funnel with an own-account Meta ad or Boost                                                                                                     | specs/grow/03                      |
 | LN1    | E           | Lead-IQ long nurture: 12 months of AI follow-up for quiet leads, timed by engagement, handed to the agent on reply                                                                          | specs/grow/09                      |
 | DB1    | A with D, E | Daily brief across the whole business: one ranked list on Today and Dashboard, 7am weekday email                                                                                            | specs/core/09                      |
-| Next   | E           | Buyer demand before listing; proof of consent; Agent Wallet; Fair Housing audit pack                                                                                                        | docs/plan/market-2026-additions.md |
+| BD1    | C with E    | Buyer demand before listing: counts by price, agents with matching buyers, competition, seller report in English and Spanish                                                                | specs/grow/10                      |
+| Next   | D, B        | Proof of consent; Agent Wallet; Fair Housing audit pack                                                                                                                                     | docs/plan/market-2026-additions.md |
 
 ## Movewise: HQ's consumer home site and lead marketplace (added 2026-11-15)
 
