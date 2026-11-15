@@ -124,8 +124,11 @@ final class SyncedPay
     /** What a payment depends on: when any of it changes, the payment is made again. */
     public static function fingerprint(Deal $deal): string
     {
+        $overrides = $deal->pay_overrides ?? [];
+        ksort($overrides); // MySQL stores JSON objects with its own key order: the same overrides must give the same print
+
         return hash('sha256', (string) json_encode([$deal->gci_cents, $deal->price_cents, $deal->closed_on?->toDateString() ?? $deal->closing_date?->toDateString(),
-            $deal->agent_user_id, $deal->type, $deal->pay_overrides ?? []]));
+            $deal->agent_user_id, $deal->type, $overrides]));
     }
 
     private function wait(Deal $deal, string $status, string $note): void

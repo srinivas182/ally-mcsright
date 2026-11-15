@@ -104,7 +104,7 @@ it('lets the broker override split, fees, cap and revenue share, and reverse, in
     $row = finalFor($deal)?->result['agents'][0];
     expect($row['company_cents'])->toBe(100_000)->and($row['agent_net_cents'])->toBe(900_000)
         ->and(app(RevenueShareEngine::class)->wallet($this->sponsor)->cents)->toBe(0)
-        ->and($deal->fresh()?->pay_overrides)->toBe(['agent_split_percent' => '90', 'waive_fees' => true, 'no_revenue_share' => true, 'reason' => 'Top producer incentive']);
+        ->and($deal->fresh()?->pay_overrides)->toEqual(['agent_split_percent' => '90', 'waive_fees' => true, 'no_revenue_share' => true, 'reason' => 'Top producer incentive']);
 
     $this->actingAs($this->owner)->post('/deals/'.$deal->ulid.'/pay/reverse', ['reason' => 'Paid by mistake'])->assertSessionHasNoErrors();
     expect(finalFor($deal))->toBeNull()->and($deal->fresh()?->money_status)->toBe('reversed');
