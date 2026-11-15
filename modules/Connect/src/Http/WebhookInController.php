@@ -39,6 +39,9 @@ final class WebhookInController
             return response('', 401);
         }
         $payload = json_decode($raw, true);
+        if (! is_array($payload) && str_starts_with((string) $request->header('Content-Type'), 'application/x-www-form-urlencoded')) {
+            parse_str($raw, $payload); // Mailchimp posts forms
+        }
         $t = Tenant::query()->where('ulid', $tenant)->where('status', 'active')->first();
         if (! is_array($payload) || $t === null) {
             return response('', $t === null ? 410 : 400);

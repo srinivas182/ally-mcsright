@@ -74,6 +74,10 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function
 Route::domain((string) config('core.sso_host'))->middleware('throttle:600,1')
     ->post('connect/hooks/{app}/{tenant}/{connection}', WebhookInController::class)
     ->where(['app' => '[a-z0-9_]{2,40}', 'tenant' => '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}', 'connection' => '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}'])->name('connect.hooks');
+// Some apps (Mailchimp) check the address with a GET before they send anything.
+Route::domain((string) config('core.sso_host'))->middleware('throttle:60,1')
+    ->get('connect/hooks/{app}/{tenant}/{connection}', fn () => response('', 200))
+    ->where(['app' => '[a-z0-9_]{2,40}', 'tenant' => '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}', 'connection' => '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}'])->name('connect.hooks.check');
 
 // App-level webhooks (one address per app, e.g. Meta), routed by account (specs/connect/10).
 Route::domain((string) config('core.sso_host'))->middleware('throttle:1200,1')->group(function (): void {

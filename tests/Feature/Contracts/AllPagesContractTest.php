@@ -79,6 +79,7 @@ it('sends every brokerage page the data its component needs', function (string $
     'grow: funnels' => ['agent', '/funnels', 'grow/funnels'],
     'listings: buyer demand' => ['agent', '/listings/demand', 'listings/demand'],
     'settings: fair housing' => ['owner', '/settings/fair-housing', 'settings/fair-housing'],
+    'settings: email marketing' => ['owner', '/settings/email-marketing', 'settings/email-marketing'],
     'ads: builder' => ['agent', '/ads/new', 'ads/new'],
     'AI assistants (owner)' => ['owner', '/apps/ai_assistants', 'apps/show'],
     'AI assistants (agent)' => ['agent', '/apps/ai_assistants', 'apps/show'],
