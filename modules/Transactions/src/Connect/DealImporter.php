@@ -36,7 +36,7 @@ use Throwable;
  */
 final class DealImporter
 {
-    public const TYPES = ['listing', 'buyer', 'lease'];
+    public const TYPES = ['listing', 'buyer', 'dual', 'lease'];
 
     public const STATUSES = ['pre_contract', 'under_contract', 'closed', 'fell_through'];
 

@@ -57,6 +57,7 @@ final class DealController
                 'missing' => count($deals->missing($d)),
             ]),
             'forecast' => self::reviewer($user) ? app(Forecast::class)->pending() : null,
+            'canBringOverFiles' => self::reviewer($user),
             'atRisk' => self::atRisk(self::actingFor($user)),
             'alerts' => app(Deadlines::class)->prefs($user),
             'canCreateFor' => self::reviewer($user) ? User::query()->where('kind', UserKind::Agent)->where('status', 'active')->orderBy('first_name')->get()
