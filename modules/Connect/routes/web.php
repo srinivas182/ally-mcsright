@@ -31,6 +31,7 @@ Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.apps.view'])->
     Route::get('hq/apps', [HqAppsController::class, 'index'])->name('hq.apps');
     Route::get('hq/connect', [HqAppsController::class, 'setup'])->name('hq.connect');
     // Saving RightAlly's sign-in apps: confirm the password first.
+    Route::post('hq/connect/apps/{app}', [HqAppsController::class, 'saveApp'])->where('app', '[a-z0-9_]{2,40}')->middleware('password.confirm')->name('hq.connect.app');
     Route::post('hq/connect/{provider}', [HqAppsController::class, 'saveClient'])->whereIn('provider', ['google', 'microsoft'])->middleware('password.confirm')->name('hq.connect.save');
 });
 

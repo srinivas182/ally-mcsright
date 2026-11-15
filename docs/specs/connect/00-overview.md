@@ -65,23 +65,60 @@ under "Connect".
   consent is on record (TCPA). A contact's opt-out in either system is honoured.
 - **Fair Housing.** Every ad and every piece of generated copy goes through the Fair Housing check.
 
-## Categories and planned apps
+## HQ app registry: every app is enabled by HQ (approved 2026-11-14)
 
-| Category                 | Apps (first ones in **bold**)                                                                                                                                                                                                                 | Sprint |
-| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
-| Import and automation    | **CSV import** (presets for Follow Up Boss, BoldTrail and Lofty exports), **Outgoing webhooks**, **Zapier / Make**, **Lead API**                                                                                                              | C1a    |
-| Calendar                 | **Google Calendar**, **Microsoft 365 Calendar** (two-way: busy times for booking, bookings into the calendar). No mailbox reading (deferred, decision 2026-11-14)                                                                             | C1b    |
-| CRM                      | **Follow Up Boss**, **BoldTrail (kvCORE)**, **Lofty**, **Sierra Interactive**, Real Geeks, BoomTown, Wise Agent, Top Producer, LionDesk, Salesforce, HubSpot                                                                                  | C2     |
-| Lead sources             | **Lead forwarding email** (works today), **Realtor.com**, **Facebook Lead Ads**, Zillow (two-way sync only for partner CRMs, so RightAlly applies), Homes.com, Redfin Partner, Ylopo, Market Leader, Google Local Services Ads, REDX, Vulcan7 | C3     |
-| Ads                      | **Meta (Facebook and Instagram)**, Google Ads; listing boosts (new listing, open house, price drop, sold) with AI copy and images; leads tagged by listing                                                                                    | C4     |
-| Transaction management   | **SkySlope**, **dotloop**, **Lone Wolf** (TransactionDesk and back office), Brokermint, Paperless Pipeline, Open to Close                                                                                                                     | C5     |
-| Accounting               | QuickBooks Online, Xero                                                                                                                                                                                                                       | C6     |
-| Showings and open houses | ShowingTime, open-house sign-in apps                                                                                                                                                                                                          | C6     |
-| Marketing                | Canva, social posting (Facebook, Instagram, LinkedIn, Google Business Profile), Mailchimp, direct mail (Lob, ProspectsPLUS)                                                                                                                   | C7     |
-| Phones                   | RingCentral, Mojo                                                                                                                                                                                                                             | C7     |
-| Property data            | ATTOM or BatchData (valuations, likely sellers)                                                                                                                                                                                               | C7     |
-| Partners                 | Lenders (Homebot, Total Expert), title and escrow (Qualia)                                                                                                                                                                                    | C8     |
-| Reviews                  | Google and Zillow reviews on agent websites                                                                                                                                                                                                   | C8     |
+- **Only apps HQ has enabled can be connected.** HQ sees every app on **HQ → Connect setup**. Brokers and agents
+  only see an app as "Ready to connect" when HQ has switched it on and its setup is complete. Every other app shows
+  as "Coming soon" with an **I want this app** button.
+- **Each app has a setup card in HQ.** It shows:
+    - what the app needs: a one-click sign-in app (client ID and secret), a partner or API key, or nothing;
+    - **the return address to add**, with a Copy button;
+    - **step-by-step tips**: where to register, what to click, which permissions to tick;
+    - **whether a partnership is needed**, with a link to the vendor's partner or developer programme;
+    - the boxes for keys and secrets. They are encrypted, write-only, never shown again, need a password
+      confirmation to save, and are audited;
+    - an expiry date for secrets that expire, with a warning 30 days before;
+    - **Enable or Disable**. Disabling stops new connections and pauses every existing one (they keep their saved
+      data and resume when re-enabled).
+- **Adding new apps as we go.** Every app is a small definition in code:
+    - name, category, scope;
+    - how it signs in: one-click (OAuth), API key, or webhook;
+    - what it syncs;
+    - its HQ setup tips;
+    - a driver.
+
+    Drivers reuse a **connector kit**: one-click sign-in, token refresh, paging, rate limits, retries, sync with
+    external IDs, field mapping and health. A new app is usually one driver file plus its mapping.
+
+- **We build an app wherever the vendor publishes API documentation.** Where API access needs a partner
+  agreement, the app is built and tested against the vendor's documented API and sandbox, and listed in HQ as
+  "Needs partner access". HQ enables it once the partnership is approved.
+
+## Apps by category
+
+**Bold** apps are planned in the sprint shown. _Italic_ apps were added on 2026-11-14 (they go in the same
+sprint as their category, or the next one).
+
+| Category                  | Apps                                                                                                                                                                                                                                                                     | Sprint       |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------ |
+| Import and automation     | CSV import, Outgoing webhooks, Zapier and Make, Lead API (all live)                                                                                                                                                                                                      | C1a          |
+| Calendar                  | Google Calendar, Microsoft 365 Calendar (live once HQ sets them up); _Apple iCloud Calendar_ (later: CalDAV, no one-click)                                                                                                                                               | C1b, later   |
+| AI assistants             | **RightAlly MCP server**: connect Claude, ChatGPT, Microsoft Copilot or Gemini to your RightAlly account (specs/connect/03)                                                                                                                                              | M1, M2       |
+| CRM                       | **Follow Up Boss**, **BoldTrail (kvCORE)**, **Lofty**, **Sierra Interactive**, **Real Geeks**, **BoomTown**, **Wise Agent**, **Top Producer**, **HubSpot**, **Salesforce**, _GoHighLevel_, _CINC_, _Brivity_, _Propertybase_, _LionDesk_, _Rechat_, _Cloze_, _Pipedrive_ | C2a–C2d      |
+| Lead sources              | Lead forwarding email (live), **Facebook Lead Ads**, **Realtor.com**, **Zillow Premier Agent** (partner), **Homes.com**, **Ylopo**, **Google Local Services Ads**, **REDX**, **Vulcan7**, _Redfin Partner Agent_, _Market Leader_, _Landvoice_, _SmartZip_               | C3a–C3b      |
+| Ads                       | **Meta (Facebook and Instagram)**, **Google Ads**, _YouTube (through Google Ads)_, _Nextdoor_ (later)                                                                                                                                                                    | C4a, C4b, C7 |
+| Transaction management    | **SkySlope**, **dotloop**, **Lone Wolf (TransactionDesk and back office)**, **Brokermint**, **Paperless Pipeline**, _Open to Close_, _DocuSign_, _Authentisign_, _zipForm_, _Form Simplicity_                                                                            | C5a–C5b      |
+| Accounting                | **QuickBooks Online**, **Xero**                                                                                                                                                                                                                                          | C6           |
+| Showings and open houses  | **ShowingTime**, _BrokerBay_, _Aligned Showings_, _Spacio_                                                                                                                                                                                                               | C8           |
+| Marketing                 | **Canva**, **Social posting** (Facebook, Instagram, LinkedIn, Google Business Profile), **Mailchimp**, **Direct mail** (Lob, ProspectsPLUS), _Constant Contact_, _BombBomb_, _Corefact_                                                                                  | C7           |
+| Phones                    | **RingCentral**, **Mojo Dialer**, _Dialpad_, _Aircall_                                                                                                                                                                                                                   | C7           |
+| Property data             | **ATTOM**, _BatchData_, _PropStream_                                                                                                                                                                                                                                     | C8           |
+| Lenders, title and escrow | **Lender partners**, **Title and escrow**, _Homebot_, _Total Expert_, _Qualia_, _Updater_                                                                                                                                                                                | C8           |
+| Reviews                   | **Google and Zillow reviews**, _RealSatisfied_, _Testimonial Tree_                                                                                                                                                                                                       | C8           |
+
+About 80 apps in total. Before each app is built, its API documentation is checked for: one-click sign-in or key
+only; what can be read and written two-way; webhooks for instant updates; rate limits; sandbox access; and whether
+a partner agreement is needed. The result goes into the app's HQ setup card.
 
 ## Ads rules (C4)
 

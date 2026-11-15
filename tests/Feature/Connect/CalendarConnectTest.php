@@ -10,8 +10,10 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Testing\TestResponse;
 use Inertia\Testing\AssertableInertia as Assert;
+use Modules\Connect\AppRegistry;
 use Modules\Connect\Models\Connection;
 use Modules\Connect\Notifications\ConnectionNeedsAttention;
+use Modules\Core\Connect\AppCatalog;
 use Modules\Crm\Booking\Availability;
 
 /* Sprint C1b: one-click Google and Microsoft calendar — sign in and approve; bookings avoid busy times and land in the calendar. */
@@ -22,6 +24,10 @@ beforeEach(function (): void {
     config(['services.google.client_id' => 'gid', 'services.google.client_secret' => 'gsecret', 'services.microsoft.client_id' => 'mid', 'services.microsoft.client_secret' => 'msecret']);
     $this->tenant = $this->onTenantHost('acme');
     $this->agent = User::factory()->create(['first_name' => 'Jane']);
+    $hq = User::factory()->make(['id' => 999999]);
+    foreach (['google_calendar', 'microsoft_calendar'] as $key) {
+        app(AppRegistry::class)->save(app(AppCatalog::class)->find($key), true, [], null, $hq);
+    }
     $wed = ['mon' => [], 'tue' => [], 'wed' => [['12:00', '15:00']], 'thu' => [], 'fri' => [], 'sat' => [], 'sun' => []];
     app(Availability::class)->save($this->agent, true, $wed, 60, 0, $this->agent);
 });

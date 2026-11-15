@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
+use Modules\Connect\AppRegistry;
 use Modules\Connect\OAuth\ClientSettings;
 use Modules\Connect\OAuth\Providers;
 use Modules\Core\Connect\App;
@@ -36,7 +37,7 @@ final class HqAppsController
      * HQ → Connect setup: RightAlly's Google and Microsoft sign-in apps, with the return addresses to add and the
      * steps to follow in each console.
      */
-    public function setup(): Response
+    public function setup(AppCatalog $catalog, AppRegistry $registry): Response
     {
         $sso = 'https://'.config('core.sso_host');
 
@@ -47,7 +48,28 @@ final class HqAppsController
                 'microsoft_sign_in' => $sso.'/oauth/microsoft/callback',
             ],
             'providers' => ['google' => ClientSettings::status('google'), 'microsoft' => ClientSettings::status('microsoft')],
+            'categories' => App::CATEGORIES,
+            'apps' => array_map(fn (App $a): array => ['key' => $a->key, 'name' => $a->name, 'category' => $a->category, 'built' => $a->available(), 'built_in' => $a->builtIn(),
+                'one_click' => $a->oauth !== null, 'needs' => $a->setup['needs'] ?? 'none', 'provider' => $a->setup['provider'] ?? null,
+                'fields' => array_map(fn (array $f): array => ['key' => $f['key'], 'label' => $f['label'], 'secret' => $f['secret'] ?? true], $a->setup['fields'] ?? []),
+                'steps' => $a->setup['steps'] ?? [], 'partner' => $a->setup['partner'] ?? null, 'docs' => $a->setup['docs'] ?? null,
+                'return_address' => $a->oauth !== null ? Providers::redirectUri() : null] + $registry->status($a), $catalog->all()),
         ]);
+    }
+
+    /** HQ switches an app on or off and saves its RightAlly-level keys. */
+    public function saveApp(Request $request, string $app, AppCatalog $catalog, AppRegistry $registry): RedirectResponse
+    {
+        $user = $request->user();
+        abort_unless($user instanceof User, 403);
+        $a = $catalog->find($app) ?? abort(404);
+        $data = $request->validate(['enabled' => ['required', 'boolean'], 'keys' => ['nullable', 'array'], 'secret_expires_on' => ['nullable', 'date']]);
+        $registry->save($a, (bool) $data['enabled'], (array) ($data['keys'] ?? []), $data['secret_expires_on'] ?? null, $user);
+        Inertia::flash('toast', ['type' => 'success', 'message' => $a->name.((bool) $data['enabled']
+            ? ($registry->ready($a) ? ' is on. Brokers and agents can connect it now.' : ' is on, but its setup isn\'t finished yet.')
+            : ' is off. Existing connections are paused.')]);
+
+        return back();
     }
 
     public function saveClient(Request $request, string $provider): RedirectResponse

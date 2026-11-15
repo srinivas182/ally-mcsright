@@ -128,21 +128,27 @@ were already in the plan, so it is mostly not new scope:
 - Team C 33: ShowingTime
 - Team D 13: lead sources
 
-| Connect sprint | Team     | Delivers                                                                                            | Plan items covered |
-| -------------- | -------- | --------------------------------------------------------------------------------------------------- | ------------------ |
-| C1a            | A        | Connect engine, Apps page, CSV import, outgoing webhooks, Zapier and Make, app requests (HQ demand) | A27 (part)         |
-| C1b            | A        | Google and Microsoft 365 calendar (two-way busy times for booking)                                  | D53 (part)         |
-| C2a            | A        | Follow Up Boss: import and two-way sync                                                             | A35                |
-| C2b            | A        | BoldTrail (kvCORE) and Lofty: import                                                                | A35                |
-| C2c            | A        | Sierra, Real Geeks, BoomTown and others: import                                                     | A35                |
-| C3             | A with E | Facebook Lead Ads, Realtor.com; Zillow partner application                                          | D13                |
-| C4a            | A with E | Meta ads from the agent's own account: listing boosts with AI copy, Fair Housing (Housing category) | C39                |
-| C4b            | A with E | RightAlly Boost (ads paid with credits) and commission-aware ad results with automatic stop-loss    | C39, E22           |
-| C5             | A with B | SkySlope, dotloop, Lone Wolf: switch in a weekend (deals, documents, agents)                        | A53, B41           |
-| C6             | A with B | QuickBooks Online and Xero                                                                          | A54                |
-| C7             | A        | Google Ads; social posting; Mailchimp; direct mail                                                  | C39                |
-| C8             | A        | ShowingTime, property data, lenders, title and escrow, reviews                                      | C33                |
-| Partner API    | A        | Public OAuth apps, so other companies can list their apps on Connect                                | A27                |
+| Connect sprint | Team     | Delivers                                                                                                                                                                          | Plan items covered |
+| -------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
+| C1a            | A        | Connect engine, Apps page, CSV import, outgoing webhooks, Zapier and Make, app requests (HQ demand)                                                                               | A27 (part)         |
+| C1b            | A        | Google and Microsoft 365 calendar (two-way busy times for booking)                                                                                                                | D53 (part)         |
+| C1c            | A        | HQ app registry: enable or disable each app, per-app keys and partner details, setup tips with return addresses; connector kit                                                    | A27                |
+| M1             | A with D | RightAlly MCP server: connect Claude, ChatGPT, Copilot or Gemini in one click; read tools, owner switch, audit (specs/connect/03)                                                 | new                |
+| M2             | A with D | MCP write tools, daily brief tool, directory listings                                                                                                                             | new                |
+| C2a            | A        | Follow Up Boss: import and two-way sync                                                                                                                                           | A35                |
+| C2b            | A        | BoldTrail (kvCORE) and Lofty: import                                                                                                                                              | A35                |
+| C2c            | A        | Sierra, Real Geeks, BoomTown, Wise Agent, Top Producer, GoHighLevel: import                                                                                                       | A35                |
+| C2d            | A        | HubSpot, Salesforce, CINC, Brivity, Propertybase, LionDesk, Rechat, Cloze, Pipedrive: import                                                                                      | A35                |
+| C3a            | A with E | Facebook Lead Ads, Realtor.com, Zillow (partner), Homes.com                                                                                                                       | D13                |
+| C3b            | A with E | Ylopo, Google Local Services Ads, REDX, Vulcan7, Redfin Partner, Market Leader, Landvoice, SmartZip                                                                               | D13                |
+| C4a            | A with E | Meta ads from the agent's own account: listing boosts with AI copy, Fair Housing (Housing category)                                                                               | C39                |
+| C4b            | A with E | RightAlly Boost (ads paid with credits) and commission-aware ad results with automatic stop-loss                                                                                  | C39, E22           |
+| C5a            | A with B | SkySlope, dotloop, Lone Wolf: switch in a weekend (deals, documents, agents)                                                                                                      | A53, B41           |
+| C5b            | A with B | Brokermint, Paperless Pipeline, Open to Close, DocuSign, Authentisign, zipForm, Form Simplicity                                                                                   | B41                |
+| C6             | A with B | QuickBooks Online and Xero                                                                                                                                                        | A54                |
+| C7             | A        | Google Ads and YouTube; Canva; social posting; Mailchimp, Constant Contact, BombBomb; direct mail (Lob, ProspectsPLUS, Corefact); RingCentral, Mojo, Dialpad, Aircall             | C39                |
+| C8             | A        | ShowingTime, BrokerBay, Aligned Showings, Spacio; ATTOM, BatchData, PropStream; Homebot, Total Expert, Qualia, Updater; reviews (Google, Zillow, RealSatisfied, Testimonial Tree) | C33                |
+| Partner API    | A        | Public OAuth apps, so other companies can list their apps on Connect                                                                                                              | A27                |
 
 Decision (2026-11-14): no mailbox reading for now. Inbox intelligence is deferred, and can be revisited later if
 it becomes worth the yearly security-assessment fee. The only Google and Microsoft connection is two-way calendar

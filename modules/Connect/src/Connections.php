@@ -87,7 +87,7 @@ final class Connections
         if ($owner === false) {
             throw ValidationException::withMessages(['app' => 'Your brokerage connects '.$app->name.' for everyone.']);
         }
-        if (! $app->available() || ! in_array($app->auth, ['api_key', 'webhook'], true)) {
+        if (! app(AppRegistry::class)->ready($app) || ! in_array($app->auth, ['api_key', 'webhook'], true)) {
             throw ValidationException::withMessages(['app' => $app->name.' can\'t be connected here yet.']);
         }
         $credentials = [];
