@@ -8,6 +8,7 @@ use Illuminate\Support\ServiceProvider;
 use Modules\AI\FeatureCatalog;
 use Modules\AI\Support\PromptRegistry;
 use Modules\Core\Identity\Enums\UserKind;
+use Modules\Core\Mcp\McpToolbox;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
 
@@ -21,6 +22,7 @@ final class AdsServiceProvider extends ServiceProvider
         $this->app->scoped(Boost::class);
         $this->app->scoped(Lifecycle::class);
         $this->app->scoped(Returns::class);
+        $this->app->scoped(Social\SocialPosts::class);
     }
 
     public function boot(): void
@@ -28,10 +30,12 @@ final class AdsServiceProvider extends ServiceProvider
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
         if ($this->app->runningInConsole()) {
-            $this->commands([Console\RefreshBoosts::class]);
+            $this->commands([Console\RefreshBoosts::class, Console\SendSocialPosts::class]);
         }
         $this->app->make(PromptRegistry::class)->addPath(__DIR__.'/../prompts');
         $this->app->make(FeatureCatalog::class)->declare(AdCopy::FEATURE, 'ai.ads_copy', 'AI listing ad copy');
         $this->app->make(NavigationRegistry::class)->add(new NavItem('Grow', 'Ads', '/ads', 'megaphone', 30, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent]));
+        $this->app->make(NavigationRegistry::class)->add(new NavItem('Grow', 'Social posts', '/social', 'send', 27, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent]));
+        $this->app->make(McpToolbox::class)->add(Mcp\SocialPostTool::class);
     }
 }

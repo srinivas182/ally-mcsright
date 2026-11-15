@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace Modules\Connect;
 
 use Modules\Ads\Meta\MetaAdsConnector;
+use Modules\Ads\Social\FacebookPages;
+use Modules\Ads\Social\GoogleBusiness;
+use Modules\Ads\Social\LinkedIn;
 use Modules\Core\Connect\App;
 use Modules\Core\Connect\AppCatalog;
 use Modules\Crm\Calls\Aircall;
@@ -475,6 +478,39 @@ final class Catalog
                     'Set the price per card (Lob\'s price plus your margin) and switch Postcards on.'],
                 'partner' => 'Lob bills RightAlly for printing and postage; brokerages pay RightAlly in credits.', 'docs' => 'https://docs.lob.com/#tag/Postcards']));
 
+        // Social posting (specs/connect/19, C7d-1): write once under Grow → Social posts, post now or scheduled.
+        $catalog->add(new App('facebook_pages', 'Facebook Pages and Instagram', 'marketing', 'Post listings and updates to your Facebook Pages and the Instagram business accounts linked to them, now or scheduled.',
+            scope: 'both', auth: 'oauth', syncs: ['Your Pages and linked Instagram accounts, daily', 'Posts you send from Grow → Social posts, with links to each'], link: '/social',
+            driver: FacebookPages::class, vendorCost: 'Free',
+            oauth: ['provider' => 'meta', 'scopes' => ['pages_show_list', 'pages_read_engagement', 'pages_manage_posts', 'instagram_basic', 'instagram_content_publish', 'business_management'],
+                'authorize' => 'https://www.facebook.com/v21.0/dialog/oauth', 'token' => 'https://graph.facebook.com/v21.0/oauth/access_token',
+                'userinfo' => 'https://graph.facebook.com/v21.0/me?fields=name,email', 'pkce' => false, 'keys_from' => 'facebook_leads'],
+            setup: ['needs' => 'app', 'app' => 'facebook_leads', 'steps' => ['Facebook Pages uses the same Meta app as Facebook Lead Ads: set that card up first.',
+                'In the Meta app, add the Instagram Graph API product and request Advanced Access (App Review) for pages_manage_posts, instagram_basic, instagram_content_publish and business_management.',
+                'Switch Facebook Pages and Instagram on.'],
+                'partner' => 'Meta App Review for the posting permissions (free).', 'docs' => 'https://developers.facebook.com/docs/instagram-platform/content-publishing/'],
+            guide: ['steps' => ['Press Connect and sign in to Facebook.', 'Choose the Pages (and their Instagram accounts) RightAlly may post to, and press Allow.',
+                'Instagram must be a business or creator account linked to the Page.', 'Then open Grow → Social posts.']]));
+        $catalog->add(new App('linkedin', 'LinkedIn', 'marketing', 'Post listings and market updates to your LinkedIn profile, now or scheduled.',
+            scope: 'agent', auth: 'oauth', syncs: ['Your profile, daily', 'Posts you send from Grow → Social posts'], link: '/social',
+            driver: LinkedIn::class, vendorCost: 'Free',
+            oauth: ['provider' => 'linkedin', 'scopes' => ['openid', 'profile', 'w_member_social'], 'authorize' => 'https://www.linkedin.com/oauth/v2/authorization',
+                'token' => 'https://www.linkedin.com/oauth/v2/accessToken', 'userinfo' => '', 'pkce' => false],
+            setup: ['needs' => 'keys', 'fields' => [['key' => 'client_id', 'label' => 'Client ID'], ['key' => 'client_secret', 'label' => 'Client secret', 'secret' => true]],
+                'steps' => ['At linkedin.com/developers, create an app called RightAlly (it needs RightAlly\'s LinkedIn company page).', 'Add the products "Sign In with LinkedIn using OpenID Connect" and "Share on LinkedIn".',
+                    'Under Auth, add the return address shown above as an authorized redirect URL.', 'Copy the client ID and secret here and switch LinkedIn on.'],
+                'partner' => 'Free. Posting to company pages needs LinkedIn\'s Community Management API (a separate review), planned later.', 'docs' => 'https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/posts-api'],
+            guide: ['steps' => ['Press Connect and sign in to LinkedIn.', 'LinkedIn sign-ins last 60 days; RightAlly reminds you to connect again.', 'Then open Grow → Social posts.']]));
+        $catalog->add(new App('google_business', 'Google Business Profile', 'marketing', 'Post listings and updates to your Google Business Profile, with a Learn more button, now or scheduled.',
+            scope: 'both', auth: 'oauth', syncs: ['Your business locations, daily', 'Posts you send from Grow → Social posts'], link: '/social',
+            driver: GoogleBusiness::class, vendorCost: 'Free',
+            oauth: ['provider' => 'google', 'scopes' => ['https://www.googleapis.com/auth/business.manage']],
+            setup: ['needs' => 'provider', 'provider' => 'google', 'steps' => ['Set up the Google sign-in app at the top of this page.',
+                'In the Google Cloud project, enable the My Business Account Management and Business Information APIs, and request access to the Business Profile APIs (Google grants it on request).',
+                'Add the business.manage scope to the consent screen (Google verifies it), then switch Google Business Profile on.'],
+                'docs' => 'https://developers.google.com/my-business/content/posts-data'],
+            guide: ['steps' => ['Press Connect and sign in with the Google account that manages your Business Profile.', 'Then open Grow → Social posts.']]));
+
         // On the roadmap (people can ask for them; HQ sees the demand). Some need a partner agreement first.
         foreach ([
             ['real_geeks', 'Real Geeks', 'crm', 'Bring over leads and their activity from Real Geeks.', 'both', 'Your Real Geeks plan'],
@@ -497,7 +533,6 @@ final class Catalog
             ['aligned_showings', 'Aligned Showings', 'showings', 'Showing requests and feedback from Aligned Showings.', 'both', 'Your Aligned Showings plan'],
             ['spacio', 'Spacio', 'showings', 'Open house sign-ins become contacts with consent recorded.', 'agent', 'Your Spacio plan'],
             ['canva', 'Canva', 'marketing', 'Design with your brand kit and listing photos, then use the designs in posts and ads.', 'agent', null],
-            ['social_posting', 'Social posting', 'marketing', 'Post listings and market updates to Facebook, Instagram, LinkedIn and your Google Business Profile.', 'agent', null],
             ['bombbomb', 'BombBomb', 'marketing', 'Video emails logged on contacts, with views and replies.', 'agent', 'Your BombBomb plan'],
             ['corefact', 'Corefact', 'marketing', 'Printed farming and listing mail from your RightAlly lists.', 'agent', 'Printing and postage'],
             ['mojo', 'Mojo Dialer', 'phones', 'Dial your RightAlly lists and log every call.', 'agent', 'Your Mojo plan'],
