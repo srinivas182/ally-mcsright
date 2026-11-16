@@ -39,7 +39,7 @@ final class ReelsController
             'reels' => StudioVideo::query()->where('user_id', $user->id)->latest('id')->limit(24)->get()->map(function (StudioVideo $v) use ($reels, $tracks, $listings): array {
                 $d = $v->design_id !== null ? Design::query()->find($v->design_id) : null;
 
-                return ['ulid' => $v->ulid, 'kind' => $v->kind, 'chapters' => $v->chapters ?? [], 'status' => $v->status, 'error' => $v->error, 'url' => $reels->url($v), 'poster' => $reels->poster($v), 'seconds' => $v->seconds,
+                return ['ulid' => $v->ulid, 'listing' => $v->listing_ulid, 'kind' => $v->kind, 'chapters' => $v->chapters ?? [], 'status' => $v->status, 'error' => $v->error, 'url' => $reels->url($v), 'poster' => $reels->poster($v), 'seconds' => $v->seconds,
                     'used' => $v->used_at !== null, 'moment' => $d !== null ? (Designer::MOMENTS[$d->moment][0] ?? $d->moment) : 'YouTube tour',
                     'title' => (string) ($d->content['headline'] ?? ($v->listing_ulid !== null ? (collect($listings)->firstWhere('ulid', $v->listing_ulid)['label'] ?? '') : '')),
                     'music' => $v->music_ulid !== null ? ($tracks[$v->music_ulid]['title'] ?? null) : null];

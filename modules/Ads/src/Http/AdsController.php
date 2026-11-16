@@ -73,6 +73,11 @@ final class AdsController
                 'headline' => mb_substr($funnel->headline, 0, 40), 'body' => (string) $funnel->intro],
             'listing' => $home === null ? null : ['ulid' => $home['ulid'], 'label' => ListingSearch::label($home), 'price' => $home['price'] ?? null,
                 'photo' => $home['photo'] ?? ($home['photos'][0]['hero'] ?? null), 'mapped' => ($home['latitude'] ?? null) !== null],
+            // C4c: what the ad can be made of for this listing (Studio designs, Reels and tours, posts on the person's Page) and instant forms.
+            'creatives' => $home === null ? null : $this->ads->creatives($user, (string) $home['ulid']),
+            'chosen' => ['studio_design' => (string) $request->query('design', ''), 'studio_video' => (string) $request->query('reel', ''), 'post' => (string) $request->query('post', '')],
+            'form_pages' => $this->ads->formPages(),
+            'privacy_url' => Campaign::query()->where('user_id', $user->id)->whereNotNull('privacy_url')->latest('id')->value('privacy_url'),
             'limits' => ['min_daily' => ListingAds::MIN_DAILY_CENTS / 100, 'max_daily' => ListingAds::MAX_DAILY_CENTS / 100, 'max_days' => ListingAds::MAX_DAYS, 'min_radius' => 15],
         ]);
     }
@@ -93,7 +98,7 @@ final class AdsController
 
     public function store(Request $request): RedirectResponse
     {
-        $c = $this->ads->publish(self::user($request), $request->only(['listing', 'funnel', 'account', 'page', 'headline', 'body', 'daily_budget', 'days', 'radius', 'pay'])
+        $c = $this->ads->publish(self::user($request), $request->only(['listing', 'funnel', 'account', 'page', 'headline', 'body', 'daily_budget', 'days', 'radius', 'pay', 'studio_design', 'studio_video', 'post', 'goal', 'privacy_url'])
             + ['agree' => $request->boolean('agree'), 'stop_loss' => $request->boolean('stop_loss', true)]);
         $c->refresh();
         Inertia::flash('toast', $c->status === 'failed'

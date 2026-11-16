@@ -41,6 +41,10 @@ export default function NewAd({
     funnels,
     funnel,
     limits,
+    creatives,
+    chosen,
+    form_pages,
+    privacy_url,
 }: {
     connected: boolean;
     boost: {
@@ -61,6 +65,24 @@ export default function NewAd({
         max_days: number;
         min_radius: number;
     };
+    creatives: {
+        designs: {
+            ulid: string;
+            label: string;
+            image: string | null;
+            slides: number;
+        }[];
+        videos: { ulid: string; label: string; image: string | null }[];
+        posts: {
+            ulid: string;
+            label: string;
+            image: string | null;
+            page: string;
+        }[];
+    } | null;
+    chosen: { studio_design: string; studio_video: string; post: string };
+    form_pages: string[];
+    privacy_url: string | null;
 }) {
     const form = useForm({
         listing: funnel ? '' : (listing?.ulid ?? ''),
@@ -75,7 +97,55 @@ export default function NewAd({
         agree: false,
         stop_loss: true,
         pay: connected ? 'own' : 'boost',
+        studio_design: chosen.studio_design,
+        studio_video: chosen.studio_video,
+        post: chosen.post,
+        goal: 'website',
+        privacy_url: privacy_url ?? '',
     });
+    const madeOf = form.data.studio_video
+        ? `video:${form.data.studio_video}`
+        : form.data.studio_design
+          ? `design:${form.data.studio_design}`
+          : form.data.post
+            ? `post:${form.data.post}`
+            : 'photo';
+    const pick = (v: string) => {
+        const [kind, id] = v.split(':');
+        form.setData((d) => ({
+            ...d,
+            studio_design: kind === 'design' ? id : '',
+            studio_video: kind === 'video' ? id : '',
+            post: kind === 'post' ? id : '',
+            goal: kind === 'post' ? 'website' : d.goal,
+        }));
+    };
+    const canForm =
+        form.data.pay !== 'boost' &&
+        madeOf.split(':')[0] !== 'post' &&
+        form_pages.includes(form.data.page);
+    const options: { key: string; label: string; image: string | null }[] = [
+        {
+            key: 'photo',
+            label: 'The listing photo',
+            image: funnel?.photo ?? listing?.photo ?? null,
+        },
+        ...(creatives?.designs ?? []).map((d) => ({
+            key: `design:${d.ulid}`,
+            label: `${d.label} ${d.slides >= 2 ? `carousel (${d.slides})` : 'design'}`,
+            image: d.image,
+        })),
+        ...(creatives?.videos ?? []).map((v) => ({
+            key: `video:${v.ulid}`,
+            label: v.label,
+            image: v.image,
+        })),
+        ...(creatives?.posts ?? []).map((p) => ({
+            key: `post:${p.ulid}`,
+            label: `Your post: ${p.label}`,
+            image: p.image,
+        })),
+    ];
     const boosting = form.data.pay === 'boost' && boost !== null;
     const credits = boost
         ? Math.ceil(
@@ -221,13 +291,131 @@ export default function NewAd({
                     >
                         <section className="grid gap-3">
                             <h2 className="font-medium">2. The ad</h2>
-                            {(funnel?.photo ?? listing?.photo) && (
-                                <img
-                                    src={funnel?.photo ?? listing?.photo ?? ''}
-                                    alt={funnel?.label ?? listing?.label ?? ''}
-                                    className="max-h-64 w-full rounded-md object-cover"
-                                />
+                            {options.length > 1 ? (
+                                <fieldset className="grid gap-2">
+                                    <legend className="mb-1">Made from</legend>
+                                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                                        {options.map((o) => (
+                                            <label
+                                                key={o.key}
+                                                className={`grid cursor-pointer gap-1 rounded-lg border p-1 text-xs ${madeOf === o.key ? 'ring-2 ring-primary' : ''}`}
+                                            >
+                                                <input
+                                                    type="radio"
+                                                    name="made_of"
+                                                    className="sr-only"
+                                                    checked={madeOf === o.key}
+                                                    onChange={() => pick(o.key)}
+                                                />
+                                                {o.image && (
+                                                    <img
+                                                        src={o.image}
+                                                        alt=""
+                                                        loading="lazy"
+                                                        className="aspect-[4/5] w-full rounded object-cover"
+                                                    />
+                                                )}
+                                                <span>{o.label}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                    {(form.errors as Record<string, string>)
+                                        .studio_design ??
+                                        (form.errors as Record<string, string>)
+                                            .studio_video ??
+                                        (form.errors as Record<string, string>)
+                                            .post}
+                                </fieldset>
+                            ) : (
+                                (funnel?.photo ?? listing?.photo) && (
+                                    <img
+                                        src={
+                                            funnel?.photo ??
+                                            listing?.photo ??
+                                            ''
+                                        }
+                                        alt={
+                                            funnel?.label ??
+                                            listing?.label ??
+                                            ''
+                                        }
+                                        className="max-h-64 w-full rounded-md object-cover"
+                                    />
+                                )
                             )}
+                            <fieldset className="grid gap-2">
+                                <legend className="mb-1">
+                                    When someone taps the ad
+                                </legend>
+                                <label className="flex items-center gap-2">
+                                    <input
+                                        type="radio"
+                                        className="size-5"
+                                        checked={form.data.goal === 'website'}
+                                        onChange={() =>
+                                            form.setData('goal', 'website')
+                                        }
+                                    />
+                                    They see the listing on your website
+                                </label>
+                                <label className="flex items-center gap-2">
+                                    <input
+                                        type="radio"
+                                        className="size-5"
+                                        disabled={!canForm}
+                                        checked={form.data.goal === 'form'}
+                                        onChange={() =>
+                                            form.setData('goal', 'form')
+                                        }
+                                    />
+                                    A short form opens on Facebook or Instagram
+                                    (name, email, phone filled in for them); the
+                                    lead goes straight to your CRM
+                                </label>
+                                {!canForm && (
+                                    <span className="text-sm text-muted-foreground">
+                                        Instant forms need your own Meta ad
+                                        account and Facebook Lead Ads connected
+                                        for this Page (Apps).
+                                    </span>
+                                )}
+                                {form.data.goal === 'form' && (
+                                    <label className="grid gap-1">
+                                        Your brokerage&apos;s privacy policy
+                                        link (shown on the form)
+                                        <Input
+                                            type="url"
+                                            value={form.data.privacy_url}
+                                            onChange={(e) =>
+                                                form.setData(
+                                                    'privacy_url',
+                                                    e.target.value,
+                                                )
+                                            }
+                                        />
+                                    </label>
+                                )}
+                                {(['goal', 'privacy_url'] as const).map(
+                                    (k) =>
+                                        (form.errors as Record<string, string>)[
+                                            k
+                                        ] && (
+                                            <span
+                                                key={k}
+                                                className="text-destructive"
+                                            >
+                                                {
+                                                    (
+                                                        form.errors as Record<
+                                                            string,
+                                                            string
+                                                        >
+                                                    )[k]
+                                                }
+                                            </span>
+                                        ),
+                                )}
+                            </fieldset>
                             <div hidden={funnel !== null}>
                                 <Button
                                     type="button"
