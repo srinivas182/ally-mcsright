@@ -16,6 +16,7 @@ use Modules\Ads\Studio\BrandKits;
 use Modules\Ads\Studio\Design;
 use Modules\Ads\Studio\Designer;
 use Modules\Ads\Studio\StudioPlans;
+use Modules\Ads\Studio\Styles;
 use Modules\Connect\AppRegistry;
 use Modules\Core\Connect\AppCatalog;
 use Modules\Core\Identity\Enums\UserKind;
@@ -48,7 +49,7 @@ final class StudioController
             'offers' => $offers,
             'missing' => $this->kits->missing($user),
             'kit' => $this->kits->forUser($user),
-            'collections' => BrandKits::COLLECTIONS,
+            'collections' => BrandKits::collections(),
             'social' => app(SocialPosts::class)->apps($user),
         ]);
     }
@@ -59,7 +60,7 @@ final class StudioController
 
         return Inertia::render('studio/brand', [
             'kit' => $this->kits->forUser($user),
-            'collections' => BrandKits::COLLECTIONS,
+            'collections' => BrandKits::collections(),
             'fonts' => BrandKits::FONTS,
             'languages' => BrandKits::LANGUAGES,
             'is_owner' => $user->kind === UserKind::Owner,
@@ -73,7 +74,7 @@ final class StudioController
         $user = self::user($request);
         $request->validate(['headshot' => ['nullable', 'file', 'max:10240'], 'logo' => ['nullable', 'file', 'max:10240'], 'logo_dark' => ['nullable', 'file', 'max:10240']]);
         $brokerage = $request->input('for') === 'brokerage';
-        $this->kits->save($user, $brokerage ? null : $user, $request->only(['collection', 'colors', 'fonts', 'details', 'languages', 'brand_lock']),
+        $this->kits->save($user, $brokerage ? null : $user, $request->only(['collection', 'finish', 'colors', 'fonts', 'details', 'languages', 'brand_lock', 'styles']),
             ['headshot' => $request->file('headshot'), 'logo' => $request->file('logo'), 'logo_dark' => $request->file('logo_dark')]);
         Inertia::flash('toast', ['type' => 'success', 'message' => $brokerage ? 'Brokerage brand saved.' : 'Your brand kit is saved.']);
 
@@ -85,13 +86,15 @@ final class StudioController
     {
         $user = self::user($request);
         $batch = $request->query('batch');
-        $row = fn (Design $d): array => ['ulid' => $d->ulid, 'status' => $d->status, 'collection' => BrandKits::COLLECTIONS[$d->collection] ?? $d->collection, 'variant' => $d->variant,
+        $row = fn (Design $d): array => ['ulid' => $d->ulid, 'status' => $d->status, 'collection' => (string) Styles::get($d->collection)['name'], 'variant' => $d->variant,
             'moment' => Designer::MOMENTS[$d->moment][0] ?? $d->moment, 'checks' => $d->checks ?? [], 'used' => $d->used_at !== null,
             'images' => array_map(fn (string $size): ?string => $designer->url($d, $size), array_combine(array_keys(Designer::SIZES), array_keys(Designer::SIZES)))];
 
         return Inertia::render('studio/create', [
             'ready' => $this->plans->current($user) !== null,
             'moments' => $designer->moments($user),
+            'styles' => array_map(fn (string $k): array => ['key' => $k, 'name' => (string) Styles::get($k)['name']], $this->kits->forUser($user)['allowed']),
+            'style' => $this->kits->forUser($user)['collection'],
             'listings' => array_map(fn (array $l): array => ['ulid' => $l['ulid'], 'label' => $l['label']], $ads->listings($user)),
             'batch' => is_string($batch) ? Design::query()->where('user_id', $user->id)->where('batch', $batch)->orderBy('id')->get()->map($row)->values()->all() : [],
             'recent' => Design::query()->where('user_id', $user->id)->where('status', 'ready')->latest('id')->limit(12)->get()->map($row)->values()->all(),
@@ -100,7 +103,7 @@ final class StudioController
 
     public function makeDesigns(Request $request, Designer $designer): RedirectResponse
     {
-        $made = $designer->create(self::user($request), $request->only(['moment', 'listing', 'headline', 'sub', 'body', 'by', 'when', 'stats']));
+        $made = $designer->create(self::user($request), $request->only(['moment', 'listing', 'headline', 'sub', 'body', 'by', 'when', 'stats', 'style']));
 
         return redirect('/studio/create?batch='.$made[0]->batch);
     }

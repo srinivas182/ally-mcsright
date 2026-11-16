@@ -35,18 +35,23 @@ const listingMoments = [
 export default function StudioCreate({
     ready,
     moments,
+    styles,
+    style,
     listings,
     batch,
     recent,
 }: {
     ready: boolean;
     moments: Record<string, string>;
+    styles: { key: string; name: string }[];
+    style: string;
     listings: { ulid: string; label: string }[];
     batch: DesignRow[];
     recent: DesignRow[];
 }) {
     const form = useForm({
         moment: 'just_listed',
+        style,
         listing: listings[0]?.ulid ?? '',
         headline: '',
         sub: '',
@@ -158,7 +163,23 @@ export default function StudioCreate({
                         form.post('/studio/designs', { preserveScroll: true });
                     }}
                 >
-                    <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="grid gap-3 sm:grid-cols-3">
+                        <label className="grid gap-1">
+                            Style
+                            <select
+                                className={select}
+                                value={form.data.style}
+                                onChange={(e) =>
+                                    form.setData('style', e.target.value)
+                                }
+                            >
+                                {styles.map((s) => (
+                                    <option key={s.key} value={s.key}>
+                                        {s.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
                         <label className="grid gap-1">
                             What is it about?
                             <select
@@ -319,6 +340,12 @@ export default function StudioCreate({
                         <Button type="submit" disabled={form.processing}>
                             Make three designs
                         </Button>
+                        <Link
+                            href="/studio/styles"
+                            className="text-sm underline"
+                        >
+                            See every style
+                        </Link>
                         <Link
                             href="/studio/brand"
                             className="text-sm underline"

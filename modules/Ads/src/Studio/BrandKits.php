@@ -27,7 +27,11 @@ use Throwable;
  */
 final class BrandKits
 {
-    public const COLLECTIONS = ['luxury_noir' => 'Luxury Noir', 'modern' => 'Modern', 'coastal' => 'Coastal', 'estate' => 'Estate'];
+    /** @return array<string, string> the style library (specs/grow/13, SA1d): key => name */
+    public static function collections(): array
+    {
+        return Styles::names();
+    }
 
     public const FONTS = ['Playfair Display', 'Cormorant Garamond', 'Libre Baskerville', 'DM Serif Display', 'Inter', 'Montserrat', 'DM Sans', 'Lato'];
 
@@ -44,7 +48,8 @@ final class BrandKits
      * The kit a design uses for this person: the brokerage's, with the person's own on top (unless locked).
      *
      * @return array{collection: string, colors: array<string, string>, fonts: array{heading: string, body: string}, logo: string|null, logo_dark: string|null,
-     *     headshot: string|null, cutout: string|null, details: array<string, string>, languages: list<string>, brokerage: string, locked: bool}
+     *     headshot: string|null, cutout: string|null, details: array<string, string>, languages: list<string>, brokerage: string, locked: bool, finish: string|null,
+     *     favorites: list<string>, allowed: list<string>}
      */
     public function forUser(User $user): array
     {
@@ -55,8 +60,20 @@ final class BrandKits
         $details = array_merge(['display_name' => trim($user->first_name.' '.$user->last_name), 'phone' => (string) ($user->getAttribute('phone') ?? ''),
             'email' => (string) $user->email], array_filter($this->json($b->details ?? null) ?? []), array_filter($this->json($a->details ?? null) ?? []));
 
+        // Locked: agents use the brokerage's style, or one of the styles the brokerage allows.
+        $allowed = $locked ? array_values(array_filter(array_map('strval', (array) ($this->json($b->styles ?? null) ?? [])), fn (string $k): bool => isset(Styles::ALL[$k]))) : array_keys(Styles::ALL);
+        $mine = $a->collection ?? null;
+        $myFinish = $a->finish ?? null;
+        $firmFinish = $b->finish ?? null;
+        $style = $locked ? ($allowed !== [] && is_string($mine) && in_array(Styles::key($mine), $allowed, true) ? $mine : ($b->collection ?? null)) : ($mine ?? $b->collection ?? null);
+        $favorites = array_values(array_filter(array_map(fn (string $k): string => Styles::key($k), array_map('strval', (array) ($this->json($a->favorites ?? null) ?? []))),
+            fn (string $k): bool => ! $locked || $allowed === [] || in_array($k, $allowed, true)));
+
         return [
-            'collection' => (string) ((! $locked ? ($a->collection ?? null) : null) ?? $b->collection ?? 'luxury_noir'),
+            'collection' => Styles::key(is_string($style) ? $style : null),
+            'finish' => ! $locked && is_string($myFinish) ? $myFinish : (is_string($firmFinish) ? $firmFinish : null),
+            'favorites' => $favorites,
+            'allowed' => $allowed === [] ? [Styles::key($b->collection ?? null)] : $allowed,
             'colors' => array_merge(self::DEFAULT_COLORS, (array) ($pick('colors') ?? [])),
             'fonts' => array_merge(['heading' => 'Playfair Display', 'body' => 'Inter'], (array) ($pick('fonts') ?? [])),
             'logo' => $this->url($b->logo_path ?? null), 'logo_dark' => $this->url($b->logo_dark_path ?? null),
@@ -71,13 +88,14 @@ final class BrandKits
     /**
      * The brokerage's own kit, as saved (for the owner's form).
      *
-     * @return array{collection: string|null, colors: array<string, string>, fonts: array<string, string>, details: array<string, string>, logo: string|null, logo_dark: string|null, brand_lock: bool}
+     * @return array{collection: string|null, finish: string|null, styles: list<string>, colors: array<string, string>, fonts: array<string, string>, details: array<string, string>, logo: string|null, logo_dark: string|null, brand_lock: bool}
      */
     public function brokerage(): array
     {
         $b = $this->row(null);
 
-        return ['collection' => $b->collection ?? null, 'colors' => (array) ($this->json($b->colors ?? null) ?? []), 'fonts' => (array) ($this->json($b->fonts ?? null) ?? []),
+        return ['collection' => $b->collection ?? null, 'finish' => $b->finish ?? null, 'styles' => array_values(array_map('strval', (array) ($this->json($b->styles ?? null) ?? []))),
+            'colors' => (array) ($this->json($b->colors ?? null) ?? []), 'fonts' => (array) ($this->json($b->fonts ?? null) ?? []),
             'details' => array_map('strval', (array) ($this->json($b->details ?? null) ?? [])), 'logo' => $this->url($b->logo_path ?? null),
             'logo_dark' => $this->url($b->logo_dark_path ?? null), 'brand_lock' => (bool) ($b->brand_lock ?? false)];
     }
@@ -117,11 +135,18 @@ final class BrandKits
         $values = ['details' => json_encode($this->details((array) ($in['details'] ?? []))), 'languages' => json_encode(array_values(array_intersect(array_keys(self::LANGUAGES),
             array_map('strval', (array) ($in['languages'] ?? ['en'])))) ?: ['en'])];
         if (! $locked) {
-            $values += ['collection' => isset(self::COLLECTIONS[$in['collection'] ?? '']) ? (string) $in['collection'] : null,
+            $chosen = (string) ($in['collection'] ?? '');
+            $values += ['collection' => isset(Styles::ALL[Styles::ALIASES[$chosen] ?? $chosen]) ? Styles::key($chosen) : null,
+                'finish' => isset(Styles::FINISHES[$in['finish'] ?? '']) ? (string) $in['finish'] : null,
                 'colors' => json_encode($this->colors((array) ($in['colors'] ?? []))) ?: null, 'fonts' => json_encode($this->fonts((array) ($in['fonts'] ?? []))) ?: null];
         }
         if ($for === null) {
             $values['brand_lock'] = (bool) ($in['brand_lock'] ?? false);
+            $values['styles'] = json_encode(array_values(array_intersect(array_keys(Styles::ALL), array_map('strval', (array) ($in['styles'] ?? [])))));
+        } elseif (array_key_exists('favorites', $in)) {
+            $values['favorites'] = json_encode(array_slice(array_values(array_intersect(array_keys(Styles::ALL), array_map('strval', (array) $in['favorites']))), 0, 6));
+        } elseif ($locked && isset(Styles::ALL[$in['collection'] ?? ''])) {
+            $values['collection'] = (string) $in['collection']; // checked against the allowed styles when used
         }
         foreach (['headshot' => $for !== null, 'logo' => $for === null, 'logo_dark' => $for === null] as $field => $allowed) {
             $file = $files[$field] ?? null;
@@ -138,6 +163,28 @@ final class BrandKits
         $row !== null ? (clone $db)->where('tenant_id', $key['tenant_id'])->where(fn ($q) => $for === null ? $q->whereNull('user_id') : $q->where('user_id', $for->id))
             ->update($values + ['updated_at' => now()]) : $db->insert($key + $values + ['created_at' => now(), 'updated_at' => now()]);
         app(AuditLogger::class)->record('studio.brand_kit_saved', metadata: ['for' => $for === null ? 'brokerage' : 'agent', 'images' => array_keys(array_filter($files))]);
+    }
+
+    /**
+     * Saves the person's style choices without touching the rest of their kit: their style and finish (unless the
+     * brokerage locks the brand to styles that exclude it) and the favourites Autopilot rotates through.
+     *
+     * @param  list<string>  $favorites
+     */
+    public function saveStyle(User $user, string $style, ?string $finish, array $favorites): void
+    {
+        $kit = $this->forUser($user);
+        $style = Styles::key($style);
+        if (! in_array($style, $kit['allowed'], true)) {
+            throw ValidationException::withMessages(['collection' => 'Your brokerage uses its own styles. Choose one of them.']);
+        }
+        $values = ['collection' => $style, 'finish' => isset(Styles::FINISHES[$finish ?? '']) ? $finish : null,
+            'favorites' => json_encode(array_slice(array_values(array_unique(array_intersect(array_map(fn (string $k): string => Styles::key($k), array_filter($favorites, fn (string $k): bool => isset(Styles::ALL[Styles::ALIASES[$k] ?? $k]))), $kit['allowed']))), 0, 6)),
+            'updated_at' => now()];
+        $db = DB::connection(Connections::cell())->table('studio_brand_kits');
+        $this->row($user->id) !== null ? (clone $db)->where('tenant_id', $this->tenants->id())->where('user_id', $user->id)->update($values)
+            : $db->insert(['tenant_id' => $this->tenants->id(), 'user_id' => $user->id, 'created_at' => now()] + $values);
+        app(AuditLogger::class)->record('studio.style_saved', metadata: ['style' => $style, 'finish' => $values['finish']]);
     }
 
     /** Whether a background-removal service is switched on by HQ. */

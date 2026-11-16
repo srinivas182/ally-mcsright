@@ -442,6 +442,11 @@ final class Autopilot
         if ($at !== null) {
             $item->forceFill(['post_at' => $at])->save();
         }
+        // Rotate through the person's favourite styles, so the feed never looks the same twice in a row.
+        $favorites = app(BrandKits::class)->forUser($user)['favorites'];
+        if ($favorites !== [] && ! isset($design['style'])) {
+            $design['style'] = $favorites[QueuedPost::query()->where('user_id', $user->id)->count() % count($favorites)];
+        }
         try {
             $made = $this->designer->create($user, $design);
             $item->forceFill(['batch' => $made[0]->batch])->save();

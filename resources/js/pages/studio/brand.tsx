@@ -20,6 +20,7 @@ type Kit = {
 
 type Brokerage = {
     collection: string | null;
+    styles: string[];
     colors: Partial<Colors>;
     fonts: Partial<{ heading: string; body: string }>;
     details: Record<string, string>;
@@ -75,7 +76,8 @@ export default function StudioBrand({
         for: 'brokerage',
         logo: null as File | null,
         logo_dark: null as File | null,
-        collection: brokerage?.collection ?? 'luxury_noir',
+        collection: brokerage?.collection ?? 'noir_atelier',
+        styles: brokerage?.styles ?? [],
         colors: { ...kit.colors, ...brokerage?.colors },
         fonts: { ...kit.fonts, ...brokerage?.fonts },
         languages: ['en'],
@@ -97,7 +99,7 @@ export default function StudioBrand({
     ) => (
         <div className="grid gap-3 sm:grid-cols-2">
             <label className="grid gap-1">
-                Collection
+                Style
                 <select
                     className={select}
                     disabled={locked}
@@ -276,8 +278,7 @@ export default function StudioBrand({
                     </fieldset>
                     {kit.locked ? (
                         <p className="text-sm text-muted-foreground">
-                            Your brokerage sets the collection, colours and
-                            fonts.
+                            Your brokerage sets the style, colours and fonts.
                         </p>
                     ) : (
                         look(
@@ -370,9 +371,46 @@ export default function StudioBrand({
                                     firm.setData('brand_lock', e.target.checked)
                                 }
                             />
-                            Agents use the brokerage's collection, colours and
-                            fonts (brand lock)
+                            Agents use the brokerage's styles, colours and fonts
+                            (brand lock)
                         </label>
+                        {firm.data.brand_lock && (
+                            <fieldset className="grid gap-2 sm:grid-cols-3">
+                                <legend className="mb-1 text-sm">
+                                    Styles agents may choose (none ticked: only
+                                    the brokerage's style)
+                                </legend>
+                                {Object.entries(collections).map(([k, l]) => (
+                                    <label
+                                        key={k}
+                                        className="flex items-center gap-2 text-sm"
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            className="size-4"
+                                            checked={firm.data.styles.includes(
+                                                k,
+                                            )}
+                                            onChange={(e) =>
+                                                firm.setData(
+                                                    'styles',
+                                                    e.target.checked
+                                                        ? [
+                                                              ...firm.data
+                                                                  .styles,
+                                                              k,
+                                                          ]
+                                                        : firm.data.styles.filter(
+                                                              (x) => x !== k,
+                                                          ),
+                                                )
+                                            }
+                                        />
+                                        {l}
+                                    </label>
+                                ))}
+                            </fieldset>
+                        )}
                         <div>
                             <Button type="submit" disabled={firm.processing}>
                                 Save the brokerage brand

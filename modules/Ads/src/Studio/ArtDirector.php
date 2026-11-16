@@ -21,39 +21,39 @@ final class ArtDirector
     public const MAX_HEADLINE = 60;
 
     /**
-     * The colours a design uses, from the brand kit and the collection's art direction: a deep or a paper ground,
-     * ink, a muted tone, hairline rules and a metallic accent (three tones of the brand colour, for gilded type and
-     * rules). Text is always readable: ink aims for 7:1 against the ground, the metal for 3:1.
+     * The colours a design uses, from the style's grounds and ink and the chosen finish (the accents: gold,
+     * champagne, platinum…, the brand colour, or black and white). Text is always readable: ink aims for 7:1
+     * against the ground, the accent for 3:1.
      *
-     * @param  array<string, string>  $colors  primary, accent, ink, paper (the brand kit's; defaults fill gaps)
-     * @return array{dark: bool, bg: string, paper: string, fg: string, muted: string, rule: string, metal_light: string, metal: string, metal_deep: string, shade: string, bg_glow: string}
+     * @param  array<string, string>  $colors  the brand kit's primary, accent, ink, paper
+     * @return array{dark: bool, bg: string, paper: string, fg: string, muted: string, rule: string, metal_light: string, metal: string, metal_deep: string, shade: string, bg_glow: string, field: string}
      */
-    public function palette(array $colors, string $collection): array
+    public function palette(array $colors, string $style, ?string $finish = null): array
     {
         $colors += BrandKits::DEFAULT_COLORS;
-        $dark = $collection === 'luxury_noir';
-        $bg = match ($collection) {
-            'luxury_noir' => self::luminance($colors['primary']) < 0.03 ? $colors['primary'] : self::mix($colors['primary'], '#0C0B09', 0.85),
-            'estate' => '#F2ECE1',
-            'coastal' => '#ECE4D6',
-            default => '#F3F2EF',
-        };
-        $paper = $dark ? self::mix($bg, '#FFFFFF', 0.06) : ($collection === 'coastal' ? '#F8F3EA' : '#FBF9F5');
-        $fg = $dark ? '#F3EEE5' : ($collection === 'coastal' ? '#1D2A2E' : '#1B1916');
+        $t = Styles::get($style);
+        $dark = (bool) $t['dark'];
+        $bg = (string) $t['ground'];
+        $paper = (string) $t['paper'];
+        $fg = (string) $t['ink'];
         if (self::contrast($fg, $bg) < 7.0) {
             $fg = self::contrast('#FFFFFF', $bg) >= self::contrast('#111111', $bg) ? '#FFFFFF' : '#111111';
         }
-        $accent = $colors['accent'];
-        // The metal: lighter and brighter on a deep ground, deeper on paper, always readable as large type.
-        $metal = $dark ? self::mix($accent, '#FFFFFF', 0.08) : self::mix($accent, '#000000', 0.18);
+        $finish = isset(Styles::FINISHES[$finish ?? '']) ? (string) $finish : (string) $t['finish'];
+        $mono = $finish === 'mono';
+        $accent = $mono ? $fg : (Styles::FINISHES[$finish]['hex'] ?? $colors['accent']);
+        $metal = $mono ? $fg : ($dark ? self::mix($accent, '#FFFFFF', 0.08) : self::mix($accent, '#000000', 0.18));
         for ($i = 0; $i < 6 && self::contrast($metal, $bg) < 3.0; $i++) {
             $metal = self::mix($metal, $dark ? '#FFFFFF' : '#000000', 0.2);
         }
         [$r, $g, $b] = self::rgb($bg);
+        // A rich colour field for bold layouts: the brand's primary, or the accent when the primary is too pale.
+        $field = self::luminance($colors['primary']) < 0.5 ? $colors['primary'] : self::mix($accent, '#000000', 0.25);
 
         return ['dark' => $dark, 'bg' => $bg, 'paper' => $paper, 'fg' => $fg, 'muted' => self::mix($fg, $bg, 0.42), 'rule' => self::mix($fg, $bg, 0.8),
-            'metal_light' => self::mix($metal, '#FFFFFF', $dark ? 0.55 : 0.35), 'metal' => $metal, 'metal_deep' => self::mix($metal, '#000000', $dark ? 0.3 : 0.35),
-            'shade' => "rgba({$r},{$g},{$b},0.82)", 'bg_glow' => self::mix($bg, $metal, $dark ? 0.14 : 0.06)];
+            'metal_light' => $mono ? $metal : self::mix($metal, '#FFFFFF', $dark ? 0.55 : 0.35), 'metal' => $metal,
+            'metal_deep' => $mono ? $metal : self::mix($metal, '#000000', $dark ? 0.3 : 0.35),
+            'shade' => "rgba({$r},{$g},{$b},0.82)", 'bg_glow' => self::mix($bg, $metal, $dark ? 0.14 : 0.06), 'field' => $field];
     }
 
     /**

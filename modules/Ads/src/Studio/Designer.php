@@ -52,10 +52,6 @@ final class Designer
     /** size => [width, height, type scale] */
     public const SIZES = ['square' => [1080, 1080, 0.92], 'portrait' => [1080, 1350, 1.0], 'story' => [1080, 1920, 1.08]];
 
-    /** Each collection's three signature layouts for listing designs (specs/grow/13, SA1c). */
-    public const LAYOUTS = ['luxury_noir' => ['cover', 'cinema', 'gallery'], 'estate' => ['frame', 'gallery', 'arch'], 'modern' => ['masthead', 'split', 'gallery'],
-        'coastal' => ['arch', 'split', 'cover']];
-
     /** The type system, bundled in modules/Ads/resources/fonts (SIL OFL): family => [[file, weight, style]]. */
     private const FONT_FILES = [
         'Cormorant Garamond' => [['cormorant-garamond-latin-300-normal', 300, 'normal'], ['cormorant-garamond-latin-500-normal', 500, 'normal'],
@@ -65,6 +61,17 @@ final class Designer
         'Jost' => [['jost-latin-300-normal', 300, 'normal'], ['jost-latin-400-normal', 400, 'normal'], ['jost-latin-500-normal', 500, 'normal']],
         'Pinyon Script' => [['pinyon-script-latin-400-normal', 400, 'normal']],
         'Italiana' => [['italiana-latin-400-normal', 400, 'normal']],
+        'Playfair Display' => [['playfair-display-latin-600-normal', 600, 'normal'], ['playfair-display-latin-700-normal', 700, 'normal'], ['playfair-display-latin-400-italic', 400, 'italic']],
+        'Tenor Sans' => [['tenor-sans-latin-400-normal', 400, 'normal']],
+        'Libre Caslon Text' => [['libre-caslon-text-latin-400-normal', 400, 'normal'], ['libre-caslon-text-latin-700-normal', 700, 'normal'], ['libre-caslon-text-latin-400-italic', 400, 'italic']],
+        'Montserrat' => [['montserrat-latin-300-normal', 300, 'normal'], ['montserrat-latin-400-normal', 400, 'normal'], ['montserrat-latin-600-normal', 600, 'normal']],
+        'DM Serif Display' => [['dm-serif-display-latin-400-normal', 400, 'normal'], ['dm-serif-display-latin-400-italic', 400, 'italic']],
+        'DM Sans' => [['dm-sans-latin-400-normal', 400, 'normal'], ['dm-sans-latin-600-normal', 600, 'normal']],
+        'Syne' => [['syne-latin-600-normal', 600, 'normal'], ['syne-latin-800-normal', 800, 'normal']],
+        'IBM Plex Mono' => [['ibm-plex-mono-latin-400-normal', 400, 'normal'], ['ibm-plex-mono-latin-500-normal', 500, 'normal']],
+        'Bebas Neue' => [['bebas-neue-latin-400-normal', 400, 'normal']],
+        'Marcellus' => [['marcellus-latin-400-normal', 400, 'normal']],
+        'Libre Baskerville' => [['libre-baskerville-latin-400-normal', 400, 'normal'], ['libre-baskerville-latin-700-normal', 700, 'normal']],
     ];
 
     public function __construct(private readonly StudioPlans $plans, private readonly BrandKits $kits, private readonly ArtDirector $director,
@@ -145,12 +152,16 @@ final class Designer
         // Three designs: for a listing, three layouts on three different photos; otherwise three collections (one if brand-locked).
         // Three designs: for a listing, the collection's three signature layouts, each leading with a different photo; otherwise three
         // collections (one if brand-locked). A gallery needs three good photos, so with fewer it gives way to the cover.
-        $layouts = array_map(fn (string $l): string => $l === 'gallery' && count($photos) < 3 ? 'cover' : $l, self::LAYOUTS[$kit['collection']] ?? self::LAYOUTS['luxury_noir']);
+        // A style asked for (the style picker, Autopilot's rotation) is used when the person may use it.
+        $style = is_string($in['style'] ?? null) && isset(Styles::ALL[$in['style']]) && in_array($in['style'], $kit['allowed'], true) ? $in['style'] : $kit['collection'];
+        $layouts = array_map(fn (string $l): string => $l === 'gallery' && count($photos) < 3 ? 'cover' : $l, (array) Styles::get($style)['layouts']);
+        $layouts = array_values(array_unique($layouts));
+        $styles = array_slice(array_values(array_unique(array_filter([$style, ...$kit['favorites'], ...Styles::match([$style])],
+            fn (string $k): bool => in_array($k, $kit['allowed'], true)))), 0, 3);
         $plans = $kind === 'listing'
-            ? array_map(fn (string $l, int $i): array => [$kit['collection'], $l, [...array_slice($photos, $i % max(1, count($photos))), ...array_slice($photos, 0, $i % max(1, count($photos)))]],
-                array_values(array_unique($layouts)), array_keys(array_values(array_unique($layouts))))
-            : array_map(fn (string $col): array => [$col, 'statement', []], $kit['locked'] ? [$kit['collection']]
-                : array_slice(array_values(array_unique([$kit['collection'], ...array_keys(BrandKits::COLLECTIONS)])), 0, 3));
+            ? array_map(fn (string $l, int $i): array => [$style, $l, [...array_slice($photos, $i % max(1, count($photos))), ...array_slice($photos, 0, $i % max(1, count($photos)))]],
+                $layouts, array_keys($layouts))
+            : array_map(fn (string $col): array => [$col, 'statement', []], $styles);
         $batch = strtolower((string) Str::ulid());
         $made = [];
         foreach ($plans as [$collection, $variant, $shots]) {
@@ -171,20 +182,13 @@ final class Designer
             return;
         }
         $kit = $this->kits->forUser($user);
-        $p = $this->director->palette($kit['colors'], $design->collection);
-        $dark = $p['dark'];
-        $words = preg_split('/\s+/', trim((string) $kit['brokerage'])) ?: [];
-        $monogram = mb_strtoupper(implode('', array_map(fn (string $w): string => mb_substr($w, 0, 1), array_slice(array_values(array_filter($words, fn (string $w): bool => ! in_array(mb_strtolower($w), ['the', 'of', 'and', '&'], true))), 0, 2))));
         $kind = self::MOMENTS[$design->moment][1] ?? 'text';
         $files = [];
         $checks = [];
         try {
-            foreach (self::SIZES as $size => [$w, $h, $scale]) {
-                $html = view('ads::studio.design', ['w' => $w, 'h' => $h, 'layout' => $design->variant, 'type' => $kind, 'collection' => $design->collection,
-                    'p' => $p, 'kit' => $kit, 'c' => $design->content + ['moment' => $design->moment], 'fonts' => self::fontFaces(),
-                    'photos' => array_values(array_filter((array) ($design->content['photos'] ?? [$design->content['photo'] ?? null]))),
-                    'agent' => $kit['cutout'] ?? $kit['headshot'], 'monogram' => $monogram !== '' ? $monogram : 'R',
-                    'logo' => in_array($design->variant, ['cover', 'masthead'], true) || $dark ? ($kit['logo_dark'] ?? null) : ($kit['logo'] ?? $kit['logo_dark'])])->render();
+            foreach (self::SIZES as $size => [$w, $h]) {
+                $html = $this->page($kit, $design->collection, $design->variant, $kind, $design->content + ['moment' => $design->moment],
+                    array_values(array_filter((array) ($design->content['photos'] ?? [$design->content['photo'] ?? null]))), $w, $h);
                 $png = app(StudioRenderer::class)->render($html, $w, $h);
                 if ($this->director->looksBlank($png)) {
                     $checks[] = "The {$size} design came out blank.";
@@ -209,6 +213,49 @@ final class Designer
         }
         $ok = count($files) === count(self::SIZES);
         $design->forceFill(['files' => $files, 'checks' => $checks, 'status' => $ok ? 'ready' : 'failed'])->save();
+    }
+
+    /**
+     * One design page (HTML) for a brand kit, style and layout at a size: what the renderer draws.
+     *
+     * @param  array<string, mixed>  $kit  BrandKits::forUser()
+     * @param  array<string, mixed>  $content
+     * @param  list<string>  $photos
+     */
+    public function page(array $kit, string $style, string $layout, string $kind, array $content, array $photos, int $w, int $h): string
+    {
+        $p = $this->director->palette((array) $kit['colors'], $style, is_string($kit['finish'] ?? null) ? $kit['finish'] : null);
+        $words = preg_split('/\s+/', trim((string) $kit['brokerage'])) ?: [];
+        $monogram = mb_strtoupper(implode('', array_map(fn (string $w): string => mb_substr($w, 0, 1),
+            array_slice(array_values(array_filter($words, fn (string $w): bool => ! in_array(mb_strtolower($w), ['the', 'of', 'and', '&'], true))), 0, 2))));
+
+        return view('ads::studio.design', ['w' => $w, 'h' => $h, 'layout' => $layout, 'type' => $kind, 'collection' => Styles::key($style), 'p' => $p, 't' => Styles::get($style),
+            'kit' => $kit, 'c' => $content, 'fonts' => self::fontFaces(), 'photos' => $photos, 'agent' => $kit['cutout'] ?? $kit['headshot'], 'monogram' => $monogram !== '' ? $monogram : 'R',
+            'logo' => in_array($layout, ['cover', 'masthead', 'mono', 'colorfield'], true) || $p['dark'] ? ($kit['logo_dark'] ?? null) : ($kit['logo'] ?? $kit['logo_dark'])])->render();
+    }
+
+    /**
+     * Sample content for previews of every style: the person's newest listing with good photos, otherwise a
+     * "meet your agent" statement.
+     *
+     * @return array{kind: string, content: array<string, mixed>, photos: list<string>}
+     */
+    public function sample(User $user): array
+    {
+        foreach (array_slice(app(ListingAds::class)->listings($user), 0, 3) as $l) {
+            try {
+                [, $facts, $photos] = $this->listing($user, (string) $l['ulid'], 'open_house');
+                unset($facts['area']);
+
+                return ['kind' => 'listing', 'content' => ['kicker' => 'Just listed', 'moment' => 'just_listed'] + $facts, 'photos' => $photos];
+            } catch (ValidationException) {
+                continue;
+            }
+        }
+        $name = trim($user->first_name.' '.$user->last_name);
+
+        return ['kind' => 'agent', 'content' => ['kicker' => 'Meet your agent', 'moment' => 'meet_agent', 'headline' => 'Meet '.$user->first_name,
+            'body' => 'Helping clients buy and sell with care, skill and a little magic.'], 'photos' => []];
     }
 
     /**
