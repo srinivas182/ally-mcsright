@@ -23,6 +23,7 @@ final class MovewiseServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(__DIR__.'/../config/movewise.php', 'movewise');
         $this->app->scoped(Movewise::class);
         $this->app->scoped(People\Accounts::class);
+        $this->app->tag([Bridge\MovewiseBridge::class], 'crm.contact_bridges'); // the relay (specs/movewise/05)
     }
 
     public function boot(): void

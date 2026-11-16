@@ -112,11 +112,12 @@ final class AccountController
         }
         $plan = (array) ($p->plan ?? []);
         $agents = [];
-        foreach (Connection::query()->where('person_id', $p->id)->whereIn('status', ['offered', 'accepted', 'expired', 'declined'])->where('offered_at', '>=', now()->subDays(60))
+        foreach (Connection::query()->where('person_id', $p->id)->whereIn('status', ['offered', 'accepted', 'expired', 'declined', 'stopped'])->where('offered_at', '>=', now()->subDays(60))
             ->orderByDesc('id')->limit(5)->get() as $c) {
             $a = Agent::query()->find($c->agent_id);
             $agents[] = ['ulid' => $c->ulid, 'status' => $c->status, 'name' => (string) ($a->profile['display_name'] ?? ''), 'by' => $c->accept_by->setTimezone('America/Chicago')->format('g:i a T'),
-                'show' => DB::connection(Connections::control())->table('movewise_shows')->where('id', $c->show_id)->value('ulid'), 'waited' => $c->refund_reason === 'waited'];
+                'show' => DB::connection(Connections::control())->table('movewise_shows')->where('id', $c->show_id)->value('ulid'), 'waited' => $c->refund_reason === 'waited',
+                'paused_until' => $c->paused_until?->isFuture() ? $c->paused_until->toFormattedDateString() : null, 'relay' => $c->handed_over_at === null ? $c->relay_number : null];
         }
 
         return response()->view('movewise::account', ['site' => $chrome, 'person' => $p, 'homes' => $homes,

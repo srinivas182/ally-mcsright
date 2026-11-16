@@ -61,4 +61,6 @@ return [
     'connect.withdraw' => 'End the introduction', 'connect.withdrawn' => 'Done. The agent has been told not to contact you about it.',
     'account.agent' => 'Your agent', 'account.waiting' => 'Waiting for :name to accept (by :time).', 'account.working' => 'Working with :name.',
     'account.expired' => ":name hasn't been able to reply yet.", 'account.declined' => ":name can't take this on right now.", 'account.wait' => 'Wait for :name', 'account.choose_other' => 'Choose another agent',
+    'account.relay' => 'They text you from your Movewise number, :number.', 'account.paused' => 'Paused until :date.', 'account.pause' => 'Pause for 2 weeks',
+    'account.resume' => 'Resume', 'account.change' => 'Change agent', 'account.stop' => "I'm done: no more contact", 'account.stopped' => 'You ended contact with :name.',
 ];

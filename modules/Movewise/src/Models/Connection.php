@@ -35,6 +35,12 @@ use Modules\Core\Tenancy\Concerns\HasPublicUlid;
  * @property string|null $refund_status
  * @property string|null $refund_reason
  * @property int|null $lead_id
+ * @property int|null $contact_id
+ * @property string|null $relay_number
+ * @property CarbonImmutable|null $paused_until
+ * @property CarbonImmutable|null $handover_asked_at
+ * @property CarbonImmutable|null $handed_over_at
+ * @property string|null $end_reason
  */
 final class Connection extends Model
 {
@@ -58,6 +64,6 @@ final class Connection extends Model
     protected function casts(): array
     {
         return ['slot_at' => 'immutable_datetime', 'consent_at' => 'immutable_datetime', 'offered_at' => 'immutable_datetime', 'accept_by' => 'immutable_datetime',
-            'accepted_at' => 'immutable_datetime', 'closed_at' => 'immutable_datetime', 'price_credits' => 'integer'];
+            'accepted_at' => 'immutable_datetime', 'closed_at' => 'immutable_datetime', 'paused_until' => 'immutable_datetime', 'handover_asked_at' => 'immutable_datetime', 'handed_over_at' => 'immutable_datetime', 'price_credits' => 'integer'];
     }
 }

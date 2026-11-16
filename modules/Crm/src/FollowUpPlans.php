@@ -147,6 +147,10 @@ final class FollowUpPlans
         if (! $this->visibility->canSee($by, $contact)) {
             throw ValidationException::withMessages(['contact' => 'Contact not found.']);
         }
+        $hold = app(Inbox\Bridges::class)->hold($contact);
+        if ($hold !== null) {
+            throw ValidationException::withMessages(['contact' => $hold['reason']]);
+        }
         if (! $plan->active || (! $plan->shared && $plan->owner_user_id !== $by->id && $plan->owner_user_id !== $contact->owner_user_id)) {
             throw ValidationException::withMessages(['plan' => 'Choose an active plan you can use.']);
         }

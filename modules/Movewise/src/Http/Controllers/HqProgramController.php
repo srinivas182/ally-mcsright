@@ -7,10 +7,14 @@ namespace Modules\Movewise\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Core\Audit\AuditLogger;
+use Modules\Core\Support\Connections as ControlDb;
 use Modules\Core\Tenancy\Models\Tenant;
+use Modules\Crm\Actions\ManageContacts;
 use Modules\Movewise\Matching\Connections;
 use Modules\Movewise\Models\Agent;
 use Modules\Movewise\Models\Connection;
@@ -46,6 +50,9 @@ final class HqProgramController
                 'credits' => $c->price_credits, 'reason' => $c->refund_reason, 'method' => $c->method, 'accepted_at' => $c->accepted_at?->toIso8601String()])->values()->all(),
             'introductions' => ['offered' => Connection::query()->where('status', 'offered')->count(), 'accepted_30d' => Connection::query()->where('status', 'accepted')
                 ->where('accepted_at', '>=', now()->subDays(30))->count(), 'expired_30d' => Connection::query()->where('status', 'expired')->where('offered_at', '>=', now()->subDays(30))->count()],
+            'relays' => DB::connection(ControlDb::control())->table('movewise_relay_numbers')->orderBy('number')->get()->map(fn ($r): array => ['id' => (int) $r->id,
+                'number' => (string) $r->number, 'area' => $r->area, 'active' => (bool) $r->active, 'in_use' => Connection::query()->where('relay_number', $r->number)->where('status', 'accepted')
+                    ->whereNull('handed_over_at')->count()])->values()->all(),
             'seats' => SeatRequest::query()->orderByRaw("case status when 'pending' then 0 else 1 end")->orderByDesc('id')->limit(200)->get()->map(fn (SeatRequest $r): array => [
                 'ulid' => $r->ulid, 'name' => $r->first_name.' '.$r->last_name, 'email' => $r->email, 'state' => $r->state, 'licence_number' => $r->licence_number,
                 'brokerage_name' => $r->brokerage_name, 'licence_status' => $r->licence_status, 'status' => $r->status, 'note' => $r->note])->values()->all(),
@@ -97,6 +104,25 @@ final class HqProgramController
     public function refund(Request $request, string $connection, Connections $connections): RedirectResponse
     {
         $connections->resolve(Connection::query()->where('ulid', $connection)->firstOrFail(), $request->boolean('approve'), self::user($request));
+
+        return back();
+    }
+
+    /** HQ's pool of relay numbers (Twilio numbers in HQ's account, pointed at the texts webhook). */
+    public function relay(Request $request): RedirectResponse
+    {
+        $db = DB::connection(ControlDb::control())->table('movewise_relay_numbers');
+        if ($request->filled('id')) {
+            $db->where('id', (int) $request->input('id'))->update(['active' => $request->boolean('active'), 'updated_at' => now()]);
+
+            return back();
+        }
+        $number = ManageContacts::e164((string) $request->input('number', ''));
+        if ($number === null) {
+            throw ValidationException::withMessages(['number' => 'Enter a US number from HQ\'s Twilio account.']);
+        }
+        $db->insertOrIgnore(['number' => $number, 'area' => mb_substr(trim((string) $request->input('area', '')), 0, 60) ?: null, 'active' => true, 'created_at' => now(), 'updated_at' => now()]);
+        app(AuditLogger::class)->record('movewise.relay.added', metadata: ['number' => $number, 'by' => self::user($request)->id]);
 
         return back();
     }

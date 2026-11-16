@@ -16,6 +16,7 @@ use Modules\Crm\Actions\Timeline;
 use Modules\Crm\Consent;
 use Modules\Crm\Enums\Lifecycle;
 use Modules\Crm\FairHousing;
+use Modules\Crm\Inbox\Bridges;
 use Modules\Crm\Inbox\Inbox;
 use Modules\Crm\Inbox\SendGuard;
 use Modules\Crm\Models\AiThread;
@@ -66,7 +67,7 @@ final class LongNurture
             ->whereNotIn('contact_id', Nurture::query()->select('contact_id'))->orderBy('id')->limit(500)->get();
         foreach ($leads->unique('contact_id') as $lead) {
             $contact = Contact::query()->find($lead->contact_id);
-            if ($contact === null || $contact->lifecycle !== Lifecycle::Lead || ! $this->reachable($contact)
+            if ($contact === null || $contact->lifecycle !== Lifecycle::Lead || ! $this->reachable($contact) || ! app(Bridges::class)->allowsBulk($contact)
                 || AiThread::query()->where('contact_id', $contact->id)->where('status', 'active')->exists()
                 || Message::query()->where('contact_id', $contact->id)->where('created_at', '>', $now->subDays(7))->exists()) {
                 continue;

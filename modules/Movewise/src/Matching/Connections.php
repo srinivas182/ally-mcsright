@@ -24,6 +24,7 @@ use Modules\Crm\Enums\Source;
 use Modules\Crm\Leads\LeadIntake;
 use Modules\Crm\Models\Lead;
 use Modules\Crm\Models\LeadSource;
+use Modules\Movewise\Bridge\Relay;
 use Modules\Movewise\Mail\PersonUpdate;
 use Modules\Movewise\Models\Agent;
 use Modules\Movewise\Models\Connection;
@@ -198,7 +199,8 @@ final class Connections
                 app(Availability::class)->book($by, $lead->contact, $c->slot_at, 'call', 'Movewise appointment the person booked');
             }
         }
-        $c->forceFill(['status' => 'accepted', 'accepted_at' => CarbonImmutable::now(), 'price_credits' => $price, 'lead_id' => $lead->id])->save();
+        $c->forceFill(['status' => 'accepted', 'accepted_at' => CarbonImmutable::now(), 'price_credits' => $price, 'lead_id' => $lead->id, 'contact_id' => $lead->contact_id])->save();
+        app(Relay::class)->assign($c, $person); // texts go through their Movewise number (MW5)
         app(AuditLogger::class)->record('movewise.connection.accepted', $c, metadata: ['credits' => $price, 'model' => $c->model], label: (string) ($person->first_name ?? ''));
         Mail::to($person->email)->send(new PersonUpdate($this->t($person, 'accepted_h', ['name' => (string) ($agent->profile['display_name'] ?? '')]),
             $this->t($person, 'accepted_b', ['name' => (string) ($agent->profile['display_name'] ?? ''), 'how' => $this->t($person, 'how_'.$c->method)]),

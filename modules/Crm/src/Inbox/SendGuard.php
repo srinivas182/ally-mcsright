@@ -36,6 +36,10 @@ final class SendGuard
         if (trim($body) === '') {
             $reasons[] = 'Write the message.';
         }
+        $hold = app(Bridges::class)->hold($contact);
+        if ($hold !== null && $hold['level'] === 'all') {
+            $reasons[] = $hold['reason']; // e.g. the person paused or stopped contact on Movewise
+        }
         $flags = FairHousing::screen($body, 'messages', 'blocked', $channel === 'sms' ? 'Text' : 'Email');
         if ($flags !== []) {
             $reasons[] = 'Fair Housing: reword "'.implode('", "', $flags).'" (describe the home, not who should live there).';
