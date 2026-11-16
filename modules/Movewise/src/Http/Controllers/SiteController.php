@@ -13,6 +13,7 @@ use Modules\Core\Support\Connections;
 use Modules\Listings\Access\MlsAccess;
 use Modules\Listings\Models\Listing;
 use Modules\Listings\Search\ListingSearch;
+use Modules\Movewise\I18n;
 use Modules\Movewise\Models\State;
 use Modules\Movewise\MonthlyCost;
 use Modules\Movewise\Movewise;
@@ -55,12 +56,10 @@ final class SiteController
         $newest = $tenant !== null ? $this->search->search($tenant->id, ['states' => array_column($site['states'], 'code'), 'per_page' => 8, 'sort' => 'newest'])['results'] : [];
 
         return $this->view('movewise::home', ['site' => $site, 'newest' => array_map(fn (array $h): array => $this->card($h), $newest),
-            'seo' => $this->seo($site, '/', 'Movewise Homes: search homes for sale without the spam', 'Search every home for sale in '.$this->names($site).
-                '. See the true monthly cost and the risks in plain English. Nobody contacts you unless you choose an agent.', true,
+            'seo' => $this->seo($site, '/', I18n::t('home.title'), I18n::t('home.description', ['states' => $this->names($site)]), true,
                 [['@type' => 'WebSite', 'url' => $site['base'].'/', 'name' => 'Movewise Homes', 'potentialAction' => ['@type' => 'SearchAction',
                     'target' => ['@type' => 'EntryPoint', 'urlTemplate' => $site['base'].'/homes?q={search_term_string}'], 'query-input' => 'required name=search_term_string']]],
-                [['How is Movewise paid?', 'Agents pay Movewise for an introduction, only after you choose them and tap Connect. We never sell your information to a crowd, and we don\'t push our own lender, title company or insurer.'],
-                    ['Will agents call me if I search here?', 'No. Nobody contacts you until you choose one agent and tap Connect. You never need a phone number to see homes or get answers.']])]);
+                [[I18n::t('faq.paid_q'), I18n::t('faq.paid_a')], [I18n::t('faq.calls_q'), I18n::t('faq.calls_a')]])]);
     }
 
     public function search(Request $request): Response
@@ -73,12 +72,12 @@ final class SiteController
         $f = $request->only(['q', 'min_price', 'max_price', 'beds', 'baths', 'sort', 'page']) + ['states' => $states, 'per_page' => self::PER_PAGE];
         $found = $tenant !== null && $on !== [] ? $this->search->search($tenant->id, $f) : ['results' => [], 'total' => 0, 'page' => 1, 'per_page' => self::PER_PAGE, 'filters' => []];
         $filtered = array_filter($request->only(['q', 'min_price', 'max_price', 'beds', 'baths', 'sort', 'page', 'state']), fn ($v): bool => $v !== null && $v !== '') !== [];
-        $title = trim(($request->query('q') ? '"'.mb_substr((string) $request->query('q'), 0, 40).'" ' : '').'Homes for sale'.(in_array($state, $on, true) ? ' in '.$this->stateName($state) : ''));
+        $title = trim(($request->query('q') ? '"'.mb_substr((string) $request->query('q'), 0, 40).'" ' : '').(in_array($state, $on, true) ? I18n::t('home.state_link', ['state' => $this->stateName($state)]) : I18n::t('nav.homes')));
 
         return $this->view('movewise::search', ['site' => $site, 'results' => array_map(fn (array $h): array => $this->card($h), $found['results']), 'total' => $found['total'],
             'page' => $found['page'], 'pages' => (int) max(1, ceil($found['total'] / self::PER_PAGE)), 'query' => $request->query(), 'state' => $state,
             // Filtered and paged results aren't indexed; the state and city pages are the indexable entry points.
-            'seo' => $this->seo($site, '/homes', $title.' | Movewise Homes', 'Every home for sale in '.$this->names($site).', fresh from the MLS, with the true monthly cost of each.', ! $filtered)]);
+            'seo' => $this->seo($site, '/homes', $title.' | Movewise Homes', I18n::t('search.description', ['states' => $this->names($site)]), ! $filtered)]);
     }
 
     public function listing(string $listing): Response
@@ -166,7 +165,11 @@ final class SiteController
         $site = $this->chrome();
         $urls = [];
         if ($state === 'pages') {
-            foreach (['/', '/homes', '/how-movewise-is-paid', '/brokers', '/fair-housing', '/privacy', '/terms', '/accessibility', ...array_map(fn (array $s): string => '/'.$s['slug'], $site['states'])] as $p) {
+            foreach (['/', '/homes', '/afford', '/net-sheet', '/move-planner', ...array_map(fn (array $s): string => '/'.$s['slug'], $site['states'])] as $p) {
+                $urls[] = [$site['base'].$p, null];
+                $urls[] = [$site['base'].'/es'.($p === '/' ? '' : $p), null]; // the Spanish version (specs/movewise/02)
+            }
+            foreach (['/how-movewise-is-paid', '/brokers', '/fair-housing', '/privacy', '/terms', '/accessibility'] as $p) {
                 $urls[] = [$site['base'].$p, null];
             }
         } else {
@@ -199,7 +202,7 @@ final class SiteController
     {
         $label = ListingSearch::label($h);
 
-        return $h + ['label' => $label, 'href' => '/homes/'.$h['ulid'].'/'.Str::slug(mb_substr($label, 0, 120))];
+        return $h + ['label' => $label, 'href' => I18n::url('/homes/'.$h['ulid'].'/'.Str::slug(mb_substr($label, 0, 120)))];
     }
 
     /** @return list<array{city: string, count: int}> */
@@ -232,19 +235,24 @@ final class SiteController
      * @param  list<array{0: string, 1: string}>  $crumbs
      * @return array<string, mixed>
      */
-    private function seo(array $site, string $path, string $title, string $description, bool $indexable, array $nodes = [], array $faqs = [], array $crumbs = []): array
+    public function seo(array $site, string $path, string $title, string $description, bool $indexable, array $nodes = [], array $faqs = [], array $crumbs = []): array
     {
         $graph = [['@type' => 'Organization', '@id' => $site['base'].'/#organization', 'name' => 'Movewise Homes', 'url' => $site['base'].'/'], ...$nodes];
         if ($crumbs !== []) {
             $graph[] = ['@type' => 'BreadcrumbList', 'itemListElement' => array_map(fn (array $c, int $i): array => ['@type' => 'ListItem', 'position' => $i + 2, 'name' => $c[0],
-                'item' => $site['base'].$c[1]], $crumbs, array_keys($crumbs))];
-            array_unshift($graph[count($graph) - 1]['itemListElement'], ['@type' => 'ListItem', 'position' => 1, 'name' => 'Home', 'item' => $site['base'].'/']);
+                'item' => $site['base'].I18n::url($c[1])], $crumbs, array_keys($crumbs))];
+            array_unshift($graph[count($graph) - 1]['itemListElement'], ['@type' => 'ListItem', 'position' => 1, 'name' => 'Home', 'item' => $site['base'].I18n::url('/')]);
         }
         if ($faqs !== []) {
             $graph[] = ['@type' => 'FAQPage', 'mainEntity' => array_map(fn (array $f): array => ['@type' => 'Question', 'name' => $f[0], 'acceptedAnswer' => ['@type' => 'Answer', 'text' => $f[1]]], $faqs)];
         }
 
-        return ['title' => mb_substr($title, 0, 70), 'description' => mb_substr($description, 0, 160), 'canonical' => $site['base'].$path, 'indexable' => $indexable,
+        // Each language has its own address; hreflang links tie the English and Spanish versions together (specs/movewise/02).
+        $en = $site['base'].$path;
+        $es = $site['base'].'/es'.($path === '/' ? '' : $path);
+
+        return ['title' => mb_substr($title, 0, 70), 'description' => mb_substr($description, 0, 160), 'canonical' => I18n::locale() === 'es' ? $es : $en, 'indexable' => $indexable,
+            'alternates' => ['en' => $en, 'es' => $es, 'x-default' => $en], 'lang' => I18n::locale(),
             'jsonld' => json_encode(['@context' => 'https://schema.org', '@graph' => $graph], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG), 'faqs' => $faqs];
     }
 

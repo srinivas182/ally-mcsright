@@ -3,7 +3,7 @@
     "name": "Movewise",
     "version": "0.1.0",
     "provider": "Modules\\Movewise\\MovewiseServiceProvider",
-    "depends": ["core", "listings", "crm", "billing"],
+    "depends": ["core", "listings", "crm", "billing", "ai"],
     "entitlement": null,
     "description": "Movewise Homes: HQ's consumer home search and moving site, and its exclusive, consented introductions to agents (specs/movewise)."
 }

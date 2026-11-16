@@ -9,6 +9,8 @@ declare(strict_types=1);
 return [
     'host' => env('MOVEWISE_HOST', 'movewisehomes.com'),
     'redirect_hosts' => array_values(array_filter(explode(',', (string) env('MOVEWISE_REDIRECT_HOSTS', 'movewise.homes,www.movewise.homes,movewiserealestate.com,www.movewiserealestate.com,www.movewisehomes.com')))),
+    'mail_from' => env('MOVEWISE_MAIL_FROM', 'hello@movewisehomes.com'),
+    'postal_address' => env('MOVEWISE_POSTAL_ADDRESS', ''), // required on alert emails (CAN-SPAM)
     'launch_states' => ['TX' => 'Texas', 'LA' => 'Louisiana', 'MS' => 'Mississippi', 'AL' => 'Alabama'],
 
     // True monthly cost (estimates the visitor can change; each line says what it assumes).

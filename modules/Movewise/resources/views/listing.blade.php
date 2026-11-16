@@ -1,9 +1,10 @@
 @extends('movewise::layout')
 @section('main')
 <div class="wrap" style="padding-top:24px">
-    <nav class="small muted" aria-label="Breadcrumb"><a href="/homes">Homes for sale</a> › {{ $home['city'] ?? '' }}</nav>
+    <nav class="small muted" aria-label="Breadcrumb"><a href="{{ $u('/homes') }}">{{ $t('nav.homes') }}</a> › {{ $home['city'] ?? '' }}</nav>
     <h1>{{ $label ?: 'Home for sale' }}</h1>
-    <p class="price">{{ isset($home['price']) ? '$'.number_format((int) $home['price']) : 'Price on request' }}</p>
+    <p class="price">{{ isset($home['price']) ? '$'.number_format((int) $home['price']) : 'Price on request' }}
+        <button class="save" type="button" data-save="{{ $home['ulid'] }}" aria-pressed="false" hidden>{{ $t('save') }}</button></p>
     <p class="facts">
         @isset($home['beds'])<span>{{ $home['beds'] }} bedrooms</span>@endisset
         @isset($home['baths_full'])<span>{{ $home['baths_full'] + 0.5 * (int) ($home['baths_half'] ?? 0) }} bathrooms</span>@endisset
@@ -20,7 +21,7 @@
     <p class="small muted">@if ($updated)Last updated {{ $updated->diffForHumans() }} from the MLS.@endif {{ $home['stale'] ? 'The MLS feed is catching up; check with the listing agent before visiting.' : '' }}</p>
 
     @if ($cost)
-        <h2>What it really costs each month</h2>
+        <h2>{{ $t('cost.title') }}</h2>
         <table class="cost">
             <tbody>
             @foreach ($cost['lines'] as $line)
@@ -28,9 +29,9 @@
                     <td class="amt">{{ $line['amount'] !== null ? '$'.number_format($line['amount']) : 'Ask' }}</td></tr>
             @endforeach
             </tbody>
-            <tfoot><tr><td>About each month</td><td class="amt">${{ number_format($cost['total']) }}</td></tr></tfoot>
+            <tfoot><tr><td>{{ $t('cost.total') }}</td><td class="amt">${{ number_format($cost['total']) }}</td></tr></tfoot>
         </table>
-        <p class="small muted">Estimates to help you compare homes, not a loan offer. Your lender, county and insurer give the real numbers.</p>
+        <p class="small muted">{{ $t('listing.estimate') }}</p>
     @endif
 
     @if (! empty($home['remarks']))
@@ -43,6 +44,6 @@
     @if (! empty($home['disclaimer']))<p class="attr">{{ $home['disclaimer'] }}</p>@endif
     @if (! empty($home['logo']))<img src="{{ $home['logo'] }}" alt="MLS" height="32" loading="lazy">@endif
 
-    <p class="note">Questions about this home? Soon you'll be able to ask AIlly here, and choose a local agent only if you want one. Nobody contacts you otherwise.</p>
+    <p class="note">{{ $t('listing.ask') }} <button class="save" type="button" data-ailly-open data-listing="{{ $home['ulid'] }}" hidden>{{ $t('ailly.open') }}</button></p>
 </div>
 @endsection
