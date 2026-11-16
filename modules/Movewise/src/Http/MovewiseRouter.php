@@ -9,6 +9,7 @@ use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Router;
 use Modules\Movewise\Http\Controllers\AccountController;
+use Modules\Movewise\Http\Controllers\JoinController;
 use Modules\Movewise\Http\Controllers\SiteController;
 use Modules\Movewise\Http\Controllers\ToolsController;
 use Modules\Movewise\I18n;
@@ -44,6 +45,8 @@ final class MovewiseRouter
                 $r->get('/', [SiteController::class, 'home']);
                 $r->get('homes', [SiteController::class, 'search']);
                 $r->get('homes/{listing}/{slug?}', [SiteController::class, 'listing'])->where(['listing' => '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}', 'slug' => '[a-z0-9-]{0,140}']);
+                $r->get('agents', [JoinController::class, 'show']);
+                $r->post('agents/join', [JoinController::class, 'join']);
                 $r->get('afford', [ToolsController::class, 'afford']);
                 $r->get('net-sheet', [ToolsController::class, 'netSheet']);
                 $r->get('move-planner', [ToolsController::class, 'planner']);

@@ -17,6 +17,7 @@ use Modules\Core\Support\Connections;
  * @property bool $on
  * @property int|null $partner_id
  * @property array<string, array{done: bool, note?: string|null, by?: int|null, at?: string|null}>|null $checklist
+ * @property array<string, mixed>|null $pricing
  * @property CarbonImmutable|null $turned_on_at
  * @property int|null $turned_on_by
  * @property-read Partner|null $partner
@@ -46,6 +47,6 @@ final class State extends Model
 
     protected function casts(): array
     {
-        return ['on' => 'boolean', 'checklist' => 'array', 'turned_on_at' => 'immutable_datetime'];
+        return ['on' => 'boolean', 'checklist' => 'array', 'pricing' => 'array', 'turned_on_at' => 'immutable_datetime'];
     }
 }

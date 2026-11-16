@@ -114,7 +114,7 @@
             @endif
         </div>
         <div>
-            <p><a href="{{ $u('/how-movewise-is-paid') }}">How Movewise is paid</a><br><a href="{{ $u('/afford') }}">{{ $t('tools.afford') }}</a><br><a href="{{ $u('/net-sheet') }}">{{ $t('tools.net') }}</a><br><a href="{{ $u('/move-planner') }}">{{ $t('tools.planner') }}</a><br><a href="/brokers">Brokers and licences</a><br><a href="/fair-housing">Fair Housing</a><br>
+            <p><a href="{{ $u('/how-movewise-is-paid') }}">How Movewise is paid</a><br><a href="{{ $u('/afford') }}">{{ $t('tools.afford') }}</a><br><a href="{{ $u('/net-sheet') }}">{{ $t('tools.net') }}</a><br><a href="{{ $u('/move-planner') }}">{{ $t('tools.planner') }}</a><br><a href="{{ $u('/agents') }}">For agents</a><br><a href="/brokers">Brokers and licences</a><br><a href="/fair-housing">Fair Housing</a><br>
             <a href="/privacy">Privacy notice</a><br><a href="/terms">Terms of use</a><br><a href="/accessibility">Accessibility</a></p>
         </div>
     </div>
