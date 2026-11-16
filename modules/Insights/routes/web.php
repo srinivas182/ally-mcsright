@@ -13,6 +13,9 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('insigh
     Route::get('deals', [InsightsController::class, 'drill'])->middleware('throttle:120,1')->name('drill');
     Route::post('goals', [InsightsController::class, 'goal'])->name('goals');
     Route::get('me', [InsightsController::class, 'me'])->name('me');
+    Route::get('plan', [InsightsController::class, 'plan'])->name('plan');
+    Route::post('plan', [InsightsController::class, 'savePlan'])->name('plan.save');
+    Route::get('roi', [InsightsController::class, 'roi'])->name('roi');
     Route::get('reports', [ReportsController::class, 'index'])->name('reports');
     Route::post('reports/run', [ReportsController::class, 'run'])->middleware('throttle:60,1')->name('reports.run');
     Route::post('reports/export', [ReportsController::class, 'export'])->middleware('throttle:20,1')->name('reports.export');

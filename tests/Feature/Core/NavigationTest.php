@@ -23,7 +23,7 @@ it('shows owners the dashboard, people and finance', function (): void {
 });
 
 it('shows agents only their own pages', function (): void {
-    expect(menuFor(User::factory()->create()))->toBe(['Today', "Today's 10", 'Tasks', 'Deals', 'My numbers', 'Reports', 'My plan', 'My money', 'My licences and onboarding', 'Revenue share', 'Leads', 'Inbox', 'Listings', 'Buyer demand', 'Contacts', 'Ally Studio', 'Funnels', 'Postcards', 'Reviews', 'Movewise', 'Social posts', 'Ads', 'Directory', 'Apps', 'My website', 'My availability', 'RightAlly credits'])
+    expect(menuFor(User::factory()->create()))->toBe(['Today', "Today's 10", 'Tasks', 'Deals', 'My numbers', 'Reports', 'Business planner', 'My plan', 'My money', 'My licences and onboarding', 'Revenue share', 'Leads', 'Inbox', 'Listings', 'Buyer demand', 'Contacts', 'Ally Studio', 'Funnels', 'Postcards', 'Reviews', 'Movewise', 'Social posts', 'Ads', 'Directory', 'Apps', 'My website', 'My availability', 'RightAlly credits'])
         ->and(menuFor(User::factory()->assistantOf(User::factory()->create())->create()))->toBe(['Today', "Today's 10", 'Tasks', 'Deals', 'Inbox', 'Listings', 'Contacts']);
 });
 

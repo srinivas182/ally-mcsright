@@ -16,6 +16,8 @@ use Modules\Core\Identity\Enums\UserKind;
 use Modules\Insights\AgentSuccess;
 use Modules\Insights\Goals;
 use Modules\Insights\Numbers;
+use Modules\Insights\Planner;
+use Modules\Insights\RoiReport;
 
 /** The broker dashboard and each agent's success dashboard (specs/insights/01, K1). */
 final class InsightsController
@@ -97,6 +99,48 @@ final class InsightsController
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Goal saved.']);
 
         return back();
+    }
+
+    /** The business planner (K3). */
+    public function plan(Request $request, Planner $planner): Response
+    {
+        return Inertia::render('insights/plan', $planner->view(self::user($request)));
+    }
+
+    public function savePlan(Request $request, Planner $planner): RedirectResponse
+    {
+        $user = self::user($request);
+        $data = $request->validate(['income' => ['required', 'numeric', 'min:1000', 'max:100000000'], 'take_home' => ['required', 'boolean'],
+            'average_price' => ['nullable', 'numeric', 'min:10000', 'max:100000000'], 'commission_rate' => ['nullable', 'numeric', 'min:0.1', 'max:10'],
+            'closing_rate' => ['nullable', 'integer', 'min:5', 'max:100'], 'agreement_rate' => ['nullable', 'integer', 'min:5', 'max:100'],
+            'appointment_rate' => ['nullable', 'integer', 'min:1', 'max:100']]);
+        $inputs = ['income_cents' => (int) round((float) $data['income'] * 100), 'take_home' => (bool) $data['take_home']];
+        if (isset($data['average_price'])) {
+            $inputs['average_price_cents'] = (int) round((float) $data['average_price'] * 100);
+        }
+        if (isset($data['commission_rate'])) {
+            $inputs['commission_rate'] = round((float) $data['commission_rate'] / 100, 4);
+        }
+        foreach (['closing_rate', 'agreement_rate', 'appointment_rate'] as $k) {
+            if (isset($data[$k])) {
+                $inputs[$k] = round((int) $data[$k] / 100, 3);
+            }
+        }
+        $planner->save($user, (int) CarbonImmutable::today()->format('Y'), $inputs);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Plan saved. Your goal is updated too.']);
+
+        return back();
+    }
+
+    /** Last month with RightAlly (K3): for people who see the whole brokerage's numbers and pay. */
+    public function roi(Request $request, RoiReport $roi): Response
+    {
+        $user = self::user($request);
+        abort_unless(Numbers::people($user) === null && Fields::visible($user, 'commission'), 403);
+        $month = $request->query('month');
+        $at = is_string($month) && preg_match('/^\d{4}-\d{2}$/', $month) === 1 ? CarbonImmutable::parse($month.'-01') : CarbonImmutable::today()->subMonth();
+
+        return Inertia::render('insights/roi', $roi->month($at));
     }
 
     /**
