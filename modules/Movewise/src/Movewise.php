@@ -37,6 +37,9 @@ final class Movewise
         'tcpa' => 'TCPA and state telemarketing: consent wording reviewed, any texting registration done',
         'mls_rules' => 'MLS display rules and attribution agreed with the partner',
         'privacy' => 'Privacy notice covers how data moves to the chosen agent',
+        'counsel_signoff' => 'State counsel signed off the whole program for this state (name, date and the opinion\'s location in the note)',
+        'a2p' => 'Texting registration (A2P 10DLC) approved for the Movewise relay numbers',
+        'launch_review' => 'Launch review done: load test passed, the launch checks are green, and the support rota is set',
     ];
 
     /** The HQ account whose MLS authorisations are Movewise's feeds. */
@@ -82,6 +85,16 @@ final class Movewise
         }
         if ($this->feeds($state->code) === []) {
             $out[] = 'A live MLS feed covering '.$state->name;
+        }
+        // Launch order (specs/movewise/08): Texas first; each later state only after the first has run for a while.
+        $order = (array) config('movewise.launch_order', ['TX']);
+        $first = (string) ($order[0] ?? 'TX');
+        if ($state->code !== $first) {
+            $lead = State::query()->find($first);
+            $days = (int) config('movewise.launch_gap_days', 30);
+            if ($lead === null || ! $lead->on || $lead->turned_on_at === null || $lead->turned_on_at->gt(CarbonImmutable::now()->subDays($days))) {
+                $out[] = ($lead->name ?? $first).' live for at least '.$days.' days first';
+            }
         }
 
         return $out;

@@ -24,5 +24,9 @@ return [
     'accept_minutes' => (int) env('MOVEWISE_ACCEPT_MINUTES', 5),          // to accept inside working hours
     'after_hours_minutes' => (int) env('MOVEWISE_AFTER_HOURS_MINUTES', 30), // after the next start, when chosen outside them
     'fresh_days' => 7,                                        // one of the three places goes to an agent not shown in this many days
-    'refund_days' => 7,                                       // an agent can report a wrong number for this long after accepting
+    'refund_days' => 7,
+
+    // Launch (specs/movewise/08): the first state, and how long it runs before the next may go live.
+    'launch_order' => ['TX', 'LA', 'MS', 'AL'],
+    'launch_gap_days' => (int) env('MOVEWISE_LAUNCH_GAP_DAYS', 30),                                       // an agent can report a wrong number for this long after accepting
 ];

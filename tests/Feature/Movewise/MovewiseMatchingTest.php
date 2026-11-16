@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
@@ -501,4 +502,62 @@ it('holds the ads top-up when the last week costs more per accepted introduction
             'model' => 'connection']);
     }
     expect(app(AdBudget::class)->check())->toBe('ok'); // $133 each
+});
+
+/* MW8: launch hardening — launch order, launch checks, audit packs, calls through the relay, caching. */
+
+it('launches Texas first: another state only after Texas has run for 30 days, with green launch checks', function (): void {
+    $la = State::query()->findOrFail('LA');
+    expect(app(Movewise::class)->missing($la))->toContain('Texas live for at least 30 days first');
+    $this->artisan('movewise:launch-check TX')->expectsOutputToContain('Live agents')->assertFailed(); // no relay numbers or postal address yet
+    config(['movewise.postal_address' => '1 Main St, Houston, TX 77001']);
+    DB::connection(Connections::control())->table('movewise_relay_numbers')->insert(['number' => '+17135550900', 'active' => true, 'created_at' => now(), 'updated_at' => now()]);
+    app(MessagingSettings::class)->save('AC'.str_repeat('1', 32), 'twilio-auth-token-0000000', '+15125550111', '+15125550112', true, true, $this->staff);
+    $this->artisan('movewise:launch-check TX')->assertSuccessful();
+    $this->actingAs($this->staff)->get('http://app.rightally.io/hq/movewise/launch')->assertInertia(fn (Assert $p) => $p->component('hq/movewise-launch')
+        ->where('states.3.code', 'TX')->where('states.3.ready', true)->where('order.0', 'TX'));
+    $this->travel(31)->days();
+    expect(app(Movewise::class)->missing($la->refresh()))->not->toContain('Texas live for at least 30 days first');
+});
+
+it('exports the Fair Housing and consent packs, password-confirmed, logged, and without phone numbers', function (): void {
+    mwAccepted($this);
+    app(TenantContext::class)->forget();
+    $hq = 'http://app.rightally.io';
+    $this->actingAs($this->staff)->get($hq.'/hq/movewise/audit/consent.csv')->assertRedirect(); // asks for the password
+    $fh = $this->actingAs($this->staff)->withSession(['auth.password_confirmed_at' => time()])->get($hq.'/hq/movewise/audit/fair-housing.csv')->assertOk();
+    $csv = $fh->streamedContent();
+    expect($csv)->toContain('Ranking uses only the home, area, price, lead type and language')->toContain('Ann Agent')->toContain('Covers ZIP 77001')->toContain('Tier: preferred');
+    $consent = $this->actingAs($this->staff)->withSession(['auth.password_confirmed_at' => time()])->get($hq.'/hq/movewise/audit/consent.csv')->assertOk()->streamedContent();
+    expect($consent)->toContain('I choose Ann Agent of Acme Realty')->toContain('+17135550900')->not->toContain('7135550142');
+});
+
+it('connects calls through the relay, both ways, keeping quiet hours and pauses', function (): void {
+    $c = mwAccepted($this);
+    [, $ann] = $this->agents['Ann'];
+    $ann->forceFill(['phone' => '+17135550777'])->save();
+    app(TenantContext::class)->forget();
+    $url = 'http://localhost/webhooks/movewise/voice';
+    $call = function (string $from) use ($url) {
+        $params = ['From' => $from, 'To' => '+17135550900', 'CallSid' => 'CA1'];
+        $sig = base64_encode(hash_hmac('sha1', $url.implode('', array_map(fn ($k) => $k.$params[$k], array_keys(Arr::sortRecursive($params)))), 'twilio-auth-token-0000000', true));
+
+        return $this->call('POST', $url, $params, [], [], ['HTTP_X_TWILIO_SIGNATURE' => $sig, 'CONTENT_TYPE' => 'application/x-www-form-urlencoded'], http_build_query($params));
+    };
+    $this->post($url, ['From' => '+17135550142', 'To' => '+17135550900'])->assertForbidden(); // unsigned
+    $call('+17135550142')->assertOk()->assertSee('<Dial callerId="+17135550900" timeout="25"><Number>+17135550777</Number></Dial>', false);
+    $call('+17135550777')->assertOk()->assertSee('<Number>+17135550142</Number>', false);
+    $this->travelTo(CarbonImmutable::parse('2026-06-03 04:00', 'UTC')); // 11pm in Houston
+    $call('+17135550777')->assertOk()->assertSee('outside 8am to 9pm');
+    $c->refresh()->forceFill(['paused_until' => now()->addDays(3)])->save();
+    $call('+17135550142')->assertOk()->assertSee('You paused contact');
+    $call('+15555550000')->assertOk()->assertSee('isn&apos;t connected', false);
+});
+
+it('caches the site header and footer, and drops the cache the moment a state changes', function (): void {
+    $this->get(MWH.'/')->assertSee('Lone Star Partners LLC');
+    State::query()->findOrFail('TX')->partner?->forceFill(['name' => 'Lone Star Realty Partners'])->save();
+    $this->get(MWH.'/')->assertSee('Lone Star Realty Partners');
+    app(Movewise::class)->switchState(State::query()->findOrFail('TX'), false, $this->staff);
+    $this->get(MWH.'/')->assertSee('noindex', false)->assertDontSee('Lone Star Realty Partners, licence');
 });
