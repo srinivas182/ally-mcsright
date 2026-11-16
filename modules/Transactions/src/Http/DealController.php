@@ -19,6 +19,7 @@ use Modules\Core\Access\Permissions;
 use Modules\Core\CustomFields\CustomFields;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Support\Connections;
+use Modules\Core\Undo\Undo;
 use Modules\Crm\ContactVisibility;
 use Modules\Crm\Models\Contact;
 use Modules\Transactions\Cdas;
@@ -266,16 +267,26 @@ final class DealController
 
     public function toggleDate(Request $request, Deal $deal, int $date, KeyDates $dates): RedirectResponse
     {
-        $this->authorise($request, $deal);
+        $user = $this->authorise($request, $deal);
         $dates->toggle($deal, $date);
+        $row = DB::connection(Connections::cell())->table('tx_dates')->where('id', $date)->first(['label', 'done_at']);
+        if ($row !== null) {
+            Inertia::flash('toast', ['type' => 'success', 'message' => ($row->done_at !== null ? 'Done: ' : 'Not done: ').$row->label,
+                'undo' => app(Undo::class)->offer($user, 'deal.date.toggle', ['deal' => $deal->id, 'date' => $date], ($row->done_at !== null ? 'ticked off ' : 'unticked ').$row->label)]);
+        }
 
         return back();
     }
 
     public function removeDate(Request $request, Deal $deal, int $date, KeyDates $dates): RedirectResponse
     {
-        $this->authorise($request, $deal);
+        $user = $this->authorise($request, $deal);
+        $row = DB::connection(Connections::cell())->table('tx_dates')->where('deal_id', $deal->id)->where('id', $date)->first();
         $dates->remove($deal, $date);
+        if ($row !== null) {
+            Inertia::flash('toast', ['type' => 'success', 'message' => 'Removed: '.$row->label,
+                'undo' => app(Undo::class)->offer($user, 'deal.date.remove', ['row' => (array) $row], 'removed '.$row->label)]);
+        }
 
         return back();
     }

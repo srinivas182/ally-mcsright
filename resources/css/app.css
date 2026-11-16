@@ -101,3 +101,15 @@
         @apply bg-background text-foreground;
     }
 }
+
+/* Simple mode (SM1): everything a size larger, since all sizes are in rem. */
+html.simple {
+    font-size: 112.5%;
+}
+
+/* "Show me how" (SM1): the part of the page being explained. */
+[data-tour-active='true'] {
+    outline: 3px solid var(--color-primary, currentColor);
+    outline-offset: 4px;
+    border-radius: 0.75rem;
+}

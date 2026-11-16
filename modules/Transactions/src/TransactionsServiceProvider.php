@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Transactions;
 
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
@@ -19,6 +20,8 @@ use Modules\Core\Mcp\McpToolbox;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
 use Modules\Core\Notices\NoticeTypes;
+use Modules\Core\Support\Connections;
+use Modules\Core\Undo\Undo;
 use Modules\Core\Workflows\WorkflowRegistry;
 
 final class TransactionsServiceProvider extends ServiceProvider
@@ -36,6 +39,7 @@ final class TransactionsServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Workflows\DealWorkflows::register($this->app->make(WorkflowRegistry::class)); // specs/core/06, W1
+        self::undos($this->app->make(Undo::class)); // SM1: actions that can be put back
         Event::listen(Events\DealStatusChanged::class, [Workflows\DealWorkflows::class, 'statusChanged']);
         Event::listen(Events\DealStatusChanged::class, [Mls\MlsGuard::class, 'statusChanged']); // the MLS update clock (specs/ai/02, §20)
         $this->app->tag([Mls\MlsStatusRisks::class], 'risk.sources');
@@ -95,5 +99,36 @@ final class TransactionsServiceProvider extends ServiceProvider
         $nav->add(new NavItem('Overview', 'Policies', '/policies', 'book-open', 28, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant]));
         $nav->add(new NavItem('Overview', 'Risk', '/deals/risk', 'shield-alert', 27, ability: 'transactions.queue'));
         $nav->add(new NavItem('Settings', 'Transactions', '/settings/transactions', 'briefcase', 76, ability: 'transactions.queue'));
+    }
+
+    /** How to put back the deal actions that offer "Undo" (SM1). Each checks the deal is still visible to the person. */
+    private static function undos(Undo $undo): void
+    {
+        $deal = function (array $p, User $u): Models\Deal {
+            $deal = Models\Deal::query()->whereKey((int) ($p['deal'] ?? 0))->first();
+            abort_unless($deal !== null && DealAccess::canSee($u, $deal), 403);
+
+            return $deal;
+        };
+        $undo->register('deal.date.toggle', function (array $p, User $u) use ($deal): void {
+            app(KeyDates::class)->toggle($deal($p, $u), (int) $p['date']);
+        });
+        $undo->register('deal.date.remove', function (array $p, User $u) use ($deal): void {
+            $row = (array) $p['row'];
+            $d = $deal(['deal' => $row['deal_id'] ?? 0], $u);
+            DB::connection(Connections::cell())->table('tx_dates')->insert(['tenant_id' => $d->tenant_id, 'deal_id' => $d->id,
+                'label' => (string) $row['label'], 'due_on' => substr((string) $row['due_on'], 0, 10), 'source' => (string) ($row['source'] ?? 'manual'),
+                'done_at' => $row['done_at'] ?? null, 'created_at' => now(), 'updated_at' => now()]);
+        });
+        $undo->register('deal.step.skip', function (array $p, User $u) use ($deal): void {
+            $d = $deal($p, $u);
+            DB::connection(Connections::cell())->table('tx_playbook_steps')->where('deal_id', $d->id)->where('step', (string) $p['step'])
+                ->update(['status' => in_array($p['was'] ?? '', ['waiting', 'ready'], true) ? $p['was'] : 'waiting', 'updated_at' => now()]);
+        });
+        $undo->register('deal.portal.remove', function (array $p, User $u) use ($deal): void {
+            $d = $deal($p, $u);
+            DB::connection(Connections::cell())->table('tx_portal_access')->where('deal_id', $d->id)->where('ulid', (string) $p['access'])
+                ->update(['revoked_at' => null, 'updated_at' => now()]); // they sign in again with a new link and code
+        });
     }
 }

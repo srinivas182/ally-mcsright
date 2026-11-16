@@ -59,8 +59,14 @@ export function YourAiAssistant() {
                 setOpen((v) => !v);
             }
         };
+        // Simple mode's "Talk to RightAlly" button (SM1) opens the assistant from anywhere.
+        const onOpen = () => setOpen(true);
         window.addEventListener('keydown', onKey);
-        return () => window.removeEventListener('keydown', onKey);
+        window.addEventListener('assistant:open', onOpen);
+        return () => {
+            window.removeEventListener('keydown', onKey);
+            window.removeEventListener('assistant:open', onOpen);
+        };
     }, []);
 
     useEffect(() => {

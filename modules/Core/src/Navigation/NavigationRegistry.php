@@ -6,6 +6,7 @@ namespace Modules\Core\Navigation;
 
 use App\Models\User;
 use Illuminate\Support\Facades\Gate;
+use Modules\Core\Simple\SimpleMode;
 
 /**
  * Modules register their menu items here (an extension point: plugins can add items without
@@ -49,7 +50,8 @@ final class NavigationRegistry
             $out[] = ['label' => (string) $label, 'items' => $items];
         }
 
-        return $out;
+        // Simple mode (SM1): a short menu of the pages used most, from the pages this person can open.
+        return SimpleMode::on($user) ? SimpleMode::menu($out, SimpleMode::locale($user)) : $out;
     }
 
     private function groupIndex(string $group): int

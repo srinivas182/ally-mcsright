@@ -19,6 +19,8 @@ use Modules\Core\Identity\Http\Controllers\UserController;
 use Modules\Core\Identity\Http\Middleware\EnsureTenantHost;
 use Modules\Core\Identity\Security\SingleSignOn;
 use Modules\Core\Notices\NoticesController;
+use Modules\Core\Simple\SimpleController;
+use Modules\Core\Undo\UndoController;
 use Modules\Core\Workflows\WorkflowsController;
 
 Route::middleware(['web', EnsureTenantHost::class, 'guest'])->group(function (): void {
@@ -40,6 +42,10 @@ Route::middleware(['web', EnsureTenantHost::class, 'auth'])->group(function (): 
     Route::post('users/{user}/sign-out-everywhere', [UserController::class, 'signOutEverywhere'])->name('users.sign-out-everywhere');
 
     Route::get('agent', [BriefController::class, 'agent'])->name('agent.home');
+    // Simple mode and undo (SM1).
+    Route::get('simple', [SimpleController::class, 'home'])->name('simple.home');
+    Route::post('settings/view', [SimpleController::class, 'set'])->name('simple.set');
+    Route::post('undo/{undo}', UndoController::class)->where('undo', '[0-9A-HJKMNP-TV-Z]{26}')->middleware('throttle:30,1')->name('undo');
     Route::post('brief/email', [BriefController::class, 'email'])->name('brief.email');
 
     Route::get('users', [UserController::class, 'index'])->name('users.index');

@@ -50,7 +50,7 @@ export default function Today({ picks }: { picks: Pick[] }) {
                         description="Nothing urgent. A good moment to work a keep-in-touch list."
                     />
                 ) : (
-                    <ol className="grid gap-3">
+                    <ol className="grid gap-3" data-tour="today-list">
                         {picks.map((p, i) => (
                             <li
                                 key={p.ulid}

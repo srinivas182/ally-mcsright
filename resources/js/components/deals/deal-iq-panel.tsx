@@ -126,6 +126,7 @@ export function DealIqPanel({
         <section
             className="grid gap-3 rounded-lg border p-4 text-sm"
             aria-label="Deal-IQ"
+            data-tour="deal-iq"
         >
             <p className="font-medium">Deal-IQ</p>
             {iq.setup && (
