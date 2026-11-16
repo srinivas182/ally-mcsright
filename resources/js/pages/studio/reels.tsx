@@ -1,4 +1,5 @@
 import { Head, Link, router, usePoll } from '@inertiajs/react';
+import { useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -7,6 +8,8 @@ import { PageHeader } from '@/components/ui/page-header';
 
 type Reel = {
     ulid: string;
+    kind: 'reel' | 'tour';
+    chapters: { at: number; title: string }[];
     status: 'rendering' | 'ready' | 'failed';
     error: string | null;
     url: string | null;
@@ -25,14 +28,19 @@ type Reel = {
 export default function StudioReels({
     ready,
     usage,
+    tour_usage,
+    listings,
     reels,
 }: {
     ready: boolean;
     usage: { used: number; extra: number; allowance: number };
+    tour_usage: { used: number; extra: number; allowance: number };
+    listings: { ulid: string; label: string }[];
     moods: Record<string, string>;
     tracks: { ulid: string; label: string; mood: string }[];
     reels: Reel[];
 }) {
+    const [listing, setListing] = useState(listings[0]?.ulid ?? '');
     usePoll(
         8_000,
         { only: ['reels', 'usage'] },
@@ -76,6 +84,34 @@ export default function StudioReels({
                         </Link>
                     </Button>
                 </div>
+                <div className="flex flex-wrap items-center gap-3 rounded-xl border p-3">
+                    <span className="font-medium">YouTube listing tour</span>
+                    <span className="text-sm text-muted-foreground">
+                        Landscape, about a minute, a chapter per room.{' '}
+                        {tour_usage.used} of {tour_usage.allowance} this month.
+                    </span>
+                    <select
+                        className="h-10 rounded-md border bg-background px-3"
+                        aria-label="Listing for the tour"
+                        value={listing}
+                        onChange={(e) => setListing(e.target.value)}
+                    >
+                        {listings.map((l) => (
+                            <option key={l.ulid} value={l.ulid}>
+                                {l.label}
+                            </option>
+                        ))}
+                    </select>
+                    <Button
+                        size="sm"
+                        disabled={listing === ''}
+                        onClick={() =>
+                            router.post('/studio/tours', { listing })
+                        }
+                    >
+                        Make a tour
+                    </Button>
+                </div>
                 {reels.length === 0 ? (
                     <EmptyState
                         title="No Reels yet"
@@ -95,13 +131,17 @@ export default function StudioReels({
                                         controls
                                         playsInline
                                         preload="metadata"
-                                        className="aspect-[9/16] w-full rounded-lg bg-black object-cover"
+                                        className={`${r.kind === 'tour' ? 'aspect-video' : 'aspect-[9/16]'} w-full rounded-lg bg-black object-cover`}
                                     />
                                 ) : (
-                                    <div className="grid aspect-[9/16] place-items-center rounded-lg bg-muted p-4 text-center text-sm">
+                                    <div
+                                        className={`grid ${r.kind === 'tour' ? 'aspect-video' : 'aspect-[9/16]'} place-items-center rounded-lg bg-muted p-4 text-center text-sm`}
+                                    >
                                         {r.status === 'failed'
                                             ? (r.error ?? 'This Reel failed.')
-                                            : 'Making your Reel…'}
+                                            : r.kind === 'tour'
+                                              ? 'Making your tour…'
+                                              : 'Making your Reel…'}
                                     </div>
                                 )}
                                 <div className="flex items-center justify-between gap-2 text-sm">

@@ -36,9 +36,9 @@ use Throwable;
 final class SocialPosts
 {
     /** @var array<string, class-string<SocialChannel>> */
-    public const APPS = ['facebook_pages' => FacebookPages::class, 'linkedin' => LinkedIn::class, 'google_business' => GoogleBusiness::class];
+    public const APPS = ['facebook_pages' => FacebookPages::class, 'linkedin' => LinkedIn::class, 'google_business' => GoogleBusiness::class, 'youtube' => YouTube::class];
 
-    public const CHANNELS = ['facebook' => 'Facebook', 'instagram' => 'Instagram', 'linkedin' => 'LinkedIn', 'google' => 'Google'];
+    public const CHANNELS = ['facebook' => 'Facebook', 'instagram' => 'Instagram', 'linkedin' => 'LinkedIn', 'google' => 'Google', 'youtube' => 'YouTube'];
 
     public const MAX_TEXT = 2_800;
 
@@ -142,7 +142,10 @@ final class SocialPosts
                 : (in_array('instagram', $channels, true) && $video === null && ($image === null || preg_match('/\.jpe?g$/i', (string) parse_url($image, PHP_URL_PATH)) !== 1)
                     ? 'Instagram needs a photo in JPEG format (.jpg): start from a listing or add one.' : null),
             'video_url' => $video !== null && (! str_starts_with($video, 'https://') || preg_match('/\.mp4$/i', (string) parse_url($video, PHP_URL_PATH)) !== 1)
-                ? 'The video must be an https:// MP4 address.' : null,
+                ? 'The video must be an https:// MP4 address.'
+                : ($video === null && in_array('youtube', $channels, true) ? 'YouTube takes videos: start from a Reel or a listing tour, or leave YouTube out.'
+                    : ($video !== null && str_contains((string) parse_url($video, PHP_URL_PATH), '/tours/') && in_array('instagram', $channels, true)
+                        ? 'Listing tours are landscape: post them to YouTube and Facebook, and Reels to Instagram.' : null)),
             'images' => count($images) > self::MAX_IMAGES ? 'A carousel can have up to '.self::MAX_IMAGES.' images.'
                 : (array_filter($images, fn (string $u): bool => ! str_starts_with($u, 'https://') || preg_match('/\.jpe?g$/i', (string) parse_url($u, PHP_URL_PATH)) !== 1) !== []
                     ? 'Carousel images must be https:// JPEG (.jpg) addresses.' : null),

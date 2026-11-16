@@ -8,6 +8,7 @@ use Modules\Ads\Meta\MetaAdsConnector;
 use Modules\Ads\Social\FacebookPages;
 use Modules\Ads\Social\GoogleBusiness;
 use Modules\Ads\Social\LinkedIn;
+use Modules\Ads\Social\YouTube;
 use Modules\Core\Connect\App;
 use Modules\Core\Connect\AppCatalog;
 use Modules\Crm\Calls\Aircall;
@@ -510,6 +511,16 @@ final class Catalog
                 'Add the business.manage scope to the consent screen (Google verifies it), then switch Google Business Profile on.'],
                 'docs' => 'https://developers.google.com/my-business/content/posts-data'],
             guide: ['steps' => ['Press Connect and sign in with the Google account that manages your Business Profile.', 'Then open Grow → Social posts.']]));
+
+        $catalog->add(new App('youtube', 'YouTube', 'marketing', 'Upload Ally Studio Reels as YouTube Shorts and listing tours as videos with chapters, now or scheduled.',
+            scope: 'both', auth: 'oauth', syncs: ['Reels as Shorts and listing tours you post from Ally Studio'], link: '/studio/reels',
+            driver: YouTube::class, vendorCost: 'Free',
+            oauth: ['provider' => 'google', 'scopes' => ['https://www.googleapis.com/auth/youtube.upload']],
+            setup: ['needs' => 'provider', 'provider' => 'google', 'steps' => ['Set up the Google sign-in app at the top of this page.',
+                'In the Google Cloud project, enable the YouTube Data API v3 and add the youtube.upload scope to the consent screen (Google verifies it).',
+                'Uploads stay private until the project passes YouTube\'s API compliance audit; then set STUDIO_YOUTUBE_PRIVACY=public.'],
+                'docs' => 'https://developers.google.com/youtube/v3/guides/uploading_a_video'],
+            guide: ['steps' => ['Press Connect and sign in with the Google account that owns your YouTube channel.', 'Then post a Reel or a listing tour from Ally Studio.']]));
 
         // Ally Studio (specs/grow/13): your AI social team, three monthly packages (HQ prices them; unpriced means not on sale).
         foreach ([
