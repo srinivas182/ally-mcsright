@@ -22,6 +22,7 @@ use Modules\Core\Tenancy\Concerns\HasPublicUlid;
  * @property string|null $listing_ulid
  * @property string|null $batch
  * @property int|null $design_id
+ * @property int|null $video_id
  * @property string|null $caption
  * @property string|null $caption_es
  * @property list<string>|null $hashtags

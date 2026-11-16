@@ -17,7 +17,9 @@ use Modules\Core\Tenancy\Concerns\HasPublicUlid;
  * @property string $ulid
  * @property int $tenant_id
  * @property int $user_id
- * @property int $design_id
+ * @property string $kind
+ * @property int|null $design_id
+ * @property list<array{at: int, title: string}>|null $chapters
  * @property string|null $listing_ulid
  * @property string|null $music_ulid
  * @property string $status
@@ -44,6 +46,6 @@ final class StudioVideo extends Model
 
     protected function casts(): array
     {
-        return ['used_at' => 'immutable_datetime', 'seconds' => 'integer', 'user_id' => 'integer', 'design_id' => 'integer'];
+        return ['used_at' => 'immutable_datetime', 'seconds' => 'integer', 'user_id' => 'integer', 'chapters' => 'array'];
     }
 }

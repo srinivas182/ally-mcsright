@@ -50,7 +50,7 @@ final class Autopilot
 
     public function __construct(private readonly TenantContext $tenants, private readonly Designer $designer, private readonly StudioPlans $plans) {}
 
-    /** @return array{mode: string, places: list<string>|null, times: list<string>, per_week: int, moments: list<string>, learn_voice: bool, voice: list<string>, auto_enhance: bool, extra_credits: bool} */
+    /** @return array{mode: string, places: list<string>|null, times: list<string>, per_week: int, moments: list<string>, learn_voice: bool, voice: list<string>, auto_enhance: bool, auto_reels: bool, extra_credits: bool} */
     public function settings(User $user): array
     {
         $r = DB::connection(Connections::cell())->table('studio_autopilot')->where('tenant_id', $this->tenants->id())->where('user_id', $user->id)->first();
@@ -58,10 +58,10 @@ final class Autopilot
 
         return ['mode' => (string) ($r->mode ?? 'approve'), 'places' => $json($r->places ?? null), 'times' => $json($r->times ?? null) ?? self::DEFAULT_TIMES,
             'per_week' => (int) ($r->per_week ?? 5), 'moments' => $json($r->moments ?? null) ?? array_keys(self::KINDS), 'learn_voice' => (bool) ($r->learn_voice ?? false),
-            'voice' => $json($r->voice ?? null) ?? [], 'auto_enhance' => (bool) ($r->auto_enhance ?? true), 'extra_credits' => (bool) ($r->extra_credits ?? false)];
+            'voice' => $json($r->voice ?? null) ?? [], 'auto_enhance' => (bool) ($r->auto_enhance ?? true), 'auto_reels' => (bool) ($r->auto_reels ?? true), 'extra_credits' => (bool) ($r->extra_credits ?? false)];
     }
 
-    /** @param array<string, mixed> $in mode, places[], times[], per_week, moments[], learn_voice, auto_enhance, extra_credits */
+    /** @param array<string, mixed> $in mode, places[], times[], per_week, moments[], learn_voice, auto_enhance, auto_reels, extra_credits */
     public function save(User $user, array $in): void
     {
         $times = array_values(array_unique(array_filter(array_map('strval', (array) ($in['times'] ?? [])), fn (string $t): bool => preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $t) === 1)));
@@ -70,7 +70,7 @@ final class Autopilot
         $values = ['mode' => isset(self::MODES[$in['mode'] ?? '']) ? (string) $in['mode'] : 'approve', 'places' => $places !== null ? json_encode($places) : null,
             'times' => json_encode($times !== [] ? array_slice($times, 0, 4) : self::DEFAULT_TIMES), 'per_week' => max(1, min(14, (int) ($in['per_week'] ?? 5))),
             'moments' => json_encode(array_values(array_intersect(array_keys(self::KINDS), array_map('strval', (array) ($in['moments'] ?? []))))),
-            'learn_voice' => (bool) ($in['learn_voice'] ?? false), 'auto_enhance' => (bool) ($in['auto_enhance'] ?? true), 'extra_credits' => (bool) ($in['extra_credits'] ?? false),
+            'learn_voice' => (bool) ($in['learn_voice'] ?? false), 'auto_enhance' => (bool) ($in['auto_enhance'] ?? true), 'auto_reels' => (bool) ($in['auto_reels'] ?? true), 'extra_credits' => (bool) ($in['extra_credits'] ?? false),
             'updated_at' => now()];
         if (! $values['learn_voice']) {
             $values += ['voice' => null, 'voice_at' => null]; // forget the samples when the person says no
@@ -143,7 +143,28 @@ final class Autopilot
             }
             $this->caption($item, $ready, $user);
             $item->forceFill(['design_id' => $ready->id, 'post_at' => $item->post_at ?? $this->slot($user, $s), 'status' => 'awaiting'])->save();
+            if ($item->moment === 'just_listed' && $item->video_id === null) {
+                $this->launchReel($item, $ready, $user, $s);
+            }
             if ($s['mode'] === 'auto' && ! $item->needs_client_ok) {
+                $this->schedule($item, $user);
+            }
+        }
+        // Reels for new listings: posted once the video is made, a day after the listing post.
+        foreach (QueuedPost::query()->where('user_id', $user->id)->where('status', 'filming')->orderBy('id')->get() as $item) {
+            $video = StudioVideo::query()->find($item->video_id);
+            if ($video === null || $video->status === 'failed') {
+                $item->forceFill(['status' => 'failed', 'reason' => mb_substr((string) ($video->error ?? 'The Reel could not be made.'), 0, 300)])->save();
+
+                continue;
+            }
+            $design = Design::query()->find($item->design_id);
+            if ($video->status !== 'ready' || $design === null) {
+                continue;
+            }
+            $this->caption($item, $design, $user);
+            $item->forceFill(['status' => 'awaiting'])->save();
+            if ($s['mode'] === 'auto') {
                 $this->schedule($item, $user);
             }
         }
@@ -215,7 +236,7 @@ final class Autopilot
     public function move(QueuedPost $item, User $by, string $date): QueuedPost
     {
         abort_unless($item->user_id === $by->id, 404);
-        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) !== 1 || ! in_array($item->status, ['awaiting', 'review', 'scheduled', 'designing', 'enhancing'], true)) {
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) !== 1 || ! in_array($item->status, ['awaiting', 'review', 'scheduled', 'designing', 'enhancing', 'filming'], true)) {
             throw ValidationException::withMessages(['date' => 'This post can\'t be moved.']);
         }
         $local = ($item->post_at ?? CarbonImmutable::now())->setTimezone($this->tz());
@@ -256,7 +277,7 @@ final class Autopilot
     public function skip(QueuedPost $item, User $by): void
     {
         abort_unless($item->user_id === $by->id, 404);
-        if (in_array($item->status, ['enhancing', 'designing', 'awaiting'], true)) {
+        if (in_array($item->status, ['enhancing', 'designing', 'filming', 'awaiting'], true)) {
             $item->forceFill(['status' => 'skipped'])->save();
         }
     }
@@ -469,6 +490,27 @@ final class Autopilot
     }
 
     /**
+     * A new listing's Reel (SA3b): made from its launch design when the person allows it and the package has Reels
+     * left (credits only when the person allows extra posts), queued a day after the listing post.
+     *
+     * @param  array{auto_reels: bool, extra_credits: bool, times: list<string>, per_week: int}  $s
+     */
+    private function launchReel(QueuedPost $item, Design $design, User $user, array $s): void
+    {
+        $key = 'reel:'.$item->listing_ulid;
+        if (! $s['auto_reels'] || (! $s['extra_credits'] && $this->plans->left($user, 'reel') < 1) || QueuedPost::query()->where('user_id', $user->id)->where('source_key', $key)->exists()) {
+            return;
+        }
+        try {
+            $video = app(Reels::class)->make($user, $design);
+        } catch (ValidationException) {
+            return;
+        }
+        $reel = QueuedPost::query()->create(['user_id' => $user->id, 'source_key' => $key, 'moment' => $item->moment, 'listing_ulid' => $item->listing_ulid, 'status' => 'filming']);
+        $reel->forceFill(['design_id' => $design->id, 'video_id' => $video->id, 'post_at' => $this->slot($user, $s, ($item->post_at ?? CarbonImmutable::now())->addDay())])->save();
+    }
+
+    /**
      * What a queued post is designed from (for one that waited on photo enhancement).
      *
      * @return array<string, mixed>
@@ -545,6 +587,12 @@ final class Autopilot
         $places = array_column(app(SocialPosts::class)->places($user), 'key');
         $places = $s['places'] !== null ? array_values(array_intersect($places, $s['places'])) : $places;
         try {
+            $video = $item->video_id !== null ? StudioVideo::query()->find($item->video_id) : null;
+            if ($video !== null) {
+                $this->scheduleReel($item, $user, $video, $places, $s);
+
+                return $item;
+            }
             if ($design !== null && $design->used_at === null && ! $s['extra_credits'] && $this->plans->left($user, 'post') < 1) {
                 // Autopilot stays inside the package: no surprise credit spend unless the person allows it.
                 throw ValidationException::withMessages(['places' => 'This month\'s designed posts in your Studio package are used. Studio posts again when the package '
@@ -571,6 +619,32 @@ final class Autopilot
     }
 
     /**
+     * Schedules a Reel: the video where it plays (Instagram, Facebook, YouTube), the cover elsewhere; counted as a Reel.
+     *
+     * @param  list<string>  $places
+     * @param  array{extra_credits: bool}  $s
+     */
+    private function scheduleReel(QueuedPost $item, User $user, StudioVideo $video, array $places, array $s): void
+    {
+        if ($video->status !== 'ready') {
+            throw ValidationException::withMessages(['places' => 'The Reel is still being made.']);
+        }
+        if ($video->used_at === null && ! $s['extra_credits'] && $this->plans->left($user, 'reel') < 1) {
+            throw ValidationException::withMessages(['places' => 'This month\'s Reels in your Studio package are used. Studio posts again when the package renews, '
+                .'or turn on "Use credits for extra posts" in Autopilot settings.']);
+        }
+        if ($places === []) {
+            throw ValidationException::withMessages(['places' => 'Connect where to post (Facebook Pages and Instagram, YouTube, LinkedIn or Google) first.']);
+        }
+        $reels = app(Reels::class);
+        $reels->use($video, $user);
+        $at = $item->post_at !== null && $item->post_at->isFuture() ? $item->post_at->setTimezone($this->tz())->format('Y-m-d\TH:i') : '';
+        $post = app(SocialPosts::class)->schedule($user, ['text' => $this->text($item), 'image_url' => $reels->poster($video), 'video_url' => $reels->url($video),
+            'listing' => $item->listing_ulid, 'places' => $places, 'post_at' => $at]);
+        $item->forceFill(['status' => 'scheduled', 'social_post_id' => $post->id, 'reason' => null])->save();
+    }
+
+    /**
      * The next good time: the person's times of day, at most one post a day and their posts per week.
      *
      * @param  array{times: list<string>, per_week: int}  $s
@@ -582,7 +656,7 @@ final class Autopilot
         if ($notBefore !== null && $notBefore->gt($now)) {
             $now = $notBefore->setTimezone($tz)->startOfDay();
         }
-        $taken = QueuedPost::query()->where('user_id', $user->id)->whereIn('status', ['enhancing', 'designing', 'awaiting', 'review', 'scheduled'])->whereNotNull('post_at')->pluck('post_at')
+        $taken = QueuedPost::query()->where('user_id', $user->id)->whereIn('status', ['enhancing', 'designing', 'filming', 'awaiting', 'review', 'scheduled'])->whereNotNull('post_at')->pluck('post_at')
             ->map(fn ($d): CarbonImmutable => CarbonImmutable::parse($d)->setTimezone($tz));
         for ($i = 0; $i < 21; $i++) {
             $day = $now->startOfDay()->addDays($i);

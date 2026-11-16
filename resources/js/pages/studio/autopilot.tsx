@@ -10,6 +10,7 @@ import { PageHeader } from '@/components/ui/page-header';
 type Settings = {
     learn_voice: boolean;
     auto_enhance: boolean;
+    auto_reels: boolean;
     extra_credits: boolean;
     mode: string;
     places: string[] | null;
@@ -49,7 +50,9 @@ function QueueItem({ item }: { item: Item }) {
                         ? 'Designing…'
                         : item.status === 'enhancing'
                           ? 'Enhancing the photos…'
-                          : '—'}
+                          : item.status === 'filming'
+                            ? 'Making the Reel…'
+                            : '—'}
                 </div>
             )}
             <div className="grid content-start gap-2">
@@ -180,6 +183,7 @@ export default function StudioAutopilot({
         per_week: settings.per_week,
         learn_voice: settings.learn_voice,
         auto_enhance: settings.auto_enhance,
+        auto_reels: settings.auto_reels,
         extra_credits: settings.extra_credits,
     });
     const toggle = (list: string[], key: string, on: boolean) =>
@@ -364,6 +368,18 @@ export default function StudioAutopilot({
                         />
                         Enhance a new listing's best photos (and a twilight of
                         the cover) before it posts, from my package only
+                    </label>
+                    <label className="flex items-center gap-2">
+                        <input
+                            type="checkbox"
+                            className="size-5"
+                            checked={form.data.auto_reels}
+                            onChange={(e) =>
+                                form.setData('auto_reels', e.target.checked)
+                            }
+                        />
+                        Add a Reel to each new listing&apos;s launch, the day
+                        after its post (from my package&apos;s Reels)
                     </label>
                     <label className="flex items-center gap-2">
                         <input

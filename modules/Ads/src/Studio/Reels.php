@@ -30,6 +30,15 @@ final class Reels
 
     public const DETAILS_SECONDS = 4.5;
 
+    /** YouTube tours: the intro, up to six rooms of ten seconds (long enough to be YouTube chapters), the outro. */
+    public const TOUR_INTRO = 6.0;
+
+    public const TOUR_ROOM = 10.0;
+
+    public const TOUR_OUTRO = 8.0;
+
+    public const TOUR_ROOMS = 6;
+
     public function __construct(private readonly StudioPlans $plans, private readonly Designer $designer, private readonly BrandKits $kits,
         private readonly MusicLibrary $music, private readonly TenantContext $tenants) {}
 
@@ -55,9 +64,34 @@ final class Reels
         return $video;
     }
 
-    /** Draws the frames in the design's style at story size and turns them into the video. */
+    /** A YouTube listing tour (landscape, with chapters) from one of the person's listings. */
+    public function tour(User $by, string $listing): StudioVideo
+    {
+        if ($this->plans->current($by) === null) {
+            throw ValidationException::withMessages(['tour' => 'Ally Studio is an add-on. Choose a Studio package first.']);
+        }
+        $this->designer->tourOf($by, $listing); // the person's own listing, with sharp photos
+        $today = StudioVideo::query()->where('user_id', $by->id)->where('created_at', '>=', CarbonImmutable::now()->startOfDay())->count();
+        if ($today >= (int) config('studio.daily_reels', 10)) {
+            throw ValidationException::withMessages(['tour' => 'That\'s a lot of videos for one day. Try again tomorrow.']);
+        }
+        $picked = $this->music->pick(null, 'cinematic', StudioVideo::query()->where('user_id', $by->id)->count());
+        $video = StudioVideo::query()->create(['user_id' => $by->id, 'design_id' => null, 'listing_ulid' => $listing, 'music_ulid' => $picked['ulid'] ?? null, 'status' => 'rendering']);
+        $video->forceFill(['kind' => 'tour'])->save();
+        RenderReel::dispatch($video->id);
+        app(AuditLogger::class)->record('studio.tour_made', metadata: ['listing' => $listing]);
+
+        return $video;
+    }
+
+    /** Draws the frames in the design's style at story size and turns them into the video (or the tour, landscape). */
     public function render(StudioVideo $video): void
     {
+        if ($video->kind === 'tour') {
+            $this->renderTour($video);
+
+            return;
+        }
         $user = User::query()->find($video->user_id);
         $design = Design::query()->find($video->design_id);
         if ($user === null || $design === null) {
@@ -105,12 +139,72 @@ final class Reels
         }
     }
 
-    /** The first download or post counts once against this month's Reels (or credits). */
+    private function renderTour(StudioVideo $video): void
+    {
+        $user = User::query()->find($video->user_id);
+        $dir = storage_path('app/studio-reels/'.strtolower($video->ulid));
+        File::ensureDirectoryExists($dir);
+        try {
+            if ($user === null || $video->listing_ulid === null) {
+                throw ValidationException::withMessages(['tour' => 'The listing is gone.']);
+            }
+            $kit = $this->kits->forUser($user);
+            $tour = $this->designer->tourOf($user, $video->listing_ulid);
+            $photos = $tour['photos'];
+            $rooms = array_slice(array_keys($photos), 1, self::TOUR_ROOMS);
+            $rooms = $rooms === [] ? [0] : $rooms;
+            $plan = [['intro', $photos[0], 'Welcome', self::TOUR_INTRO]];
+            foreach ($rooms as $i => $k) {
+                $plan[] = ['chapter', $photos[$k], $tour['captions'][$k] ?? 'A closer look', self::TOUR_ROOM];
+            }
+            $plan[] = ['outro', $photos[count($photos) - 1], 'Book a tour', self::TOUR_OUTRO];
+            $frames = [];
+            $seconds = [];
+            $chapters = [];
+            $at = 0.0;
+            foreach ($plan as $i => [$slide, $photo, $title, $s]) {
+                $png = app(StudioRenderer::class)->render($this->designer->tourPage($kit, $kit['collection'], $slide, $tour['content'], $photo, $title, max(1, $i), count($rooms)), 1920, 1080);
+                file_put_contents($frames[] = $dir.'/'.sprintf('%02d', $i + 1).'.png', $png);
+                $seconds[] = $s;
+                $chapters[] = ['at' => (int) floor($at), 'title' => $title];
+                $at += $s - 0.6;
+            }
+            $track = $video->music_ulid !== null ? $this->music->pick($video->music_ulid, 'cinematic', 0) : null;
+            $mp4 = app(VideoMaker::class)->make($frames, $seconds, $track['file'] ?? null, $dir.'/tour.mp4', 1920, 1080);
+            $base = 'studio/'.strtolower($this->tenants->current()->ulid).'/tours/'.strtolower($video->ulid);
+            $disk = Storage::disk('public');
+            $disk->put($base.'.mp4', (string) file_get_contents($mp4), ['visibility' => 'public', 'ContentType' => 'video/mp4']);
+            $img = @imagecreatefromstring((string) file_get_contents($frames[0]));
+            ob_start();
+            if ($img !== false) {
+                imagejpeg($img, null, 90);
+            }
+            $disk->put($base.'.jpg', (string) ob_get_clean(), ['visibility' => 'public']);
+            $video->forceFill(['status' => 'ready', 'path' => $base.'.mp4', 'poster_path' => $base.'.jpg', 'seconds' => (int) round($at + 0.6), 'chapters' => $chapters,
+                'error' => null])->save();
+        } catch (Throwable $e) {
+            report($e);
+            $video->forceFill(['status' => 'failed', 'error' => 'The tour couldn\'t be made just now. Please try again.'])->save();
+        } finally {
+            File::deleteDirectory($dir);
+        }
+    }
+
+    /**
+     * YouTube chapters for a tour's description ("0:00 Welcome"); YouTube shows them when there are three or more.
+     */
+    public static function chapterLines(StudioVideo $video): string
+    {
+        return implode("\n", array_map(fn (array $c): string => sprintf('%d:%02d %s', intdiv((int) $c['at'], 60), (int) $c['at'] % 60, (string) $c['title']),
+            (array) ($video->chapters ?? [])));
+    }
+
+    /** The first download or post counts once against this month's Reels or tours (or credits). */
     public function use(StudioVideo $video, User $by): void
     {
         abort_unless($video->user_id === $by->id && $video->status === 'ready', 404);
         if ($video->used_at === null) {
-            $this->plans->use($by, 'reel', $video->ulid);
+            $this->plans->use($by, $video->kind === 'tour' ? 'tour' : 'reel', $video->ulid);
             $video->forceFill(['used_at' => CarbonImmutable::now()])->save();
         }
     }

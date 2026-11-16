@@ -43,6 +43,14 @@ A post can carry 2 to 10 images, in order (an Ally Studio listing design is a ca
 - **Google Business Profile:** the cover only (local posts carry one photo).
 - The post page shows the carousel in order with "Post the cover only"; Autopilot posts designs as carousels.
 
+## Videos and YouTube (SA3)
+
+- A post can carry a video (an Ally Studio Reel or tour, MP4 on RightAlly's CDN) with its first frame as the cover.
+- Instagram gets a Reel (published once Instagram has processed it); a Facebook Page gets the video; YouTube gets
+  the upload (Shorts for Reels); LinkedIn and Google get the cover image. Tours are landscape: not for Instagram.
+- **YouTube** (`youtube`, Google sign-in with `youtube.upload` only): resumable upload; private until RightAlly's
+  Google project passes YouTube's API audit.
+
 ## Rules
 
 - **Fair Housing:** the text passes the Fair Housing check (channel `ads`); flagged wording is refused with the

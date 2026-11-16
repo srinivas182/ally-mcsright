@@ -104,10 +104,22 @@ shows each with its music, download (MP4) and "Post it".
   processed it); a Facebook Page gets the video; LinkedIn and Google get the cover image. "Post the cover only"
   switches back to a photo.
 
-**SA3b (next):** the **YouTube** app (Google sign-in, upload permission only) with Shorts uploads, and **YouTube
-listing tours**: 60–90 second landscape videos with chapters (Kitchen, Primary suite, Yard) and the listing link in
-the description, searchable for years (SEO and AEO); Autopilot adds a Reel to each new listing's launch when the
-package has Reels left. HQ: YouTube API compliance audit, so uploads can be public.
+**SA3b (built): YouTube, tours and Autopilot Reels.**
+
+- **YouTube app** (the shared Google sign-in, `youtube.upload` only): Reels go up as Shorts and tours as videos,
+  through the resumable upload, with the post's first line as the title and the rest (with the listing link) as the
+  description. Uploads are private until RightAlly's Google project passes YouTube's API audit
+  (`STUDIO_YOUTUBE_PRIVACY=public` after). Only videos go to YouTube.
+- **YouTube listing tours** (Studio → Reels → Make a tour): 1920x1080 in the person's style — an intro with the
+  address and price (6 s), up to six rooms of ten seconds each with the MLS photo caption as a lower-third chapter
+  title, and an outro with the agent and "Book a private tour" (8 s); cinematic music. The post starts with the
+  chapters ("0:05 Kitchen"), which YouTube shows as chapters (SEO and AEO). Tours count as "YouTube listing tours";
+  they go to YouTube and Facebook (Instagram takes Reels).
+- **Autopilot Reels:** a new listing's launch also gets a Reel, made from its launch design and queued a day after
+  the listing post, when the person allows it and the package has Reels left (credits only with "Use credits for
+  extra posts"). It waits for approval like any post.
+- **Legibility on photos:** text over photographs sits on a soft progressive blur that frosts and deepens the photo
+  toward the text edge (no boxes or bands), proofed on the brightest interiors.
 
 ## Results (SA4)
 
@@ -175,7 +187,7 @@ designed posts are used it waits for the renewal, unless the person turns on "Us
 | **SA2a** | Autopilot: listing moments (new, coming soon, price improvement, under contract, sold), weekly market update, holidays; AI captions (Spanish, hashtags, Fair Housing); good times; Approve first and Autopilot; daily brief; Your AI Assistant skills `studio_posts` and `studio_approve`                                                                                                                                                                                                                                                      |
 | **SA2b** | Calendar (drag to move), listing launch campaign, captions in the agent's voice, closings, reviews, milestones and recruiting moments, broker approval rules                                                                                                                                                                                                                                                                                                                                                                                   |
 | **SA3a** | Reels from listing designs (ffmpeg: camera moves, crossfades, licensed music), HQ music library with licences, Studio → Reels, Instagram Reels and Facebook Page videos                                                                                                                                                                                                                                                                                                                                                                        |
-| **SA3b** | YouTube app, Shorts upload, YouTube listing tours, Autopilot Reels                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| **SA3b** | YouTube app (Shorts and videos, private until the API audit), YouTube listing tours with chapters, Autopilot Reels for new listings, progressive-blur legibility on photos                                                                                                                                                                                                                                                                                                                                                                     |
 | **SA4**  | Results, Studio report, learning                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | **SA5**  | Photo enhancement, voice narration, comment and message replies                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 

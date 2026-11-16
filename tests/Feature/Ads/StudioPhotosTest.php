@@ -157,7 +157,7 @@ it('gives back what a failed enhancement cost, and only works when switched on a
 it('lets Autopilot enhance a new listing from the allowance only, wait for the photos, and stay inside the package', function (): void {
     $before = app(CreditLedger::class)->balanceOf($this->jane->id);
     $this->home->forceFill(['on_market_date' => now()->subDay()])->save();
-    app(Autopilot::class)->save($this->jane, ['mode' => 'approve', 'moments' => ['listings'], 'per_week' => 5]);
+    app(Autopilot::class)->save($this->jane, ['mode' => 'approve', 'moments' => ['listings'], 'per_week' => 5, 'auto_reels' => false]);
     app(Autopilot::class)->runFor($this->jane);
     expect(StudioPhoto::query()->count())->toBe(2) // two left in the allowance: two photos, no twilight, never credits
         ->and(app(CreditLedger::class)->balanceOf($this->jane->id))->toBe($before)

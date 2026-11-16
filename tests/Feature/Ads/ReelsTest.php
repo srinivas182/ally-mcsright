@@ -12,11 +12,13 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Inertia\Testing\AssertableInertia as Assert;
 use Modules\Ads\Jobs\EnhancePhoto;
+use Modules\Ads\Studio\Autopilot;
 use Modules\Ads\Studio\Design;
 use Modules\Ads\Studio\Enhance\FakeEnhancer;
 use Modules\Ads\Studio\Enhance\PhotoEnhancer;
 use Modules\Ads\Studio\Enhance\PhotoUpscaler;
 use Modules\Ads\Studio\MusicLibrary;
+use Modules\Ads\Studio\QueuedPost;
 use Modules\Ads\Studio\Render\FakeRenderer;
 use Modules\Ads\Studio\Render\StudioRenderer;
 use Modules\Ads\Studio\StudioPhoto;
@@ -94,7 +96,7 @@ beforeEach(function (): void {
     $this->actingAs($this->jane)->withSession(['auth.password_confirmed_at' => now()->getTimestamp()])->post('/apps/studio_essentials/addon')->assertSessionHasNoErrors();
     $this->actingAs($this->jane)->post('/studio/brand', ['headshot' => UploadedFile::fake()->image('me.jpg', 800, 1000), 'details' => ['phone' => '512-555-0100',
         'licence_line' => 'TX #0123456']])->assertSessionHasNoErrors();
-    app(StudioPlans::class)->savePackage('studio_essentials', ['posts' => 30, 'reels' => 1, 'enhance' => 2], $hq);
+    app(StudioPlans::class)->savePackage('studio_essentials', ['posts' => 30, 'reels' => 1, 'tours' => 1, 'enhance' => 2], $hq);
     $this->media = ListingMedia::query()->orderBy('position')->pluck('id')->map(fn ($id): int => (int) $id)->all();
     $this->run = function (): void {
         for ($i = 0; $i < 4; $i++) {
@@ -147,4 +149,42 @@ it('makes Reels only from the person\'s own finished listing designs, and says s
     expect(StudioVideo::query()->sole()->only(['status', 'music_ulid']))->toBe(['status' => 'failed', 'music_ulid' => null]) // no music in the library: a quiet track
         ->and(StudioVideo::query()->sole()->error)->toContain('couldn');
     $this->actingAs($this->jane)->get('/studio/reels/'.StudioVideo::query()->sole()->ulid.'/download')->assertNotFound();
+});
+
+it('makes a YouTube listing tour: landscape, a chapter per room from the MLS captions, counted as a tour', function (): void {
+    ListingMedia::query()->where('media_key', 'sharp-2')->update(['caption' => 'Chef\'s kitchen']);
+    $this->actingAs($this->jane)->post('/studio/tours', ['listing' => $this->home->ulid])->assertRedirect('/studio/reels');
+    $tour = StudioVideo::query()->sole();
+    expect($tour->kind)->toBe('tour')->and($tour->status)->toBe('ready')->and($tour->path)->toContain('/tours/')
+        ->and($this->video->made[0]['size'])->toBe('1920x1080')->and($this->video->made[0]['seconds'])->toBe([6.0, 10.0, 10.0, 8.0])
+        ->and($tour->chapters)->toBe([['at' => 0, 'title' => 'Welcome'], ['at' => 5, 'title' => 'Chef\'s kitchen'], ['at' => 14, 'title' => 'A closer look'],
+            ['at' => 24, 'title' => 'Book a tour']]);
+    $this->actingAs($this->jane)->post('/studio/reels/'.$tour->ulid.'/post')->assertRedirect('/social?reel='.$tour->ulid);
+    expect(app(StudioPlans::class)->usage($this->jane)['tour']['used'])->toBe(1)->and(app(StudioPlans::class)->usage($this->jane)['reel']['used'])->toBe(0);
+    $this->actingAs($this->jane)->get('/social?reel='.$tour->ulid)->assertInertia(fn (Assert $p) => $p
+        ->where('start.text', fn ($t): bool => str_starts_with((string) $t, 'Tour: ') && str_contains((string) $t, "0:05 Chef's kitchen"))
+        ->where('start.video', fn ($u): bool => str_contains((string) $u, '/tours/')));
+    $other = Listing::query()->create(['mls_source_id' => $this->home->mls_source_id, 'listing_key' => 'B2', 'standard_status' => 'Active', 'list_agent_mls_id' => 'ZZZ']);
+    $this->actingAs($this->jane)->post('/studio/tours', ['listing' => $other->ulid])->assertSessionHasErrors('listing');
+});
+
+it('adds a Reel to a new listing\'s launch on Autopilot, from the package\'s Reels only', function (): void {
+    $this->home->forceFill(['on_market_date' => now()->subDay()])->save();
+    app(Autopilot::class)->save($this->jane, ['mode' => 'approve', 'moments' => ['listings'], 'per_week' => 5, 'auto_enhance' => false]);
+    app(Autopilot::class)->runFor($this->jane);
+    $post = QueuedPost::query()->where('source_key', 'like', 'listing:%')->sole();
+    $reel = QueuedPost::query()->where('source_key', 'reel:'.$this->home->ulid)->sole();
+    // The Reel is made on the queue (here at once), then waits for approval like any post, a day after the listing post.
+    expect($post->status)->toBe('awaiting')->and($reel->status)->toBe('awaiting')->and($reel->video_id)->not->toBeNull()
+        ->and((string) $reel->caption)->not->toBe('')->and($reel->post_at?->gt($post->post_at))->toBeTrue()
+        ->and(StudioVideo::query()->findOrFail($reel->video_id)->status)->toBe('ready');
+
+    // A second new listing gets no Reel: the package's one Reel is spoken for.
+    app(StudioPlans::class)->use($this->jane, 'reel', 'manual-1');
+    expect(app(StudioPlans::class)->left($this->jane, 'reel'))->toBe(0);
+    $before = StudioVideo::query()->count();
+    $second = Listing::query()->create(['mls_source_id' => $this->home->mls_source_id, 'listing_key' => 'A9', 'standard_status' => 'Active', 'list_agent_mls_id' => 'AGT1',
+        'on_market_date' => now()]);
+    app(Autopilot::class)->runFor($this->jane);
+    expect(StudioVideo::query()->count())->toBe($before)->and(QueuedPost::query()->where('source_key', 'reel:'.$second->ulid)->exists())->toBeFalse();
 });

@@ -16,7 +16,9 @@ use Modules\Ads\Studio\Autopilot;
 use Modules\Ads\Studio\Design;
 use Modules\Ads\Studio\Designer;
 use Modules\Ads\Studio\QueuedPost;
+use Modules\Ads\Studio\Reels;
 use Modules\Ads\Studio\StudioPlans;
+use Modules\Ads\Studio\StudioVideo;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Tenancy\TenantContext;
 
@@ -44,8 +46,9 @@ final class AutopilotController
             'queue' => QueuedPost::query()->where('user_id', $user->id)->whereNotIn('status', ['skipped'])->orderByRaw("case status when 'awaiting' then 0 when 'enhancing' then 1 when 'designing' then 1 else 2 end")
                 ->latest('id')->limit(40)->get()->map(function (QueuedPost $q) use ($designer, $tz): array {
                     $d = $q->design_id !== null ? Design::query()->find($q->design_id) : null;
+                    $v = $q->video_id !== null ? StudioVideo::query()->find($q->video_id) : null;
 
-                    return ['ulid' => $q->ulid, 'moment' => Designer::MOMENTS[$q->moment][0] ?? $q->moment, 'status' => $q->status, 'image' => $d !== null ? $designer->url($d, 'portrait') : null,
+                    return ['ulid' => $q->ulid, 'moment' => Designer::MOMENTS[$q->moment][0] ?? $q->moment, 'status' => $q->status, 'image' => $v !== null ? app(Reels::class)->poster($v) : ($d !== null ? $designer->url($d, 'portrait') : null), 'reel' => $v !== null,
                         'caption' => $this->autopilot->text($q), 'post_at' => $q->post_at?->setTimezone($tz)->format('Y-m-d\TH:i'), 'reason' => $q->reason,
                         'needs_client_ok' => $q->needs_client_ok];
                 })->values()->all(),
@@ -54,7 +57,7 @@ final class AutopilotController
 
     public function save(Request $request): RedirectResponse
     {
-        $this->autopilot->save(self::user($request), $request->only(['mode', 'places', 'times', 'per_week', 'moments', 'learn_voice', 'auto_enhance', 'extra_credits']));
+        $this->autopilot->save(self::user($request), $request->only(['mode', 'places', 'times', 'per_week', 'moments', 'learn_voice', 'auto_enhance', 'auto_reels', 'extra_credits']));
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Autopilot saved.']);
 
         return back();
@@ -92,7 +95,7 @@ final class AutopilotController
         $tz = $tenants->current()->timezone ?: 'America/New_York';
         $month = preg_match('/^\d{4}-\d{2}$/', (string) $request->query('month')) === 1 ? CarbonImmutable::parse($request->query('month').'-01', $tz) : CarbonImmutable::now($tz)->startOfMonth();
         [$from, $to] = [$month->startOfMonth()->utc(), $month->endOfMonth()->utc()];
-        $studio = QueuedPost::query()->where('user_id', $user->id)->whereIn('status', ['enhancing', 'designing', 'awaiting', 'review', 'scheduled'])->whereBetween('post_at', [$from, $to])->get();
+        $studio = QueuedPost::query()->where('user_id', $user->id)->whereIn('status', ['enhancing', 'designing', 'filming', 'awaiting', 'review', 'scheduled'])->whereBetween('post_at', [$from, $to])->get();
         $linked = $studio->pluck('social_post_id')->filter()->all();
         $events = $studio->map(function (QueuedPost $q) use ($designer, $tz): array {
             $d = $q->design_id !== null ? Design::query()->find($q->design_id) : null;
@@ -118,9 +121,10 @@ final class AutopilotController
 
         return Inertia::render('studio/review', ['items' => $this->autopilot->forReview()->map(function (QueuedPost $q) use ($designer, $tz, $names): array {
             $d = $q->design_id !== null ? Design::query()->find($q->design_id) : null;
+            $v = $q->video_id !== null ? StudioVideo::query()->find($q->video_id) : null;
 
             return ['ulid' => $q->ulid, 'agent' => (string) ($names[$q->user_id] ?? ''), 'moment' => Designer::MOMENTS[$q->moment][0] ?? $q->moment,
-                'image' => $d !== null ? $designer->url($d, 'portrait') : null, 'caption' => $this->autopilot->text($q), 'post_at' => $q->post_at?->setTimezone($tz)->format('M j, g:i A')];
+                'image' => $v !== null ? app(Reels::class)->poster($v) : ($d !== null ? $designer->url($d, 'portrait') : null), 'reel' => $v !== null, 'caption' => $this->autopilot->text($q), 'post_at' => $q->post_at?->setTimezone($tz)->format('M j, g:i A')];
         })->values()->all()]);
     }
 

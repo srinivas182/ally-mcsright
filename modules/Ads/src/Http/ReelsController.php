@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
+use Modules\Ads\ListingAds;
 use Modules\Ads\Studio\Design;
 use Modules\Ads\Studio\Designer;
 use Modules\Ads\Studio\MusicLibrary;
@@ -26,17 +27,21 @@ final class ReelsController
     {
         $user = self::user($request);
         $tracks = collect($music->all(true))->keyBy('ulid');
+        $listings = array_map(fn (array $l): array => ['ulid' => $l['ulid'], 'label' => $l['label']], app(ListingAds::class)->listings($user));
 
         return Inertia::render('studio/reels', [
             'ready' => $plans->current($user) !== null,
             'usage' => $plans->usage($user)['reel'],
             'moods' => MusicLibrary::MOODS,
             'tracks' => $tracks->map(fn (array $t): array => ['ulid' => $t['ulid'], 'label' => $t['title'].' · '.$t['artist'], 'mood' => $t['mood']])->values()->all(),
-            'reels' => StudioVideo::query()->where('user_id', $user->id)->latest('id')->limit(24)->get()->map(function (StudioVideo $v) use ($reels, $tracks): array {
-                $d = Design::query()->find($v->design_id);
+            'listings' => $listings,
+            'tour_usage' => $plans->usage($user)['tour'],
+            'reels' => StudioVideo::query()->where('user_id', $user->id)->latest('id')->limit(24)->get()->map(function (StudioVideo $v) use ($reels, $tracks, $listings): array {
+                $d = $v->design_id !== null ? Design::query()->find($v->design_id) : null;
 
-                return ['ulid' => $v->ulid, 'status' => $v->status, 'error' => $v->error, 'url' => $reels->url($v), 'poster' => $reels->poster($v), 'seconds' => $v->seconds,
-                    'used' => $v->used_at !== null, 'moment' => $d !== null ? (Designer::MOMENTS[$d->moment][0] ?? $d->moment) : '', 'title' => (string) ($d->content['headline'] ?? ''),
+                return ['ulid' => $v->ulid, 'kind' => $v->kind, 'chapters' => $v->chapters ?? [], 'status' => $v->status, 'error' => $v->error, 'url' => $reels->url($v), 'poster' => $reels->poster($v), 'seconds' => $v->seconds,
+                    'used' => $v->used_at !== null, 'moment' => $d !== null ? (Designer::MOMENTS[$d->moment][0] ?? $d->moment) : 'YouTube tour',
+                    'title' => (string) ($d->content['headline'] ?? ($v->listing_ulid !== null ? (collect($listings)->firstWhere('ulid', $v->listing_ulid)['label'] ?? '') : '')),
                     'music' => $v->music_ulid !== null ? ($tracks[$v->music_ulid]['title'] ?? null) : null];
             })->values()->all(),
         ]);
@@ -52,13 +57,22 @@ final class ReelsController
         return redirect('/studio/reels');
     }
 
+    /** A YouTube listing tour from one of the person's listings. */
+    public function tour(Request $request, Reels $reels): RedirectResponse
+    {
+        $data = $request->validate(['listing' => ['required', 'string', 'size:26']]);
+        $reels->tour(self::user($request), (string) $data['listing']);
+
+        return redirect('/studio/reels');
+    }
+
     public function download(Request $request, string $reel, Reels $reels): StreamedResponse
     {
         $user = self::user($request);
         $v = StudioVideo::query()->where('ulid', $reel)->where('user_id', $user->id)->firstOrFail();
         $reels->use($v, $user);
 
-        return Storage::disk('public')->download((string) ($v->path ?? abort(404)), 'rightally-reel-'.strtolower($v->ulid).'.mp4');
+        return Storage::disk('public')->download((string) ($v->path ?? abort(404)), 'rightally-'.$v->kind.'-'.strtolower($v->ulid).'.mp4');
     }
 
     public function post(Request $request, string $reel, Reels $reels): RedirectResponse

@@ -57,6 +57,7 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('studio
     Route::post('autopilot/{item}/skip', [AutopilotController::class, 'skip'])->where('item', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('autopilot.skip');
     Route::get('reels', [ReelsController::class, 'index'])->name('reels');
     Route::post('designs/{design}/reel', [ReelsController::class, 'store'])->where('design', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->middleware('throttle:10,1')->name('reels.store');
+    Route::post('tours', [ReelsController::class, 'tour'])->middleware('throttle:10,1')->name('tours.store');
     Route::get('reels/{reel}/download', [ReelsController::class, 'download'])->where('reel', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('reels.download');
     Route::post('reels/{reel}/post', [ReelsController::class, 'post'])->where('reel', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('reels.post');
     Route::post('designs/{design}/post', [StudioController::class, 'post'])->where('design', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('designs.post');
