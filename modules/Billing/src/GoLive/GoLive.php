@@ -8,6 +8,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Support\Connections;
+use Modules\Core\Tenancy\Enums\TenantType;
 use Modules\Core\Tenancy\Models\Tenant;
 use Modules\Core\Tenancy\TenantContext;
 
@@ -25,6 +26,7 @@ final class GoLive
         'signed_in' => [1, 'Sign in and look around', 'Your RightAlly is ready; the owner signs in first.', '/dashboard'],
         'people' => [2, 'Bring your people', 'Contacts, notes and tags come over from your old CRM or a spreadsheet.', '/switch#people'],
         'deals' => [3, 'Bring your deals', 'Open and closed deals, with their documents, from your old transaction app.', '/switch#deals'],
+        'goal' => [2, 'Set your goal for the year', 'How many closings you want; RightAlly lines up who to call each day.', '/today#goal'],
         'routing' => [3, 'Choose who gets new leads', 'So every new lead reaches an agent within minutes.', '/leads/settings'],
         'agents_invited' => [5, 'Invite your agents', 'Each agent gets an email with their own sign-in link.', '/users'],
         'agents_signed_in' => [7, 'Half your agents have signed in', 'Simple view keeps it easy for agents who don\'t like new software.', '/users'],
@@ -33,6 +35,12 @@ final class GoLive
         'weekly_use' => [21, 'Most agents use it every week', 'At least 7 in 10 agents active in the last 7 days.', '/users'],
         'first_close' => [30, 'First deal closed in RightAlly', 'The goal of the first month: a deal from contract to close here.', '/deals'],
     ];
+
+    /** A solo agent's RightAlly has no agents to invite or lead routing to set up. */
+    public const SOLO_STEPS = ['signed_in', 'people', 'goal', 'deals', 'website', 'first_deal', 'first_close'];
+
+    /** A brokerage's plan. */
+    public const BROKERAGE_STEPS = ['signed_in', 'people', 'deals', 'routing', 'agents_invited', 'agents_signed_in', 'website', 'first_deal', 'weekly_use', 'first_close'];
 
     public function __construct(private readonly TenantContext $tenants) {}
 
@@ -65,7 +73,9 @@ final class GoLive
         $day = (int) CarbonImmutable::parse((string) $row->started_on)->startOfDay()->diffInDays(CarbonImmutable::now()->startOfDay()) + 1;
         $facts = $this->facts($tenantId);
         $steps = [];
-        foreach (self::STEPS as $key => [$target, $title, $why, $href]) {
+        $keys = $this->tenants->current()->type === TenantType::Solo ? self::SOLO_STEPS : self::BROKERAGE_STEPS;
+        foreach ($keys as $key) {
+            [$target, $title, $why, $href] = self::STEPS[$key];
             $steps[] = ['key' => $key, 'day' => $target, 'title' => $title, 'why' => $why, 'href' => $href, 'done' => $facts[$key], 'late' => ! $facts[$key] && $day > $target];
         }
         $done = count(array_filter(array_column($steps, 'done')));
@@ -77,7 +87,7 @@ final class GoLive
     /**
      * What the brokerage has done, read from its own data.
      *
-     * @return array{signed_in: bool, people: bool, deals: bool, routing: bool, agents_invited: bool, agents_signed_in: bool, website: bool, first_deal: bool, weekly_use: bool, first_close: bool,
+     * @return array{signed_in: bool, people: bool, deals: bool, goal: bool, routing: bool, agents_invited: bool, agents_signed_in: bool, website: bool, first_deal: bool, weekly_use: bool, first_close: bool,
      *     adoption: array{agents: int, signed_in: int, active_week: int}}
      */
     private function facts(int $tenantId): array
@@ -95,6 +105,7 @@ final class GoLive
             'signed_in' => (clone $users)->where('kind', 'owner')->whereNotNull('last_login_at')->exists(),
             'people' => $cell->table('crm_contacts')->where('tenant_id', $tenantId)->whereNull('deleted_at')->exists(),
             'deals' => $cell->table('tx_deals')->where('tenant_id', $tenantId)->exists(),
+            'goal' => $cell->table('insights_goals')->where('tenant_id', $tenantId)->whereNotNull('user_id')->where('year', (int) CarbonImmutable::now()->format('Y'))->whereNotNull('plan')->exists(),
             'routing' => $cell->table('crm_routing_rules')->where('tenant_id', $tenantId)->where('active', true)->exists(),
             'agents_invited' => $agentCount > 0,
             'agents_signed_in' => $agentCount > 0 && $signedIn * 2 >= $agentCount,

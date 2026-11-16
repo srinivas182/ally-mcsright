@@ -55,6 +55,8 @@ Route::domain((string) config('core.hq_host'))->middleware('web')->group(functio
     Route::get('health-check/r/{token}/logo', [HealthCheckController::class, 'logo'])->where('token', $token)->middleware('throttle:60,1')->name('health.logo');
     Route::get('start', [SignupController::class, 'start'])->name('signup.start');
     Route::post('start', [SignupController::class, 'store'])->middleware('throttle:10,60')->name('signup.store');
+    Route::get('agents', [SignupController::class, 'agents'])->name('signup.agents');
+    Route::post('agents', [SignupController::class, 'storeAgent'])->middleware('throttle:10,60')->name('signup.agents.store');
     Route::get('start/address', [SignupController::class, 'address'])->middleware('throttle:60,1')->name('signup.address');
     Route::get('start/welcome/{signup}', [SignupController::class, 'welcome'])->where('signup', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->middleware('throttle:60,1')->name('signup.welcome');
     Route::post('health-check/r/{token}/delete', [HealthCheckController::class, 'destroy'])->where('token', $token)->middleware('throttle:10,1')->name('health.delete');

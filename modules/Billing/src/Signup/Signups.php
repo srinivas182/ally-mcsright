@@ -40,19 +40,24 @@ final class Signups
 {
     public function __construct(private readonly PaymentGateway $gateway, private readonly PaymentSettings $settings, private readonly TenantContext $tenants) {}
 
-    public function open(): bool
+    /** Whether online signup is open for brokerages or for solo agents. */
+    public function open(string $audience = 'brokerage'): bool
     {
-        return $this->gateway->ready() && Package::query()->where('active', true)->exists();
+        return $this->gateway->ready() && Package::query()->where('active', true)->where('audience', $audience)->exists();
     }
 
     /**
      * Saves the signup and returns the payment page's address.
      *
+     * A solo agent's signup (type "solo") creates a RightAlly of their own; its name is the agent's or team's name.
+     *
      * @param  array{brokerage: string, slug: string, owner_name: string, owner_email: string, state?: string|null, agents?: int|null, package: string, interval: string, health_check_id?: int|null}  $in
      */
-    public function begin(array $in, string $returnBase): string
+    public function begin(array $in, string $returnBase, string $type = 'brokerage'): string
     {
-        $package = Package::query()->where('ulid', $in['package'])->where('active', true)->first();
+        $type = $type === 'solo' ? 'solo' : 'brokerage';
+        $audience = $type === 'solo' ? 'agent' : 'brokerage';
+        $package = Package::query()->where('ulid', $in['package'])->where('active', true)->where('audience', $audience)->first();
         $slug = mb_strtolower(trim($in['slug']));
         if ($package === null) {
             throw ValidationException::withMessages(['package' => 'Choose one of the packages.']);
@@ -60,21 +65,21 @@ final class Signups
         if (($problem = self::slugProblem($slug)) !== null) {
             throw ValidationException::withMessages(['slug' => $problem]);
         }
-        if (! $this->open()) {
+        if (! $this->open($audience)) {
             throw ValidationException::withMessages(['package' => 'Online signup is not open yet. Ask for a call and we will set you up.']);
         }
         $ulid = (string) Str::ulid();
         $interval = $in['interval'] === 'year' ? 'year' : 'month';
         $price = $interval === 'year' ? $package->yearly_cents : $package->monthly_cents;
         DB::connection(Connections::control())->table('signups')->insert([
-            'ulid' => $ulid, 'brokerage' => mb_substr(trim($in['brokerage']), 0, 150), 'slug' => $slug, 'owner_name' => mb_substr(trim($in['owner_name']), 0, 120),
+            'ulid' => $ulid, 'type' => $type, 'brokerage' => mb_substr(trim($in['brokerage']), 0, 150), 'slug' => $slug, 'owner_name' => mb_substr(trim($in['owner_name']), 0, 120),
             'owner_email' => mb_strtolower(trim($in['owner_email'])), 'state' => isset($in['state']) && $in['state'] !== '' ? strtoupper($in['state']) : null,
             'agents' => $in['agents'] ?? null, 'package_id' => $package->id, 'interval' => $interval, 'health_check_id' => $in['health_check_id'] ?? null,
             'status' => 'pending', 'created_at' => now(), 'updated_at' => now(),
         ]);
 
         return $this->gateway->subscriptionCheckout(mb_strtolower(trim($in['owner_email'])), "RightAlly {$package->name} — ".trim($in['brokerage']), $price, $interval,
-            $returnBase.'/start/welcome/'.$ulid, $returnBase.'/start?cancelled=1',
+            $returnBase.'/start/welcome/'.$ulid, $returnBase.($type === 'solo' ? '/agents' : '/start').'?cancelled=1',
             ['kind' => 'signup', 'signup' => $ulid, 'package_id' => (string) $package->id, 'interval' => $interval, 'price_cents' => (string) $price],
             $this->settings->automaticTax());
     }
@@ -93,7 +98,7 @@ final class Signups
             return;
         }
         try {
-            $tenant = app(ProvisionTenant::class)->handle(new ProvisionTenantData(type: TenantType::Brokerage, name: (string) $signup->brokerage, slug: (string) $signup->slug,
+            $tenant = app(ProvisionTenant::class)->handle(new ProvisionTenantData(type: $signup->type === 'solo' ? TenantType::Solo : TenantType::Brokerage, name: (string) $signup->brokerage, slug: (string) $signup->slug,
                 ownerEmail: (string) $signup->owner_email, ownerName: (string) $signup->owner_name, idempotencyKey: 'signup:'.$signup->ulid, stateCode: $signup->state));
         } catch (Throwable $e) {
             // Paid, but the address was taken in the meantime (or another problem): HQ sets it up by hand and tells the broker.

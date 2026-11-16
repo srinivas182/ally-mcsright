@@ -15,9 +15,12 @@ use Modules\AI\Support\PromptRegistry;
 use Modules\Core\Access\PermissionRegistry;
 use Modules\Core\Brief\DailyBriefs;
 use Modules\Core\Identity\Enums\UserKind;
+use Modules\Core\Identity\Events\UserDeactivated;
 use Modules\Core\Mcp\McpToolbox;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
+use Modules\Core\Tenancy\Models\Tenant;
+use Modules\Core\Tenancy\TenantContext;
 use Modules\Core\Undo\Undo;
 use Modules\Core\Workflows\WorkflowRegistry;
 use Modules\Crm\Actions\ManageContacts;
@@ -115,6 +118,18 @@ final class CrmServiceProvider extends ServiceProvider
         Brief\CrmBriefItems::register($this->app->make(DailyBriefs::class));
 
         // Connected apps hear about company contacts, stage changes and completed tasks (specs/connect/01).
+        // The portability guarantee (specs/grow/03): an agent who is deactivated is offered their own people.
+        Event::listen(UserDeactivated::class, function (UserDeactivated $e): void {
+            $tenant = Tenant::query()->find($e->tenantId);
+            if ($tenant !== null) {
+                app(TenantContext::class)->runAs($tenant, function () use ($e): void {
+                    $agent = User::query()->find($e->userId);
+                    if ($agent !== null) {
+                        app(Portability\Portability::class)->offer($agent);
+                    }
+                });
+            }
+        });
         Event::listen(ContactCreated::class, fn (ContactCreated $e) => CrmEvents::contactCreated($e->contactId));
         // Contacts in the workflow engine (specs/core/06, W1).
         Workflows\CrmWorkflows::register($this->app->make(WorkflowRegistry::class));

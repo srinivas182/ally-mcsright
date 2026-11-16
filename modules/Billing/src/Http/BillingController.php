@@ -34,7 +34,7 @@ final class BillingController
             'plans' => AgentPlan::query()->orderBy('sort')->get()->map(fn (AgentPlan $p): array => $p->only(['ulid', 'key', 'name', 'description', 'list_cents', 'floor_cents', 'features', 'sort', 'active'])),
             'tiers' => DB::connection(Connections::control())->table('billing_commission_tiers')->orderBy('min_paying_agents')->get(['min_paying_agents', 'percent']),
             'features' => ProductFeatures::all(),
-            'packages' => Package::query()->orderBy('monthly_cents')->get()->map(fn ($p): array => $p->only(['ulid', 'name', 'monthly_cents', 'yearly_cents', 'ailly_conversations', 'features', 'active'])),
+            'packages' => Package::query()->orderBy('monthly_cents')->get()->map(fn ($p): array => $p->only(['ulid', 'name', 'audience', 'monthly_cents', 'yearly_cents', 'ailly_conversations', 'features', 'active'])),
         ]);
     }
 

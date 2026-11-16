@@ -25,9 +25,9 @@ final class SignupController
         $check = is_string($request->query('check')) ? HealthChecks::byToken($request->query('check')) : null;
 
         return response()->view('billing::signup.start', [
-            'packages' => Package::query()->where('active', true)->orderBy('monthly_cents')->get(),
+            'packages' => Package::offered('brokerage'),
             'features' => ProductFeatures::all(),
-            'open' => $signups->open(),
+            'open' => $signups->open('brokerage'),
             'cancelled' => $request->boolean('cancelled'),
             'prefill' => $check === null ? [] : ['brokerage' => (string) $check->brokerage, 'owner_name' => (string) $check->contact_name, 'owner_email' => (string) $check->email,
                 'state' => (string) ($check->state ?? ''), 'agents' => (string) $check->agents, 'slug' => Signups::suggest((string) $check->brokerage), 'check' => (string) $request->query('check')],
@@ -50,6 +50,31 @@ final class SignupController
             'state' => $data['state'] ?? null, 'agents' => isset($data['agents']) ? (int) $data['agents'] : null, 'package' => (string) $data['package'], 'interval' => (string) $data['interval'],
             'health_check_id' => $check !== null ? (int) $check->id : null,
         ], 'https://'.config('core.hq_host')));
+    }
+
+    /** RightAlly for Agents: solo prices and signup (specs/grow/03). */
+    public function agents(Request $request, Signups $signups): HttpResponse
+    {
+        return response()->view('billing::signup.agents', [
+            'packages' => Package::offered('agent'), 'features' => ProductFeatures::all(), 'open' => $signups->open('agent'), 'cancelled' => $request->boolean('cancelled'),
+            'canonical' => 'https://'.config('core.hq_host').'/agents',
+        ]);
+    }
+
+    public function storeAgent(Request $request, Signups $signups): RedirectResponse
+    {
+        abort_if(filled($request->input('fax')), 422);
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:120'], 'business' => ['nullable', 'string', 'max:150'], 'slug' => ['required', 'string', 'max:40'],
+            'email' => ['required', 'email:rfc', 'max:190'], 'state' => ['nullable', 'string', 'size:2', 'alpha'],
+            'package' => ['required', 'string', 'size:26'], 'interval' => ['required', 'in:month,year'], 'terms' => ['accepted'],
+        ], ['terms.accepted' => 'Please agree to the terms to continue.']);
+        $name = trim((string) $data['name']);
+
+        return redirect()->away($signups->begin([
+            'brokerage' => trim((string) ($data['business'] ?? '')) !== '' ? trim((string) $data['business']) : $name, 'slug' => (string) $data['slug'], 'owner_name' => $name,
+            'owner_email' => (string) $data['email'], 'state' => $data['state'] ?? null, 'agents' => 1, 'package' => (string) $data['package'], 'interval' => (string) $data['interval'],
+        ], 'https://'.config('core.hq_host'), 'solo'));
     }
 
     /** Whether an address is free, while the broker types it. */

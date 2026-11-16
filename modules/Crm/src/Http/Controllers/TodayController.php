@@ -15,13 +15,18 @@ use Modules\Crm\DatabaseIntelligence;
 use Modules\Crm\Models\Contact;
 use Modules\Crm\Models\Intent;
 use Modules\Crm\TodaysTen;
+use Modules\Insights\Planner;
 use Throwable;
 
 final class TodayController
 {
     public function show(Request $request, TodaysTen $today): Response
     {
-        return Inertia::render('crm/today', ['picks' => $today->for(self::user($request))]);
+        $user = self::user($request);
+        // The goal planner (SO1) sets how many people a day: at least 10, at most 25.
+        $goal = app(Planner::class)->daily($user);
+
+        return Inertia::render('crm/today', ['picks' => $today->for($user, $goal !== null ? max(10, min(25, $goal['per_day'])) : 10), 'goal' => $goal]);
     }
 
     public function analyse(Request $request, Contact $contact, DatabaseIntelligence $intelligence, ContactVisibility $visibility): RedirectResponse

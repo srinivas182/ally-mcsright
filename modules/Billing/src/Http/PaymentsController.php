@@ -22,6 +22,7 @@ use Modules\Billing\Pricing;
 use Modules\Billing\ProductFeatures;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Identity\Enums\UserKind;
+use Modules\Core\Tenancy\Enums\TenantType;
 use Modules\Core\Tenancy\Models\Tenant;
 use Modules\Core\Tenancy\TenantContext;
 use Symfony\Component\HttpFoundation\Response as HttpResponse;
@@ -124,13 +125,13 @@ final class PaymentsController
     }
 
     /** Owner: the brokerage's package, card, invoices and partner code. */
-    public function billing(Request $request, BrokeragePayments $brokerage): Response
+    public function billing(Request $request, BrokeragePayments $brokerage, TenantContext $tenants): Response
     {
         $user = self::user($request);
         abort_unless($user->isKind(UserKind::Owner), 403);
 
         return Inertia::render('settings/billing', [
-            'packages' => Package::query()->where('active', true)->orderBy('monthly_cents')->get()
+            'packages' => Package::offered($tenants->current()->type === TenantType::Solo ? 'agent' : 'brokerage')
                 ->map(fn ($p): array => $p->only(['ulid', 'name', 'monthly_cents', 'yearly_cents', 'ailly_conversations', 'features'])),
             'current' => $brokerage->current(),
             'readOnly' => $brokerage->readOnly(),
@@ -168,9 +169,9 @@ final class PaymentsController
     /** HQ: brokerage packages. */
     public function savePackage(Request $request, BrokeragePayments $brokerage, ?Package $package = null): RedirectResponse
     {
-        $data = $request->validate(['name' => ['required', 'string', 'max:80'], 'monthly' => ['required', 'numeric', 'min:1'], 'yearly' => ['required', 'numeric', 'min:1'],
+        $data = $request->validate(['name' => ['required', 'string', 'max:80'], 'audience' => ['nullable', 'in:brokerage,agent'], 'monthly' => ['required', 'numeric', 'min:1'], 'yearly' => ['required', 'numeric', 'min:1'],
             'ailly' => ['required', 'integer', 'min:0'], 'features' => ['array'], 'features.*' => ['string']]);
-        $brokerage->savePackage($package, ['name' => $data['name'], 'monthly_cents' => (int) round((float) $data['monthly'] * 100),
+        $brokerage->savePackage($package, ['name' => $data['name'], 'audience' => (string) ($data['audience'] ?? ($package !== null ? $package->audience : 'brokerage')), 'monthly_cents' => (int) round((float) $data['monthly'] * 100),
             'yearly_cents' => (int) round((float) $data['yearly'] * 100), 'ailly_conversations' => (int) $data['ailly'], 'features' => array_values($data['features'] ?? [])]);
 
         return back();

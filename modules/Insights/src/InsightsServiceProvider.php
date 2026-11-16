@@ -10,6 +10,7 @@ use Illuminate\Support\ServiceProvider;
 use Modules\AI\FeatureCatalog;
 use Modules\AI\Support\PromptRegistry;
 use Modules\Core\Access\PermissionRegistry;
+use Modules\Core\Brief\DailyBriefs;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
@@ -25,6 +26,7 @@ final class InsightsServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        Brief\GoalBriefItems::register($this->app->make(DailyBriefs::class));
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
         $this->app->make(PromptRegistry::class)->addPath(__DIR__.'/../prompts');

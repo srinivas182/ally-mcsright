@@ -7,6 +7,8 @@ namespace Modules\Core\Simple;
 use App\Models\User;
 use Illuminate\Validation\ValidationException;
 use Modules\Core\Audit\AuditLogger;
+use Modules\Core\Tenancy\Enums\TenantType;
+use Modules\Core\Tenancy\TenantContext;
 
 /**
  * Simple mode (SM1): for people who want RightAlly to be obvious. A "What do you want to do?" home with big
@@ -44,7 +46,25 @@ final class SimpleMode
 
     public static function on(?User $user): bool
     {
-        return $user !== null && $user->getAttribute('ui_mode') === 'simple';
+        return self::mode($user) === 'simple';
+    }
+
+    /**
+     * The person's view: their own choice, or, before they choose, simple for a solo agent's RightAlly (SO1) and not
+     * yet chosen (null, which asks them once) everywhere else.
+     */
+    public static function mode(?User $user): ?string
+    {
+        if ($user === null) {
+            return null;
+        }
+        $mode = $user->getAttribute('ui_mode');
+        if (is_string($mode)) {
+            return $mode;
+        }
+        $tenants = app(TenantContext::class);
+
+        return $tenants->check() && $tenants->current()->type === TenantType::Solo ? 'simple' : null;
     }
 
     public static function locale(?User $user): string

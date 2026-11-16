@@ -138,6 +138,35 @@ final class Planner
     }
 
     /**
+     * "I want 24 closings this year" (SO1): the same plan, started from closings instead of income.
+     */
+    public function saveClosings(User $agent, int $year, int $closings): void
+    {
+        $rates = $this->history($agent);
+        $perClosing = max(1, (int) round($rates['average_price_cents'] * $rates['commission_rate']));
+        $this->save($agent, $year, ['income_cents' => $closings * $perClosing, 'take_home' => false]);
+    }
+
+    /**
+     * Today's share of the yearly plan: conversations a working day (five days a week), and how many are done today.
+     *
+     * @return array{closings: int, per_day: int, done_today: int}|null null when the person has no plan this year
+     */
+    public function daily(User $agent, ?CarbonImmutable $today = null): ?array
+    {
+        $today ??= CarbonImmutable::today();
+        $saved = DB::connection(Connections::cell())->table('insights_goals')->where('user_id', $agent->id)->where('year', (int) $today->format('Y'))->value('plan');
+        $inputs = is_string($saved) ? (array) json_decode($saved, true) : [];
+        if ((int) ($inputs['income_cents'] ?? 0) <= 0) {
+            return null;
+        }
+        $plan = self::plan((int) $inputs['income_cents'], (bool) ($inputs['take_home'] ?? true), array_merge($this->history($agent, $today), array_intersect_key($inputs, self::DEFAULTS)));
+
+        return ['closings' => $plan['closings'], 'per_day' => max(1, (int) ceil($plan['weekly']['conversations'] / 5)),
+            'done_today' => $this->activity($agent, $today->startOfDay(), $today->endOfDay())['conversations']];
+    }
+
+    /**
      * @param  array{income_cents: int, take_home: bool, average_price_cents?: int, commission_rate?: float, net_share?: float, closing_rate?: float, agreement_rate?: float, appointment_rate?: float}  $inputs
      */
     public function save(User $agent, int $year, array $inputs): void

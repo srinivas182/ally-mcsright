@@ -16,6 +16,7 @@ use Modules\Billing\Models\Package;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Support\Connections;
+use Modules\Core\Tenancy\Enums\TenantType;
 use Modules\Core\Tenancy\Models\Tenant;
 use Modules\Core\Tenancy\TenantContext;
 
@@ -31,7 +32,7 @@ final class BrokeragePayments
     public function __construct(private readonly PaymentGateway $gateway, private readonly PaymentSettings $settings, private readonly TenantContext $tenants) {}
 
     /**
-     * @param  array{name: string, monthly_cents: int, yearly_cents: int, ailly_conversations: int, features: list<string>, active?: bool}  $data
+     * @param  array{name: string, audience?: string, monthly_cents: int, yearly_cents: int, ailly_conversations: int, features: list<string>, active?: bool}  $data
      */
     public function savePackage(?Package $package, array $data): Package
     {
@@ -48,7 +49,8 @@ final class BrokeragePayments
 
     public function checkout(User $owner, Package $package, string $interval, string $returnBase): string
     {
-        if (! $owner->isKind(UserKind::Owner) || ! $package->active || ! in_array($interval, ['month', 'year'], true)) {
+        $audience = $this->tenants->current()->type === TenantType::Solo ? 'agent' : 'brokerage';
+        if (! $owner->isKind(UserKind::Owner) || ! $package->active || $package->audience !== $audience || ! in_array($interval, ['month', 'year'], true)) {
             throw ValidationException::withMessages(['package' => 'Choose an available package and billing period.']);
         }
         $price = $interval === 'year' ? $package->yearly_cents : $package->monthly_cents;
