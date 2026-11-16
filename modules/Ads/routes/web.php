@@ -9,6 +9,7 @@ use Modules\Ads\Http\HqStudioController;
 use Modules\Ads\Http\SocialController;
 use Modules\Ads\Http\StudioController;
 use Modules\Ads\Http\StudioFontsController;
+use Modules\Ads\Http\StylesController;
 use Modules\Core\Http\Middleware\EnsureHqConsole;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
 
@@ -36,6 +37,9 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('studio
     Route::get('brand', [StudioController::class, 'brand'])->name('brand');
     Route::post('brand', [StudioController::class, 'saveBrand'])->middleware('throttle:20,1')->name('brand.save');
     Route::get('create', [StudioController::class, 'create'])->name('create');
+    Route::get('styles', [StylesController::class, 'index'])->name('styles');
+    Route::post('styles', [StylesController::class, 'save'])->name('styles.save');
+    Route::post('styles/match', [StylesController::class, 'match'])->name('styles.match');
     Route::post('designs', [StudioController::class, 'makeDesigns'])->middleware('throttle:10,1')->name('designs.store');
     Route::get('designs/{design}/download', [StudioController::class, 'download'])->where('design', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('designs.download');
     Route::get('autopilot', [AutopilotController::class, 'index'])->name('autopilot');

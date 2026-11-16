@@ -123,7 +123,7 @@ it('keeps designs honest: MLS status, Fair Housing, open house time, a photo of 
     $this->actingAs($this->jane)->post('/studio/designs', ['moment' => 'market_update', 'headline' => 'Austin this week', 'body' => 'Buyers are back.',
         'stats' => [['value' => '42', 'label' => 'New listings'], ['value' => '<b>$485K</b>', 'label' => 'Median price']]])->assertSessionHasNoErrors();
     $text = Design::query()->orderBy('id')->get();
-    expect($text->pluck('collection')->all())->toBe(['luxury_noir', 'modern', 'coastal'])->and($text->pluck('variant')->unique()->all())->toBe(['statement'])
+    expect($text->pluck('collection')->all())->toBe(['noir_atelier', 'heritage_navy', 'emerald_club'])->and($text->pluck('variant')->unique()->all())->toBe(['statement'])
         ->and($text[0]->content['stats'][1])->toEqual(['value' => '$485K', 'label' => 'Median price']); // MySQL JSON may reorder keys
 
     $this->renderer->blank = true;
