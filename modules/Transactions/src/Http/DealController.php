@@ -16,6 +16,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Core\Access\Fields;
 use Modules\Core\Access\Permissions;
+use Modules\Core\CustomFields\CustomFields;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Support\Connections;
 use Modules\Crm\ContactVisibility;
@@ -68,6 +69,17 @@ final class DealController
         ]);
     }
 
+    /** Custom field values on a deal (specs/core/10, N1). A locked (closed) deal can't change. */
+    public function saveFields(Request $request, Deal $deal): RedirectResponse
+    {
+        $user = $this->authorise($request, $deal);
+        abort_if($deal->locked_at !== null, 422, 'This deal is closed and locked.');
+        $data = $request->validate(['fields' => ['required', 'array']]);
+        app(CustomFields::class)->save('deal', $deal->id, (array) $data['fields'], $user, $deal->agent_user_id);
+
+        return back();
+    }
+
     /** "Why can I see this?" (specs/core/03, R1). */
     public function why(Request $request, Deal $deal): JsonResponse
     {
@@ -113,6 +125,7 @@ final class DealController
                 'documents' => ($docs[$i->id] ?? collect())->map($doc)->values(),
             ]),
             'missing' => $deals->missing($deal),
+            'customFields' => app(CustomFields::class)->valuesFor('deal', $deal->id, $user, $deal->agent_user_id),
             'dates' => app(KeyDates::class)->forDeal($deal),
             'unsorted' => $all->filter(fn (Document $d): bool => $d->item_id === null)->map($doc)->values(),
             'facts' => DocIq::dealFacts($deal),

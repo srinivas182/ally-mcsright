@@ -22,6 +22,7 @@ type Props = {
     guess: Record<string, string>;
     preview: Record<string, string>[];
     fields: string[];
+    customFields: { value: string; label: string }[];
     sources: string[];
     isManager: boolean;
 };
@@ -33,6 +34,7 @@ export default function ContactImportPage({
     guess,
     preview,
     fields,
+    customFields,
     sources,
     isManager,
 }: Props) {
@@ -124,6 +126,14 @@ export default function ContactImportPage({
                                                             value={f}
                                                         >
                                                             {label(f)}
+                                                        </option>
+                                                    ))}
+                                                    {customFields.map((f) => (
+                                                        <option
+                                                            key={f.value}
+                                                            value={f.value}
+                                                        >
+                                                            {f.label} (custom)
                                                         </option>
                                                     ))}
                                                 </select>

@@ -196,6 +196,7 @@ final class CrmServiceProvider extends ServiceProvider
         $features->declare(DatabaseIntelligence::FEATURE, 'ai.crm_intents', 'Reading plans and dates from notes');
         $features->declare(Leads\PortalEmail::FEATURE, 'ai.crm_lead_email', 'Reading forwarded lead emails from any sender');
         $features->declare(Inbox\Inbox::DRAFT, 'ai.crm_reply_draft', 'Suggested replies in the inbox');
+        $features->declare(FieldSuggestions::FEATURE, 'ai.crm_field_fill', 'Fill custom fields from contact notes');
         $features->declare(Leads\AiResponder::FEATURE, 'ai.crm_ai_responder', 'AI first responder: answers and qualifies new leads');
         $features->declare(Leads\LongNurture::FEATURE, 'ai.crm_nurture', 'AI long follow-up: 12 months of check-ins for quiet leads');
 

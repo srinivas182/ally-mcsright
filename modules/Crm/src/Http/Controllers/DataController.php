@@ -13,6 +13,7 @@ use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Core\Audit\AuditLogger;
+use Modules\Core\CustomFields\CustomFields;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Crm\Actions\MergeContacts;
@@ -81,6 +82,7 @@ final class DataController
             'guess' => ContactImporter::guess($import->headers),
             'preview' => $preview,
             'fields' => ContactImporter::FIELDS,
+            'customFields' => array_map(fn (array $f): array => ['value' => 'custom:'.$f['key'], 'label' => $f['label']], app(CustomFields::class)->definitions('contact')),
             'sources' => array_map(fn (Source $s): string => $s->value, Source::cases()),
             'isManager' => CrmAccess::manager($user),
         ]);
@@ -92,7 +94,7 @@ final class DataController
         abort_unless($import->user_id === $user->id && $import->status === 'uploaded', 404);
         $data = $request->validate([
             'mapping' => ['required', 'array'],
-            'mapping.*' => ['nullable', Rule::in(ContactImporter::FIELDS)],
+            'mapping.*' => ['nullable', Rule::in([...ContactImporter::FIELDS, ...array_map(fn (array $f): string => 'custom:'.$f['key'], app(CustomFields::class)->definitions('contact'))])],
             'source' => ['nullable', Rule::enum(Source::class)],
             'tag' => ['nullable', 'string', 'max:40'],
             'origin' => ['nullable', Rule::in(['personal', 'company'])],

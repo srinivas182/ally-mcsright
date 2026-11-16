@@ -48,6 +48,8 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoff
         Route::post('/', [ContactController::class, 'store'])->name('store');
         Route::get('{contact}', [ContactController::class, 'show'])->name('show');
         Route::get('{contact}/why', [ContactController::class, 'why'])->name('why');
+        Route::post('{contact}/fields', [ContactController::class, 'saveFields'])->name('fields');
+        Route::post('{contact}/fields/suggest', [ContactController::class, 'suggestField'])->middleware('feature:crm.ai')->middleware('throttle:30,1')->name('fields.suggest');
         Route::get('{contact}/consent-report', [DataController::class, 'consentReport'])->name('consent-report');
         Route::post('{contact}/searches', [SavedSearchController::class, 'store'])->name('searches.store');
         Route::post('{contact}/send-listing', [SavedSearchController::class, 'sendListing'])->middleware('throttle:30,1,send-listing')->name('send-listing');
