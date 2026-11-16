@@ -119,9 +119,9 @@ final class ListingAds
             'daily_budget' => $daily < self::MIN_DAILY_CENTS || $daily > self::MAX_DAILY_CENTS ? 'Choose a daily budget from $5 to $500.' : null,
             'days' => $days < 1 || $days > self::MAX_DAYS ? 'Run it for 1 to 60 days.' : null,
             'agree' => ($in['agree'] ?? false) === true || ($in['agree'] ?? null) === '1' ? null : 'Confirm the budget first.',
-            'goal' => $goal !== 'form' ? null : ($boost ? 'Instant forms run from your own Meta ad account. With credits, the ad sends people to the listing page.'
-                : ($creative['format'] === 'post' ? 'A promoted post sends people to the post\'s link. Choose a design or a Reel for an instant-form ad.'
-                    : (! $this->formLeadsArrive((string) ($in['page'] ?? '')) ? 'Connect Facebook Lead Ads for this Page first (Apps), so form leads arrive in your CRM.' : null))),
+            // A Boost form is on RightAlly's Page and its leads are handed to this brokerage (specs/ads/04).
+            'goal' => $goal !== 'form' ? null : ($creative['format'] === 'post' ? 'A promoted post sends people to the post\'s link. Choose a design or a Reel for an instant-form ad.'
+                : (! $boost && ! $this->formLeadsArrive((string) ($in['page'] ?? '')) ? 'Connect Facebook Lead Ads for this Page first (Apps), so form leads arrive in your CRM.' : null)),
             'privacy_url' => $goal === 'form' && (! str_starts_with($privacy, 'https://') || filter_var($privacy, FILTER_VALIDATE_URL) === false)
                 ? 'Add the link to your brokerage\'s privacy policy (https://…): Meta shows it on the form.' : null,
         ]);
@@ -383,6 +383,14 @@ final class ListingAds
     private function agentOf(string $ulid): string
     {
         return (string) Listing::query()->where('ulid', $ulid)->value('list_agent_mls_id');
+    }
+
+    /** The brokerage website's privacy policy (every live website has one at /privacy), for instant forms. */
+    public function privacyUrl(): ?string
+    {
+        $base = $this->websiteBase();
+
+        return $base !== null ? $base.'/privacy' : null;
     }
 
     private function websiteBase(): ?string

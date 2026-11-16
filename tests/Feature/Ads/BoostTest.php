@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
+use Illuminate\Testing\TestResponse;
 use Inertia\Testing\AssertableInertia as Assert;
 use Modules\Ads\Boost;
 use Modules\Ads\Models\Campaign;
@@ -159,4 +160,49 @@ it('shows the leads and commission an ad brought', function (): void {
     $this->actingAs($this->jane)->get('/ads')->assertInertia(fn (Assert $p) => $p->where('campaigns.0.leads', 1)
         ->where('campaigns.0.earned_commission', 15000)->where('campaigns.0.pending_commission', 9000)->where('campaigns.0.return', 500));
     expect(Campaign::query()->sole()->status)->toBe('active'); // a lead came in: no stop-loss
+});
+
+/** A signed Facebook Lead Ads webhook for RightAlly's Boost Page (specs/ads/04). */
+function boostFormLead(string $form, string $leadgen): TestResponse
+{
+    $raw = (string) json_encode(['object' => 'page', 'entry' => [['id' => '888', 'changes' => [['field' => 'leadgen', 'value' => ['page_id' => '888', 'leadgen_id' => $leadgen, 'form_id' => $form]]]]]]);
+
+    return test()->call('POST', 'https://auth.rightally.app/connect/apps/facebook_leads/webhook', [], [], [],
+        ['CONTENT_TYPE' => 'application/json', 'HTTP_X_HUB_SIGNATURE_256' => 'sha256='.hash_hmac('sha256', $raw, 'app-secret')], $raw);
+}
+
+it('runs an instant-form Boost ad on RightAlly\'s Page and hands each lead only to the brokerage and agent whose ad it is', function (): void {
+    app(AppRegistry::class)->save(app(AppCatalog::class)->find('facebook_leads'), true,
+        ['client_id' => '123', 'client_secret' => 'app-secret', 'verify_token' => 'vt'], null, User::factory()->make(['id' => 999999]));
+    Http::fake([
+        'graph.facebook.com/v21.0/act_999/campaigns' => Http::response(['id' => 'c1']), 'graph.facebook.com/v21.0/act_999/adsets' => Http::response(['id' => 's1']),
+        'graph.facebook.com/v21.0/888?*' => Http::response(['access_token' => 'boost-page-tok']),
+        'graph.facebook.com/v21.0/888/leadgen_forms' => Http::response(['id' => '4401']),
+        'graph.facebook.com/v21.0/888/subscribed_apps' => Http::response(['success' => true]),
+        'graph.facebook.com/v21.0/act_999/adcreatives' => Http::response(['id' => 'cr1']), 'graph.facebook.com/v21.0/act_999/ads' => Http::response(['id' => 'a1']),
+        'graph.facebook.com/v21.0/c1' => Http::response(['success' => true]),
+        'graph.facebook.com/v21.0/5501?*' => Http::response(['field_data' => [['name' => 'full_name', 'values' => ['Rosa Diaz']], ['name' => 'email', 'values' => ['rosa@x.test']],
+            ['name' => 'phone_number', 'values' => ['+15125550101']], ['name' => 'what_would_you_like?', 'values' => ['A showing']]]]),
+    ]);
+    // Instant forms with credits need the privacy link, nothing else.
+    $this->actingAs($this->jane)->post('/ads', boostInput($this, ['goal' => 'form']))->assertSessionHasErrors('privacy_url');
+    $this->actingAs($this->jane)->post('/ads', boostInput($this, ['goal' => 'form', 'privacy_url' => 'https://acme.test/privacy']))->assertRedirect('/ads');
+    $c = Campaign::query()->sole();
+    expect($c->only(['billing', 'status', 'goal']))->toBe(['billing' => 'boost', 'status' => 'active', 'goal' => 'form'])
+        ->and(DB::connection(Connections::control())->table('ads_boost_forms')->where('form_id', '4401')->sole())
+        ->tenant_id->toBe($this->tenant->id)->campaign_id->toBe($c->id);
+    Http::assertSent(fn (HttpRequest $r): bool => str_ends_with($r->url(), '888/subscribed_apps') && ($r->data()['subscribed_fields'] ?? null) === 'leadgen'
+        && ($r->data()['access_token'] ?? null) === 'boost-page-tok');
+
+    boostFormLead('4401', '5501')->assertOk();
+    boostFormLead('4401', '5501')->assertOk(); // Meta retries: still one lead
+    $lead = Lead::query()->sole();
+    expect($lead->only(['external_id', 'source', 'assigned_user_id']))->toBe(['external_id' => '5501', 'source' => 'facebook', 'assigned_user_id' => $this->jane->id])
+        ->and($lead->utm['utm_campaign'] ?? null)->toBe('rightally-'.strtolower($c->ulid))
+        ->and($lead->message)->toContain('What Would You Like?: A showing');
+    Http::assertSent(fn (HttpRequest $r): bool => str_contains($r->url(), '/5501?') && str_contains($r->url(), 'access_token=boost-page-tok'));
+
+    // A form RightAlly doesn't know, or another Page nobody connected: nothing is taken.
+    boostFormLead('9999', '5502')->assertOk();
+    expect(Lead::query()->count())->toBe(1);
 });

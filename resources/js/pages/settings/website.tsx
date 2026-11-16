@@ -226,6 +226,7 @@ function Manage({
             about: text(site.info.about),
             phone: text(site.info.phone),
             email: text(site.info.email),
+            privacy: text(site.info.privacy),
             social,
         },
         brand: {
@@ -240,7 +241,7 @@ function Manage({
         },
     });
     const info = (
-        k: 'name' | 'tagline' | 'about' | 'phone' | 'email',
+        k: 'name' | 'tagline' | 'about' | 'phone' | 'email' | 'privacy',
         v: string,
     ) => form.setData('info', { ...form.data.info, [k]: v });
     const brand = (k: keyof typeof form.data.brand, v: string) =>
@@ -372,6 +373,17 @@ function Manage({
                     value={form.data.info.about}
                     onChange={(e) => info('about', e.target.value)}
                 />
+                <label className="grid gap-1 text-sm">
+                    Privacy policy (optional). Your website has a standard
+                    policy at /privacy that matches how it works; paste your own
+                    here to replace it. Lead-form ads link to it.
+                    <Textarea
+                        aria-label="Your own privacy policy"
+                        rows={4}
+                        value={form.data.info.privacy}
+                        onChange={(e) => info('privacy', e.target.value)}
+                    />
+                </label>
 
                 <h2 className="font-semibold">Search and AI answers</h2>
                 <Input

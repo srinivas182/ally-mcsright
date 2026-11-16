@@ -23,6 +23,7 @@ final class AdsServiceProvider extends ServiceProvider
         $this->app->scoped(Boost::class);
         $this->app->scoped(Lifecycle::class);
         $this->app->scoped(Returns::class);
+        $this->app->tag([Meta\BoostLeads::class], 'connect.unrouted');
         $this->app->scoped(Social\SocialPosts::class);
         $this->app->scoped(Studio\StudioPlans::class);
         $this->app->scoped(Studio\BrandKits::class);

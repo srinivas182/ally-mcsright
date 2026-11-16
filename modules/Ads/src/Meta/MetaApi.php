@@ -48,6 +48,10 @@ final class MetaApi
                     : ['optimization_goal' => 'LINK_CLICKS'])));
             if ($form) {
                 $made['form'] = $this->leadForm($c, $token, (string) $c->privacy_url);
+                if ($c->isBoost()) {
+                    // The form is on RightAlly's Page: remember whose it is before the ad can run (specs/ads/04).
+                    app(BoostLeads::class)->register($c, $made['form']);
+                }
             }
             $made['creative'] = self::id(self::post($http, $account.'/adcreatives', ['name' => $c->listing_label] + $this->creative($c, $http, $account, $made['form'] ?? null)));
             $made['ad'] = self::id(self::post($http, $account.'/ads', ['name' => $c->listing_label, 'adset_id' => $made['adset'],
@@ -56,6 +60,9 @@ final class MetaApi
         } catch (\Throwable $e) {
             if (isset($made['campaign'])) {
                 $http->delete($made['campaign']); // nothing half-made is left behind
+            }
+            if (isset($made['form']) && $c->isBoost()) {
+                app(BoostLeads::class)->forget($made['form']);
             }
             throw $e;
         }

@@ -11,6 +11,7 @@ use Modules\Connect\Jobs\HandleWebhook;
 use Modules\Connect\Models\Connection;
 use Modules\Core\Connect\AppCatalog;
 use Modules\Core\Connect\AppWebhooks;
+use Modules\Core\Connect\UnroutedWebhook;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\Attributes\CrossTenantAccess;
 use Modules\Core\Tenancy\Models\Tenant;
@@ -53,7 +54,15 @@ final class AppWebhookController
             $route = DB::connection(Connections::control())->table('connect_routes')->where('app_key', $app)->where('external_key', $part['key'])->first();
             $tenant = $route !== null ? Tenant::query()->whereKey($route->tenant_id)->where('status', 'active')->first() : null;
             if ($tenant === null) {
-                continue; // an account no brokerage has connected (or no longer): ignored
+                // An account no brokerage has connected: a module acting for a brokerage on RightAlly's own account may
+                // take it (Boost lead forms); otherwise ignored.
+                foreach (app()->tagged('connect.unrouted') as $handler) {
+                    if ($handler instanceof UnroutedWebhook && $handler->take($app, (array) $part['payload'])) {
+                        break;
+                    }
+                }
+
+                continue;
             }
             $tenants->runAs($tenant, function () use ($route, $app, $part): void {
                 $c = Connection::query()->whereKey($route->connection_id)->where('app_key', $app)->first();
