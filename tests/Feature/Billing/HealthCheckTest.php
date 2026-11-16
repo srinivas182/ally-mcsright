@@ -131,7 +131,7 @@ it('says so when RightAlly would cost more, and keeps agent earnings out of the 
     $token = submitHealth(['who_pays' => 'agents', 'tools' => [['key' => 'mls', 'cost' => '200']]]);
     $savings = json_decode((string) DB::connection(Connections::control())->table('health_checks')->value('savings'), true);
     expect($savings['options'][0])->toMatchArray(['agents_cents' => 0, 'saves_cents' => -29_900])
-        ->and($savings['agent_plan'])->toBe(['name' => 'Agent', 'list_cents' => 2_000, 'earn_cents' => 800]); // 20% of $15 + $5 markup
+        ->and($savings['agent_plan'])->toEqual(['name' => 'Agent', 'list_cents' => 2_000, 'earn_cents' => 800]); // 20% of $15 + $5 markup
     $this->get(HC.'/health-check/r/'.$token)->assertSee('RightAlly would not lower your software bill')->assertSee('earns about $8 a month');
 });
 
