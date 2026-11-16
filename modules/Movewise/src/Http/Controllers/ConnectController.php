@@ -20,6 +20,7 @@ use Modules\Movewise\Models\Connection;
 use Modules\Movewise\Models\Person;
 use Modules\Movewise\Models\State;
 use Modules\Movewise\Movewise;
+use Modules\Movewise\Outcomes\Outcomes;
 use Modules\Movewise\People\Accounts;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -123,6 +124,18 @@ final class ConnectController
             'resume' => $relay->resume($c),
             default => $relay->stop($c, 'My Movewise'),
         };
+
+        return redirect(I18n::url('/account').'#agent', 303);
+    }
+
+    /** My Movewise: confirm a held appointment, or rate the agent. */
+    public function feedback(Request $request, string $connection, Outcomes $outcomes): RedirectResponse
+    {
+        Guard::check($request, 'feedback:'.$request->ip(), 20);
+        $p = $this->person($request);
+        $c = Connection::query()->where('ulid', $connection)->where('person_id', $p->id)->firstOrFail();
+        $request->has('rating') ? $outcomes->rate($c, $p, (int) $request->input('rating'), (string) $request->input('note', ''))
+            : $outcomes->confirmMet($c, $p, $request->boolean('met'));
 
         return redirect(I18n::url('/account').'#agent', 303);
     }

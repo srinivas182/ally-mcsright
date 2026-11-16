@@ -29,9 +29,47 @@ type AgentRow = {
     status: string;
     tier: string;
     seat: boolean;
+    scorecard?: Scorecard | null;
     missing: string[];
     name?: string;
 };
+
+type Scorecard = {
+    tier: string;
+    why: string[];
+    accepted: number;
+    median_accept_minutes: number | null;
+    follow_through: number | null;
+    rating: number | null;
+    ratings: number;
+    appointments_per_100: number | null;
+    closings_per_100: number | null;
+    stops_share: number | null;
+};
+
+/** The published scorecard: every measure, and exactly why the tier is what it is. */
+function ScorecardView({ s }: { s: Scorecard }) {
+    const pct = (v: number | null) =>
+        v === null ? '—' : `${Math.round(v * 100)}%`;
+
+    return (
+        <div className="grid gap-1 rounded-lg border p-3 text-sm">
+            <strong>Scorecard (last 90 days): {s.tier}</strong>
+            <span className="text-muted-foreground">
+                Median accept {s.median_accept_minutes ?? '—'} min · status up
+                to date {pct(s.follow_through)} · rating {s.rating ?? '—'} (
+                {s.ratings}) · appointments {s.appointments_per_100 ?? '—'} and
+                closings {s.closings_per_100 ?? '—'} per 100 · stops{' '}
+                {pct(s.stops_share)}
+            </span>
+            <ul className="list-disc pl-5">
+                {s.why.map((w) => (
+                    <li key={w}>{w}</li>
+                ))}
+            </ul>
+        </div>
+    );
+}
 
 type Hours = { tz: string; days: Record<string, [string, string]> };
 
@@ -171,6 +209,7 @@ function Application({
                     <Badge variant="outline">Movewise Agent seat</Badge>
                 )}
             </div>
+            {agent?.scorecard && <ScorecardView s={agent.scorecard} />}
             {agent && agent.missing.length > 0 && (
                 <div className="rounded-lg bg-muted p-3 text-sm">
                     <p className="font-medium">Before you go live:</p>

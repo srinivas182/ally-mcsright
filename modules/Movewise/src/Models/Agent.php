@@ -37,6 +37,8 @@ use Modules\Core\Tenancy\Concerns\HasPublicUlid;
  * @property string $tier
  * @property int $strikes
  * @property bool $seat
+ * @property array<string, mixed>|null $scorecard
+ * @property CarbonImmutable|null $scored_at
  * @property CarbonImmutable $created_at
  */
 final class Agent extends Model
@@ -55,6 +57,6 @@ final class Agent extends Model
     protected function casts(): array
     {
         return ['profile' => 'array', 'licence_expires_on' => 'immutable_date', 'licence_checked_at' => 'immutable_datetime', 'brokerage_confirmed_at' => 'immutable_datetime',
-            'discipline_checked_at' => 'immutable_datetime', 'terms_signed_at' => 'immutable_datetime', 'seat' => 'boolean', 'strikes' => 'integer', 'created_at' => 'immutable_datetime'];
+            'discipline_checked_at' => 'immutable_datetime', 'terms_signed_at' => 'immutable_datetime', 'seat' => 'boolean', 'scorecard' => 'array', 'scored_at' => 'immutable_datetime', 'strikes' => 'integer', 'created_at' => 'immutable_datetime'];
     }
 }

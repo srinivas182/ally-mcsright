@@ -59,6 +59,9 @@ Schedule::command('ads:studio-voices')->dailyAt('05:23')->withoutOverlapping()->
 Schedule::command('movewise:alerts')->dailyAt('13:17')->withoutOverlapping()->onOneServer();
 Schedule::command('movewise:recheck-licences')->dailyAt('04:41')->withoutOverlapping()->onOneServer(); // each licence every 30 days
 Schedule::command('movewise:expire-offers')->everyMinute()->withoutOverlapping()->onOneServer();
+Schedule::command('movewise:outcomes')->dailyAt('15:07')->withoutOverlapping()->onOneServer(); // status reminders and fallbacks
+Schedule::command('movewise:outcomes --scorecards')->weeklyOn(1, '06:13')->onOneServer();
+Schedule::command('movewise:outcomes --settle=')->monthlyOn(2, '07:19')->onOneServer(); // last month's partner settlements
 Schedule::command('ai:assistant-prune')->dailyAt('03:41')->onOneServer();
 Schedule::command('core:daily-briefs')->hourlyAt(2)->weekdays()->withoutOverlapping()->onOneServer();
 Schedule::command('crm:fair-housing-pack')->monthlyOn(1, '08:17')->onOneServer();

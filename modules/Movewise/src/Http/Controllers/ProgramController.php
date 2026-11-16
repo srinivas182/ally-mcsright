@@ -7,9 +7,11 @@ namespace Modules\Movewise\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Core\Identity\Enums\UserKind;
+use Modules\Core\Support\Connections as ControlDb;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Movewise\Bridge\Relay;
 use Modules\Movewise\Matching\Brief;
@@ -18,6 +20,7 @@ use Modules\Movewise\Models\Agent;
 use Modules\Movewise\Models\Connection;
 use Modules\Movewise\Models\Package;
 use Modules\Movewise\Models\State;
+use Modules\Movewise\Outcomes\Outcomes;
 use Modules\Movewise\Program\Agents;
 use Modules\Movewise\Program\Packages;
 use Modules\Movewise\Program\Pricing;
@@ -126,7 +129,10 @@ final class ProgramController
             'credits' => $c->price_credits, 'model' => $c->model, 'refund_status' => $c->refund_status, 'refund_days' => (int) config('movewise.refund_days', 7),
             'brief' => $brief->for($c, $c->status === 'accepted'), 'relay' => $c->handed_over_at === null ? $c->relay_number : null,
             'paused_until' => $c->paused_until?->isFuture() ? $c->paused_until->toIso8601String() : null, 'handover_asked' => $c->handover_asked_at !== null,
-            'handed_over' => $c->handed_over_at !== null]);
+            'handed_over' => $c->handed_over_at !== null, 'stage' => $c->stage, 'stages' => Outcomes::STAGES,
+            'referral' => $c->model === 'share' ? ($c->referral_agreement ?? $this->referralPreview($c)) : null, 'referral_signed' => $c->referral_signed_at !== null,
+            'history' => DB::connection(ControlDb::control())->table('movewise_status_events')->where('connection_id', $c->id)->orderBy('id')->get(['stage', 'note', 'created_at'])
+                ->map(fn ($e): array => ['stage' => Outcomes::STAGES[$e->stage] ?? $e->stage, 'note' => $e->note, 'at' => (string) $e->created_at])->all()]);
     }
 
     public function decide(Request $request, string $connection, Connections $connections): RedirectResponse
@@ -134,7 +140,8 @@ final class ProgramController
         $c = $this->mineConnection($request, $connection);
         $user = self::user($request);
         match ((string) $request->input('action')) {
-            'accept' => $connections->accept($c, $user),
+            'accept' => $connections->accept($c, $user, $request->boolean('agree_referral')),
+            'status' => app(Outcomes::class)->update($c, $user, $request->all()),
             'decline' => $connections->decline($c, $user),
             'report' => $connections->report($c, $user, (string) $request->input('reason', '')),
             'handover' => app(Relay::class)->askHandover($c, $user, $request->boolean('signed_or_closed')),
@@ -144,10 +151,19 @@ final class ProgramController
             'accept' => 'Accepted. They are in your contacts now: reach out the way they asked.',
             'decline' => 'Declined. They will choose another agent; nothing was charged.',
             'handover' => 'Asked. If they reply YES, you can text them from your own number.',
+            'status' => 'Status updated.',
             default => 'Sent to Movewise. We\'ll reply within two working days.',
         }]);
 
         return back();
+    }
+
+    private function referralPreview(Connection $c): ?string
+    {
+        $agent = Agent::query()->findOrFail($c->agent_id);
+        $state = State::query()->findOrFail($agent->state);
+
+        return $state->partner !== null ? Outcomes::referralAgreement($agent, $state->partner, Pricing::for($state)['share_pct']) : null;
     }
 
     private function mineConnection(Request $request, string $ulid): Connection
@@ -165,7 +181,7 @@ final class ProgramController
         return ['ulid' => $a->ulid, 'state' => $a->state, 'licence_number' => $a->licence_number, 'licence_status' => $a->licence_status, 'brokerage_name' => $a->brokerage_name,
             'brokerage_confirmed' => $a->brokerage_confirmed_at !== null, 'profile' => $a->profile, 'profile_status' => $a->profile_status, 'review_note' => $a->review_note,
             'terms_signed' => $a->terms_signed_at !== null && $a->terms_version === Agents::TERMS_VERSION, 'status' => $a->status, 'tier' => $a->tier, 'seat' => $a->seat,
-            'missing' => $this->agents->missing($a)];
+            'missing' => $this->agents->missing($a), 'scorecard' => $a->scorecard];
     }
 
     private function own(Request $request, string $agent): Agent

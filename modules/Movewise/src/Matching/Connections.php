@@ -33,6 +33,7 @@ use Modules\Movewise\Models\Person;
 use Modules\Movewise\Models\State;
 use Modules\Movewise\Notifications\IntroductionClosed;
 use Modules\Movewise\Notifications\IntroductionOffered;
+use Modules\Movewise\Outcomes\Outcomes;
 use Modules\Movewise\Program\Pricing;
 
 /**
@@ -167,7 +168,7 @@ final class Connections
     }
 
     /** The agent accepts: the charge (once), then the person goes into their CRM with the brief. */
-    public function accept(Connection $c, User $by): Connection
+    public function accept(Connection $c, User $by, bool $agreeReferral = false): Connection
     {
         $agent = $this->guardAgent($c, $by);
         if ($c->status !== 'offered') {
@@ -178,7 +179,16 @@ final class Connections
             throw ValidationException::withMessages(['introduction' => 'The time to accept has passed. The person has been asked to choose again.']);
         }
         $package = Package::query()->findOrFail($c->package_id);
-        $price = Pricing::upfront(State::query()->findOrFail($agent->state), $c->model, $c->lead_type);
+        $state = State::query()->findOrFail($agent->state);
+        $price = $c->model === 'connection' ? Pricing::upfront($state, 'connection', $c->lead_type) : 0; // per appointment: charged when held (MW6)
+        if ($c->model === 'share') {
+            // Share at close: the referral agreement is signed now, electronically, with the state's managing broker partner.
+            if (! $agreeReferral || $state->partner === null) {
+                throw ValidationException::withMessages(['introduction' => 'Tick to sign the referral agreement before accepting.']);
+            }
+            $pct = Pricing::for($state)['share_pct'];
+            $c->forceFill(['referral_agreement' => Outcomes::referralAgreement($agent, $state->partner, $pct), 'referral_signed_at' => CarbonImmutable::now(), 'share_pct' => $pct]);
+        }
         if ($price > 0) {
             try {
                 app(CreditLedger::class)->charge('movewise.connection', $package->payer === 'agent' ? $package->payer_user_id : null, $c->chargeKey(), $price);

@@ -17,6 +17,7 @@ type Partner = {
     address: string | null;
     iabs_url: string | null;
     contract_signed_on: string | null;
+    hq_share_pct: number;
     status: 'active' | 'inactive';
 };
 
@@ -40,6 +41,7 @@ const blank = {
     address: '',
     iabs_url: '',
     contract_signed_on: '',
+    hq_share_pct: '0',
     status: 'active',
 };
 
@@ -112,6 +114,10 @@ function PartnerForm({
             {field('address', 'Office address')}
             {field('iabs_url', 'Texas IABS form link (https://)')}
             {field('contract_signed_on', 'Partner contract signed on', 'date')}
+            {field(
+                'hq_share_pct',
+                "HQ's share of referral fees the partner collects (%)",
+            )}
             <label className="grid gap-1 text-sm">
                 Status
                 <select

@@ -117,7 +117,9 @@ final class AccountController
             $a = Agent::query()->find($c->agent_id);
             $agents[] = ['ulid' => $c->ulid, 'status' => $c->status, 'name' => (string) ($a->profile['display_name'] ?? ''), 'by' => $c->accept_by->setTimezone('America/Chicago')->format('g:i a T'),
                 'show' => DB::connection(Connections::control())->table('movewise_shows')->where('id', $c->show_id)->value('ulid'), 'waited' => $c->refund_reason === 'waited',
-                'paused_until' => $c->paused_until?->isFuture() ? $c->paused_until->toFormattedDateString() : null, 'relay' => $c->handed_over_at === null ? $c->relay_number : null];
+                'paused_until' => $c->paused_until?->isFuture() ? $c->paused_until->toFormattedDateString() : null, 'relay' => $c->handed_over_at === null ? $c->relay_number : null,
+                'ask_met' => $c->met_agent_at !== null && $c->met_person_at === null, 'can_rate' => $c->accepted_at !== null && ($c->accepted_at->lte(now()->subDays(7)) || $c->stage === 'closed'),
+                'rating' => $c->rating];
         }
 
         return response()->view('movewise::account', ['site' => $chrome, 'person' => $p, 'homes' => $homes,

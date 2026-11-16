@@ -19,8 +19,10 @@ use Modules\Movewise\Matching\Connections;
 use Modules\Movewise\Models\Agent;
 use Modules\Movewise\Models\Connection;
 use Modules\Movewise\Models\Package;
+use Modules\Movewise\Models\Partner;
 use Modules\Movewise\Models\SeatRequest;
 use Modules\Movewise\Models\State;
+use Modules\Movewise\Outcomes\Invoices;
 use Modules\Movewise\Program\Agents;
 use Modules\Movewise\Program\Pricing;
 use Modules\Movewise\Program\Seats;
@@ -43,7 +45,7 @@ final class HqProgramController
             'agents' => $agents->map(fn (Agent $a): array => ['ulid' => $a->ulid, 'account' => $tenants[$a->tenant_id] ?? '', 'state' => $a->state, 'licence_number' => $a->licence_number,
                 'licence_status' => $a->licence_status, 'brokerage_name' => $a->brokerage_name, 'brokerage_confirmed' => $a->brokerage_confirmed_at !== null, 'seat' => $a->seat,
                 'discipline_checked' => $a->discipline_checked_at !== null, 'profile' => $a->profile, 'profile_status' => $a->profile_status, 'review_note' => $a->review_note,
-                'terms_signed' => $a->terms_signed_at !== null, 'status' => $a->status, 'pause_reason' => $a->pause_reason, 'tier' => $a->tier, 'strikes' => $a->strikes,
+                'terms_signed' => $a->terms_signed_at !== null, 'status' => $a->status, 'pause_reason' => $a->pause_reason, 'tier' => $a->tier, 'strikes' => $a->strikes, 'scorecard' => $a->scorecard,
                 'missing' => $this->agents->missing($a)])->values()->all(),
             'refunds' => Connection::query()->where('refund_status', 'requested')->orderBy('id')->limit(100)->get()->map(fn (Connection $c): array => ['ulid' => $c->ulid,
                 'account' => Tenant::query()->whereKey($c->tenant_id)->value('name'), 'agent' => (string) (Agent::query()->find($c->agent_id)->profile['display_name'] ?? ''),
@@ -104,6 +106,74 @@ final class HqProgramController
     public function refund(Request $request, string $connection, Connections $connections): RedirectResponse
     {
         $connections->resolve(Connection::query()->where('ulid', $connection)->firstOrFail(), $request->boolean('approve'), self::user($request));
+
+        return back();
+    }
+
+    /** HQ → Movewise money (specs/movewise/06): revenue by state and model, referral invoices, partner settlements, quality. */
+    public function money(): Response
+    {
+        $db = DB::connection(ControlDb::control());
+        $since = now()->subDays(90);
+        $rows = Connection::query()->where('offered_at', '>=', $since)->get();
+        $agents = Agent::query()->whereIn('id', $rows->pluck('agent_id')->unique())->pluck('state', 'id');
+        $revenue = [];
+        foreach ($rows as $c) {
+            $key = ($agents[$c->agent_id] ?? '?').'|'.$c->model;
+            $revenue[$key] ??= ['state' => $agents[$c->agent_id] ?? '?', 'model' => $c->model, 'introductions' => 0, 'accepted' => 0, 'credits' => 0, 'refunded' => 0];
+            $revenue[$key]['introductions']++;
+            $revenue[$key]['accepted'] += $c->accepted_at !== null ? 1 : 0;
+            $revenue[$key]['credits'] += $c->refund_status === 'refunded' ? 0 : $c->price_credits;
+            $revenue[$key]['refunded'] += $c->refund_status === 'refunded' ? $c->price_credits : 0;
+        }
+        $partners = Partner::query()->pluck('name', 'id');
+
+        return Inertia::render('hq/movewise-money', [
+            'revenue' => array_values($revenue),
+            'quality' => ['accepted' => $rows->whereNotNull('accepted_at')->count(), 'stopped' => $rows->whereIn('status', ['stopped', 'changed', 'withdrawn'])->count(),
+                'rating' => $rows->whereNotNull('rating')->avg('rating'), 'ratings' => $rows->whereNotNull('rating')->count(),
+                'closed' => $rows->where('stage', 'closed')->count()],
+            'invoices' => $db->table('movewise_invoices')->orderByRaw("case status when 'issued' then 0 else 1 end")->orderByDesc('id')->limit(200)->get()
+                ->map(fn ($i): array => ['ulid' => (string) $i->ulid, 'number' => (string) $i->number, 'account' => Tenant::query()->whereKey($i->tenant_id)->value('name'),
+                    'partner' => $partners[$i->partner_id] ?? '', 'amount_cents' => (int) $i->amount_cents, 'share_pct' => (float) $i->share_pct, 'commission_cents' => (int) $i->commission_cents,
+                    'status' => (string) $i->status, 'due_on' => (string) $i->due_on, 'overdue' => $i->status === 'issued' && (string) $i->due_on < now()->toDateString()])->all(),
+            'settlements' => $db->table('movewise_settlements')->orderByDesc('period')->limit(100)->get()->map(fn ($s): array => ['id' => (int) $s->id, 'partner' => $partners[$s->partner_id] ?? '',
+                'period' => (string) $s->period, 'invoices' => (int) $s->invoices, 'collected_cents' => (int) $s->collected_cents, 'hq_pct' => (float) $s->hq_pct,
+                'hq_cents' => (int) $s->hq_cents, 'status' => (string) $s->status])->all(),
+        ]);
+    }
+
+    public function invoice(Request $request, string $invoice, Invoices $invoices): RedirectResponse
+    {
+        $invoices->mark($invoice, (string) $request->input('status'), self::user($request), $request->input('note'));
+
+        return back();
+    }
+
+    public function settlement(Request $request, int $settlement): RedirectResponse
+    {
+        DB::connection(ControlDb::control())->table('movewise_settlements')->where('id', $settlement)->where('status', 'open')
+            ->update(['status' => 'settled', 'settled_at' => now(), 'updated_at' => now()]);
+        app(AuditLogger::class)->record('movewise.settlement.settled', metadata: ['settlement' => $settlement, 'by' => self::user($request)->id]);
+
+        return back();
+    }
+
+    /** A strike for breaking the program rules; the third removes the agent (specs/movewise/00 §6.3). */
+    public function strike(Request $request, string $agent): RedirectResponse
+    {
+        $a = Agent::query()->where('ulid', $agent)->firstOrFail();
+        $reason = trim(mb_substr((string) $request->input('reason', ''), 0, 200));
+        if ($reason === '') {
+            throw ValidationException::withMessages(['reason' => 'Give the reason for the strike.']);
+        }
+        $a->forceFill(['strikes' => $a->strikes + 1])->save();
+        if ($a->strikes >= 3) {
+            $a->forceFill(['status' => 'removed', 'pause_reason' => 'Three strikes: '.$reason])->save();
+            Package::query()->where('agent_id', $a->id)->where('status', 'active')->update(['status' => 'paused', 'pause_reason' => 'Removed from Movewise']);
+        }
+        app(AuditLogger::class)->record('movewise.agent.strike', $a, metadata: ['reason' => $reason, 'strikes' => $a->strikes, 'by' => self::user($request)->id], severity: 'warning',
+            tenantId: $a->tenant_id);
 
         return back();
     }

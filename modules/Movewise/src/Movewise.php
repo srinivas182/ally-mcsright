@@ -114,7 +114,8 @@ final class Movewise
         $clean = fn (string $k, int $max): ?string => is_string($in[$k] ?? null) && trim($in[$k]) !== '' ? mb_substr(trim(strip_tags($in[$k])), 0, $max) : null;
         $data = ['name' => $clean('name', 160), 'broker_name' => $clean('broker_name', 120), 'licence_number' => $clean('licence_number', 40),
             'licence_state' => strtoupper((string) $clean('licence_state', 2)), 'phone' => $clean('phone', 30), 'email' => $clean('email', 150), 'address' => $clean('address', 200),
-            'iabs_url' => $clean('iabs_url', 500), 'contract_signed_on' => $clean('contract_signed_on', 10), 'status' => ($in['status'] ?? 'active') === 'inactive' ? 'inactive' : 'active'];
+            'iabs_url' => $clean('iabs_url', 500), 'contract_signed_on' => $clean('contract_signed_on', 10), 'status' => ($in['status'] ?? 'active') === 'inactive' ? 'inactive' : 'active',
+            'hq_share_pct' => max(0.0, min(100.0, round((float) ($in['hq_share_pct'] ?? 0), 2)))]; // HQ's share of the referral fees the partner collects (MW6)
         $errors = array_filter([
             'name' => $data['name'] === null ? 'Enter the brokerage\'s licensed name.' : null,
             'broker_name' => $data['broker_name'] === null ? 'Enter the managing broker\'s name.' : null,
