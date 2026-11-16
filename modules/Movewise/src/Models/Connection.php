@@ -51,6 +51,12 @@ use Modules\Core\Tenancy\Concerns\HasPublicUlid;
  * @property string|null $referral_agreement
  * @property CarbonImmutable|null $referral_signed_at
  * @property float|null $share_pct
+ * @property bool $review_public
+ * @property CarbonImmutable|null $reviewed_at
+ * @property string|null $review_reply
+ * @property CarbonImmutable|null $review_replied_at
+ * @property string|null $review_removed_reason
+ * @property int|null $review_removed_by
  */
 final class Connection extends Model
 {
@@ -74,6 +80,6 @@ final class Connection extends Model
     protected function casts(): array
     {
         return ['slot_at' => 'immutable_datetime', 'consent_at' => 'immutable_datetime', 'offered_at' => 'immutable_datetime', 'accept_by' => 'immutable_datetime',
-            'accepted_at' => 'immutable_datetime', 'closed_at' => 'immutable_datetime', 'paused_until' => 'immutable_datetime', 'stage_at' => 'immutable_datetime', 'reminded_at' => 'immutable_datetime', 'met_agent_at' => 'immutable_datetime', 'met_person_at' => 'immutable_datetime', 'referral_signed_at' => 'immutable_datetime', 'rating' => 'integer', 'share_pct' => 'float', 'handover_asked_at' => 'immutable_datetime', 'handed_over_at' => 'immutable_datetime', 'price_credits' => 'integer'];
+            'accepted_at' => 'immutable_datetime', 'closed_at' => 'immutable_datetime', 'paused_until' => 'immutable_datetime', 'stage_at' => 'immutable_datetime', 'reminded_at' => 'immutable_datetime', 'met_agent_at' => 'immutable_datetime', 'met_person_at' => 'immutable_datetime', 'referral_signed_at' => 'immutable_datetime', 'rating' => 'integer', 'share_pct' => 'float', 'review_public' => 'boolean', 'reviewed_at' => 'immutable_datetime', 'review_replied_at' => 'immutable_datetime', 'handover_asked_at' => 'immutable_datetime', 'handed_over_at' => 'immutable_datetime', 'price_credits' => 'integer'];
     }
 }

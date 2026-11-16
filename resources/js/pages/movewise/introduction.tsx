@@ -41,6 +41,12 @@ type Props = {
     referral: string | null;
     referral_signed: boolean;
     history: { stage: string; note: string | null; at: string }[];
+    review: {
+        rating: number;
+        text: string | null;
+        public: boolean;
+        reply: string | null;
+    } | null;
 };
 
 const HOW: Record<string, string> = {
@@ -69,6 +75,59 @@ function Countdown({ until }: { until: string }) {
             {h > 0 ? `${h}h ` : ''}
             {m}m {String(s).padStart(2, '0')}s
         </span>
+    );
+}
+
+function ReviewBox({
+    ulid,
+    review,
+}: {
+    ulid: string;
+    review: NonNullable<Props['review']>;
+}) {
+    const [reply, setReply] = useState('');
+
+    return (
+        <section className="grid gap-2 rounded-xl border p-3 text-sm">
+            <strong>
+                Their rating: {'★'.repeat(review.rating)}
+                {'☆'.repeat(5 - review.rating)}{' '}
+                {review.public ? '(on your Movewise profile)' : '(private)'}
+            </strong>
+            {review.text && <p>{review.text}</p>}
+            {review.reply ? (
+                <p className="rounded bg-muted p-2">
+                    Your reply: {review.reply}
+                </p>
+            ) : (
+                review.public && (
+                    <div className="grid gap-2">
+                        <textarea
+                            aria-label="Your public reply"
+                            className="min-h-16 rounded-md border bg-background p-2"
+                            maxLength={1000}
+                            value={reply}
+                            onChange={(e) => setReply(e.target.value)}
+                        />
+                        <div>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
+                                    router.post(
+                                        `/movewise/introductions/${ulid}`,
+                                        { action: 'reply', reply },
+                                        { preserveScroll: true },
+                                    )
+                                }
+                            >
+                                Reply publicly (once)
+                            </Button>
+                        </div>
+                    </div>
+                )
+            )}
+        </section>
     );
 }
 
@@ -322,6 +381,9 @@ export default function MovewiseIntroduction(props: Props) {
                             </div>
                         </form>
                     )}
+                {props.review && (
+                    <ReviewBox ulid={props.ulid} review={props.review} />
+                )}
                 {props.history.length > 0 && (
                     <ol className="grid gap-1 text-sm text-muted-foreground">
                         {props.history.map((h, i) => (

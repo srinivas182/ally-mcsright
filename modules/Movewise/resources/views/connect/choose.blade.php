@@ -40,7 +40,11 @@
                         </div>
                         <span class="small">{{ $t('connect.licence', ['n' => $c['licence']]) }} @if ($c['lookup'])· <a href="{{ $c['lookup'] }}" rel="noopener" target="_blank">{{ $t('connect.check_licence') }}</a>@endif</span>
                         <span class="small muted">{{ $t('connect.years', ['n' => $p['years'] ?? 0]) }} · {{ collect($p['languages'] ?? ['en'])->map(fn ($l) => $l === 'es' ? 'Español' : 'English')->join(', ') }}</span>
-                        <span class="small muted">{{ $t('connect.new_agent') }}</span>
+                        @if ($c['rating']['count'] > 0)
+                            <a class="small" href="{{ $c['profile_url'] }}" target="_blank">{{ str_repeat('★', (int) round((float) $c['rating']['average'])) }} {{ $t('agent.rating', ['avg' => $c['rating']['average'], 'n' => $c['rating']['count']]) }}</a>
+                        @else
+                            <span class="small muted">{{ $t('connect.new_agent') }}</span>
+                        @endif
                         <p itemprop="description" style="margin:0">{{ $p['bio'] ?? '' }}</p>
                         @if ($person->phone_verified_at !== null)
                             <form method="post" action="{{ $u('/connect/'.$show.'/choose') }}" style="display:grid;gap:8px">

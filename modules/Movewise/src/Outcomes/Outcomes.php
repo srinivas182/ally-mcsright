@@ -111,7 +111,7 @@ final class Outcomes
         return $c;
     }
 
-    public function rate(Connection $c, Person $p, int $stars, string $note): Connection
+    public function rate(Connection $c, Person $p, int $stars, string $note, bool $public = false): Connection
     {
         abort_unless($c->person_id === $p->id, 404);
         if ($c->accepted_at === null || ($c->accepted_at->gt(CarbonImmutable::now()->subDays(7)) && $c->stage !== 'closed')) {
@@ -120,7 +120,9 @@ final class Outcomes
         if ($stars < 1 || $stars > 5) {
             throw ValidationException::withMessages(['rating' => 'Choose 1 to 5 stars.']);
         }
-        $c->forceFill(['rating' => $stars, 'rating_note' => mb_substr(trim(strip_tags($note)), 0, 500) ?: null])->save();
+        // Phone numbers and emails are kept out of what might be published.
+        $note = (string) preg_replace(['/(?<!\d)(\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/', '/[^\s@]+@[^\s@]+\.[^\s@]+/'], '[removed]', trim(strip_tags($note)));
+        $c->forceFill(['rating' => $stars, 'rating_note' => mb_substr($note, 0, 500) ?: null, 'review_public' => $public, 'reviewed_at' => CarbonImmutable::now()])->save();
 
         return $c;
     }

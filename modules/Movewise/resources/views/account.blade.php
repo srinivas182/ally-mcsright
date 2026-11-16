@@ -32,6 +32,7 @@
                             <span>{{ $t('account.rate_q', ['name' => $a['name']]) }}</span>
                             <select name="rating" aria-label="{{ $t('account.rate_q', ['name' => $a['name']]) }}">@foreach ([5, 4, 3, 2, 1] as $s)<option value="{{ $s }}" @selected($a['rating'] === $s)>{{ str_repeat('★', $s) }}</option>@endforeach</select>
                             <input name="note" maxlength="500" placeholder="{{ $t('account.rate_note') }}" aria-label="{{ $t('account.rate_note') }}">
+                            <label style="font-weight:400"><input type="checkbox" name="public" value="1"> {{ $t('account.rate_public') }}</label>
                             <button class="save">{{ $t('save') }}</button>
                         </form>
                     @endif

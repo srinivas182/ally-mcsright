@@ -6,6 +6,7 @@ namespace Modules\Movewise\Console;
 
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
+use Modules\Movewise\Growth\AdBudget;
 use Modules\Movewise\Outcomes\Invoices;
 use Modules\Movewise\Outcomes\Outcomes as Service;
 use Modules\Movewise\Outcomes\Scorecards;
@@ -30,8 +31,9 @@ final class Outcomes extends Command
 
             return self::SUCCESS;
         }
+        $ads = app(AdBudget::class)->check();
         $r = $outcomes->sweep();
-        $this->info($r['reminded'].' reminded, '.$r['paused'].' paused, '.$r['fallback'].' moved to the per-connection price.');
+        $this->info($r['reminded'].' reminded, '.$r['paused'].' paused, '.$r['fallback'].' moved to the per-connection price; ads '.$ads.'.');
 
         return self::SUCCESS;
     }

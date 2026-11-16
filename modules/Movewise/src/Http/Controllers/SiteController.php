@@ -179,8 +179,19 @@ final class SiteController
                 return $this->view('movewise::missing', ['site' => $site], 404);
             }
             $sources = app(MlsAccess::class)->licensedSources($tenant->id);
+            $slug = (string) (collect($site['states'])->firstWhere('code', $code)['slug'] ?? strtolower($code));
+            // City and ZIP pages (MW7), in both languages.
+            $places = DB::connection(Connections::listings())->table('listings')->whereIn('mls_source_id', $sources)->where('state_or_province', $code)
+                ->where('internet_display_allowed', true)->whereNull('off_market_at')->whereIn('standard_status', ['Active', 'Coming Soon']);
+            foreach ((clone $places)->whereNotNull('city')->distinct()->pluck('city') as $city) {
+                $urls[] = [$site['base'].'/'.$slug.'/'.Str::slug((string) $city), null];
+                $urls[] = [$site['base'].'/es/'.$slug.'/'.Str::slug((string) $city), null];
+            }
+            foreach ((clone $places)->whereNotNull('postal_code')->selectRaw('distinct substr(postal_code, 1, 5) as zip')->pluck('zip') as $zip) {
+                $urls[] = [$site['base'].'/'.$slug.'/'.$zip, null];
+            }
             foreach (Listing::query()->whereIn('mls_source_id', $sources)->where('state_or_province', $code)->where('internet_display_allowed', true)->whereNull('off_market_at')
-                ->whereIn('standard_status', ['Active', 'Coming Soon'])->orderByDesc('id')->limit(50_000)->get(['ulid', 'street_number', 'street_name', 'unit_number', 'city', 'state_or_province',
+                ->whereIn('standard_status', ['Active', 'Coming Soon'])->orderByDesc('id')->limit(45_000)->get(['ulid', 'street_number', 'street_name', 'unit_number', 'city', 'state_or_province',
                     'postal_code', 'address_display_allowed', 'modification_timestamp']) as $l) {
                 $label = trim(($l->address_display_allowed ? $l->address().' ' : '').$l->city.' '.$l->state_or_province.' '.$l->postal_code);
                 $urls[] = [$site['base'].'/homes/'.$l->ulid.'/'.Str::slug(mb_substr($label, 0, 120)), $l->modification_timestamp !== null ? CarbonImmutable::parse((string) $l->modification_timestamp)->toAtomString() : null];
