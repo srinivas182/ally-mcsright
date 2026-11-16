@@ -14,5 +14,5 @@ interface VoiceCaller
      * Reads the message and asks the person to press 1; when they do, Twilio fetches TwiML from $onPress
      * (which connects them to someone). Voicemail cannot press 1, so a missed call never connects anyone.
      */
-    public function connect(string $to, string $message, string $onPress): string;
+    public function connect(string $to, string $message, string $onPress, string $voice = 'Polly.Joanna'): string;
 }

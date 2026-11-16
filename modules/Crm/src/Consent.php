@@ -104,6 +104,18 @@ final class Consent
             && $this->proof($contact) !== null;
     }
 
+    /**
+     * Automated or AI voice calls (LQ1): the FCC treats AI-generated voices as "artificial" voices under the TCPA, so
+     * these need prior express written consent that covers calls. Allowed only with written consent on record whose
+     * wording mentions calls, no opt-out since, and not on Do Not Call.
+     */
+    public function canAutoCall(Contact $contact): bool
+    {
+        $proof = $this->canAutoText($contact) ? $this->proof($contact) : null;
+
+        return $this->canCall($contact) && $proof !== null && stripos((string) $proof->consent_text, 'call') !== false;
+    }
+
     /** The opt-in that allows texting now (the latest one, after any opt-out), or null when there is no proof. */
     public function proof(Contact $contact): ?ConsentEvent
     {

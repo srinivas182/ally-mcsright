@@ -45,7 +45,8 @@ final class AiResponder
     public function __construct(private readonly TenantContext $tenants, private readonly Timeline $timeline) {}
 
     /**
-     * @return array{enabled: bool, nurture_enabled: bool, assistant_name: string, tone: string, max_messages: int, sources: list<string>|null, knowledge: string}
+     * @return array{enabled: bool, nurture_enabled: bool, assistant_name: string, tone: string, max_messages: int, sources: list<string>|null, knowledge: string,
+     *     voice_enabled: bool, voice: string, voice_language: string, brand_name: string, voice_monthly_cap: int}
      */
     public function settings(): array
     {
@@ -53,7 +54,10 @@ final class AiResponder
 
         return ['enabled' => (bool) ($r->enabled ?? false), 'nurture_enabled' => (bool) ($r->nurture_enabled ?? false), 'assistant_name' => (string) ($r->assistant_name ?? 'Ally'), 'tone' => (string) ($r->tone ?? 'friendly'),
             'max_messages' => (int) ($r->max_messages ?? 6), 'sources' => isset($r->sources) ? array_values((array) json_decode((string) $r->sources, true)) : null,
-            'knowledge' => (string) ($r->knowledge ?? '')];
+            'knowledge' => (string) ($r->knowledge ?? ''),
+            // LQ1: calls in the brokerage's own name (specs/grow/14).
+            'voice_enabled' => (bool) ($r->voice_enabled ?? false), 'voice' => (string) ($r->voice ?? 'female'), 'voice_language' => (string) ($r->voice_language ?? 'both'),
+            'brand_name' => (string) (($r->brand_name ?? null) ?: $this->tenants->current()->name), 'voice_monthly_cap' => (int) ($r->voice_monthly_cap ?? 200)];
     }
 
     /**
@@ -79,6 +83,14 @@ final class AiResponder
         } elseif (($flags = FairHousing::screen($knowledge, 'ai_content', 'blocked', 'AI assistant brokerage facts')) !== []) {
             $errors['knowledge'] = 'Fair Housing: reword "'.implode('", "', $flags).'".';
         }
+        $brand = trim(strip_tags((string) ($in['brand_name'] ?? '')));
+        if (mb_strlen($brand) > 80) {
+            $errors['brand_name'] = 'Keep the brokerage name under 80 characters.';
+        }
+        $cap = (int) ($in['voice_monthly_cap'] ?? 200);
+        if ($cap < 0 || $cap > 10000) {
+            $errors['voice_monthly_cap'] = 'Allow between 0 and 10,000 calls a month.';
+        }
         $sources = isset($in['sources']) && is_array($in['sources']) ? array_values(array_intersect(array_map('strval', $in['sources']), LeadSource::query()->pluck('ulid')->all())) : null;
         if ($errors !== []) {
             throw ValidationException::withMessages($errors);
@@ -86,9 +98,12 @@ final class AiResponder
         DB::connection(Connections::cell())->table('crm_ai_responder_settings')->updateOrInsert(['tenant_id' => $this->tenants->id()], [
             'enabled' => (bool) ($in['enabled'] ?? false), 'nurture_enabled' => (bool) ($in['nurture_enabled'] ?? false), 'assistant_name' => $name, 'tone' => ($in['tone'] ?? '') === 'professional' ? 'professional' : 'friendly',
             'max_messages' => $max, 'sources' => $sources !== null ? json_encode($sources) : null, 'knowledge' => $knowledge !== '' ? $knowledge : null,
+            'voice_enabled' => (bool) ($in['voice_enabled'] ?? false), 'voice' => ($in['voice'] ?? '') === 'male' ? 'male' : 'female',
+            'voice_language' => in_array($in['voice_language'] ?? '', ['en', 'es', 'both'], true) ? $in['voice_language'] : 'both',
+            'brand_name' => $brand !== '' && $brand !== $this->tenants->current()->name ? $brand : null, 'voice_monthly_cap' => $cap,
             'updated_at' => now(), 'created_at' => now(),
         ]);
-        app(AuditLogger::class)->record('crm.ai_responder.saved', metadata: ['enabled' => (bool) ($in['enabled'] ?? false), 'nurture' => (bool) ($in['nurture_enabled'] ?? false), 'max_messages' => $max], severity: 'notice');
+        app(AuditLogger::class)->record('crm.ai_responder.saved', metadata: ['enabled' => (bool) ($in['enabled'] ?? false), 'nurture' => (bool) ($in['nurture_enabled'] ?? false), 'max_messages' => $max, 'voice' => (bool) ($in['voice_enabled'] ?? false), 'voice_monthly_cap' => $cap], severity: 'notice');
     }
 
     /**
@@ -103,11 +118,18 @@ final class AiResponder
     {
         $s = $this->settings();
         $contact = $lead->contact;
-        if (($handoff['skip'] ?? false) || ! $s['enabled'] || $contact === null || ! $lead->new_contact || $lead->status === 'pond' || $lead->source === 'sign') {
+        if (($handoff['skip'] ?? false) || (! $s['enabled'] && ! $s['voice_enabled']) || $contact === null || ! $lead->new_contact || $lead->status === 'pond' || $lead->source === 'sign') {
             return; // returning contacts have a relationship with their agent: a person answers
         }
         $source = $lead->source_id !== null ? LeadSource::query()->find($lead->source_id) : null;
         if ($s['sources'] !== null && ($source === null || ! in_array($source->ulid, $s['sources'], true))) {
+            return;
+        }
+        // LQ1: a call within a minute, only with written consent to automated calls (specs/grow/14).
+        if ($s['voice_enabled']) {
+            app(AiCaller::class)->queue($lead);
+        }
+        if (! $s['enabled']) {
             return;
         }
         $name = mb_substr(trim(strip_tags((string) ($handoff['assistant'] ?? ''))), 0, 40);

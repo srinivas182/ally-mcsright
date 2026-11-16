@@ -14,7 +14,7 @@ final class LogVoiceCaller implements VoiceCaller
         return '';
     }
 
-    public function connect(string $to, string $message, string $onPress): string
+    public function connect(string $to, string $message, string $onPress, string $voice = 'Polly.Joanna'): string
     {
         return $this->call($to, $message);
     }

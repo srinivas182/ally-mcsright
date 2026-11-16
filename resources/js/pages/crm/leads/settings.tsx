@@ -52,6 +52,18 @@ type Props = {
         max_messages: number;
         sources: string[] | null;
         knowledge: string;
+        voice_enabled: boolean;
+        voice: string;
+        voice_language: string;
+        brand_name: string;
+        voice_monthly_cap: number;
+    };
+    aiCalls?: {
+        made: number;
+        transferred: number;
+        booked: number;
+        skipped: number;
+        cap: number;
     };
 };
 
@@ -77,6 +89,7 @@ export default function LeadSettings({
     channels,
     newKey,
     ai,
+    aiCalls,
 }: Props) {
     const assistant = useForm({ ...ai, sources: ai.sources ?? null });
     const opts = { preserveScroll: true };
@@ -512,6 +525,105 @@ export default function LeadSettings({
                                 }
                             />
                         </label>
+                        <fieldset className="grid gap-2 rounded border p-3">
+                            <legend className="px-1 font-medium">
+                                Calls within a minute
+                            </legend>
+                            <label className="flex items-start gap-2">
+                                <input
+                                    type="checkbox"
+                                    className="mt-0.5 size-4"
+                                    checked={assistant.data.voice_enabled}
+                                    onChange={(e) =>
+                                        assistant.setData(
+                                            'voice_enabled',
+                                            e.target.checked,
+                                        )
+                                    }
+                                />
+                                Call new leads in your brokerage's name. The
+                                assistant says it is an AI and offers: talk to
+                                an agent now (it rings your agents), a link to
+                                pick a time, or no more calls. It calls only
+                                people who agreed in writing to automated calls,
+                                8am–9pm their time.
+                            </label>
+                            <div className="flex flex-wrap gap-3">
+                                <label className="grid gap-1">
+                                    Your brokerage, as the assistant says it
+                                    <Input
+                                        className="w-56"
+                                        value={assistant.data.brand_name}
+                                        onChange={(e) =>
+                                            assistant.setData(
+                                                'brand_name',
+                                                e.target.value,
+                                            )
+                                        }
+                                    />
+                                </label>
+                                <label className="grid gap-1">
+                                    Voice
+                                    <select
+                                        className="rounded border bg-background px-2 py-1.5"
+                                        value={assistant.data.voice}
+                                        onChange={(e) =>
+                                            assistant.setData(
+                                                'voice',
+                                                e.target.value,
+                                            )
+                                        }
+                                    >
+                                        <option value="female">Female</option>
+                                        <option value="male">Male</option>
+                                    </select>
+                                </label>
+                                <label className="grid gap-1">
+                                    Language
+                                    <select
+                                        className="rounded border bg-background px-2 py-1.5"
+                                        value={assistant.data.voice_language}
+                                        onChange={(e) =>
+                                            assistant.setData(
+                                                'voice_language',
+                                                e.target.value,
+                                            )
+                                        }
+                                    >
+                                        <option value="both">
+                                            English, press 3 for Spanish
+                                        </option>
+                                        <option value="en">English</option>
+                                        <option value="es">Spanish</option>
+                                    </select>
+                                </label>
+                                <label className="grid gap-1">
+                                    Most calls a month
+                                    <Input
+                                        type="number"
+                                        min={0}
+                                        max={10000}
+                                        className="w-28"
+                                        value={assistant.data.voice_monthly_cap}
+                                        onChange={(e) =>
+                                            assistant.setData(
+                                                'voice_monthly_cap',
+                                                Number(e.target.value),
+                                            )
+                                        }
+                                    />
+                                </label>
+                            </div>
+                            {aiCalls && (
+                                <p className="text-muted-foreground">
+                                    This month: {aiCalls.made} of {aiCalls.cap}{' '}
+                                    calls · {aiCalls.transferred} put through to
+                                    an agent · {aiCalls.booked} booked a time ·{' '}
+                                    {aiCalls.skipped} not called (no consent, Do
+                                    Not Call or limit)
+                                </p>
+                            )}
+                        </fieldset>
                         <Button
                             className="justify-self-start"
                             disabled={assistant.processing}

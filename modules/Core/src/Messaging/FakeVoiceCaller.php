@@ -20,9 +20,9 @@ final class FakeVoiceCaller implements VoiceCaller
     /** @var list<array{to: string, message: string, on_press: string}> */
     public array $connects = [];
 
-    public function connect(string $to, string $message, string $onPress): string
+    public function connect(string $to, string $message, string $onPress, string $voice = 'Polly.Joanna'): string
     {
-        $this->connects[] = ['to' => $to, 'message' => $message, 'on_press' => $onPress];
+        $this->connects[] = ['to' => $to, 'message' => $message, 'on_press' => $onPress, 'voice' => $voice];
 
         return 'CA'.str_pad((string) (count($this->calls) + count($this->connects)), 32, '0', STR_PAD_LEFT);
     }

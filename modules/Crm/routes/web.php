@@ -15,6 +15,7 @@ use Modules\Crm\Http\Controllers\FairHousingController;
 use Modules\Crm\Http\Controllers\GhlCampaignsController;
 use Modules\Crm\Http\Controllers\Inbox\InboxController;
 use Modules\Crm\Http\Controllers\Inbox\TwilioSmsController;
+use Modules\Crm\Http\Controllers\Leads\AiCallController;
 use Modules\Crm\Http\Controllers\Leads\InboundEmailController;
 use Modules\Crm\Http\Controllers\Leads\LeadApiController;
 use Modules\Crm\Http\Controllers\Leads\LeadConnectController;
@@ -144,6 +145,13 @@ Route::middleware(['tenant', EnsureTenantWorkspace::class, 'throttle:60,1,lead-f
 Route::middleware(['tenant', EnsureTenantWorkspace::class, 'throttle:10,1,lead-form'])->post('l/{token}', [LeadFormController::class, 'store'])->where('token', '[A-Za-z0-9]{40}')->name('crm.leads.form.store');
 Route::middleware(['tenant', EnsureTenantWorkspace::class, 'throttle:60,1,lead-connect'])->post('webhooks/leads/connect/{lead}/{agent}', LeadConnectController::class)
     ->where('agent', '[0-9]+')->name('crm.leads.connect');
+// Lead-IQ calls (LQ1): Twilio's keypad steps, and the page to pick a time (signed links; no session).
+Route::middleware(['tenant', EnsureTenantWorkspace::class, 'throttle:120,1,ai-call'])->post('webhooks/leads/ai-call/{call}/{step}', [AiCallController::class, 'step'])
+    ->where(['call' => '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}', 'step' => 'menu(-es)?|(whisper|accept|next)-[0-9](-es)?'])->name('crm.leads.ai-call');
+Route::middleware(['web', EnsureTenantWorkspace::class, 'throttle:30,1,ai-book'])->group(function (): void {
+    Route::get('book/{call}', [AiCallController::class, 'book'])->where('call', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('crm.leads.book');
+    Route::post('book/{call}', [AiCallController::class, 'confirm'])->where('call', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('crm.leads.book.confirm');
+});
 Route::middleware('throttle:600,1,inbound-email')->post('webhooks/inbound/lead-email', InboundEmailController::class)->name('crm.leads.inbound');
 
 // Unified inbox (specs/grow/05, Sprint 16A-2).

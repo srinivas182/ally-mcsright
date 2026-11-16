@@ -26,9 +26,9 @@ final class MeteredVoiceCaller implements VoiceCaller
         return $sid;
     }
 
-    public function connect(string $to, string $message, string $onPress): string
+    public function connect(string $to, string $message, string $onPress, string $voice = 'Polly.Joanna'): string
     {
-        $sid = $this->inner->connect($to, $message, $onPress);
+        $sid = $this->inner->connect($to, $message, $onPress, $voice);
         $this->count($sid, self::spokenMinutes($message, 2));
 
         return $sid;

@@ -17,6 +17,7 @@ use Modules\Core\Leads\VisitorJourneys;
 use Modules\Crm\ContactVisibility;
 use Modules\Crm\CrmAccess;
 use Modules\Crm\Enums\Source;
+use Modules\Crm\Leads\AiCaller;
 use Modules\Crm\Leads\AiResponder;
 use Modules\Crm\Leads\Attribution;
 use Modules\Crm\Leads\LeadReports;
@@ -153,6 +154,7 @@ final class LeadController
             'channels' => Attribution::CHANNELS,
             'newKey' => $request->session()->get('lead_key'),
             'ai' => app(AiResponder::class)->settings(),
+            'aiCalls' => app(AiCaller::class)->month(),
         ]);
     }
 
@@ -166,7 +168,7 @@ final class LeadController
 
     public function saveAi(Request $request, AiResponder $ai): RedirectResponse
     {
-        $ai->saveSettings($request->only(['enabled', 'nurture_enabled', 'assistant_name', 'tone', 'max_messages', 'sources', 'knowledge']), self::user($request));
+        $ai->saveSettings($request->only(['enabled', 'nurture_enabled', 'assistant_name', 'tone', 'max_messages', 'sources', 'knowledge', 'voice_enabled', 'voice', 'voice_language', 'brand_name', 'voice_monthly_cap']), self::user($request));
         Inertia::flash('toast', ['type' => 'success', 'message' => 'AI assistant saved.']);
 
         return back();
