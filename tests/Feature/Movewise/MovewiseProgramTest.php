@@ -115,8 +115,8 @@ it('sets up an agent package and lets it go live only when the agent is live and
     $this->actingAs($this->ann)->post('/movewise/packages', $pkg(['zips' => '', 'cities' => '']))->assertSessionHasErrors('areas');
     $this->actingAs($this->ann)->post('/movewise/packages', $pkg())->assertSessionHasNoErrors();
     $p = Package::query()->sole();
-    expect($p->areas)->toBe(['zips' => ['77001', '77002'], 'cities' => ['Houston', 'Katy']])->and($p->daily_cap)->toBe(5)->and($p->payer)->toBe('agent')
-        ->and($p->payer_user_id)->toBe($this->ann->id)->and($p->hours['days'])->toBe(['1' => ['08:00', '19:00'], '6' => ['09:00', '13:00']]);
+    expect($p->areas)->toEqual(['zips' => ['77001', '77002'], 'cities' => ['Houston', 'Katy']])->and($p->daily_cap)->toBe(5)->and($p->payer)->toBe('agent')
+        ->and($p->payer_user_id)->toBe($this->ann->id)->and($p->hours['days'])->toEqual(['1' => ['08:00', '19:00'], '6' => ['09:00', '13:00']]);
 
     $this->actingAs($this->ann)->post('/movewise/packages/'.$p->ulid.'/activate')->assertSessionHasErrors('package');
     $this->actingAs($this->ann)->get('/movewise')->assertInertia(fn (Assert $page) => $page->component('movewise/program')
