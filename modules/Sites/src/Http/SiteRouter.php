@@ -14,6 +14,7 @@ use Modules\Sites\Http\Controllers\AillyController;
 use Modules\Sites\Http\Controllers\BlogController;
 use Modules\Sites\Http\Controllers\FunnelController;
 use Modules\Sites\Http\Controllers\IdxController;
+use Modules\Sites\Http\Controllers\PrivacyController;
 use Modules\Sites\Http\Controllers\SiteController;
 use Modules\Sites\Http\Controllers\ValuationController;
 use Modules\Sites\Http\Controllers\VisitorController;
@@ -39,6 +40,7 @@ final class SiteRouter
         $r->get('homes', [IdxController::class, 'search']);
         $r->get('homes/compare', [IdxController::class, 'compare']);
         $r->get('home-value', [ValuationController::class, 'show']);
+        $r->get('privacy', [PrivacyController::class, 'show']);
         $r->post('_valuation', [ValuationController::class, 'submit']);
         $r->get('go/{slug}', [FunnelController::class, 'show'])->where('slug', '[a-z0-9-]{1,80}');
         $r->post('_funnel/{slug}', [FunnelController::class, 'submit'])->where('slug', '[a-z0-9-]{1,80}');

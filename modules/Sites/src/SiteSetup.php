@@ -219,7 +219,8 @@ final class SiteSetup
 
         return ['name' => $t('name', 120), 'tagline' => $t('tagline', 200), 'about' => $t('about', 3000), 'area' => $t('area', 120), 'phone' => $t('phone', 30),
             'email' => filter_var($email, FILTER_VALIDATE_EMAIL) !== false ? $email : '', 'street' => $t('street', 150), 'city' => $t('city', 80),
-            'state' => strtoupper($t('state', 2)), 'zip' => $t('zip', 10), 'licence' => $t('licence', 60), 'social' => $social];
+            'state' => strtoupper($t('state', 2)), 'zip' => $t('zip', 10), 'licence' => $t('licence', 60), 'social' => $social,
+            'privacy' => $t('privacy', 20000)]; // the owner's own privacy policy (plain text), replacing the standard one at /privacy
     }
 
     private static function guard(User $by): void

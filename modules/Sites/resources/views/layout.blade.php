@@ -84,7 +84,7 @@
         <div class="footer-legal">
             <p class="eho"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2 1 11h3v11h16V11h3L12 2zm-5 12h10v2H7v-2zm0 4h10v2H7v-2z"/></svg> Equal Housing Opportunity</p>
             @foreach ($chrome['disclaimers'] as $d)<p class="disclaimer">{{ $d }}</p>@endforeach
-            <p class="privacy">We keep a note of the homes you view here so our agents can help you better. No third-party trackers; your browser's Global Privacy Control is honored.</p>
+            <p class="privacy">We keep a note of the homes you view here so our agents can help you better. No third-party trackers; your browser's Global Privacy Control is honored. <a href="/privacy">Privacy policy</a></p>
             <p>&copy; {{ $chrome['year'] }} {{ $site->displayName() }}</p>
             @if ($chrome['powered'])<p class="powered"><a href="{{ $chrome['powered']['url'] }}" rel="noopener" target="_blank">{{ $chrome['powered']['text'] }}</a></p>@endif
         </div>

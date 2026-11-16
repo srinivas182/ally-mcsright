@@ -77,7 +77,7 @@ final class AdsController
             'creatives' => $home === null ? null : $this->ads->creatives($user, (string) $home['ulid']),
             'chosen' => ['studio_design' => (string) $request->query('design', ''), 'studio_video' => (string) $request->query('reel', ''), 'post' => (string) $request->query('post', '')],
             'form_pages' => $this->ads->formPages(),
-            'privacy_url' => Campaign::query()->where('user_id', $user->id)->whereNotNull('privacy_url')->latest('id')->value('privacy_url'),
+            'privacy_url' => Campaign::query()->where('user_id', $user->id)->whereNotNull('privacy_url')->latest('id')->value('privacy_url') ?? $this->ads->privacyUrl(),
             'limits' => ['min_daily' => ListingAds::MIN_DAILY_CENTS / 100, 'max_daily' => ListingAds::MAX_DAILY_CENTS / 100, 'max_days' => ListingAds::MAX_DAYS, 'min_radius' => 15],
         ]);
     }

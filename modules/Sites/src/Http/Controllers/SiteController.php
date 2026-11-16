@@ -96,6 +96,7 @@ final class SiteController
             $tenantId = $this->tenants->id();
             $places = app(MarketStats::class)->places($tenantId);
             $urls[] = '<url><loc>'.e($base.'/homes').'</loc></url>';
+            $urls[] = '<url><loc>'.e($base.'/privacy').'</loc></url>';
             $agents = app(AgentSiteController::class)->live();
             if ($agents !== []) {
                 $urls[] = '<url><loc>'.e($base.'/agents').'</loc></url>';

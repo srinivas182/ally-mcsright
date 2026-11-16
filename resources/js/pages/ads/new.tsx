@@ -120,10 +120,10 @@ export default function NewAd({
             goal: kind === 'post' ? 'website' : d.goal,
         }));
     };
+    // Boost forms are on RightAlly's Page and their leads come straight to this CRM (specs/ads/04).
     const canForm =
-        form.data.pay !== 'boost' &&
         madeOf.split(':')[0] !== 'post' &&
-        form_pages.includes(form.data.page);
+        (form.data.pay === 'boost' || form_pages.includes(form.data.page));
     const options: { key: string; label: string; image: string | null }[] = [
         {
             key: 'photo',
@@ -374,9 +374,9 @@ export default function NewAd({
                                 </label>
                                 {!canForm && (
                                     <span className="text-sm text-muted-foreground">
-                                        Instant forms need your own Meta ad
-                                        account and Facebook Lead Ads connected
-                                        for this Page (Apps).
+                                        Instant forms need Facebook Lead Ads
+                                        connected for this Page (Apps), or pay
+                                        with RightAlly credits.
                                     </span>
                                 )}
                                 {form.data.goal === 'form' && (
