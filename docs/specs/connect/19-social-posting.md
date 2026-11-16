@@ -30,6 +30,19 @@ Three one-click apps replace the "Social posting" roadmap tile:
 - The assistant can do the same: "post my new listing to Facebook and LinkedIn tomorrow at 9" shows a preview
   card and posts after **Do it** (skill `social_post`).
 
+## Carousels (SA1f)
+
+A post can carry 2 to 10 images, in order (an Ally Studio listing design is a carousel: cover, photos, details).
+
+- **Facebook Page:** each image is uploaded unpublished (`/{page}/photos`, `published=false`), then one feed post
+  attaches them in order (`attached_media`); the link goes in the words.
+- **Instagram:** one item container per image (`is_carousel_item=true`), a `CAROUSEL` container with the caption,
+  then `media_publish` (Instagram's limit: 10).
+- **LinkedIn profile:** each image goes through the Images API (`initializeUpload`, then the upload), then a
+  `multiImage` post (2 to 20); the link goes in the words.
+- **Google Business Profile:** the cover only (local posts carry one photo).
+- The post page shows the carousel in order with "Post the cover only"; Autopilot posts designs as carousels.
+
 ## Rules
 
 - **Fair Housing:** the text passes the Fair Housing check (channel `ads`); flagged wording is refused with the

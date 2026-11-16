@@ -22,6 +22,7 @@ use Modules\Core\Tenancy\Concerns\HasPublicUlid;
  * @property string $text
  * @property string|null $link
  * @property string|null $image_url
+ * @property list<string>|null $images
  * @property string $status
  * @property CarbonImmutable $post_at
  * @property CarbonImmutable|null $posted_at
@@ -34,7 +35,7 @@ final class SocialPost extends Model
 
     protected $table = 'ads_social_posts';
 
-    protected $fillable = ['user_id', 'listing_ulid', 'text', 'link', 'image_url', 'status', 'post_at'];
+    protected $fillable = ['user_id', 'listing_ulid', 'text', 'link', 'image_url', 'images', 'status', 'post_at'];
 
     public function getConnectionName(): ?string
     {
@@ -49,6 +50,6 @@ final class SocialPost extends Model
 
     protected function casts(): array
     {
-        return ['post_at' => 'immutable_datetime', 'posted_at' => 'immutable_datetime'];
+        return ['post_at' => 'immutable_datetime', 'posted_at' => 'immutable_datetime', 'images' => 'array'];
     }
 }

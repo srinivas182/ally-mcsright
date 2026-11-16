@@ -83,7 +83,23 @@ final class FacebookPages implements Connector, SocialChannel
         }
         $token = $this->pageToken($connection, $target);
         $http = Http::asForm()->timeout(30);
-        if ($content['link'] === null && $content['image'] !== null) {
+        if (count($content['images']) >= 2) {
+            // A multi-photo post: each photo uploaded unpublished, then one feed post that attaches them in order.
+            $attached = [];
+            foreach ($content['images'] as $url) {
+                $p = $http->post(MetaApi::GRAPH.$target.'/photos', ['url' => $url, 'published' => 'false', 'access_token' => $token]);
+                if (! $p->successful() || ! is_string($p->json('id'))) {
+                    throw PostFailed::from($p, 'Facebook');
+                }
+                $attached[] = (string) json_encode(['media_fbid' => (string) $p->json('id')]);
+            }
+            $form = ['message' => $content['text'].($content['link'] !== null ? "\n\n".$content['link'] : ''), 'access_token' => $token];
+            foreach ($attached as $i => $a) {
+                $form['attached_media['.$i.']'] = $a;
+            }
+            $r = $http->post(MetaApi::GRAPH.$target.'/feed', $form);
+            $id = (string) ($r->json('id') ?? '');
+        } elseif ($content['link'] === null && $content['image'] !== null) {
             $r = $http->post(MetaApi::GRAPH.$target.'/photos', ['url' => $content['image'], 'caption' => $content['text'], 'access_token' => $token]);
             $id = (string) ($r->json('post_id') ?? $r->json('id') ?? '');
         } else {
@@ -98,7 +114,7 @@ final class FacebookPages implements Connector, SocialChannel
     }
 
     /**
-     * @param  array{text: string, link: string|null, image: string|null, title: string}  $content
+     * @param  array{text: string, link: string|null, image: string|null, images: list<string>, title: string}  $content
      * @return array{id: string, url: string|null}
      */
     private function instagram(ConnectionData $connection, string $account, array $content): array
@@ -115,7 +131,21 @@ final class FacebookPages implements Connector, SocialChannel
         $token = $this->pageToken($connection, $page);
         // Instagram captions can't hold links, so the link is written out.
         $caption = mb_substr($content['text'].($content['link'] !== null ? "\n\n".$content['link'] : ''), 0, 2200);
-        $made = Http::asForm()->timeout(60)->post(MetaApi::GRAPH.$account.'/media', ['image_url' => $content['image'], 'caption' => $caption, 'access_token' => $token]);
+        if (count($content['images']) >= 2) {
+            // A carousel: one item container per image (up to 10), then the carousel container with the caption.
+            $children = [];
+            foreach (array_slice($content['images'], 0, 10) as $url) {
+                $item = Http::asForm()->timeout(60)->post(MetaApi::GRAPH.$account.'/media', ['image_url' => $url, 'is_carousel_item' => 'true', 'access_token' => $token]);
+                if (! $item->successful() || ! is_string($item->json('id'))) {
+                    throw PostFailed::from($item, 'Instagram');
+                }
+                $children[] = (string) $item->json('id');
+            }
+            $made = Http::asForm()->timeout(60)->post(MetaApi::GRAPH.$account.'/media', ['media_type' => 'CAROUSEL', 'children' => implode(',', $children),
+                'caption' => $caption, 'access_token' => $token]);
+        } else {
+            $made = Http::asForm()->timeout(60)->post(MetaApi::GRAPH.$account.'/media', ['image_url' => $content['image'], 'caption' => $caption, 'access_token' => $token]);
+        }
         if (! $made->successful() || ! is_string($made->json('id'))) {
             throw PostFailed::from($made, 'Instagram');
         }
