@@ -178,7 +178,7 @@ it('runs an instant-form Boost ad on RightAlly\'s Page and hands each lead only 
         'graph.facebook.com/v21.0/act_999/campaigns' => Http::response(['id' => 'c1']), 'graph.facebook.com/v21.0/act_999/adsets' => Http::response(['id' => 's1']),
         'graph.facebook.com/v21.0/888?*' => Http::response(['access_token' => 'boost-page-tok']),
         'graph.facebook.com/v21.0/888/leadgen_forms' => Http::response(['id' => '4401']),
-        'graph.facebook.com/v21.0/888/subscribed_apps' => Http::response(['success' => true]),
+        'graph.facebook.com/v21.0/888/subscribed_apps*' => Http::response(['success' => true]),
         'graph.facebook.com/v21.0/act_999/adcreatives' => Http::response(['id' => 'cr1']), 'graph.facebook.com/v21.0/act_999/ads' => Http::response(['id' => 'a1']),
         'graph.facebook.com/v21.0/c1' => Http::response(['success' => true]),
         'graph.facebook.com/v21.0/5501?*' => Http::response(['field_data' => [['name' => 'full_name', 'values' => ['Rosa Diaz']], ['name' => 'email', 'values' => ['rosa@x.test']],

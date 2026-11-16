@@ -7,18 +7,39 @@ namespace Modules\Ads\Social;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Sleep;
 use Modules\Ads\Meta\MetaApi;
+use Modules\Ads\Studio\Replies\StudioReplies;
 use Modules\Core\Connect\ConnectionData;
-use Modules\Core\Connect\Connector;
 use Modules\Core\Connect\ConnectorKit;
 use Modules\Core\Connect\NeedsReconnect;
+use Modules\Core\Connect\ReceivesWebhooks;
 
 /**
  * Facebook Pages and Instagram (specs/connect/19): one Meta sign-in (the Facebook Lead Ads app). Once a day the
  * person's Pages, their Page tokens (kept encrypted) and the Instagram business accounts linked to them are read.
  * Posts go to a Page's feed (with the link as a preview, or a photo) and to Instagram (container, then publish).
  */
-final class FacebookPages implements Connector, SocialChannel, SocialMetrics
+final class FacebookPages implements ReceivesWebhooks, SocialChannel, SocialMetrics
 {
+    /** Comments and messages for Studio replies arrive at the Lead Ads address and are routed here (SA5c). */
+    public function verifyWebhook(string $raw, array $headers): bool
+    {
+        $secret = (string) ($this->kit->secrets('facebook_leads')['client_secret'] ?? '');
+        $given = (string) ($headers['x-hub-signature-256'] ?? '');
+
+        return $secret !== '' && str_starts_with($given, 'sha256=') && hash_equals('sha256='.hash_hmac('sha256', $raw, $secret), $given);
+    }
+
+    public function webhook(ConnectionData $connection, array $payload): array
+    {
+        return in_array($payload['event'] ?? null, ['comment', 'message'], true) ? app(StudioReplies::class)->receive($connection, $payload)
+            : ['created' => 0, 'updated' => 0, 'skipped' => 1];
+    }
+
+    public function disconnected(ConnectionData $connection): void
+    {
+        $this->kit->unroute($connection); // stop routing comments and messages here
+    }
+
     public function __construct(private readonly ConnectorKit $kit) {}
 
     public function verify(array $credentials, array $settings): string

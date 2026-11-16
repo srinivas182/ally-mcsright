@@ -21,10 +21,12 @@ interface AppWebhooks extends ReceivesWebhooks
     public function handshake(array $query): ?Response;
 
     /**
-     * Splits a checked webhook into the parts for each account it is about.
+     * Splits a checked webhook into the parts for each account it is about. A part may name another app of the same
+     * vendor (`app`) when one webhook address serves several (Meta sends Page comments and messages, for Studio
+     * replies, to the Lead Ads address): it is routed to that app's connections.
      *
      * @param  array<string, mixed>  $payload
-     * @return list<array{key: string, payload: array<string, mixed>}>
+     * @return list<array{key: string, payload: array<string, mixed>, app?: string}>
      */
     public function route(array $payload): array;
 }

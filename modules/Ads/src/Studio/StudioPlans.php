@@ -43,10 +43,10 @@ final class StudioPlans
 
     /** The outside services behind Studio, all on RightAlly's accounts (HQ → Connect setup): app key => what it does. */
     public const SERVICES = ['studio_cutout' => 'Headshot background removal (remove.bg)', 'studio_enhance' => 'Photo enhancement and virtual twilight (Autoenhance.ai)',
-        'studio_upscale' => 'Photo upscaling (Replicate, Real-ESRGAN)'];
+        'studio_upscale' => 'Photo upscaling (Replicate, Real-ESRGAN)', 'studio_voice' => 'Voice-overs, stock and the agent\'s own consented voice (ElevenLabs)'];
 
     public const FEATURES = ['launch_campaign' => 'Listing launch campaigns', 'spanish' => 'Spanish captions', 'voice_learning' => 'Captions in your own voice',
-        'recruiting' => 'Recruiting posts', 'approval_rules' => 'Brokerage approval rules', 'team_report' => 'Team reporting'];
+        'replies' => 'Replies to comments and messages', 'recruiting' => 'Recruiting posts', 'approval_rules' => 'Brokerage approval rules', 'team_report' => 'Team reporting'];
 
     public function __construct(private readonly PaidApps $paid, private readonly AppRegistry $registry, private readonly TenantContext $tenants) {}
 

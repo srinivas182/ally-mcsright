@@ -41,7 +41,7 @@ function fbConnect(User $as): Connection
         'graph.facebook.com/v21.0/me?*' => Http::response(['name' => 'Olivia', 'email' => 'olivia@fb.test']),
         'graph.facebook.com/v21.0/me/accounts*' => Http::response(['data' => [['id' => '111', 'name' => 'Acme Realty', 'access_token' => 'page-111'],
             ['id' => '222', 'name' => 'Acme Austin', 'access_token' => 'page-222']]]),
-        'graph.facebook.com/v21.0/*/subscribed_apps' => Http::response(['success' => true]),
+        'graph.facebook.com/v21.0/*/subscribed_apps*' => Http::response(['success' => true]),
     ]);
     $start = test()->actingAs($as)->post('/apps/facebook_leads/oauth', [], ['X-Inertia' => 'true']);
     $to = (string) $start->headers->get('X-Inertia-Location');

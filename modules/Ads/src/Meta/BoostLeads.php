@@ -11,6 +11,7 @@ use Illuminate\Support\Str;
 use Modules\Ads\Boost;
 use Modules\Ads\Jobs\ReceiveBoostLead;
 use Modules\Ads\Models\Campaign;
+use Modules\Core\Connect\MetaPageSubscriptions;
 use Modules\Core\Connect\UnroutedWebhook;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\Attributes\CrossTenantAccess;
@@ -39,7 +40,7 @@ final class BoostLeads implements UnroutedWebhook
         $page = Http::withToken($account['access_token'])->acceptJson()->timeout(20)->get(MetaApi::GRAPH.$account['page_id'], ['fields' => 'access_token']);
         $pageToken = (string) ($page->json('access_token') ?? '');
         if ($pageToken !== '') {
-            Http::asForm()->timeout(20)->post(MetaApi::GRAPH.$account['page_id'].'/subscribed_apps', ['subscribed_fields' => 'leadgen', 'access_token' => $pageToken]);
+            MetaPageSubscriptions::add($account['page_id'], $pageToken, ['leadgen']);
         }
         DB::connection(Connections::control())->table('ads_boost_forms')->updateOrInsert(['form_id' => $formId],
             ['tenant_id' => $c->tenant_id, 'campaign_id' => $c->id, 'updated_at' => now(), 'created_at' => now()]);

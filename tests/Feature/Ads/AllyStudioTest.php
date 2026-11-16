@@ -98,7 +98,7 @@ it('shows HQ each package\'s cost and margin and lets HQ change the allowances',
         ->where('packages.1.cost_cents', 60 * 3 + 12 * 15 + 2 * 30 + 10 * 20 + 4 * 10 + 20) // full use at the cost list prices
         ->where('packages.1.margin_pct', 91)
         ->where('items.0.item', 'post')->where('items.0.credits', 10)->where('items.0.price_cents', 10)->where('items.0.cost_cents', 3)->where('items.0.margin_pct', 70)
-        ->where('items.3.made_with', fn ($t): bool => str_contains((string) $t, 'Autoenhance.ai'))->has('services', 3)->where('services.1.key', 'studio_enhance')->where('services.1.on', false));
+        ->where('items.3.made_with', fn ($t): bool => str_contains((string) $t, 'Autoenhance.ai'))->has('services', 4)->where('services.3.key', 'studio_voice')->where('services.1.key', 'studio_enhance')->where('services.1.on', false));
     $this->actingAs($staff)->post($hq.'/hq/studio/packages/studio_luxury', ['posts' => 40, 'reels' => 8, 'tours' => 1, 'enhance' => 5, 'voice' => 2,
         'features' => ['spanish', 'nonsense']])->assertSessionHasNoErrors();
     expect(app(StudioPlans::class)->packages()['studio_luxury'])->toBe(['posts' => 40, 'reels' => 8, 'tours' => 1, 'enhance' => 5, 'voice' => 2, 'features' => ['spanish']]);

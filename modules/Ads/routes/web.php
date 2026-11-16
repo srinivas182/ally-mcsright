@@ -11,6 +11,7 @@ use Modules\Ads\Http\SocialController;
 use Modules\Ads\Http\StudioController;
 use Modules\Ads\Http\StudioFontsController;
 use Modules\Ads\Http\StudioPhotosController;
+use Modules\Ads\Http\StudioRepliesController;
 use Modules\Ads\Http\StudioResultsController;
 use Modules\Ads\Http\StylesController;
 use Modules\Ads\Http\VoiceController;
@@ -68,6 +69,11 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('studio
     Route::delete('voice', [VoiceController::class, 'destroy'])->name('voice.destroy');
     Route::post('reels/{reel}/script', [VoiceController::class, 'script'])->where('reel', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->middleware('throttle:20,1')->name('reels.script');
     Route::post('reels/{reel}/narrate', [VoiceController::class, 'narrate'])->where('reel', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->middleware('throttle:10,1')->name('reels.narrate');
+    // SA5c: replies to comments and messages.
+    Route::get('replies', [StudioRepliesController::class, 'index'])->name('replies');
+    Route::post('replies', [StudioRepliesController::class, 'save'])->name('replies.save');
+    Route::post('replies/{reply}/send', [StudioRepliesController::class, 'send'])->where('reply', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->middleware('throttle:60,1')->name('replies.send');
+    Route::post('replies/{reply}/skip', [StudioRepliesController::class, 'skip'])->where('reply', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('replies.skip');
     Route::post('reels/{reel}/post', [ReelsController::class, 'post'])->where('reel', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('reels.post');
     Route::post('designs/{design}/post', [StudioController::class, 'post'])->where('design', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('designs.post');
 });

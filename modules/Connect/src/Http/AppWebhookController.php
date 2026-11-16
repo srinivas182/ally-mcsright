@@ -51,22 +51,23 @@ final class AppWebhookController
             return response('', 400);
         }
         foreach ($driver->route($payload) as $part) {
-            $route = DB::connection(Connections::control())->table('connect_routes')->where('app_key', $app)->where('external_key', $part['key'])->first();
+            $target = $part['app'] ?? $app; // another app of the same vendor, sharing this address
+            $route = DB::connection(Connections::control())->table('connect_routes')->where('app_key', $target)->where('external_key', $part['key'])->first();
             $tenant = $route !== null ? Tenant::query()->whereKey($route->tenant_id)->where('status', 'active')->first() : null;
             if ($tenant === null) {
                 // An account no brokerage has connected: a module acting for a brokerage on RightAlly's own account may
                 // take it (Boost lead forms); otherwise ignored.
                 foreach (app()->tagged('connect.unrouted') as $handler) {
-                    if ($handler instanceof UnroutedWebhook && $handler->take($app, (array) $part['payload'])) {
+                    if ($handler instanceof UnroutedWebhook && $handler->take($target, (array) $part['payload'])) {
                         break;
                     }
                 }
 
                 continue;
             }
-            $tenants->runAs($tenant, function () use ($route, $app, $part): void {
-                $c = Connection::query()->whereKey($route->connection_id)->where('app_key', $app)->first();
-                $a = app(AppCatalog::class)->find($app);
+            $tenants->runAs($tenant, function () use ($route, $target, $part): void {
+                $c = Connection::query()->whereKey($route->connection_id)->where('app_key', $target)->first();
+                $a = app(AppCatalog::class)->find($target);
                 if ($c !== null && $a !== null && in_array($c->status, ['connected', 'error'], true) && app(AppRegistry::class)->ready($a)) {
                     HandleWebhook::dispatch($c->id, $part['payload']);
                 }

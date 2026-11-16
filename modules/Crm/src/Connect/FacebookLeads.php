@@ -9,6 +9,7 @@ use Illuminate\Support\Str;
 use Modules\Core\Connect\AppWebhooks;
 use Modules\Core\Connect\ConnectionData;
 use Modules\Core\Connect\ConnectorKit;
+use Modules\Core\Connect\MetaPageSubscriptions;
 use Modules\Core\Connect\NeedsReconnect;
 use Modules\Crm\Enums\Source;
 use Symfony\Component\HttpFoundation\Response;
@@ -60,8 +61,7 @@ final class FacebookLeads implements AppWebhooks
             if (! is_string($p['id'] ?? null) || ! is_string($p['access_token'] ?? null)) {
                 continue;
             }
-            $s = Http::asForm()->timeout(20)->post(self::GRAPH.$p['id'].'/subscribed_apps', ['subscribed_fields' => 'leadgen', 'access_token' => $p['access_token']]);
-            if ($s->successful()) {
+            if (MetaPageSubscriptions::add($p['id'], $p['access_token'], ['leadgen'])) {
                 $this->kit->routeTo($connection, $p['id']);
                 $pages[$p['id']] = ['name' => (string) ($p['name'] ?? 'Page'), 'token' => $p['access_token']];
                 $subscribed++;
@@ -93,19 +93,51 @@ final class FacebookLeads implements AppWebhooks
         return $secret !== '' && str_starts_with($given, 'sha256=') && hash_equals('sha256='.hash_hmac('sha256', $raw, $secret), $given);
     }
 
+    /**
+     * Meta sends every Page (and Instagram) webhook for RightAlly's app to this one address: lead forms are this
+     * app's; comments and messages are for Ally Studio replies on the Facebook Pages connection (specs/grow/13, SA5c).
+     */
     public function route(array $payload): array
     {
-        if (($payload['object'] ?? null) !== 'page') {
+        $object = $payload['object'] ?? null;
+        if (! in_array($object, ['page', 'instagram'], true)) {
             return [];
         }
+        $str = fn (mixed $v, int $max = 64): ?string => is_scalar($v) && (string) $v !== '' ? mb_substr((string) $v, 0, $max) : null;
         $parts = [];
         foreach ((array) ($payload['entry'] ?? []) as $entry) {
-            foreach ((array) (is_array($entry) ? ($entry['changes'] ?? []) : []) as $change) {
-                $v = is_array($change) && ($change['field'] ?? null) === 'leadgen' && is_array($change['value'] ?? null) ? $change['value'] : null;
-                if ($v !== null && is_scalar($v['page_id'] ?? null) && is_scalar($v['leadgen_id'] ?? null)) {
+            if (! is_array($entry)) {
+                continue;
+            }
+            $account = $str($entry['id'] ?? null);
+            foreach ((array) ($entry['changes'] ?? []) as $change) {
+                $field = is_array($change) ? ($change['field'] ?? null) : null;
+                $v = is_array($change) && is_array($change['value'] ?? null) ? $change['value'] : null;
+                if ($v === null) {
+                    continue;
+                }
+                if ($object === 'page' && $field === 'leadgen' && is_scalar($v['page_id'] ?? null) && is_scalar($v['leadgen_id'] ?? null)) {
                     $parts[] = ['key' => (string) $v['page_id'], 'payload' => ['event' => 'leadgen', 'page_id' => (string) $v['page_id'], 'leadgen_id' => (string) $v['leadgen_id'],
                         'form_id' => is_scalar($v['form_id'] ?? null) ? (string) $v['form_id'] : null]];
+                } elseif ($object === 'page' && $field === 'feed' && ($v['item'] ?? null) === 'comment' && ($v['verb'] ?? null) === 'add' && $account !== null
+                    && ($id = $str($v['comment_id'] ?? null)) !== null) {
+                    $parts[] = ['key' => $account, 'app' => 'facebook_pages', 'payload' => ['event' => 'comment', 'channel' => 'facebook', 'account' => $account, 'id' => $id,
+                        'post' => $str($v['post_id'] ?? null), 'parent' => $str($v['parent_id'] ?? null), 'from' => $str(is_array($v['from'] ?? null) ? ($v['from']['id'] ?? null) : null),
+                        'name' => $str(is_array($v['from'] ?? null) ? ($v['from']['name'] ?? null) : null, 120), 'text' => $str($v['message'] ?? null, 2000)]];
+                } elseif ($object === 'instagram' && $field === 'comments' && $account !== null && ($id = $str($v['id'] ?? null)) !== null) {
+                    $parts[] = ['key' => $account, 'app' => 'facebook_pages', 'payload' => ['event' => 'comment', 'channel' => 'instagram', 'account' => $account, 'id' => $id,
+                        'post' => $str(is_array($v['media'] ?? null) ? ($v['media']['id'] ?? null) : null), 'parent' => $str($v['parent_id'] ?? null),
+                        'from' => $str(is_array($v['from'] ?? null) ? ($v['from']['id'] ?? null) : null),
+                        'name' => $str(is_array($v['from'] ?? null) ? ($v['from']['username'] ?? null) : null, 120), 'text' => $str($v['text'] ?? null, 2000)]];
                 }
+            }
+            foreach ((array) ($entry['messaging'] ?? []) as $m) {
+                $msg = is_array($m) && is_array($m['message'] ?? null) ? $m['message'] : null;
+                if ($msg === null || ($msg['is_echo'] ?? false) === true || $account === null || ($id = $str($msg['mid'] ?? null, 200)) === null) {
+                    continue; // our own sends come back as echoes
+                }
+                $parts[] = ['key' => $account, 'app' => 'facebook_pages', 'payload' => ['event' => 'message', 'channel' => $object === 'page' ? 'facebook' : 'instagram',
+                    'account' => $account, 'id' => $id, 'from' => $str(is_array($m['sender'] ?? null) ? ($m['sender']['id'] ?? null) : null), 'text' => $str($msg['text'] ?? null, 2000)]];
             }
         }
 
@@ -153,7 +185,7 @@ final class FacebookLeads implements AppWebhooks
         try {
             $tokens = json_decode((string) ($connection->credentials['pages'] ?? '{}'), true);
             foreach (is_array($tokens) ? $tokens : [] as $page => $token) {
-                Http::timeout(10)->delete(self::GRAPH.$page.'/subscribed_apps', ['access_token' => (string) $token]);
+                MetaPageSubscriptions::remove((string) $page, (string) $token, ['leadgen']); // Studio replies may still use the Page
             }
         } catch (Throwable $e) {
             report($e); // never stop someone disconnecting
