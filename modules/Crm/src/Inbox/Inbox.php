@@ -93,7 +93,7 @@ final class Inbox
         $providerId = null;
         try {
             if ($channel === 'sms') {
-                $from = $this->messaging->numberFor($this->tenants->id());
+                $from = app(Bridges::class)->smsFrom($contact) ?? $this->messaging->numberFor($this->tenants->id());
                 $providerId = app(SmsSender::class)->deliver($from, (string) $contact->primary_phone, $body);
                 $this->messaging->remember((string) $contact->primary_phone, $from, $this->tenants->id());
             } else {
@@ -134,6 +134,10 @@ final class Inbox
     public function sendAutomated(Contact $contact, string $channel, string $body, ?string $subject, string $fromName, array &$blocked = []): ?Message
     {
         $blocked = $this->guard->check($contact, $channel, $body);
+        $hold = app(Bridges::class)->hold($contact);
+        if ($hold !== null) {
+            $blocked[] = $hold['reason']; // bridged contacts get personal messages only
+        }
         if ($channel === 'sms' && ! $this->consent->canAutoText($contact)) {
             $blocked[] = 'Automated texts need written consent.';
         }
@@ -144,7 +148,7 @@ final class Inbox
         $providerId = null;
         try {
             if ($channel === 'sms') {
-                $from = $this->messaging->numberFor($this->tenants->id());
+                $from = app(Bridges::class)->smsFrom($contact) ?? $this->messaging->numberFor($this->tenants->id());
                 $providerId = app(SmsSender::class)->deliver($from, (string) $contact->primary_phone, $body);
                 $this->messaging->remember((string) $contact->primary_phone, $from, $this->tenants->id());
             } else {
@@ -178,6 +182,15 @@ final class Inbox
         $keyword = strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', $body));
         $contact = Contact::query()->where('primary_phone', $from)->orderBy('id')->first();
 
+        if ($contact !== null) {
+            // A bridge (the Movewise relay) answers its own keywords: PAUSE, CHANGE. It also hears STOP, then STOP runs as usual.
+            $answer = app(Bridges::class)->keyword($contact, $keyword);
+            if ($answer !== null) {
+                $this->store($contact, 'sms', $body, null, $providerId, false);
+
+                return $answer;
+            }
+        }
         if ($contact !== null && in_array($keyword, self::STOP, true)) {
             $this->consent->optOutSms($contact, 'sms_keyword');
             app(AiResponder::class)->stop($contact, 'opted_out');

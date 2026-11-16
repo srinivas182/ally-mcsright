@@ -64,6 +64,7 @@ final class MovewiseRouter
                 $r->post('connect/{show}/phone', [ConnectController::class, 'phone'])->where('show', '[0-9A-HJKMNP-TV-Z]{26}');
                 $r->post('connect/{show}/choose', [ConnectController::class, 'choose'])->where('show', '[0-9A-HJKMNP-TV-Z]{26}');
                 $r->post('account/connections/{connection}/wait', [ConnectController::class, 'wait'])->where('connection', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}');
+                $r->post('account/connections/{connection}/{action}', [ConnectController::class, 'manage'])->where(['connection' => '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}', 'action' => 'pause|resume|stop|change']);
                 $r->get('account', [AccountController::class, 'account']);
                 $r->get('account/export', [AccountController::class, 'export']);
                 $r->post('account/searches/{search}', [AccountController::class, 'frequency'])->where('search', '[0-9A-Z]{26}');

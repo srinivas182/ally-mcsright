@@ -12,6 +12,19 @@
                     {{ $t('account.waiting', ['name' => $a['name'], 'time' => $a['by']]) }}
                 @elseif ($a['status'] === 'accepted')
                     {{ $t('account.working', ['name' => $a['name']]) }}
+                    @if ($a['relay']) {{ $t('account.relay', ['number' => $a['relay']]) }}@endif
+                    @if ($a['paused_until']) <strong>{{ $t('account.paused', ['date' => $a['paused_until']]) }}</strong>@endif
+                    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">
+                        @if ($a['paused_until'])
+                            <form method="post" action="{{ $u('/account/connections/'.$a['ulid'].'/resume') }}"><button class="save">{{ $t('account.resume') }}</button></form>
+                        @else
+                            <form method="post" action="{{ $u('/account/connections/'.$a['ulid'].'/pause') }}"><button class="save">{{ $t('account.pause') }}</button></form>
+                        @endif
+                        <form method="post" action="{{ $u('/account/connections/'.$a['ulid'].'/change') }}"><button class="save">{{ $t('account.change') }}</button></form>
+                        <form method="post" action="{{ $u('/account/connections/'.$a['ulid'].'/stop') }}"><button class="save">{{ $t('account.stop') }}</button></form>
+                    </div>
+                @elseif ($a['status'] === 'stopped')
+                    {{ $t('account.stopped', ['name' => $a['name']]) }}
                 @else
                     {{ $t('account.'.$a['status'], ['name' => $a['name']]) }}
                     @if ($a['status'] === 'expired' && ! $a['waited'])

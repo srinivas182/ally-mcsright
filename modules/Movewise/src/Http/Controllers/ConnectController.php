@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Modules\Core\Support\Connections as ControlDb;
 use Modules\Listings\Search\ListingSearch;
+use Modules\Movewise\Bridge\Relay;
 use Modules\Movewise\Http\Guard;
 use Modules\Movewise\I18n;
 use Modules\Movewise\Matching\Connections;
@@ -104,6 +105,24 @@ final class ConnectController
         Guard::check($request, 'wait:'.$request->ip(), 10);
         $p = $this->person($request);
         $this->connections->wait(Connection::query()->where('ulid', $connection)->where('person_id', $p->id)->firstOrFail(), $p);
+
+        return redirect(I18n::url('/account').'#agent', 303);
+    }
+
+    /** My Movewise: pause for two weeks, resume, stop, or change agent. Each takes effect at once. */
+    public function manage(Request $request, string $connection, string $action, Relay $relay): RedirectResponse
+    {
+        Guard::check($request, 'manage:'.$request->ip(), 20);
+        $p = $this->person($request);
+        $c = Connection::query()->where('ulid', $connection)->where('person_id', $p->id)->firstOrFail();
+        if ($action === 'change') {
+            return redirect(I18n::url('/connect/'.$relay->change($c)), 303);
+        }
+        match ($action) {
+            'pause' => $relay->pause($c, 'My Movewise'),
+            'resume' => $relay->resume($c),
+            default => $relay->stop($c, 'My Movewise'),
+        };
 
         return redirect(I18n::url('/account').'#agent', 303);
     }

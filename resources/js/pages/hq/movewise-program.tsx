@@ -71,7 +71,16 @@ type RefundRow = {
     accepted_at: string | null;
 };
 
+type RelayRow = {
+    id: number;
+    number: string;
+    area: string | null;
+    active: boolean;
+    in_use: number;
+};
+
 type Props = {
+    relays: RelayRow[];
     refunds: RefundRow[];
     introductions: {
         offered: number;
@@ -353,8 +362,10 @@ export default function HqMovewiseProgram({
     seats,
     refunds,
     introductions,
+    relays,
 }: Props) {
     const [declineNote, setDeclineNote] = useState('');
+    const relayForm = useForm({ number: '', area: '' });
 
     return (
         <>
@@ -415,6 +426,77 @@ export default function HqMovewiseProgram({
                         ))}
                     </section>
                 )}
+                <section className="grid gap-2 text-sm">
+                    <h2 className="text-lg font-semibold">Relay numbers</h2>
+                    <p className="text-muted-foreground">
+                        Twilio numbers in HQ's account, with their texts webhook
+                        set to RightAlly. Each introduction texts through one.
+                    </p>
+                    {relays.map((r) => (
+                        <div
+                            key={r.id}
+                            className="flex flex-wrap items-center gap-2 rounded-xl border p-2"
+                        >
+                            <strong>{r.number}</strong>
+                            <span className="text-muted-foreground">
+                                {r.area ?? ''} · {r.in_use} in use
+                            </span>
+                            <Badge variant={r.active ? 'default' : 'outline'}>
+                                {r.active ? 'Active' : 'Off'}
+                            </Badge>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
+                                    router.post(
+                                        '/hq/movewise/program/relays',
+                                        { id: r.id, active: !r.active },
+                                        { preserveScroll: true },
+                                    )
+                                }
+                            >
+                                {r.active ? 'Turn off' : 'Turn on'}
+                            </Button>
+                        </div>
+                    ))}
+                    <form
+                        className="flex flex-wrap gap-2"
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            relayForm.post('/hq/movewise/program/relays', {
+                                preserveScroll: true,
+                                onSuccess: () => relayForm.reset(),
+                            });
+                        }}
+                    >
+                        <Input
+                            aria-label="Number"
+                            placeholder="+1 713 555 0100"
+                            className="w-48"
+                            value={relayForm.data.number}
+                            onChange={(e) =>
+                                relayForm.setData('number', e.target.value)
+                            }
+                        />
+                        <Input
+                            aria-label="Area"
+                            placeholder="Houston"
+                            className="w-40"
+                            value={relayForm.data.area}
+                            onChange={(e) =>
+                                relayForm.setData('area', e.target.value)
+                            }
+                        />
+                        <Button size="sm" disabled={relayForm.processing}>
+                            Add number
+                        </Button>
+                        {relayForm.errors.number && (
+                            <span className="text-destructive">
+                                {relayForm.errors.number}
+                            </span>
+                        )}
+                    </form>
+                </section>
                 <section className="grid gap-3">
                     <h2 className="text-lg font-semibold">Prices</h2>
                     {states.map((s) => (

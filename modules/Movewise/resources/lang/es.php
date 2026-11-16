@@ -61,4 +61,6 @@ return [
     'connect.withdraw' => 'Terminar la presentación', 'connect.withdrawn' => 'Listo. Le dijimos al agente que no te contacte por esto.',
     'account.agent' => 'Tu agente', 'account.waiting' => 'Esperando que :name acepte (antes de las :time).', 'account.working' => 'Trabajando con :name.',
     'account.expired' => ':name todavía no ha podido responder.', 'account.declined' => ':name no puede tomar tu solicitud ahora.', 'account.wait' => 'Esperar a :name', 'account.choose_other' => 'Elegir a otro agente',
+    'account.relay' => 'Te escribe desde tu número de Movewise, :number.', 'account.paused' => 'En pausa hasta el :date.', 'account.pause' => 'Pausar 2 semanas',
+    'account.resume' => 'Reanudar', 'account.change' => 'Cambiar de agente', 'account.stop' => 'Terminé: no más contacto', 'account.stopped' => 'Terminaste el contacto con :name.',
 ];

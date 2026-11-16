@@ -11,6 +11,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Tenancy\TenantContext;
+use Modules\Movewise\Bridge\Relay;
 use Modules\Movewise\Matching\Brief;
 use Modules\Movewise\Matching\Connections;
 use Modules\Movewise\Models\Agent;
@@ -123,7 +124,9 @@ final class ProgramController
 
         return Inertia::render('movewise/introduction', ['ulid' => $c->ulid, 'status' => $c->status, 'accept_by' => $c->accept_by->toIso8601String(),
             'credits' => $c->price_credits, 'model' => $c->model, 'refund_status' => $c->refund_status, 'refund_days' => (int) config('movewise.refund_days', 7),
-            'brief' => $brief->for($c, $c->status === 'accepted')]);
+            'brief' => $brief->for($c, $c->status === 'accepted'), 'relay' => $c->handed_over_at === null ? $c->relay_number : null,
+            'paused_until' => $c->paused_until?->isFuture() ? $c->paused_until->toIso8601String() : null, 'handover_asked' => $c->handover_asked_at !== null,
+            'handed_over' => $c->handed_over_at !== null]);
     }
 
     public function decide(Request $request, string $connection, Connections $connections): RedirectResponse
@@ -134,11 +137,13 @@ final class ProgramController
             'accept' => $connections->accept($c, $user),
             'decline' => $connections->decline($c, $user),
             'report' => $connections->report($c, $user, (string) $request->input('reason', '')),
+            'handover' => app(Relay::class)->askHandover($c, $user, $request->boolean('signed_or_closed')),
             default => abort(422),
         };
         Inertia::flash('toast', ['type' => 'success', 'message' => match ((string) $request->input('action')) {
             'accept' => 'Accepted. They are in your contacts now: reach out the way they asked.',
             'decline' => 'Declined. They will choose another agent; nothing was charged.',
+            'handover' => 'Asked. If they reply YES, you can text them from your own number.',
             default => 'Sent to Movewise. We\'ll reply within two working days.',
         }]);
 

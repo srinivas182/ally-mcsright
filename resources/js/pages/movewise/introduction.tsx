@@ -32,6 +32,10 @@ type Props = {
     refund_status: string | null;
     refund_days: number;
     brief: Brief;
+    relay: string | null;
+    paused_until: string | null;
+    handover_asked: boolean;
+    handed_over: boolean;
 };
 
 const HOW: Record<string, string> = {
@@ -66,6 +70,7 @@ function Countdown({ until }: { until: string }) {
 export default function MovewiseIntroduction(props: Props) {
     const { brief } = props;
     const [reason, setReason] = useState('');
+    const [signed, setSigned] = useState(false);
     const act = (action: string, extra: Record<string, string> = {}) =>
         router.post(
             `/movewise/introductions/${props.ulid}`,
@@ -122,6 +127,69 @@ export default function MovewiseIntroduction(props: Props) {
                                 : 'Nothing charged up front.'}{' '}
                             They are in your contacts with this brief.
                         </span>
+                    </section>
+                )}
+                {props.status === 'accepted' && (
+                    <section className="grid gap-2 rounded-xl border p-3 text-sm">
+                        {props.relay ? (
+                            <p>
+                                Text them from your RightAlly inbox: messages go
+                                through their Movewise number, {props.relay}, in
+                                one thread. Personal messages only: they can't
+                                be added to campaigns, plans or automated texts.
+                            </p>
+                        ) : props.handed_over ? (
+                            <p>
+                                They agreed to move to your own number. Movewise
+                                has stepped back.
+                            </p>
+                        ) : null}
+                        {props.paused_until && (
+                            <p className="font-medium">
+                                They paused contact until{' '}
+                                {new Date(
+                                    props.paused_until,
+                                ).toLocaleDateString()}
+                                . Messages are held until then.
+                            </p>
+                        )}
+                        {props.relay && !props.handover_asked && (
+                            <div className="grid gap-2">
+                                <label className="flex items-center gap-2">
+                                    <input
+                                        type="checkbox"
+                                        checked={signed}
+                                        onChange={(e) =>
+                                            setSigned(e.target.checked)
+                                        }
+                                    />
+                                    We've signed an agreement, or the deal has
+                                    closed
+                                </label>
+                                <div>
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        disabled={!signed}
+                                        onClick={() =>
+                                            act('handover', {
+                                                signed_or_closed: signed
+                                                    ? '1'
+                                                    : '',
+                                            })
+                                        }
+                                    >
+                                        Ask to move to my own number
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+                        {props.handover_asked && !props.handed_over && (
+                            <p className="text-muted-foreground">
+                                Asked to move to your own number. Waiting for
+                                them to reply YES.
+                            </p>
+                        )}
                     </section>
                 )}
                 <section className="grid gap-2 text-sm">

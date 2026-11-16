@@ -7,14 +7,20 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Validation\ValidationException;
 use Inertia\Testing\AssertableInertia as Assert;
 use Modules\Billing\Credits\CreditLedger;
 use Modules\Core\Messaging\FakeSmsSender;
+use Modules\Core\Messaging\MessagingSettings;
 use Modules\Core\Messaging\SmsSender;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\Models\Tenant;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Crm\Booking\Availability;
+use Modules\Crm\FollowUpPlans;
+use Modules\Crm\Inbox\Inbox;
+use Modules\Crm\Models\Contact;
+use Modules\Crm\Models\FollowUpPlan;
 use Modules\Crm\Models\Lead;
 use Modules\Crm\Models\Task;
 use Modules\Listings\Access\MlsAccess;
@@ -33,6 +39,7 @@ use Modules\Movewise\Models\Partner;
 use Modules\Movewise\Models\Person;
 use Modules\Movewise\Models\State;
 use Modules\Movewise\Movewise;
+use Modules\Movewise\Notifications\IntroductionClosed;
 use Modules\Movewise\Notifications\IntroductionOffered;
 use Modules\Movewise\Program\Agents;
 
@@ -238,4 +245,84 @@ it('books "Pick a time" on the agent\'s real calendar, and handles a wrong-numbe
     $this->actingAs($this->staff)->withSession(['auth.password_confirmed_at' => time()])->post($hq.'/hq/movewise/program/refunds/'.$c->ulid, ['approve' => true])->assertSessionHasNoErrors();
     expect($c->refresh()->refund_status)->toBe('refunded')
         ->and(app(TenantContext::class)->runAs($this->tenant, fn () => app(CreditLedger::class)->balanceOf($annUser->id)))->toBe(1000);
+});
+
+/* MW5: the bridge — relay numbers, personal messages only, PAUSE / RESUME / CHANGE / STOP, and handing over. */
+
+function mwAccepted(object $t, string $method = 'text'): Connection
+{
+    DB::connection(Connections::control())->table('movewise_relay_numbers')->insert(['number' => '+17135550900', 'area' => 'Houston', 'active' => true, 'created_at' => now(), 'updated_at' => now()]);
+    app(MessagingSettings::class)->save('AC'.str_repeat('1', 32), 'twilio-auth-token-0000000', '+15125550111', '+15125550112', true, false, $t->staff);
+    app(MessagingSettings::class)->setTenant($t->tenant->id, true, false, '+17135550111');
+    $show = mwShow($t);
+    mwVerify($t, $show);
+    mwAs($t)->post(MWH.'/connect/'.$show.'/choose', ['agent' => $t->agents['Ann'][0]->ulid, 'method' => $method], $t->from)->assertRedirect();
+    $c = Connection::query()->sole();
+    app(TenantContext::class)->set($t->tenant);
+    $t->actingAs($t->agents['Ann'][1])->post('/movewise/introductions/'.$c->ulid, ['action' => 'accept'])->assertSessionHasNoErrors();
+
+    return $c->refresh();
+}
+
+it('bridges texts through a relay number and keeps the contact to personal messages only', function (): void {
+    $c = mwAccepted($this);
+    [, $ann] = $this->agents['Ann'];
+    expect($c->relay_number)->toBe('+17135550900')->and($c->contact_id)->not->toBeNull()
+        ->and(app(MessagingSettings::class)->tenantForReply('+17135550142', '+17135550900'))->toBe($this->tenant->id); // replies find Ann's inbox
+    $contact = Contact::query()->findOrFail($c->contact_id);
+    $this->actingAs($ann);
+    app(Inbox::class)->send($contact, 'sms', 'Hi Bea, it\'s Ann. When suits you to see 12 Oak St?', null, $ann);
+    expect(end($this->sms->delivered))->toMatchArray(['from' => '+17135550900', 'to' => '+17135550142']);
+
+    $blocked = [];
+    expect(app(Inbox::class)->sendAutomated($contact, 'sms', 'Just checking in!', null, 'Acme', $blocked))->toBeNull()
+        ->and($blocked)->toContain('A Movewise introduction: personal messages only (no campaigns, plans or automated texts).');
+    $plan = FollowUpPlan::query()->create(['name' => 'Drip', 'owner_user_id' => $ann->id, 'shared' => true, 'active' => true]);
+    expect(fn () => app(FollowUpPlans::class)->enroll($contact, $plan, $ann))->toThrow(ValidationException::class);
+});
+
+it('lets the person pause, resume and stop by text, and change agent from My Movewise', function (): void {
+    $c = mwAccepted($this);
+    [, $ann] = $this->agents['Ann'];
+    $contact = Contact::query()->findOrFail($c->contact_id);
+    $inbox = app(Inbox::class);
+    expect($inbox->receiveSms('+17135550142', 'pause', 'SM1'))->toContain('paused');
+    expect($c->refresh()->paused_until?->isFuture())->toBeTrue();
+    $this->actingAs($ann);
+    expect(fn () => $inbox->send($contact, 'sms', 'Hi Bea!', null, $ann))->toThrow(ValidationException::class);
+    expect($inbox->receiveSms('+17135550142', 'Resume', 'SM2'))->toContain('resumed');
+    $inbox->send($contact, 'sms', 'Hi Bea!', null, $ann);
+    Notification::assertSentTo($ann, IntroductionClosed::class);
+
+    // Change agent: the introduction ends, Ann can't message them, and three agents are shown again without her.
+    app(TenantContext::class)->forget();
+    $r = mwAs($this)->post(MWH.'/account/connections/'.$c->ulid.'/change', [], $this->from)->assertStatus(303);
+    expect($c->refresh()->status)->toBe('changed');
+    $show = DB::connection(Connections::control())->table('movewise_shows')->orderByDesc('id')->first();
+    expect($r->headers->get('Location'))->toEndWith('/connect/'.$show->ulid)->and(array_column(json_decode($show->agents, true), 'agent'))->not->toContain($this->agents['Ann'][0]->id);
+    app(TenantContext::class)->set($this->tenant);
+    expect(fn () => $inbox->send($contact->refresh(), 'sms', 'Still there?', null, $ann))->toThrow(ValidationException::class);
+});
+
+it('ends the introduction on STOP, and hands over to the agent\'s own number only when the person says YES', function (): void {
+    $c = mwAccepted($this);
+    [, $ann] = $this->agents['Ann'];
+    $inbox = app(Inbox::class);
+    $this->actingAs($ann)->post('/movewise/introductions/'.$c->ulid, ['action' => 'handover'])->assertSessionHasErrors('handover'); // needs an agreement or closing
+    $this->actingAs($ann)->post('/movewise/introductions/'.$c->ulid, ['action' => 'handover', 'signed_or_closed' => '1'])->assertSessionHasNoErrors();
+    expect(end($this->sms->delivered))->toMatchArray(['from' => '+17135550900', 'to' => '+17135550142'])->and(end($this->sms->delivered)['message'])->toContain('Reply YES');
+    expect($inbox->receiveSms('+17135550142', 'YES', 'SM3'))->toContain('Movewise is stepping back');
+    $contact = Contact::query()->findOrFail($c->contact_id);
+    $inbox->send($contact, 'sms', 'Hi Bea, Ann here on my own number.', null, $ann);
+    expect(end($this->sms->delivered)['from'])->toBe('+17135550111');
+    $blocked = [];
+    $inbox->sendAutomated($contact, 'sms', 'Hello', null, 'Acme', $blocked);
+    expect($blocked)->not->toContain('A Movewise introduction: personal messages only (no campaigns, plans or automated texts).');
+});
+
+it('stops contact when the person texts STOP', function (): void {
+    $c = mwAccepted($this);
+    expect(app(Inbox::class)->receiveSms('+17135550142', 'STOP', 'SM9'))->toBeNull();
+    expect($c->refresh()->status)->toBe('stopped')->and($c->end_reason)->toBe('Replied STOP')
+        ->and(Contact::query()->findOrFail($c->contact_id)->sms_opt_out_at)->not->toBeNull();
 });

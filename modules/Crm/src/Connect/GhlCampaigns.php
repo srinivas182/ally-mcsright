@@ -21,6 +21,7 @@ use Modules\Core\Support\Connections;
 use Modules\Crm\Consent;
 use Modules\Crm\ContactVisibility;
 use Modules\Crm\Enums\Origin;
+use Modules\Crm\Inbox\Bridges;
 use Modules\Crm\Models\ConsentEvent;
 use Modules\Crm\Models\Contact;
 use Modules\Crm\Models\GhlEnrolment;
@@ -177,7 +178,7 @@ final class GhlCampaigns
                 if ($added >= self::BATCH) {
                     break;
                 }
-                if (! $this->allowed($c, $e->channel)) {
+                if (! $this->allowed($c, $e->channel) || ! app(Bridges::class)->allowsBulk($c)) {
                     $left++;
 
                     continue;
