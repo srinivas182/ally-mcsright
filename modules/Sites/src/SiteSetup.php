@@ -61,7 +61,7 @@ final class SiteSetup
         $tenant = $this->tenants->current();
         $info = self::cleanInfo($info + ['name' => $tenant->name]);
         $site = Site::query()->create(['kind' => 'brokerage', 'template' => $template, 'info' => $info, 'status' => 'draft',
-            'brand' => ['primary' => $template === 'aurum' ? '#c9a45c' : '#1d4ed8', 'accent' => $template === 'aurum' ? '#c9a45c' : '#0f172a'],
+            'brand' => (array) config("sites.templates.{$template}.brand", ['primary' => '#1d4ed8', 'accent' => '#0f172a']),
             'seo' => ['title_suffix' => $info['name'], 'description' => (string) ($info['tagline'] ?? '')]]);
         $position = 0;
         foreach (Sections::starterPages($info) as $path => $sections) {

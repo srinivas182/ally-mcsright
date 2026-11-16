@@ -67,7 +67,7 @@ it('records the closing date and ranks a new past client A when their deal close
 it('runs a plan: steps arrive as tasks on their day, texts respect consent, messages are personalised', function (): void {
     $sam = $this->contacts->create(['first_name' => 'Sam', 'email' => 'sam@x.test', 'phone' => '6015550101'], $this->agent);
     $plan = $this->plans->plansFor($this->agent)->firstWhere('name', 'New online lead (10 days)');
-    expect(FollowUpPlan::query()->count())->toBe(4);
+    expect(FollowUpPlan::query()->count())->toBe(count(FollowUpPlans::TEMPLATES)); // the ready-made plans (SO2)
 
     $this->actingAs($this->agent)->post("/contacts/{$sam->ulid}/plans", ['plan' => $plan->ulid])->assertSessionHasNoErrors();
 

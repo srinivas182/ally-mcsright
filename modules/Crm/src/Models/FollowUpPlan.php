@@ -21,6 +21,7 @@ use Modules\Core\Tenancy\Concerns\HasPublicUlid;
  * @property bool $active
  * @property bool $shared
  * @property int|null $owner_user_id
+ * @property string|null $template_key
  */
 final class FollowUpPlan extends Model
 {
@@ -29,7 +30,7 @@ final class FollowUpPlan extends Model
 
     protected $table = 'crm_plans';
 
-    protected $fillable = ['name', 'description', 'trigger', 'trigger_value', 'active', 'shared', 'owner_user_id'];
+    protected $fillable = ['name', 'description', 'trigger', 'trigger_value', 'active', 'shared', 'owner_user_id', 'template_key'];
 
     public function getConnectionName(): ?string
     {

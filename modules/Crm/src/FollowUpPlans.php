@@ -29,8 +29,12 @@ final class FollowUpPlans
 
     private const STOP_STAGES = [Lifecycle::UnderContract, Lifecycle::PastClient, Lifecycle::Archived];
 
-    private const TEMPLATES = [
-        ['New online lead (10 days)', 'Fast, steady follow-up for website and portal leads.', [
+    /**
+     * Ready-made plans (SO2), by key: name, description, steps [day, type, title, message]. Every RightAlly gets each
+     * one once; a plan someone switched off stays off. Spanish versions are for people who prefer Spanish.
+     */
+    public const TEMPLATES = [
+        'buyer_lead' => ['New online lead (10 days)', 'Fast, steady follow-up for website and portal leads.', [
             [0, 'call', 'Call to introduce yourself', null],
             [0, 'text', 'Send an intro text', 'Hi {first_name}, it\'s {agent_first_name}. Thanks for reaching out about homes! What area and price range are you thinking about?'],
             [1, 'call', 'Second call attempt', null],
@@ -39,24 +43,70 @@ final class FollowUpPlans
             [7, 'text', 'Check-in text', 'Hi {first_name}, still looking? I can set up a search that sends new homes the day they list. — {agent_first_name}'],
             [10, 'email', 'Offer a short planning call', 'Hi {first_name}, would a 10-minute call help to plan your next steps? — {agent_first_name}'],
         ]],
-        ['Open house follow-up', 'Thank visitors and find out what they need.', [
+        'seller_lead' => ['New seller lead (14 days)', 'For owners who asked what their home is worth or want to sell.', [
+            [0, 'call', 'Call: thank them, ask about timing and plans', null],
+            [0, 'email', 'Send the home value and what affects it', 'Hi {first_name}, thanks for asking about your home\'s value. Here is what similar homes nearby sold for, and what could move the number. — {agent_first_name}'],
+            [2, 'call', 'Offer a free walk-through for an exact price', null],
+            [5, 'text', 'Quick check-in', 'Hi {first_name}, happy to walk through your home and give you an exact price, no obligation. Would this week work? — {agent_first_name}'],
+            [9, 'email', 'Share how you would sell it', 'Hi {first_name}, here is how I would market your home: pricing, photos, and the first two weeks. — {agent_first_name}'],
+            [14, 'call', 'Follow-up call', null],
+        ]],
+        'open_house' => ['Open house follow-up', 'Thank visitors and find out what they need.', [
             [0, 'text', 'Thank them for visiting', 'Hi {first_name}, thanks for stopping by the open house today! Any questions about the home? — {agent_first_name}'],
             [2, 'call', 'Call: what did they think, what are they looking for?', null],
             [7, 'email', 'Send similar homes', 'Hi {first_name}, here are a few homes similar to the one you visited. — {agent_first_name}'],
         ]],
-        ['Sphere check-in (quarterly)', 'Stay in touch with friends and past contacts.', [
+        'sphere' => ['Sphere check-in (quarterly)', 'Stay in touch with friends and past contacts.', [
             [0, 'call', 'Catch-up call', null],
             [90, 'email', 'Share a local market update', 'Hi {first_name}, here\'s what\'s happening in the local market this quarter. — {agent_first_name}'],
             [180, 'call', 'Catch-up call', null],
             [270, 'email', 'Share a local market update', 'Hi {first_name}, here\'s the latest on home values near you. — {agent_first_name}'],
         ]],
-        ['Past client — first year', 'Look after new homeowners and earn referrals.', [
+        'past_client' => ['Past client — first year', 'Look after new homeowners and earn referrals.', [
             [7, 'call', 'How is the new home?', null],
             [30, 'email', 'Helpful homeowner tips', 'Hi {first_name}, a few tips for your first months in the new home. — {agent_first_name}'],
             [180, 'call', 'Six-month check-in', null],
             [365, 'text', 'Happy home anniversary!', 'Happy one-year home anniversary, {first_name}! If friends are thinking of moving, I\'d love to help. — {agent_first_name}'],
         ]],
+        'expired_fsbo' => ['Expired or for-sale-by-owner listing', 'Calls and letters for owners whose listing expired or who sell on their own. Calls only to numbers not on Do Not Call.', [
+            [0, 'call', 'Call: ask what they think held the sale back', null],
+            [1, 'task', 'Mail a short letter with your plan for their home', null],
+            [3, 'call', 'Second call', null],
+            [10, 'call', 'Third call: offer a free pricing review', null],
+        ]],
+        'not_ready' => ['Not ready yet (monthly)', 'For people who are a year or more away: a monthly touch, so you are the one they call.', [
+            [0, 'email', 'Monthly market note', 'Hi {first_name}, here\'s a quick look at the market near you this month. No rush; I\'m here when you\'re ready. — {agent_first_name}'],
+            [30, 'email', 'Monthly market note', 'Hi {first_name}, a few homes that sold near you this month, and what they went for. — {agent_first_name}'],
+            [60, 'call', 'Friendly check-in call', null],
+            [90, 'email', 'Monthly market note', 'Hi {first_name}, here\'s this month\'s market in two minutes. — {agent_first_name}'],
+            [120, 'email', 'Monthly market note', 'Hi {first_name}, rates, prices and what it means for you this month. — {agent_first_name}'],
+            [150, 'call', 'Friendly check-in call', null],
+        ]],
+        'buyer_lead_es' => ['Prospecto nuevo de internet (10 días, en español)', 'Seguimiento rápido para prospectos que prefieren español.', [
+            [0, 'call', 'Llamar para presentarse', null],
+            [0, 'text', 'Enviar un texto de presentación', 'Hola {first_name}, soy {agent_first_name}. ¡Gracias por escribir sobre casas! ¿Qué zona y qué rango de precio le interesan?'],
+            [1, 'call', 'Segundo intento de llamada', null],
+            [3, 'email', 'Enviar algunas casas que le pueden gustar', 'Hola {first_name}, aquí tiene algunas casas que creo que le gustarán. ¿Quiere ver alguna esta semana? — {agent_first_name}'],
+            [5, 'call', 'Tercer intento de llamada', null],
+            [7, 'text', 'Texto de seguimiento', 'Hola {first_name}, ¿sigue buscando? Puedo crearle una búsqueda que le avise de casas nuevas el mismo día. — {agent_first_name}'],
+        ]],
+        'seller_lead_es' => ['Prospecto vendedor (14 días, en español)', 'Para dueños que preguntaron por el valor de su casa o quieren vender.', [
+            [0, 'call', 'Llamar: agradecer y preguntar por sus planes', null],
+            [0, 'email', 'Enviar el valor estimado y qué lo afecta', 'Hola {first_name}, gracias por preguntar por el valor de su casa. Aquí ve en cuánto se vendieron casas parecidas cerca. — {agent_first_name}'],
+            [2, 'call', 'Ofrecer una visita gratuita para un precio exacto', null],
+            [5, 'text', 'Mensaje de seguimiento', 'Hola {first_name}, con gusto visito su casa y le doy un precio exacto, sin compromiso. ¿Le queda bien esta semana? — {agent_first_name}'],
+            [14, 'call', 'Llamada de seguimiento', null],
+        ]],
+        'past_client_es' => ['Cliente anterior — primer año (en español)', 'Cuidar a los nuevos dueños y ganar referidos.', [
+            [7, 'call', '¿Cómo va la casa nueva?', null],
+            [30, 'email', 'Consejos para el nuevo dueño', 'Hola {first_name}, algunos consejos para sus primeros meses en la casa nueva. — {agent_first_name}'],
+            [180, 'call', 'Llamada a los seis meses', null],
+            [365, 'text', '¡Feliz aniversario en su casa!', '¡Feliz primer aniversario en su casa, {first_name}! Si algún amigo piensa mudarse, con gusto le ayudo. — {agent_first_name}'],
+        ]],
     ];
+
+    /** The plan for someone who went quiet after a plan finished (SO2). */
+    public const QUIET_PLAN = 'not_ready';
 
     public function __construct(private readonly ContactVisibility $visibility, private readonly Consent $consent, private readonly Timeline $timeline) {}
 
@@ -67,18 +117,35 @@ final class FollowUpPlans
      */
     public function plansFor(User $user): Collection
     {
-        if (! FollowUpPlan::query()->exists()) {
-            DB::transaction(function (): void {
-                foreach (self::TEMPLATES as [$name, $description, $steps]) {
-                    $plan = FollowUpPlan::query()->create(['name' => $name, 'description' => $description, 'shared' => true, 'active' => true, 'trigger' => 'manual']);
-                    foreach ($steps as $i => [$day, $type, $title, $message]) {
-                        PlanStep::query()->create(['plan_id' => $plan->id, 'sort' => $i, 'day' => $day, 'type' => $type, 'title' => $title, 'message' => $message]);
-                    }
+        $this->seedTemplates();
+
+        return FollowUpPlan::query()->with('steps')->where(fn ($q) => $q->where('shared', true)->orWhere('owner_user_id', $user->id))->orderBy('name')->get();
+    }
+
+    /**
+     * Adds each ready-made plan this RightAlly doesn't have yet. Plans from before keys existed are matched by name.
+     */
+    public function seedTemplates(): void
+    {
+        $existing = FollowUpPlan::query()->where('shared', true)->get(['id', 'name', 'template_key']);
+        $keys = $existing->pluck('template_key')->filter()->all();
+        foreach (self::TEMPLATES as $key => [$name, $description, $steps]) {
+            if (in_array($key, $keys, true)) {
+                continue;
+            }
+            $same = $existing->first(fn (FollowUpPlan $p): bool => $p->template_key === null && $p->name === $name);
+            if ($same !== null) {
+                $same->forceFill(['template_key' => $key])->save();
+
+                continue;
+            }
+            DB::transaction(function () use ($key, $name, $description, $steps): void {
+                $plan = FollowUpPlan::query()->create(['name' => $name, 'description' => $description, 'shared' => true, 'active' => true, 'trigger' => 'manual', 'template_key' => $key]);
+                foreach ($steps as $i => [$day, $type, $title, $message]) {
+                    PlanStep::query()->create(['plan_id' => $plan->id, 'sort' => $i, 'day' => $day, 'type' => $type, 'title' => $title, 'message' => $message]);
                 }
             });
         }
-
-        return FollowUpPlan::query()->with('steps')->where(fn ($q) => $q->where('shared', true)->orWhere('owner_user_id', $user->id))->orderBy('name')->get();
     }
 
     /**

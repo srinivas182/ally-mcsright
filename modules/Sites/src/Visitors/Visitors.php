@@ -16,6 +16,7 @@ use Modules\Crm\Leads\LeadAlert;
 use Modules\Crm\Leads\SpeedToLead;
 use Modules\Crm\Models\Contact;
 use Modules\Crm\Models\Lead;
+use Modules\Crm\Plans\Reactions;
 use Modules\Listings\Models\Listing;
 use Modules\Listings\Search\ListingSearch;
 use Modules\Sites\Jobs\SummariseJourney;
@@ -116,6 +117,14 @@ final class Visitors
             SiteEvent::query()->create($row);
         }
         $newVisit = $visitor->last_seen_at === null || $visitor->last_seen_at->lt($now->subMinutes(30));
+        // Back after two weeks or more: reactive follow-up steps up (SO2).
+        if ($visitor->contact_id !== null && $visitor->last_seen_at !== null && $visitor->last_seen_at->lt($now->subDays(14))) {
+            $away = (int) $visitor->last_seen_at->diffInDays($now);
+            $contact = Contact::query()->find($visitor->contact_id);
+            if ($contact !== null) {
+                app(Reactions::class)->stepUp($contact, "came back to your website after {$away} days");
+            }
+        }
         $visitor->forceFill(['last_seen_at' => $now, 'visits' => $visitor->visits + ($newVisit ? 1 : 0), 'events_day' => $today, 'events_today' => $used + count($rows)])->save();
         if ($visitor->contact_id !== null) {
             $this->readyToAct($visitor, $rows);
@@ -242,6 +251,7 @@ final class Visitors
         $agent = $agentId !== null ? User::query()->find($agentId) : null;
         $line = "{$contact->name} {$why} {$label}".($price !== null ? ' ($'.number_format($price).')' : '').' on your website. Now is a good time to reach out.';
         app(Timeline::class)->system($contact, 'Website: '.$contact->name.' '.$why.' '.$label.($price !== null ? ' ($'.number_format($price).')' : ''));
+        app(Reactions::class)->stepUp($contact, "{$why} {$label} on your website");
         if ($agent instanceof User && $agent->isActive()) {
             $agent->notify(new LeadAlert("Ready to act: {$contact->name}", $line, app(SpeedToLead::class)->link('/contacts/'.$contact->ulid), 'Call now'));
         }

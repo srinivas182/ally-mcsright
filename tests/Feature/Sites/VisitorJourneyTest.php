@@ -17,6 +17,7 @@ use Modules\Crm\Leads\LeadRouting;
 use Modules\Crm\Models\Activity;
 use Modules\Crm\Models\Lead;
 use Modules\Crm\Models\SavedSearch;
+use Modules\Crm\Models\Task;
 use Modules\Listings\Access\MlsAccess;
 use Modules\Listings\Feed\FakeResoFeed;
 use Modules\Listings\Feed\ResoFeed;
@@ -171,8 +172,13 @@ it('tells the agent when a known visitor looks ready to act, once per home per w
     vjBeacon($this, [['type' => 'listing', 'listing' => $home]]);
     Notification::assertSentToTimes($this->ann, LeadAlert::class, 1);
 
+    // Reactive follow-up (SO2): the agent also gets a task for today that says why, once a day.
+    expect(Task::query()->where('assigned_to', $this->ann->id)->where('title', 'like', 'Reach out now:%')->pluck('title')->all())
+        ->toBe(['Reach out now: Jane Doe keeps coming back to 105 Elm St, Austin on your website']);
+
     vjBeacon($this, [['type' => 'mortgage', 'listing' => vjUlid(6), 'down_pct' => '10', 'rate' => '6.25']]);
     Notification::assertSentToTimes($this->ann, LeadAlert::class, 2);
+    expect(Task::query()->where('title', 'like', 'Reach out now:%')->count())->toBe(1);
     expect(SiteEvent::query()->where('type', 'mortgage')->sole()->data)->toMatchArray(['down_pct' => 10, 'rate' => 6.25]);
 });
 
