@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace Modules\Ads\Social;
 
+use Carbon\CarbonImmutable;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 use Modules\Core\Connect\ConnectionData;
 use Modules\Core\Connect\Connector;
 use Modules\Core\Connect\ConnectorKit;
 use Modules\Core\Connect\NeedsReconnect;
+use Modules\Sites\Reviews\Reviews;
 
 /**
  * Google Business Profile (specs/connect/19): the shared Google sign-in with business.manage. Once a day the
@@ -50,8 +53,33 @@ final class GoogleBusiness implements Connector, SocialChannel
             }
         }
         $this->kit->saveSettings($connection, ['locations' => $locations, 'interval_minutes' => 1440]);
+        $this->reviews($connection, $http, $locations);
 
         return ['created' => 0, 'updated' => count($locations), 'skipped' => 0, 'cursor' => null, 'note' => $locations === [] ? 'No business locations found on this Google account.' : null];
+    }
+
+    /**
+     * C8a (specs/connect/20): each location's newest reviews, kept with their source and date for the websites;
+     * replies are posted back to Google from Reviews.
+     *
+     * @param  list<array{id: string, name: string}>  $locations
+     */
+    private function reviews(ConnectionData $connection, PendingRequest $http, array $locations): void
+    {
+        $stars = ['ONE' => 1, 'TWO' => 2, 'THREE' => 3, 'FOUR' => 4, 'FIVE' => 5];
+        $rows = [];
+        foreach (array_slice($locations, 0, 10) as $loc) {
+            $r = $http->get(self::POSTS.$loc['id'].'/reviews', ['pageSize' => 50, 'orderBy' => 'updateTime desc']);
+            foreach ((array) ($r->successful() ? $r->json('reviews', []) : []) as $rv) {
+                if (! is_array($rv) || ! is_string($rv['name'] ?? null) || preg_match('#^accounts/\d+/locations/\d+/reviews/[A-Za-z0-9_-]+$#', $rv['name']) !== 1) {
+                    continue;
+                }
+                $rows[] = ['external_id' => $rv['name'], 'author' => ($rv['reviewer']['isAnonymous'] ?? false) === true ? null : (is_string($rv['reviewer']['displayName'] ?? null) ? $rv['reviewer']['displayName'] : null),
+                    'rating' => $stars[$rv['starRating'] ?? ''] ?? null, 'text' => is_string($rv['comment'] ?? null) ? $rv['comment'] : null, 'url' => null,
+                    'reviewed_at' => CarbonImmutable::parse((string) ($rv['createTime'] ?? 'now')), 'reply' => is_string($rv['reviewReply']['comment'] ?? null) ? $rv['reviewReply']['comment'] : null];
+            }
+        }
+        app(Reviews::class)->save('google', $connection->ownerUserId, $connection->id, $rows);
     }
 
     public function places(ConnectionData $connection): array

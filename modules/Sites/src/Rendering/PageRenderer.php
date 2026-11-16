@@ -13,6 +13,8 @@ use Modules\Sites\AgentSites;
 use Modules\Sites\Http\Controllers\SiteController;
 use Modules\Sites\Models\Site;
 use Modules\Sites\Models\SitePage;
+use Modules\Sites\Reviews\Review;
+use Modules\Sites\Reviews\Reviews;
 use Modules\Sites\Sections;
 
 /**
@@ -45,6 +47,13 @@ final class PageRenderer
                 $mine = $p['mine'] && $agent !== null ? ($agent['mls_ids'][0] ?? '') : null;
                 $s['listings'] = $mine === '' ? [] : app(ListingSearch::class)->search($tenantId, array_filter(['q' => $p['q'] ?? '', 'min_price' => $p['min_price'] ?? null,
                     'max_price' => $p['max_price'] ?? null, 'sort' => $p['sort'] ?? 'newest', 'per_page' => $p['limit'] ?? 6, 'agent_mls_id' => $mine]))['results'];
+            }
+            if ($s['type'] === 'testimonials' && ($s['props']['items'] === [] || $s['props']['from_reviews'])) {
+                // C8a: the agent's (or brokerage's) reviews from Google and RealSatisfied, each with its source and date.
+                $s['props']['items'] = app(Reviews::class)->shown($agent !== null ? ($owner->user_id !== null ? (int) $owner->user_id : null) : null, 6)['reviews']
+                    ->filter(fn (Review $r): bool => trim((string) $r->text) !== '')
+                    ->map(fn (Review $r): array => ['quote' => mb_substr((string) $r->text, 0, 600), 'name' => (string) ($r->author ?? 'A client'),
+                        'detail' => (Reviews::SOURCES[$r->source] ?? $r->source).' review · '.$r->reviewed_at->format('M Y'), 'rating' => (int) ($r->rating ?? 0)])->values()->all();
             }
             $blocks[] = $s;
         }
