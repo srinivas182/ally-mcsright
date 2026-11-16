@@ -13,6 +13,7 @@ use Modules\Core\Access\Can;
 use Modules\Core\Access\Fields;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Support\Connections;
+use Modules\Core\Workflows\Workflows;
 
 /**
  * Custom fields on contacts, deals and agents (specs/core/10, N1). A brokerage adds the fields it needs; each one
@@ -188,6 +189,12 @@ final class CustomFields
         }
         if ($changed !== [] && $audit) {
             $this->audit->record('core.custom_field.values_changed', $by, changes: $changed, metadata: ['entity' => $entity, 'id' => $id], label: self::ENTITIES[$entity] ?? $entity);
+            // Automations can start when a field changes (specs/core/06, W1).
+            foreach ($fields as $f) {
+                if (array_key_exists((string) $f->label, $changed)) {
+                    app(Workflows::class)->fire($entity.'.field_changed', $id, ['field' => (string) $f->key, 'value' => (string) ($changed[(string) $f->label]['new'] ?? '')], $by);
+                }
+            }
         }
     }
 

@@ -30,7 +30,7 @@ final class PermissionRegistry
 
     /** Access that owners hear about the moment it is given (R1), on top of every sensitive permission. */
     public const RISKY = ['core.roles.manage', 'core.users.manage', 'core.access.review', 'finance.payouts.approve', 'finance.ledger.export',
-        'finance.ledger.adjust', 'transactions.export', 'transactions.cda.approve', 'apps.manage', 'billing.credits.manage'];
+        'finance.ledger.adjust', 'transactions.export', 'transactions.cda.approve', 'apps.manage', 'billing.credits.manage', 'core.workflows.manage'];
 
     /**
      * The risky permissions in a set, as plain-English labels.

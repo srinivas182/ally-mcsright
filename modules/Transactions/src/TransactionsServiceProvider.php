@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Transactions;
 
 use App\Models\User;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Modules\AI\FeatureCatalog;
@@ -17,6 +18,7 @@ use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Mcp\McpToolbox;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
+use Modules\Core\Workflows\WorkflowRegistry;
 
 final class TransactionsServiceProvider extends ServiceProvider
 {
@@ -31,6 +33,8 @@ final class TransactionsServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        Workflows\DealWorkflows::register($this->app->make(WorkflowRegistry::class)); // specs/core/06, W1
+        Event::listen(Events\DealStatusChanged::class, [Workflows\DealWorkflows::class, 'statusChanged']);
         Brief\DealBriefItems::register($this->app->make(DailyBriefs::class));
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');

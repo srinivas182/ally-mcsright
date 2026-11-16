@@ -27,6 +27,7 @@ use Modules\AI\Support\PromptRegistry;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
+use Modules\Core\Workflows\WorkflowDrafter;
 
 /**
  * AI platform: gateway, registry, credit metering and AI data protection.
@@ -49,6 +50,7 @@ final class AiServiceProvider extends ServiceProvider
         $this->app->singleton(PromptBuilder::class);
         $this->app->singleton(JsonShape::class);
         $this->app->bind(CreditMeter::class, NullCreditMeter::class);
+        $this->app->bind(WorkflowDrafter::class, Workflows\AiWorkflowDrafter::class);
         $this->app->scoped(AiGateway::class);
         $this->app->bind(VectorStore::class, DatabaseVectorStore::class);
         $this->app->bind(AccessScopeResolver::class, OwnRecordsOnlyResolver::class);
@@ -60,6 +62,7 @@ final class AiServiceProvider extends ServiceProvider
     {
         $this->loadRoutesFrom(__DIR__.'/../routes/hq.php');
         $this->loadRoutesFrom(__DIR__.'/../routes/assistant.php');
+        $this->app->make(FeatureCatalog::class)->declare(Workflows\AiWorkflowDrafter::FEATURE, 'ai.workflow_draft', 'Automations described in plain English');
         $this->app->make(FeatureCatalog::class)->declare(Assistant\YourAiAssistant::FEATURE, 'ai.assistant', 'Your AI Assistant: answers and acts in the back office');
         Gate::define('hq.ai.manage', fn (User $user): bool => $user->kind === UserKind::HqStaff);
         $this->app->make(NavigationRegistry::class)->add(new NavItem('HQ', 'AI gateway', '/hq/ai', 'sparkles', 20, ability: 'hq.ai.manage', kinds: [UserKind::HqStaff]));

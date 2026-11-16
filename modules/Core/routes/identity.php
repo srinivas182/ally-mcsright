@@ -19,6 +19,7 @@ use Modules\Core\Identity\Http\Controllers\UserController;
 use Modules\Core\Identity\Http\Middleware\EnsureTenantHost;
 use Modules\Core\Identity\Security\SingleSignOn;
 use Modules\Core\Notices\NoticesController;
+use Modules\Core\Workflows\WorkflowsController;
 
 Route::middleware(['web', EnsureTenantHost::class, 'guest'])->group(function (): void {
     Route::get('invitations/{token}', [InvitationController::class, 'show'])->name('invitations.show');
@@ -118,6 +119,22 @@ Route::middleware(['web', EnsureTenantHost::class, 'auth'])->group(function (): 
     Route::post('settings/custom-fields/{entity}', [CustomFieldsController::class, 'save'])->whereIn('entity', ['contact', 'deal', 'agent'])->name('custom-fields.store');
     Route::put('settings/custom-fields/{entity}/{field}', [CustomFieldsController::class, 'save'])->whereIn('entity', ['contact', 'deal', 'agent'])->name('custom-fields.update');
     Route::post('settings/custom-fields/{entity}/{field}/archive', [CustomFieldsController::class, 'archive'])->whereIn('entity', ['contact', 'deal', 'agent'])->name('custom-fields.archive');
+    // Automations (specs/core/06, W1).
+    Route::get('automations', [WorkflowsController::class, 'index'])->name('automations.index');
+    Route::get('automations/new', [WorkflowsController::class, 'edit'])->name('automations.create');
+    Route::get('automations/approvals', [WorkflowsController::class, 'approvals'])->name('automations.approvals');
+    Route::post('automations/approvals/{approval}', [WorkflowsController::class, 'decide'])->name('automations.decide');
+    Route::post('automations/dry-run', [WorkflowsController::class, 'dryRun'])->middleware('throttle:30,1')->name('automations.dry-run');
+    Route::post('automations/draft', [WorkflowsController::class, 'draft'])->middleware('throttle:20,1')->name('automations.draft');
+    Route::post('automations/templates/{key}', [WorkflowsController::class, 'template'])->where('key', '[a-z_]+')->name('automations.template');
+    Route::post('automations/runs/{run}/retry', [WorkflowsController::class, 'retry'])->name('automations.retry');
+    Route::post('automations/runs/{run}/cancel', [WorkflowsController::class, 'cancel'])->name('automations.cancel');
+    Route::post('automations', [WorkflowsController::class, 'save'])->name('automations.store');
+    Route::get('automations/{workflow}', [WorkflowsController::class, 'edit'])->name('automations.edit');
+    Route::put('automations/{workflow}', [WorkflowsController::class, 'save'])->name('automations.update');
+    Route::post('automations/{workflow}/switch', [WorkflowsController::class, 'switch'])->name('automations.switch');
+    Route::delete('automations/{workflow}', [WorkflowsController::class, 'destroy'])->name('automations.destroy');
+    Route::get('automations/{workflow}/runs', [WorkflowsController::class, 'runs'])->name('automations.runs');
     Route::get('settings/access-review', [AccessController::class, 'review'])->name('access-review.index');
     Route::post('settings/access-review/start', [AccessController::class, 'reviewStart'])->name('access-review.start');
     Route::post('settings/access-review/items/{item}', [AccessController::class, 'reviewDecide'])->whereNumber('item')->name('access-review.decide');

@@ -81,6 +81,8 @@ Schedule::command('audit:maintain stream')->everyMinute()->withoutOverlapping()-
 Schedule::command('core:expire-access')->hourly()->onOneServer();
 // The quarterly access review reminder (specs/core/03, R1): Mondays, from two weeks into each quarter.
 // Alerts held for quiet hours and the daily digest (specs/core/10, N1).
+// Automations whose wait is over carry on (specs/core/06, W1).
+Schedule::command('core:workflows')->everyFiveMinutes()->withoutOverlapping()->onOneServer();
 Schedule::command('core:notice-digests')->hourlyAt(7)->onOneServer();
 Schedule::command('core:access-review-reminder')->weeklyOn(1, '14:23')->onOneServer();
 // Brokerage price increases reach existing agents after 30 days (specs/core/07).

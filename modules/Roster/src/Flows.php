@@ -14,6 +14,7 @@ use Modules\Core\Identity\Actions\ManageUserStatus;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
+use Modules\Core\Workflows\Workflows;
 use Modules\Ledger\ChartOfAccounts;
 use Modules\Ledger\LedgerService;
 
@@ -68,6 +69,7 @@ final class Flows
             $db->table('roster_tasks')->insert(['tenant_id' => $this->tenants->id(), 'flow_id' => $id, 'code' => $code, 'title' => $title, 'who' => $who, 'automatic' => $auto, 'sort' => $sort++]);
         }
         app(AuditLogger::class)->record('roster.'.$kind.'.started', $agent, metadata: ['leaving_on' => $leavingOn?->toDateString(), 'reason' => $reason], severity: 'notice', label: $agent->name);
+        app(Workflows::class)->fire('agent.'.$kind.'_started', $agent->id, ['kind' => $agent->kind->value, 'leaving_on' => $leavingOn?->toDateString(), 'reason' => $reason], $by);
 
         return $ulid;
     }
