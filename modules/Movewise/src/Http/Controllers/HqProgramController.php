@@ -15,6 +15,8 @@ use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Support\Connections as ControlDb;
 use Modules\Core\Tenancy\Models\Tenant;
 use Modules\Crm\Actions\ManageContacts;
+use Modules\Movewise\Growth\AdBudget;
+use Modules\Movewise\Growth\AgentReviews;
 use Modules\Movewise\Matching\Connections;
 use Modules\Movewise\Models\Agent;
 use Modules\Movewise\Models\Connection;
@@ -137,10 +139,31 @@ final class HqProgramController
                 ->map(fn ($i): array => ['ulid' => (string) $i->ulid, 'number' => (string) $i->number, 'account' => Tenant::query()->whereKey($i->tenant_id)->value('name'),
                     'partner' => $partners[$i->partner_id] ?? '', 'amount_cents' => (int) $i->amount_cents, 'share_pct' => (float) $i->share_pct, 'commission_cents' => (int) $i->commission_cents,
                     'status' => (string) $i->status, 'due_on' => (string) $i->due_on, 'overdue' => $i->status === 'issued' && (string) $i->due_on < now()->toDateString()])->all(),
+            'ads' => app(AdBudget::class)->settings() + ['summary' => app(AdBudget::class)->summary()],
+            'spend' => $db->table('movewise_ad_spend')->orderByDesc('day')->limit(30)->get(['day', 'channel', 'state', 'spend_cents'])->map(fn ($r): array => (array) $r)->all(),
+            'reviews' => Connection::query()->whereNotNull('rating')->where('review_public', true)->whereNull('review_removed_reason')->orderByDesc('reviewed_at')->limit(50)->get()
+                ->map(fn (Connection $c): array => ['ulid' => $c->ulid, 'agent' => (string) (Agent::query()->find($c->agent_id)->profile['display_name'] ?? ''), 'rating' => $c->rating,
+                    'text' => $c->rating_note, 'date' => $c->reviewed_at?->toDateString()])->values()->all(),
+            'removal_reasons' => AgentReviews::REMOVAL_REASONS,
             'settlements' => $db->table('movewise_settlements')->orderByDesc('period')->limit(100)->get()->map(fn ($s): array => ['id' => (int) $s->id, 'partner' => $partners[$s->partner_id] ?? '',
                 'period' => (string) $s->period, 'invoices' => (int) $s->invoices, 'collected_cents' => (int) $s->collected_cents, 'hq_pct' => (float) $s->hq_pct,
                 'hq_cents' => (int) $s->hq_cents, 'status' => (string) $s->status])->all(),
         ]);
+    }
+
+    public function ads(Request $request, AdBudget $ads): RedirectResponse
+    {
+        $request->input('kind') === 'spend' ? $ads->record($request->all(), self::user($request)) : $ads->save($request->all(), self::user($request));
+        $ads->check();
+
+        return back();
+    }
+
+    public function removeReview(Request $request, string $connection, AgentReviews $reviews): RedirectResponse
+    {
+        $reviews->remove(Connection::query()->where('ulid', $connection)->firstOrFail(), self::user($request), (string) $request->input('reason', ''), (string) $request->input('note', ''));
+
+        return back();
     }
 
     public function invoice(Request $request, string $invoice, Invoices $invoices): RedirectResponse

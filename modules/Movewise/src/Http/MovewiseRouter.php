@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Router;
 use Modules\Movewise\Http\Controllers\AccountController;
 use Modules\Movewise\Http\Controllers\ConnectController;
+use Modules\Movewise\Http\Controllers\GrowthController;
 use Modules\Movewise\Http\Controllers\JoinController;
 use Modules\Movewise\Http\Controllers\SiteController;
 use Modules\Movewise\Http\Controllers\ToolsController;
@@ -73,7 +74,10 @@ final class MovewiseRouter
                 $r->post('account/delete', [AccountController::class, 'delete']);
                 $r->post('account/sign-out', [AccountController::class, 'signOut']);
                 $r->get('{page}', [SiteController::class, 'page'])->where('page', 'how-movewise-is-paid|privacy|terms|fair-housing|brokers|accessibility');
+                $r->get('agent/{agent}/{slug?}', [GrowthController::class, 'agent'])->where(['agent' => '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}', 'slug' => '[a-z0-9-]{0,80}']);
                 $r->get('{state}', [SiteController::class, 'state'])->where('state', '[a-z-]{4,20}');
+                $r->get('{state}/{place}', [GrowthController::class, 'place'])->where(['state' => '[a-z-]{4,20}', 'place' => '\d{5}|[a-z0-9-]{2,60}']);
+                $r->get('{state}/{city}/{hood}', [GrowthController::class, 'hood'])->where(['state' => '[a-z-]{4,20}', 'city' => '[a-z0-9-]{2,60}', 'hood' => '[a-z0-9-]{2,80}']);
             });
         }
     }

@@ -14,6 +14,7 @@ use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Support\Connections as ControlDb;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Movewise\Bridge\Relay;
+use Modules\Movewise\Growth\AgentReviews;
 use Modules\Movewise\Matching\Brief;
 use Modules\Movewise\Matching\Connections;
 use Modules\Movewise\Models\Agent;
@@ -129,7 +130,9 @@ final class ProgramController
             'credits' => $c->price_credits, 'model' => $c->model, 'refund_status' => $c->refund_status, 'refund_days' => (int) config('movewise.refund_days', 7),
             'brief' => $brief->for($c, $c->status === 'accepted'), 'relay' => $c->handed_over_at === null ? $c->relay_number : null,
             'paused_until' => $c->paused_until?->isFuture() ? $c->paused_until->toIso8601String() : null, 'handover_asked' => $c->handover_asked_at !== null,
-            'handed_over' => $c->handed_over_at !== null, 'stage' => $c->stage, 'stages' => Outcomes::STAGES,
+            'handed_over' => $c->handed_over_at !== null, 'stage' => $c->stage,
+            'review' => $c->rating !== null && $c->review_removed_reason === null ? ['rating' => $c->rating, 'text' => $c->review_public ? $c->rating_note : null,
+                'public' => $c->review_public, 'reply' => $c->review_reply] : null, 'stages' => Outcomes::STAGES,
             'referral' => $c->model === 'share' ? ($c->referral_agreement ?? $this->referralPreview($c)) : null, 'referral_signed' => $c->referral_signed_at !== null,
             'history' => DB::connection(ControlDb::control())->table('movewise_status_events')->where('connection_id', $c->id)->orderBy('id')->get(['stage', 'note', 'created_at'])
                 ->map(fn ($e): array => ['stage' => Outcomes::STAGES[$e->stage] ?? $e->stage, 'note' => $e->note, 'at' => (string) $e->created_at])->all()]);
@@ -142,6 +145,7 @@ final class ProgramController
         match ((string) $request->input('action')) {
             'accept' => $connections->accept($c, $user, $request->boolean('agree_referral')),
             'status' => app(Outcomes::class)->update($c, $user, $request->all()),
+            'reply' => app(AgentReviews::class)->reply($c, $user, (string) $request->input('reply', '')),
             'decline' => $connections->decline($c, $user),
             'report' => $connections->report($c, $user, (string) $request->input('reason', '')),
             'handover' => app(Relay::class)->askHandover($c, $user, $request->boolean('signed_or_closed')),
@@ -152,6 +156,7 @@ final class ProgramController
             'decline' => 'Declined. They will choose another agent; nothing was charged.',
             'handover' => 'Asked. If they reply YES, you can text them from your own number.',
             'status' => 'Status updated.',
+            'reply' => 'Your reply is on your Movewise profile.',
             default => 'Sent to Movewise. We\'ll reply within two working days.',
         }]);
 

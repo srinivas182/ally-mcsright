@@ -27,6 +27,8 @@ Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.tenants.manage
     Route::post('program/seats/{seat}', [HqProgramController::class, 'seat'])->where('seat', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('program.seat');
     Route::get('money', [HqProgramController::class, 'money'])->name('money');
     Route::post('money/invoices/{invoice}', [HqProgramController::class, 'invoice'])->where('invoice', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->middleware('password.confirm')->name('money.invoice');
+    Route::post('money/ads', [HqProgramController::class, 'ads'])->middleware('password.confirm')->name('money.ads');
+    Route::post('money/reviews/{connection}/remove', [HqProgramController::class, 'removeReview'])->where('connection', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->middleware('password.confirm')->name('money.reviews.remove');
     Route::post('money/settlements/{settlement}', [HqProgramController::class, 'settlement'])->whereNumber('settlement')->middleware('password.confirm')->name('money.settlement');
     Route::post('program/agents/{agent}/strike', [HqProgramController::class, 'strike'])->where('agent', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->middleware('password.confirm')->name('program.strike');
     Route::post('program/relays', [HqProgramController::class, 'relay'])->middleware('password.confirm')->name('program.relays');

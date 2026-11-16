@@ -8,7 +8,7 @@
 <div class="wrap">
     @if ($cities !== [])
         <h2>By city</h2>
-        <p>@foreach ($cities as $c)<a href="/homes?{{ http_build_query(['state' => $state['code'], 'q' => $c['city']]) }}">{{ $c['city'] }} ({{ $c['count'] }})</a>@if (! $loop->last) · @endif @endforeach</p>
+        <p>@foreach ($cities as $c)<a href="{{ $u('/'.$state['slug'].'/'.\Illuminate\Support\Str::slug($c['city'])) }}">{{ $c['city'] }} ({{ $c['count'] }})</a>@if (! $loop->last) · @endif @endforeach</p>
     @endif
     @if ($results !== [])
         <h2>Newest in {{ $state['name'] }}</h2>

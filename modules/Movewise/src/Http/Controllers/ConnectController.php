@@ -7,10 +7,12 @@ namespace Modules\Movewise\Http\Controllers;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Modules\Core\Support\Connections as ControlDb;
 use Modules\Listings\Search\ListingSearch;
 use Modules\Movewise\Bridge\Relay;
+use Modules\Movewise\Growth\AgentReviews;
 use Modules\Movewise\Http\Guard;
 use Modules\Movewise\I18n;
 use Modules\Movewise\Matching\Connections;
@@ -134,7 +136,7 @@ final class ConnectController
         Guard::check($request, 'feedback:'.$request->ip(), 20);
         $p = $this->person($request);
         $c = Connection::query()->where('ulid', $connection)->where('person_id', $p->id)->firstOrFail();
-        $request->has('rating') ? $outcomes->rate($c, $p, (int) $request->input('rating'), (string) $request->input('note', ''))
+        $request->has('rating') ? $outcomes->rate($c, $p, (int) $request->input('rating'), (string) $request->input('note', ''), $request->boolean('public'))
             : $outcomes->confirmMet($c, $p, $request->boolean('met'));
 
         return redirect(I18n::url('/account').'#agent', 303);
@@ -179,7 +181,8 @@ final class ConnectController
                 continue;
             }
             $cards[] = ['ulid' => $a->ulid, 'profile' => $a->profile, 'brokerage' => $a->brokerage_name, 'licence' => $a->licence_number, 'state' => $a->state,
-                'lookup' => self::licenceLookup($a->state), 'slots' => $p->phone_verified_at !== null ? $this->connections->slots($a) : []];
+                'lookup' => self::licenceLookup($a->state), 'rating' => app(AgentReviews::class)->summary($a),
+                'profile_url' => I18n::url('/agent/'.$a->ulid.'/'.Str::slug((string) ($a->profile['display_name'] ?? 'agent'))), 'slots' => $p->phone_verified_at !== null ? $this->connections->slots($a) : []];
         }
 
         return $this->view('movewise::connect.choose', ['person' => $p, 'show' => $showUlid, 'context' => $context, 'cards' => $cards, 'errors_' => $errors, 'code_sent' => $codeSent,

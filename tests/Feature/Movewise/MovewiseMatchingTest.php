@@ -29,6 +29,7 @@ use Modules\Listings\Feed\ResoFeed;
 use Modules\Listings\Models\Listing;
 use Modules\Listings\Models\MlsSource;
 use Modules\Listings\Sync\ListingSync;
+use Modules\Movewise\Growth\AdBudget;
 use Modules\Movewise\Mail\PersonUpdate;
 use Modules\Movewise\Matching\AcceptClock;
 use Modules\Movewise\Matching\Connections as Intros;
@@ -42,6 +43,7 @@ use Modules\Movewise\Movewise;
 use Modules\Movewise\Notifications\IntroductionClosed;
 use Modules\Movewise\Notifications\IntroductionOffered;
 use Modules\Movewise\Program\Agents;
+use Modules\Sites\Reviews\Reviews;
 
 /* Movewise MW4: "Talk to an agent" — about your move and the readiness score, three agents chosen fairly (eligibility,
    caps, rotation, a place for someone not shown recently), the verified mobile, the consent, the accept timer,
@@ -63,7 +65,7 @@ beforeEach(function (): void {
     $source = MlsSource::query()->create(['key' => 'har', 'name' => 'HAR', 'states' => ['TX'], 'provider' => 'mls_grid', 'base_url' => 'https://api.mlsgrid.com/v2',
         'credentials' => ['token' => 't'], 'status' => 'active']);
     $feed->records = [['ListingKey' => 'H1', 'ListingId' => 'MH1', 'StandardStatus' => 'Active', 'PropertyType' => 'Residential', 'ListPrice' => 400000, 'BedroomsTotal' => 3,
-        'BathroomsFull' => 2, 'LivingArea' => 1900, 'StreetNumber' => '12', 'StreetName' => 'Oak St', 'City' => 'Houston', 'StateOrProvince' => 'TX', 'PostalCode' => '77001',
+        'BathroomsFull' => 2, 'LivingArea' => 1900, 'StreetNumber' => '12', 'StreetName' => 'Oak St', 'City' => 'Houston', 'StateOrProvince' => 'TX', 'PostalCode' => '77001', 'SubdivisionName' => 'Oak Forest',
         'Latitude' => 29.7, 'Longitude' => -95.3, 'ListAgentMlsId' => 'A1', 'ListOfficeName' => 'Bayou Realty', 'ModificationTimestamp' => '2026-05-31T14:30:00Z']];
     app(ListingSync::class)->run($source);
     $partner = Partner::query()->create(['name' => 'Lone Star Partners LLC', 'broker_name' => 'Pat', 'licence_number' => '9001234', 'licence_state' => 'TX', 'contract_signed_on' => '2026-05-01', 'status' => 'active']);
@@ -438,4 +440,65 @@ it('rates agents, scores them weekly with the reasons shown, and removes them on
             ->assertSessionHasNoErrors();
     }
     expect($annAgent->refresh()->status)->toBe('removed')->and($annAgent->strikes)->toBe(3);
+});
+
+/* MW7: city, ZIP and neighbourhood pages with market facts; verified reviews on agent profiles; Movewise's ads stop-loss. */
+
+it('has a page for every city, ZIP code and neighbourhood, with market facts and plain answers', function (): void {
+    $page = $this->get(MWH.'/texas/houston')->assertOk()->assertSee('Homes for sale in Houston, Texas')->assertSee('$400,000')->assertSee('"@type":"FAQPage"', false)
+        ->assertSee('"@type":"Place"', false)->assertSee('Six-month market report')->assertSee('href="/texas/houston/oak-forest"', false)->assertSee('href="/texas/77001"', false)
+        ->assertSee('<link rel="alternate" hreflang="es" href="https://movewisehomes.com/es/texas/houston">', false);
+    expect($page->headers->get('Cache-Control'))->toContain('public');
+    $this->get(MWH.'/texas/77001')->assertOk()->assertSee('ZIP code 77001');
+    $this->get(MWH.'/texas/houston/oak-forest')->assertOk()->assertSee('Oak Forest, Houston');
+    $this->get(MWH.'/es/texas/houston')->assertOk()->assertSee('¿Cuántas casas hay en venta en Houston, Texas?');
+    $this->get(MWH.'/texas/atlantis')->assertNotFound();
+    $this->get(MWH.'/texas')->assertSee('href="/texas/houston"', false);
+    $this->get(MWH.'/sitemaps/tx.xml')->assertSee('https://movewisehomes.com/texas/houston')->assertSee('https://movewisehomes.com/texas/77001')->assertSee('https://movewisehomes.com/es/texas/houston');
+});
+
+it('publishes verified reviews only with the person\'s say-so, lets the agent reply once, and removes only with a logged reason', function (): void {
+    $c = mwAccepted($this);
+    [$annAgent, $ann] = $this->agents['Ann'];
+    app(Reviews::class)->save('google', $ann->id, null, [['external_id' => 'g1', 'author' => 'Sam G.', 'rating' => 5, 'text' => 'Great on Google',
+        'url' => null, 'reviewed_at' => now()->subMonth()]]);
+    app(TenantContext::class)->forget();
+    $this->travel(8)->days();
+    mwAs($this)->post(MWH.'/account/connections/'.$c->ulid.'/feedback', ['rating' => 5, 'note' => 'Ann was great, call her on 713-555-0199 or ann@x.com', 'public' => '1'], $this->from)
+        ->assertRedirect();
+    expect($c->refresh()->rating_note)->toBe('Ann was great, call her on [removed] or [removed]');
+    $profile = $this->get(MWH.'/agent/'.$annAgent->ulid.'/ann-agent')->assertOk()->assertSee('Verified Movewise client')->assertSee('Ann was great')
+        ->assertSee('"@type":"AggregateRating"', false)->assertSee('5 out of 5 from 1 verified Movewise clients')
+        ->assertSee('Reviews from elsewhere')->assertSee('Great on Google')->assertSee('not part of the Movewise rating');
+
+    app(TenantContext::class)->set($this->tenant);
+    $this->actingAs($ann)->post('/movewise/introductions/'.$c->ulid, ['action' => 'reply', 'reply' => 'Thank you, Bea!'])->assertSessionHasNoErrors();
+    $this->actingAs($ann)->post('/movewise/introductions/'.$c->ulid, ['action' => 'reply', 'reply' => 'Again'])->assertSessionHasErrors('reply');
+    app(TenantContext::class)->forget();
+    $this->get(MWH.'/agent/'.$annAgent->ulid)->assertSee('Reply from Ann Agent');
+
+    $hq = 'http://app.rightally.io';
+    $as = fn () => $this->actingAs($this->staff)->withSession(['auth.password_confirmed_at' => time()]);
+    $as()->post($hq.'/hq/movewise/money/reviews/'.$c->ulid.'/remove', ['reason' => 'abuse'])->assertSessionHasErrors('reason');
+    $as()->post($hq.'/hq/movewise/money/reviews/'.$c->ulid.'/remove', ['reason' => 'personal_data', 'note' => 'Named a neighbour'])->assertSessionHasNoErrors();
+    $this->get(MWH.'/agent/'.$annAgent->ulid)->assertDontSee('Ann was great')->assertSee('No Movewise reviews yet');
+});
+
+it('holds the ads top-up when the last week costs more per accepted introduction than the stop-loss', function (): void {
+    $hq = 'http://app.rightally.io';
+    $as = fn () => $this->actingAs($this->staff)->withSession(['auth.password_confirmed_at' => time()]);
+    $as()->post($hq.'/hq/movewise/money/ads', ['monthly_budget' => '5000', 'weekly_topup' => '1000', 'target' => '80', 'stop_loss' => '50'])->assertSessionHasErrors('stop_loss');
+    $as()->post($hq.'/hq/movewise/money/ads', ['monthly_budget' => '5000', 'weekly_topup' => '1000', 'target' => '80', 'stop_loss' => '150'])->assertSessionHasNoErrors();
+    $as()->post($hq.'/hq/movewise/money/ads', ['kind' => 'spend', 'day' => now()->toDateString(), 'channel' => 'meta', 'state' => 'TX', 'spend' => '400'])->assertSessionHasNoErrors();
+    $as()->get($hq.'/hq/movewise/money')->assertInertia(fn (Assert $p) => $p->where('ads.status', 'held')->where('ads.summary.spend_7d', 40_000));
+    Notification::assertSentTo($this->staff, IntroductionClosed::class, fn ($n): bool => str_contains($n->subject, 'top-up held'));
+
+    mwAccepted($this); // one accepted introduction: $400 each, still above $150
+    expect(app(AdBudget::class)->check())->toBe('held');
+    foreach (range(1, 2) as $i) {
+        Connection::query()->create(['person_id' => $this->person->id, 'show_id' => 1, 'agent_id' => $this->agents['Ben'][0]->id, 'package_id' => 1, 'tenant_id' => $this->tenant->id,
+            'lead_type' => 'buyer', 'method' => 'text', 'consent_text' => 'x', 'consent_at' => now(), 'status' => 'accepted', 'offered_at' => now(), 'accept_by' => now(), 'accepted_at' => now(),
+            'model' => 'connection']);
+    }
+    expect(app(AdBudget::class)->check())->toBe('ok'); // $133 each
 });
