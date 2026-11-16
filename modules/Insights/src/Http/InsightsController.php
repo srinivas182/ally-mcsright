@@ -110,6 +110,15 @@ final class InsightsController
     public function savePlan(Request $request, Planner $planner): RedirectResponse
     {
         $user = self::user($request);
+        // The short way (SO1): just the number of closings this year.
+        if ($request->has('closings') && ! $request->has('income')) {
+            $closings = (int) $request->validate(['closings' => ['required', 'integer', 'min:1', 'max:1000']])['closings'];
+            $planner->saveClosings($user, (int) CarbonImmutable::today()->format('Y'), $closings);
+            $daily = $planner->daily($user);
+            Inertia::flash('toast', ['type' => 'success', 'message' => "Goal saved: {$closings} closings. That's about ".($daily['per_day'] ?? 0).' conversations a working day.']);
+
+            return back();
+        }
         $data = $request->validate(['income' => ['required', 'numeric', 'min:1000', 'max:100000000'], 'take_home' => ['required', 'boolean'],
             'average_price' => ['nullable', 'numeric', 'min:10000', 'max:100000000'], 'commission_rate' => ['nullable', 'numeric', 'min:0.1', 'max:10'],
             'closing_rate' => ['nullable', 'integer', 'min:5', 'max:100'], 'agreement_rate' => ['nullable', 'integer', 'min:5', 'max:100'],

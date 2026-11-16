@@ -95,7 +95,7 @@ class HandleInertiaRequests extends Middleware
             },
             'notices' => fn (): ?array => $request->user() instanceof User
                 ? ['unread' => app(Notices::class)->unread($request->user())] : null,
-            'simple' => fn (): ?array => $request->user() instanceof User ? ['mode' => $request->user()->getAttribute('ui_mode'), 'locale' => SimpleMode::locale($request->user()),
+            'simple' => fn (): ?array => $request->user() instanceof User ? ['mode' => SimpleMode::mode($request->user()), 'locale' => SimpleMode::locale($request->user()),
                 'words' => SimpleMode::words(SimpleMode::locale($request->user())), 'locales' => SimpleMode::LOCALES] : null,
             'navigation' => fn (): array => app(NavigationRegistry::class)->for($request->user() instanceof User ? $request->user() : null),
             // The credit meter at the foot of the menu (brokerage workspaces only).

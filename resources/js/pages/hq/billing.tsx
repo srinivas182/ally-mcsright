@@ -20,6 +20,7 @@ type Plan = {
 type Pkg = {
     ulid: string;
     name: string;
+    audience: 'brokerage' | 'agent';
     monthly_cents: number;
     yearly_cents: number;
     ailly_conversations: number;
@@ -46,6 +47,7 @@ export default function HqBilling({ plans, tiers, features, packages }: Props) {
     });
     const pkg = useForm({
         name: '',
+        audience: 'brokerage',
         monthly: '',
         yearly: '',
         ailly: '500',
@@ -279,11 +281,16 @@ export default function HqBilling({ plans, tiers, features, packages }: Props) {
                 </section>
                 <section className="grid gap-2 rounded-lg border p-4 text-sm">
                     <p className="font-medium">
-                        Brokerage packages (the brokerage's flat fee)
+                        Packages: a brokerage's flat fee, or a solo agent's plan
+                        (RightAlly for Agents, /agents)
                     </p>
                     {packages.map((p) => (
                         <span key={p.ulid}>
-                            {p.name}: {usd(p.monthly_cents)}/month or{' '}
+                            {p.name} (
+                            {p.audience === 'agent'
+                                ? 'solo agents'
+                                : 'brokerages'}
+                            ): {usd(p.monthly_cents)}/month or{' '}
                             {usd(p.yearly_cents)}/year · AIlly{' '}
                             {p.ailly_conversations} conversations
                         </span>
@@ -307,6 +314,17 @@ export default function HqBilling({ plans, tiers, features, packages }: Props) {
                                 pkg.setData('name', e.target.value)
                             }
                         />
+                        <select
+                            aria-label="Who the package is for"
+                            className="h-9 rounded-md border bg-background px-2"
+                            value={pkg.data.audience}
+                            onChange={(e) =>
+                                pkg.setData('audience', e.target.value)
+                            }
+                        >
+                            <option value="brokerage">For brokerages</option>
+                            <option value="agent">For solo agents</option>
+                        </select>
                         <Input
                             aria-label="Monthly ($)"
                             placeholder="$/month"

@@ -403,6 +403,14 @@ export default function ContactsIndex({
                                     Pipeline board
                                 </Link>
                             </Button>
+                            <Button variant="outline" asChild>
+                                <a
+                                    href="/my-people/download"
+                                    title="Everyone you added yourself, with notes and tags. They are yours to keep."
+                                >
+                                    Download my people
+                                </a>
+                            </Button>
                             <Button onClick={() => setAdding(true)}>
                                 <PlusIcon aria-hidden="true" /> Add contact
                             </Button>

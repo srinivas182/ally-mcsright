@@ -49,7 +49,7 @@ final class Savings
         }
         $agentsCents = $whoPays === 'brokerage' && $agentPlan !== null ? $agentPlan['list_cents'] * $agents : 0;
 
-        $options = array_values(Package::query()->where('active', true)->orderBy('monthly_cents')->get()->map(function (Package $p) use ($keptCents, $agentsCents, $now): array {
+        $options = array_values(Package::offered('brokerage')->map(function (Package $p) use ($keptCents, $agentsCents, $now): array {
             $after = $keptCents + $p->monthly_cents + $agentsCents;
 
             return ['package' => $p->name, 'package_cents' => $p->monthly_cents, 'agents_cents' => $agentsCents, 'after_cents' => $after, 'saves_cents' => $now - $after, 'saves_yearly_cents' => ($now - $after) * 12];

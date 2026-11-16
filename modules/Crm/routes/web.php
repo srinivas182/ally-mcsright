@@ -22,6 +22,7 @@ use Modules\Crm\Http\Controllers\Leads\LeadController;
 use Modules\Crm\Http\Controllers\Leads\LeadFormController;
 use Modules\Crm\Http\Controllers\PipelineController;
 use Modules\Crm\Http\Controllers\PlanController;
+use Modules\Crm\Http\Controllers\PortabilityController;
 use Modules\Crm\Http\Controllers\PostcardsController;
 use Modules\Crm\Http\Controllers\PropertyLookupController;
 use Modules\Crm\Http\Controllers\RelationshipController;
@@ -72,7 +73,14 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoff
         Route::delete('{contact}/tags/{tag}', [PipelineController::class, 'untag'])->name('tags.destroy');
     });
 
+// The portability guarantee (specs/grow/03): an agent who left takes their own people with a private emailed link.
+Route::middleware(['web', EnsureTenantWorkspace::class, 'throttle:20,1'])->group(function (): void {
+    Route::get('take-my-people/{token}', [PortabilityController::class, 'show'])->where('token', '[A-Za-z0-9]{40}')->name('crm.portability.show');
+    Route::post('take-my-people/{token}', [PortabilityController::class, 'take'])->where('token', '[A-Za-z0-9]{40}')->name('crm.portability.take');
+});
+
 Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function (): void {
+    Route::get('my-people/download', [PortabilityController::class, 'download'])->middleware('throttle:10,1')->name('crm.portability.download');
     // C8b: property data (ATTOM, BatchData), paid with credits per address.
     Route::get('property-lookup', [PropertyLookupController::class, 'show'])->name('property.lookup');
     Route::post('property-lookup', [PropertyLookupController::class, 'lookup'])->middleware('throttle:20,1')->name('property.lookup.run');
