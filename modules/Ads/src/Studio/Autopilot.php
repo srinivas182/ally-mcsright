@@ -555,7 +555,9 @@ final class Autopilot
             }
             $this->designer->use($design, $user);
             $at = $item->post_at !== null && $item->post_at->isFuture() ? $item->post_at->setTimezone($this->tz())->format('Y-m-d\TH:i') : '';
+            $carousel = $this->designer->carousel($design);
             $post = app(SocialPosts::class)->schedule($user, ['text' => $this->text($item), 'image_url' => $this->designer->url($design, 'portrait'),
+                'images' => count($carousel) >= 2 ? $carousel : [],
                 'listing' => $item->listing_ulid, 'places' => $places, 'post_at' => $at]);
             $item->forceFill(['status' => 'scheduled', 'social_post_id' => $post->id, 'reason' => null])->save();
         } catch (ValidationException $e) {

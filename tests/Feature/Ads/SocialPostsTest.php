@@ -170,6 +170,40 @@ it('keeps agents to their own accounts and listings, checks Fair Housing and Ins
     $this->actingAs($this->jane)->post('/social/'.$second->ulid.'/cancel')->assertSessionHasErrors('post');
 });
 
+it('posts a carousel: a Facebook multi-photo post, an Instagram carousel and a LinkedIn multi-image post, in order', function (): void {
+    Http::fake([
+        'graph.facebook.com/v21.0/111/photos' => Http::sequence()->push(['id' => 'ph-1'])->push(['id' => 'ph-2'])->push(['id' => 'ph-3']),
+        'api.linkedin.com/rest/images*' => Http::sequence()->push(['value' => ['uploadUrl' => 'https://li-upload.test/1', 'image' => 'urn:li:image:A']])
+            ->push(['value' => ['uploadUrl' => 'https://li-upload.test/2', 'image' => 'urn:li:image:B']])->push(['value' => ['uploadUrl' => 'https://li-upload.test/3', 'image' => 'urn:li:image:C']]),
+        'li-upload.test/*' => Http::response('', 201),
+        'cdn.acme.test/*' => Http::response('JPEGDATA', 200, ['Content-Type' => 'image/jpeg']),
+    ]);
+    socialConnect($this->owner, 'facebook_pages');
+    socialConnect($this->owner, 'linkedin');
+    $places = collect(app(SocialPosts::class)->places($this->owner))->whereIn('channel', ['facebook', 'instagram', 'linkedin'])->pluck('key')->all();
+    $images = ['https://cdn.acme.test/s/01.jpg', 'https://cdn.acme.test/s/02.jpg', 'https://cdn.acme.test/s/03.jpg'];
+    $this->actingAs($this->owner)->post('/social', ['text' => 'Just listed: 201 Pine Rd', 'link' => 'https://acme.test/201-pine', 'images' => [...$images, 'http://bad.test/x.png'],
+        'places' => $places])->assertSessionHasErrors('images');
+    $this->actingAs($this->owner)->post('/social', ['text' => 'Just listed: 201 Pine Rd', 'link' => 'https://acme.test/201-pine', 'images' => $images, 'places' => $places])
+        ->assertSessionHasNoErrors();
+    $post = SocialPost::query()->sole();
+    expect($post->images)->toBe($images)->and($post->image_url)->toBe($images[0])->and($post->status)->toBe('posted')
+        ->and(SocialTarget::query()->pluck('status')->unique()->all())->toBe(['posted']);
+
+    Http::assertSent(fn (HttpRequest $r): bool => $r->url() === 'https://graph.facebook.com/v21.0/111/photos' && ($r->data()['url'] ?? null) === $images[0] && ($r->data()['published'] ?? null) === 'false');
+    Http::assertSent(fn (HttpRequest $r): bool => $r->url() === 'https://graph.facebook.com/v21.0/111/feed' && ($r->data()['attached_media[0]'] ?? null) === '{"media_fbid":"ph-1"}'
+        && ($r->data()['attached_media[2]'] ?? null) === '{"media_fbid":"ph-3"}' && str_contains((string) ($r->data()['message'] ?? null), 'https://acme.test/201-pine?utm_source=facebook'));
+    Http::assertSent(fn (HttpRequest $r): bool => $r->url() === 'https://graph.facebook.com/v21.0/17841/media' && ($r->data()['is_carousel_item'] ?? null) === 'true' && ($r->data()['image_url'] ?? null) === $images[1]);
+    Http::assertSent(fn (HttpRequest $r): bool => $r->url() === 'https://graph.facebook.com/v21.0/17841/media' && ($r->data()['media_type'] ?? null) === 'CAROUSEL'
+        && ($r->data()['children'] ?? null) === 'cont-1,cont-1,cont-1' && str_starts_with((string) ($r->data()['caption'] ?? null), 'Just listed'));
+    Http::assertSent(fn (HttpRequest $r): bool => $r->url() === 'https://api.linkedin.com/rest/images?action=initializeUpload'
+        && ($r->data()['initializeUploadRequest']['owner'] ?? null) === 'urn:li:person:li-jane');
+    Http::assertSent(fn (HttpRequest $r): bool => $r->url() === 'https://li-upload.test/2' && $r->method() === 'PUT' && $r->body() === 'JPEGDATA');
+    Http::assertSent(fn (HttpRequest $r): bool => $r->url() === 'https://api.linkedin.com/rest/posts'
+        && array_column((array) ($r->data()['content']['multiImage']['images'] ?? []), 'id') === ['urn:li:image:A', 'urn:li:image:B', 'urn:li:image:C']
+        && str_contains((string) ($r->data()['commentary'] ?? null), 'utm\\_source=linkedin')); // escaped for LinkedIn's little text
+});
+
 it('shows the failure in one place without stopping the others', function (): void {
     $fb = socialConnect($this->owner, 'facebook_pages');
     socialConnect($this->owner, 'google_business');
