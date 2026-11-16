@@ -12,11 +12,11 @@ use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
+use Modules\Core\Access\Can;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Connect\ConnectionData;
 use Modules\Core\Connect\ConnectorKit;
 use Modules\Core\Connect\NeedsReconnect;
-use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Support\Connections;
 use Modules\Crm\Consent;
 use Modules\Crm\ContactVisibility;
@@ -96,7 +96,7 @@ final class GhlCampaigns
     /** This person's GoHighLevel connection (the brokerage's for owners and staff, else their own), or null. */
     public function connectionFor(User $user): ?ConnectionData
     {
-        $manager = in_array($user->kind, [UserKind::Owner, UserKind::Staff], true);
+        $manager = Can::manage($user, 'marketing.manage');
         $mine = null;
         foreach ($this->kit->connections('gohighlevel') as $c) {
             if ($c->ownerUserId === $user->id) {

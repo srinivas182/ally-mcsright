@@ -11,7 +11,6 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Core\Tenancy\TenantContext;
-use Modules\Crm\CrmAccess;
 use Modules\Listings\Search\MarketStats;
 use Modules\Sites\Content\MediaLibrary;
 use Modules\Sites\Content\Pages;
@@ -44,7 +43,7 @@ final class PageEditorController
             'preview_url' => $this->sites->previewUrl($page),
             'live_url' => ($host = $this->sites->liveHost()) !== null && $page->status === 'published'
                 ? 'https://'.$host.($site->kind === 'agent' ? '/agents/'.$site->slug.($page->path === '/' ? '' : $page->path) : $page->path) : null,
-            'back' => $site->kind === 'agent' && ! CrmAccess::manager(self::user($request)) ? '/settings/my-website' : '/settings/website',
+            'back' => $site->kind === 'agent' && ! SiteAccess::manager(self::user($request)) ? '/settings/my-website' : '/settings/website',
             'places' => array_map(fn (array $p): array => ['slug' => $p['slug'], 'name' => $p['name']], $stats->places($tenants->id(), 40)),
             'media' => self::mediaList($site, $media),
             'ai_notes' => $request->session()->get('ai_notes'),
@@ -146,7 +145,7 @@ final class PageEditorController
     private static function manager(Request $request): User
     {
         $user = self::user($request);
-        abort_unless(CrmAccess::manager($user), 403);
+        abort_unless(SiteAccess::manager($user), 403);
 
         return $user;
     }

@@ -19,6 +19,7 @@ use Modules\Ads\Studio\QueuedPost;
 use Modules\Ads\Studio\Reels;
 use Modules\Ads\Studio\StudioPlans;
 use Modules\Ads\Studio\StudioVideo;
+use Modules\Core\Access\Can;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Tenancy\TenantContext;
 
@@ -115,7 +116,7 @@ final class AutopilotController
     public function reviewList(Request $request, Designer $designer, TenantContext $tenants): Response
     {
         $user = self::user($request);
-        abort_unless(in_array($user->kind, [UserKind::Owner, UserKind::Staff], true), 403);
+        abort_unless(Can::manage($user, 'marketing.manage'), 403);
         $tz = $tenants->current()->timezone ?: 'America/New_York';
         $names = User::query()->pluck('first_name', 'id');
 

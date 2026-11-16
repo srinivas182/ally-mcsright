@@ -10,8 +10,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Modules\Core\Access\Can;
 use Modules\Core\Audit\AuditLogger;
-use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
 use RuntimeException;
@@ -31,7 +31,7 @@ final class Templates
 
     public static function manages(User $user): bool
     {
-        return $user->isKind(UserKind::Owner, UserKind::Staff) || $user->can('forms.manage');
+        return Can::manage($user, 'forms.manage');
     }
 
     public function upload(string $name, UploadedFile $file, ?string $checklistLabel, User $by): string

@@ -13,6 +13,7 @@ use Modules\Connect\Models\Connection;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Sites\Reviews\Review;
 use Modules\Sites\Reviews\Reviews;
+use Modules\Sites\SiteAccess;
 
 /** Grow → Reviews (specs/connect/20, C8a): reviews from Google and RealSatisfied, replies, and hiding with a reason. */
 final class ReviewsController
@@ -22,13 +23,13 @@ final class ReviewsController
     public function index(Request $request): Response
     {
         $user = self::user($request);
-        $brokerage = $request->query('who') === 'brokerage' && in_array($user->kind, [UserKind::Owner, UserKind::Staff], true);
+        $brokerage = $request->query('who') === 'brokerage' && SiteAccess::manager($user);
         $shown = $this->reviews->shown($brokerage ? null : $user->id);
         $rows = Review::query()->where('user_id', $brokerage ? null : $user->id)->orderByDesc('reviewed_at')->limit(100)->get();
 
         return Inertia::render('reviews/index', [
             'brokerage' => $brokerage,
-            'can_brokerage' => in_array($user->kind, [UserKind::Owner, UserKind::Staff], true),
+            'can_brokerage' => SiteAccess::manager($user),
             'can_hide' => $user->kind === UserKind::Owner,
             'summary' => ['count' => $shown['count'], 'sources' => $shown['sources']],
             'reasons' => Reviews::HIDE_REASONS,

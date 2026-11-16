@@ -6,6 +6,7 @@ namespace Modules\Transactions\Http;
 
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -13,6 +14,8 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
+use Modules\Core\Access\Fields;
+use Modules\Core\Access\Permissions;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Support\Connections;
 use Modules\Crm\ContactVisibility;
@@ -56,13 +59,32 @@ final class DealController
                 'closing_date' => $d->closing_date?->toDateString(), 'agent' => User::query()->whereKey($d->agent_user_id)->value('first_name'),
                 'missing' => count($deals->missing($d)),
             ]),
-            'forecast' => self::reviewer($user) ? app(Forecast::class)->pending() : null,
+            'forecast' => self::reviewer($user) && Fields::visible($user, 'commission') ? app(Forecast::class)->pending() : null,
             'canBringOverFiles' => self::reviewer($user),
             'atRisk' => self::atRisk(self::actingFor($user)),
             'alerts' => app(Deadlines::class)->prefs($user),
             'canCreateFor' => self::reviewer($user) ? User::query()->where('kind', UserKind::Agent)->where('status', 'active')->orderBy('first_name')->get()
                 ->map(fn (User $u): array => ['ulid' => $u->ulid, 'name' => $u->name]) : [],
         ]);
+    }
+
+    /** "Why can I see this?" (specs/core/03, R1). */
+    public function why(Request $request, Deal $deal): JsonResponse
+    {
+        $user = $this->authorise($request, $deal);
+        $reasons = [];
+        if ($deal->agent_user_id === $user->id) {
+            $reasons[] = 'It is your deal.';
+        } elseif ($user->assisted_user_id === $deal->agent_user_id) {
+            $reasons[] = 'You assist the agent on this deal.';
+        } else {
+            $reasons = app(Permissions::class)->explain($user, 'transactions.review')['reasons'];
+        }
+        if (! Fields::visible($user, 'commission', $deal->agent_user_id)) {
+            $reasons[] = 'Commission amounts are hidden from you: none of your roles includes "See commission amounts and earnings".';
+        }
+
+        return response()->json(['allowed' => true, 'reasons' => $reasons]);
     }
 
     public function show(Request $request, Deal $deal, Deals $deals, Reviews $reviews): Response
@@ -77,7 +99,8 @@ final class DealController
 
         return Inertia::render('deals/show', [
             'deal' => ['ulid' => $deal->ulid, 'street' => $deal->street, 'city' => $deal->city, 'state_code' => $deal->state_code, 'postal_code' => $deal->postal_code,
-                'type' => $deal->type, 'status' => $deal->status, 'price_cents' => $deal->price_cents, 'gci_cents' => $deal->gci_cents, 'mls_number' => $deal->mls_number,
+                'type' => $deal->type, 'status' => $deal->status, 'price_cents' => $deal->price_cents, 'gci_cents' => Fields::visible($user, 'commission', $deal->agent_user_id) ? $deal->gci_cents : null,
+                'commission_hidden' => ! Fields::visible($user, 'commission', $deal->agent_user_id), 'mls_number' => $deal->mls_number,
                 'contract_date' => $deal->contract_date?->toDateString(), 'closing_date' => $deal->closing_date?->toDateString(), 'closed_on' => $deal->closed_on?->toDateString(),
                 'locked' => $deal->locked_at !== null, 'cancel_reason' => $deal->cancel_reason, 'agent' => User::query()->find($deal->agent_user_id)?->name,
                 'imported_from' => $deal->imported_from, 'money_status' => $deal->money_status, 'money_note' => $deal->money_note, 'pay_overrides' => $deal->pay_overrides,

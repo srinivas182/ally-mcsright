@@ -21,16 +21,18 @@ final class RoleTemplates
                 'core.users.view' => null, 'core.users.invite' => null, 'core.audit.view' => null,
                 'crm.contacts.view' => 'office', 'crm.contacts.manage' => 'office', 'crm.contacts.reassign' => 'office',
                 'compensation.plans.view' => null, 'finance.amounts.view' => null,
+                'transactions.review' => null, 'transactions.cda.approve' => null, 'roster.manage' => null, 'core.access.review' => null,
             ]],
             'office_admin' => ['name' => 'Office admin', 'description' => 'Day-to-day office work. Sees deals but not commission amounts or bank details.', 'permissions' => [
                 'core.users.view' => null, 'core.users.invite' => null,
                 'crm.contacts.view' => 'office', 'crm.contacts.manage' => 'office', 'crm.contacts.reassign' => 'office', 'crm.import' => null,
+                'transactions.review' => null, 'roster.manage' => null, 'forms.manage' => null,
             ]],
             'compliance_reviewer' => ['name' => 'Compliance reviewer', 'description' => 'Reviews files and the audit log; cannot change money.', 'permissions' => [
-                'core.audit.view' => null, 'crm.contacts.view' => 'tenant',
+                'core.audit.view' => null, 'crm.contacts.view' => 'tenant', 'transactions.review' => null, 'transactions.export' => null,
             ]],
-            'transaction_coordinator' => ['name' => 'Transaction coordinator', 'description' => 'Works deals and contacts for the agents they support.', 'permissions' => [
-                'crm.contacts.view' => 'team', 'crm.contacts.manage' => 'team',
+            'transaction_coordinator' => ['name' => 'Transaction coordinator', 'description' => 'Works every deal file and the contacts of the agents they support. Does not see commission.', 'permissions' => [
+                'crm.contacts.view' => 'team', 'crm.contacts.manage' => 'team', 'transactions.review' => null,
             ]],
             'team_lead' => ['name' => 'Team lead', 'description' => 'Sees and assigns their team\'s company contacts.', 'permissions' => [
                 'crm.contacts.view' => 'team', 'crm.contacts.manage' => 'team', 'crm.contacts.reassign' => 'team',
@@ -40,6 +42,22 @@ final class RoleTemplates
             ]],
             'assistant' => ['name' => 'Assistant', 'description' => 'Works the contacts of the agent they assist.', 'permissions' => [
                 'crm.contacts.view' => 'own', 'crm.contacts.manage' => 'own',
+            ]],
+            'isa' => ['name' => 'ISA (inside sales)', 'description' => 'Works and hands over new company leads for everyone.', 'permissions' => [
+                'crm.contacts.view' => 'tenant', 'crm.contacts.manage' => 'tenant', 'crm.contacts.reassign' => 'tenant',
+            ]],
+            'marketing_manager' => ['name' => 'Marketing manager', 'description' => 'Runs the brokerage website, Ally Studio, social posts and listing ads. No money or people access.', 'permissions' => [
+                'marketing.manage' => null, 'sites.manage' => null, 'crm.contacts.view' => 'tenant',
+            ]],
+            'recruiter' => ['name' => 'Recruiter', 'description' => 'Invites new agents and keeps the roster up to date.', 'permissions' => [
+                'core.users.view' => null, 'core.users.invite' => null, 'roster.manage' => null,
+            ]],
+            'lender_partner' => ['name' => 'Lender partner', 'description' => 'An outside partner: only the contacts shared with them. Never money, deals or bank details.', 'permissions' => [
+                'crm.contacts.view' => 'own',
+            ]],
+            'accountant' => ['name' => 'Accountant', 'description' => 'Keeps the books: records money received, bills agents, posts adjustments and closes periods. Cannot change bank details.', 'permissions' => [
+                'finance.ledger.view' => null, 'finance.ledger.export' => null, 'finance.ledger.adjust' => null, 'finance.periods.close' => null,
+                'finance.amounts.view' => null, 'finance.receipts.record' => null, 'finance.billing.manage' => null, 'compensation.plans.view' => null,
             ]],
             'bookkeeper' => ['name' => 'Bookkeeper (read-only)', 'description' => 'Reads the books and exports them. Cannot post, close periods or change payouts.', 'permissions' => [
                 'finance.ledger.view' => null, 'finance.ledger.export' => null, 'finance.amounts.view' => null, 'compensation.plans.view' => null,

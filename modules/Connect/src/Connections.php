@@ -12,6 +12,7 @@ use Modules\Connect\Jobs\SyncConnection;
 use Modules\Connect\Models\Connection;
 use Modules\Connect\Webhooks\SafeUrl;
 use Modules\Connect\Webhooks\WebhookOutbox;
+use Modules\Core\Access\Can;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Connect\App;
 use Modules\Core\Connect\AppCatalog;
@@ -35,6 +36,12 @@ final class Connections
 
     public function __construct(private readonly AppCatalog $catalog, private readonly TenantContext $tenants) {}
 
+    /** Who connects apps for the whole brokerage (specs/core/03, R1): owners, staff without a role, or "Connect apps for the brokerage". */
+    public static function manager(User $user): bool
+    {
+        return Can::manage($user, 'apps.manage');
+    }
+
     public function app(string $key): App
     {
         return $this->catalog->find($key) ?? abort(404);
@@ -43,7 +50,7 @@ final class Connections
     /** Whose connection this person would make for the app: null (the brokerage's), their own id, or not allowed. */
     public function ownerFor(App $app, User $user): int|false|null
     {
-        $manager = in_array($user->kind, self::MANAGERS, true);
+        $manager = self::manager($user);
 
         return match ($app->scope) {
             'brokerage' => $manager ? null : false,
@@ -54,14 +61,14 @@ final class Connections
 
     public function canManage(User $user, Connection $c): bool
     {
-        return $c->owner_user_id === null ? in_array($user->kind, self::MANAGERS, true) : $c->owner_user_id === $user->id;
+        return $c->owner_user_id === null ? self::manager($user) : $c->owner_user_id === $user->id;
     }
 
     /** @return list<Connection> the connections this person can see and manage */
     public function visible(User $user, ?string $appKey = null): array
     {
         $q = Connection::query()->when($appKey !== null, fn ($q) => $q->where('app_key', $appKey))->orderBy('id');
-        $q = in_array($user->kind, self::MANAGERS, true)
+        $q = self::manager($user)
             ? $q->where(fn ($w) => $w->whereNull('owner_user_id')->orWhere('owner_user_id', $user->id))
             : $q->where('owner_user_id', $user->id);
 

@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Modules\AI\Contracts\CreditMeter;
 use Modules\Billing\Http\RequireFeature;
+use Modules\Core\Access\PermissionRegistry;
 use Modules\Core\Brief\DailyBriefs;
 use Modules\Core\Credits\CreditSpend;
 use Modules\Core\Identity\Enums\UserKind;
@@ -63,6 +64,9 @@ final class BillingServiceProvider extends ServiceProvider
         $nav->add(new NavItem('Platform', 'Payments', '/hq/payments', 'credit-card', 40, kinds: [UserKind::HqStaff]));
         $nav->add(new NavItem('Platform', 'RightAlly credits', '/hq/credits', 'coins', 37, kinds: [UserKind::HqStaff]));
         // Agents only see Plans when their brokerage uses the agent-pays model.
+        $this->app->make(PermissionRegistry::class)->register('Billing', [
+            'billing.credits.manage' => ['Buy RightAlly credits and see the brokerage\'s credit use'],
+        ]);
         Gate::define('billing.plans.view', fn (User $user): bool => $user->kind === UserKind::Agent
             && $this->app->make(Entitlements::class)->model() === 'agent_pays');
         $nav->add(new NavItem('Overview', 'Plans', '/plans', 'gift', 90, ability: 'billing.plans.view'));

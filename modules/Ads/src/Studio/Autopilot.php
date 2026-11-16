@@ -16,6 +16,7 @@ use Modules\Ads\Social\SocialPost;
 use Modules\Ads\Social\SocialPosts;
 use Modules\AI\AiGateway;
 use Modules\AI\Data\AiTask;
+use Modules\Core\Access\Can;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Connect\ConnectorKit;
 use Modules\Core\Identity\Enums\UserKind;
@@ -216,7 +217,7 @@ final class Autopilot
     /** The brokerage approves (it is scheduled for the agent) or sends it back (skipped, with why). */
     public function review(QueuedPost $item, User $by, bool $ok, string $why = ''): QueuedPost
     {
-        abort_unless(in_array($by->kind, [UserKind::Owner, UserKind::Staff], true), 403);
+        abort_unless(Can::manage($by, 'marketing.manage'), 403);
         if ($item->status !== 'review') {
             throw ValidationException::withMessages(['post' => 'This post has already been reviewed.']);
         }
@@ -430,7 +431,7 @@ final class Autopilot
     /** On the 1st, a recruiting post for owners and staff with the brokerage package. */
     private function recruitingMoment(User $user, CarbonImmutable $local): int
     {
-        if (! in_array($user->kind, [UserKind::Owner, UserKind::Staff], true) || ! $this->plans->has($user, 'recruiting')) {
+        if (! Can::manage($user, 'marketing.manage') || ! $this->plans->has($user, 'recruiting')) {
             return 0;
         }
         $closed = Deal::query()->where('status', 'closed')->where('closed_on', '>=', $local->startOfYear()->toDateString())->count();

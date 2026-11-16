@@ -11,7 +11,6 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Core\Audit\AuditLogger;
-use Modules\Crm\CrmAccess;
 use Modules\Listings\Search\MarketStats;
 use Modules\Sites\Ai\MarketUpdates;
 use Modules\Sites\Content\MediaLibrary;
@@ -19,6 +18,7 @@ use Modules\Sites\Content\Posts;
 use Modules\Sites\Content\SeoCheck;
 use Modules\Sites\Models\Site;
 use Modules\Sites\Models\SitePost;
+use Modules\Sites\SiteAccess;
 use Modules\Sites\SiteSetup;
 
 /** Settings → Website → blog (specs/websites/08). */
@@ -124,7 +124,7 @@ final class BlogAdminController
     private static function manager(Request $request): User
     {
         $user = $request->user();
-        abort_unless($user instanceof User && CrmAccess::manager($user), 403);
+        abort_unless($user instanceof User && SiteAccess::manager($user), 403);
 
         return $user;
     }

@@ -17,6 +17,7 @@ use Modules\Crm\Leads\LeadAlert;
 use Modules\Crm\Leads\SpeedToLead;
 use Modules\Crm\Models\Lead;
 use Modules\Sites\Models\Site;
+use Modules\Sites\SiteAccess;
 
 /**
  * An agent taking over a live AIlly chat (specs/websites/14). While an agent has it, AIlly stays quiet: the
@@ -34,7 +35,7 @@ final class LiveChat
 
     public function canSee(User $user, \stdClass $c): bool
     {
-        if (in_array($user->kind, [UserKind::Owner, UserKind::Staff], true)) {
+        if (SiteAccess::manager($user)) {
             return true;
         }
         if ($user->kind !== UserKind::Agent) {
@@ -68,7 +69,7 @@ final class LiveChat
 
         return ['ulid' => (string) $c->ulid, 'page' => (string) ($c->page ?? ''), 'outcome' => (string) $c->outcome, 'score' => $c->lead_score !== null ? (int) $c->lead_score : null,
             'live' => $this->isLive($c), 'taken_by' => $taker !== null ? ['id' => $taker->id, 'name' => $taker->name] : null, 'mine' => $taker?->id === $user->id,
-            'can_take' => $c->status === 'open' && ($taker === null || in_array($user->kind, [UserKind::Owner, UserKind::Staff], true)), 'messages' => $this->messages((int) $c->id, 0)];
+            'can_take' => $c->status === 'open' && ($taker === null || SiteAccess::manager($user)), 'messages' => $this->messages((int) $c->id, 0)];
     }
 
     /**
@@ -98,7 +99,7 @@ final class LiveChat
         if ($c->status !== 'open') {
             throw ValidationException::withMessages(['chat' => 'This chat has ended.']);
         }
-        if ($c->taken_by !== null && (int) $c->taken_by !== $agent->id && ! in_array($agent->kind, [UserKind::Owner, UserKind::Staff], true)) {
+        if ($c->taken_by !== null && (int) $c->taken_by !== $agent->id && ! SiteAccess::manager($agent)) {
             throw ValidationException::withMessages(['chat' => 'Another agent is already in this chat.']);
         }
         $this->db()->where('id', $c->id)->update(['taken_by' => $agent->id, 'taken_at' => now(), 'updated_at' => now()]);

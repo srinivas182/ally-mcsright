@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
+use Modules\Core\Access\Can;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Support\Connections;
 use Modules\Transactions\Cdas;
@@ -205,7 +206,7 @@ final class MoneyDeskController
 
     private static function isReviewer(User $user): bool
     {
-        return $user->isKind(UserKind::Owner, UserKind::Staff) || $user->can('transactions.review');
+        return Can::manage($user, 'transactions.review');
     }
 
     private static function user(Request $request): User

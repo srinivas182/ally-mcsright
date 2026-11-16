@@ -57,9 +57,12 @@ final class ContactVisibility
             UserKind::Assistant => $user->assisted_user_id !== null
                 ? $query->where('owner_user_id', $user->assisted_user_id)
                 : $query->whereRaw('1 = 0'),
-            UserKind::Owner, UserKind::Staff => $query->where(function (Builder $q) use ($user): void {
+            UserKind::Staff => app(Permissions::class)->governed($user)
+                ? $query->where('owner_user_id', $user->id)
+                : $query->where(fn (Builder $q) => $q->where('origin', Origin::Company)->orWhere('owner_user_id', $user->id)),
+            UserKind::Owner => $query->where(function (Builder $q) use ($user): void {
                 $q->where('origin', Origin::Company)->orWhere('owner_user_id', $user->id);
-                if ($user->kind === UserKind::Owner && $this->personalVisibleToOwners($user)) {
+                if ($this->personalVisibleToOwners($user)) {
                     $q->orWhere('origin', Origin::Personal);
                 }
             }),
@@ -83,7 +86,7 @@ final class ContactVisibility
     /** Owners and staff manage company contacts (assign owner, archive). */
     public function canManage(User $user, Contact $contact): bool
     {
-        if ($user->isKind(UserKind::Owner, UserKind::Staff)) {
+        if ($user->kind === UserKind::Owner || ($user->kind === UserKind::Staff && ! app(Permissions::class)->governed($user))) {
             return $contact->origin === Origin::Company || $contact->owner_user_id === $user->id;
         }
         if ($contact->origin === Origin::Company && app(Permissions::class)->allows($user, 'crm.contacts.manage', $contact)) {

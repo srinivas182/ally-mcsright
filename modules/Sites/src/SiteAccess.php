@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Modules\Sites;
 
 use App\Models\User;
-use Modules\Crm\CrmAccess;
+use Modules\Core\Access\Can;
 use Modules\Sites\Models\Site;
 
 /**
@@ -14,9 +14,18 @@ use Modules\Sites\Models\Site;
  */
 final class SiteAccess
 {
+    /**
+     * Who manages the brokerage's websites, AIlly, funnels and reviews (specs/core/03, R1): owners, staff without a role,
+     * or a role with "Manage the brokerage website".
+     */
+    public static function manager(User $user): bool
+    {
+        return Can::manage($user, 'sites.manage');
+    }
+
     public static function canEdit(User $user, Site $site): bool
     {
-        if (CrmAccess::manager($user)) {
+        if (self::manager($user)) {
             return true;
         }
         if ($site->kind !== 'agent' || $site->user_id !== $user->id) {

@@ -11,8 +11,8 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Modules\Billing\Gateway\PaymentGateway;
 use Modules\Billing\PaymentSettings;
+use Modules\Core\Access\Can;
 use Modules\Core\Audit\AuditLogger;
-use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
 
@@ -181,6 +181,6 @@ final class CreditPurchases
 
     private static function isManager(User $user): bool
     {
-        return in_array($user->kind, [UserKind::Owner, UserKind::Staff], true);
+        return Can::manage($user, 'billing.credits.manage');
     }
 }

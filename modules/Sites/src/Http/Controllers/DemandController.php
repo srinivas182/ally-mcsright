@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
 use Inertia\Inertia;
 use Inertia\Response;
+use Modules\Core\Access\Can;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Sites\Demand\BuyerDemand;
@@ -72,7 +73,7 @@ final class DemandController
 
     private static function mine(DemandReport $r, User $user): bool
     {
-        return $r->user_id === $user->id || in_array($user->kind, [UserKind::Owner, UserKind::Staff], true);
+        return $r->user_id === $user->id || Can::manage($user, 'marketing.manage');
     }
 
     private static function user(Request $request): User

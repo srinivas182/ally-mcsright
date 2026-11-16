@@ -10,7 +10,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Support\Connections;
-use Modules\Crm\CrmAccess;
 use Modules\Sites\Models\Site;
 use Modules\Sites\Models\SitePage;
 use Modules\Sites\Rendering\Urls;
@@ -27,7 +26,7 @@ final class Pages
 
     public function create(Site $site, string $path, string $title, User $by, string $layout = 'standard'): SitePage
     {
-        if (! CrmAccess::manager($by)) {
+        if (! SiteAccess::manager($by)) {
             throw ValidationException::withMessages(['page' => 'Only owners and staff can add pages.']);
         }
         $path = '/'.trim(strtolower(trim($path)), '/');
@@ -117,7 +116,7 @@ final class Pages
 
     public function delete(SitePage $page, User $by): void
     {
-        if (! CrmAccess::manager($by)) {
+        if (! SiteAccess::manager($by)) {
             throw ValidationException::withMessages(['page' => 'Only owners and staff can delete pages.']);
         }
         if ($page->path === '/') {

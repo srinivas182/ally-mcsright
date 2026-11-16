@@ -137,7 +137,7 @@ final class CoreServiceProvider extends ServiceProvider
         $this->registerMigrationMacros();
 
         if ($this->app->runningInConsole()) {
-            $this->commands([CompileDesignTokens::class, RunTenantLifecycle::class, BootstrapHq::class, Console\FlushAudit::class, Console\VerifyAudit::class, Console\AuditMaintenance::class, Console\ExpireAccess::class, Console\RebuildDirectory::class, Console\SendDailyBriefs::class]);
+            $this->commands([CompileDesignTokens::class, RunTenantLifecycle::class, BootstrapHq::class, Console\FlushAudit::class, Console\VerifyAudit::class, Console\AuditMaintenance::class, Console\ExpireAccess::class, Console\AccessReviewReminder::class, Console\RebuildDirectory::class, Console\SendDailyBriefs::class]);
         }
     }
 
@@ -184,6 +184,14 @@ final class CoreServiceProvider extends ServiceProvider
             'core.roles.manage' => ['Create roles and assign them'],
             'core.organisation.manage' => ['Manage offices and teams'],
             'core.audit.view' => ['See the audit log'],
+            'core.access.review' => ['Run the quarterly access review and export who can do what', false, true],
+        ]);
+        // Areas whose screens live in several modules (specs/core/03, R1).
+        $registry->register('Marketing', [
+            'marketing.manage' => ['Run company marketing: Ally Studio and Autopilot, social posts, listing ads, funnels, buyer demand and campaigns'],
+        ]);
+        $registry->register('Apps', [
+            'apps.manage' => ['Connect and disconnect apps for the whole brokerage'],
         ]);
         Gate::before(function (User $user, string $ability, array $arguments): ?bool {
             $registry = $this->app->make(PermissionRegistry::class);
@@ -274,6 +282,8 @@ final class CoreServiceProvider extends ServiceProvider
         $nav = $this->app->make(NavigationRegistry::class);
         $nav->add(new NavItem('Settings', 'Audit log', '/audit', 'shield', 90, ability: 'core.audit.view'));
         $nav->add(new NavItem('Settings', 'Roles', '/settings/roles', 'key-round', 80, ability: 'core.roles.manage'));
+        Gate::define('core.access.reviewer', fn (User $user): bool => $user->kind === UserKind::Owner || $this->app->make(Permissions::class)->allows($user, 'core.access.review'));
+        $nav->add(new NavItem('Settings', 'Access review', '/settings/access-review', 'shield-check', 81, ability: 'core.access.reviewer'));
         $nav->add(new NavItem('Settings', 'Offices and teams', '/settings/organisation', 'building-2', 85, ability: 'core.organisation.manage'));
         $nav->add(new NavItem('Overview', 'Dashboard', '/dashboard', 'layout-grid', 10, kinds: [UserKind::Owner, UserKind::Staff], mobile: true));
         $nav->add(new NavItem('Overview', 'Today', '/agent', 'sun', 10, kinds: [UserKind::Agent, UserKind::Assistant], mobile: true));

@@ -12,8 +12,8 @@ use Illuminate\Validation\ValidationException;
 use Modules\Ads\Jobs\RenderDesign;
 use Modules\Ads\ListingAds;
 use Modules\Ads\Studio\Render\StudioRenderer;
+use Modules\Core\Access\Can;
 use Modules\Core\Audit\AuditLogger;
-use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Crm\FairHousing;
 use Modules\Listings\Media\Photos;
@@ -99,7 +99,7 @@ final class Designer
     {
         $out = [];
         foreach (self::MOMENTS as $key => [$label]) {
-            if ($key !== 'recruiting' || (in_array($user->kind, [UserKind::Owner, UserKind::Staff], true) && $this->plans->has($user, 'recruiting'))) {
+            if ($key !== 'recruiting' || (Can::manage($user, 'marketing.manage') && $this->plans->has($user, 'recruiting'))) {
                 $out[$key] = $label;
             }
         }

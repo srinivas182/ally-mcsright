@@ -9,7 +9,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
-use Modules\Crm\CrmAccess;
 use Modules\Sites\Content\MediaLibrary;
 use Modules\Sites\Models\Site;
 use Modules\Sites\Models\SiteMedia;
@@ -72,7 +71,7 @@ final class MediaController
     private static function manager(Request $request): User
     {
         $user = $request->user();
-        abort_unless($user instanceof User && CrmAccess::manager($user), 403);
+        abort_unless($user instanceof User && SiteAccess::manager($user), 403);
 
         return $user;
     }

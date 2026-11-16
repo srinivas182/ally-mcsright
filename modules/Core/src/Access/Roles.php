@@ -40,6 +40,31 @@ final class Roles
     }
 
     /**
+     * Ready-made roles this brokerage doesn't have yet (templates added after it started).
+     *
+     * @return array<string, string> key => name
+     */
+    public function missingTemplates(): array
+    {
+        $have = Role::query()->whereNotNull('template_key')->pluck('template_key')->all();
+
+        return collect(RoleTemplates::all())->reject(fn (array $t, string $k): bool => in_array($k, $have, true))->map(fn (array $t): string => $t['name'])->all();
+    }
+
+    public function addTemplate(string $key, User $by): Role
+    {
+        $t = RoleTemplates::all()[$key] ?? throw ValidationException::withMessages(['role' => 'That ready-made role does not exist.']);
+        if (Role::query()->where('template_key', $key)->exists()) {
+            throw ValidationException::withMessages(['role' => 'You already have this role.']);
+        }
+        $role = Role::query()->create(['key' => $key, 'name' => $t['name'], 'description' => $t['description'], 'template_key' => $key, 'is_locked' => false, 'created_by' => $by->id]);
+        $this->writePermissions($role, array_filter($t['permissions'], fn ($scope, $perm) => $this->registry->has($perm), ARRAY_FILTER_USE_BOTH));
+        $this->audit->record('core.role.saved', $role, metadata: ['from_template' => $key], severity: 'warning', label: $role->name);
+
+        return $role;
+    }
+
+    /**
      * @param  array<string, string|null>  $permissions  key => scope (null for unscoped)
      */
     public function save(?Role $role, string $name, ?string $description, array $permissions, User $by): Role
@@ -77,6 +102,10 @@ final class Roles
             }
             $this->permissions->forget();
             $this->audit->record('core.role.saved', $role, changes: ['permissions' => ['old' => $before, 'new' => $clean]], severity: 'warning', label: $role->name);
+            $added = $this->registry->riskyIn(array_values(array_diff(array_keys($clean), array_keys($before))));
+            if ($added !== [] && UserRole::query()->where('role_id', $role->id)->exists()) {
+                $this->alertOwners("The {$role->name} role was given more access", $added, $by);
+            }
 
             return $role;
         });
@@ -100,6 +129,9 @@ final class Roles
         ]);
         $this->permissions->forget($user);
         $this->audit->record('core.role.granted', $user, metadata: ['role' => $role->name, 'expires_at' => $expiresAt?->toDateString(), 'reason' => $reason], severity: 'warning', label: $user->name);
+        if (($risky = $this->registry->riskyIn(array_keys($this->permissionsOf($role)))) !== []) {
+            $this->alertOwners("{$user->name} was given the {$role->name} role".($expiresAt !== null ? ' until '.$expiresAt->toFormattedDateString() : ''), $risky, $by);
+        }
 
         return $grant;
     }
@@ -161,6 +193,17 @@ final class Roles
         }
 
         return $lines === [] ? ['Has no extra access beyond their own work.'] : $lines;
+    }
+
+    /**
+     * @param  list<string>  $what
+     */
+    private function alertOwners(string $headline, array $what, User $by): void
+    {
+        $owners = User::query()->where('kind', UserKind::Owner)->where('status', 'active')->whereKeyNot($by->id)->get();
+        foreach ($owners as $owner) {
+            $owner->notify(new AccessAlertMail($headline, $what, $by->name));
+        }
     }
 
     /**

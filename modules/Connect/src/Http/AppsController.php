@@ -173,7 +173,7 @@ final class AppsController
      */
     private static function help(App $a, User $user): array
     {
-        if ((! in_array($a->key, ['lead_email', 'lead_api', 'zapier'], true) && $a->auth !== 'email') || ! in_array($user->kind, Connections::MANAGERS, true)) {
+        if ((! in_array($a->key, ['lead_email', 'lead_api', 'zapier'], true) && $a->auth !== 'email') || ! Connections::manager($user)) {
             return [];
         }
 

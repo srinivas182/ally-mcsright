@@ -13,10 +13,10 @@ use Inertia\Inertia;
 use Modules\AI\Exceptions\AiOutputBlocked;
 use Modules\AI\Exceptions\InsufficientCredits;
 use Modules\AI\Exceptions\UnknownFeature;
-use Modules\Crm\CrmAccess;
 use Modules\Sites\Ai\ContentStudio;
 use Modules\Sites\Ai\MarketUpdates;
 use Modules\Sites\Models\Site;
+use Modules\Sites\SiteAccess;
 use Modules\Sites\SiteSetup;
 
 /** Settings → Website → AI content studio (specs/websites/10). Drafts only; nothing is published by AI. */
@@ -27,7 +27,7 @@ final class StudioController
     public function post(Request $request): RedirectResponse
     {
         $user = self::user($request);
-        abort_unless(CrmAccess::manager($user), 403);
+        abort_unless(SiteAccess::manager($user), 403);
         $brief = $request->validate(self::briefRules() + ['length' => ['nullable', 'in:short,medium,long'], 'category' => ['nullable', 'string', 'max:60']]);
         $r = self::safely(fn (): array => $this->studio->writePost($this->brokerage(), $brief, $user));
         $request->session()->flash('ai_notes', ['score' => $r['score'], 'warnings' => $r['warnings']]);

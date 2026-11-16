@@ -11,10 +11,10 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Identity\Enums\UserKind;
-use Modules\Crm\CrmAccess;
 use Modules\Listings\Search\MarketStats;
 use Modules\Sites\Models\Site;
 use Modules\Sites\Models\SitePost;
+use Modules\Sites\SiteAccess;
 use Modules\Sites\SiteSetup;
 
 /**
@@ -46,7 +46,7 @@ final class MarketUpdates
      */
     public function save(bool $enabled, array $places, User $by): void
     {
-        if (! CrmAccess::manager($by)) {
+        if (! SiteAccess::manager($by)) {
             throw ValidationException::withMessages(['places' => 'Only owners and staff can set up market updates.']);
         }
         $site = $this->sites->brokerageSite() ?? throw ValidationException::withMessages(['places' => 'Create the website first.']);
@@ -90,7 +90,7 @@ final class MarketUpdates
             }
         }
         if ($written !== []) {
-            $owners = User::query()->whereIn('kind', [UserKind::Owner, UserKind::Staff])->get()->filter(fn (User $u): bool => $u->isActive() && CrmAccess::manager($u));
+            $owners = User::query()->whereIn('kind', [UserKind::Owner, UserKind::Staff])->get()->filter(fn (User $u): bool => $u->isActive() && SiteAccess::manager($u));
             Notification::send($owners, new DraftsReady(array_map(fn (SitePost $p): array => ['title' => $p->title, 'ulid' => $p->ulid], $written)));
         }
 

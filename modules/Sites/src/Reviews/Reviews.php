@@ -14,6 +14,7 @@ use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Connect\ConnectorKit;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Crm\FairHousing;
+use Modules\Sites\SiteAccess;
 
 /**
  * Reviews from other sites (specs/connect/20, C8a): kept as written, with their source and date.
@@ -113,6 +114,6 @@ final class Reviews
 
     private static function guard(Review $review, User $by): void
     {
-        abort_unless($review->user_id === $by->id || ($review->user_id === null && in_array($by->kind, [UserKind::Owner, UserKind::Staff], true)), 404);
+        abort_unless($review->user_id === $by->id || ($review->user_id === null && SiteAccess::manager($by)), 404);
     }
 }

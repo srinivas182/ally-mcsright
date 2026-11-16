@@ -1,4 +1,4 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
@@ -27,6 +27,12 @@ type Role = {
 type Props = {
     roles: Role[];
     catalogue: { area: string; permissions: Perm[] }[];
+    missingTemplates: Record<string, string>;
+    accessReviewDue: boolean;
+};
+type PreviewAs = {
+    menu: { label: string; items: string[] }[];
+    hidden: string[];
 };
 
 const scopes: [string, string][] = [
@@ -55,6 +61,22 @@ function Editor({
         conflicts: string[];
     }>({ lines: role?.preview ?? [], conflicts: [] });
     const [error, setError] = useState<string | null>(null);
+    const [seeAs, setSeeAs] = useState<PreviewAs | null>(null);
+    const [showMenu, setShowMenu] = useState(false);
+
+    useEffect(() => {
+        if (!showMenu) {
+            return;
+        }
+        const t = setTimeout(() => {
+            void postJson<PreviewAs>('/settings/roles/preview-as', {
+                permissions: perms,
+            })
+                .then(setSeeAs)
+                .catch(() => undefined);
+        }, 250);
+        return () => clearTimeout(t);
+    }, [perms, showMenu]);
 
     useEffect(() => {
         const t = setTimeout(() => {
@@ -167,6 +189,40 @@ function Editor({
                         </li>
                     ))}
                 </ul>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    aria-expanded={showMenu}
+                    onClick={() => setShowMenu(!showMenu)}
+                >
+                    {showMenu
+                        ? 'Hide preview as this role'
+                        : 'Preview as this role'}
+                </Button>
+                {showMenu && seeAs && (
+                    <div className="grid gap-2 rounded-md border bg-background p-2">
+                        <p className="font-medium">Their menu</p>
+                        {seeAs.menu.length === 0 ? (
+                            <p className="text-muted-foreground">
+                                Only their own home page.
+                            </p>
+                        ) : (
+                            seeAs.menu.map((g) => (
+                                <p key={g.label}>
+                                    <span className="font-medium">
+                                        {g.label}:
+                                    </span>{' '}
+                                    {g.items.join(', ')}
+                                </p>
+                            ))
+                        )}
+                        {seeAs.hidden.length > 0 && (
+                            <p className="text-muted-foreground">
+                                Hidden from them: {seeAs.hidden.join('; ')}.
+                            </p>
+                        )}
+                    </div>
+                )}
                 {preview.conflicts.map((c) => (
                     <p key={c} role="alert" className="text-destructive">
                         {c}
@@ -216,7 +272,12 @@ function Editor({
     );
 }
 
-export default function Roles({ roles, catalogue }: Props) {
+export default function Roles({
+    roles,
+    catalogue,
+    missingTemplates,
+    accessReviewDue,
+}: Props) {
     const [editing, setEditing] = useState<Role | null | undefined>(undefined);
 
     return (
@@ -232,6 +293,42 @@ export default function Roles({ roles, catalogue }: Props) {
                         </Button>
                     }
                 />
+                {accessReviewDue && (
+                    <p className="rounded-lg border border-amber-500 p-3 text-sm">
+                        This quarter's access review isn't signed off yet.{' '}
+                        <Link
+                            href="/settings/access-review"
+                            className="underline"
+                        >
+                            Start the access review
+                        </Link>
+                    </p>
+                )}
+                {Object.keys(missingTemplates).length > 0 && (
+                    <section className="grid gap-2 rounded-lg border p-3 text-sm">
+                        <p className="font-medium">More ready-made roles</p>
+                        <span className="flex flex-wrap gap-2">
+                            {Object.entries(missingTemplates).map(
+                                ([key, name]) => (
+                                    <Button
+                                        key={key}
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() =>
+                                            router.post(
+                                                `/settings/roles/templates/${key}`,
+                                                {},
+                                                { preserveScroll: true },
+                                            )
+                                        }
+                                    >
+                                        Add {name}
+                                    </Button>
+                                ),
+                            )}
+                        </span>
+                    </section>
+                )}
                 {editing !== undefined && (
                     <Editor
                         key={editing?.ulid ?? 'new'}
