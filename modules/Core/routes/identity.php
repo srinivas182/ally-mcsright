@@ -9,6 +9,7 @@ use Illuminate\Validation\ValidationException;
 use Modules\Core\Access\AccessController;
 use Modules\Core\Audit\AuditController;
 use Modules\Core\Brief\BriefController;
+use Modules\Core\CustomFields\CustomFieldsController;
 use Modules\Core\Identity\EmailChange;
 use Modules\Core\Identity\Http\Controllers\ImpersonationController;
 use Modules\Core\Identity\Http\Controllers\InvitationController;
@@ -17,6 +18,7 @@ use Modules\Core\Identity\Http\Controllers\SingleSignOnController;
 use Modules\Core\Identity\Http\Controllers\UserController;
 use Modules\Core\Identity\Http\Middleware\EnsureTenantHost;
 use Modules\Core\Identity\Security\SingleSignOn;
+use Modules\Core\Notices\NoticesController;
 
 Route::middleware(['web', EnsureTenantHost::class, 'guest'])->group(function (): void {
     Route::get('invitations/{token}', [InvitationController::class, 'show'])->name('invitations.show');
@@ -105,6 +107,17 @@ Route::middleware(['web', EnsureTenantHost::class, 'auth'])->group(function (): 
     Route::post('settings/roles/preview', [AccessController::class, 'preview'])->name('roles.preview');
     Route::post('settings/roles/preview-as', [AccessController::class, 'previewAs'])->name('roles.preview-as');
     Route::post('settings/roles/templates/{key}', [AccessController::class, 'addTemplate'])->where('key', '[a-z_]+')->name('roles.templates');
+    // The notification centre and custom fields (specs/core/10, N1).
+    Route::get('notifications', [NoticesController::class, 'index'])->name('notices.index');
+    Route::get('notifications/latest', [NoticesController::class, 'latest'])->name('notices.latest');
+    Route::post('notifications/read/{notice?}', [NoticesController::class, 'read'])->name('notices.read');
+    Route::post('notifications/{notice}/snooze', [NoticesController::class, 'snooze'])->name('notices.snooze');
+    Route::post('notifications/preferences', [NoticesController::class, 'preference'])->name('notices.preference');
+    Route::post('notifications/settings', [NoticesController::class, 'settings'])->name('notices.settings');
+    Route::get('settings/custom-fields', [CustomFieldsController::class, 'index'])->name('custom-fields.index');
+    Route::post('settings/custom-fields/{entity}', [CustomFieldsController::class, 'save'])->whereIn('entity', ['contact', 'deal', 'agent'])->name('custom-fields.store');
+    Route::put('settings/custom-fields/{entity}/{field}', [CustomFieldsController::class, 'save'])->whereIn('entity', ['contact', 'deal', 'agent'])->name('custom-fields.update');
+    Route::post('settings/custom-fields/{entity}/{field}/archive', [CustomFieldsController::class, 'archive'])->whereIn('entity', ['contact', 'deal', 'agent'])->name('custom-fields.archive');
     Route::get('settings/access-review', [AccessController::class, 'review'])->name('access-review.index');
     Route::post('settings/access-review/start', [AccessController::class, 'reviewStart'])->name('access-review.start');
     Route::post('settings/access-review/items/{item}', [AccessController::class, 'reviewDecide'])->whereNumber('item')->name('access-review.decide');

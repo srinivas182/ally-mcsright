@@ -1,8 +1,6 @@
-import { BellIcon } from 'lucide-react';
-
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { CommandBar } from '@/components/command-bar';
-import { Button } from '@/components/ui/button';
+import { NotificationBell } from '@/components/notification-bell';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import type { BreadcrumbItem as BreadcrumbItemType } from '@/types';
 
@@ -21,10 +19,7 @@ export function AppSidebarHeader({
             </div>
             <div className="ml-auto flex flex-1 items-center justify-end gap-2 md:flex-none">
                 <CommandBar />
-                {/* Notifications arrive with the notification centre (Platform Core). */}
-                <Button variant="ghost" size="icon" aria-label="Notifications">
-                    <BellIcon />
-                </Button>
+                <NotificationBell />
             </div>
         </header>
     );

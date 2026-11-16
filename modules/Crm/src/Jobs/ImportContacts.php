@@ -13,6 +13,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Modules\Core\Access\Permissions;
+use Modules\Core\CustomFields\CustomFields;
 use Modules\Crm\Actions\ManageContacts;
 use Modules\Crm\Actions\Tags;
 use Modules\Crm\Actions\Timeline;
@@ -66,6 +67,23 @@ final class ImportContacts implements ShouldQueue
                         'birthday' => ContactImporter::date($data['birthday'] ?? null),
                         'import_id' => $import->id,
                     ], fn ($v) => $v !== null && $v !== ''))->save();
+
+                    // Custom field columns (specs/core/10, N1): a value that doesn't fit its field is skipped.
+                    $custom = [];
+                    foreach ($data as $field => $value) {
+                        if (str_starts_with($field, 'custom:')) {
+                            $custom[substr($field, 7)] = $value;
+                        }
+                    }
+                    if ($custom !== []) {
+                        foreach ($custom as $key => $value) {
+                            try {
+                                app(CustomFields::class)->save('contact', $contact->id, [$key => $value], $user, audit: false);
+                            } catch (ValidationException) {
+                                $errors[] = ['row' => $number, 'reason' => "{$key}: the value doesn't fit this field, so it was skipped."];
+                            }
+                        }
+                    }
 
                     // History from the old CRM: the note lands on the timeline at the last contact date.
                     $lastContact = ContactImporter::date($data['last_contact'] ?? null);

@@ -13,6 +13,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/ui/page-header';
 import { usd } from '@/lib/cents';
+import { CustomFieldsPanel } from '@/components/custom-fields-panel';
+import type { CustomFieldValue } from '@/components/custom-fields-panel';
 
 type Credential = {
     ulid: string;
@@ -28,6 +30,7 @@ type Credential = {
     check_result?: string | null;
 };
 type Props = {
+    customFields: CustomFieldValue[];
     agent: { ulid: string; name: string };
     records: {
         credentials: Credential[];
@@ -182,6 +185,7 @@ export default function RosterAgent({
     requests,
     ce,
     canVerify,
+    customFields,
 }: Props) {
     const add = useForm({
         kind: 'licence',
@@ -204,6 +208,11 @@ export default function RosterAgent({
                 <PageHeader
                     title={agent.name}
                     description="Licences, E&O, memberships and documents."
+                />
+                <CustomFieldsPanel
+                    fields={customFields}
+                    action={`/roster/${agent.ulid}/fields`}
+                    canEdit={canManage}
                 />
                 {toSign.map((a) => (
                     <SignAgreement key={a.id} agreement={a} name={agent.name} />

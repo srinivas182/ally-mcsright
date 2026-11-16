@@ -26,6 +26,8 @@ import {
 } from '@/components/ui/select';
 import { formatUsPhone } from '@/components/ui/number-inputs';
 import { WhyCanISee } from '@/components/why-can-i-see';
+import { CustomFieldsPanel } from '@/components/custom-fields-panel';
+import type { CustomFieldValue } from '@/components/custom-fields-panel';
 
 type Contact = {
     ulid: string;
@@ -75,6 +77,7 @@ type Contact = {
 
 type Props = {
     contact: Contact;
+    customFields: CustomFieldValue[];
     history: AuditRow[];
     canDownloadEvidence: boolean;
     memories: { id: number; category: string; detail: string }[];
@@ -577,6 +580,7 @@ export default function ContactShow({
     households,
     relationships,
     canManage,
+    customFields,
     agents,
     lifecycles,
     savedSearches,
@@ -666,6 +670,12 @@ export default function ContactShow({
                             </span>
                         )
                     }
+                />
+                <CustomFieldsPanel
+                    fields={customFields}
+                    action={`/contacts/${contact.ulid}/fields`}
+                    canEdit={canManage}
+                    suggestUrl={`/contacts/${contact.ulid}/fields/suggest`}
                 />
 
                 <div className="flex flex-wrap gap-2">

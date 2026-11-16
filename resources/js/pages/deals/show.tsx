@@ -26,6 +26,8 @@ import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/ui/page-header';
 import { usd } from '@/lib/cents';
 import { WhyCanISee } from '@/components/why-can-i-see';
+import { CustomFieldsPanel } from '@/components/custom-fields-panel';
+import type { CustomFieldValue } from '@/components/custom-fields-panel';
 
 type Item = {
     ulid: string;
@@ -78,10 +80,12 @@ type Props = {
     compliance: Compliance;
     reviewer: boolean;
     reasons: string[];
+    customFields: CustomFieldValue[];
 };
 
 const statusLabel: Record<string, string> = {
     missing: 'Needed',
+    field_missing: 'Fill in under More details',
     submitted: 'Waiting for review',
     needs_fix: 'Needs a fix',
     approved: 'Approved',
@@ -261,6 +265,7 @@ export default function ShowDeal({
     parties,
     items,
     missing,
+    customFields,
     dates,
     unsorted,
     facts,
@@ -327,6 +332,11 @@ export default function ShowDeal({
                         </span>
                     )}
                 </section>
+                <CustomFieldsPanel
+                    fields={customFields}
+                    action={`/deals/${deal.ulid}/fields`}
+                    canEdit={!deal.locked}
+                />
                 {deal.status === 'closed' && can.managePay && (
                     <DealPay
                         ulid={deal.ulid}

@@ -15,6 +15,7 @@ use Modules\Core\Access\Permissions;
 use Modules\Core\Audit\AuditEvent;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Audit\AuditPresenter;
+use Modules\Core\CustomFields\CustomFields;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Identity\Enums\UserStatus;
 use Modules\Crm\Actions\ManageContacts;
@@ -26,6 +27,7 @@ use Modules\Crm\Enums\Lifecycle;
 use Modules\Crm\Enums\Origin;
 use Modules\Crm\Enums\Relation;
 use Modules\Crm\Enums\Source;
+use Modules\Crm\FieldSuggestions;
 use Modules\Crm\FollowUpPlans;
 use Modules\Crm\Models\Activity;
 use Modules\Crm\Models\Contact;
@@ -130,6 +132,27 @@ final class ContactController
         return to_route('crm.contacts.show', $contact);
     }
 
+    /** Custom field values on a contact (specs/core/10, N1). */
+    public function saveFields(Request $request, Contact $contact): RedirectResponse
+    {
+        $user = self::user($request);
+        abort_unless($this->visibility->canManage($user, $contact), 403);
+        $data = $request->validate(['fields' => ['required', 'array']]);
+        app(CustomFields::class)->save('contact', $contact->id, (array) $data['fields'], $user, $contact->owner_user_id);
+
+        return back();
+    }
+
+    /** "Fill with AI": a suggested value from the notes, which the person confirms before it is saved (N1). */
+    public function suggestField(Request $request, Contact $contact): JsonResponse
+    {
+        $user = self::user($request);
+        abort_unless($this->visibility->canManage($user, $contact), 403);
+        $data = $request->validate(['key' => ['required', 'string', 'max:60']]);
+
+        return response()->json(app(FieldSuggestions::class)->suggest($contact, (string) $data['key'], $user));
+    }
+
     /** "Why can I see this?" (specs/core/03, R1). */
     public function why(Request $request, Contact $contact): JsonResponse
     {
@@ -218,6 +241,7 @@ final class ContactController
             'enrollments' => PlanEnrollment::query()->with('plan')->where('contact_id', $contact->id)->where('status', 'active')->get()
                 ->map(fn (PlanEnrollment $e): array => ['id' => $e->id, 'plan' => $e->plan->name, 'next_due_at' => $e->next_due_at?->toIso8601String()]),
             'canManage' => $this->visibility->canManage($user, $contact),
+            'customFields' => app(CustomFields::class)->valuesFor('contact', $contact->id, $user, $contact->owner_user_id),
             'agents' => CrmAccess::manager($user) && $contact->origin === Origin::Company
                 ? User::query()->where('status', UserStatus::Active)->whereIn('kind', [UserKind::Agent, UserKind::Owner, UserKind::Staff])
                     ->orderBy('first_name')->get()->map(fn (User $a): array => ['id' => $a->id, 'name' => $a->name])

@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Core\Audit\AuditLogger;
+use Modules\Core\CustomFields\CustomFields;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Identity\Enums\UserStatus;
 use Modules\Core\Support\Connections;
@@ -44,6 +45,18 @@ final class RosterController
     }
 
     /** An agent's records: managers see anyone; an agent sees their own (read-only). */
+    /** Custom field values on an agent (specs/core/10, N1): the roster's managers fill them in. */
+    public function saveFields(Request $request, string $agent): RedirectResponse
+    {
+        $user = self::user($request);
+        abort_unless(Roster::manages($user), 403);
+        $target = User::query()->where('ulid', $agent)->firstOrFail();
+        $data = $request->validate(['fields' => ['required', 'array']]);
+        app(CustomFields::class)->save('agent', $target->id, (array) $data['fields'], $user, $target->id);
+
+        return back();
+    }
+
     public function show(Request $request, string $agent, Roster $roster): Response
     {
         $user = self::user($request);
@@ -55,6 +68,7 @@ final class RosterController
 
         return Inertia::render('roster/agent', ['agent' => ['ulid' => $target->ulid, 'name' => $target->name], 'records' => $roster->forUser($target),
             'canManage' => Roster::manages($user), 'isSelf' => $target->id === $user->id, 'isOwner' => $user->isKind(UserKind::Owner),
+            'customFields' => app(CustomFields::class)->valuesFor('agent', $target->id, $user, $target->id),
             'onboarding' => $flows->view($target, 'onboarding'), 'offboarding' => $flows->view($target, 'offboarding'),
             'toSign' => $target->id === $user->id ? array_values(array_filter([$agreements->latest('agreement'), $agreements->latest('policy')],
                 fn ($a) => $a !== null && ! $agreements->signed($target, $a['kind']))) : [],

@@ -8,6 +8,7 @@ use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Validation\ValidationException;
+use Modules\Core\CustomFields\CustomFields;
 use Modules\Crm\Enums\Lifecycle;
 use Modules\Crm\Enums\Origin;
 use Modules\Crm\Enums\Source;
@@ -34,7 +35,7 @@ final class SmartLists
     /** Keep-in-touch cadence in days by A/B/C/D ranking. */
     public const RHYTHM_DAYS = ['A' => 30, 'B' => 60, 'C' => 90, 'D' => 180];
 
-    private const KEYS = ['lifecycle', 'origin', 'source', 'stage', 'tags', 'no_contact_days', 'overdue_task', 'created_within_days', 'cities', 'pipeline', 'keywords', 'rhythm', 'rhythm_due', 'birthday_within_days', 'anniversary_within_days', 'referral_moment'];
+    private const KEYS = ['lifecycle', 'origin', 'source', 'stage', 'tags', 'no_contact_days', 'overdue_task', 'created_within_days', 'cities', 'pipeline', 'keywords', 'rhythm', 'rhythm_due', 'birthday_within_days', 'anniversary_within_days', 'referral_moment', 'custom'];
 
     public function __construct(private readonly ContactVisibility $visibility) {}
 
@@ -64,6 +65,12 @@ final class SmartLists
         foreach (['no_contact_days', 'created_within_days'] as $days) {
             if (isset($filters[$days]) && (! is_int($filters[$days]) || $filters[$days] < 1 || $filters[$days] > 3650)) {
                 $errors["filters.{$days}"] = 'Use a number of days from 1 to 3650.';
+            }
+        }
+        if (isset($filters['custom'])) {
+            $known = array_column(app(CustomFields::class)->definitions('contact'), 'key');
+            if (! is_array($filters['custom']) || array_diff(array_keys($filters['custom']), $known) !== []) {
+                $errors['filters.custom'] = 'Unknown custom field.';
             }
         }
         if ($errors !== []) {
@@ -107,8 +114,31 @@ final class SmartLists
                     ->orWhereExists(fn ($a) => $a->selectRaw('1')->from('crm_activities')->whereColumn('crm_activities.contact_id', 'crm_contacts.id')
                         ->where('crm_activities.type', 'call')->where('crm_activities.outcome', 'connected')->where('crm_activities.occurred_at', '>=', $now->subDays(7)))
                     ->orWhere(fn ($d) => self::monthDayWithin($d, 'closed_md', $now, 14))))
+            ->when(! empty($filters['custom']) && is_array($filters['custom']), fn ($q) => $this->custom($q, (array) $filters['custom']))
             ->when(($filters['overdue_task'] ?? false) === true, fn ($q) => $q->whereExists(fn ($t) => $t->selectRaw('1')->from('crm_tasks')
                 ->whereColumn('crm_tasks.contact_id', 'crm_contacts.id')->whereNull('crm_tasks.completed_at')->where('crm_tasks.due_at', '<', $now)));
+    }
+
+    /**
+     * Custom field filters (specs/core/10, N1): each field must hold the value (one of the values for a "several
+     * choices" field; yes or no for a yes-or-no field).
+     *
+     * @param  Builder<Contact>  $query
+     * @param  array<mixed>  $wanted  field key => value
+     */
+    private function custom(Builder $query, array $wanted): void
+    {
+        $fields = collect(app(CustomFields::class)->definitions('contact'))->keyBy('key');
+        foreach ($wanted as $key => $value) {
+            $field = $fields->get((string) $key);
+            if ($field === null || $value === null || $value === '') {
+                continue;
+            }
+            $value = is_bool($value) ? ($value ? 'yes' : 'no') : (string) $value;
+            $query->whereExists(fn ($e) => $e->selectRaw('1')->from('custom_field_values as cfv')->join('custom_fields as cf', 'cf.id', '=', 'cfv.field_id')
+                ->whereColumn('cfv.entity_id', 'crm_contacts.id')->where('cf.entity', 'contact')->where('cf.key', $field['key'])
+                ->when($field['type'] === 'multi', fn ($w) => $w->where('cfv.value', 'like', '%'.json_encode($value).'%'), fn ($w) => $w->where('cfv.value', $value)));
+        }
     }
 
     /**

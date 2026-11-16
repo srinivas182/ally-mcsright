@@ -10,6 +10,7 @@ use Carbon\Exceptions\InvalidFormatException;
 use Illuminate\Validation\ValidationException;
 use Modules\Core\Connect\ConnectionData;
 use Modules\Core\Connect\ConnectorKit;
+use Modules\Core\CustomFields\CustomFields;
 use Modules\Crm\Actions\ManageContacts;
 use Modules\Crm\Actions\Tags;
 use Modules\Crm\Actions\Timeline;
@@ -35,7 +36,7 @@ final class Importer
     public function __construct(private readonly ConnectorKit $kit) {}
 
     /**
-     * @param  array{id: string, first_name: string, last_name: string, email: string|null, phone: string|null, tags: list<string>, stage: string|null, source: string|null, agent_id: string|null, sms_opt_out?: bool, email_opt_out?: bool, do_not_call?: bool}  $p
+     * @param  array{id: string, first_name: string, last_name: string, email: string|null, phone: string|null, tags: list<string>, stage: string|null, source: string|null, agent_id: string|null, sms_opt_out?: bool, email_opt_out?: bool, do_not_call?: bool, custom?: array<string, string>}  $p
      * @return 'created'|'updated'|'skipped'
      */
     public function person(ConnectionData $connection, User $by, array $p, string $app, string $stagePrefix): string
@@ -82,6 +83,9 @@ final class Importer
             app(Tags::class)->attach($contact, mb_substr($tag, 0, 60));
         }
         self::optOuts($contact, $p, $app);
+        if (($p['custom'] ?? []) !== []) {
+            app(CustomFields::class)->import('contact', $contact->id, $p['custom'], $by);
+        }
         if ($result === 'created') {
             $contact->forceFill(['source_detail' => mb_substr($app.($p['source'] !== null && $p['source'] !== '' ? ': '.$p['source'] : ''), 0, 150)])->save();
         }

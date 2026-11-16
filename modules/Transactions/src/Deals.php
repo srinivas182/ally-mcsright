@@ -14,6 +14,7 @@ use Modules\Compensation\CommissionService;
 use Modules\Compensation\Enums\DealClass;
 use Modules\Compensation\Enums\Side;
 use Modules\Core\Audit\AuditLogger;
+use Modules\Core\CustomFields\CustomFields;
 use Modules\Core\Support\Connections;
 use Modules\Crm\Models\Contact;
 use Modules\Ledger\Money\Money;
@@ -94,8 +95,14 @@ final class Deals
      */
     public function missing(Deal $deal): array
     {
-        return array_values(Item::query()->where('deal_id', $deal->id)->where('required', true)->whereNotIn('status', ['approved', 'waived'])->orderBy('sort')
-            ->get()->map(fn (Item $i): array => ['label' => $i->label, 'status' => $i->status])->all());
+        $items = Item::query()->where('deal_id', $deal->id)->where('required', true)->whereNotIn('status', ['approved', 'waived'])->orderBy('sort')
+            ->get()->map(fn (Item $i): array => ['label' => $i->label, 'status' => $i->status])->all();
+        // Custom fields the brokerage requires before closing (specs/core/10, N1).
+        foreach (app(CustomFields::class)->missingToClose($deal->id) as $label) {
+            $items[] = ['label' => $label, 'status' => 'field_missing'];
+        }
+
+        return array_values($items);
     }
 
     /**

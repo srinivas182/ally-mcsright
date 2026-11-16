@@ -9,6 +9,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use Modules\Core\Connect\ConnectionData;
 use Modules\Core\Connect\ConnectorKit;
 use Modules\Core\Connect\NeedsReconnect;
@@ -370,7 +371,10 @@ final class FollowUpBoss implements TwoWay
             'email' => self::primary($p['emails'] ?? null), 'phone' => self::primary($p['phones'] ?? null),
             'tags' => array_values(array_map('strval', array_filter((array) ($p['tags'] ?? []), 'is_scalar'))),
             'stage' => is_string($p['stage'] ?? null) ? $p['stage'] : null, 'source' => is_string($p['source'] ?? null) ? $p['source'] : null,
-            'agent_id' => is_scalar($p['assignedUserId'] ?? null) ? (string) $p['assignedUserId'] : null], 'Follow Up Boss', 'FUB stage');
+            'agent_id' => is_scalar($p['assignedUserId'] ?? null) ? (string) $p['assignedUserId'] : null,
+            // Custom fields come as "customXxx" keys (fields=allFields); they become RightAlly custom fields (specs/core/10).
+            'custom' => collect($p)->filter(fn ($v, string $k): bool => str_starts_with($k, 'custom') && strlen($k) > 6 && is_scalar($v) && (string) $v !== '')
+                ->mapWithKeys(fn ($v, string $k): array => [Str::headline(substr($k, 6)) => (string) $v])->all()], 'Follow Up Boss', 'FUB stage');
     }
 
     /**

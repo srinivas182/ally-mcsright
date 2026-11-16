@@ -6,6 +6,7 @@ namespace Modules\Crm;
 
 use Carbon\CarbonImmutable;
 use Generator;
+use Modules\Core\CustomFields\CustomFields;
 use Throwable;
 
 /**
@@ -52,6 +53,10 @@ final class ContactImporter
     public static function guess(array $headers): array
     {
         $mapping = [];
+        $custom = [];
+        foreach (app(CustomFields::class)->definitions('contact') as $f) {
+            $custom[mb_strtolower($f['label'])] = 'custom:'.$f['key'];
+        }
         foreach ($headers as $header) {
             $normal = mb_strtolower(trim(preg_replace('/[_\-]+/', ' ', $header) ?? ''));
             foreach (self::GUESSES as $field => $names) {
@@ -59,6 +64,9 @@ final class ContactImporter
                     $mapping[$header] = $field;
                     break;
                 }
+            }
+            if (! isset($mapping[$header]) && isset($custom[mb_strtolower(trim($header))])) {
+                $mapping[$header] = $custom[mb_strtolower(trim($header))];
             }
         }
 
@@ -128,7 +136,7 @@ final class ContactImporter
         $data = [];
         foreach ($mapping as $header => $field) {
             $value = trim((string) ($row[$header] ?? ''));
-            if ($value !== '' && in_array($field, self::FIELDS, true)) {
+            if ($value !== '' && (in_array($field, self::FIELDS, true) || str_starts_with($field, 'custom:'))) {
                 $data[$field] = $value;
             }
         }

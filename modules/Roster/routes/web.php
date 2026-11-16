@@ -26,6 +26,7 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('roster
     Route::post('{agent}/flows', [RosterController::class, 'startFlow'])->name('flows.start');
     Route::post('{agent}/flows/{kind}/complete', [RosterController::class, 'completeFlow'])->middleware('password.confirm')->name('flows.complete');
     Route::post('{agent}/credentials', [RosterController::class, 'add'])->name('add');
+    Route::post('{agent}/fields', [RosterController::class, 'saveFields'])->name('fields');
     Route::post('{agent}/documents', [RosterController::class, 'upload'])->middleware('throttle:30,1')->name('upload');
 });
 

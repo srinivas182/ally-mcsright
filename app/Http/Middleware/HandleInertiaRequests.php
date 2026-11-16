@@ -13,6 +13,7 @@ use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Identity\Impersonation;
 use Modules\Core\Identity\Security\TwoFactorPolicy;
 use Modules\Core\Navigation\NavigationRegistry;
+use Modules\Core\Notices\Notices;
 use Modules\Core\Tenancy\TenantContext;
 
 class HandleInertiaRequests extends Middleware
@@ -91,6 +92,8 @@ class HandleInertiaRequests extends Middleware
 
                 return $data === null ? null : ['by' => $data['by_name'], 'target' => $data['target_name'], 'expires_at' => $data['expires_at']];
             },
+            'notices' => fn (): ?array => $request->user() instanceof User
+                ? ['unread' => app(Notices::class)->unread($request->user())] : null,
             'navigation' => fn (): array => app(NavigationRegistry::class)->for($request->user() instanceof User ? $request->user() : null),
             // The credit meter at the foot of the menu (brokerage workspaces only).
             'credits' => function () use ($request): ?array {

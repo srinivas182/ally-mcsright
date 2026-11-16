@@ -32,6 +32,7 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoff
     Route::post('/', [DealController::class, 'store'])->name('store');
     Route::get('{deal}', [DealController::class, 'show'])->name('show');
     Route::get('{deal}/why', [DealController::class, 'why'])->name('why');
+    Route::post('{deal}/fields', [DealController::class, 'saveFields'])->name('fields');
     Route::post('{deal}/status', [DealController::class, 'status'])->name('status');
     Route::post('{deal}/pay/override', [PayController::class, 'override'])->middleware('throttle:20,1')->name('pay.override');
     Route::post('{deal}/pay/reverse', [PayController::class, 'reverse'])->middleware('throttle:20,1')->name('pay.reverse');
