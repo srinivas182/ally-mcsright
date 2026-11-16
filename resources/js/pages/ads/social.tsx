@@ -58,6 +58,7 @@ export default function Social({
         link: string;
         image: string | null;
         images?: string[];
+        video?: string | null;
     } | null;
     timezone: string;
     posts: Post[];
@@ -68,6 +69,7 @@ export default function Social({
         link: start?.link ?? '',
         image_url: start?.image ?? '',
         images: start?.images ?? ([] as string[]),
+        video_url: start?.video ?? '',
         places: places.map((p) => p.key),
         post_at: '',
     });
@@ -171,6 +173,33 @@ export default function Social({
                             />
                             {error('image_url')}
                         </label>
+                        {form.data.video_url !== '' && (
+                            <div className="grid gap-2">
+                                <div className="flex items-center justify-between text-sm">
+                                    <span>
+                                        Reel: Instagram and Facebook get the
+                                        video; LinkedIn and Google get the cover
+                                    </span>
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() =>
+                                            form.setData('video_url', '')
+                                        }
+                                    >
+                                        Post the cover only
+                                    </Button>
+                                </div>
+                                <video
+                                    src={form.data.video_url}
+                                    controls
+                                    playsInline
+                                    className="max-h-80 w-fit rounded border"
+                                />
+                                {error('video_url')}
+                            </div>
+                        )}
                         {form.data.images.length >= 2 && (
                             <div className="grid gap-2">
                                 <div className="flex items-center justify-between text-sm">

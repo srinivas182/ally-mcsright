@@ -91,13 +91,23 @@ Wide and Heritage. Earlier style keys map to their nearest new style, so saved k
 
 ## Reels, Shorts and tours (SA3)
 
-- 15–30 second vertical videos from listing photos (slow camera motion), licensed music (HQ's library, each track
-  with its licence), burned-in captions, the agent's opening and closing cards. Posted to Instagram Reels, Facebook
-  Reels and **YouTube Shorts**.
-- **YouTube listing tours:** 60–90 second landscape videos with chapters (Kitchen, Primary suite, Yard), the
-  listing link in the description; searchable for years (SEO and AEO).
-- New app **YouTube** (Google sign-in, upload permission only). HQ: YouTube API compliance audit, so uploads can be
-  public.
+**SA3a (built): Reels from listing designs.** Studio → Create → "Make a Reel" turns a listing design into a 9:16
+video in the same style: the cover (4 s), each further photo (3 s) and the details card with the agent (4.5 s),
+each with a slow camera move (in, then out), 0.6 s crossfades, and a track from RightAlly's licensed music library
+faded in and out and levelled (EBU R128); about 13 to 18 seconds. ffmpeg on the render workers makes it (H.264, AAC,
+fast start). Making one is free; it counts as one "Reel or Short" when first downloaded or posted. Studio → Reels
+shows each with its music, download (MP4) and "Post it".
+
+- **Music:** HQ adds each track with the licence RightAlly holds (title, artist, mood, licence, link) and can turn it
+  off; agents pick a mood (Luxury, Calm, Upbeat, Cinematic) or a track; without tracks a Reel has a quiet sound track.
+- **Posting:** Instagram gets a Reel (`REELS` container, shared to the feed, published once Instagram has
+  processed it); a Facebook Page gets the video; LinkedIn and Google get the cover image. "Post the cover only"
+  switches back to a photo.
+
+**SA3b (next):** the **YouTube** app (Google sign-in, upload permission only) with Shorts uploads, and **YouTube
+listing tours**: 60–90 second landscape videos with chapters (Kitchen, Primary suite, Yard) and the listing link in
+the description, searchable for years (SEO and AEO); Autopilot adds a Reel to each new listing's launch when the
+package has Reels left. HQ: YouTube API compliance audit, so uploads can be public.
 
 ## Results (SA4)
 
@@ -164,7 +174,8 @@ designed posts are used it waits for the renewal, unless the person turns on "Us
 | **SA5a** | Photo enhancement (moved up): Enhance photos page, Autoenhance.ai (sky, lawn, virtual twilight) and Replicate upscaling on RightAlly's accounts, allowance then credits with give-back on failure, designs and captions labelled "Photos virtually enhanced", Autopilot enhances new listings from the allowance and stays inside the package (credits for extra posts only when allowed), HQ sees what each item is made with and the services behind Studio                                                                                  |
 | **SA2a** | Autopilot: listing moments (new, coming soon, price improvement, under contract, sold), weekly market update, holidays; AI captions (Spanish, hashtags, Fair Housing); good times; Approve first and Autopilot; daily brief; Your AI Assistant skills `studio_posts` and `studio_approve`                                                                                                                                                                                                                                                      |
 | **SA2b** | Calendar (drag to move), listing launch campaign, captions in the agent's voice, closings, reviews, milestones and recruiting moments, broker approval rules                                                                                                                                                                                                                                                                                                                                                                                   |
-| **SA3**  | Reels, Shorts and tours, music library, YouTube app                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| **SA3a** | Reels from listing designs (ffmpeg: camera moves, crossfades, licensed music), HQ music library with licences, Studio → Reels, Instagram Reels and Facebook Page videos                                                                                                                                                                                                                                                                                                                                                                        |
+| **SA3b** | YouTube app, Shorts upload, YouTube listing tours, Autopilot Reels                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | **SA4**  | Results, Studio report, learning                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | **SA5**  | Photo enhancement, voice narration, comment and message replies                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 
@@ -180,4 +191,5 @@ designed posts are used it waits for the renewal, unless the person turns on "Us
 - SA5a: an Autoenhance.ai account with API access (Connect setup → Photo enhancement), and optionally a Replicate
   token plus a tested Real-ESRGAN version id (Photo upscaling); enter both real costs per photo in the cost list
   (`studio.enhance`, `studio.upscale`) and set each package's enhancement allowance under HQ → Ally Studio.
-- Music library licences; YouTube API audit; Meta review for engagement permissions (SA5); voice vendor (SA5).
+- Music library licences (add each track under HQ → Ally Studio with its licence); ffmpeg on the render workers
+  (`STUDIO_FFMPEG`); YouTube API audit; Meta review for engagement permissions (SA5); voice vendor (SA5).

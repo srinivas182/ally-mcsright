@@ -15,6 +15,8 @@ use Modules\Ads\Social\SocialPosts;
 use Modules\Ads\Social\SocialTarget;
 use Modules\Ads\Studio\Design;
 use Modules\Ads\Studio\Designer;
+use Modules\Ads\Studio\Reels;
+use Modules\Ads\Studio\StudioVideo;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Tenancy\TenantContext;
 
@@ -28,13 +30,21 @@ final class SocialController
         $user = self::user($request);
         $listing = $request->query('listing');
         $design = is_string($request->query('design')) ? Design::query()->where('ulid', $request->query('design'))->where('user_id', $user->id)->where('status', 'ready')->first() : null;
+        $reel = is_string($request->query('reel')) ? StudioVideo::query()->where('ulid', $request->query('reel'))->where('user_id', $user->id)->where('status', 'ready')->first() : null;
         $tz = $tenants->current()->timezone ?: 'America/New_York';
+        $start = $design !== null ? $this->fromDesign($user, $design) : (is_string($listing) && $listing !== '' ? $this->social->fromListing($user, $listing) : null);
+        if ($reel !== null && ($from = Design::query()->find($reel->design_id)) !== null) {
+            // A Reel: the design's caption and link, the video, and its first frame as the cover (for places that take a photo).
+            $start = ['images' => []] + $this->fromDesign($user, $from);
+            $start['image'] = app(Reels::class)->poster($reel);
+            $start['video'] = app(Reels::class)->url($reel);
+        }
 
         return Inertia::render('ads/social', [
             'apps' => $this->social->apps($user),
             'places' => array_map(fn (array $p): array => ['key' => $p['key'], 'channel' => $p['channel'], 'name' => $p['name'], 'brokerage' => $p['brokerage']], $this->social->places($user)),
             'listings' => array_map(fn (array $l): array => ['ulid' => $l['ulid'], 'label' => $l['label']], $ads->listings($user)),
-            'start' => $design !== null ? $this->fromDesign($user, $design) : (is_string($listing) && $listing !== '' ? $this->social->fromListing($user, $listing) : null),
+            'start' => $start,
             'timezone' => $tz,
             'posts' => SocialPost::query()->where('user_id', $user->id)->with('targets')->latest('id')->limit(30)->get()->map(fn (SocialPost $p): array => [
                 'ulid' => $p->ulid, 'text' => mb_substr($p->text, 0, 280), 'status' => $p->status, 'post_at' => $p->post_at->setTimezone($tz)->format('M j, g:i A'),
@@ -46,7 +56,7 @@ final class SocialController
 
     public function store(Request $request): RedirectResponse
     {
-        $post = $this->social->schedule(self::user($request), $request->only(['text', 'link', 'image_url', 'images', 'listing', 'places', 'post_at']));
+        $post = $this->social->schedule(self::user($request), $request->only(['text', 'link', 'image_url', 'images', 'video_url', 'listing', 'places', 'post_at']));
         Inertia::flash('toast', ['type' => 'success', 'message' => $post->post_at->isFuture() ? 'Scheduled.' : 'Posting now: results show below in a moment.']);
 
         return redirect('/social');
