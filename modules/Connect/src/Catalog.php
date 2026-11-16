@@ -47,6 +47,16 @@ final class Catalog
 {
     /** Apps on the roadmap whose API is only open to partners: what HQ must apply for (shown as "Needs partner access"). */
     private const PARTNERS = [
+        'showingtime' => 'ShowingTime shares showing requests and feedback with approved partners and MLSs only. Apply to ShowingTime\'s partner program; built when access is issued (specs/connect/21).',
+        'brokerbay' => 'BrokerBay shares showings with approved partners. Ask BrokerBay for partner API access; built when it is issued.',
+        'aligned_showings' => 'Aligned Showings shares showings with approved partners. Ask Aligned Showings for partner access; built when it is issued.',
+        'spacio' => 'Spacio sends open-house sign-ins to CRMs through its integrations. Until a direct partnership is in place, forward Spacio\'s sign-in emails to your RightAlly lead address (Leads → Settings).',
+        'homebot' => 'Homebot shares homeowner engagement with approved partners. Ask Homebot for partner access; built when it is issued.',
+        'total_expert' => 'Total Expert integrates with approved partners (lenders\' platform). Built when a lender partner asks and Total Expert issues access. No lender pays RightAlly for referrals (RESPA).',
+        'qualia' => 'Qualia Connect is open to approved partners. Ask Qualia for partner access; built when it is issued.',
+        'updater' => 'Updater works with brokerages through a partner agreement. Ask Updater; built when it is issued.',
+        'lenders' => 'Preferred lender sharing needs the client\'s written consent and no payment for referrals (RESPA). It is designed with counsel before it is built.',
+        'title_escrow' => 'Title orders with a brokerage\'s title partner are built with the first partner that offers an order API; no title company pays for referrals (RESPA).',
         'zillow_reviews' => 'Zillow shares agent reviews through its Agent Reviews API on the Bridge platform, after Zillow approves the app (bridgedataoutput.com → Data Access → Zillow Group datasets → Zillow Agent Reviews). Built once approved (specs/connect/20).',
         'testimonial_tree' => 'Testimonial Tree shares testimonials with approved partners. Ask Testimonial Tree for partner access; it is built once they issue it (specs/connect/20).',
         'corefact' => 'Corefact and ProspectsPLUS print for agents through their own sites; ask them for partner (API) access. RightAlly Postcards (Lob) works today.',
@@ -594,6 +604,21 @@ final class Catalog
                     'Submit it for Canva\'s review (public integrations are reviewed before anyone outside RightAlly can connect).', 'Paste the client ID and secret here and switch Canva on.'],
                 'partner' => 'Canva reviews Connect integrations before they are public (free).', 'docs' => 'https://www.canva.dev/docs/connect/'],
             guide: ['steps' => ['Press Connect and sign in to Canva.', 'Press Allow.', 'In Ally Studio, choose "Open in Canva" on a listing or a design.']]));
+        // Property data (specs/connect/21, C8b): on RightAlly's accounts, paid with credits per address.
+        $catalog->add(new App('property_data', 'Property data (ATTOM)', 'data', 'Look up any address: owners, last sale, value range and home facts. Paid with credits per address, free to look again for 30 days.',
+            scope: 'both', auth: 'link', syncs: ['Property facts, owners, last sale and value range, per address'], link: '/property-lookup', vendorCost: 'Paid with credits per lookup',
+            setup: ['needs' => 'keys', 'fields' => [['key' => 'api_key', 'label' => 'ATTOM API key', 'secret' => true]],
+                'steps' => ['Open an ATTOM API account for RightAlly (api.developer.attomdata.com) with the Property, Sale and AVM endpoints.', 'Paste the API key here and switch it on.',
+                    'Enter the real cost per lookup under HQ → Costs (data.property) and check the credits under Rate card.'],
+                'partner' => 'ATTOM bills RightAlly per call under its data licence. Data is shown to the brokerage only; it is not published on websites.', 'docs' => 'https://api.developer.attomdata.com/docs']));
+        $catalog->add(new App('batchdata', 'BatchData', 'data', 'Owner names and mailing address for any address, for letters and postcards. Phones and emails aren\'t taken: people who never asked can\'t be texted.',
+            scope: 'both', auth: 'link', syncs: ['Owner names and mailing address, per address'], link: '/property-lookup', vendorCost: 'Paid with credits per lookup',
+            setup: ['needs' => 'keys', 'fields' => [['key' => 'api_key', 'label' => 'BatchData API token', 'secret' => true]],
+                'steps' => ['Open a BatchData account for RightAlly with API access (Property Lookup).', 'Paste the API token here and switch it on.',
+                    'Enter the real cost per lookup under HQ → Costs (data.owner).'],
+                'partner' => 'BatchData bills RightAlly per record under its terms. Skip-traced phones are not used (TCPA consent).', 'docs' => 'https://developer.batchdata.com']));
+        $catalog->add(new App('propstream', 'PropStream', 'data', 'Bring PropStream lists into your contacts: export the list as CSV in PropStream, then import it here. Owner and mailing columns are matched for you; rows need an email or phone, and texting still needs each person\'s consent.',
+            scope: 'agent', auth: 'link', syncs: ['Owners from PropStream lists (CSV), with their mailing addresses'], link: '/apps/csv_import', vendorCost: 'Your PropStream plan'));
         // Reviews (specs/connect/20, C8a). Google reviews come with Google Business Profile.
         $catalog->add(new App('realsatisfied', 'RealSatisfied', 'reviews', 'Your RealSatisfied reviews and ratings on your websites, updated daily.',
             scope: 'agent', auth: 'api_key', syncs: ['Your published RealSatisfied reviews and ratings, daily'], link: '/reviews', driver: RealSatisfied::class, vendorCost: 'Your RealSatisfied plan',
@@ -637,9 +662,6 @@ final class Catalog
             ['bombbomb', 'BombBomb', 'marketing', 'Video emails logged on contacts, with views and replies.', 'agent', 'Your BombBomb plan'],
             ['corefact', 'Corefact', 'marketing', 'Printed farming and listing mail from your RightAlly lists.', 'agent', 'Printing and postage'],
             ['mojo', 'Mojo Dialer', 'phones', 'Dial your RightAlly lists and log every call.', 'agent', 'Your Mojo plan'],
-            ['property_data', 'Property data (ATTOM)', 'data', 'Owner, sale history and likely-to-sell signals for better home values and prospecting lists.', 'brokerage', 'Usage, paid with credits'],
-            ['batchdata', 'BatchData', 'data', 'Owner contact and property data for prospecting lists (with consent rules).', 'brokerage', 'Usage, paid with credits'],
-            ['propstream', 'PropStream', 'data', 'Property and owner data lists from PropStream into your CRM.', 'agent', 'Your PropStream plan'],
             ['lenders', 'Lender partners', 'partners', 'Share pre-approval status and payments with your preferred lenders.', 'both', null],
             ['title_escrow', 'Title and escrow', 'partners', 'Open title orders and track closing milestones with your title partner.', 'brokerage', null],
             ['homebot', 'Homebot', 'partners', 'Homeowner value reports and engagement from Homebot on your contacts.', 'both', 'Your Homebot plan'],

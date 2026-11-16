@@ -16,16 +16,17 @@ final class ContactImporter
     public const FIELDS = ['first_name', 'last_name', 'full_name', 'company_name', 'email', 'phone', 'address_line1', 'city', 'state', 'zip', 'birthday', 'tags', 'notes', 'last_contact'];
 
     private const GUESSES = [
-        'first_name' => ['first name', 'firstname', 'first', 'given name'],
-        'last_name' => ['last name', 'lastname', 'last', 'surname', 'family name'],
+        'first_name' => ['first name', 'firstname', 'first', 'given name', 'owner 1 first name', 'owner first name'],
+        'last_name' => ['last name', 'lastname', 'last', 'surname', 'family name', 'owner 1 last name', 'owner last name'],
         'full_name' => ['name', 'full name', 'contact name', 'contact'],
         'company_name' => ['company', 'company name', 'organization', 'business'],
         'email' => ['email', 'e mail', 'email address', 'e mail address', 'primary email', 'email 1'],
         'phone' => ['phone', 'mobile', 'cell', 'cell phone', 'mobile phone', 'phone number', 'primary phone', 'phone 1'],
-        'address_line1' => ['address', 'street', 'street address', 'address 1', 'address line 1'],
-        'city' => ['city', 'town'],
-        'state' => ['state', 'st', 'province'],
-        'zip' => ['zip', 'zip code', 'zipcode', 'postal code'],
+        // PropStream exports (specs/connect/21): the owner's mailing address is where letters go.
+        'address_line1' => ['address', 'street', 'street address', 'address 1', 'address line 1', 'mailing address'],
+        'city' => ['city', 'town', 'mailing city'],
+        'state' => ['state', 'st', 'province', 'mailing state'],
+        'zip' => ['zip', 'zip code', 'zipcode', 'postal code', 'mailing zip', 'mailing zip code'],
         'birthday' => ['birthday', 'birth date', 'date of birth', 'dob'],
         'tags' => ['tags', 'tag', 'groups', 'labels'],
         'notes' => ['notes', 'note', 'comments', 'background', 'description'],

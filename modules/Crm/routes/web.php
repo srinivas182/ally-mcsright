@@ -23,6 +23,7 @@ use Modules\Crm\Http\Controllers\Leads\LeadFormController;
 use Modules\Crm\Http\Controllers\PipelineController;
 use Modules\Crm\Http\Controllers\PlanController;
 use Modules\Crm\Http\Controllers\PostcardsController;
+use Modules\Crm\Http\Controllers\PropertyLookupController;
 use Modules\Crm\Http\Controllers\RelationshipController;
 use Modules\Crm\Http\Controllers\SavedSearchController;
 use Modules\Crm\Http\Controllers\TaskController;
@@ -69,6 +70,9 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoff
     });
 
 Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function (): void {
+    // C8b: property data (ATTOM, BatchData), paid with credits per address.
+    Route::get('property-lookup', [PropertyLookupController::class, 'show'])->name('property.lookup');
+    Route::post('property-lookup', [PropertyLookupController::class, 'lookup'])->middleware('throttle:20,1')->name('property.lookup.run');
     Route::get('settings/availability', [AvailabilityController::class, 'show'])->name('crm.availability');
     Route::post('settings/availability', [AvailabilityController::class, 'save'])->name('crm.availability.save');
     Route::post('activities/{activity}/pin', [ActivityController::class, 'pin'])->name('crm.activities.pin');
