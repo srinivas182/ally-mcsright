@@ -26,6 +26,8 @@ Schedule::command('transactions:date-reminders')->dailyAt('12:00')->onOneServer(
 // Deal-IQ: re-check open deals daily (dates approaching or missed), and escalate deadlines hourly.
 Schedule::command('transactions:scan-open')->dailyAt('10:30')->onOneServer();
 Schedule::command('transactions:escalate')->hourly()->onOneServer();
+// Deal portal: milestone updates, the Monday summary and the check-in after closing (specs/ai/02, §22).
+Schedule::command('transactions:portal-updates')->hourlyAt(5)->onOneServer();
 
 // Association form libraries: new editions of forms brokerages use.
 Schedule::command('forms:library-sync')->dailyAt('10:00')->onOneServer();

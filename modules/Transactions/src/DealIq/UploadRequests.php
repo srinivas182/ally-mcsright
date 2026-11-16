@@ -63,6 +63,21 @@ final class UploadRequests
     public function receive(string $token, UploadedFile $file): Document
     {
         $row = $this->find($token) ?? throw ValidationException::withMessages(['file' => 'This link has been used or has expired. Ask the agent for a new one.']);
+
+        return $this->fulfil($row, $file);
+    }
+
+    /** The same request answered from the deal portal by the person it was sent to. */
+    public function receiveInPortal(string $requestUlid, string $email, UploadedFile $file): Document
+    {
+        $row = DB::connection(Connections::cell())->table('tx_upload_requests')->where('ulid', $requestUlid)->where('email', $email)->whereNull('used_at')->where('expires_at', '>', now())->first()
+            ?? throw ValidationException::withMessages(['file' => 'This request has been answered or has expired.']);
+
+        return $this->fulfil($row, $file);
+    }
+
+    private function fulfil(\stdClass $row, UploadedFile $file): Document
+    {
         $deal = Deal::query()->whereKey((int) $row->deal_id)->firstOrFail();
         $by = User::query()->whereKey((int) $row->requested_by)->firstOrFail();
         $item = $row->item_id !== null ? Item::query()->whereKey((int) $row->item_id)->first() : null;
