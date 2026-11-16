@@ -109,6 +109,38 @@ wire-instruction detection with payout holds.
 - Scheduled: `transactions:escalate` hourly, `transactions:scan-open` daily (re-scans open deals so date
   risks appear without anyone opening the deal).
 
+## Delivered in DQ1–DQ2 — start any way, talk to the deal, smart timeline
+
+- **Start a deal any way** (Deals page): upload the contract or a phone photo of it, or describe the deal by
+  typing or speaking ("buyer deal for the Garcias, 412 Elm St, $450k VA loan, closing July 3"). Deal-IQ creates
+  the deal and opens a **setup page** proposing the kind of deal, address, price, dates, type of home, financing
+  and people (with where on the contract each fact was read). While a contract is being read the page waits and
+  refreshes. Nothing is assumed silently: confirming fills the people, adapts the checklist and builds the
+  timeline.
+- **Talk or type to a deal** (Deal-IQ panel on each deal, voice or text): Deal-IQ answers and proposes actions
+  in plain English — move a date, add a date, add a task, add a checklist item, send an upload link, email
+  someone on the deal, draft a form. The agent ticks what to do and confirms; problems (no email for that
+  person, no day given, a closed deal) are shown before confirming. Each proposal can be done once or dismissed,
+  and the last ten are kept as history. Deal-IQ cannot delete anything, move money, or send bank or wiring
+  details (blocked before and at sending). Messages are sent from the platform with the agent as reply-to.
+- **Contract and addendum drafting**: "draft a 9-day closing extension" picks the brokerage's own current form
+  (Forms module), fills it from the deal and opens the draft packet with anything to check flagged. Nothing is
+  sent for signature until the agent sends it.
+- **Adaptive checklist**: the type of home (condo, townhome, multi-family, land, manufactured) and financing
+  (FHA, VA, USDA, cash), plus a pre-1978 build year read from the contract, add the documents they need. Items
+  are added once and never removed automatically. Audited.
+- **Upload links for the other side** (no inbox access, no account): the agent, or Deal-IQ, sends a lender,
+  title company or other party a single-use link (14 days) to upload one document. The token is stored hashed;
+  the upload lands on the deal (and its checklist item when named) and the agent is told. Audited.
+- **Smart timeline with state rule packs**: TX (earnest money 3 days, state holidays), LA, MS, AL, NJ (attorney
+  review 3 business days) and a default. Deadlines read from the contract roll past weekends and federal
+  (observed) and state holidays; the timeline adds earnest money, attorney review and the final walk-through,
+  and warns when closing falls on a non-business day. It rebuilds when the closing or contract date changes or
+  a fact is applied; dates set by hand or read from the contract are left alone, and the agent is emailed
+  what moved and who to tell (a notification type the agent can turn off).
+- Still to come (DQ3+): client concierge and all-party portal (English and Spanish), intake by email, more
+  state packs, multiple offers and repair requests.
+
 ## Market review (November 2026)
 
 | Capability                                                   | ProxiClose | Transaction Wingman | Deal-IQ                                                 |

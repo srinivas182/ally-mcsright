@@ -23,6 +23,7 @@ use Modules\Transactions\Models\Document;
 use Modules\Transactions\Models\DocumentReading;
 use Modules\Transactions\Models\Item;
 use Modules\Transactions\Reviews;
+use Modules\Transactions\Timeline\Timeline;
 use setasign\Fpdi\Fpdi;
 
 /**
@@ -252,6 +253,7 @@ final class DocIq
         }
         app(AuditLogger::class)->record('transactions.facts.applied', $deal, metadata: ['facts' => $names, 'by' => $by->id], label: $deal->street);
         app(ComplianceScan::class)->run($deal);
+        app(Timeline::class)->refresh($deal->refresh()); // dependent dates follow (specs/ai/02, §8)
 
         return $applied;
     }
@@ -331,9 +333,21 @@ final class DocIq
         return str_contains(mb_strtolower($quote), mb_strtolower(mb_substr($value, 0, 40)));
     }
 
+    /** Cents for a money fact ("$350,000.00" → 35000000). */
+    public static function centsOf(string $value): ?int
+    {
+        return self::cents($value);
+    }
+
     private static function cents(string $value): ?int
     {
         return preg_match('/\$?\s*(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d{2}))?/', $value, $m) === 1 ? (int) str_replace(',', '', $m[1]) * 100 + (int) ($m[2] ?? 0) : null;
+    }
+
+    /** The first date in a fact's value, as Y-m-d ("June 30, 2026 at 5pm" → 2026-06-30). */
+    public static function dateOf(string $value): ?string
+    {
+        return Summaries::date(self::firstDate($value) ?? '');
     }
 
     private static function firstDate(string $value): ?string

@@ -18,6 +18,7 @@ use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Mcp\McpToolbox;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
+use Modules\Core\Notices\NoticeTypes;
 use Modules\Core\Workflows\WorkflowRegistry;
 
 final class TransactionsServiceProvider extends ServiceProvider
@@ -27,6 +28,7 @@ final class TransactionsServiceProvider extends ServiceProvider
         foreach ([Checklists::class, Deals::class, Documents::class, Reviews::class, EarnestMoney::class, TitleDesk::class, Cdas::class, Referrals::class, FileExport::class, Forecast::class, KeyDates::class, Reading\DocIq::class, Compliance\ComplianceScan::class, Compliance\Findings::class, Compliance\Rules::class, Deadlines\Deadlines::class] as $service) {
             $this->app->scoped($service);
         }
+        $this->app->bindIf(DealIq\FormDrafter::class, DealIq\NoFormDrafter::class); // the Forms module drafts (specs/ai/02, §3)
         // Lead return on spend (CRM) reads deals and commission through this core interface.
         $this->app->bind(DealOutcomes::class, Reports\ContactDealOutcomes::class);
     }
@@ -42,6 +44,11 @@ final class TransactionsServiceProvider extends ServiceProvider
         $this->app->make(PromptRegistry::class)->addPath(__DIR__.'/../prompts');
         $features = $this->app->make(FeatureCatalog::class);
         $features->declare(Reading\DocIq::READ, 'ai.doc_read', 'DocIQ: facts read from each uploaded deal document');
+        $notices = $this->app->make(NoticeTypes::class);
+        $notices->register(DealIq\DatesChangedMail::class, 'Deal dates recalculated', 'Deals');
+        $notices->register(DealIq\UploadReceivedMail::class, 'Documents uploaded by the other side', 'Deals');
+        $features->declare(DealIq\Intake::FEATURE, 'ai.deal_intake', 'Deal-IQ: a new deal from what the agent says');
+        $features->declare(DealIq\DealAssistant::FEATURE, 'ai.deal_assistant', 'Deal-IQ: talk or type to a deal');
         $features->declare(Reading\DocIq::ASK, 'ai.doc_ask', 'DocIQ: questions answered from one document');
         $features->declare(Compliance\Rules::FEATURE, 'ai.compliance_rule', 'Deal-IQ: a brokerage rule written in plain English, read into a check');
         if ($this->app->runningInConsole()) {

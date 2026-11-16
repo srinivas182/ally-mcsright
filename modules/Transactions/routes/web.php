@@ -8,6 +8,7 @@ use Modules\Transactions\Http\BringOverFilesController;
 use Modules\Transactions\Http\ComplianceController;
 use Modules\Transactions\Http\DeadlinesController;
 use Modules\Transactions\Http\DealController;
+use Modules\Transactions\Http\DealIqController;
 use Modules\Transactions\Http\DocumentReadingController;
 use Modules\Transactions\Http\MoneyDeskController;
 use Modules\Transactions\Http\PayController;
@@ -30,6 +31,17 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoff
     Route::post('compliance/rules/{rule}/confirm', [ComplianceController::class, 'confirmRule'])->name('compliance.rules.confirm');
     Route::post('compliance/rules/{rule}/off', [ComplianceController::class, 'deactivateRule'])->name('compliance.rules.off');
     Route::post('/', [DealController::class, 'store'])->name('store');
+    // Deal-IQ (specs/ai/02, DQ1–DQ2).
+    Route::post('intake', [DealIqController::class, 'intakeFile'])->middleware('throttle:20,1')->name('intake');
+    Route::post('intake/text', [DealIqController::class, 'intakeText'])->middleware(['throttle:20,1', 'feature:crm.ai'])->name('intake.text');
+    Route::get('{deal}/setup', [DealIqController::class, 'setup'])->name('setup');
+    Route::post('{deal}/setup', [DealIqController::class, 'confirm'])->name('setup.confirm');
+    Route::post('{deal}/property', [DealIqController::class, 'property'])->name('property');
+    Route::post('{deal}/timeline', [DealIqController::class, 'timeline'])->name('timeline');
+    Route::post('{deal}/assistant', [DealIqController::class, 'ask'])->middleware(['throttle:30,1', 'feature:crm.ai'])->name('assistant');
+    Route::post('{deal}/assistant/{turn}', [DealIqController::class, 'doIt'])->middleware('throttle:30,1')->name('assistant.do');
+    Route::post('{deal}/assistant/{turn}/dismiss', [DealIqController::class, 'dismiss'])->name('assistant.dismiss');
+    Route::post('{deal}/upload-requests', [DealIqController::class, 'requestUpload'])->middleware('throttle:30,1')->name('upload-requests');
     Route::get('{deal}', [DealController::class, 'show'])->name('show');
     Route::get('{deal}/why', [DealController::class, 'why'])->name('why');
     Route::post('{deal}/fields', [DealController::class, 'saveFields'])->name('fields');
@@ -82,3 +94,9 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'throttle:30,1'])->group
 
 // An agent's private calendar feed (subscribed from Google, Outlook or Apple Calendar; the token is the key).
 Route::middleware(['web', EnsureTenantWorkspace::class, 'throttle:60,1,calendar-feed'])->get('calendar/{token}.ics', [DeadlinesController::class, 'feed'])->name('calendar.feed');
+
+// The other side's upload link (specs/ai/02, §7.4): no account; one document; the link is the key.
+Route::middleware(['web', EnsureTenantWorkspace::class])->prefix('deal-upload/{token}')->where(['token' => '[A-Za-z0-9]{48}'])->group(function (): void {
+    Route::get('/', [DealIqController::class, 'uploadPage'])->middleware('throttle:30,1')->name('deal-upload.show');
+    Route::post('/', [DealIqController::class, 'uploadReceive'])->middleware('throttle:10,1')->name('deal-upload.store');
+});

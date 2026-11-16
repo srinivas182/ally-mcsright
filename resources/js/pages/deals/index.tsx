@@ -1,5 +1,7 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+
+import { VoiceButton } from '@/components/crm/voice-button';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -83,6 +85,9 @@ export default function Deals({
         agent: '',
         contact: params.get('contact') ?? '',
     });
+    const contractFile = useRef<HTMLInputElement>(null);
+    const intake = useForm<{ file: File | null }>({ file: null });
+    const describe = useForm({ text: '' });
 
     return (
         <>
@@ -106,6 +111,76 @@ export default function Deals({
                         </div>
                     }
                 />
+                <section
+                    className="grid gap-3 rounded-lg border p-4 text-sm"
+                    aria-label="Start a deal with Deal-IQ"
+                >
+                    <p className="font-medium">Start a deal the fast way</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <input
+                            ref={contractFile}
+                            type="file"
+                            className="hidden"
+                            accept="application/pdf,image/*"
+                            capture="environment"
+                            aria-label="Contract file or photo"
+                            onChange={(e) => {
+                                const f = e.target.files?.[0];
+                                if (f) {
+                                    intake.transform(() => ({ file: f }));
+                                    intake.post('/deals/intake', {
+                                        forceFormData: true,
+                                    });
+                                }
+                            }}
+                        />
+                        <Button
+                            variant="outline"
+                            disabled={intake.processing}
+                            onClick={() => contractFile.current?.click()}
+                        >
+                            {intake.processing
+                                ? 'Uploading…'
+                                : 'Start from a contract (file or photo)'}
+                        </Button>
+                        <span className="text-muted-foreground">or</span>
+                        <form
+                            className="flex min-w-64 flex-1 flex-wrap gap-2"
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                describe.post('/deals/intake/text');
+                            }}
+                        >
+                            <Input
+                                aria-label="Describe the new deal"
+                                className="min-w-56 flex-1"
+                                placeholder='e.g. "Buyer deal, the Garcias, 412 Oak St Austin TX, $450k, closing Dec 18"'
+                                value={describe.data.text}
+                                onChange={(e) =>
+                                    describe.setData('text', e.target.value)
+                                }
+                            />
+                            <VoiceButton
+                                onText={(t) => describe.setData('text', t)}
+                                label="Describe it out loud"
+                            />
+                            <Button
+                                type="submit"
+                                disabled={
+                                    describe.processing ||
+                                    describe.data.text.trim() === ''
+                                }
+                            >
+                                Set it up
+                            </Button>
+                        </form>
+                    </div>
+                    {(intake.errors.file || describe.errors.text) && (
+                        <p role="alert" className="text-destructive">
+                            {intake.errors.file ?? describe.errors.text}
+                        </p>
+                    )}
+                </section>
                 <AtRisk items={atRisk} alerts={alerts} />
                 {forecast && (
                     <section className="grid gap-2 rounded-lg border p-4 text-sm">
