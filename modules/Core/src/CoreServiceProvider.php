@@ -116,6 +116,9 @@ final class CoreServiceProvider extends ServiceProvider
         $this->app->singleton(NavigationRegistry::class);
         $this->app->singleton(Notices\NoticeTypes::class);
         $this->app->scoped(CustomFields\CustomFields::class);
+        $this->app->singleton(Workflows\WorkflowRegistry::class);
+        $this->app->scoped(Workflows\Workflows::class);
+        $this->app->bindIf(Workflows\WorkflowDrafter::class, Workflows\NoWorkflowDrafter::class);
         $this->mergeConfigFrom(__DIR__.'/../config/core.php', 'core');
 
         // Scoped: reset between requests (Octane) and between queued jobs.
@@ -145,9 +148,19 @@ final class CoreServiceProvider extends ServiceProvider
         $types = $this->app->make(Notices\NoticeTypes::class);
         $types->register(Access\AccessAlertMail::class, 'Access changes (someone given access to money, people or exports)', 'Security', urgent: true);
         $types->register(Brief\DailyBriefMail::class, 'Your daily brief', 'General');
+        $types->register(Workflows\WorkflowAlertMail::class, 'Alerts from automations', 'Automations');
+        $types->register(Workflows\WorkflowApprovalMail::class, 'Approvals automations are waiting for', 'Automations', urgent: true);
+
+        // The workflow engine (specs/core/06, W1): Core's own steps and triggers; modules add theirs.
+        $workflows = $this->app->make(Workflows\WorkflowRegistry::class);
+        $workflows->action(new Workflows\Actions\Notify);
+        $workflows->action(new Workflows\Actions\SetField);
+        foreach (['contact' => 'A contact', 'deal' => 'A deal', 'agent' => 'An agent'] as $entity => $what) {
+            $workflows->trigger($entity.'.field_changed', $what."'s custom field changes", $entity, ['field' => 'Which field (its key)', 'value' => 'The new value']);
+        }
 
         if ($this->app->runningInConsole()) {
-            $this->commands([CompileDesignTokens::class, RunTenantLifecycle::class, BootstrapHq::class, Console\FlushAudit::class, Console\VerifyAudit::class, Console\AuditMaintenance::class, Console\ExpireAccess::class, Console\AccessReviewReminder::class, Console\SendNoticeDigests::class, Console\RebuildDirectory::class, Console\SendDailyBriefs::class]);
+            $this->commands([CompileDesignTokens::class, RunTenantLifecycle::class, BootstrapHq::class, Console\FlushAudit::class, Console\VerifyAudit::class, Console\AuditMaintenance::class, Console\ExpireAccess::class, Console\AccessReviewReminder::class, Console\SendNoticeDigests::class, Console\RunWorkflows::class, Console\RebuildDirectory::class, Console\SendDailyBriefs::class]);
         }
     }
 
@@ -196,6 +209,7 @@ final class CoreServiceProvider extends ServiceProvider
             'core.audit.view' => ['See the audit log'],
             'core.access.review' => ['Run the quarterly access review and export who can do what', false, true],
             'core.fields.manage' => ['Add and change custom fields on contacts, deals and agents'],
+            'core.workflows.manage' => ['Create and switch on automations'],
         ]);
         // Areas whose screens live in several modules (specs/core/03, R1).
         $registry->register('Marketing', [
@@ -294,6 +308,8 @@ final class CoreServiceProvider extends ServiceProvider
         $nav->add(new NavItem('Settings', 'Audit log', '/audit', 'shield', 90, ability: 'core.audit.view'));
         $nav->add(new NavItem('Settings', 'Roles', '/settings/roles', 'key-round', 80, ability: 'core.roles.manage'));
         Gate::define('core.access.reviewer', fn (User $user): bool => $user->kind === UserKind::Owner || $this->app->make(Permissions::class)->allows($user, 'core.access.review'));
+        Gate::define('core.workflows.admin', fn (User $user): bool => Workflows\Workflows::manages($user));
+        $nav->add(new NavItem('Settings', 'Automations', '/automations', 'workflow', 78, ability: 'core.workflows.admin', kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant]));
         Gate::define('core.fields.admin', fn (User $user): bool => CustomFields\CustomFields::manages($user));
         $nav->add(new NavItem('Settings', 'Custom fields', '/settings/custom-fields', 'list-plus', 79, ability: 'core.fields.admin', kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant]));
         $nav->add(new NavItem('Settings', 'Access review', '/settings/access-review', 'shield-check', 81, ability: 'core.access.reviewer'));

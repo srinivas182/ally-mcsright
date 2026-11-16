@@ -18,6 +18,7 @@ use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Mcp\McpToolbox;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
+use Modules\Core\Workflows\WorkflowRegistry;
 use Modules\Crm\Actions\ManageContacts;
 use Modules\Crm\Actions\Pipelines;
 use Modules\Crm\Actions\Tasks;
@@ -109,6 +110,10 @@ final class CrmServiceProvider extends ServiceProvider
 
         // Connected apps hear about company contacts, stage changes and completed tasks (specs/connect/01).
         Event::listen(ContactCreated::class, fn (ContactCreated $e) => CrmEvents::contactCreated($e->contactId));
+        // Contacts in the workflow engine (specs/core/06, W1).
+        Workflows\CrmWorkflows::register($this->app->make(WorkflowRegistry::class));
+        Event::listen(ContactCreated::class, fn (ContactCreated $e) => Workflows\CrmWorkflows::created($e->contactId, $e->byUserId));
+        Event::listen(ContactStageChanged::class, fn (ContactStageChanged $e) => Workflows\CrmWorkflows::stageChanged($e->contactId, $e->stageId, $e->byUserId));
         Event::listen(ContactStageChanged::class, fn (ContactStageChanged $e) => CrmEvents::stageChanged($e->contactId, $e->stageId));
         Event::listen(TaskCompleted::class, fn (TaskCompleted $e) => CrmEvents::taskCompleted($e->taskId));
 

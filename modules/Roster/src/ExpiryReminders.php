@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Notification;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Identity\Enums\UserStatus;
 use Modules\Core\Support\Connections;
+use Modules\Core\Workflows\Workflows;
 
 /** Daily: licences, E&O and memberships expiring in 60, 30 or 7 days, or today/expired — agent and owners told once per step. */
 final class ExpiryReminders
@@ -44,6 +45,8 @@ final class ExpiryReminders
             $agent->notify($note);
             Notification::send(User::query()->where('kind', UserKind::Owner)->where('status', UserStatus::Active)->get(), $note);
             $db->table('roster_credentials')->where('id', $c->id)->update(['reminded_days' => $step]);
+            app(Workflows::class)->fire('credential.expiring', $agent->id, ['what' => (string) $c->kind, 'state' => (string) $c->state_code, 'days_left' => $days,
+                'expires_on' => (string) $c->expires_on]);
             $sent++;
         }
 
