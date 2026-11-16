@@ -1,6 +1,6 @@
 # Delivery status against the plan
 
-Checked 2026-11-16 (R1 to DQ6, SM1, HC1a, HC1b, SO1 and SO2 added the same day) against `delivery-plan.md` (Sprints 1–57, five teams) and every merged pull request. Update this file at the end of every sprint.
+Checked 2026-11-16 (R1 to DQ6, SM1, HC1a, HC1b, SO1, SO2 and LQ1 added the same day) against `delivery-plan.md` (Sprints 1–57, five teams) and every merged pull request. Update this file at the end of every sprint.
 
 "Partly" means part of the item is built; the gap is noted in the item's spec or the sequence below.
 
@@ -197,7 +197,7 @@ Every sprint keeps the definition of ready: a review of the leading products fir
 | 3. Agents and sales growth          | 10    | SM1 Simple mode: short menu, big-button home, English or Spanish, Show me tours, undo, one-tap talk to the assistant                                                                          | A           | A18 (part)                        |
 |                                     | 11    | HC1 Brokerage Health Check, website scan, instant branded preview (HC1a, done); switch centre, signup checkout and automatic launch, pilot go-live support, Spanish Health Check (HC1b, done) | E with A, B | E04, A19, A11, B16                |
 |                                     | 12    | SO1–SO2 RightAlly for Agents: solo packages, ten-minute start, Ask my broker, portability, goal planner (SO1, done); reactive follow-up, ready-made plans, solo website designs (SO2, done)   | E with C    | E01, E02, E18                     |
-|                                     | 13    | LQ1 Lead-IQ: AI voice within a minute, appointment booking, warm transfer; broker-branded AI assistant                                                                                        | E with D    | E10, D22                          |
+|                                     | 13    | LQ1 Lead-IQ: AI voice within a minute, appointment booking, warm transfer; broker-branded AI assistant (LQ1, done: keypad call; two-way voice later)                                          | E with D    | E10, D22                          |
 |                                     | 14    | LQ2 Lead-IQ Prospector: likely sellers and buyers, Do Not Call scrubbing                                                                                                                      | E           | E11                               |
 |                                     | 15    | DH1 Database health, commission forecast, database value report                                                                                                                               | E with D    | E24, E25                          |
 | 4. Recruiting and referrals         | 16    | RC1–RC3 Recruiting suite, attraction engine, AI recruiting assistant, career sites                                                                                                            | E           | E14–E17                           |

@@ -20,13 +20,16 @@ final class TwilioVoiceCaller implements VoiceCaller
         return $this->place($to, $twiml);
     }
 
-    public function connect(string $to, string $message, string $onPress): string
+    public function connect(string $to, string $message, string $onPress, string $voice = 'Polly.Joanna'): string
     {
         $say = htmlspecialchars($message, ENT_XML1 | ENT_QUOTES);
         $action = htmlspecialchars($onPress, ENT_XML1 | ENT_QUOTES);
-        $gather = "<Gather numDigits=\"1\" timeout=\"8\" action=\"{$action}\" method=\"POST\"><Say voice=\"Polly.Joanna\">{$say}</Say></Gather>";
+        $v = htmlspecialchars($voice, ENT_XML1 | ENT_QUOTES);
+        $gather = "<Gather numDigits=\"1\" timeout=\"8\" action=\"{$action}\" method=\"POST\"><Say voice=\"{$v}\">{$say}</Say></Gather>";
 
-        return $this->place($to, "<Response>{$gather}{$gather}<Say voice=\"Polly.Joanna\">Goodbye.</Say></Response>");
+        $bye = in_array($voice, ['Polly.Lupe', 'Polly.Miguel', 'Polly.Penelope'], true) ? 'Adiós.' : 'Goodbye.';
+
+        return $this->place($to, "<Response>{$gather}{$gather}<Say voice=\"{$v}\">{$bye}</Say></Response>");
     }
 
     /** Places the call; Twilio reports its real length to the status callback (for call-minute allowances). */

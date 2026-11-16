@@ -43,7 +43,9 @@ final class SpeedToLead
         $awake = $this->awake();
         $tenantId = $this->tenants->id();
         $sms = $awake && $this->messaging->smsFor($tenantId);
-        $voice = $awake && $this->messaging->voiceFor($tenantId) && $contact !== null && $contact->primary_phone !== null && ! $contact->do_not_call;
+        // When the brokerage's assistant calls the lead itself (LQ1), it puts them through to the agent instead.
+        $voice = $awake && $this->messaging->voiceFor($tenantId) && $contact !== null && $contact->primary_phone !== null && ! $contact->do_not_call
+            && ! ($lead->new_contact && app(AiCaller::class)->willCall($contact));
         $prefs = $this->prefsFor(array_map(fn (User $u): int => $u->id, $agents));
 
         foreach ($agents as $agent) {
