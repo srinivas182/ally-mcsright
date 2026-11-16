@@ -29,6 +29,7 @@ use Modules\Crm\Enums\Lifecycle;
 use Modules\Crm\FairHousing;
 use Modules\Crm\Models\Contact;
 use Modules\Crm\SmartLists;
+use Modules\Listings\Media\Photos;
 use Modules\Listings\Models\Listing;
 
 /**
@@ -184,23 +185,43 @@ final class Postcards
         $e = fn (string $s): string => htmlspecialchars($s, ENT_QUOTES);
         $brokerage = (string) $this->tenants->current()->name;
         [$w, $h] = $run->size === '6x9' ? ['9.25in', '6.25in'] : ['6.25in', '4.25in'];
-        $base = "<html><head><meta charset=\"utf-8\"><style>body{margin:0;width:{$w};height:{$h};font-family:Helvetica,Arial,sans-serif;color:#0f172a}"
-            .'.safe{position:absolute;inset:0.2in;}</style></head><body>';
+        $big = $run->size === '6x9' ? 1.35 : 1.0;
+        $pt = fn (float $n): string => round($n * $big, 1).'pt';
+        // The Ally Studio type system (specs/grow/13), served publicly so the printer's renderer can load it.
+        $font = fn (string $family, string $file, int $weight, string $style = 'normal'): string => "@font-face{font-family:'{$family}';font-weight:{$weight};font-style:{$style};src:url('"
+            .url('/studio-fonts/'.$file.'.woff2')."') format('woff2')}";
+        $base = '<html><head><meta charset="utf-8"><style>'.$font('Cormorant Garamond', 'cormorant-garamond-latin-300-normal', 300)
+            .$font('Cormorant Garamond', 'cormorant-garamond-latin-400-italic', 400, 'italic').$font('Cinzel', 'cinzel-latin-400-normal', 400).$font('Jost', 'jost-latin-300-normal', 300)
+            ."*{box-sizing:border-box;margin:0;padding:0}body{width:{$w};height:{$h};position:relative;overflow:hidden;font-family:'Jost',sans-serif;font-weight:300;-webkit-font-smoothing:antialiased}"
+            .'.caps{font-family:Cinzel,serif;text-transform:uppercase;letter-spacing:.38em}.gold{background:linear-gradient(100deg,#8C6A2B,#E9D59C 45%,#B8913E 60%,#8C6A2B);-webkit-background-clip:text;background-clip:text;color:transparent}'
+            .'.hair{height:1px;background:linear-gradient(90deg,#B8913E,transparent)}.safe{position:absolute;inset:0.25in}</style></head><body>';
         if ($side === 'front') {
-            $photo = $run->listing_ulid !== null ? (string) (Listing::query()->where('ulid', $run->listing_ulid)->value('cover_path') ?? '') : '';
-            $img = $photo !== '' ? '<img src="'.$e(str_starts_with($photo, 'http') ? $photo : url('/storage/'.$photo)).'" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">' : '';
+            $cover = $run->listing_ulid !== null ? Listing::query()->where('ulid', $run->listing_ulid)->value('cover_path') : null;
+            $photo = is_string($cover) && $cover !== '' ? (string) Photos::url($cover, 'hero') : '';
+            $img = $photo !== '' ? '<img src="'.$e($photo).'" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:contrast(1.06) saturate(1.04)">' : '';
 
-            return $base.$img.'<div class="safe"><div style="position:absolute;bottom:0;left:0;right:0;background:rgba(15,23,42,.85);color:#fff;padding:14px">'
-                .'<div style="font-size:13px;letter-spacing:.08em;text-transform:uppercase">'.$e(self::KINDS[$run->kind] ?? '').'</div>'
-                .'<div style="font-size:26px;font-weight:700">'.$e($run->headline).'</div><div style="font-size:12px">'.$e($brokerage).'</div></div></div></body></html>';
+            return $base.'<div style="position:absolute;inset:0;background:#0F0E0C"></div>'.$img
+                .'<div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.35) 0%,rgba(0,0,0,0) 30%,rgba(0,0,0,0) 45%,rgba(12,11,9,.88) 100%)"></div>'
+                .'<div style="position:absolute;inset:0.16in;border:0.5pt solid rgba(233,213,156,.65)"></div>'
+                .'<div class="safe" style="color:#F4EFE6"><div class="caps" style="position:absolute;top:0;left:0;right:0;text-align:center;font-size:'.$pt(6.5).'">'.$e($brokerage).'</div>'
+                .'<div style="position:absolute;left:0;right:0;bottom:0">'
+                .'<div class="caps gold" style="font-size:'.$pt(7.5).';margin-bottom:6pt">'.$e(self::KINDS[$run->kind] ?? '').'</div>'
+                .'<div style="font-family:\'Cormorant Garamond\',serif;font-weight:300;font-size:'.$pt(30).';line-height:1">'.$e($run->headline).'</div>'
+                .'<div class="hair" style="margin-top:8pt;width:1.6in"></div></div></div></body></html>';
         }
         $qr = (new Writer(new ImageRenderer(new RendererStyle(140, 1), new SvgImageBackEnd)))->writeString($run->link);
         $qr = trim(substr($qr, (int) strpos($qr, "\n") + 1));
 
-        return $base.'<div class="safe" style="right:3.4in"><div style="font-size:15px;line-height:1.35;white-space:pre-wrap">'.$e(($toName !== '' ? 'Hi '.$toName.",\n\n" : '').$run->message).'</div>'
-            .'<div style="margin-top:10px;display:flex;gap:10px;align-items:center">'.$qr.'<div style="font-size:11px">Scan for photos, price and details</div></div>'
-            .'<div style="position:absolute;bottom:0;font-size:9px;color:#475569">'.$e($brokerage).' · '.$e($run->from['address_line1'].', '.$run->from['city'].' '.$run->from['state'].' '.$run->from['zip'])
-            .' · Equal Housing Opportunity. If your home is listed with another broker, please disregard.</div></div></body></html>';
+        return $base.'<div style="position:absolute;inset:0;background:#FBF8F2"></div><div class="safe" style="right:3.4in;color:#1B1916">'
+            .'<div class="caps gold" style="font-size:'.$pt(6.5).'">'.$e(self::KINDS[$run->kind] ?? '').'</div>'
+            .'<div style="font-family:\'Cormorant Garamond\',serif;font-style:italic;font-size:'.$pt(12.5).';line-height:1.32;white-space:pre-wrap;margin-top:8pt">'
+            .$e(($toName !== '' ? 'Hi '.$toName.",\n\n" : '').$run->message).'</div>'
+            .'<div style="margin-top:10pt;display:flex;gap:10pt;align-items:center"><div style="padding:4pt;border:0.5pt solid #B8913E;width:0.95in;height:0.95in">'
+            .str_replace('<svg ', '<svg style="width:100%;height:100%" ', $qr).'</div>'
+            .'<div class="caps" style="font-size:'.$pt(5.5).';line-height:1.8;color:#6B655C">Scan to see<br>the photos<br>and details</div></div>'
+            .'<div style="position:absolute;bottom:0;left:0;right:0"><div class="hair" style="margin-bottom:5pt"></div><div style="font-size:'.$pt(5.6).';color:#6B655C;line-height:1.5">'
+            .$e($brokerage).' · '.$e($run->from['address_line1'].', '.$run->from['city'].' '.$run->from['state'].' '.$run->from['zip'])
+            .'<br>Equal Housing Opportunity. If your home is listed with another broker, please disregard.</div></div></div></body></html>';
     }
 
     /** @return Builder<Contact> people on the list with a full mailing address who may get mail */

@@ -87,7 +87,7 @@ beforeEach(function (): void {
 it('makes three listing designs on three sharp photos in three sizes, counted once when used, and starts a post', function (): void {
     $this->actingAs($this->jane)->post('/studio/designs', ['moment' => 'just_listed', 'listing' => $this->home->ulid])->assertSessionHasNoErrors()->assertRedirect();
     $designs = Design::query()->orderBy('id')->get();
-    expect($designs->pluck('variant')->all())->toBe(['full', 'split', 'frame'])->and($designs->pluck('status')->unique()->all())->toBe(['ready'])
+    expect($designs->pluck('variant')->all())->toBe(['cover', 'cinema', 'gallery'])->and($designs->pluck('status')->unique()->all())->toBe(['ready'])
         ->and($designs->map(fn (Design $d): string => basename((string) $d->content['photo']))->all())->toBe(['sharp-1-1600.webp', 'sharp-2-1600.webp', 'sharp-3-1600.webp'])
         ->and($designs[0]->content)->toMatchArray(['kicker' => 'Just listed', 'headline' => '201 Pine Rd', 'sub' => 'Austin, TX 78704', 'facts' => ['3 Beds', '2.5 Baths', '2,140 Sq Ft'],
             'price' => '$501,000']);
@@ -123,7 +123,7 @@ it('keeps designs honest: MLS status, Fair Housing, open house time, a photo of 
     $this->actingAs($this->jane)->post('/studio/designs', ['moment' => 'market_update', 'headline' => 'Austin this week', 'body' => 'Buyers are back.',
         'stats' => [['value' => '42', 'label' => 'New listings'], ['value' => '<b>$485K</b>', 'label' => 'Median price']]])->assertSessionHasNoErrors();
     $text = Design::query()->orderBy('id')->get();
-    expect($text->pluck('collection')->all())->toBe(['luxury_noir', 'modern', 'coastal'])->and($text->pluck('variant')->unique()->all())->toBe(['type'])
+    expect($text->pluck('collection')->all())->toBe(['luxury_noir', 'modern', 'coastal'])->and($text->pluck('variant')->unique()->all())->toBe(['statement'])
         ->and($text[0]->content['stats'][1])->toEqual(['value' => '$485K', 'label' => 'Median price']); // MySQL JSON may reorder keys
 
     $this->renderer->blank = true;
@@ -134,7 +134,7 @@ it('keeps designs honest: MLS status, Fair Housing, open house time, a photo of 
 
 it('makes colours readable and spots blurry photos', function (): void {
     $p = app(ArtDirector::class)->palette(['primary' => '#111111', 'accent' => '#F5E6A8', 'ink' => '#777777', 'paper' => '#FFFFFF'], 'modern');
-    expect(ArtDirector::contrast($p['fg'], $p['bg']))->toBeGreaterThanOrEqual(7.0)->and(ArtDirector::contrast($p['accent'], $p['bg']))->toBeGreaterThanOrEqual(3.0);
+    expect(ArtDirector::contrast($p['fg'], $p['bg']))->toBeGreaterThanOrEqual(7.0)->and(ArtDirector::contrast($p['metal'], $p['bg']))->toBeGreaterThanOrEqual(3.0);
     $flat = imagecreatetruecolor(1600, 1067);
     ob_start();
     imagejpeg($flat);
