@@ -10,6 +10,7 @@ use Modules\Ads\Social\FacebookPages;
 use Modules\Ads\Social\GoogleBusiness;
 use Modules\Ads\Social\LinkedIn;
 use Modules\Ads\Social\YouTube;
+use Modules\Ads\Studio\Canva\CanvaConnector;
 use Modules\Core\Connect\App;
 use Modules\Core\Connect\AppCatalog;
 use Modules\Crm\Calls\Aircall;
@@ -577,6 +578,19 @@ final class Catalog
                 'steps' => ['Open an Autoenhance.ai account for RightAlly and choose pay-per-image or a plan with API access.', 'Copy the API key here and switch Photo enhancement on.',
                     'Enter the real cost per photo under HQ → Costs (studio.enhance) so Studio package margins stay right.'],
                 'partner' => 'Autoenhance.ai bills RightAlly per downloaded photo.', 'docs' => 'https://docs.autoenhance.ai']));
+        // Canva (specs/grow/13, C7d-3): open a design with the brand kit and listing photos, bring the finished one back.
+        $catalog->add(new App('canva', 'Canva', 'marketing', 'Open a design in Canva with your brand kit and listing photos, then bring the finished design back to post, advertise or download.',
+            scope: 'agent', auth: 'oauth', syncs: ['Your logo, headshot and listing photos, to your Canva uploads', 'Finished designs, back in Ally Studio'], link: '/studio/create',
+            driver: CanvaConnector::class, vendorCost: 'Free with any Canva plan',
+            oauth: ['provider' => 'canva', 'scopes' => ['asset:read', 'asset:write', 'design:content:read', 'design:content:write', 'design:meta:read', 'profile:read'],
+                'authorize' => 'https://www.canva.com/api/oauth/authorize', 'token' => 'https://api.canva.com/rest/v1/oauth/token', 'userinfo' => '',
+                'response_type' => 'code', 'pkce' => true, 'token_auth' => 'basic'],
+            setup: ['needs' => 'keys', 'fields' => [['key' => 'client_id', 'label' => 'Client ID'], ['key' => 'client_secret', 'label' => 'Client secret', 'secret' => true]],
+                'steps' => ['Make a Canva Connect integration for RightAlly in the Canva Developer Portal, with the scopes asset:read/write, design:content:read/write, design:meta:read and profile:read.',
+                    'Add the return address shown above as its redirect URL. Under Return navigation, switch it on and add https://{sso host}/connect/canva/return.',
+                    'Submit it for Canva\'s review (public integrations are reviewed before anyone outside RightAlly can connect).', 'Paste the client ID and secret here and switch Canva on.'],
+                'partner' => 'Canva reviews Connect integrations before they are public (free).', 'docs' => 'https://www.canva.dev/docs/connect/'],
+            guide: ['steps' => ['Press Connect and sign in to Canva.', 'Press Allow.', 'In Ally Studio, choose "Open in Canva" on a listing or a design.']]));
         $catalog->add(new App('studio_voice', 'AI voice-overs', 'marketing', 'Voice-overs for Ally Studio Reels and tours: a professional AI voice, or the agent\'s own voice with their recorded consent.',
             scope: 'both', auth: 'link', syncs: ['Narrated Reels and YouTube tours', 'Agents\' own voices, only with their consent; deleted when they withdraw, leave or stop using it'],
             link: '/studio/voice', vendorCost: 'Included with Ally Studio packages',
@@ -613,7 +627,6 @@ final class Catalog
             ['brokerbay', 'BrokerBay', 'showings', 'Showing requests and feedback from BrokerBay on your listings.', 'both', 'Your BrokerBay plan'],
             ['aligned_showings', 'Aligned Showings', 'showings', 'Showing requests and feedback from Aligned Showings.', 'both', 'Your Aligned Showings plan'],
             ['spacio', 'Spacio', 'showings', 'Open house sign-ins become contacts with consent recorded.', 'agent', 'Your Spacio plan'],
-            ['canva', 'Canva', 'marketing', 'Design with your brand kit and listing photos, then use the designs in posts and ads.', 'agent', null],
             ['bombbomb', 'BombBomb', 'marketing', 'Video emails logged on contacts, with views and replies.', 'agent', 'Your BombBomb plan'],
             ['corefact', 'Corefact', 'marketing', 'Printed farming and listing mail from your RightAlly lists.', 'agent', 'Printing and postage'],
             ['mojo', 'Mojo Dialer', 'phones', 'Dial your RightAlly lists and log every call.', 'agent', 'Your Mojo plan'],

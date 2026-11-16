@@ -195,6 +195,17 @@ final class BrandKits
         return $app !== null && app(AppRegistry::class)->ready($app) && (app(AppRegistry::class)->secrets($app)['api_key'] ?? '') !== '';
     }
 
+    /** @return array{logo: string|null, headshot: string|null} the brokerage logo and the person's headshot, as stored (public disk) */
+    public function paths(User $user): array
+    {
+        $b = $this->row(null);
+        $a = $this->row($user->id);
+        $logo = $b->logo_path ?? null;
+        $headshot = $a->headshot_path ?? null;
+
+        return ['logo' => is_string($logo) && $logo !== '' ? $logo : null, 'headshot' => is_string($headshot) && $headshot !== '' ? $headshot : null];
+    }
+
     /**
      * A square PNG (1200x1200) for ads that need one (YouTube ads, specs/ads/05): the brokerage logo, or the agent's
      * headshot when there is no logo, contained on white with a margin. Null when there is neither.

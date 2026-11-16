@@ -13,6 +13,7 @@ use Inertia\Response;
 use Modules\Ads\ListingAds;
 use Modules\Ads\Social\SocialPosts;
 use Modules\Ads\Studio\BrandKits;
+use Modules\Ads\Studio\Canva\CanvaStudio;
 use Modules\Ads\Studio\Design;
 use Modules\Ads\Studio\Designer;
 use Modules\Ads\Studio\StudioPlans;
@@ -90,7 +91,8 @@ final class StudioController
         $row = fn (Design $d): array => ['ulid' => $d->ulid, 'status' => $d->status, 'collection' => (string) Styles::get($d->collection)['name'], 'variant' => $d->variant,
             'moment' => Designer::MOMENTS[$d->moment][0] ?? $d->moment, 'checks' => $d->checks ?? [], 'used' => $d->used_at !== null,
             'images' => array_map(fn (string $size): ?string => $designer->url($d, $size), array_combine(array_keys(Designer::SIZES), array_keys(Designer::SIZES))),
-            'carousel' => $designer->carousel($d), 'reelable' => (Designer::MOMENTS[$d->moment][1] ?? '') === 'listing', 'listing' => $d->listing_ulid];
+            'carousel' => $designer->carousel($d), 'reelable' => (Designer::MOMENTS[$d->moment][1] ?? '') === 'listing' && $d->variant !== 'canva', 'listing' => $d->listing_ulid,
+            'canva' => $d->variant === 'canva'];
 
         return Inertia::render('studio/create', [
             'ready' => $this->plans->current($user) !== null,
@@ -99,6 +101,7 @@ final class StudioController
             'style' => $this->kits->forUser($user)['collection'],
             'listings' => array_map(fn (array $l): array => ['ulid' => $l['ulid'], 'label' => $l['label']], $ads->listings($user)),
             'batch' => is_string($batch) ? Design::query()->where('user_id', $user->id)->where('batch', $batch)->orderBy('id')->get()->map($row)->values()->all() : [],
+            'canva' => app(CanvaStudio::class)->connection($user) !== null,
             'recent' => Design::query()->where('user_id', $user->id)->where('status', 'ready')->latest('id')->limit(12)->get()->map($row)->values()->all(),
         ]);
     }

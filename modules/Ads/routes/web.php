@@ -5,6 +5,8 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Route;
 use Modules\Ads\Http\AdsController;
 use Modules\Ads\Http\AutopilotController;
+use Modules\Ads\Http\CanvaController;
+use Modules\Ads\Http\CanvaReturnController;
 use Modules\Ads\Http\HqStudioController;
 use Modules\Ads\Http\ReelsController;
 use Modules\Ads\Http\SocialController;
@@ -69,6 +71,10 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('studio
     Route::delete('voice', [VoiceController::class, 'destroy'])->name('voice.destroy');
     Route::post('reels/{reel}/script', [VoiceController::class, 'script'])->where('reel', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->middleware('throttle:20,1')->name('reels.script');
     Route::post('reels/{reel}/narrate', [VoiceController::class, 'narrate'])->where('reel', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->middleware('throttle:10,1')->name('reels.narrate');
+    // C7d-3: Canva.
+    Route::post('canva', [CanvaController::class, 'start'])->middleware('throttle:10,1')->name('canva.start');
+    Route::get('canva/{session}', [CanvaController::class, 'show'])->where('session', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('canva.show');
+    Route::get('canva/{session}/back', [CanvaController::class, 'back'])->where('session', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('canva.back');
     // SA5c: replies to comments and messages.
     Route::get('replies', [StudioRepliesController::class, 'index'])->name('replies');
     Route::post('replies', [StudioRepliesController::class, 'save'])->name('replies.save');
@@ -86,3 +92,6 @@ Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.tenants.manage
 
 // Ally Studio fonts for printers and previews (specs/grow/13): public, cached, only the bundled files.
 Route::get('studio-fonts/{file}.woff2', StudioFontsController::class)->where('file', '[a-z0-9-]{3,80}')->middleware('throttle:600,1')->name('studio.fonts');
+
+// Canva sends everyone back to one address (specs/grow/13, C7d-3).
+Route::domain((string) config('core.sso_host'))->middleware(['web', 'throttle:60,1'])->get('connect/canva/return', CanvaReturnController::class)->name('studio.canva.return');
