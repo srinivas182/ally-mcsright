@@ -54,7 +54,15 @@ final class LinkedIn implements Connector, SocialChannel
         $body = ['author' => 'urn:li:person:'.$target, 'commentary' => self::escape(mb_substr($content['text'], 0, 3000)), 'visibility' => 'PUBLIC',
             'distribution' => ['feedDistribution' => 'MAIN_FEED', 'targetEntities' => [], 'thirdPartyDistributionChannels' => []],
             'lifecycleState' => 'PUBLISHED', 'isReshareDisabledByAuthor' => false];
-        if ($content['link'] !== null) {
+        if (count($content['images']) >= 2) {
+            // A multi-image post (2 to 20 images): each uploaded through the Images API first; the link goes in the words.
+            $ids = array_map(fn (string $url): string => $this->upload($connection, $target, $url), array_slice($content['images'], 0, 20));
+            $body['content'] = ['multiImage' => ['images' => array_map(fn (string $id, int $i): array => ['id' => $id, 'altText' => 'Image '.($i + 1).' of '.count($ids)],
+                $ids, array_keys($ids))]];
+            if ($content['link'] !== null) {
+                $body['commentary'] = self::escape(mb_substr($content['text']."\n\n".$content['link'], 0, 3000));
+            }
+        } elseif ($content['link'] !== null) {
             $body['content'] = ['article' => ['source' => $content['link'], 'title' => mb_substr($content['title'], 0, 200)]];
         }
         $r = Http::withToken($this->kit->accessToken($connection))->withHeaders(['LinkedIn-Version' => self::VERSION, 'X-Restli-Protocol-Version' => '2.0.0'])
@@ -65,6 +73,29 @@ final class LinkedIn implements Connector, SocialChannel
         }
 
         return ['id' => $urn, 'url' => 'https://www.linkedin.com/feed/update/'.$urn];
+    }
+
+    /** Uploads one image for the person (Images API) and returns its urn:li:image. */
+    private function upload(ConnectionData $connection, string $person, string $url): string
+    {
+        $token = $this->kit->accessToken($connection);
+        $init = Http::withToken($token)->withHeaders(['LinkedIn-Version' => self::VERSION, 'X-Restli-Protocol-Version' => '2.0.0'])->acceptJson()->timeout(30)
+            ->post(self::API.'rest/images?action=initializeUpload', ['initializeUploadRequest' => ['owner' => 'urn:li:person:'.$person]]);
+        $upload = (string) ($init->json('value.uploadUrl') ?? '');
+        $image = (string) ($init->json('value.image') ?? '');
+        if (! $init->successful() || ! str_starts_with($upload, 'https://') || $image === '') {
+            throw PostFailed::from($init, 'LinkedIn');
+        }
+        $bytes = Http::timeout(60)->get($url);
+        if (! $bytes->successful()) {
+            throw new PostFailed('LinkedIn: one of the carousel images could not be read.');
+        }
+        $put = Http::withToken($token)->withBody($bytes->body(), 'image/jpeg')->timeout(120)->put($upload);
+        if (! $put->successful()) {
+            throw PostFailed::from($put, 'LinkedIn');
+        }
+
+        return $image;
     }
 
     /** LinkedIn's "little text" format reserves these characters; escaped, they show as typed. */

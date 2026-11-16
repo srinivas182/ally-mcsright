@@ -57,6 +57,7 @@ export default function Social({
         text: string;
         link: string;
         image: string | null;
+        images?: string[];
     } | null;
     timezone: string;
     posts: Post[];
@@ -66,6 +67,7 @@ export default function Social({
         text: start?.text ?? '',
         link: start?.link ?? '',
         image_url: start?.image ?? '',
+        images: start?.images ?? ([] as string[]),
         places: places.map((p) => p.key),
         post_at: '',
     });
@@ -169,13 +171,46 @@ export default function Social({
                             />
                             {error('image_url')}
                         </label>
-                        {form.data.image_url.startsWith('https://') && (
-                            <img
-                                src={form.data.image_url}
-                                alt="The photo for this post"
-                                className="max-h-48 w-fit rounded border"
-                            />
+                        {form.data.images.length >= 2 && (
+                            <div className="grid gap-2">
+                                <div className="flex items-center justify-between text-sm">
+                                    <span>
+                                        Carousel: {form.data.images.length}{' '}
+                                        images, in this order
+                                    </span>
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() =>
+                                            form.setData('images', [])
+                                        }
+                                    >
+                                        Post the cover only
+                                    </Button>
+                                </div>
+                                <div className="flex gap-1 overflow-x-auto pb-1">
+                                    {form.data.images.map((src, i) => (
+                                        <img
+                                            key={src}
+                                            src={src}
+                                            alt={`Carousel image ${i + 1}`}
+                                            loading="lazy"
+                                            className="aspect-[4/5] w-16 flex-none rounded object-cover"
+                                        />
+                                    ))}
+                                </div>
+                                {error('images')}
+                            </div>
                         )}
+                        {form.data.images.length < 2 &&
+                            form.data.image_url.startsWith('https://') && (
+                                <img
+                                    src={form.data.image_url}
+                                    alt="The photo for this post"
+                                    className="max-h-48 w-fit rounded border"
+                                />
+                            )}
                         <fieldset className="grid gap-2">
                             <legend className="mb-1">Where</legend>
                             {places.map((p) => (

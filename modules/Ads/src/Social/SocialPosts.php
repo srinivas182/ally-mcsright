@@ -103,14 +103,19 @@ final class SocialPosts
             'link' => $link, 'image' => $this->jpeg($ulid)];
     }
 
+    /** Most images a carousel carries (Instagram's limit; Facebook and LinkedIn take as many). */
+    public const MAX_IMAGES = 10;
+
     /**
-     * @param  array<string, mixed>  $in  text, link, image_url, listing, places (keys), post_at (local "Y-m-d\TH:i", empty for now)
+     * @param  array<string, mixed>  $in  text, link, image_url, images (a carousel, in order), listing, places (keys), post_at (local "Y-m-d\TH:i", empty for now)
      */
     public function schedule(User $by, array $in): SocialPost
     {
         $text = trim(strip_tags((string) ($in['text'] ?? '')));
         $link = trim((string) ($in['link'] ?? '')) ?: null;
         $image = trim((string) ($in['image_url'] ?? '')) ?: null;
+        $images = array_values(array_filter(array_map(fn ($u): string => trim((string) $u), (array) ($in['images'] ?? [])), fn (string $u): bool => $u !== ''));
+        $image ??= $images[0] ?? null;
         $listing = is_string($in['listing'] ?? null) && $in['listing'] !== '' ? $in['listing'] : null;
         $home = null;
         if ($listing !== null) {
@@ -135,6 +140,9 @@ final class SocialPosts
             'image_url' => $image !== null && (! str_starts_with($image, 'https://') || filter_var($image, FILTER_VALIDATE_URL) === false) ? 'The photo must be a full https:// web address.'
                 : (in_array('instagram', $channels, true) && ($image === null || preg_match('/\.jpe?g$/i', (string) parse_url($image, PHP_URL_PATH)) !== 1)
                     ? 'Instagram needs a photo in JPEG format (.jpg): start from a listing or add one.' : null),
+            'images' => count($images) > self::MAX_IMAGES ? 'A carousel can have up to '.self::MAX_IMAGES.' images.'
+                : (array_filter($images, fn (string $u): bool => ! str_starts_with($u, 'https://') || preg_match('/\.jpe?g$/i', (string) parse_url($u, PHP_URL_PATH)) !== 1) !== []
+                    ? 'Carousel images must be https:// JPEG (.jpg) addresses.' : null),
             'places' => $chosen->isEmpty() ? ($all->isEmpty() ? 'Connect Facebook Pages, LinkedIn or Google Business Profile under Apps first.' : 'Choose where to post.') : null,
             'post_at' => $when === null || $when->lt(CarbonImmutable::now()->subMinutes(2)) || $when->gt(CarbonImmutable::now()->addDays(60)) ? 'Choose a time in the next 60 days.' : null,
         ]);
@@ -144,8 +152,9 @@ final class SocialPosts
         if ($errors !== []) {
             throw ValidationException::withMessages($errors);
         }
-        $post = DB::connection(Connections::cell())->transaction(function () use ($by, $listing, $text, $home, $link, $image, $when, $chosen): SocialPost {
+        $post = DB::connection(Connections::cell())->transaction(function () use ($by, $listing, $text, $home, $link, $image, $images, $when, $chosen): SocialPost {
             $post = SocialPost::query()->create(['user_id' => $by->id, 'listing_ulid' => $listing, 'text' => $this->sign($text, $by, $home), 'link' => $link, 'image_url' => $image,
+                'images' => count($images) >= 2 ? $images : null,
                 'status' => 'scheduled', 'post_at' => $when]);
             foreach ($chosen as $p) {
                 SocialTarget::query()->create(['post_id' => $post->id, 'connection_id' => $p['connection_id'], 'channel' => $p['channel'], 'target_id' => $p['id'],
@@ -241,13 +250,14 @@ final class SocialPosts
         return $out;
     }
 
-    /** @return array{text: string, link: string|null, image: string|null, title: string} */
+    /** @return array{text: string, link: string|null, image: string|null, images: list<string>, title: string} */
     private function content(SocialPost $post, string $channel): array
     {
         $link = $post->link !== null ? $post->link.(str_contains($post->link, '?') ? '&' : '?').http_build_query(['utm_source' => $channel, 'utm_medium' => 'social',
             'utm_campaign' => 'rightally-'.strtolower($post->ulid)]) : null;
 
-        return ['text' => $post->text, 'link' => $link, 'image' => $post->image_url, 'title' => mb_substr(strtok($post->text, "\n") ?: 'Read more', 0, 100)];
+        return ['text' => $post->text, 'link' => $link, 'image' => $post->image_url, 'images' => $post->images ?? [],
+            'title' => mb_substr(strtok($post->text, "\n") ?: 'Read more', 0, 100)];
     }
 
     /** The listing's cover photo as a JPEG on the media disk (listing photos are stored as WebP). */

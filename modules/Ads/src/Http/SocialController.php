@@ -46,7 +46,7 @@ final class SocialController
 
     public function store(Request $request): RedirectResponse
     {
-        $post = $this->social->schedule(self::user($request), $request->only(['text', 'link', 'image_url', 'listing', 'places', 'post_at']));
+        $post = $this->social->schedule(self::user($request), $request->only(['text', 'link', 'image_url', 'images', 'listing', 'places', 'post_at']));
         Inertia::flash('toast', ['type' => 'success', 'message' => $post->post_at->isFuture() ? 'Scheduled.' : 'Posting now: results show below in a moment.']);
 
         return redirect('/social');
@@ -64,14 +64,15 @@ final class SocialController
     /**
      * A post started from an Ally Studio design: its portrait image, a caption to edit and, for a listing, its page.
      *
-     * @return array{listing: string, text: string, link: string, image: string|null}
+     * @return array{listing: string, text: string, link: string, image: string|null, images: list<string>}
      */
     private function fromDesign(User $user, Design $design): array
     {
         $designer = app(Designer::class);
         $link = $design->listing_ulid !== null ? ($this->social->fromListing($user, $design->listing_ulid)['link']) : '';
 
-        return ['listing' => $design->listing_ulid ?? '', 'text' => $designer->caption($design), 'link' => $link, 'image' => $designer->url($design, 'portrait')];
+        return ['listing' => $design->listing_ulid ?? '', 'text' => $designer->caption($design), 'link' => $link, 'image' => $designer->url($design, 'portrait'),
+            'images' => count($c = $designer->carousel($design)) >= 2 ? $c : []];
     }
 
     private static function user(Request $request): User
