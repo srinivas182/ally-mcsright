@@ -7,6 +7,7 @@ import { PageHeader } from '@/components/ui/page-header';
 type Campaign = {
     ulid: string;
     billing: 'own' | 'boost';
+    network: string;
     credits_reserved: number;
     credits_refunded: number;
     stopped_reason: string | null;
@@ -47,11 +48,13 @@ export default function Ads({
     ready,
     boost,
     connected,
+    google_connected,
     campaigns,
 }: {
     ready: boolean;
     boost: boolean;
     connected: boolean;
+    google_connected: boolean;
     campaigns: Campaign[];
 }) {
     return (
@@ -60,14 +63,14 @@ export default function Ads({
             <div className="grid gap-6 p-4">
                 <PageHeader
                     title="Ads"
-                    description="Make a Facebook and Instagram ad for one of your listings in a minute. It runs from your own ad account; RightAlly never adds a fee."
+                    description="Make a Facebook and Instagram, Google search or YouTube ad for one of your listings in a minute. From your own ad account RightAlly never adds a fee."
                 />
                 {!ready && !boost ? (
                     <p className="rounded-lg border p-5">
                         Listing ads aren't switched on yet. Please ask RightAlly
                         support.
                     </p>
-                ) : !connected && !boost ? (
+                ) : !connected && !google_connected && !boost ? (
                     <section className="grid gap-3 rounded-lg border p-5">
                         <h2 className="font-medium">
                             First, connect your Meta ad account
@@ -111,6 +114,7 @@ export default function Ads({
                                         {c.listing}
                                         {c.by ? ` · ${c.by}` : ''}
                                     </span>
+                                    <Badge variant="outline">{c.network}</Badge>
                                     {c.billing === 'boost' && (
                                         <Badge>Boost</Badge>
                                     )}

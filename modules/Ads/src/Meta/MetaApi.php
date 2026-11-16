@@ -9,6 +9,7 @@ use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Sleep;
+use Modules\Ads\AdNetwork;
 use Modules\Ads\Models\Campaign;
 use Modules\Core\Connect\NeedsReconnect;
 use Modules\Core\Tenancy\TenantContext;
@@ -24,7 +25,7 @@ use RuntimeException;
  * Order matters: the campaign is made paused, then the ad set, creative and ad; it is switched on last, so a step
  * that fails never leaves an ad spending. On failure, what was made is deleted.
  */
-final class MetaApi
+final class MetaApi implements AdNetwork
 {
     public const GRAPH = 'https://graph.facebook.com/v21.0/';
 

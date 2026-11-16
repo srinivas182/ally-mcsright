@@ -9,12 +9,12 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Modules\Ads\ListingAds;
-use Modules\Ads\Meta\MetaApi;
 use Modules\Ads\Models\Campaign;
+use Modules\Ads\Networks;
 use Modules\Billing\Credits\CreditLedger;
 use Throwable;
 
-/** Publishes one listing ad to Meta (specs/ads/01). Not retried automatically: a failed publish shows why. */
+/** Publishes one listing ad to Meta or Google (specs/ads/01, 05). Not retried automatically: a failed publish shows why. */
 final class PublishCampaign implements ShouldQueue
 {
     use Dispatchable;
@@ -28,14 +28,14 @@ final class PublishCampaign implements ShouldQueue
         $this->afterCommit();
     }
 
-    public function handle(MetaApi $api, ListingAds $ads): void
+    public function handle(ListingAds $ads): void
     {
         $c = Campaign::query()->find($this->campaignId);
         if ($c === null || $c->status !== 'publishing') {
             return;
         }
         try {
-            $api->publish($c, $ads->token($c));
+            Networks::for($c)->publish($c, $ads->token($c));
             $c->forceFill(['status' => 'active', 'error' => null])->save();
         } catch (Throwable $e) {
             $c->forceFill(['status' => 'failed', 'error' => mb_substr($e->getMessage(), 0, 500)])->save();

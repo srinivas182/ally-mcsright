@@ -195,6 +195,42 @@ final class BrandKits
         return $app !== null && app(AppRegistry::class)->ready($app) && (app(AppRegistry::class)->secrets($app)['api_key'] ?? '') !== '';
     }
 
+    /**
+     * A square PNG (1200x1200) for ads that need one (YouTube ads, specs/ads/05): the brokerage logo, or the agent's
+     * headshot when there is no logo, contained on white with a margin. Null when there is neither.
+     */
+    public function squareLogo(User $user): ?string
+    {
+        $disk = Storage::disk('public');
+        $b = $this->row(null);
+        $a = $this->row($user->id);
+        $logoPath = $b->logo_path ?? null;
+        $headshotPath = $a->headshot_path ?? null;
+        $logo = is_string($logoPath) && $logoPath !== '' && $disk->exists($logoPath) ? $logoPath : null;
+        $headshot = is_string($headshotPath) && $headshotPath !== '' && $disk->exists($headshotPath) ? $headshotPath : null;
+        $path = $logo ?? $headshot;
+        $src = $path !== null ? @imagecreatefromstring((string) $disk->get($path)) : false;
+        if ($src === false) {
+            return null;
+        }
+        $size = 1200;
+        $canvas = imagecreatetruecolor($size, $size);
+        imagefill($canvas, 0, 0, (int) imagecolorallocate($canvas, 255, 255, 255));
+        [$w, $h] = [imagesx($src), imagesy($src)];
+        if ($logo === null) {
+            $side = min($w, $h); // a headshot fills the square, cropped from the top third
+            imagecopyresampled($canvas, $src, 0, 0, (int) (($w - $side) / 2), (int) max(0, ($h - $side) * 0.2), $size, $size, $side, $side);
+        } else {
+            $scale = min(($size * 0.8) / max(1, $w), ($size * 0.8) / max(1, $h));
+            [$dw, $dh] = [(int) round($w * $scale), (int) round($h * $scale)];
+            imagecopyresampled($canvas, $src, (int) (($size - $dw) / 2), (int) (($size - $dh) / 2), 0, 0, $dw, $dh, $w, $h);
+        }
+        ob_start();
+        imagepng($canvas);
+
+        return (string) ob_get_clean();
+    }
+
     private function row(?int $userId): ?object
     {
         return DB::connection(Connections::cell())->table('studio_brand_kits')->where('tenant_id', $this->tenants->id())

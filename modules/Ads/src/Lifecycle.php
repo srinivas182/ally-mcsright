@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Modules\Ads;
 
 use App\Models\User;
-use Modules\Ads\Meta\MetaApi;
 use Modules\Ads\Models\Campaign;
 use Modules\Billing\Credits\CreditLedger;
 use Modules\Core\Audit\AuditLogger;
@@ -24,9 +23,9 @@ final class Lifecycle
 {
     public const AVERAGE_TIMES = 3;
 
-    public function __construct(private readonly MetaApi $api, private readonly Returns $returns) {}
+    public function __construct(private readonly Returns $returns) {}
 
-    /** @param  array{spend_cents: int, impressions: int, clicks: int, leads: int}  $results  Meta's numbers */
+    /** @param  array{spend_cents: int, impressions: int, clicks: int, leads: int}  $results  the network's numbers */
     public function apply(Campaign $c, array $results, string $token): void
     {
         $leads = $this->returns->for($c)['leads'];
@@ -40,7 +39,7 @@ final class Lifecycle
         }
         if ($c->status === 'active' && $c->stop_loss && ($why = $this->stopLoss($c)) !== null) {
             try {
-                $this->api->setStatus($c, $token, false);
+                Networks::for($c)->setStatus($c, $token, false);
             } catch (Throwable $e) {
                 report($e);
 
@@ -56,7 +55,7 @@ final class Lifecycle
     public function end(Campaign $c, string $why, ?string $token = null): void
     {
         if ($token !== null && in_array($c->status, ['active', 'paused'], true)) {
-            $this->api->setStatus($c, $token, false);
+            Networks::for($c)->setStatus($c, $token, false);
         }
         $c->forceFill(['status' => 'ended', 'stopped_reason' => $c->stopped_reason ?? $why])->save();
         $this->refund($c);

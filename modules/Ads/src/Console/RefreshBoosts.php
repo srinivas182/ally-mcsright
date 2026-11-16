@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Modules\Ads\Console;
 
 use Illuminate\Console\Command;
-use Modules\Ads\Boost;
 use Modules\Ads\Lifecycle;
-use Modules\Ads\Meta\MetaApi;
+use Modules\Ads\ListingAds;
 use Modules\Ads\Models\Campaign;
+use Modules\Ads\Networks;
 use Modules\Core\Tenancy\Models\Tenant;
 use Modules\Core\Tenancy\TenantContext;
 use Throwable;
@@ -20,18 +20,17 @@ final class RefreshBoosts extends Command
 
     protected $description = 'Refresh RightAlly Boost results, apply the stop-loss, end finished boosts and refund unspent credits';
 
-    public function handle(TenantContext $tenants, Boost $boost, MetaApi $api, Lifecycle $lifecycle): int
+    public function handle(TenantContext $tenants, ListingAds $ads, Lifecycle $lifecycle): int
     {
-        $token = $boost->account()['access_token'];
         $n = 0;
         foreach (Tenant::query()->where('status', 'active')->get() as $tenant) {
-            $n += $tenants->runAs($tenant, function () use ($token, $api, $lifecycle): int {
+            $n += $tenants->runAs($tenant, function () use ($ads, $lifecycle): int {
                 $count = 0;
                 foreach (Campaign::query()->where('billing', 'boost')->whereIn('status', ['active', 'paused'])->get() as $c) {
                     try {
                         if ($c->status === 'paused' && $c->ends_on->endOfDay()->isPast()) {
                             $lifecycle->end($c, 'Finished on its end date.');
-                        } elseif (($results = $api->results($c, $token)) !== null) {
+                        } elseif (($results = Networks::for($c)->results($c, $token = $ads->token($c))) !== null) {
                             $lifecycle->apply($c, $results, $token);
                         }
                         $count++;

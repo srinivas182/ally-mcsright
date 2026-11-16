@@ -33,9 +33,10 @@ final class AdsController
         $app = app(AppCatalog::class)->find('meta_ads');
 
         return Inertia::render('ads/index', [
-            'ready' => $app !== null && app(AppRegistry::class)->ready($app),
+            'ready' => ($app !== null && app(AppRegistry::class)->ready($app)) || (($g = app(AppCatalog::class)->find('google_ads')) !== null && app(AppRegistry::class)->ready($g)),
             'boost' => app(Boost::class)->ready(),
             'connected' => $this->ads->connection($user) !== null,
+            'google_connected' => $this->ads->googleConnection($user) !== null,
             'campaigns' => Campaign::query()->when($user->kind !== UserKind::Owner, fn ($q) => $q->where('user_id', $user->id))->latest('id')->limit(100)->get()
                 ->map(fn (Campaign $c): array => self::row($c, $user))->values()->all(),
         ]);
@@ -60,9 +61,16 @@ final class AdsController
         }
 
         $boost = app(Boost::class);
+        $google = $this->ads->googleConnection($user);
+        $googleApp = app(AppCatalog::class)->find('google_ads');
 
         return Inertia::render('ads/new', [
             'connected' => $conn !== null,
+            // C7d-2 (specs/ads/05): Google search and YouTube, from the person's own Google Ads account or Boost on Google.
+            'google' => ['ready' => $googleApp !== null && app(AppRegistry::class)->ready($googleApp), 'connected' => $google !== null,
+                'accounts' => array_values(array_map(fn ($a): array => ['id' => (string) ($a['id'] ?? ''), 'name' => (string) ($a['name'] ?? '')],
+                    array_filter((array) ($google?->settings['ad_accounts'] ?? []), 'is_array'))), 'boost' => $boost->googleReady()],
+            'network' => $request->query('network') === 'google' ? 'google' : 'meta',
             'boost' => $boost->ready() ? ['credits_per_dollar' => $boost->credits(100, $boost->marginBps()), 'margin_percent' => $boost->marginBps() / 100,
                 'balance' => app(CreditLedger::class)->balanceOf($user->id), 'pool' => app(CreditLedger::class)->policy()['agents_use_pool']] : null,
             'accounts' => (array) ($conn?->settings['ad_accounts'] ?? []),
@@ -98,12 +106,12 @@ final class AdsController
 
     public function store(Request $request): RedirectResponse
     {
-        $c = $this->ads->publish(self::user($request), $request->only(['listing', 'funnel', 'account', 'page', 'headline', 'body', 'daily_budget', 'days', 'radius', 'pay', 'studio_design', 'studio_video', 'post', 'goal', 'privacy_url'])
+        $c = $this->ads->publish(self::user($request), $request->only(['listing', 'funnel', 'account', 'page', 'headline', 'body', 'daily_budget', 'days', 'radius', 'pay', 'studio_design', 'studio_video', 'post', 'goal', 'privacy_url', 'network', 'placement'])
             + ['agree' => $request->boolean('agree'), 'stop_loss' => $request->boolean('stop_loss', true)]);
         $c->refresh();
         Inertia::flash('toast', $c->status === 'failed'
-            ? ['type' => 'error', 'message' => 'Meta didn\'t accept the ad: '.$c->error]
-            : ['type' => 'success', 'message' => $c->status === 'active' ? 'Your ad is live. Meta usually reviews it within a few hours.' : 'Publishing your ad…']);
+            ? ['type' => 'error', 'message' => ($c->channel === 'google' ? 'Google' : 'Meta').' didn\'t accept the ad: '.$c->error]
+            : ['type' => 'success', 'message' => $c->status === 'active' ? 'Your ad is live. '.($c->channel === 'google' ? 'Google' : 'Meta').' usually reviews it within a few hours.' : 'Publishing your ad…']);
 
         return redirect('/ads');
     }
@@ -147,7 +155,8 @@ final class AdsController
     {
         $returns = app(Returns::class)->for($c);
 
-        return ['ulid' => $c->ulid, 'listing' => $c->listing_label, 'billing' => $c->billing, 'credits_reserved' => $c->credits_reserved, 'credits_refunded' => $c->credits_refunded,
+        return ['ulid' => $c->ulid, 'listing' => $c->listing_label, 'billing' => $c->billing,
+            'network' => $c->channel === 'google' ? ($c->format === 'video' ? 'YouTube' : 'Google search') : 'Facebook and Instagram', 'credits_reserved' => $c->credits_reserved, 'credits_refunded' => $c->credits_refunded,
             'stopped_reason' => $c->stopped_reason, 'stop_loss' => $c->stop_loss, 'pending_commission' => $returns['pending_cents'] / 100, 'earned_commission' => $returns['earned_cents'] / 100,
             'return' => $c->spend_cents > 0 && $returns['earned_cents'] > 0 ? round($returns['earned_cents'] / $c->spend_cents, 1) : null, 'headline' => $c->headline, 'status' => $c->status, 'error' => $c->error,
             'daily_budget' => $c->daily_budget_cents / 100, 'max_spend' => $c->maxSpendCents() / 100, 'starts_on' => $c->starts_on->toDateString(), 'ends_on' => $c->ends_on->toDateString(),

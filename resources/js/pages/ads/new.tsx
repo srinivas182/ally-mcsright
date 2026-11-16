@@ -45,6 +45,8 @@ export default function NewAd({
     chosen,
     form_pages,
     privacy_url,
+    google,
+    network,
 }: {
     connected: boolean;
     boost: {
@@ -72,7 +74,12 @@ export default function NewAd({
             image: string | null;
             slides: number;
         }[];
-        videos: { ulid: string; label: string; image: string | null }[];
+        videos: {
+            ulid: string;
+            label: string;
+            image: string | null;
+            youtube: boolean;
+        }[];
         posts: {
             ulid: string;
             label: string;
@@ -83,11 +90,20 @@ export default function NewAd({
     chosen: { studio_design: string; studio_video: string; post: string };
     form_pages: string[];
     privacy_url: string | null;
+    google: {
+        ready: boolean;
+        connected: boolean;
+        accounts: Option[];
+        boost: boolean;
+    };
+    network: 'meta' | 'google';
 }) {
+    const startGoogle =
+        network === 'google' && (google.connected || google.boost);
     const form = useForm({
         listing: funnel ? '' : (listing?.ulid ?? ''),
         funnel: funnel?.ulid ?? '',
-        account: accounts[0]?.id ?? '',
+        account: (startGoogle ? google.accounts : accounts)[0]?.id ?? '',
         page: pages[0]?.id ?? '',
         headline: funnel?.headline ?? '',
         body: funnel?.body ?? '',
@@ -96,13 +112,43 @@ export default function NewAd({
         radius: limits.min_radius,
         agree: false,
         stop_loss: true,
-        pay: connected ? 'own' : 'boost',
+        pay: (startGoogle ? google.connected : connected) ? 'own' : 'boost',
         studio_design: chosen.studio_design,
         studio_video: chosen.studio_video,
         post: chosen.post,
         goal: 'website',
         privacy_url: privacy_url ?? '',
+        network: startGoogle ? 'google' : 'meta',
+        placement: 'search',
     });
+    // C7d-2 (specs/ads/05): Google search and YouTube as well as Facebook and Instagram.
+    const onGoogle = form.data.network === 'google';
+    const youtube = onGoogle && form.data.placement === 'youtube';
+    const ownReady = onGoogle ? google.connected : connected;
+    const boostReady = onGoogle ? google.boost : boost !== null;
+    const shownAccounts = onGoogle ? google.accounts : accounts;
+    const where = youtube ? 'youtube' : onGoogle ? 'search' : 'meta';
+    const setWhere = (w: 'meta' | 'search' | 'youtube') => {
+        const g = w !== 'meta';
+        const own = g ? google.connected : connected;
+        form.setData((d) => ({
+            ...d,
+            network: g ? 'google' : 'meta',
+            placement: w === 'youtube' ? 'youtube' : 'search',
+            account: (g ? google.accounts : accounts)[0]?.id ?? '',
+            pay: own ? 'own' : 'boost',
+            goal: 'website',
+            studio_design: g ? '' : d.studio_design,
+            post: g ? '' : d.post,
+            studio_video:
+                w === 'youtube'
+                    ? (creatives?.videos.find((v) => v.youtube)?.ulid ?? '')
+                    : w === 'search'
+                      ? ''
+                      : d.studio_video,
+        }));
+    };
+    const googleOffered = google.ready && (google.connected || google.boost);
     const madeOf = form.data.studio_video
         ? `video:${form.data.studio_video}`
         : form.data.studio_design
@@ -124,29 +170,41 @@ export default function NewAd({
     const canForm =
         madeOf.split(':')[0] !== 'post' &&
         (form.data.pay === 'boost' || form_pages.includes(form.data.page));
-    const options: { key: string; label: string; image: string | null }[] = [
-        {
-            key: 'photo',
-            label: 'The listing photo',
-            image: funnel?.photo ?? listing?.photo ?? null,
-        },
-        ...(creatives?.designs ?? []).map((d) => ({
-            key: `design:${d.ulid}`,
-            label: `${d.label} ${d.slides >= 2 ? `carousel (${d.slides})` : 'design'}`,
-            image: d.image,
-        })),
-        ...(creatives?.videos ?? []).map((v) => ({
-            key: `video:${v.ulid}`,
-            label: v.label,
-            image: v.image,
-        })),
-        ...(creatives?.posts ?? []).map((p) => ({
-            key: `post:${p.ulid}`,
-            label: `Your post: ${p.label}`,
-            image: p.image,
-        })),
-    ];
-    const boosting = form.data.pay === 'boost' && boost !== null;
+    const metaOptions: { key: string; label: string; image: string | null }[] =
+        [
+            {
+                key: 'photo',
+                label: 'The listing photo',
+                image: funnel?.photo ?? listing?.photo ?? null,
+            },
+            ...(creatives?.designs ?? []).map((d) => ({
+                key: `design:${d.ulid}`,
+                label: `${d.label} ${d.slides >= 2 ? `carousel (${d.slides})` : 'design'}`,
+                image: d.image,
+            })),
+            ...(creatives?.videos ?? []).map((v) => ({
+                key: `video:${v.ulid}`,
+                label: v.label,
+                image: v.image,
+            })),
+            ...(creatives?.posts ?? []).map((p) => ({
+                key: `post:${p.ulid}`,
+                label: `Your post: ${p.label}`,
+                image: p.image,
+            })),
+        ];
+    const options = youtube
+        ? (creatives?.videos ?? [])
+              .filter((v) => v.youtube)
+              .map((v) => ({
+                  key: `video:${v.ulid}`,
+                  label: v.label,
+                  image: v.image,
+              }))
+        : onGoogle
+          ? []
+          : metaOptions;
+    const boosting = form.data.pay === 'boost' && boostReady && boost !== null;
     const credits = boost
         ? Math.ceil(
               boost.credits_per_dollar *
@@ -185,7 +243,7 @@ export default function NewAd({
             .finally(() => setDrafting(false));
     };
 
-    if (!connected && boost === null) {
+    if (!connected && boost === null && !googleOffered) {
         return (
             <div className="grid gap-4 p-4">
                 <Head title="New ad" />
@@ -203,7 +261,11 @@ export default function NewAd({
             <div className="grid max-w-2xl gap-6 p-4 text-base">
                 <PageHeader
                     title={funnel ? 'Promote a funnel' : 'New listing ad'}
-                    description="Runs on Facebook and Instagram from your own ad account."
+                    description={
+                        googleOffered
+                            ? 'Runs on Facebook and Instagram, Google search or YouTube.'
+                            : 'Runs on Facebook and Instagram.'
+                    }
                 />
 
                 <section className="grid gap-2">
@@ -291,7 +353,62 @@ export default function NewAd({
                     >
                         <section className="grid gap-3">
                             <h2 className="font-medium">2. The ad</h2>
-                            {options.length > 1 ? (
+                            {googleOffered && (
+                                <fieldset className="grid gap-2">
+                                    <legend className="mb-1">
+                                        Where it runs
+                                    </legend>
+                                    <div className="grid gap-2 sm:grid-cols-3">
+                                        {(
+                                            [
+                                                [
+                                                    'meta',
+                                                    'Facebook and Instagram',
+                                                ],
+                                                ['search', 'Google search'],
+                                                ['youtube', 'YouTube'],
+                                            ] as const
+                                        ).map(([k, label]) => (
+                                            <label
+                                                key={k}
+                                                className={`flex cursor-pointer items-center gap-2 rounded-lg border p-3 ${where === k ? 'ring-2 ring-primary' : ''}`}
+                                            >
+                                                <input
+                                                    type="radio"
+                                                    name="where"
+                                                    className="size-5"
+                                                    disabled={
+                                                        k === 'meta' &&
+                                                        !connected &&
+                                                        boost === null
+                                                    }
+                                                    checked={where === k}
+                                                    onChange={() => setWhere(k)}
+                                                />
+                                                {label}
+                                            </label>
+                                        ))}
+                                    </div>
+                                    {where === 'search' && (
+                                        <span className="text-sm text-muted-foreground">
+                                            A text ad for people searching for
+                                            the home, its street or homes for
+                                            sale in the city. Keywords and extra
+                                            headlines are made from the listing.
+                                        </span>
+                                    )}
+                                    {youtube && options.length === 0 && (
+                                        <span className="text-sm text-muted-foreground">
+                                            YouTube ads use a Reel or tour that
+                                            went out on your YouTube channel:
+                                            make one in Studio → Reels and post
+                                            it to YouTube first.
+                                        </span>
+                                    )}
+                                </fieldset>
+                            )}
+                            {options.length > 1 ||
+                            (youtube && options.length > 0) ? (
                                 <fieldset className="grid gap-2">
                                     <legend className="mb-1">Made from</legend>
                                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -343,7 +460,7 @@ export default function NewAd({
                                     />
                                 )
                             )}
-                            <fieldset className="grid gap-2">
+                            <fieldset className="grid gap-2" hidden={onGoogle}>
                                 <legend className="mb-1">
                                     When someone taps the ad
                                 </legend>
@@ -486,8 +603,9 @@ export default function NewAd({
                                 />
                             </label>
                             <p className="text-sm text-muted-foreground">
-                                Housing ads can't be aimed by age, gender or
-                                interests, and must cover at least 15 miles.
+                                {youtube
+                                    ? `YouTube ads reach people in the home's city. Housing ads can't be aimed by age, gender, family or ZIP code.`
+                                    : "Housing ads can't be aimed by age, gender or interests, and must cover at least 15 miles."}
                             </p>
                             {!boosting && (
                                 <div className="grid gap-3 sm:grid-cols-2">
@@ -503,7 +621,7 @@ export default function NewAd({
                                                 )
                                             }
                                         >
-                                            {accounts.map((a) => (
+                                            {shownAccounts.map((a) => (
                                                 <option key={a.id} value={a.id}>
                                                     {a.name}
                                                 </option>
@@ -515,7 +633,10 @@ export default function NewAd({
                                             </span>
                                         )}
                                     </label>
-                                    <label className="grid gap-1">
+                                    <label
+                                        className="grid gap-1"
+                                        hidden={onGoogle}
+                                    >
                                         Facebook Page
                                         <select
                                             className="h-12 rounded-md border bg-background px-3"
@@ -545,10 +666,10 @@ export default function NewAd({
 
                         <section className="grid gap-3">
                             <h2 className="font-medium">4. Budget</h2>
-                            {boost && (
+                            {boostReady && (
                                 <fieldset className="grid gap-2">
                                     <legend className="mb-1">Pay with</legend>
-                                    {connected && (
+                                    {ownReady && (
                                         <label className="flex items-center gap-3">
                                             <input
                                                 type="radio"
@@ -560,7 +681,9 @@ export default function NewAd({
                                                     form.setData('pay', 'own')
                                                 }
                                             />
-                                            My own Meta ad account
+                                            {onGoogle
+                                                ? 'My own Google Ads account'
+                                                : 'My own Meta ad account'}
                                         </label>
                                     )}
                                     <label className="flex items-center gap-3">
@@ -653,10 +776,11 @@ export default function NewAd({
                                     <span>
                                         I agree to spend up to{' '}
                                         <strong>{money(total)}</strong> from my
-                                        own Meta ad account (
-                                        {money(form.data.daily_budget)} a day
-                                        for {form.data.days} days). I can pause
-                                        it at any time.
+                                        own{' '}
+                                        {onGoogle ? 'Google Ads' : 'Meta ad'}{' '}
+                                        account ({money(form.data.daily_budget)}{' '}
+                                        a day for {form.data.days} days). I can
+                                        pause it at any time.
                                     </span>
                                 )}
                             </label>
