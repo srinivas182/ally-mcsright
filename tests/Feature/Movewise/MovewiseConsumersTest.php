@@ -96,7 +96,7 @@ it('signs people in with an emailed code only, from Movewise\'s own pages, and k
     $this->withUnencryptedCookie('mw_sid', $sid)->getJson($this->mw.'/_me')->assertJson(['signed_in' => true, 'saved' => [$ulid]]);
     $this->withUnencryptedCookie('mw_sid', $sid)->postJson($this->mw.'/_me/searches', ['filters' => ['q' => 'Houston', 'state' => 'tx', 'evil' => 'x']], $this->from)->assertOk();
     $search = DB::connection(Connections::control())->table('movewise_saved_searches')->sole();
-    expect(json_decode($search->filters, true))->toBe(['q' => 'Houston', 'states' => ['TX']])->and($search->frequency)->toBe('daily');
+    expect(json_decode($search->filters, true))->toEqual(['q' => 'Houston', 'states' => ['TX']])->and($search->frequency)->toBe('daily');
 
     $page = $this->withUnencryptedCookie('mw_sid', $sid)->get($this->mw.'/account')->assertOk()->assertSee('Signed in as buyer@example.com')->assertSee('12 Oak St')->assertSee('Houston')
         ->assertSee('noindex', false);
@@ -105,7 +105,7 @@ it('signs people in with an emailed code only, from Movewise\'s own pages, and k
 
     // The move planner keeps the person's date and ticks.
     $this->withUnencryptedCookie('mw_sid', $sid)->post($this->mw.'/account/plan', ['move_date' => '2026-08-01', 'done' => ['movers', 'nonsense']], $this->from)->assertRedirect('/account#plan');
-    expect($person->refresh()->plan)->toBe(['move_date' => '2026-08-01', 'done' => ['movers']]);
+    expect($person->refresh()->plan)->toEqual(['move_date' => '2026-08-01', 'done' => ['movers']]);
 });
 
 it('emails new homes for saved searches, with a one-click stop that needs no sign-in', function (): void {
