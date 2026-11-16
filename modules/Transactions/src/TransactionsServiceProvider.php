@@ -37,6 +37,8 @@ final class TransactionsServiceProvider extends ServiceProvider
     {
         Workflows\DealWorkflows::register($this->app->make(WorkflowRegistry::class)); // specs/core/06, W1
         Event::listen(Events\DealStatusChanged::class, [Workflows\DealWorkflows::class, 'statusChanged']);
+        Event::listen(Events\DealStatusChanged::class, [Mls\MlsGuard::class, 'statusChanged']); // the MLS update clock (specs/ai/02, §20)
+        $this->app->tag([Mls\MlsStatusRisks::class], 'risk.sources');
         Brief\DealBriefItems::register($this->app->make(DailyBriefs::class));
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
@@ -53,13 +55,15 @@ final class TransactionsServiceProvider extends ServiceProvider
         $features->declare(Offers\OfferReader::FEATURE, 'ai.offer_read', 'Deal-IQ: the terms of an uploaded offer');
         $features->declare(Offers\OfferSummary::FEATURE, 'ai.offer_summary', 'Deal-IQ: the offer comparison in plain words for the seller (English and Spanish)');
         $features->declare(Repairs\RepairRequests::FEATURE, 'ai.repair_read', 'Deal-IQ: findings read from a home inspection report');
+        $notices->register(Mls\MlsStatusMail::class, 'MLS status updates due', 'Deals');
+        $notices->register(Playbooks\AgentWeeklyMail::class, 'Your deals this week (Monday summary)', 'Deals');
         $notices->register(Offers\OfferReceivedMail::class, 'Offers received on your listings', 'Deals');
         $notices->register(Portal\PortalQuestionMail::class, 'Client questions from the deal portal', 'Deals');
         $notices->register(Portal\PortalFeedbackMail::class, 'Client check-ins after closing', 'Deals');
         $features->declare(Reading\DocIq::ASK, 'ai.doc_ask', 'DocIQ: questions answered from one document');
         $features->declare(Compliance\Rules::FEATURE, 'ai.compliance_rule', 'Deal-IQ: a brokerage rule written in plain English, read into a check');
         if ($this->app->runningInConsole()) {
-            $this->commands([Console\SendDateReminders::class, Console\EscalateDeadlines::class, Console\ScanOpenDeals::class, Console\SendPortalUpdates::class]);
+            $this->commands([Console\SendDateReminders::class, Console\EscalateDeadlines::class, Console\ScanOpenDeals::class, Console\SendPortalUpdates::class, Console\RunPlaybooks::class]);
         }
 
         $this->app->make(PermissionRegistry::class)->register('Transactions', [

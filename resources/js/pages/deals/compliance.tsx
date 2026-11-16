@@ -36,6 +36,11 @@ type Props = {
         closing_blocker_hours: number;
     };
     messaging: { sms: boolean; voice: boolean };
+    mlsRules: {
+        mls_pending_days: number;
+        mls_closed_days: number;
+        mls_active_days: number;
+    };
     submitted: {
         ulid: string;
         street: string;
@@ -59,7 +64,9 @@ export default function ComplianceSettings({
     at_risk,
     deadlines,
     messaging,
+    mlsRules,
 }: Props) {
+    const mls = useForm(mlsRules);
     const draft = useForm({ text: '' });
     const ladder = useForm(deadlines);
     const opts = { preserveScroll: true };
@@ -248,6 +255,66 @@ export default function ComplianceSettings({
                     {Object.values(ladder.errors)[0] && (
                         <p role="alert" className="text-destructive">
                             {Object.values(ladder.errors)[0]}
+                        </p>
+                    )}
+                </section>
+
+                <section
+                    className="grid gap-2 rounded-lg border p-4 text-sm"
+                    aria-label="MLS status deadlines"
+                >
+                    <h2 className="font-semibold">MLS status deadlines</h2>
+                    <p className="text-muted-foreground">
+                        Deal-IQ compares each listing with what your MLS feed
+                        shows and reminds the agent before your MLS&apos;s
+                        deadline; once overdue, it goes to the risk register and
+                        you are alerted. Set the business days your MLS allows.{' '}
+                        <Link href="/deals/playbooks" className="underline">
+                            Deal-type playbooks
+                        </Link>
+                    </p>
+                    <div className="grid gap-2 sm:grid-cols-3">
+                        {(
+                            [
+                                [
+                                    'mls_pending_days',
+                                    'Under contract → Pending',
+                                ],
+                                ['mls_closed_days', 'Closed → Closed (sold)'],
+                                [
+                                    'mls_active_days',
+                                    'Fell through → back on the market or withdrawn',
+                                ],
+                            ] as const
+                        ).map(([k, label]) => (
+                            <label key={k} className="grid gap-1">
+                                <span className="text-muted-foreground">
+                                    {label} (business days)
+                                </span>
+                                <input
+                                    type="number"
+                                    min={0}
+                                    max={10}
+                                    className="rounded border bg-background px-2 py-1"
+                                    value={mls.data[k]}
+                                    onChange={(e) =>
+                                        mls.setData(k, Number(e.target.value))
+                                    }
+                                />
+                            </label>
+                        ))}
+                    </div>
+                    <Button
+                        size="sm"
+                        className="justify-self-start"
+                        disabled={mls.processing}
+                        onClick={() => mls.post('/deals/compliance/mls', opts)}
+                    >
+                        Save MLS deadlines
+                    </Button>
+                    {Object.values(mls.errors)[0] && (
+                        <p role="alert" className="text-destructive">
+                            {Object.values(mls.errors)[0]}
                         </p>
                     )}
                 </section>

@@ -28,6 +28,8 @@ Schedule::command('transactions:scan-open')->dailyAt('10:30')->onOneServer();
 Schedule::command('transactions:escalate')->hourly()->onOneServer();
 // Deal portal: milestone updates, the Monday summary and the check-in after closing (specs/ai/02, §22).
 Schedule::command('transactions:portal-updates')->hourlyAt(5)->onOneServer();
+// Deal playbooks: emails due, the MLS status guard and the agents' Monday summary (specs/ai/02, §§19–20).
+Schedule::command('transactions:playbooks')->hourlyAt(10)->onOneServer();
 
 // Association form libraries: new editions of forms brokerages use.
 Schedule::command('forms:library-sync')->dailyAt('10:00')->onOneServer();

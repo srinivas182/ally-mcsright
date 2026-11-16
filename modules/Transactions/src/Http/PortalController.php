@@ -23,6 +23,7 @@ use Modules\Transactions\Models\Deal;
 use Modules\Transactions\Models\Document;
 use Modules\Transactions\Portal\Concierge;
 use Modules\Transactions\Portal\Copy;
+use Modules\Transactions\Portal\PartyCalendar;
 use Modules\Transactions\Portal\PortalAccess;
 use Modules\Transactions\Portal\PortalFeedbackMail;
 use Modules\Transactions\Portal\PortalView;
@@ -202,6 +203,22 @@ final class PortalController
         }
 
         return redirect('/my-deal/'.$a->ulid)->with('portal_thanks', true);
+    }
+
+    /** The person's private calendar feed link (opens their calendar app). */
+    public function calendar(Request $request, string $access, PartyCalendar $calendar): RedirectResponse
+    {
+        [$a] = $this->access($request, $access);
+        $url = $calendar->link($a);
+
+        return redirect()->away(preg_replace('#^https?://#', 'webcal://', $url) ?? $url);
+    }
+
+    public function calendarFeed(string $token, PartyCalendar $calendar): Response
+    {
+        $ics = $calendar->feed($token) ?? abort(404);
+
+        return response($ics, 200, ['Content-Type' => 'text/calendar; charset=utf-8', 'X-Robots-Tag' => 'noindex', 'Cache-Control' => 'private, max-age=900']);
     }
 
     public function signOut(Request $request, SignIn $signIn): RedirectResponse

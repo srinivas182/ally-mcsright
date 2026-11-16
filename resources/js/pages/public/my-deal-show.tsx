@@ -383,6 +383,12 @@ export default function MyDealShow(p: Props) {
                     <h2 id="dates" className="font-semibold">
                         {t.dates}
                     </h2>
+                    <a
+                        className="text-primary underline"
+                        href={`${base}/calendar`}
+                    >
+                        {t.calendar}
+                    </a>
                     {p.dates.length === 0 ? (
                         <p className="text-muted-foreground">{t.no_dates}</p>
                     ) : (

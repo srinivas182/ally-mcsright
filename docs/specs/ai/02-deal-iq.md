@@ -207,6 +207,37 @@ wire-instruction detection with payout holds.
   repairs) or nothing, with notes; the option or inspection deadline is shown; the amendment is drafted on the
   brokerage's form for signature; the buyers can see the request in their portal. Wiring details are refused.
 
+## Delivered in DQ5a — deal-type playbooks, MLS status guard, listing to contract
+
+Leader review (Nov 2026): ListedKit (AI timeline, calendar invites, emails from the agent's mailbox; no MLS checks,
+no deal-type rules), Open to Close (fully custom templates and automations; heavy setup, no AI, no MLS checks),
+SkySlope / Rechat / Lone Wolf (compliance bundles with MLSs; generic reminders, no comparison with the MLS's actual
+status). DQ5a matches them and closes those gaps:
+
+- **Deal-type playbooks**, ready to use and editable by the brokerage (Deals → Compliance → Deal-type playbooks):
+  standard sale, new construction, short sale, bank-owned (REO), probate or estate, 1031 exchange, lease, land and
+  referral. Each adds its documents to the checklist (once, never removed), its dates to the smart timeline (target
+  dates, business or calendar days, rolled for weekends and holidays unless fixed by law) and its emails to people
+  on the deal ({street}, {agent}, {contract}, {closing}). Emails wait for the agent ("Send now" or "Skip") unless the
+  brokerage ticks "Send by itself"; they go from RightAlly with replies to the agent; wiring details are refused.
+- **1031 exchange clocks**: 45-day identification and 180-day exchange deadlines from the sale's closing, exact
+  calendar days that never move; link the sale and the replacement purchase and both deals show them.
+- **Listing to contract**: accepting an offer starts the contract playbook, readies the introductions email to
+  title, lender, the buyer's agent and attorney, and puts the offer's option period on the timeline from the
+  contract date.
+- **MLS status guard**: Deal-IQ compares each listing deal's status with what the brokerage's MLS feed shows
+  (under contract → Pending, closed → Closed, fell through → Active or withdrawn). The agent is reminded once,
+  with the MLS deadline (business days, set per brokerage for its MLS on the compliance page; 2 by default); when
+  overdue the broker is alerted once and it appears on the risk register; it clears by itself when the MLS shows the
+  right status. Listings not in the feed are not guessed at.
+- **Calendar feeds for everyone on the deal**: each person in the portal gets a private feed of the dates their role
+  sees, in their language, that updates when the timeline changes ("Send everyone their calendar link", or "Add
+  these dates to my calendar" in the portal). Agents keep their own feed of all their deals.
+- **Monday summary for agents** across all open deals: overdue, due in 7 days, MLS updates, emails ready to send,
+  and who they are waiting on (upload links, client questions). One email, only when there is something.
+- Scheduled: `transactions:playbooks` hourly (emails due, MLS guard, Monday summary).
+- Still to come (DQ5b): vendor scheduling, moving-day concierge, closing-day plan, after-closing touches.
+
 ## Market review (November 2026)
 
 | Capability                                                   | ProxiClose | Transaction Wingman | Deal-IQ                                                 |

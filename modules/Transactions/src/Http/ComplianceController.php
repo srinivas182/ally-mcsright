@@ -21,6 +21,7 @@ use Modules\Transactions\Compliance\Evidence;
 use Modules\Transactions\Compliance\Findings;
 use Modules\Transactions\Compliance\Rules;
 use Modules\Transactions\Deadlines\Deadlines;
+use Modules\Transactions\Mls\MlsGuard;
 use Modules\Transactions\Models\Deal;
 use Modules\Transactions\Models\Document;
 
@@ -84,6 +85,7 @@ final class ComplianceController
                 'default' => Checks::CATALOG[$code][1], 'enabled' => $s['enabled'], 'severity' => $s['severity'],
                 'stats' => $accuracy[$code] ?? ['fixed' => 0, 'dismissed' => 0, 'open' => 0, 'accuracy' => null, 'review' => false]])->values(),
             'deadlines' => app(Deadlines::class)->settings(),
+            'mlsRules' => app(MlsGuard::class)->rules(),
             'messaging' => ['sms' => app(MessagingSettings::class)->smsFor(app(TenantContext::class)->id()), 'voice' => app(MessagingSettings::class)->voiceFor(app(TenantContext::class)->id())],
             'rules' => $db->table('tx_compliance_rules')->orderByDesc('id')->get(['ulid', 'text', 'summary', 'active', 'confirmed_at']),
             'rule_stats' => $accuracy['rule'] ?? null,
@@ -92,6 +94,18 @@ final class ComplianceController
             'at_risk' => $db->table('tx_deals')->whereIn('status', ['pre_contract', 'under_contract'])->where('compliance_score', '<', 100)->orderBy('compliance_score')->limit(50)
                 ->get(['ulid', 'street', 'status', 'compliance_score']),
         ]);
+    }
+
+    public function saveMlsRules(Request $request, MlsGuard $guard): RedirectResponse
+    {
+        $user = self::user($request);
+        abort_unless(self::reviewer($user), 403);
+        $d = $request->validate(['mls_pending_days' => ['required', 'integer', 'between:0,10'], 'mls_closed_days' => ['required', 'integer', 'between:0,10'],
+            'mls_active_days' => ['required', 'integer', 'between:0,10']]);
+        $guard->saveRules(['mls_pending_days' => (int) $d['mls_pending_days'], 'mls_closed_days' => (int) $d['mls_closed_days'], 'mls_active_days' => (int) $d['mls_active_days']], $user);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'MLS deadlines saved.']);
+
+        return back();
     }
 
     public function saveCheck(Request $request, string $code, Findings $findings): RedirectResponse

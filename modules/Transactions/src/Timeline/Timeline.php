@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Modules\Core\Support\Connections;
 use Modules\Transactions\DealIq\DatesChangedMail;
 use Modules\Transactions\Models\Deal;
+use Modules\Transactions\Playbooks\Playbooks;
 use Modules\Transactions\Reading\DocIq;
 
 /**
@@ -58,6 +59,23 @@ final class Timeline
                     'why' => 'From the contract (page '.$f['page'].')'.($rolled->notEqualTo($raw) ? ', moved from '.$raw->toFormattedDateString().' because it falls on a weekend or holiday' : '')];
             }
         }
+        // The option period from the accepted offer, when the contract itself has not been read.
+        $terms = (array) json_decode((string) ($deal->getAttribute('terms') ?? ''), true);
+        if ($contract !== null && (int) ($terms['option_days'] ?? 0) > 0 && ! in_array('Option period ends', array_column($out, 'label'), true)) {
+            $raw = $contract->addDays((int) $terms['option_days']);
+            $out[] = ['label' => 'Option period ends', 'due_on' => StatePacks::roll($raw, $state)->toDateString(), 'why' => (int) $terms['option_days'].' days after the contract date (the accepted offer)'];
+        }
+        // The deal's playbook (specs/ai/02, §19), and a linked 1031 sale's deadlines on the replacement purchase.
+        $playbooks = app(Playbooks::class);
+        foreach ($playbooks->dates($deal) as $p) {
+            $out[] = $p;
+        }
+        $linked = $deal->getAttribute('linked_deal_id') !== null ? Deal::query()->whereKey((int) $deal->getAttribute('linked_deal_id'))->first() : null;
+        if ($linked !== null && Playbooks::keyFor($linked) === 'exchange_1031') {
+            foreach ($playbooks->dates($linked) as $p) {
+                $out[] = ['label' => $p['label'], 'due_on' => $p['due_on'], 'why' => 'From the linked sale at '.$linked->street.': '.$p['why']];
+            }
+        }
         if ($deal->closing_date !== null) {
             $closing = CarbonImmutable::parse($deal->closing_date->toDateString());
             $out[] = ['label' => 'Final walk-through', 'due_on' => $closing->subDay()->toDateString(), 'why' => 'The day before closing'];
@@ -102,6 +120,7 @@ final class Timeline
                     'source' => self::SOURCE, 'created_at' => now(), 'updated_at' => now()]);
             }
         });
+        app(Playbooks::class)->schedule($deal); // emails tied to these dates move with them
 
         return $changes;
     }
