@@ -17,6 +17,7 @@ use Modules\Core\Identity\Http\Middleware\EnsureTenantHost;
 use Modules\Core\Identity\Http\Middleware\EnsureValidSignedInUser;
 use Modules\Core\Identity\Http\Middleware\ImpersonationGuard;
 use Modules\Core\Tenancy\Http\Middleware\ResolveTenant;
+use Modules\Movewise\Http\Middleware\ServeMovewise;
 use Modules\Sites\Http\Middleware\ServeWebsite;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -31,6 +32,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Website hosts are served by the site engine before any back-office routing (specs/websites/05). Appended to
         // the global stack, so proxy trust, size limits and input trimming still apply to website requests.
+        $middleware->append(ServeMovewise::class); // Movewise Homes, HQ's consumer site (specs/movewise/01)
         $middleware->append(ServeWebsite::class);
 
         // Tenant resolution runs first on every web request (specs/core/01).
