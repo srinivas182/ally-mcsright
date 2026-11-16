@@ -299,7 +299,10 @@ final class Offers
 
     private static function label(int $index): string
     {
-        return $index < 26 ? chr(65 + $index) : chr(65 + intdiv($index, 26) - 1).chr(65 + $index % 26);
+        $letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        $index = max(0, $index);
+
+        return $index < 26 ? $letters[$index] : $letters[min(25, intdiv($index, 26) - 1)].$letters[$index % 26];
     }
 
     /**
