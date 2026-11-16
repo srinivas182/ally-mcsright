@@ -21,7 +21,7 @@ final class RoleTemplates
                 'core.users.view' => null, 'core.users.invite' => null, 'core.audit.view' => null,
                 'crm.contacts.view' => 'office', 'crm.contacts.manage' => 'office', 'crm.contacts.reassign' => 'office',
                 'compensation.plans.view' => null, 'finance.amounts.view' => null,
-                'transactions.review' => null, 'transactions.cda.approve' => null, 'roster.manage' => null, 'core.access.review' => null,
+                'transactions.review' => null, 'transactions.cda.approve' => null, 'roster.manage' => null, 'core.access.review' => null, 'insights.view' => 'office',
             ]],
             'office_admin' => ['name' => 'Office admin', 'description' => 'Day-to-day office work. Sees deals but not commission amounts or bank details.', 'permissions' => [
                 'core.users.view' => null, 'core.users.invite' => null,
@@ -35,7 +35,7 @@ final class RoleTemplates
                 'crm.contacts.view' => 'team', 'crm.contacts.manage' => 'team', 'transactions.review' => null,
             ]],
             'team_lead' => ['name' => 'Team lead', 'description' => 'Sees and assigns their team\'s company contacts.', 'permissions' => [
-                'crm.contacts.view' => 'team', 'crm.contacts.manage' => 'team', 'crm.contacts.reassign' => 'team',
+                'crm.contacts.view' => 'team', 'crm.contacts.manage' => 'team', 'crm.contacts.reassign' => 'team', 'insights.view' => 'team',
             ]],
             'agent' => ['name' => 'Agent', 'description' => 'Their own contacts and deals.', 'permissions' => [
                 'crm.contacts.view' => 'own', 'crm.contacts.manage' => 'own',

@@ -60,6 +60,7 @@
             "Modules\\Connect\\": "modules/Connect/src/",
             "Modules\\Ads\\": "modules/Ads/src/",
             "Modules\\Movewise\\": "modules/Movewise/src/",
+            "Modules\\Insights\\": "modules/Insights/src/",
             "Modules\\AI\\": "modules/AI/src/",
             "Modules\\AI\\Database\\Factories\\": "modules/AI/database/factories/"
         }

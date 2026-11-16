@@ -1,4 +1,8 @@
 import {
+    ChartColumn,
+    ListPlus,
+    ShieldCheck,
+    Workflow,
     Blocks,
     BookOpen,
     Coins,
@@ -46,6 +50,10 @@ import {
 /** Icons the server may name for menu items. Unknown names fall back to a dot. */
 const icons: Record<string, LucideIcon> = {
     'book-open': BookOpen,
+    'chart-column': ChartColumn,
+    'list-plus': ListPlus,
+    'shield-check': ShieldCheck,
+    workflow: Workflow,
     phone: Phone,
     zap: Zap,
     inbox: Inbox,

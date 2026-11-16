@@ -10,6 +10,7 @@ use Modules\Connect\ConnectServiceProvider;
 use Modules\Core\CoreServiceProvider;
 use Modules\Crm\CrmServiceProvider;
 use Modules\Forms\FormsServiceProvider;
+use Modules\Insights\InsightsServiceProvider;
 use Modules\Ledger\LedgerServiceProvider;
 use Modules\Listings\ListingsServiceProvider;
 use Modules\Movewise\MovewiseServiceProvider;
@@ -36,4 +37,5 @@ return [
     ConnectServiceProvider::class,
     AdsServiceProvider::class,
     MovewiseServiceProvider::class,
+    InsightsServiceProvider::class,
 ];
