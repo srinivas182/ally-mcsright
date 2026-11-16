@@ -88,6 +88,22 @@ final class PropertyData
     }
 
     /**
+     * A value estimate paid for by RightAlly itself (Movewise, specs/movewise/09): ATTOM with HQ's key, no tenant and no
+     * credits. Callers keep their own cache and cap. Null when ATTOM isn't switched on.
+     *
+     * @param  array{street: string, city: string, state: string, zip: string}  $address
+     * @return array<string, mixed>|null
+     */
+    public function estimate(array $address): ?array
+    {
+        if (! $this->on('property_data')) {
+            return null;
+        }
+
+        return $this->attom(array_map(fn ($v): string => trim((string) preg_replace('/\s+/', ' ', strip_tags((string) $v))), $address));
+    }
+
+    /**
      * @param  array<string, string>  $a
      * @return array<string, mixed>
      */

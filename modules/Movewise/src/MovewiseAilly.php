@@ -14,6 +14,7 @@ use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Crm\FairHousing;
 use Modules\Listings\Search\ListingSearch;
+use Modules\Movewise\Growth\HomeValues;
 use Modules\Movewise\Models\Person;
 use Throwable;
 
@@ -50,6 +51,13 @@ final class MovewiseAilly
         $reply = '';
         if ($hq !== null) {
             $facts = $listing !== null ? $this->home($hq->id, $listing) : null;
+            // Asked what the home is worth: add ATTOM's estimate (HQ-paid, cached 30 days, capped monthly).
+            if ($facts !== null && preg_match('/\b(worth|value|valued|overpriced|underpriced|estimate|appraise|vale|valor|precio justo)\b/iu', $text) === 1) {
+                $value = $this->value($hq->id, $listing, $person);
+                if ($value !== null) {
+                    $facts['value_estimate'] = $value;
+                }
+            }
             try {
                 $r = app(TenantContext::class)->runAs($hq, fn () => app(AiGateway::class)->run(new AiTask(self::FEATURE, 'movewise.ailly', 'movewise-ailly:'.Str::ulid(),
                     inputs: ['language' => $locale], untrustedContent: array_values(array_filter([
@@ -79,6 +87,23 @@ final class MovewiseAilly
         }
 
         return ['chat' => $ulid, 'reply' => $reply];
+    }
+
+    /** @return array<string, mixed>|null ATTOM's range for the home being viewed, or null when there isn't one */
+    private function value(int $tenantId, string $ulid, ?Person $person): ?array
+    {
+        $h = $this->search->find($tenantId, $ulid);
+        if ($h === null || ! isset($h['address'], $h['postal_code'])) {
+            return null;
+        }
+        try {
+            $v = app(HomeValues::class)->for(['street' => (string) $h['address'], 'city' => (string) ($h['city'] ?? ''), 'state' => (string) ($h['state'] ?? ''),
+                'zip' => substr((string) $h['postal_code'], 0, 5)], $person);
+        } catch (ValidationException) {
+            return null;
+        }
+
+        return $v === null ? null : ['low' => $v['low'], 'mid' => $v['mid'], 'high' => $v['high'], 'source' => 'ATTOM automated valuation, '.$v['as_of'], 'last_sale' => $v['last_sale']];
     }
 
     /** @return array<string, mixed>|null */

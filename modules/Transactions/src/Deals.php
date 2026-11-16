@@ -17,6 +17,7 @@ use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Support\Connections;
 use Modules\Crm\Models\Contact;
 use Modules\Ledger\Money\Money;
+use Modules\Transactions\Events\DealStatusChanged;
 use Modules\Transactions\Models\Deal;
 use Modules\Transactions\Models\Item;
 
@@ -57,6 +58,7 @@ final class Deals
             }
             $this->checklists->apply($deal);
             $this->audit->record('transactions.deal.created', $deal, metadata: ['type' => $deal->type, 'address' => $deal->street], label: $deal->street);
+            DealStatusChanged::dispatch($deal->tenant_id, $deal->id, null, 'pre_contract');
 
             return $deal;
         });
@@ -80,6 +82,7 @@ final class Deals
         };
         $this->audit->record('transactions.deal.status', $deal, changes: ['status' => ['old' => $from, 'new' => $status]], severity: $status === 'closed' ? 'notice' : 'info', label: $deal->street);
         app(Compliance\ComplianceScan::class)->run($deal);
+        DealStatusChanged::dispatch($deal->tenant_id, $deal->id, $from, $status);
 
         return $deal->refresh();
     }

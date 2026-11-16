@@ -55,6 +55,8 @@ type Props = {
         weekly_topup_cents: number;
         target_cents: number;
         stop_loss_cents: number;
+        synced_at: string | null;
+        marker: string;
         status: string;
         reason: string | null;
         summary: {
@@ -282,6 +284,27 @@ export default function HqMovewiseMoney({
                                 : 'OK to top up'}
                         </Badge>{' '}
                         {ads.reason}
+                    </p>
+                    <p className="flex flex-wrap items-center gap-2 text-muted-foreground">
+                        Spend is pulled daily from RightAlly's Meta and Google
+                        ad accounts for campaigns named with "{ads.marker}"
+                        {ads.synced_at
+                            ? ` (last synced ${new Date(ads.synced_at).toLocaleString()})`
+                            : ' (not synced yet)'}
+                        .
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                                router.post(
+                                    '/hq/movewise/money/ads',
+                                    { kind: 'sync' },
+                                    { preserveScroll: true },
+                                )
+                            }
+                        >
+                            Sync now
+                        </Button>
                     </p>
                     <p className="text-muted-foreground">
                         Last 7 days: {usd(ads.summary.spend_7d)} for{' '}

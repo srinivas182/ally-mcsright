@@ -6,17 +6,24 @@ use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 use Inertia\Testing\AssertableInertia as Assert;
+use Modules\AI\Models\AiFeatureRoute;
+use Modules\AI\Models\AiModel;
+use Modules\AI\Providers\ProviderRegistry;
 use Modules\Billing\Credits\CreditLedger;
+use Modules\Connect\AppRegistry;
+use Modules\Core\Connect\AppCatalog;
 use Modules\Core\Messaging\FakeSmsSender;
 use Modules\Core\Messaging\MessagingSettings;
 use Modules\Core\Messaging\SmsSender;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\Models\Tenant;
 use Modules\Core\Tenancy\TenantContext;
+use Modules\Crm\Actions\Tasks;
 use Modules\Crm\Booking\Availability;
 use Modules\Crm\FollowUpPlans;
 use Modules\Crm\Inbox\Inbox;
@@ -41,10 +48,14 @@ use Modules\Movewise\Models\Partner;
 use Modules\Movewise\Models\Person;
 use Modules\Movewise\Models\State;
 use Modules\Movewise\Movewise;
+use Modules\Movewise\MovewiseAilly;
 use Modules\Movewise\Notifications\IntroductionClosed;
 use Modules\Movewise\Notifications\IntroductionOffered;
 use Modules\Movewise\Program\Agents;
 use Modules\Sites\Reviews\Reviews;
+use Modules\Transactions\Deals;
+use Modules\Transactions\Events\DealStatusChanged;
+use Tests\Fixtures\FakeAiProvider;
 
 /* Movewise MW4: "Talk to an agent" — about your move and the readiness score, three agents chosen fairly (eligibility,
    caps, rotation, a place for someone not shown recently), the verified mobile, the consent, the accept timer,
@@ -560,4 +571,78 @@ it('caches the site header and footer, and drops the cache the moment a state ch
     $this->get(MWH.'/')->assertSee('Lone Star Realty Partners');
     app(Movewise::class)->switchState(State::query()->findOrFail('TX'), false, $this->staff);
     $this->get(MWH.'/')->assertSee('noindex', false)->assertDontSee('Lone Star Realty Partners, licence');
+});
+
+/* MW9: the gaps — status from the agent's work in RightAlly, ad spend pulled from the ad accounts, home values, and Spanish everywhere. */
+
+it('moves the introduction\'s status from what the agent does in RightAlly: replies, showings, deals and lost stages', function (): void {
+    $c = mwAccepted($this);
+    [, $ann] = $this->agents['Ann'];
+    $contact = Contact::query()->findOrFail($c->contact_id);
+    app(Inbox::class)->receiveSms('+17135550142', 'Hi Ann, Saturday works', 'SM5');
+    expect($c->refresh()->stage)->toBe('contacted');
+    $task = Task::query()->create(['contact_id' => $contact->id, 'assigned_to' => $ann->id, 'type' => 'showing', 'title' => 'Show 12 Oak St', 'priority' => 'normal',
+        'due_at' => now()->addDay(), 'created_by' => $ann->id]);
+    app(Tasks::class)->complete($task, $ann);
+    expect($c->refresh()->stage)->toBe('met')->and($c->met_agent_at)->not->toBeNull();
+
+    $deal = app(Deals::class)->create(['type' => 'buyer', 'street' => '12 Oak St', 'city' => 'Houston', 'state_code' => 'TX', 'postal_code' => '77001'], $ann, $ann, $contact);
+    expect($c->refresh()->stage)->toBe('agreement');
+    $deal->forceFill(['status' => 'closed', 'price_cents' => 40_000_000, 'gci_cents' => 1_200_000, 'closed_on' => '2026-07-30'])->save();
+    DealStatusChanged::dispatch($this->tenant->id, $deal->id, 'under_contract', 'closed'); // as a sync from dotloop would
+    expect($c->refresh()->stage)->toBe('closed');
+    $event = DB::connection(Connections::control())->table('movewise_status_events')->where('connection_id', $c->id)->orderByDesc('id')->first();
+    expect((int) $event->commission_cents)->toBe(1_200_000)->and($event->note)->toBe('Automatically, from the deal at 12 Oak St');
+    DealStatusChanged::dispatch($this->tenant->id, $deal->id, 'closed', 'pre_contract');
+    expect($c->refresh()->stage)->toBe('closed'); // never backwards
+});
+
+it('pulls Movewise\'s ad spend from RightAlly\'s own Meta account, by day and state', function (): void {
+    app(AppRegistry::class)->save(app(AppCatalog::class)->find('rightally_boost'), true,
+        ['ad_account_id' => '999', 'page_id' => '888', 'access_token' => 'ra-system-token', 'margin_percent' => '15'], null, User::factory()->make(['id' => 999999]));
+    Http::fake(['graph.facebook.com/*/act_999/insights*' => Http::response(['data' => [
+        ['date_start' => now()->toDateString(), 'campaign_name' => 'Movewise TX buyers', 'spend' => '120.50'],
+        ['date_start' => now()->toDateString(), 'campaign_name' => 'Movewise TX sellers', 'spend' => '30'],
+        ['date_start' => now()->toDateString(), 'campaign_name' => 'Agent recruiting', 'spend' => '999'],
+    ]])]);
+    expect(app(AdBudget::class)->sync())->toBe(['meta' => 1, 'google' => null]);
+    $row = DB::connection(Connections::control())->table('movewise_ad_spend')->sole();
+    expect((int) $row->spend_cents)->toBe(15_050)->and($row->state)->toBe('TX')->and($row->channel)->toBe('meta')->and($row->note)->toBe('Synced from Meta Ads');
+    Http::assertSent(fn ($r): bool => str_contains($r->url(), 'level=campaign') && $r->hasHeader('Authorization', 'Bearer ra-system-token'));
+});
+
+it('gives home value estimates from ATTOM, paid by HQ, cached and capped, on the page and in AIlly', function (): void {
+    app(AppRegistry::class)->save(app(AppCatalog::class)->find('property_data'), true, ['api_key' => 'attom-key'], null, User::factory()->make(['id' => 999999]));
+    Http::fake([
+        'api.gateway.attomdata.com/propertyapi/v1.0.0/property/expandedprofile*' => Http::response(['status' => ['total' => 1], 'property' => [[
+            'address' => ['oneLine' => '12 OAK ST, HOUSTON, TX 77001'], 'building' => ['rooms' => ['beds' => 3, 'bathstotal' => 2], 'size' => ['livingsize' => 1900]], 'summary' => ['yearbuilt' => 1998],
+            'sale' => ['amount' => ['saleamt' => 310000, 'salerecdate' => '2019-05-02']]]]]),
+        'api.gateway.attomdata.com/propertyapi/v1.0.0/attomavm/detail*' => Http::response(['property' => [['avm' => ['amount' => ['value' => 395000, 'low' => 371000, 'high' => 419000]]]]]),
+    ]);
+    $this->get(MWH.'/home-value')->assertOk()->assertSee('What&#039;s my home worth?', false)->assertSee('"@type":"FAQPage"', false)->assertSee('index, follow', false);
+    $addr = ['street' => '12 Oak St', 'city' => 'Houston', 'state' => 'TX', 'zip' => '77001'];
+    $this->post(MWH.'/home-value', $addr, $this->from)->assertOk()->assertSee('Sign in')->assertDontSee('$395,000');
+    mwAs($this)->post(MWH.'/home-value', $addr, $this->from)->assertOk()->assertSee('$371,000 – $419,000')->assertSee('$395,000')->assertSee('It isn&#039;t an appraisal', false)
+        ->assertSee('type=sell&amp;zip=77001&amp;city=Houston&amp;state=TX&amp;price=395000', false)->assertHeader('Cache-Control', 'no-store, private');
+    mwAs($this)->post(MWH.'/home-value', $addr, $this->from)->assertOk();
+    Http::assertSentCount(2); // the second time came from the 30-day cache
+    mwAs($this)->get(MWH.'/connect?type=sell&zip=77001&city=Houston&state=TX&price=395000')->assertSee('value="77001"', false)->assertSee('value="395000"', false);
+
+    $model = AiModel::factory()->create(['capabilities' => ['chat']]);
+    AiFeatureRoute::query()->create(['feature_key' => MovewiseAilly::FEATURE, 'primary_model_id' => $model->id, 'fallback_model_ids' => [], 'credit_action_key' => 'ai.movewise']);
+    app(ProviderRegistry::class)->fake($model->provider->key, $ai = new FakeAiProvider);
+    $ai->respond(json_encode(['reply' => 'ATTOM estimates $371,000 to $419,000; it is listed at $400,000.']));
+    $this->postJson(MWH.'/_ailly', ['message' => 'Is this home overpriced?', 'listing' => $this->listing], $this->from)->assertOk();
+    expect(json_encode($ai->requests[0]))->toContain('value_estimate')->toContain('395000');
+});
+
+it('has every consumer page in Spanish, legal pages as courtesy translations', function (): void {
+    $this->get(MWH.'/es/privacy')->assertOk()->assertSee('Aviso de privacidad')->assertSee('Traducción de cortesía')->assertSee('Qué recopilamos');
+    $this->get(MWH.'/es/homes/'.$this->listing)->assertOk()->assertSee('3 recámaras')->assertSee('Pago del préstamo')->assertSee('Impuesto predial')->assertSee('Quién la vende')
+        ->assertSee('Igualdad de Oportunidades en la Vivienda')->assertDontSee('Who&#039;s selling it', false);
+    $this->get(MWH.'/es/move-planner?move_date=2026-08-01')->assertOk()->assertSee('Pide tres cotizaciones a mudanzas con licencia')->assertSee('8 semanas antes');
+    $this->get(MWH.'/es/net-sheet?price=400000&payoff=250000&listing_pct=3')->assertOk()->assertSee('Precio de venta')->assertSee('Costos de cierre');
+    $this->get(MWH.'/es/afford?income=120000&debts=500&down=40000')->assertOk()->assertSee('es tu pago cómodo');
+    $this->get(MWH.'/es/texas')->assertOk()->assertSee('Por ciudad')->assertSee('¿Cuántas casas hay en venta en Texas en Movewise?');
+    $this->get(MWH.'/sitemaps/pages.xml')->assertSee('https://movewisehomes.com/es/privacy')->assertSee('https://movewisehomes.com/es/home-value')->assertDontSee('https://movewisehomes.com/es/agents');
 });

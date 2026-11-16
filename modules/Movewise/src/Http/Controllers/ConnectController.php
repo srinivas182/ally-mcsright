@@ -43,7 +43,12 @@ final class ConnectController
         }
         $listing = is_string($request->query('listing')) ? (string) $request->query('listing') : null;
 
-        return $this->about($p, $listing, $request->query('type') === 'sell' ? 'seller' : 'buyer', []);
+        $about = $request->query('type') === 'sell' ? array_filter(['home_zip' => preg_match('/^\d{5}$/', (string) $request->query('zip')) === 1 ? (string) $request->query('zip') : null,
+            'home_city' => is_string($request->query('city')) ? mb_substr((string) $request->query('city'), 0, 60) : null,
+            'home_state' => is_string($request->query('state')) ? strtoupper(mb_substr((string) $request->query('state'), 0, 2)) : null,
+            'home_price' => is_numeric($request->query('price')) ? (int) $request->query('price') : null]) : [];
+
+        return $this->about($p, $listing, $request->query('type') === 'sell' ? 'seller' : 'buyer', [], 200, $about);
     }
 
     public function saveAbout(Request $request, Matcher $matcher, Movewise $movewise): Response|RedirectResponse
@@ -157,10 +162,11 @@ final class ConnectController
 
     /**
      * @param  array<string, string>  $errors
+     * @param  array<string, mixed>  $prefill
      */
-    private function about(Person $p, ?string $listing, string $leadType, array $errors, int $status = 200): Response
+    private function about(Person $p, ?string $listing, string $leadType, array $errors, int $status = 200, array $prefill = []): Response
     {
-        $about = (array) ($p->about ?? []);
+        $about = $prefill + (array) ($p->about ?? []); // from the home value page: their home's ZIP, city, state and estimate
 
         return $this->view('movewise::connect.about', ['person' => $p, 'about' => $about + ['lead_type' => $leadType], 'listing' => $listing, 'errors_' => $errors,
             'open' => $this->connections->open($p), 'states' => config('movewise.launch_states')], $status);

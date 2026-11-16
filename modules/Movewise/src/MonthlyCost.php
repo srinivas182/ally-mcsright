@@ -26,14 +26,14 @@ final class MonthlyCost
         $n = 360;
         $pi = $r > 0 ? $loan * $r / (1 - (1 + $r) ** -$n) : $loan / $n;
         $lines = [
-            ['key' => 'principal', 'label' => 'Loan payment', 'amount' => (int) round($pi), 'note' => sprintf('%d%% down, 30-year fixed at %s%%', $down, rtrim(rtrim(number_format($rate, 2), '0'), '.'))],
-            ['key' => 'tax', 'label' => 'Property tax', 'amount' => (int) round($price * $tax / 100 / 12), 'note' => sprintf('About %s%% of the value a year, typical in %s; the county sets the real bill', rtrim(rtrim(number_format($tax, 2), '0'), '.'), $state)],
-            ['key' => 'insurance', 'label' => 'Home insurance', 'amount' => (int) round($price * $insurance / 100 / 12), 'note' => 'A typical policy; flood cover is extra where needed'],
-            ['key' => 'hoa', 'label' => 'HOA dues', 'amount' => null, 'note' => 'Not in the MLS data; ask the listing agent'],
-            ['key' => 'utilities', 'label' => 'Utilities', 'amount' => $utilities, 'note' => 'Typical electricity, water and gas for a family home'],
+            ['key' => 'principal', 'label' => I18n::t('cost.principal'), 'amount' => (int) round($pi), 'note' => I18n::t('cost.principal_note', ['down' => $down, 'rate' => rtrim(rtrim(number_format($rate, 2), '0'), '.')])],
+            ['key' => 'tax', 'label' => I18n::t('cost.tax'), 'amount' => (int) round($price * $tax / 100 / 12), 'note' => I18n::t('cost.tax_note', ['pct' => rtrim(rtrim(number_format($tax, 2), '0'), '.'), 'state' => $state])],
+            ['key' => 'insurance', 'label' => I18n::t('cost.insurance'), 'amount' => (int) round($price * $insurance / 100 / 12), 'note' => I18n::t('cost.insurance_note')],
+            ['key' => 'hoa', 'label' => I18n::t('cost.hoa'), 'amount' => null, 'note' => I18n::t('cost.hoa_note')],
+            ['key' => 'utilities', 'label' => I18n::t('cost.utilities'), 'amount' => $utilities, 'note' => I18n::t('cost.utilities_note')],
         ];
         if ($down < 20) {
-            array_splice($lines, 3, 0, [['key' => 'pmi', 'label' => 'Mortgage insurance', 'amount' => (int) round($loan * 0.005 / 12), 'note' => 'Usually needed with less than 20% down, until you reach 20%']]);
+            array_splice($lines, 3, 0, [['key' => 'pmi', 'label' => I18n::t('cost.pmi'), 'amount' => (int) round($loan * 0.005 / 12), 'note' => I18n::t('cost.pmi_note')]]);
         }
 
         return ['total' => array_sum(array_map(fn (array $l): int => (int) ($l['amount'] ?? 0), $lines)), 'lines' => $lines,

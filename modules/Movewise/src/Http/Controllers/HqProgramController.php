@@ -153,7 +153,11 @@ final class HqProgramController
 
     public function ads(Request $request, AdBudget $ads): RedirectResponse
     {
-        $request->input('kind') === 'spend' ? $ads->record($request->all(), self::user($request)) : $ads->save($request->all(), self::user($request));
+        match ((string) $request->input('kind')) {
+            'spend' => $ads->record($request->all(), self::user($request)),
+            'sync' => $ads->sync(7),
+            default => $ads->save($request->all(), self::user($request)),
+        };
         $ads->check();
 
         return back();

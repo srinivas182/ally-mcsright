@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Movewise\Tools;
 
+use Modules\Movewise\I18n;
 use Modules\Movewise\MonthlyCost;
 
 /**
@@ -36,11 +37,11 @@ final class Affordability
         $price = (int) (floor($lo / 1000) * 1000);
 
         return ['budget' => $budget, 'price' => $price, 'cost' => MonthlyCost::for($price, $state, $downPayment), 'steps' => [
-            sprintf('Your income is about $%s a month before tax.', number_format($monthly)),
-            sprintf('Lenders usually keep the home payment under 28%% of that: $%s.', number_format($front)),
-            sprintf('And all debts, the home included, under 36%%: $%s, minus your $%s of other debts, leaves $%s.', number_format($monthly * 0.36), number_format(max(0, $monthlyDebts)), number_format(max(0, $back))),
-            sprintf('The smaller of the two, $%s a month, is your comfortable home payment.', number_format($budget)),
-            sprintf('With $%s down, a home of about $%s has a payment (loan, tax, insurance) that fits.', number_format($downPayment), number_format($price)),
+            I18n::t('afford.step1', ['income' => number_format($monthly)]),
+            I18n::t('afford.step2', ['front' => number_format($front)]),
+            I18n::t('afford.step3', ['all' => number_format($monthly * 0.36), 'debts' => number_format(max(0, $monthlyDebts)), 'left' => number_format(max(0, $back))]),
+            I18n::t('afford.step4', ['budget' => number_format($budget)]),
+            I18n::t('afford.step5', ['down' => number_format($downPayment), 'price' => number_format($price)]),
         ]];
     }
 }

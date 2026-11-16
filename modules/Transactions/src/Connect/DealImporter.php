@@ -15,6 +15,7 @@ use Modules\Core\Support\Connections;
 use Modules\Crm\Connect\Importer;
 use Modules\Transactions\Checklists;
 use Modules\Transactions\Documents;
+use Modules\Transactions\Events\DealStatusChanged;
 use Modules\Transactions\Models\Deal;
 use Throwable;
 
@@ -77,6 +78,7 @@ final class DealImporter
             'cancel_reason' => $d['status'] === 'fell_through' ? (self::text($d['cancel_reason'], 300) ?? 'Cancelled in '.$app) : null];
 
         $created = $deal === null;
+        $was = $deal?->status;
         $deal = DB::connection(Connections::cell())->transaction(function () use ($deal, $fields, $connection, $d, $by, $app): Deal {
             if ($deal === null) {
                 $deal = Deal::query()->create($fields + ['created_by' => $by->id, 'imported_from' => mb_substr($app, 0, 20),
@@ -99,6 +101,9 @@ final class DealImporter
         });
         if ($created) {
             app(AuditLogger::class)->record('transactions.deal.imported', $deal, metadata: ['from' => $app, 'status' => $deal->status], label: $deal->street);
+        }
+        if ($was !== $deal->status) {
+            DealStatusChanged::dispatch($deal->tenant_id, $deal->id, $was, $deal->status);
         }
         $this->pay->afterSync($deal, $this->payFrom($connection), $app);
 
