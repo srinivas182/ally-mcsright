@@ -82,6 +82,7 @@ final class CoreServiceProvider extends ServiceProvider
         $this->app->singleton(Connect\AppCatalog::class);
         $this->app->bindIf(Connect\Outbox::class, Connect\NoOutbox::class);
         $this->app->bindIf(Connect\Calendars::class, Connect\NoCalendars::class);
+        $this->app->bindIf(Listings\MlsStatus::class, Listings\NoMlsStatus::class);
         // MCP (specs/connect/03): the tools modules offer to people's AI assistants; off unless Connect allows it.
         $this->app->singleton(Mcp\McpToolbox::class);
         $this->app->singleton(Brief\DailyBriefs::class);

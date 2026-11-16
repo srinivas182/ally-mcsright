@@ -145,7 +145,7 @@ it('reads a whole-file upload, splits it into documents, files each into the che
     $deal = $this->deal->fresh();
     expect($deal->price_cents)->toBe(48_500_000)->and($deal->closing_date?->toDateString())->toBe('2026-07-15')
         ->and(DB::table('tx_dates')->where('deal_id', $deal->id)->get(['label', 'due_on', 'source'])->map(fn ($d) => [$d->label, substr((string) $d->due_on, 0, 10), $d->source])->all())
-        ->toBe([['Option period ends', '2026-06-10', 'docs'], ['Final walk-through', '2026-07-14', 'timeline']]); // the timeline adds what follows from the closing date
+        ->toBe([['Option period ends', '2026-06-10', 'docs'], ['Clear to close (target)', '2026-07-10', 'timeline'], ['Final walk-through', '2026-07-14', 'timeline']]); // the timeline adds what follows from the closing date
 });
 
 it('warns about sensitive numbers and wiring instructions, and makes a safe copy with them removed', function (): void {

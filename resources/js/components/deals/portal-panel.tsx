@@ -176,6 +176,22 @@ export function PortalPanel({
                     ))}
                 </ul>
             )}
+            {portal.people.some((x) => x.active) && (
+                <Button
+                    size="sm"
+                    variant="outline"
+                    className="justify-self-start"
+                    onClick={() =>
+                        router.post(
+                            `/deals/${dealUlid}/portal/calendars`,
+                            {},
+                            { preserveScroll: true },
+                        )
+                    }
+                >
+                    Send everyone their calendar link
+                </Button>
+            )}
             {invitable.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                     {invitable.map((p) => (

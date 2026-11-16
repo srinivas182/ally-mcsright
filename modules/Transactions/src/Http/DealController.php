@@ -32,11 +32,13 @@ use Modules\Transactions\Documents;
 use Modules\Transactions\EarnestMoney;
 use Modules\Transactions\Forecast;
 use Modules\Transactions\KeyDates;
+use Modules\Transactions\Mls\MlsGuard;
 use Modules\Transactions\Models\Deal;
 use Modules\Transactions\Models\Document;
 use Modules\Transactions\Models\DocumentReading;
 use Modules\Transactions\Models\Item;
 use Modules\Transactions\Offers\Offers;
+use Modules\Transactions\Playbooks\Playbooks;
 use Modules\Transactions\Portal;
 use Modules\Transactions\Reading\DocIq;
 use Modules\Transactions\Referrals;
@@ -133,6 +135,11 @@ final class DealController
                 'uploadRequests' => app(DealIq\UploadRequests::class)->forDeal($deal), 'history' => app(DealIq\DealAssistant::class)->history($deal, $user),
                 'roles' => DealIq\DealAssistant::ROLES, 'setup' => $deal->setup_status !== null, 'offers' => Offers::forListing($deal)
                     ? DB::connection(Connections::cell())->table('tx_offers')->where('deal_id', $deal->id)->whereIn('status', ['received', 'shortlisted', 'countered'])->count() : null],
+            'playbook' => app(Playbooks::class)->forDeal($deal) + [
+                'mls' => MlsGuard::forDeal($deal),
+                'linked' => ($l = $deal->getAttribute('linked_deal_id') !== null ? Deal::query()->whereKey((int) $deal->getAttribute('linked_deal_id'))->first() : null) !== null ? ['ulid' => $l->ulid, 'street' => $l->street] : null,
+                'linkable' => Deal::query()->where('agent_user_id', $deal->agent_user_id)->where('id', '!=', $deal->id)->whereIn('status', ['pre_contract', 'under_contract'])->orderByDesc('id')->limit(30)
+                    ->get(['ulid', 'street'])->map(fn (Deal $d): array => ['ulid' => $d->ulid, 'street' => $d->street])->all()],
             'portal' => ['people' => app(Portal\PortalAccess::class)->forDeal($deal), 'questions' => Portal\Concierge::forDeal($deal), 'locales' => Portal\Copy::LOCALES,
                 'feedback' => DB::connection(Connections::cell())->table('tx_portal_feedback')->join('tx_portal_access', 'tx_portal_access.id', '=', 'tx_portal_feedback.access_id')
                     ->where('tx_portal_feedback.deal_id', $deal->id)->get(['tx_portal_access.name', 'tx_portal_feedback.rating', 'tx_portal_feedback.comment', 'tx_portal_feedback.may_quote'])

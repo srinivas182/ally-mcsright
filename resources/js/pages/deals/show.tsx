@@ -19,6 +19,10 @@ import {
     type DealIqProps,
 } from '@/components/deals/deal-iq-panel';
 import { DealPay, type PayOverrides } from '@/components/deals/deal-pay';
+import {
+    PlaybookPanel,
+    type PlaybookProps,
+} from '@/components/deals/playbook-panel';
 import { PortalPanel, type PortalProps } from '@/components/deals/portal-panel';
 import { KeyDates, type KeyDate } from '@/components/deals/key-dates';
 import {
@@ -88,6 +92,7 @@ type Props = {
     customFields: CustomFieldValue[];
     dealIq: DealIqProps;
     portal: PortalProps;
+    playbook: PlaybookProps;
 };
 
 const statusLabel: Record<string, string> = {
@@ -275,6 +280,7 @@ export default function ShowDeal({
     customFields,
     dealIq,
     portal,
+    playbook,
     dates,
     unsorted,
     facts,
@@ -321,6 +327,11 @@ export default function ShowDeal({
                     locked={deal.locked}
                     iq={dealIq}
                     parties={parties}
+                />
+                <PlaybookPanel
+                    dealUlid={deal.ulid}
+                    locked={deal.locked}
+                    playbook={playbook}
                 />
                 <PortalPanel
                     dealUlid={deal.ulid}

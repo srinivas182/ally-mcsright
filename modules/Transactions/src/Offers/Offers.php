@@ -19,6 +19,7 @@ use Modules\Transactions\DealIq\Adapt;
 use Modules\Transactions\DealIq\FormDrafter;
 use Modules\Transactions\Documents;
 use Modules\Transactions\Models\Deal;
+use Modules\Transactions\Playbooks\Playbooks;
 
 /**
  * Offers on a listing (specs/ai/02, §16). Buyers' agents send theirs through the listing's offer link (no account),
@@ -231,7 +232,14 @@ final class Offers
                 $db->table('tx_parties')->insert(['tenant_id' => $deal->tenant_id, 'deal_id' => $deal->id, 'role' => 'buyer', 'name' => mb_substr($name, 0, 160), 'created_at' => now(), 'updated_at' => now()]);
             }
         });
+        $deal->forceFill(['terms' => json_encode(['option_days' => $offer->option_days !== null ? (int) $offer->option_days : null,
+            'earnest_cents' => $offer->earnest_cents !== null ? (int) $offer->earnest_cents : null, 'accepted_on' => CarbonImmutable::today()->toDateString(), 'offer' => $offer->label])])->save();
         app(Adapt::class)->apply($deal->refresh());
+        // Listing to contract (specs/ai/02, §18): the playbook's documents and emails start now; introductions are ready to send.
+        $playbooks = app(Playbooks::class);
+        $playbooks->apply($deal);
+        $db->table('tx_playbook_steps')->updateOrInsert(['deal_id' => $deal->id, 'step' => 'introductions'],
+            ['tenant_id' => $deal->tenant_id, 'status' => 'ready', 'due_at' => now(), 'updated_at' => now(), 'created_at' => now()]);
         app(AuditLogger::class)->record('transactions.offers.accepted', $deal, metadata: ['offer' => $offer->label, 'price_cents' => $price], label: $deal->street);
         $others = $db->table('tx_offers')->where('deal_id', $deal->id)->whereIn('status', ['received', 'shortlisted', 'countered'])->exists();
         if ($others) {

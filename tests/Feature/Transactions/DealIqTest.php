@@ -84,7 +84,7 @@ it('builds the timeline from the contract with the state pack, and rebuilds it w
     $this->deal->update(['contract_date' => '2026-01-15', 'closing_date' => '2026-02-20']);
     $changes = app(Timeline::class)->rebuild($this->deal->refresh());
     expect(timelineDates($this->deal))->toMatchArray(['Earnest money due' => '2026-01-20', 'Final walk-through' => '2026-02-19'])
-        ->and(count($changes))->toBe(2);
+        ->and(count($changes))->toBe(5); // with the standard playbook's three target dates
 
     // Moving the closing to a Saturday moves the walk-through and warns about the closing day.
     $this->deal->update(['closing_date' => '2026-02-28']);

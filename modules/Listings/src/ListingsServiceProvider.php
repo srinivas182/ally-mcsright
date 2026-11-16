@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Modules\Core\Identity\Enums\UserKind;
+use Modules\Core\Listings\MlsStatus;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
 
@@ -23,6 +24,7 @@ final class ListingsServiceProvider extends ServiceProvider
         $this->app->scoped(Search\MarketStats::class);
         $this->app->scoped(Sync\ListingSync::class);
         $this->app->singleton(Access\MlsAccess::class);
+        $this->app->bind(MlsStatus::class, Sync\FeedMlsStatus::class); // the MLS status guard (Deal-IQ)
     }
 
     public function boot(): void

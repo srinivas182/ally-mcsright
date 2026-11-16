@@ -13,6 +13,7 @@ use Modules\Transactions\Http\DocumentReadingController;
 use Modules\Transactions\Http\MoneyDeskController;
 use Modules\Transactions\Http\OffersController;
 use Modules\Transactions\Http\PayController;
+use Modules\Transactions\Http\PlaybooksController;
 use Modules\Transactions\Http\PortalAdminController;
 use Modules\Transactions\Http\PortalController;
 use Modules\Transactions\Http\PublicOfferController;
@@ -31,6 +32,10 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoff
     Route::post('alerts', [DeadlinesController::class, 'consent'])->name('alerts');
     Route::post('calendar', [DeadlinesController::class, 'calendar'])->name('calendar');
     Route::post('compliance/deadlines', [DeadlinesController::class, 'settings'])->name('compliance.deadlines');
+    Route::post('compliance/mls', [ComplianceController::class, 'saveMlsRules'])->name('compliance.mls');
+    Route::get('playbooks', [PlaybooksController::class, 'index'])->name('playbooks');
+    Route::post('playbooks/{key}', [PlaybooksController::class, 'save'])->where('key', '[a-z0-9_]+')->name('playbooks.save');
+    Route::delete('playbooks/{key}', [PlaybooksController::class, 'reset'])->where('key', '[a-z0-9_]+')->name('playbooks.reset');
     Route::post('compliance/checks/{code}', [ComplianceController::class, 'saveCheck'])->where('code', '[a-z_.]+')->name('compliance.check');
     Route::post('compliance/rules', [ComplianceController::class, 'draftRule'])->middleware('throttle:10,1,compliance-rule')->name('compliance.rules.draft');
     Route::post('compliance/rules/{rule}/confirm', [ComplianceController::class, 'confirmRule'])->name('compliance.rules.confirm');
@@ -53,6 +58,12 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoff
     Route::delete('{deal}/portal/{access}/devices', [PortalAdminController::class, 'signOutEverywhere'])->name('portal.sign-out');
     Route::post('{deal}/portal/documents/{document}', [PortalAdminController::class, 'share'])->name('portal.share');
     Route::post('{deal}/portal/questions/{question}', [PortalAdminController::class, 'reply'])->middleware('throttle:30,1')->name('portal.reply');
+    // Playbooks, 1031 links and calendars (specs/ai/02, DQ5a).
+    Route::post('{deal}/playbook', [PlaybooksController::class, 'choose'])->name('playbook');
+    Route::post('{deal}/playbook/{step}/send', [PlaybooksController::class, 'send'])->where('step', '[a-z0-9_]+')->middleware('throttle:20,1')->name('playbook.send');
+    Route::post('{deal}/playbook/{step}/skip', [PlaybooksController::class, 'skip'])->where('step', '[a-z0-9_]+')->name('playbook.skip');
+    Route::post('{deal}/link', [PlaybooksController::class, 'link'])->name('link');
+    Route::post('{deal}/portal/calendars', [PlaybooksController::class, 'calendars'])->middleware('throttle:10,1')->name('portal.calendars');
     // Offers and repair requests (specs/ai/02, DQ4).
     Route::get('{deal}/offers', [OffersController::class, 'index'])->name('offers');
     Route::post('{deal}/offers/link', [OffersController::class, 'link'])->name('offers.link');
@@ -141,6 +152,7 @@ Route::middleware(['web', EnsureTenantWorkspace::class])->prefix('my-deal')->nam
         Route::post('code', [PortalController::class, 'sendCode'])->middleware('throttle:5,1,portal-code')->name('code');
         Route::post('verify', [PortalController::class, 'verify'])->middleware('throttle:10,1,portal-verify')->name('verify');
     });
+    Route::get('calendar/{token}.ics', [PortalController::class, 'calendarFeed'])->where('token', '[A-Za-z0-9]{48}')->middleware('throttle:60,1')->name('calendar.feed');
     Route::get('not-me/{token}', [PortalController::class, 'notMe'])->where('token', '[A-Za-z0-9]{48}')->middleware('throttle:20,1')->name('not-me');
     Route::post('not-me/{token}', [PortalController::class, 'confirmNotMe'])->where('token', '[A-Za-z0-9]{48}')->middleware('throttle:5,1')->name('not-me.confirm');
     Route::prefix('{access}')->where(['access' => '[0-9A-HJKMNP-TV-Z]{26}'])->group(function (): void {
@@ -150,6 +162,7 @@ Route::middleware(['web', EnsureTenantWorkspace::class])->prefix('my-deal')->nam
         Route::post('upload', [PortalController::class, 'upload'])->middleware('throttle:20,1')->name('upload');
         Route::get('documents/{document}', [PortalController::class, 'document'])->middleware('throttle:60,1')->name('document');
         Route::post('preferences', [PortalController::class, 'preferences'])->middleware('throttle:20,1')->name('preferences');
+        Route::get('calendar', [PortalController::class, 'calendar'])->middleware('throttle:10,1')->name('calendar');
         Route::post('feedback', [PortalController::class, 'feedback'])->middleware('throttle:5,1')->name('feedback');
     });
 });

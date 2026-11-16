@@ -129,6 +129,10 @@ final class Copy
         'repairs_note' => 'What your agent plans to ask the seller for after the inspection.',
         'repairs_repair' => 'Repair',
         'repairs_credit' => 'Credit',
+        'mail.calendar_subject' => 'Key dates for :street, in your calendar',
+        'mail.calendar_intro' => 'Add the key dates for this home to your calendar (Google, Outlook or Apple). They update by themselves when dates change.',
+        'mail.calendar_add' => 'Add to my calendar',
+        'calendar' => 'Add these dates to my calendar',
     ];
 
     private const ES = [
@@ -246,6 +250,10 @@ final class Copy
         'repairs_note' => 'Lo que su agente planea pedirle al vendedor después de la inspección.',
         'repairs_repair' => 'Reparación',
         'repairs_credit' => 'Crédito',
+        'mail.calendar_subject' => 'Fechas clave de :street, en su calendario',
+        'mail.calendar_intro' => 'Agregue las fechas clave de esta casa a su calendario (Google, Outlook o Apple). Se actualizan solas cuando cambian.',
+        'mail.calendar_add' => 'Agregar a mi calendario',
+        'calendar' => 'Agregar estas fechas a mi calendario',
     ];
 
     public static function locale(?string $locale): string
