@@ -14,14 +14,11 @@
     <meta property="og:url" content="{{ $seo['canonical'] }}">
     @if ($seo['image'])<meta property="og:image" content="{{ $seo['image'] }}"><meta name="twitter:image" content="{{ $seo['image'] }}">@endif
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="theme-color" content="{{ $chrome['template'] === 'aurum' ? '#0b0b0d' : '#ffffff' }}">
+    @php($design = (array) config('sites.templates.'.$chrome['template'], config('sites.templates.modern')))
+    <meta name="theme-color" content="{{ $design['theme'] ?? '#ffffff' }}">
     <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    @if ($chrome['template'] === 'aurum')
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;500;600&display=swap">
-    @else
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
-    @endif
-    <link rel="stylesheet" href="/site-assets/site.css?v=4">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?{{ $design['css'] ?? 'family=Inter:wght@400;500;600;700' }}&display=swap">
+    <link rel="stylesheet" href="/site-assets/site.css?v=5">
     @stack('head')
     <style>:root{--brand: {{ $chrome['brand']['primary'] ?? '#1d4ed8' }};--accent: {{ $chrome['brand']['accent'] ?? '#0f172a' }};}</style>
     <script type="application/ld+json">{!! $seo['jsonld'] !!}</script>

@@ -1,4 +1,4 @@
-/* RightAlly websites — shared markup, two templates (Aurum, Modern). Brand colours come from --brand and --accent. */
+/* RightAlly websites — shared markup, five templates (Aurum, Modern, Hearth, Coastal, Metro). Brand colours come from --brand and --accent. */
 :root {
     --bg: #ffffff;
     --surface: #f6f7f9;
@@ -29,6 +29,77 @@
     --shadow: 0 30px 60px -30px rgb(0 0 0 / 0.8);
     --head-weight: 500;
     --head-tracking: 0;
+}
+/* Hearth: warm and welcoming (SO2). */
+.theme-hearth {
+    --bg: #fbf7f2;
+    --surface: #f3ebe1;
+    --text: #2b211c;
+    --muted: #6b5a4e;
+    --line: #e6d9ca;
+    --font-head: 'Fraunces', Georgia, 'Times New Roman', serif;
+    --font-body:
+        'Source Sans 3', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --radius: 20px;
+    --radius-sm: 12px;
+    --shadow:
+        0 1px 2px rgb(43 33 28 / 0.06), 0 16px 36px -16px rgb(43 33 28 / 0.22);
+    --head-weight: 600;
+    --head-tracking: -0.01em;
+}
+/* Coastal: airy, rounded, easy to read (SO2). */
+.theme-coastal {
+    --bg: #f7fbfc;
+    --surface: #e9f3f6;
+    --text: #0c2a33;
+    --muted: #46636c;
+    --line: #d3e4ea;
+    --font-head:
+        'Nunito Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-body:
+        'Nunito Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --radius: 24px;
+    --radius-sm: 14px;
+    --shadow:
+        0 1px 2px rgb(12 42 51 / 0.05), 0 18px 40px -18px rgb(12 42 51 / 0.2);
+    --head-weight: 800;
+    --head-tracking: -0.015em;
+}
+/* Metro: bold, high contrast, large type (SO2). */
+.theme-metro {
+    --bg: #0f0f10;
+    --surface: #18181b;
+    --text: #fafafa;
+    --muted: #a1a1aa;
+    --line: #27272a;
+    --on-brand: #ffffff;
+    --font-head: 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-body: 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --radius: 6px;
+    --radius-sm: 4px;
+    --shadow: 0 24px 48px -24px rgb(0 0 0 / 0.75);
+    --head-weight: 800;
+    --head-tracking: -0.03em;
+}
+.theme-metro .hero h1 {
+    font-size: clamp(2.6rem, 6vw, 4.6rem);
+    text-transform: none;
+}
+@media (prefers-color-scheme: dark) {
+    .theme-hearth {
+        --bg: #1b1512;
+        --surface: #241c18;
+        --text: #f5ece3;
+        --muted: #c2ad9d;
+        --line: #3a2e27;
+    }
+    .theme-coastal {
+        --bg: #0b1a1f;
+        --surface: #10252c;
+        --text: #e3f1f5;
+        --muted: #9cbcc6;
+        --line: #1c3a44;
+    }
 }
 @media (prefers-color-scheme: dark) {
     .theme-modern {
