@@ -30,6 +30,7 @@ use Modules\Crm\Connect\Salesforce;
 use Modules\Crm\Connect\Sierra;
 use Modules\Ledger\Books\QuickBooks;
 use Modules\Ledger\Books\Xero;
+use Modules\Sites\Reviews\RealSatisfied;
 use Modules\Transactions\Connect\Brokermint;
 use Modules\Transactions\Connect\DocuSign;
 use Modules\Transactions\Connect\Dotloop;
@@ -46,6 +47,8 @@ final class Catalog
 {
     /** Apps on the roadmap whose API is only open to partners: what HQ must apply for (shown as "Needs partner access"). */
     private const PARTNERS = [
+        'zillow_reviews' => 'Zillow shares agent reviews through its Agent Reviews API on the Bridge platform, after Zillow approves the app (bridgedataoutput.com → Data Access → Zillow Group datasets → Zillow Agent Reviews). Built once approved (specs/connect/20).',
+        'testimonial_tree' => 'Testimonial Tree shares testimonials with approved partners. Ask Testimonial Tree for partner access; it is built once they issue it (specs/connect/20).',
         'corefact' => 'Corefact and ProspectsPLUS print for agents through their own sites; ask them for partner (API) access. RightAlly Postcards (Lob) works today.',
         'mojo' => 'Mojo Dialer has no public API. Ask Mojo (mojosells.com) for partner access; meanwhile agents can export a smart list to CSV and import it into Mojo.',
         'real_geeks' => 'Real Geeks shares leads only with approved partners (Lead Router). Apply through Real Geeks partner support.',
@@ -533,8 +536,8 @@ final class Catalog
                     'Under Auth, add the return address shown above as an authorized redirect URL.', 'Copy the client ID and secret here and switch LinkedIn on.'],
                 'partner' => 'Free. Posting to company pages needs LinkedIn\'s Community Management API (a separate review), planned later.', 'docs' => 'https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/posts-api'],
             guide: ['steps' => ['Press Connect and sign in to LinkedIn.', 'LinkedIn sign-ins last 60 days; RightAlly reminds you to connect again.', 'Then open Grow → Social posts.']]));
-        $catalog->add(new App('google_business', 'Google Business Profile', 'marketing', 'Post listings and updates to your Google Business Profile, with a Learn more button, now or scheduled.',
-            scope: 'both', auth: 'oauth', syncs: ['Your business locations, daily', 'Posts you send from Grow → Social posts'], link: '/social',
+        $catalog->add(new App('google_business', 'Google Business Profile', 'marketing', 'Post listings and updates to your Google Business Profile, and show your Google reviews on your websites (and reply to them), from RightAlly.',
+            scope: 'both', auth: 'oauth', syncs: ['Your business locations, daily', 'Posts you send from Grow → Social posts', 'Your Google reviews, daily; replies go back to Google'], link: '/social',
             driver: GoogleBusiness::class, vendorCost: 'Free',
             oauth: ['provider' => 'google', 'scopes' => ['https://www.googleapis.com/auth/business.manage']],
             setup: ['needs' => 'provider', 'provider' => 'google', 'steps' => ['Set up the Google sign-in app at the top of this page.',
@@ -591,6 +594,10 @@ final class Catalog
                     'Submit it for Canva\'s review (public integrations are reviewed before anyone outside RightAlly can connect).', 'Paste the client ID and secret here and switch Canva on.'],
                 'partner' => 'Canva reviews Connect integrations before they are public (free).', 'docs' => 'https://www.canva.dev/docs/connect/'],
             guide: ['steps' => ['Press Connect and sign in to Canva.', 'Press Allow.', 'In Ally Studio, choose "Open in Canva" on a listing or a design.']]));
+        // Reviews (specs/connect/20, C8a). Google reviews come with Google Business Profile.
+        $catalog->add(new App('realsatisfied', 'RealSatisfied', 'reviews', 'Your RealSatisfied reviews and ratings on your websites, updated daily.',
+            scope: 'agent', auth: 'api_key', syncs: ['Your published RealSatisfied reviews and ratings, daily'], link: '/reviews', driver: RealSatisfied::class, vendorCost: 'Your RealSatisfied plan',
+            fields: [['key' => 'vanity_key', 'label' => 'Your RealSatisfied vanity key', 'type' => 'text', 'help' => 'The end of your RealSatisfied profile link, for example Jane-Doe (Agent Dashboard → Publishing).']]));
         $catalog->add(new App('studio_voice', 'AI voice-overs', 'marketing', 'Voice-overs for Ally Studio Reels and tours: a professional AI voice, or the agent\'s own voice with their recorded consent.',
             scope: 'both', auth: 'link', syncs: ['Narrated Reels and YouTube tours', 'Agents\' own voices, only with their consent; deleted when they withdraw, leave or stop using it'],
             link: '/studio/voice', vendorCost: 'Included with Ally Studio packages',
@@ -639,8 +646,7 @@ final class Catalog
             ['total_expert', 'Total Expert', 'partners', 'Shared clients and pre-approval status with lenders on Total Expert.', 'brokerage', null],
             ['qualia', 'Qualia', 'partners', 'Title orders and closing milestones from Qualia on the deal.', 'brokerage', null],
             ['updater', 'Updater', 'partners', 'Help clients move (utilities, address changes) after closing.', 'brokerage', null],
-            ['reviews', 'Reviews (Google and Zillow)', 'reviews', 'Show your reviews on your agent and brokerage websites.', 'agent', null],
-            ['realsatisfied', 'RealSatisfied', 'reviews', 'Client satisfaction surveys and reviews on your websites.', 'agent', 'Your RealSatisfied plan'],
+            ['zillow_reviews', 'Zillow reviews', 'reviews', 'Your Zillow reviews on your agent and brokerage websites.', 'agent', null],
             ['testimonial_tree', 'Testimonial Tree', 'reviews', 'Testimonials collected after closing, shown on your websites.', 'agent', 'Your Testimonial Tree plan'],
             ['icloud_calendar', 'Apple iCloud Calendar', 'calendar', 'Bookings avoid your busy times in iCloud Calendar (with an app-specific password).', 'agent', null],
         ] as [$key, $name, $category, $summary, $scope, $vendorCost]) {

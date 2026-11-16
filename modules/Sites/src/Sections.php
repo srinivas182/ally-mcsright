@@ -52,7 +52,7 @@ final class Sections
                     'a' => mb_substr(trim(strip_tags((string) ($it['a'] ?? ''))), 0, 1200)], array_slice(array_filter((array) ($p['items'] ?? []), 'is_array'), 0, 20)))],
                 'cta' => ['title' => $t('title', 120), 'body' => $t('body', 300), 'button' => $t('button', 40), 'link' => self::link($p['link'] ?? '/contact')],
                 'contact' => ['title' => $t('title', 120), 'body' => $t('body', 300)],
-                'testimonials' => ['title' => $t('title', 120), 'items' => array_map(fn (array $it): array => ['quote' => $s2($it, 'quote', 600), 'name' => $s2($it, 'name', 80),
+                'testimonials' => ['title' => $t('title', 120), 'from_reviews' => (bool) ($p['from_reviews'] ?? false), 'items' => array_map(fn (array $it): array => ['quote' => $s2($it, 'quote', 600), 'name' => $s2($it, 'name', 80),
                     'detail' => $s2($it, 'detail', 80), 'rating' => max(0, min(5, (int) ($it['rating'] ?? 5)))], $items(12))],
                 'team' => ['title' => $t('title', 120), 'items' => array_map(fn (array $it): array => ['name' => $s2($it, 'name', 80), 'role' => $s2($it, 'role', 80),
                     'photo' => self::image($it['photo'] ?? null), 'phone' => $s2($it, 'phone', 30), 'email' => filter_var($s2($it, 'email', 150), FILTER_VALIDATE_EMAIL) !== false ? $s2($it, 'email', 150) : ''], $items(24))],

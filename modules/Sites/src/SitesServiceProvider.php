@@ -64,6 +64,7 @@ final class SitesServiceProvider extends ServiceProvider
         $nav = $this->app->make(NavigationRegistry::class);
         $nav->add(new NavItem('Grow', 'Buyer demand', '/listings/demand', 'trending-up', 9, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent]));
         $nav->add(new NavItem('Grow', 'Funnels', '/funnels', 'filter', 25, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent]));
+        $nav->add(new NavItem('Grow', 'Reviews', '/reviews', 'star', 26, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent]));
         $nav->add(new NavItem('Settings', 'Website', '/settings/website', 'layout-grid', 64, kinds: [UserKind::Owner, UserKind::Staff]));
         $nav->add(new NavItem('Settings', 'My website', '/settings/my-website', 'layout-grid', 65, kinds: [UserKind::Agent]));
         $nav->add(new NavItem('Settings', 'AIlly assistant', '/settings/ailly', 'sparkles', 66, kinds: [UserKind::Owner, UserKind::Staff]));

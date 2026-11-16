@@ -15,12 +15,18 @@ use Modules\Sites\Http\Controllers\HqSitesController;
 use Modules\Sites\Http\Controllers\MediaController;
 use Modules\Sites\Http\Controllers\MyWebsiteController;
 use Modules\Sites\Http\Controllers\PageEditorController;
+use Modules\Sites\Http\Controllers\ReviewsController;
 use Modules\Sites\Http\Controllers\StudioController;
 use Modules\Sites\Http\Controllers\WebsiteSettingsController;
 
 // Settings → Website (owners and staff; specs/websites/05). The public site itself is served by ServeWebsite.
 Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function (): void {
     Route::get('settings/ailly', [AillyController::class, 'settings'])->name('settings.ailly');
+    // C8a: reviews from Google and RealSatisfied.
+    Route::get('reviews', [ReviewsController::class, 'index'])->name('reviews');
+    Route::post('reviews/{review}/reply', [ReviewsController::class, 'reply'])->where('review', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->middleware('throttle:30,1')->name('reviews.reply');
+    Route::post('reviews/{review}/hide', [ReviewsController::class, 'hide'])->where('review', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('reviews.hide');
+    Route::post('reviews/{review}/show', [ReviewsController::class, 'show'])->where('review', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('reviews.show');
     Route::post('settings/ailly', [AillyController::class, 'save'])->name('settings.ailly.save');
     Route::post('settings/ailly/answers', [AillyController::class, 'saveAnswer'])->name('settings.ailly.answers');
     Route::delete('settings/ailly/answers/{answer}', [AillyController::class, 'deleteAnswer'])->whereNumber('answer')->name('settings.ailly.answers.delete');
