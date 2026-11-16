@@ -79,6 +79,8 @@ Schedule::command('audit:maintain weekly-digest')->weeklyOn(1, '13:00')->onOneSe
 Schedule::command('audit:maintain stream')->everyMinute()->withoutOverlapping()->onOneServer();
 // Temporary access: remove expired grants (specs/core/03).
 Schedule::command('core:expire-access')->hourly()->onOneServer();
+// The quarterly access review reminder (specs/core/03, R1): Mondays, from two weeks into each quarter.
+Schedule::command('core:access-review-reminder')->weeklyOn(1, '14:23')->onOneServer();
 // Brokerage price increases reach existing agents after 30 days (specs/core/07).
 Schedule::command('billing:apply-price-changes')->dailyAt('04:00')->onOneServer();
 // Unpaid plans end after the 7-day grace period (specs/core/07).

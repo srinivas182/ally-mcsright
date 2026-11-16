@@ -13,6 +13,7 @@ use Modules\Ads\Models\Campaign;
 use Modules\Ads\Social\SocialPost;
 use Modules\Ads\Studio\StudioPlans;
 use Modules\Ads\Studio\StudioResults;
+use Modules\Core\Access\Can;
 use Modules\Core\Identity\Enums\UserKind;
 
 /**
@@ -27,7 +28,7 @@ final class StudioResultsController
         $user = $request->user();
         abort_unless($user instanceof User && in_array($user->kind, [UserKind::Owner, UserKind::Staff, UserKind::Agent], true), 403);
         $month = preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', (string) $request->query('month')) === 1 ? (string) $request->query('month') : CarbonImmutable::now()->format('Y-m');
-        $canTeam = in_array($user->kind, [UserKind::Owner, UserKind::Staff], true) && $plans->has($user, 'team_report');
+        $canTeam = Can::manage($user, 'marketing.manage') && $plans->has($user, 'team_report');
         $team = $canTeam && $request->boolean('team');
         $agents = [];
         if ($team) {

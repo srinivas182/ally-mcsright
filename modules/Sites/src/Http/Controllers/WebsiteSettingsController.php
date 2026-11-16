@@ -15,13 +15,13 @@ use Inertia\Response;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
-use Modules\Crm\CrmAccess;
 use Modules\Sites\AgentSites;
 use Modules\Sites\Content\Menus;
 use Modules\Sites\Content\Redirects;
 use Modules\Sites\Models\Site;
 use Modules\Sites\Models\SitePage;
 use Modules\Sites\PoweredBy;
+use Modules\Sites\SiteAccess;
 use Modules\Sites\SiteSetup;
 
 /** Settings → Website: create the brokerage site from a template, edit details, SEO and AI visibility, publish, domains. */
@@ -198,7 +198,7 @@ final class WebsiteSettingsController
     private static function manager(Request $request): User
     {
         $user = $request->user();
-        abort_unless($user instanceof User && CrmAccess::manager($user), 403);
+        abort_unless($user instanceof User && SiteAccess::manager($user), 403);
 
         return $user;
     }

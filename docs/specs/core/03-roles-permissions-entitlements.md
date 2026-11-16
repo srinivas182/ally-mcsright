@@ -1,17 +1,17 @@
 # 03 — Roles, permissions and entitlements (Team A, Sprints 5–6)
 
 Status: **Part 1 delivered (Sprint 8A)**: offices, teams, team members and office membership; roles with
-the nine real estate templates (Owner locked); a code-registered permission catalogue with plain-English
-labels, scopes and sensitive flags (core, finance and CRM areas); the permission engine behind every
-registered gate (owner everything; active unexpired grants; broadest scope wins; own/team/office/everyone
-record checks); **people without roles keep the access of their user type**; CRM company-contact access
-widened by role scope (never personal spheres), reassign and "Manage CRM settings" permissions; temporary
-access with end dates (ignored once expired; removed hourly by `core:expire-access`, audited as automation);
-separation of duties (bank-detail changes vs payout approval) refused in a role, across roles and at every
-check; role editor with live plain-English preview; offices and teams page; role assignment on the People
-screen; all changes audited. **Part 2 next (8A-2)**: field-level hiding in finance and compensation screens
-(compensation permissions registered with it), quarterly access review, module registry, entitlements and
-seats (with billing), HQ roles.
+real estate templates (Owner locked); a code-registered permission catalogue with plain-English labels, scopes and
+sensitive flags; the permission engine behind every registered gate (owner everything; active unexpired grants;
+broadest scope wins; own/team/office/everyone record checks); CRM company-contact access widened by role scope
+(never personal spheres); temporary access with end dates (removed hourly by `core:expire-access`); separation of
+duties refused in a role, across roles and at every check; role editor with live plain-English preview; offices and
+teams page; role assignment on the People screen; all changes audited.
+
+**Part 2 delivered (Sprint R1, 2026-11-16)**: see "R1: roles that cover every area" below.
+
+**Still to come**: module registry with entitlements and seats per module (with billing, spec 07), approval rules
+with several approvers, HQ roles.
 
 ## Purpose
 
@@ -229,3 +229,59 @@ owner.
 7. **Separation of duties**: conflicting permissions (change bank details + approve payouts) cannot be held
    together; enforced on save and on every check.
 8. **Quarterly access review**: owners confirm who has what in one screen; attestations audited (SOC 2).
+
+## R1: roles that cover every area (delivered)
+
+Leader review (November 2026): Brokermint and BoldTrail Back Office (permission settings per role, office access),
+Rechat and Glide brokerage editions (admin roles per office), HubSpot (permission sets, team and owned-only access,
+field-level view and edit limits), Follow Up Boss (simple fixed roles). None of them explains access in plain
+English, previews the result, or runs an access review. R1 does all three.
+
+1. **Roles bite everywhere.** One manager check, `Can::manage($user, $permission)` (`Permissions::manages`), replaces the
+   "owner or staff" checks across modules:
+    - **Owners** always pass.
+    - **Staff with no role** keep the access their type started with, so nothing changes until an owner assigns roles.
+    - **Once a staff member holds a role**, their access is decided by roles alone (`Permissions::governed`).
+
+    New permissions cover the areas that had none:
+
+    | Permission               | Covers                                                                                                               |
+    | ------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+    | `sites.manage`           | websites, AIlly settings, reviews, live chat take-over                                                               |
+    | `marketing.manage`       | Ally Studio and Autopilot, social posts, listing ads, funnels, buyer demand, company email and GoHighLevel campaigns |
+    | `apps.manage`            | brokerage connections                                                                                                |
+    | `billing.credits.manage` | buying credits                                                                                                       |
+    | `core.access.review`     | the access review and the who-can-do-what export (sensitive)                                                         |
+
+    These now go through the same check: roster (`roster.manage`), forms (`forms.manage`), deals (`transactions.review`)
+    and CRM settings (`crm.settings.manage`). Menu items follow the same rules.
+
+2. **Company contacts by scope.** A role-governed staff member sees their own contacts plus the company contacts their
+   role's scope allows (team, office or everyone), instead of every company contact.
+3. **Field hiding** (`Fields`): commission amounts need `finance.amounts.view`, and bank details need
+   `finance.bank_details.manage`. People always see their own figures, and assistants see their agent's. Deal pages show
+   "Hidden for your role", and the pending-commission forecast is hidden too.
+4. **More ready-made roles:** ISA (inside sales), marketing manager, recruiter, lender partner (own contacts only,
+   never money) and accountant. They join managing broker, office admin, compliance reviewer, transaction coordinator,
+   team lead, agent, assistant and read-only bookkeeper. Templates now include the deal, roster and forms permissions.
+   Brokerages that started earlier get a one-click "Add …" for each ready-made role they don't have yet.
+5. **Preview as this role:** the role editor shows the exact menu someone with the role would get, and the fields
+   hidden from them, for unsaved edits too. A pretend person runs through the real menu rules; nothing is saved.
+6. **"Why can I see this?"** on contacts and deals explains, in plain English, which role and scope give access, for
+   example: "Your role Office admin lets you see company contacts for your office. Lee Torphy is in your office." It
+   also says when access ends, and when commission is hidden.
+7. **Risky-change alert.** The other owners are emailed the moment:
+    - someone is given a role with sensitive permissions, people management, roles, payouts, ledger changes,
+      exports, CDAs, apps or credits;
+    - or a role someone already holds gains such access.
+8. **Quarterly access review** (Settings → Access review):
+    - It lists every role each person holds, risky ones first, with what it gives, the last sign-in (dormant after
+      90 days), and when the access ends.
+    - Owners keep or remove each line. A removal is revoked at once and audited.
+    - Sign-off is password-confirmed and needs every line decided. It is audited as the attestation.
+    - "Export who can do what" is a password-confirmed CSV with one row per person and permission (spreadsheet
+      formulas neutralised), and is audited.
+    - The roles page flags a review that is due. `core:access-review-reminder` emails owners on Mondays from two
+      weeks into each quarter until the review is signed off.
+
+Tests: `tests/Feature/Core/Access/RolesR1Test.php`.

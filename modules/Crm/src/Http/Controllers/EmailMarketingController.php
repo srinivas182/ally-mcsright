@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Modules\Core\Access\Can;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Connect\ConnectionData;
 use Modules\Core\Connect\ConnectorKit;
@@ -80,7 +81,7 @@ final class EmailMarketingController
 
     private static function mine(ConnectionData $c, User $user): bool
     {
-        return $c->ownerUserId === null ? in_array($user->kind, [UserKind::Owner, UserKind::Staff], true) : $c->ownerUserId === $user->id;
+        return $c->ownerUserId === null ? Can::manage($user, 'marketing.manage') : $c->ownerUserId === $user->id;
     }
 
     private static function user(Request $request): User

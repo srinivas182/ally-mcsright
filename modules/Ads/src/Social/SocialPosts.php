@@ -14,11 +14,11 @@ use Modules\Ads\ListingAds;
 use Modules\Ads\Studio\Design;
 use Modules\Ads\Studio\StudioVideo;
 use Modules\Connect\AppRegistry;
+use Modules\Core\Access\Can;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Connect\AppCatalog;
 use Modules\Core\Connect\ConnectorKit;
 use Modules\Core\Connect\NeedsReconnect;
-use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Crm\FairHousing;
@@ -244,7 +244,7 @@ final class SocialPosts
 
     private function mayUse(?int $owner, User $user): bool
     {
-        return $owner === $user->id || ($owner === null && in_array($user->kind, [UserKind::Owner, UserKind::Staff], true));
+        return $owner === $user->id || ($owner === null && Can::manage($user, 'marketing.manage'));
     }
 
     /**

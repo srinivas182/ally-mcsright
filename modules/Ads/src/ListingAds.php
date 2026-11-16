@@ -23,6 +23,7 @@ use Modules\Ads\Studio\Styles;
 use Modules\AI\Exceptions\InsufficientCredits;
 use Modules\Billing\Credits\CreditLedger;
 use Modules\Connect\Models\Connection;
+use Modules\Core\Access\Can;
 use Modules\Core\Agents\AgentCredentials;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Connect\ConnectorKit;
@@ -321,7 +322,7 @@ final class ListingAds
     public function funnel(User $user, string $ulid): ?SiteFunnel
     {
         $f = SiteFunnel::query()->where('ulid', $ulid)->where('status', 'live')->first();
-        $manager = in_array($user->kind, [UserKind::Owner, UserKind::Staff], true);
+        $manager = Can::manage($user, 'marketing.manage');
 
         return $f !== null && ($manager || $f->owner_user_id === $user->id) ? $f : null;
     }
@@ -329,7 +330,7 @@ final class ListingAds
     /** @return list<array{ulid: string, label: string}> live funnels this person may promote */
     public function funnels(User $user): array
     {
-        $manager = in_array($user->kind, [UserKind::Owner, UserKind::Staff], true);
+        $manager = Can::manage($user, 'marketing.manage');
 
         $out = [];
         foreach (SiteFunnel::query()->where('status', 'live')->when(! $manager, fn ($q) => $q->where('owner_user_id', $user->id))->orderByDesc('id')->limit(50)->get() as $f) {
@@ -443,7 +444,7 @@ final class ListingAds
     private function mlsIds(User $user): array
     {
         $creds = app(AgentCredentials::class);
-        if (! in_array($user->kind, [UserKind::Owner, UserKind::Staff], true)) {
+        if (! Can::manage($user, 'marketing.manage')) {
             return $creds->mlsIds($user->id);
         }
 

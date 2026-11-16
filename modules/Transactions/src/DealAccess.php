@@ -6,6 +6,7 @@ namespace Modules\Transactions;
 
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Modules\Core\Access\Can;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Transactions\Models\Deal;
 
@@ -18,7 +19,7 @@ final class DealAccess
 {
     public static function reviewer(User $user): bool
     {
-        return $user->isKind(UserKind::Owner, UserKind::Staff) || $user->can('transactions.review');
+        return Can::manage($user, 'transactions.review');
     }
 
     public static function actingFor(User $user): int

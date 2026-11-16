@@ -103,6 +103,13 @@ Route::middleware(['web', EnsureTenantHost::class, 'auth', 'throttle:10,1'])
 Route::middleware(['web', EnsureTenantHost::class, 'auth'])->group(function (): void {
     Route::get('settings/roles', [AccessController::class, 'roles'])->name('roles.index');
     Route::post('settings/roles/preview', [AccessController::class, 'preview'])->name('roles.preview');
+    Route::post('settings/roles/preview-as', [AccessController::class, 'previewAs'])->name('roles.preview-as');
+    Route::post('settings/roles/templates/{key}', [AccessController::class, 'addTemplate'])->where('key', '[a-z_]+')->name('roles.templates');
+    Route::get('settings/access-review', [AccessController::class, 'review'])->name('access-review.index');
+    Route::post('settings/access-review/start', [AccessController::class, 'reviewStart'])->name('access-review.start');
+    Route::post('settings/access-review/items/{item}', [AccessController::class, 'reviewDecide'])->whereNumber('item')->name('access-review.decide');
+    Route::post('settings/access-review/complete', [AccessController::class, 'reviewComplete'])->middleware('password.confirm')->name('access-review.complete');
+    Route::get('settings/access-review/export', [AccessController::class, 'reviewExport'])->middleware('password.confirm')->name('access-review.export');
     Route::post('settings/roles', [AccessController::class, 'save'])->name('roles.store');
     Route::put('settings/roles/{role}', [AccessController::class, 'save'])->name('roles.update');
     Route::post('users/{user}/roles', [AccessController::class, 'assign'])->name('roles.assign');

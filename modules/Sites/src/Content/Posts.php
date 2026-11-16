@@ -9,9 +9,9 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Modules\Core\Audit\AuditLogger;
-use Modules\Crm\CrmAccess;
 use Modules\Sites\Models\Site;
 use Modules\Sites\Models\SitePost;
+use Modules\Sites\SiteAccess;
 
 /**
  * The website blog (specs/websites/08). Posts are Markdown; raw HTML is stripped and unsafe links dropped when they
@@ -24,7 +24,7 @@ final class Posts
      */
     public function save(Site $site, ?SitePost $post, array $in, User $by): SitePost
     {
-        if (! CrmAccess::manager($by)) {
+        if (! SiteAccess::manager($by)) {
             throw ValidationException::withMessages(['post' => 'Only owners and staff can write blog posts.']);
         }
         $title = mb_substr(trim(strip_tags((string) ($in['title'] ?? ''))), 0, 160);

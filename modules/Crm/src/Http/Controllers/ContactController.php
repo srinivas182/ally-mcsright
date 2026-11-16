@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
+use Modules\Core\Access\Permissions;
 use Modules\Core\Audit\AuditEvent;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Audit\AuditPresenter;
@@ -127,6 +128,25 @@ final class ContactController
         Inertia::flash('toast', ['type' => 'success', 'message' => "{$contact->name} added."]);
 
         return to_route('crm.contacts.show', $contact);
+    }
+
+    /** "Why can I see this?" (specs/core/03, R1). */
+    public function why(Request $request, Contact $contact): JsonResponse
+    {
+        $user = self::user($request);
+        abort_unless($this->visibility->canSee($user, $contact), 404);
+        $owner = $contact->owner_user_id !== null ? User::query()->find($contact->owner_user_id) : null;
+        $explained = app(Permissions::class)->explain($user, 'crm.contacts.view', $contact, $owner?->name);
+        if ($user->kind === UserKind::Assistant && $contact->owner_user_id === $user->assisted_user_id) {
+            $explained = ['allowed' => true, 'reasons' => ['You assist '.($owner->name ?? 'the agent').', who this contact belongs to.']];
+        }
+        if (! $explained['allowed'] || $explained['reasons'] === []) {
+            $explained = ['allowed' => true, 'reasons' => [$contact->origin === Origin::Company
+                ? 'It is a company contact, and you manage the brokerage\'s company contacts.'
+                : 'It is your contact.']];
+        }
+
+        return response()->json($explained);
     }
 
     public function show(Request $request, Contact $contact): Response

@@ -28,6 +28,29 @@ final class PermissionRegistry
         }
     }
 
+    /** Access that owners hear about the moment it is given (R1), on top of every sensitive permission. */
+    public const RISKY = ['core.roles.manage', 'core.users.manage', 'core.access.review', 'finance.payouts.approve', 'finance.ledger.export',
+        'finance.ledger.adjust', 'transactions.export', 'transactions.cda.approve', 'apps.manage', 'billing.credits.manage'];
+
+    /**
+     * The risky permissions in a set, as plain-English labels.
+     *
+     * @param  list<string>  $keys
+     * @return list<string>
+     */
+    public function riskyIn(array $keys): array
+    {
+        $out = [];
+        foreach ($keys as $key) {
+            $def = $this->permissions[$key] ?? null;
+            if ($def !== null && ($def['sensitive'] || in_array($key, self::RISKY, true))) {
+                $out[] = $def['label'];
+            }
+        }
+
+        return $out;
+    }
+
     public function conflict(string $a, string $b, string $why): void
     {
         $this->conflicts[] = [$a, $b, $why];

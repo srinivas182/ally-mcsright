@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Modules\AI\FeatureCatalog;
 use Modules\AI\Support\PromptRegistry;
+use Modules\Core\Access\Can;
 use Modules\Core\Access\PermissionRegistry;
 use Modules\Core\Brief\DailyBriefs;
 use Modules\Core\Deals\DealOutcomes;
@@ -57,8 +58,7 @@ final class TransactionsServiceProvider extends ServiceProvider
         $this->app->make(McpToolbox::class)->add(Mcp\MyDeals::class);
         $this->app->make(McpToolbox::class)->add(Mcp\DealDetails::class);
         $this->app->make(McpToolbox::class)->brief('deal_deadlines', Mcp\DealDeadlines::forBrief(...));
-        Gate::define('transactions.queue', fn (User $user): bool => $user->isKind(UserKind::Owner, UserKind::Staff)
-            || $user->can('transactions.review'));
+        Gate::define('transactions.queue', fn (User $user): bool => Can::manage($user, 'transactions.review'));
         $nav->add(new NavItem('Overview', 'Deals', '/deals', 'briefcase', 25, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant], mobile: true));
         $nav->add(new NavItem('Overview', 'Review queue', '/deals/review', 'clipboard-check', 26, ability: 'transactions.queue'));
         $nav->add(new NavItem('Overview', 'Risk', '/deals/risk', 'shield-alert', 27, ability: 'transactions.queue'));

@@ -7,8 +7,8 @@ namespace Modules\Transactions;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Modules\Core\Access\Can;
 use Modules\Core\Audit\AuditLogger;
-use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Identity\Enums\UserStatus;
 use Modules\Core\Support\Connections;
 use Modules\Transactions\Models\Deal;
@@ -61,7 +61,7 @@ final class Reviews
         $deal = Deal::query()->find($item->deal_id);
         $reviewers = User::query()->where('status', UserStatus::Active)->get()
             ->filter(fn (User $u): bool => $u->id !== $deal?->agent_user_id
-                && ($u->isKind(UserKind::Owner, UserKind::Staff) || $u->can('transactions.review')));
+                && Can::manage($u, 'transactions.review'));
         if ($reviewers->isEmpty()) {
             return null;
         }

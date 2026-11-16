@@ -25,6 +25,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/ui/page-header';
 import { usd } from '@/lib/cents';
+import { WhyCanISee } from '@/components/why-can-i-see';
 
 type Item = {
     ulid: string;
@@ -47,7 +48,8 @@ type Props = {
         type: string;
         status: string;
         price_cents: number;
-        gci_cents: number;
+        gci_cents: number | null;
+        commission_hidden: boolean;
         mls_number: string | null;
         contract_date: string | null;
         closing_date: string | null;
@@ -299,6 +301,7 @@ export default function ShowDeal({
                     title={deal.street}
                     description={`${[deal.city, deal.state_code, deal.postal_code].filter(Boolean).join(', ')} · ${deal.agent ?? ''}${deal.locked ? ' · Closed and locked' : ''}${deal.imported_from ? ` · Brought over from ${deal.imported_from}` : ''}`}
                 />
+                <WhyCanISee url={`/deals/${deal.ulid}/why`} />
                 <section className="grid gap-2 rounded-lg border p-4 text-sm md:grid-cols-4">
                     <span>
                         Status:{' '}
@@ -309,7 +312,11 @@ export default function ShowDeal({
                     <span>Price: {usd(deal.price_cents)}</span>
                     <span>
                         Commission (GCI):{' '}
-                        {deal.gci_cents ? usd(deal.gci_cents) : '—'}
+                        {deal.commission_hidden
+                            ? 'Hidden for your role'
+                            : deal.gci_cents
+                              ? usd(deal.gci_cents)
+                              : '—'}
                     </span>
                     <span>
                         Closing: {deal.closed_on ?? deal.closing_date ?? '—'}

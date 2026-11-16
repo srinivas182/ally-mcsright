@@ -12,7 +12,6 @@ use Modules\Core\Agents\AgentCredentials;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Tenancy\Models\TenantDomain;
-use Modules\Crm\CrmAccess;
 use Modules\Sites\Content\MediaLibrary;
 use Modules\Sites\Models\Site;
 use Modules\Sites\Models\SitePage;
@@ -49,7 +48,7 @@ final class AgentSites
      */
     public function saveRules(array $in, User $by): void
     {
-        if (! CrmAccess::manager($by)) {
+        if (! SiteAccess::manager($by)) {
             throw ValidationException::withMessages(['agents' => 'Only owners and staff can set the brand kit.']);
         }
         $site = $this->sites->brokerageSite() ?? throw ValidationException::withMessages(['agents' => 'Create the brokerage website first.']);
@@ -139,7 +138,7 @@ final class AgentSites
     public function addDomain(Site $site, string $host, User $by): TenantDomain
     {
         self::guardOwner($site, $by);
-        if (! self::rules()['domain'] && ! CrmAccess::manager($by)) {
+        if (! self::rules()['domain'] && ! SiteAccess::manager($by)) {
             throw ValidationException::withMessages(['host' => 'Your brokerage has not allowed agents to use their own domain.']);
         }
         $domain = $this->sites->addDomain($host, $by, allowAgent: true);
@@ -169,7 +168,7 @@ final class AgentSites
 
     private static function guardOwner(Site $site, User $by): void
     {
-        if ($site->kind !== 'agent' || ($site->user_id !== $by->id && ! CrmAccess::manager($by))) {
+        if ($site->kind !== 'agent' || ($site->user_id !== $by->id && ! SiteAccess::manager($by))) {
             throw ValidationException::withMessages(['site' => 'You can only change your own website.']);
         }
     }

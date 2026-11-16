@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Modules\Core\Access\Can;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Support\Connections;
@@ -31,7 +32,7 @@ final class Roster
 
     public static function manages(User $user): bool
     {
-        return $user->isKind(UserKind::Owner, UserKind::Staff) || $user->can('roster.manage');
+        return Can::manage($user, 'roster.manage');
     }
 
     /**

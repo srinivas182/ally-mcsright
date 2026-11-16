@@ -13,7 +13,10 @@ use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Core\Audit\AuditLogger;
+use Modules\Core\Identity\Enums\UserKind;
+use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Support\Connections;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Roles (plain-English editor with preview), role assignment, offices and teams.
@@ -35,8 +38,106 @@ final class AccessController
                 'preview' => $this->roles->describe($this->roles->permissionsOf($r), $r->is_locked),
             ])->values(),
             'catalogue' => collect($this->registry->all())->groupBy('area')->map(fn ($items, $area): array => ['area' => $area, 'permissions' => $items->values()])->values(),
+            'missingTemplates' => $this->roles->missingTemplates(),
+            'accessReviewDue' => app(AccessReviews::class)->due(),
             'conflicts' => array_map(fn (array $c): array => ['a' => $c[0], 'b' => $c[1], 'why' => $c[2]], $this->registry->conflicts()),
         ]);
+    }
+
+    /**
+     * Preview as this role (R1): the menu someone with it would see, what it lets them do, and the fields hidden from
+     * them. Nothing is saved; works for unsaved edits too.
+     */
+    public function previewAs(Request $request, NavigationRegistry $navigation, Permissions $permissions): JsonResponse
+    {
+        $by = $this->authorise($request, 'core.roles.manage');
+        $data = $request->validate(['permissions' => ['array']]);
+        /** @var array<string, string|null> $perms */
+        $perms = array_filter((array) ($data['permissions'] ?? []), fn ($v, $k) => $this->registry->has((string) $k), ARRAY_FILTER_USE_BOTH);
+        $grants = [];
+        foreach ($perms as $key => $scope) {
+            $grants[$key] = ($this->registry->get($key)['scoped'] ?? false) && in_array($scope, PermissionRegistry::SCOPES, true) ? (string) $scope : 'tenant';
+        }
+        $pretend = new User;
+        $pretend->forceFill(['id' => 0, 'kind' => UserKind::Staff, 'tenant_id' => $by->tenant_id, 'first_name' => 'Preview', 'last_name' => '', 'status' => 'active']);
+        $menu = $permissions->simulate($pretend, $grants, fn (User $u): array => $navigation->for($u));
+
+        return response()->json([
+            'menu' => array_map(fn (array $g): array => ['label' => $g['label'], 'items' => array_column($g['items'], 'title')], $menu),
+            'lines' => $this->roles->describe($perms),
+            'hidden' => Fields::hiddenFor($perms),
+        ]);
+    }
+
+    public function addTemplate(Request $request, string $key): RedirectResponse
+    {
+        $user = $this->authorise($request, 'core.roles.manage');
+        $role = $this->roles->addTemplate($key, $user);
+        Inertia::flash('toast', ['type' => 'success', 'message' => "{$role->name} added."]);
+
+        return back();
+    }
+
+    public function review(Request $request, AccessReviews $reviews): Response
+    {
+        $user = $this->reviewer($request);
+        $current = $reviews->current();
+
+        return Inertia::render('settings/access-review', [
+            'quarter' => AccessReviews::quarter(),
+            'started' => $current !== null,
+            'completed' => $current?->completed_at,
+            'completedBy' => $current?->completed_by !== null ? User::query()->find($current->completed_by)?->name : null,
+            'note' => $current?->note,
+            'items' => $reviews->items(),
+            'history' => DB::connection(Connections::cell())->table('access_reviews')->whereNotNull('completed_at')->orderByDesc('quarter')->limit(8)->get(['quarter', 'completed_at'])
+                ->map(fn ($r): array => ['quarter' => (string) $r->quarter, 'completed_at' => CarbonImmutable::parse((string) $r->completed_at)->toDateString()])->values(),
+            'canAct' => $user->kind === UserKind::Owner || app(Permissions::class)->allows($user, 'core.access.review'),
+        ]);
+    }
+
+    public function reviewStart(Request $request, AccessReviews $reviews): RedirectResponse
+    {
+        $reviews->start($this->reviewer($request));
+
+        return back();
+    }
+
+    public function reviewDecide(Request $request, AccessReviews $reviews, int $item): RedirectResponse
+    {
+        $user = $this->reviewer($request);
+        $data = $request->validate(['decision' => ['required', 'in:keep,remove']]);
+        $reviews->decide($item, $data['decision'], $user);
+
+        return back();
+    }
+
+    public function reviewComplete(Request $request, AccessReviews $reviews): RedirectResponse
+    {
+        $user = $this->reviewer($request);
+        $data = $request->validate(['note' => ['nullable', 'string', 'max:500']]);
+        $reviews->complete($user, $data['note'] ?? null);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Access review signed off.']);
+
+        return back();
+    }
+
+    public function reviewExport(Request $request, AccessReviews $reviews): StreamedResponse
+    {
+        $user = $this->reviewer($request);
+        app(AuditLogger::class)->record('core.access.exported', $user, severity: 'warning', label: 'Who can do what');
+        $rows = $reviews->matrix();
+
+        return response()->streamDownload(function () use ($rows): void {
+            $out = fopen('php://output', 'w');
+            if ($out === false) {
+                return;
+            }
+            foreach ($rows as $row) {
+                fputcsv($out, array_map(fn (string $v): string => preg_match('/^[=+\-@]/', $v) === 1 ? "'".$v : $v, $row));
+            }
+            fclose($out);
+        }, 'who-can-do-what-'.now()->toDateString().'.csv', ['Content-Type' => 'text/csv']);
     }
 
     public function preview(Request $request): JsonResponse
@@ -145,6 +246,14 @@ final class AccessController
         app(AuditLogger::class)->record('core.organisation.membership_changed', $user, metadata: array_filter(['team' => $data['team'] ?? null, 'office' => $data['office'] ?? null, 'removed' => $data['remove'] ?? false]), label: $user->name);
 
         return back();
+    }
+
+    private function reviewer(Request $request): User
+    {
+        $user = $request->user();
+        abort_unless($user instanceof User && ($user->kind === UserKind::Owner || app(Permissions::class)->allows($user, 'core.access.review')), 403);
+
+        return $user;
     }
 
     private function authorise(Request $request, string $permission): User

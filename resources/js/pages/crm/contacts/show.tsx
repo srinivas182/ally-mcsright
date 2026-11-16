@@ -25,6 +25,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { formatUsPhone } from '@/components/ui/number-inputs';
+import { WhyCanISee } from '@/components/why-can-i-see';
 
 type Contact = {
     ulid: string;
@@ -616,6 +617,7 @@ export default function ContactShow({
                             {contact.owner && (
                                 <span>· Owner: {contact.owner}</span>
                             )}
+                            <WhyCanISee url={`/contacts/${contact.ulid}/why`} />
                         </span>
                     }
                     actions={

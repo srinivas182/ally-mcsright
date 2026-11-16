@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Modules\AI\FeatureCatalog;
 use Modules\AI\Support\PromptRegistry;
+use Modules\Core\Access\PermissionRegistry;
 use Modules\Core\Brief\DailyBriefs;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Leads\VisitorJourneys;
@@ -63,13 +64,17 @@ final class SitesServiceProvider extends ServiceProvider
         $features->declare(Visitors\ClosingBrief::FEATURE, 'ai.closing_brief', 'Closing brief on website leads (chat and journey)');
 
         Gate::define('hq.sites.manage', fn (User $user): bool => $user->kind === UserKind::HqStaff);
+        $this->app->make(PermissionRegistry::class)->register('Websites', [
+            'sites.manage' => ['Manage the brokerage website, AIlly assistant and reviews, and take over live chats'],
+        ]);
+        Gate::define('sites.admin', fn (User $user): bool => SiteAccess::manager($user));
         $nav = $this->app->make(NavigationRegistry::class);
         $nav->add(new NavItem('Grow', 'Buyer demand', '/listings/demand', 'trending-up', 9, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent]));
         $nav->add(new NavItem('Grow', 'Funnels', '/funnels', 'filter', 25, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent]));
         $nav->add(new NavItem('Grow', 'Reviews', '/reviews', 'star', 26, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent]));
-        $nav->add(new NavItem('Settings', 'Website', '/settings/website', 'layout-grid', 64, kinds: [UserKind::Owner, UserKind::Staff]));
+        $nav->add(new NavItem('Settings', 'Website', '/settings/website', 'layout-grid', 64, ability: 'sites.admin', kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant]));
         $nav->add(new NavItem('Settings', 'My website', '/settings/my-website', 'layout-grid', 65, kinds: [UserKind::Agent]));
-        $nav->add(new NavItem('Settings', 'AIlly assistant', '/settings/ailly', 'sparkles', 66, kinds: [UserKind::Owner, UserKind::Staff]));
+        $nav->add(new NavItem('Settings', 'AIlly assistant', '/settings/ailly', 'sparkles', 66, ability: 'sites.admin', kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant]));
         $nav->add(new NavItem('HQ', 'Websites', '/hq/sites', 'layout-grid', 17, ability: 'hq.sites.manage', kinds: [UserKind::HqStaff]));
     }
 }

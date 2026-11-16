@@ -14,7 +14,6 @@ use Modules\Core\Tenancy\Enums\SslStatus;
 use Modules\Core\Tenancy\Enums\VerificationStatus;
 use Modules\Core\Tenancy\Models\TenantDomain;
 use Modules\Core\Tenancy\TenantContext;
-use Modules\Crm\CrmAccess;
 use Modules\Sites\Models\Site;
 use Modules\Sites\Models\SitePage;
 use Modules\Sites\Models\SitePost;
@@ -225,7 +224,7 @@ final class SiteSetup
 
     private static function guard(User $by): void
     {
-        if (! CrmAccess::manager($by)) {
+        if (! SiteAccess::manager($by)) {
             throw ValidationException::withMessages(['site' => 'Only owners and staff can manage the website.']);
         }
     }

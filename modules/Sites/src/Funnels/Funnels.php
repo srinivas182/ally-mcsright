@@ -8,8 +8,8 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Modules\Core\Access\Can;
 use Modules\Core\Audit\AuditLogger;
-use Modules\Core\Identity\Enums\UserKind;
 use Modules\Crm\FairHousing;
 use Modules\Crm\Models\Contact;
 use Modules\Crm\Models\Lead;
@@ -57,7 +57,7 @@ final class Funnels
         $headline = trim(strip_tags((string) ($in['headline'] ?? ''))) ?: str_replace(':area', $area, $template['headline']);
         $intro = trim(strip_tags((string) ($in['intro'] ?? ''))) ?: $template['intro'];
         self::checkWords($headline.' '.$intro);
-        $manager = in_array($by->kind, [UserKind::Owner, UserKind::Staff], true);
+        $manager = Can::manage($by, 'marketing.manage');
         $base = Str::slug(mb_substr($in['kind'] === 'home_value' ? 'home value '.$area : $headline, 0, 60)) ?: 'homes';
         $slug = $base;
         for ($i = 2; SiteFunnel::query()->where('site_id', $site->id)->where('slug', $slug)->exists(); $i++) {

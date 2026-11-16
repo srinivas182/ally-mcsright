@@ -16,6 +16,7 @@ use Modules\Billing\Credits\CreditLedger;
 use Modules\Billing\Credits\CreditPurchases;
 use Modules\Billing\Credits\Models\CreditLedgerEntry;
 use Modules\Billing\Credits\RateCard;
+use Modules\Core\Access\Can;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Identity\Enums\UserKind;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
@@ -180,7 +181,7 @@ final class CreditsController
 
     private static function isManager(User $user): bool
     {
-        return in_array($user->kind, [UserKind::Owner, UserKind::Staff], true);
+        return Can::manage($user, 'billing.credits.manage');
     }
 
     private static function manager(Request $request): User

@@ -9,6 +9,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Modules\Core\Access\Can;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Crm\Models\LeadSource;
 use Modules\Sites\Funnels\Funnels;
@@ -83,7 +84,7 @@ final class FunnelAdminController
 
     private static function manager(User $user): bool
     {
-        return in_array($user->kind, [UserKind::Owner, UserKind::Staff], true);
+        return Can::manage($user, 'marketing.manage');
     }
 
     private static function user(Request $request): User

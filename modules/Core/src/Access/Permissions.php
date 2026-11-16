@@ -29,6 +29,9 @@ final class Permissions
     /** @var array<int, array<string, string>> user id => permission => broadest scope */
     private array $cache = [];
 
+    /** @var array<int, bool> user id => access decided by roles (R1) */
+    private array $governed = [];
+
     public function __construct(private readonly PermissionRegistry $registry) {}
 
     public function allows(User $user, string $key, ?Model $record = null): bool
@@ -47,6 +50,114 @@ final class Permissions
         }
 
         return $record === null || $this->inScope($user, $grants[$key], $record);
+    }
+
+    /**
+     * Whether this person's access is decided by roles (specs/core/03, R1). Owners never are (they have
+     * everything). Staff are once they hold at least one active role; until then they keep the access of
+     * their user type. Everyone else always is.
+     */
+    public function governed(User $user): bool
+    {
+        if ($user->kind === UserKind::Owner) {
+            return false;
+        }
+        if (isset($this->governed[$user->id])) {
+            return $this->governed[$user->id];
+        }
+
+        return $this->governed[$user->id] = $user->kind !== UserKind::Staff || $this->activeRoles($user)->isNotEmpty();
+    }
+
+    /**
+     * The manager check used by every module (R1): owners always; staff without roles keep their
+     * type's access; anyone whose access is decided by roles needs the permission.
+     */
+    public function manages(User $user, string $key): bool
+    {
+        if ($user->kind === UserKind::Owner) {
+            return true;
+        }
+        if ($user->kind === UserKind::Staff && ! $this->governed($user)) {
+            return true;
+        }
+
+        return $this->allows($user, $key);
+    }
+
+    /**
+     * Run $fn with a pretend person holding exactly these grants (preview as a role). Nothing is saved.
+     *
+     * @template T
+     *
+     * @param  array<string, string>  $grants
+     * @param  callable(User): T  $fn
+     * @return T
+     */
+    public function simulate(User $pretend, array $grants, callable $fn): mixed
+    {
+        $saved = [$this->cache[$pretend->id] ?? null, $this->governed[$pretend->id] ?? null];
+        $this->cache[$pretend->id] = $grants;
+        $this->governed[$pretend->id] = true;
+        try {
+            return $fn($pretend);
+        } finally {
+            unset($this->cache[$pretend->id], $this->governed[$pretend->id]);
+            if ($saved[0] !== null) {
+                $this->cache[$pretend->id] = $saved[0];
+            }
+            if ($saved[1] !== null) {
+                $this->governed[$pretend->id] = $saved[1];
+            }
+        }
+    }
+
+    /**
+     * "Why can I see this?" (R1): the plain-English reasons a person has a permission on a record, or
+     * why not.
+     *
+     * @return array{allowed: bool, reasons: list<string>}
+     */
+    public function explain(User $user, string $key, ?Model $record = null, ?string $ownerName = null): array
+    {
+        $label = lcfirst($this->registry->get($key)['label'] ?? $key);
+        if ($user->kind === UserKind::Owner) {
+            return ['allowed' => true, 'reasons' => ['You are an owner of the brokerage, so you can '.$label.' for everyone.']];
+        }
+        $owner = $record?->getAttribute('owner_user_id') ?? $record?->getAttribute('assigned_to') ?? $record?->getAttribute('user_id');
+        $reasons = [];
+        if ($owner !== null && (int) $owner === $user->id) {
+            $reasons[] = 'It is yours: you are the person it belongs to.';
+        }
+        if ($user->kind === UserKind::Staff && ! $this->governed($user)) {
+            $reasons[] = 'You are brokerage staff with no role assigned yet, so you keep the staff access the brokerage started with.';
+
+            return ['allowed' => true, 'reasons' => $reasons];
+        }
+        $where = ['own' => 'for your own records', 'team' => 'for your team', 'office' => 'for your office', 'tenant' => 'for everyone'];
+        foreach ($this->activeRoles($user) as $role) {
+            $scope = DB::connection(Connections::cell())->table('role_permissions')->where('role_id', $role->id)->where('permission_key', $key)->value('scope');
+            $has = DB::connection(Connections::cell())->table('role_permissions')->where('role_id', $role->id)->where('permission_key', $key)->exists();
+            if (! $has) {
+                continue;
+            }
+            $scope = (string) ($scope ?? 'tenant');
+            $line = "Your role {$role->name} lets you {$label}".(($this->registry->get($key)['scoped'] ?? false) ? ' '.$where[$scope] : '').'.';
+            $expires = UserRole::query()->where('user_id', $user->id)->where('role_id', $role->id)->value('expires_at');
+            if ($expires !== null) {
+                $line .= ' This access ends on '.CarbonImmutable::parse((string) $expires)->toFormattedDateString().'.';
+            }
+            $reasons[] = $line;
+            if ($record !== null && $owner !== null && (int) $owner !== $user->id && in_array($scope, ['team', 'office'], true)) {
+                $reasons[] = ($ownerName ?? 'The person it belongs to').' is in your '.$scope.'.';
+            }
+        }
+        $allowed = $this->allows($user, $key, $record) || ($owner !== null && (int) $owner === $user->id);
+        if (! $allowed) {
+            $reasons = ['None of your roles lets you '.$label.' here. Ask an owner if you need it.'];
+        }
+
+        return ['allowed' => $allowed, 'reasons' => $reasons];
     }
 
     /**
@@ -125,8 +236,9 @@ final class Permissions
     {
         if ($user === null) {
             $this->cache = [];
+            $this->governed = [];
         } else {
-            unset($this->cache[$user->id]);
+            unset($this->cache[$user->id], $this->governed[$user->id]);
         }
     }
 

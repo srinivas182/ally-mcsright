@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Modules\Connect\AppRegistry;
+use Modules\Core\Access\Can;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Connect\AppCatalog;
 use Modules\Core\Identity\Enums\UserKind;
@@ -111,7 +112,7 @@ final class BrandKits
 
         return array_values(array_filter([
             $k['headshot'] === null ? 'Your headshot' : null,
-            $k['logo'] === null ? 'The brokerage logo'.(in_array($user->kind, [UserKind::Owner, UserKind::Staff], true) ? '' : ' (your broker adds it)') : null,
+            $k['logo'] === null ? 'The brokerage logo'.(Can::manage($user, 'marketing.manage') ? '' : ' (your broker adds it)') : null,
             ($k['details']['licence_line'] ?? '') === '' ? 'Your licence line' : null,
             ($k['details']['phone'] ?? '') === '' ? 'Your phone number' : null,
         ]));
