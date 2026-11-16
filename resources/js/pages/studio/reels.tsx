@@ -1,6 +1,8 @@
 import { Head, Link, router, usePoll } from '@inertiajs/react';
 import { useState } from 'react';
 
+import { postJson } from '@/lib/http';
+
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -20,7 +22,101 @@ type Reel = {
     moment: string;
     title: string;
     music: string | null;
+    narration: string | null;
+    voice: string | null;
+    narration_error: string | null;
+    max_words: number;
 };
+
+type Voice = { key: string; label: string };
+
+/** SA5b: a voice-over for one video, drafted by AI to fit, editable, in a stock voice or the agent's own. */
+function Narrate({ reel, voices }: { reel: Reel; voices: Voice[] }) {
+    const [open, setOpen] = useState(false);
+    const [script, setScript] = useState(reel.narration ?? '');
+    const [voice, setVoice] = useState(reel.voice ?? voices[0]?.key ?? '');
+    const [busy, setBusy] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const words = script.trim() === '' ? 0 : script.trim().split(/\s+/).length;
+
+    const draft = () => {
+        setBusy(true);
+        setError(null);
+        postJson<{ script: string }>(`/studio/reels/${reel.ulid}/script`, {})
+            .then((d) => setScript(d.script))
+            .catch(() =>
+                setError("The AI couldn't write it just now. Write your own."),
+            )
+            .finally(() => setBusy(false));
+    };
+
+    if (!open) {
+        return (
+            <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+                {reel.narration ? 'Change the voice-over' : 'Add a voice-over'}
+            </Button>
+        );
+    }
+
+    return (
+        <div className="grid w-full gap-2 rounded-lg border p-2 text-sm">
+            <label className="grid gap-1">
+                Voice
+                <select
+                    className="h-10 rounded-md border bg-background px-2"
+                    value={voice}
+                    onChange={(e) => setVoice(e.target.value)}
+                >
+                    {voices.map((v) => (
+                        <option key={v.key} value={v.key}>
+                            {v.label}
+                        </option>
+                    ))}
+                </select>
+            </label>
+            <label className="grid gap-1">
+                What it says ({words} of about {reel.max_words} words)
+                <textarea
+                    className="min-h-28 rounded-md border bg-background p-2"
+                    value={script}
+                    onChange={(e) => setScript(e.target.value)}
+                />
+            </label>
+            <p className="text-xs text-muted-foreground">
+                Describe the home, not who should live there (US Fair Housing).
+            </p>
+            {error && <p className="text-destructive">{error}</p>}
+            <div className="flex flex-wrap gap-2">
+                <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={busy}
+                    onClick={draft}
+                >
+                    {busy ? 'Writing…' : 'Write it with AI'}
+                </Button>
+                <Button
+                    size="sm"
+                    disabled={script.trim() === '' || voice === ''}
+                    onClick={() =>
+                        router.post(
+                            `/studio/reels/${reel.ulid}/narrate`,
+                            { narration: script, voice },
+                            {
+                                onError: (e) =>
+                                    setError(
+                                        Object.values(e).join(' ') || null,
+                                    ),
+                            },
+                        )
+                    }
+                >
+                    Add the voice-over
+                </Button>
+            </div>
+        </div>
+    );
+}
 
 /**
  * Studio → Reels (specs/grow/13, SA3): Reels and Shorts made from listing designs, in the same style: the cover,
@@ -32,6 +128,9 @@ export default function StudioReels({
     tour_usage,
     listings,
     reels,
+    voices,
+    voice_usage,
+    voice_on,
 }: {
     ready: boolean;
     usage: { used: number; extra: number; allowance: number };
@@ -40,6 +139,9 @@ export default function StudioReels({
     moods: Record<string, string>;
     tracks: { ulid: string; label: string; mood: string }[];
     reels: Reel[];
+    voices: Voice[];
+    voice_usage: { used: number; extra: number; allowance: number };
+    voice_on: boolean;
 }) {
     const [listing, setListing] = useState(listings[0]?.ulid ?? '');
     usePoll(
@@ -84,6 +186,15 @@ export default function StudioReels({
                             Make one from a listing design
                         </Link>
                     </Button>
+                    {voice_on && (
+                        <span>
+                            {voice_usage.used} of {voice_usage.allowance}{' '}
+                            voice-overs used.{' '}
+                            <Link href="/studio/voice" className="underline">
+                                My own voice
+                            </Link>
+                        </span>
+                    )}
                 </div>
                 <div className="flex flex-wrap items-center gap-3 rounded-xl border p-3">
                     <span className="font-medium">YouTube listing tour</span>
@@ -156,6 +267,14 @@ export default function StudioReels({
                                 {r.music && (
                                     <span className="text-xs text-muted-foreground">
                                         Music: {r.music}
+                                        {r.narration
+                                            ? ` · Voice-over: ${voices.find((v) => v.key === r.voice)?.label ?? 'AI voice'}`
+                                            : ''}
+                                    </span>
+                                )}
+                                {r.narration_error && (
+                                    <span className="text-xs text-destructive">
+                                        {r.narration_error}
                                     </span>
                                 )}
                                 {r.status === 'ready' && (
@@ -194,6 +313,9 @@ export default function StudioReels({
                                                 Download MP4
                                             </a>
                                         </Button>
+                                        {voice_on && voices.length > 0 && (
+                                            <Narrate reel={r} voices={voices} />
+                                        )}
                                     </div>
                                 )}
                             </li>

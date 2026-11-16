@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
@@ -27,9 +28,17 @@ use Modules\Ads\Studio\StudioPlans;
 use Modules\Ads\Studio\StudioVideo;
 use Modules\Ads\Studio\Video\FakeVideoMaker;
 use Modules\Ads\Studio\Video\VideoMaker;
+use Modules\Ads\Studio\Voice\FakeVoice;
+use Modules\Ads\Studio\Voice\Narration;
+use Modules\Ads\Studio\Voice\StudioVoice;
+use Modules\Ads\Studio\Voice\VoiceVendor;
+use Modules\AI\Models\AiFeatureRoute;
+use Modules\AI\Models\AiModel;
+use Modules\AI\Providers\ProviderRegistry;
 use Modules\Billing\Credits\CreditLedger;
 use Modules\Connect\AppRegistry;
 use Modules\Core\Connect\AppCatalog;
+use Modules\Core\Identity\Enums\UserStatus;
 use Modules\Core\Support\Connections;
 use Modules\Listings\Access\MlsAccess;
 use Modules\Listings\Feed\FakeResoFeed;
@@ -40,6 +49,7 @@ use Modules\Listings\Models\MlsAuthorization;
 use Modules\Listings\Models\MlsSource;
 use Modules\Listings\Sync\ListingSync;
 use Modules\Sites\SiteSetup;
+use Tests\Fixtures\FakeAiProvider;
 
 /* Sprint SA3: Reels and Shorts — a listing design becomes a 9:16 video in the same style (cover, photos, details)
    with licensed music; counted once when downloaded or posted; posted as an Instagram Reel and a Facebook video. */
@@ -187,4 +197,114 @@ it('adds a Reel to a new listing\'s launch on Autopilot, from the package\'s Ree
         'on_market_date' => now()]);
     app(Autopilot::class)->runFor($this->jane);
     expect(StudioVideo::query()->count())->toBe($before)->and(QueuedPost::query()->where('source_key', 'reel:'.$second->ulid)->exists())->toBeFalse();
+});
+
+/** SA5b: voice-overs on, an AI route for scripts, and a finished Reel of Jane's. */
+function voiceReady(object $t): StudioVideo
+{
+    $hq = User::factory()->make(['id' => 999999]);
+    app()->instance(VoiceVendor::class, $t->voice = new FakeVoice);
+    app(AppRegistry::class)->save(app(AppCatalog::class)->find('studio_voice'), true, ['api_key' => 'xi-test'], null, $hq);
+    app(StudioPlans::class)->savePackage('studio_essentials', ['posts' => 30, 'reels' => 1, 'tours' => 1, 'enhance' => 2, 'voice' => 2], $hq);
+    $model = AiModel::factory()->create(['capabilities' => ['chat']]);
+    AiFeatureRoute::query()->create(['feature_key' => Narration::FEATURE, 'primary_model_id' => $model->id, 'fallback_model_ids' => [], 'credit_action_key' => 'ai.studio_caption']);
+    app(ProviderRegistry::class)->fake($model->provider->key, $t->ai = new FakeAiProvider);
+    $t->actingAs($t->jane)->post('/studio/designs', ['moment' => 'just_listed', 'listing' => $t->home->ulid])->assertSessionHasNoErrors();
+    $t->actingAs($t->jane)->post('/studio/designs/'.Design::query()->orderBy('id')->firstOrFail()->ulid.'/reel')->assertRedirect('/studio/reels');
+
+    return StudioVideo::query()->sole();
+}
+
+it('narrates a Reel in a professional AI voice: an AI script that fits, Fair Housing checked, mixed over the music, counted once', function (): void {
+    $reel = voiceReady($this);
+    $oldPath = (string) $reel->path;
+    $this->actingAs($this->jane)->get('/studio/reels')->assertInertia(fn (Assert $p) => $p->where('voice_on', true)->where('voices.0.key', 'stock:stock-rachel')
+        ->where('reels.0.max_words', Narration::maxWords($reel)));
+    $this->ai->respond((string) json_encode(['script' => 'Welcome to 201 Pine Rd in Austin. Three bedrooms, warm light and a big yard. Book your private tour today.']));
+    $this->actingAs($this->jane)->postJson('/studio/reels/'.$reel->ulid.'/script')->assertOk()->assertJsonPath('script', 'Welcome to 201 Pine Rd in Austin. Three bedrooms, warm light and a big yard. Book your private tour today.');
+    // An AI script that fails the Fair Housing check is never offered.
+    $this->ai->respond((string) json_encode(['script' => 'Perfect for young families who want great schools.']));
+    expect($this->actingAs($this->jane)->postJson('/studio/reels/'.$reel->ulid.'/script')->json('script'))->not->toContain('families')->toContain('Book your private tour');
+
+    $this->actingAs($this->jane)->post('/studio/reels/'.$reel->ulid.'/narrate', ['narration' => 'Perfect for young couples with no kids.', 'voice' => 'stock:stock-rachel'])->assertSessionHasErrors('narration');
+    $this->actingAs($this->jane)->post('/studio/reels/'.$reel->ulid.'/narrate', ['narration' => str_repeat('word ', 200), 'voice' => 'stock:stock-rachel'])->assertSessionHasErrors('narration');
+    $this->actingAs($this->jane)->post('/studio/reels/'.$reel->ulid.'/narrate', ['narration' => 'Welcome home.', 'voice' => 'own'])->assertSessionHasErrors('voice'); // no own voice yet
+    $this->actingAs($this->jane)->post('/studio/reels/'.$reel->ulid.'/narrate', ['narration' => 'Welcome to 201 Pine Rd. Book your private tour today.', 'voice' => 'stock:stock-rachel'])
+        ->assertRedirect('/studio/reels');
+
+    $reel->refresh();
+    expect($reel->only(['status', 'voice', 'narration_error']))->toBe(['status' => 'ready', 'voice' => 'stock:stock-rachel', 'narration_error' => null])
+        ->and($this->voice->spoken)->toBe([['voice' => 'stock-rachel', 'text' => 'Welcome to 201 Pine Rd. Book your private tour today.']])
+        ->and($this->video->made[1]['voice'])->toStartWith('ID3')->and($this->video->made[1]['music'])->toBe($this->video->made[0]['music'])
+        ->and($reel->path)->not->toBe($oldPath)->toContain('-n')
+        ->and(app(StudioPlans::class)->usage($this->jane)['voice'])->toMatchArray(['used' => 1, 'extra' => 0]);
+    Storage::disk('public')->assertMissing($oldPath);
+    Storage::disk('public')->assertExists((string) $reel->path);
+    $this->actingAs($this->owner)->post('/studio/reels/'.$reel->ulid.'/narrate', ['narration' => 'Hi.', 'voice' => 'stock:stock-rachel'])->assertNotFound(); // only theirs
+});
+
+it('keeps the video and gives the narration back when the voice service fails', function (): void {
+    $reel = voiceReady($this);
+    $this->voice->fail = true;
+    $this->actingAs($this->jane)->post('/studio/reels/'.$reel->ulid.'/narrate', ['narration' => 'Welcome home. Book your private tour today.', 'voice' => 'stock:stock-adam']);
+    expect($reel->refresh()->only(['status', 'voice', 'narration']))->toBe(['status' => 'ready', 'voice' => null, 'narration' => null])
+        ->and($reel->narration_error)->toContain('back in your allowance')->and($this->video->made[1]['voice'])->toBeNull()
+        ->and(app(StudioPlans::class)->usage($this->jane)['voice']['used'])->toBe(0);
+});
+
+it('makes an agent\'s own voice only with their signed and spoken consent, uses it only for them, and deletes it on request', function (): void {
+    $reel = voiceReady($this);
+    $this->withoutMiddleware(ThrottleRequests::class); // this test makes many attempts on purpose
+    $this->actingAs($this->jane)->get('/studio/voice')->assertInertia(fn (Assert $p) => $p->component('studio/voice')->where('own', null)
+        ->where('consent', fn ($c): bool => str_starts_with((string) $c, 'I, Jane Agent, agree') && str_contains((string) $c, '12 months')));
+    $clip = fn (): UploadedFile => UploadedFile::fake()->create('voice.webm', 300, 'audio/webm');
+    // Making a voice asks for the password first.
+    $this->flushSession();
+    $this->actingAs($this->jane)->post('/studio/voice', ['name' => 'Jane Agent', 'agree' => '1', 'recordings' => [$clip()]])->assertRedirect();
+    expect(StudioVoice::query()->count())->toBe(0);
+
+    $confirmed = $this->actingAs($this->jane)->withSession(['auth.password_confirmed_at' => now()->getTimestamp()]);
+    $confirmed->post('/studio/voice', ['name' => 'Someone Else', 'agree' => '1', 'recordings' => [$clip()]])->assertSessionHasErrors('name');
+    $confirmed->post('/studio/voice', ['name' => 'Jane Agent', 'recordings' => [$clip()]])->assertSessionHasErrors('agree');
+    $confirmed->post('/studio/voice', ['name' => 'Jane Agent', 'agree' => '1'])->assertSessionHasErrors('recordings');
+    $confirmed->post('/studio/voice', ['name' => 'Jane Agent', 'agree' => '1', 'recordings' => [UploadedFile::fake()->create('x.pdf', 300, 'application/pdf')]])->assertSessionHasErrors('recordings');
+    $confirmed->post('/studio/voice', ['name' => ' jane  agent ', 'agree' => '1', 'recordings' => [$clip()]])->assertRedirect('/studio/voice');
+
+    $voice = StudioVoice::query()->sole();
+    expect($voice->only(['user_id', 'status', 'voice_ref', 'consent_version']))->toBe(['user_id' => $this->jane->id, 'status' => 'active', 'voice_ref' => 'own-voice-1', 'consent_version' => 1])
+        ->and($voice->consent_text)->toStartWith('I, Jane Agent, agree')->and($voice->recording_sha256)->toHaveLength(64)
+        ->and(DB::connection(Connections::cell())->table('studio_voices')->value('voice_ref'))->not->toContain('own-voice') // encrypted at rest
+        ->and($this->voice->cloned)->toBe([['label' => 'RightAlly '.$this->tenant->ulid.' '.$this->jane->id, 'files' => 1]]);
+
+    // Only Jane can use it.
+    expect(array_column(app(Narration::class)->voices($this->jane), 'key'))->toContain('own')
+        ->and(array_column(app(Narration::class)->voices($this->owner), 'key'))->not->toContain('own');
+    $this->actingAs($this->jane)->post('/studio/reels/'.$reel->ulid.'/narrate', ['narration' => 'Welcome home. Book your private tour today.', 'voice' => 'own'])->assertRedirect('/studio/reels');
+    expect($this->voice->spoken[0]['voice'])->toBe('own-voice-1')->and($voice->refresh()->last_used_at)->not->toBeNull();
+
+    $this->actingAs($this->jane)->delete('/studio/voice')->assertRedirect('/studio/voice');
+    expect($voice->refresh()->only(['status', 'voice_ref', 'deleted_reason']))->toBe(['status' => 'deleted', 'voice_ref' => null, 'deleted_reason' => 'Deleted by the agent'])
+        ->and($this->voice->deleted)->toBe(['own-voice-1']);
+    $this->actingAs($this->jane)->post('/studio/reels/'.$reel->ulid.'/narrate', ['narration' => 'Welcome home.', 'voice' => 'own'])->assertSessionHasErrors('voice');
+});
+
+it('deletes own voices when the agent leaves or after 12 months unused', function (): void {
+    voiceReady($this);
+    $bob = User::factory()->create(['first_name' => 'Bob', 'last_name' => 'Agent']);
+    foreach ([$this->jane, $bob] as $i => $u) {
+        StudioVoice::query()->create(['user_id' => $u->id, 'voice_ref' => 'v-'.$i, 'status' => 'active', 'consent_name' => $u->name, 'consent_text' => 'I agree',
+            'consent_version' => 1, 'recording_sha256' => str_repeat('a', 64), 'consent_at' => now()]);
+    }
+    $this->travelTo(now()->addMonths(6));
+    $this->artisan('ads:studio-voices')->assertSuccessful();
+    expect(StudioVoice::query()->where('status', 'active')->count())->toBe(2);
+
+    $bob->forceFill(['status' => UserStatus::Deactivated])->save();
+    $this->artisan('ads:studio-voices')->assertSuccessful();
+    expect(StudioVoice::query()->where('user_id', $bob->id)->value('deleted_reason'))->toBe('Left the brokerage');
+
+    $this->travelTo(now()->addMonths(7));
+    $this->artisan('ads:studio-voices')->assertSuccessful();
+    expect(StudioVoice::query()->where('user_id', $this->jane->id)->value('deleted_reason'))->toBe('Unused for 12 months')
+        ->and($this->voice->deleted)->toBe(['v-1', 'v-0']);
 });

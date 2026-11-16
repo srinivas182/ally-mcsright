@@ -12,6 +12,7 @@ use Illuminate\Validation\ValidationException;
 use Modules\Ads\Jobs\RenderReel;
 use Modules\Ads\Studio\Render\StudioRenderer;
 use Modules\Ads\Studio\Video\VideoMaker;
+use Modules\Ads\Studio\Voice\Narration;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Tenancy\TenantContext;
 use Throwable;
@@ -119,8 +120,9 @@ final class Reels
                 $seconds[] = $s;
             }
             $track = $video->music_ulid !== null ? $this->music->pick($video->music_ulid, 'luxury', 0) : null;
-            $mp4 = app(VideoMaker::class)->make($frames, $seconds, $track['file'] ?? null, $dir.'/reel.mp4');
-            $base = 'studio/'.strtolower($this->tenants->current()->ulid).'/videos/'.strtolower($video->ulid);
+            $voice = app(Narration::class)->audioFor($video, $dir);
+            $mp4 = app(VideoMaker::class)->make($frames, $seconds, $track['file'] ?? null, $dir.'/reel.mp4', voice: $voice);
+            $base = 'studio/'.strtolower($this->tenants->current()->ulid).'/videos/'.strtolower($video->ulid).self::version($video, $voice);
             $disk = Storage::disk('public');
             $disk->put($base.'.mp4', (string) file_get_contents($mp4), ['visibility' => 'public', 'ContentType' => 'video/mp4']);
             $img = @imagecreatefromstring((string) file_get_contents($frames[0]));
@@ -130,10 +132,11 @@ final class Reels
             }
             $disk->put($base.'.jpg', (string) ob_get_clean(), ['visibility' => 'public']);
             $total = array_sum($seconds) - 0.6 * (count($seconds) - 1);
+            $this->replaced($video, $base);
             $video->forceFill(['status' => 'ready', 'path' => $base.'.mp4', 'poster_path' => $base.'.jpg', 'seconds' => (int) round($total), 'error' => null])->save();
         } catch (Throwable $e) {
             report($e);
-            $video->forceFill(['status' => 'failed', 'error' => 'The Reel couldn\'t be made just now. Please try again.'])->save();
+            $this->failed($video, 'The Reel couldn\'t be made just now. Please try again.');
         } finally {
             File::deleteDirectory($dir);
         }
@@ -170,8 +173,9 @@ final class Reels
                 $at += $s - 0.6;
             }
             $track = $video->music_ulid !== null ? $this->music->pick($video->music_ulid, 'cinematic', 0) : null;
-            $mp4 = app(VideoMaker::class)->make($frames, $seconds, $track['file'] ?? null, $dir.'/tour.mp4', 1920, 1080);
-            $base = 'studio/'.strtolower($this->tenants->current()->ulid).'/tours/'.strtolower($video->ulid);
+            $voice = app(Narration::class)->audioFor($video, $dir);
+            $mp4 = app(VideoMaker::class)->make($frames, $seconds, $track['file'] ?? null, $dir.'/tour.mp4', 1920, 1080, $voice);
+            $base = 'studio/'.strtolower($this->tenants->current()->ulid).'/tours/'.strtolower($video->ulid).self::version($video, $voice);
             $disk = Storage::disk('public');
             $disk->put($base.'.mp4', (string) file_get_contents($mp4), ['visibility' => 'public', 'ContentType' => 'video/mp4']);
             $img = @imagecreatefromstring((string) file_get_contents($frames[0]));
@@ -180,13 +184,44 @@ final class Reels
                 imagejpeg($img, null, 90);
             }
             $disk->put($base.'.jpg', (string) ob_get_clean(), ['visibility' => 'public']);
+            $this->replaced($video, $base);
             $video->forceFill(['status' => 'ready', 'path' => $base.'.mp4', 'poster_path' => $base.'.jpg', 'seconds' => (int) round($at + 0.6), 'chapters' => $chapters,
                 'error' => null])->save();
         } catch (Throwable $e) {
             report($e);
-            $video->forceFill(['status' => 'failed', 'error' => 'The tour couldn\'t be made just now. Please try again.'])->save();
+            $this->failed($video, 'The tour couldn\'t be made just now. Please try again.');
         } finally {
             File::deleteDirectory($dir);
+        }
+    }
+
+    /** A first make fails; a re-make (adding narration) keeps the video as it was and gives the narration back. */
+    private function failed(StudioVideo $video, string $message): void
+    {
+        if ($video->path === null) {
+            $video->forceFill(['status' => 'failed', 'error' => $message])->save();
+
+            return;
+        }
+        $user = User::query()->find($video->user_id);
+        if ($user !== null && $video->narration !== null) {
+            $this->plans->giveBack($user, 'voice');
+        }
+        $video->forceFill(['status' => 'ready', 'narration' => null, 'voice' => null,
+            'narration_error' => 'The voice-over couldn\'t be added just now. Your video is as it was, and the narration is back in your allowance.'])->save();
+    }
+
+    /** A narrated video gets its own file name, so nobody is served the old one from a cache. */
+    private static function version(StudioVideo $video, ?string $voice): string
+    {
+        return $voice !== null ? '-n'.substr(sha1((string) $video->narration.$video->voice), 0, 10) : '';
+    }
+
+    /** When a video is made again (narrated), the previous files go. */
+    private function replaced(StudioVideo $video, string $base): void
+    {
+        if ($video->path !== null && $video->path !== $base.'.mp4') {
+            Storage::disk('public')->delete(array_filter([$video->path, $video->poster_path]));
         }
     }
 

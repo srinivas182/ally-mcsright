@@ -573,6 +573,14 @@ final class Catalog
                 'steps' => ['Open an Autoenhance.ai account for RightAlly and choose pay-per-image or a plan with API access.', 'Copy the API key here and switch Photo enhancement on.',
                     'Enter the real cost per photo under HQ → Costs (studio.enhance) so Studio package margins stay right.'],
                 'partner' => 'Autoenhance.ai bills RightAlly per downloaded photo.', 'docs' => 'https://docs.autoenhance.ai']));
+        $catalog->add(new App('studio_voice', 'AI voice-overs', 'marketing', 'Voice-overs for Ally Studio Reels and tours: a professional AI voice, or the agent\'s own voice with their recorded consent.',
+            scope: 'both', auth: 'link', syncs: ['Narrated Reels and YouTube tours', 'Agents\' own voices, only with their consent; deleted when they withdraw, leave or stop using it'],
+            link: '/studio/voice', vendorCost: 'Included with Ally Studio packages',
+            setup: ['needs' => 'keys', 'fields' => [['key' => 'api_key', 'label' => 'ElevenLabs API key', 'secret' => true]],
+                'steps' => ['Open an ElevenLabs account for RightAlly on a plan with commercial use and voice cloning through the API.',
+                    'Read ElevenLabs\' terms for voice cloning: RightAlly collects each agent\'s written and spoken consent before their voice is made, and deletes it when they withdraw.',
+                    'Copy the API key here and switch AI voice-overs on. Enter the real cost per narration under HQ → Costs (studio.voice).'],
+                'partner' => 'ElevenLabs bills RightAlly per character spoken and per plan.', 'docs' => 'https://elevenlabs.io/docs/api-reference']));
         $catalog->add(new App('studio_upscale', 'Photo upscaling', 'marketing', 'Doubles the size of enhanced photos with AI, so posts and Stories stay razor sharp.',
             scope: 'both', auth: 'link', syncs: ['Enhanced photos at twice the size'], link: '/studio/photos', vendorCost: 'Included with Ally Studio packages',
             setup: ['needs' => 'keys', 'fields' => [['key' => 'api_token', 'label' => 'Replicate API token', 'secret' => true],

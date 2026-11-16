@@ -34,6 +34,8 @@ final class AdsServiceProvider extends ServiceProvider
         $this->app->bind(Studio\Render\StudioRenderer::class, fn () => config('studio.renderer') === 'fake' ? new Studio\Render\FakeRenderer : new Studio\Render\ChromeRenderer);
         $this->app->bind(Studio\Enhance\PhotoEnhancer::class, Studio\Enhance\Autoenhance::class);
         $this->app->bind(Studio\Enhance\PhotoUpscaler::class, Studio\Enhance\Replicate::class);
+        $this->app->bind(Studio\Voice\VoiceVendor::class, fn () => config('studio.voice') === 'fake' ? new Studio\Voice\FakeVoice : new Studio\Voice\ElevenLabs);
+        $this->app->scoped(Studio\Voice\Narration::class);
         $this->app->bind(Studio\Video\VideoMaker::class, fn () => config('studio.video') === 'fake' ? new Studio\Video\FakeVideoMaker : new Studio\Video\FfmpegVideoMaker);
     }
 
@@ -43,11 +45,12 @@ final class AdsServiceProvider extends ServiceProvider
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'ads');
         if ($this->app->runningInConsole()) {
-            $this->commands([Console\RefreshBoosts::class, Console\SendSocialPosts::class, Console\RunStudioAutopilot::class, Console\ReadSocialResults::class, Console\SendStudioReports::class]);
+            $this->commands([Console\RefreshBoosts::class, Console\SendSocialPosts::class, Console\RunStudioAutopilot::class, Console\ReadSocialResults::class, Console\SendStudioReports::class, Console\SweepStudioVoices::class]);
         }
         $this->app->make(PromptRegistry::class)->addPath(__DIR__.'/../prompts');
         $this->app->make(FeatureCatalog::class)->declare(AdCopy::FEATURE, 'ai.ads_copy', 'AI listing ad copy');
         $this->app->make(FeatureCatalog::class)->declare(Studio\Autopilot::FEATURE, 'ai.studio_caption', 'Ally Studio captions (included in each post)');
+        $this->app->make(FeatureCatalog::class)->declare(Studio\Voice\Narration::FEATURE, 'ai.studio_caption', 'Ally Studio voice-over scripts (included in each narration)');
         Studio\StudioBriefItems::register($this->app->make(DailyBriefs::class));
         $this->app->make(NavigationRegistry::class)->add(new NavItem('Grow', 'Ads', '/ads', 'megaphone', 30, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent]));
         $this->app->make(NavigationRegistry::class)->add(new NavItem('Grow', 'Social posts', '/social', 'send', 27, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent]));

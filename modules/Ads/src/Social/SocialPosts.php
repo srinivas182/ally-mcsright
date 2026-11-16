@@ -268,14 +268,16 @@ final class SocialPosts
         return $out;
     }
 
-    /** @return array{text: string, link: string|null, image: string|null, images: list<string>, video: string|null, title: string} */
+    /** @return array{text: string, link: string|null, image: string|null, images: list<string>, video: string|null, title: string, synthetic?: bool} */
     private function content(SocialPost $post, string $channel): array
     {
         $link = $post->link !== null ? $post->link.(str_contains($post->link, '?') ? '&' : '?').http_build_query(['utm_source' => $channel, 'utm_medium' => 'social',
             'utm_campaign' => 'rightally-'.strtolower($post->ulid)]) : null;
 
+        $video = $post->studio_video_id !== null ? StudioVideo::query()->find($post->studio_video_id) : null;
+
         return ['text' => $post->text, 'link' => $link, 'image' => $post->image_url, 'images' => $post->images ?? [], 'video' => $post->video_url,
-            'title' => mb_substr(strtok($post->text, "\n") ?: 'Read more', 0, 100)];
+            'title' => mb_substr(strtok($post->text, "\n") ?: 'Read more', 0, 100), 'synthetic' => $video?->voice === 'own'];
     }
 
     /** The listing's cover photo as a JPEG on the media disk (listing photos are stored as WebP). */

@@ -13,6 +13,7 @@ use Modules\Ads\Http\StudioFontsController;
 use Modules\Ads\Http\StudioPhotosController;
 use Modules\Ads\Http\StudioResultsController;
 use Modules\Ads\Http\StylesController;
+use Modules\Ads\Http\VoiceController;
 use Modules\Core\Http\Middleware\EnsureHqConsole;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
 
@@ -61,6 +62,12 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('studio
     Route::post('designs/{design}/reel', [ReelsController::class, 'store'])->where('design', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->middleware('throttle:10,1')->name('reels.store');
     Route::post('tours', [ReelsController::class, 'tour'])->middleware('throttle:10,1')->name('tours.store');
     Route::get('reels/{reel}/download', [ReelsController::class, 'download'])->where('reel', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('reels.download');
+    // SA5b: voice-overs, and the agent's own voice (made only by them, with their consent; deleted on request).
+    Route::get('voice', [VoiceController::class, 'show'])->name('voice');
+    Route::post('voice', [VoiceController::class, 'store'])->middleware(['password.confirm', 'throttle:10,60'])->name('voice.store');
+    Route::delete('voice', [VoiceController::class, 'destroy'])->name('voice.destroy');
+    Route::post('reels/{reel}/script', [VoiceController::class, 'script'])->where('reel', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->middleware('throttle:20,1')->name('reels.script');
+    Route::post('reels/{reel}/narrate', [VoiceController::class, 'narrate'])->where('reel', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->middleware('throttle:10,1')->name('reels.narrate');
     Route::post('reels/{reel}/post', [ReelsController::class, 'post'])->where('reel', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('reels.post');
     Route::post('designs/{design}/post', [StudioController::class, 'post'])->where('design', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('designs.post');
 });

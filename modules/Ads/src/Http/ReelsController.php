@@ -17,13 +17,16 @@ use Modules\Ads\Studio\MusicLibrary;
 use Modules\Ads\Studio\Reels;
 use Modules\Ads\Studio\StudioPlans;
 use Modules\Ads\Studio\StudioVideo;
+use Modules\Ads\Studio\Voice\Narration;
+use Modules\Connect\AppRegistry;
+use Modules\Core\Connect\AppCatalog;
 use Modules\Core\Identity\Enums\UserKind;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /** Studio → Reels (specs/grow/13, SA3): make a Reel from a listing design, watch it, download or post it. */
 final class ReelsController
 {
-    public function index(Request $request, Reels $reels, StudioPlans $plans, MusicLibrary $music): Response
+    public function index(Request $request, Reels $reels, StudioPlans $plans, MusicLibrary $music, Narration $narration): Response
     {
         $user = self::user($request);
         $tracks = collect($music->all(true))->keyBy('ulid');
@@ -36,13 +39,18 @@ final class ReelsController
             'tracks' => $tracks->map(fn (array $t): array => ['ulid' => $t['ulid'], 'label' => $t['title'].' · '.$t['artist'], 'mood' => $t['mood']])->values()->all(),
             'listings' => $listings,
             'tour_usage' => $plans->usage($user)['tour'],
+            // SA5b: voice-overs.
+            'voice_usage' => $plans->usage($user)['voice'],
+            'voices' => $narration->voices($user),
+            'voice_on' => ($va = app(AppCatalog::class)->find('studio_voice')) !== null && app(AppRegistry::class)->ready($va),
             'reels' => StudioVideo::query()->where('user_id', $user->id)->latest('id')->limit(24)->get()->map(function (StudioVideo $v) use ($reels, $tracks, $listings): array {
                 $d = $v->design_id !== null ? Design::query()->find($v->design_id) : null;
 
                 return ['ulid' => $v->ulid, 'listing' => $v->listing_ulid, 'kind' => $v->kind, 'chapters' => $v->chapters ?? [], 'status' => $v->status, 'error' => $v->error, 'url' => $reels->url($v), 'poster' => $reels->poster($v), 'seconds' => $v->seconds,
                     'used' => $v->used_at !== null, 'moment' => $d !== null ? (Designer::MOMENTS[$d->moment][0] ?? $d->moment) : 'YouTube tour',
                     'title' => (string) ($d->content['headline'] ?? ($v->listing_ulid !== null ? (collect($listings)->firstWhere('ulid', $v->listing_ulid)['label'] ?? '') : '')),
-                    'music' => $v->music_ulid !== null ? ($tracks[$v->music_ulid]['title'] ?? null) : null];
+                    'music' => $v->music_ulid !== null ? ($tracks[$v->music_ulid]['title'] ?? null) : null,
+                    'narration' => $v->narration, 'voice' => $v->voice, 'narration_error' => $v->narration_error, 'max_words' => Narration::maxWords($v)];
             })->values()->all(),
         ]);
     }
