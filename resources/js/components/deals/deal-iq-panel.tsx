@@ -35,6 +35,7 @@ export type DealIqProps = {
     }[];
     roles: string[];
     setup: boolean;
+    offers: number | null;
 };
 
 const select = 'rounded border bg-background px-2 py-1';
@@ -303,6 +304,16 @@ export function DealIqPanel({
                         </option>
                     ))}
                 </select>
+                {iq.offers !== null && (
+                    <Button size="sm" variant="outline" asChild>
+                        <Link href={`${base}/offers`}>
+                            Offers{iq.offers > 0 ? ` (${iq.offers})` : ''}
+                        </Link>
+                    </Button>
+                )}
+                <Button size="sm" variant="outline" asChild>
+                    <Link href={`${base}/repairs`}>Repair request</Link>
+                </Button>
                 <Button
                     size="sm"
                     variant="ghost"

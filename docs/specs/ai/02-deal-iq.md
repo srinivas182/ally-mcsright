@@ -180,6 +180,33 @@ wire-instruction detection with payout holds.
 - Still to come: client SMS replies into the inbox, more languages, the concierge answering from shared
   documents' contents, and sending happy check-ins to the brokerage's review requests.
 
+## Delivered in DQ4 — multiple offers and repair requests
+
+- **Offers on a listing** (deal page → Offers). Buyers' agents send offers through the listing's offer link
+  (no account; a new link stops the old one; never indexed), or the agent uploads one and Deal-IQ reads the terms
+  (each kept only when its quote is on the cited page; shown with page and quote for checking), or types it in.
+  Offer files are kept apart from the deal's documents, so an offer never feeds the contract's facts or timeline.
+  The offer form asks buyers' agents not to send personal letters or photos (fair housing).
+- **Comparison worked out in code**, best net first: the price each offer comes to (escalation clauses applied
+  against the other offers, up to their cap), net to the seller after the deal's net sheet (listing side %, title
+  and closing %, payoff, other; the commission inputs follow field-level hiding) and what the offer asks of the
+  seller (concessions, buyer's agent pay), and how likely it is to close (0–100 with plain reasons: financing,
+  proof of funds or pre-approval, contingencies, appraisal gap, sale of their home, closing date).
+- **Fair rounds**: "multiple offers" and "highest and best" (with a deadline) go to every buyer's agent with an
+  open offer in the same words at the same moment, each with a private revise link; revisions after the deadline
+  are refused; each send is logged with its recipients as evidence of equal treatment.
+- **Counter-offers** drafted on the brokerage's own form (Forms) for signature. **Accepting** puts the offer's
+  price (after escalation), closing date, financing, buyer's agent and buyers on the deal, adapts the checklist,
+  and tells every other buyer's agent at once.
+- **Summary for the seller** in English and Spanish: Deal-IQ writes the words from the figures (any amount not in
+  the comparison and the summary is written from the figures instead); the agent edits it, adds advice and shares
+  it in the sellers' deal portal, which shows the offers as Offer A, B, C with no buyers' names or agents.
+- **Repair requests** (deal page → Repair request): Deal-IQ reads the inspection report into findings with page
+  and quote (anything it cannot point to is dropped), grouped safety → major → minor → maintenance; routine
+  maintenance is not asked for by default. The agent chooses repair, credit (their amount: the AI never prices
+  repairs) or nothing, with notes; the option or inspection deadline is shown; the amendment is drafted on the
+  brokerage's form for signature; the buyers can see the request in their portal. Wiring details are refused.
+
 ## Market review (November 2026)
 
 | Capability                                                   | ProxiClose | Transaction Wingman | Deal-IQ                                                 |

@@ -115,6 +115,20 @@ final class Copy
         'mail.new_device_intro' => 'Someone signed in to :street on :device at :time. If this was you, there is nothing to do. If not, open the link below to sign out everywhere.',
         'mail.not_me' => 'This was not me',
         'sms.code' => ':code is your sign-in code for :street. It works for 10 minutes. Never share it.',
+        'offers' => 'The offers',
+        'offers_note' => 'Buyers\' names are not shown. Your agent will talk you through the choice; nothing is decided here.',
+        'offers_price' => 'Price',
+        'offers_net' => 'Net to you',
+        'offers_financing' => 'Financing',
+        'offers_closing' => 'Closing',
+        'offers_likely' => 'Likely to close',
+        'grade.Strong' => 'High',
+        'grade.Fair' => 'Medium',
+        'grade.Weaker' => 'Lower',
+        'repairs' => 'Repair request',
+        'repairs_note' => 'What your agent plans to ask the seller for after the inspection.',
+        'repairs_repair' => 'Repair',
+        'repairs_credit' => 'Credit',
     ];
 
     private const ES = [
@@ -218,6 +232,20 @@ final class Copy
         'mail.new_device_intro' => 'Alguien entró a :street desde :device el :time. Si fue usted, no tiene que hacer nada. Si no, abra el enlace de abajo para cerrar la sesión en todas partes.',
         'mail.not_me' => 'No fui yo',
         'sms.code' => ':code es su código para entrar a :street. Funciona 10 minutos. No lo comparta.',
+        'offers' => 'Las ofertas',
+        'offers_note' => 'No se muestran los nombres de los compradores. Su agente le explicará las opciones; aquí no se decide nada.',
+        'offers_price' => 'Precio',
+        'offers_net' => 'Le queda a usted',
+        'offers_financing' => 'Financiamiento',
+        'offers_closing' => 'Cierre',
+        'offers_likely' => 'Probabilidad de cerrar',
+        'grade.Strong' => 'Alta',
+        'grade.Fair' => 'Media',
+        'grade.Weaker' => 'Baja',
+        'repairs' => 'Solicitud de reparaciones',
+        'repairs_note' => 'Lo que su agente planea pedirle al vendedor después de la inspección.',
+        'repairs_repair' => 'Reparación',
+        'repairs_credit' => 'Crédito',
     ];
 
     public static function locale(?string $locale): string

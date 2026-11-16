@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\DB;
 use Modules\Core\Support\Connections;
 use Modules\Transactions\Models\Deal;
 use Modules\Transactions\Models\Document;
+use Modules\Transactions\Offers\OfferSummary;
+use Modules\Transactions\Repairs\RepairRequests;
 
 /**
  * What one person sees in the deal portal (specs/ai/02, §§6, 22). Buyers and sellers see the progress, every key
@@ -186,9 +188,31 @@ final class PortalView
                 ->map(fn ($q): array => ['question' => (string) $q->question, 'answer' => $q->answer, 'status' => (string) $q->status, 'reply' => $q->agent_reply,
                     'sources' => array_values(array_map(fn ($s): string => Copy::t($locale, 'source.'.$s), (array) json_decode((string) ($q->sources ?? '[]'), true)))])->all()) : [],
             'checkin' => $client && $deal->status === 'closed' && ! $db->table('tx_portal_feedback')->where('access_id', $access->id)->exists(),
+            'offers' => $role === 'seller' ? self::offers($deal, $locale) : null,
+            'repairs' => $role === 'buyer' ? array_map(fn (array $r): array => ['items' => array_values(array_filter($r['items'], fn (array $i): bool => in_array($i['ask'] ?? 'none', ['repair', 'credit'], true))),
+                'credit_cents' => $r['credit_cents']], array_slice(RepairRequests::forDeal($deal, true), 0, 1)) : [],
             't' => Copy::all($locale),
             'locales' => Copy::LOCALES,
         ];
+    }
+
+    /**
+     * The offer comparison the agent shared with the sellers: the agent's words in their language, and the figures.
+     *
+     * @return array{text: string, offers: list<array{label: string, price_cents: int, net_cents: int, financing: string, closing_date: string|null, grade: string, reasons: list<string>, status: string}>}|null
+     */
+    private static function offers(Deal $deal, string $locale): ?array
+    {
+        $s = OfferSummary::latest($deal, true);
+        if ($s === null) {
+            return null;
+        }
+
+        return ['text' => $locale === 'es' && $s['es'] !== null ? $s['es'] : $s['en'],
+            'offers' => array_map(fn (array $o): array => ['label' => $locale === 'es' ? str_replace('Offer', 'Oferta', (string) $o['label']) : (string) $o['label'],
+                'price_cents' => (int) $o['effective_cents'], 'net_cents' => (int) $o['net']['net_cents'], 'financing' => (string) $o['financing'],
+                'closing_date' => $o['closing_date'] !== null ? Copy::date($locale, (string) $o['closing_date']) : null,
+                'grade' => Copy::t($locale, 'grade.'.$o['certainty']['grade']), 'reasons' => $locale === 'es' ? [] : array_values($o['certainty']['reasons']), 'status' => (string) $o['status']], $s['offers'])];
     }
 
     /**
