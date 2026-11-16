@@ -18,6 +18,13 @@ use Modules\Core\Tenancy\Concerns\HasPublicUlid;
  * @property string|null $name
  * @property string $locale
  * @property array<string, mixed>|null $plan
+ * @property string|null $first_name
+ * @property string|null $phone
+ * @property string|null $phone_hash
+ * @property CarbonImmutable|null $phone_verified_at
+ * @property array<string, mixed>|null $about
+ * @property bool $has_agent
+ * @property int|null $readiness
  * @property CarbonImmutable|null $email_verified_at
  * @property CarbonImmutable|null $last_seen_at
  * @property CarbonImmutable $created_at
@@ -37,6 +44,6 @@ final class Person extends Model
 
     protected function casts(): array
     {
-        return ['plan' => 'array', 'email_verified_at' => 'immutable_datetime', 'last_seen_at' => 'immutable_datetime', 'created_at' => 'immutable_datetime'];
+        return ['plan' => 'array', 'about' => 'array', 'phone' => 'encrypted', 'has_agent' => 'boolean', 'phone_verified_at' => 'immutable_datetime', 'readiness' => 'integer', 'email_verified_at' => 'immutable_datetime', 'last_seen_at' => 'immutable_datetime', 'created_at' => 'immutable_datetime'];
     }
 }

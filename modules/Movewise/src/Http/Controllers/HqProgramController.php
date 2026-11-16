@@ -11,7 +11,9 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Tenancy\Models\Tenant;
+use Modules\Movewise\Matching\Connections;
 use Modules\Movewise\Models\Agent;
+use Modules\Movewise\Models\Connection;
 use Modules\Movewise\Models\Package;
 use Modules\Movewise\Models\SeatRequest;
 use Modules\Movewise\Models\State;
@@ -39,6 +41,11 @@ final class HqProgramController
                 'discipline_checked' => $a->discipline_checked_at !== null, 'profile' => $a->profile, 'profile_status' => $a->profile_status, 'review_note' => $a->review_note,
                 'terms_signed' => $a->terms_signed_at !== null, 'status' => $a->status, 'pause_reason' => $a->pause_reason, 'tier' => $a->tier, 'strikes' => $a->strikes,
                 'missing' => $this->agents->missing($a)])->values()->all(),
+            'refunds' => Connection::query()->where('refund_status', 'requested')->orderBy('id')->limit(100)->get()->map(fn (Connection $c): array => ['ulid' => $c->ulid,
+                'account' => Tenant::query()->whereKey($c->tenant_id)->value('name'), 'agent' => (string) (Agent::query()->find($c->agent_id)->profile['display_name'] ?? ''),
+                'credits' => $c->price_credits, 'reason' => $c->refund_reason, 'method' => $c->method, 'accepted_at' => $c->accepted_at?->toIso8601String()])->values()->all(),
+            'introductions' => ['offered' => Connection::query()->where('status', 'offered')->count(), 'accepted_30d' => Connection::query()->where('status', 'accepted')
+                ->where('accepted_at', '>=', now()->subDays(30))->count(), 'expired_30d' => Connection::query()->where('status', 'expired')->where('offered_at', '>=', now()->subDays(30))->count()],
             'seats' => SeatRequest::query()->orderByRaw("case status when 'pending' then 0 else 1 end")->orderByDesc('id')->limit(200)->get()->map(fn (SeatRequest $r): array => [
                 'ulid' => $r->ulid, 'name' => $r->first_name.' '.$r->last_name, 'email' => $r->email, 'state' => $r->state, 'licence_number' => $r->licence_number,
                 'brokerage_name' => $r->brokerage_name, 'licence_status' => $r->licence_status, 'status' => $r->status, 'note' => $r->note])->values()->all(),
@@ -83,6 +90,13 @@ final class HqProgramController
         $r = SeatRequest::query()->where('ulid', $seat)->firstOrFail();
         $request->boolean('approve') ? $seats->approve($r, self::user($request)) : $seats->decline($r, (string) $request->input('note', ''), self::user($request));
         Inertia::flash('toast', ['type' => 'success', 'message' => $request->boolean('approve') ? 'Approved. They\'ve been emailed an invitation to their new account.' : 'Declined.']);
+
+        return back();
+    }
+
+    public function refund(Request $request, string $connection, Connections $connections): RedirectResponse
+    {
+        $connections->resolve(Connection::query()->where('ulid', $connection)->firstOrFail(), $request->boolean('approve'), self::user($request));
 
         return back();
     }
