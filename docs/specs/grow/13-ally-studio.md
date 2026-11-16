@@ -172,10 +172,38 @@ shows each with its music, download (MP4) and "Post it".
     - **Disclosure.** YouTube uploads of a video in the agent's own AI voice set `status.containsSyntheticMedia`.
     - **HQ.** The app is `studio_voice` (ElevenLabs API key). Before go-live, HQ confirms ElevenLabs' current terms
       for cloning through the API on RightAlly's plan.
-- **Comment and message replies:** Studio drafts replies to comments and messages on the agent's posts (Meta
-  permissions `pages_manage_engagement`, `instagram_manage_comments`, `instagram_manage_messages`); interested
-  people become leads with consent recorded; replies are Fair Housing checked; Approve first by default; anything
-  sensitive goes to the agent.
+- **Comment and message replies (SA5c):** Studio → Replies, for packages with the `replies` feature.
+    - **Turning it on.** Replies are off until the agent turns them on. Their Pages are then subscribed to `feed` and
+      `messages`, added to the fields the Page already sends to RightAlly's app, never replacing them, so Lead Ads keeps
+      working. Disconnecting Lead Ads likewise removes only `leadgen`.
+    - **How webhooks arrive.** Meta sends all Page and Instagram webhooks for the app to the one Lead Ads address.
+      `FacebookLeads::route` splits them:
+        - lead forms stay with Lead Ads;
+        - Facebook comments (`feed`, item comment), Instagram comments (`comments`), and Messenger and Instagram
+          messages go to the Facebook Pages connection (parts carry `app: facebook_pages`), routed by Page and Instagram
+          account id.
+    - **Drafting.** Each comment or message is kept once (Meta retries). The agent's own comments and echoes are
+      ignored. AI classifies it (question, interest, praise, complaint, spam, other), flags sensitive ones, and drafts
+      a reply of at most 2–3 sentences.
+    - **What happens next.**
+        - Spam is ignored.
+        - Complaints, money, offers, legal, private details, protected groups, or anything the AI is unsure of go to the
+          agent ("Needs you"). They are never sent automatically.
+        - A draft that fails the Fair Housing check is never offered.
+        - "Approve first" (the default): every draft waits for the agent. "Auto": thanks and simple questions go out on
+          their own.
+        - One email for a burst of new ones, with no message text in it.
+    - **Sending.**
+        - Facebook comments: `/{comment}/comments`. Instagram comments: `/{comment}/replies`.
+        - Messages: `/{page}/messages` with `messaging_type: RESPONSE`, only within Meta's 24-hour window. Later ones are
+          marked expired, to answer in the app.
+        - The agent's own words are Fair Housing checked too.
+    - **Leads.** A message with an email or phone number becomes a lead (source "Facebook and Instagram messages"),
+      assigned to the agent and credited to the post. The sender's name comes from Meta's profile for that Page.
+      Texting consent is never assumed. Contact details in public comments aren't taken.
+    - **Meta review.** New scopes: `pages_manage_metadata`, `pages_manage_engagement`, `pages_read_user_content`,
+      `pages_messaging`, `instagram_manage_comments`, `instagram_manage_messages`. People connected before must
+      connect again to allow them.
 
 ## What Studio runs on (all on RightAlly's accounts)
 
