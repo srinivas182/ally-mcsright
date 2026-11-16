@@ -138,8 +138,47 @@ wire-instruction detection with payout holds.
   and warns when closing falls on a non-business day. It rebuilds when the closing or contract date changes or
   a fact is applied; dates set by hand or read from the contract are left alone, and the agent is emailed
   what moved and who to tell (a notification type the agent can turn off).
-- Still to come (DQ3+): client concierge and all-party portal (English and Spanish), intake by email, more
-  state packs, multiple offers and repair requests.
+- Still to come: intake by email, more state packs, multiple offers and repair requests.
+
+## Delivered in DQ3 — the deal portal and the client concierge (English and Spanish)
+
+- **Deal portal** at `/my-deal` on the brokerage's own domain. The agent invites the buyers or sellers and the
+  other side from the deal page (one click for anyone already on the deal with an email), choosing English or
+  Spanish. There is no account or password. Pages are never indexed or cached.
+- **Signing in: link plus code.** The emailed link (single use; 7 days from an invitation, 30 minutes when asked
+  for again; stored only as a hash) never signs anyone in by itself:
+    1. Opening it changes nothing, so email security scanners cannot use it up. The page asks for the email
+       address the link was sent to; a forwarded link without that inbox gets no code.
+    2. A 6-digit code goes to that address, or by text to a mobile the client opted in with (8am–9pm, where HQ
+       allows texts). It works for 10 minutes and is stored only as a keyed hash.
+    3. Five wrong tries (addresses or codes) and the link stops working (audited); the client asks for a new one.
+    4. The right code signs that browser in for 12 hours, or 30 days if the client ticks "remember this device"
+       (a hashed device cookie, scoped to `/my-deal`, HTTP-only).
+    5. Every sign-in emails the client the device and time, with a "this was not me" link. It opens a page with a
+       button (so a scanner cannot trigger it); confirming signs out every device and emails the agent.
+    6. The agent sees each person's active devices and can sign them out everywhere; removing someone ends every
+       session and device at once. Asking for a link never reveals whether an address is known.
+- **What clients see**: a progress tracker (offer accepted, inspections, loan and appraisal (not for cash),
+  getting ready to close, closed) with a plain note on the current step; the next three things (what is waiting
+  on them, then dates in the next two weeks); every key date in their language (internal reminders such as
+  "Check the closing date" are hidden); documents the agent chose to share (one click per document on the deal
+  page, audited, viewing audited); upload links waiting on them; a button to send the agent a document; the
+  agent's contact details; and a wire-fraud warning on every page and in every email.
+- **What the other side sees** (lender, title, escrow, attorney, inspector, cooperating agent): only the dates
+  that concern their role and the uploads asked of them, answered right in the portal. No progress, people,
+  documents or concierge.
+- **Client concierge**: questions answered from that deal's facts only, in the client's language, with where
+  the answer came from. Money, bank, wiring, legal and tax questions never reach the AI and go to the agent; so
+  does anything the AI is not sure of, any answer containing an amount or bank details, and anything the client
+  would rather the agent answered. The agent replies from the deal page; the client is emailed the reply (wiring
+  details are refused). The client's question is passed to the AI as untrusted content.
+- **Updates without typing**, each sent once and in the client's language (`transactions:portal-updates`,
+  hourly): an email when the deal reaches the next milestone, plus a text for clients who opted in themselves
+  (consent recorded and audited, 8am–9pm in the brokerage's time zone, only where HQ allows texts); a Monday
+  summary while under contract; and a check-in a week after closing. The check-in rating and words go to the
+  agent, marked private unless the client agreed they may be shared as a review.
+- Still to come: client SMS replies into the inbox, more languages, the concierge answering from shared
+  documents' contents, and sending happy check-ins to the brokerage's review requests.
 
 ## Market review (November 2026)
 

@@ -49,10 +49,13 @@ final class TransactionsServiceProvider extends ServiceProvider
         $notices->register(DealIq\UploadReceivedMail::class, 'Documents uploaded by the other side', 'Deals');
         $features->declare(DealIq\Intake::FEATURE, 'ai.deal_intake', 'Deal-IQ: a new deal from what the agent says');
         $features->declare(DealIq\DealAssistant::FEATURE, 'ai.deal_assistant', 'Deal-IQ: talk or type to a deal');
+        $features->declare(Portal\Concierge::FEATURE, 'ai.deal_concierge', 'Deal-IQ: the client concierge in the deal portal (English and Spanish)');
+        $notices->register(Portal\PortalQuestionMail::class, 'Client questions from the deal portal', 'Deals');
+        $notices->register(Portal\PortalFeedbackMail::class, 'Client check-ins after closing', 'Deals');
         $features->declare(Reading\DocIq::ASK, 'ai.doc_ask', 'DocIQ: questions answered from one document');
         $features->declare(Compliance\Rules::FEATURE, 'ai.compliance_rule', 'Deal-IQ: a brokerage rule written in plain English, read into a check');
         if ($this->app->runningInConsole()) {
-            $this->commands([Console\SendDateReminders::class, Console\EscalateDeadlines::class, Console\ScanOpenDeals::class]);
+            $this->commands([Console\SendDateReminders::class, Console\EscalateDeadlines::class, Console\ScanOpenDeals::class, Console\SendPortalUpdates::class]);
         }
 
         $this->app->make(PermissionRegistry::class)->register('Transactions', [

@@ -19,6 +19,7 @@ import {
     type DealIqProps,
 } from '@/components/deals/deal-iq-panel';
 import { DealPay, type PayOverrides } from '@/components/deals/deal-pay';
+import { PortalPanel, type PortalProps } from '@/components/deals/portal-panel';
 import { KeyDates, type KeyDate } from '@/components/deals/key-dates';
 import {
     CompliancePanel,
@@ -86,6 +87,7 @@ type Props = {
     reasons: string[];
     customFields: CustomFieldValue[];
     dealIq: DealIqProps;
+    portal: PortalProps;
 };
 
 const statusLabel: Record<string, string> = {
@@ -157,7 +159,7 @@ function ChecklistItem({
                 </p>
             )}
             {item.documents.map((d) => (
-                <DocRow key={d.ulid} doc={d} />
+                <DocRow key={d.ulid} doc={d} dealUlid={deal.ulid} />
             ))}
             {!deal.locked && (
                 <span className="flex flex-wrap gap-2">
@@ -272,6 +274,7 @@ export default function ShowDeal({
     missing,
     customFields,
     dealIq,
+    portal,
     dates,
     unsorted,
     facts,
@@ -318,6 +321,12 @@ export default function ShowDeal({
                     locked={deal.locked}
                     iq={dealIq}
                     parties={parties}
+                />
+                <PortalPanel
+                    dealUlid={deal.ulid}
+                    portal={portal}
+                    parties={parties}
+                    roles={dealIq.roles}
                 />
                 <section className="grid gap-2 rounded-lg border p-4 text-sm md:grid-cols-4">
                     <span>

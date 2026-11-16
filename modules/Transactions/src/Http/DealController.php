@@ -36,6 +36,7 @@ use Modules\Transactions\Models\Deal;
 use Modules\Transactions\Models\Document;
 use Modules\Transactions\Models\DocumentReading;
 use Modules\Transactions\Models\Item;
+use Modules\Transactions\Portal;
 use Modules\Transactions\Reading\DocIq;
 use Modules\Transactions\Referrals;
 use Modules\Transactions\Reviews;
@@ -108,7 +109,7 @@ final class DealController
         $docs = $all->groupBy('item_id');
         $readings = DocumentReading::query()->whereIn('document_id', $all->pluck('id'))->get()->keyBy('document_id');
         $doc = fn (Document $d): array => ['ulid' => $d->ulid, 'filename' => $d->filename, 'version' => $d->version, 'via' => $d->via,
-            'reading' => self::reading($readings->get($d->id), $d)];
+            'shared' => $d->getAttribute('shared_at') !== null, 'reading' => self::reading($readings->get($d->id), $d)];
 
         return Inertia::render('deals/show', [
             'deal' => ['ulid' => $deal->ulid, 'street' => $deal->street, 'city' => $deal->city, 'state_code' => $deal->state_code, 'postal_code' => $deal->postal_code,
@@ -130,6 +131,10 @@ final class DealController
             'dealIq' => ['property_type' => $deal->property_type, 'financing' => $deal->financing, 'propertyTypes' => DealIq\Adapt::PROPERTY_TYPES, 'financingTypes' => DealIq\Adapt::FINANCING,
                 'uploadRequests' => app(DealIq\UploadRequests::class)->forDeal($deal), 'history' => app(DealIq\DealAssistant::class)->history($deal, $user),
                 'roles' => DealIq\DealAssistant::ROLES, 'setup' => $deal->setup_status !== null],
+            'portal' => ['people' => app(Portal\PortalAccess::class)->forDeal($deal), 'questions' => Portal\Concierge::forDeal($deal), 'locales' => Portal\Copy::LOCALES,
+                'feedback' => DB::connection(Connections::cell())->table('tx_portal_feedback')->join('tx_portal_access', 'tx_portal_access.id', '=', 'tx_portal_feedback.access_id')
+                    ->where('tx_portal_feedback.deal_id', $deal->id)->get(['tx_portal_access.name', 'tx_portal_feedback.rating', 'tx_portal_feedback.comment', 'tx_portal_feedback.may_quote'])
+                    ->map(fn ($f): array => ['name' => (string) $f->name, 'rating' => (int) $f->rating, 'comment' => $f->comment !== null ? (string) $f->comment : null, 'may_quote' => (bool) $f->may_quote])->all()],
             'dates' => app(KeyDates::class)->forDeal($deal),
             'unsorted' => $all->filter(fn (Document $d): bool => $d->item_id === null)->map($doc)->values(),
             'facts' => DocIq::dealFacts($deal),

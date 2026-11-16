@@ -12,6 +12,8 @@ use Modules\Transactions\Http\DealIqController;
 use Modules\Transactions\Http\DocumentReadingController;
 use Modules\Transactions\Http\MoneyDeskController;
 use Modules\Transactions\Http\PayController;
+use Modules\Transactions\Http\PortalAdminController;
+use Modules\Transactions\Http\PortalController;
 
 Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoffice.minimal'])->prefix('deals')->name('deals.')->group(function (): void {
     Route::get('/', [DealController::class, 'index'])->name('index');
@@ -42,6 +44,12 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoff
     Route::post('{deal}/assistant/{turn}', [DealIqController::class, 'doIt'])->middleware('throttle:30,1')->name('assistant.do');
     Route::post('{deal}/assistant/{turn}/dismiss', [DealIqController::class, 'dismiss'])->name('assistant.dismiss');
     Route::post('{deal}/upload-requests', [DealIqController::class, 'requestUpload'])->middleware('throttle:30,1')->name('upload-requests');
+    // The deal portal, agent side (specs/ai/02, DQ3).
+    Route::post('{deal}/portal', [PortalAdminController::class, 'invite'])->middleware('throttle:30,1')->name('portal.invite');
+    Route::delete('{deal}/portal/{access}', [PortalAdminController::class, 'revoke'])->name('portal.revoke');
+    Route::delete('{deal}/portal/{access}/devices', [PortalAdminController::class, 'signOutEverywhere'])->name('portal.sign-out');
+    Route::post('{deal}/portal/documents/{document}', [PortalAdminController::class, 'share'])->name('portal.share');
+    Route::post('{deal}/portal/questions/{question}', [PortalAdminController::class, 'reply'])->middleware('throttle:30,1')->name('portal.reply');
     Route::get('{deal}', [DealController::class, 'show'])->name('show');
     Route::get('{deal}/why', [DealController::class, 'why'])->name('why');
     Route::post('{deal}/fields', [DealController::class, 'saveFields'])->name('fields');
@@ -99,4 +107,27 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'throttle:60,1,calendar-
 Route::middleware(['web', EnsureTenantWorkspace::class])->prefix('deal-upload/{token}')->where(['token' => '[A-Za-z0-9]{48}'])->group(function (): void {
     Route::get('/', [DealIqController::class, 'uploadPage'])->middleware('throttle:30,1')->name('deal-upload.show');
     Route::post('/', [DealIqController::class, 'uploadReceive'])->middleware('throttle:10,1')->name('deal-upload.store');
+});
+
+// The deal portal for clients and the other side (specs/ai/02, DQ3): sign-in links, no account; never indexed.
+Route::middleware(['web', EnsureTenantWorkspace::class])->prefix('my-deal')->name('portal.')->group(function (): void {
+    Route::get('/', [PortalController::class, 'signIn'])->middleware('throttle:60,1')->name('sign-in');
+    Route::post('link', [PortalController::class, 'sendLink'])->middleware('throttle:5,1,portal-link')->name('link');
+    Route::post('sign-out', [PortalController::class, 'signOut'])->name('sign-out');
+    Route::prefix('in/{token}')->where(['token' => '[A-Za-z0-9]{48}'])->group(function (): void {
+        Route::get('/', [PortalController::class, 'enter'])->middleware('throttle:30,1')->name('enter');
+        Route::post('code', [PortalController::class, 'sendCode'])->middleware('throttle:5,1,portal-code')->name('code');
+        Route::post('verify', [PortalController::class, 'verify'])->middleware('throttle:10,1,portal-verify')->name('verify');
+    });
+    Route::get('not-me/{token}', [PortalController::class, 'notMe'])->where('token', '[A-Za-z0-9]{48}')->middleware('throttle:20,1')->name('not-me');
+    Route::post('not-me/{token}', [PortalController::class, 'confirmNotMe'])->where('token', '[A-Za-z0-9]{48}')->middleware('throttle:5,1')->name('not-me.confirm');
+    Route::prefix('{access}')->where(['access' => '[0-9A-HJKMNP-TV-Z]{26}'])->group(function (): void {
+        Route::get('/', [PortalController::class, 'show'])->middleware('throttle:120,1')->name('show');
+        Route::post('ask', [PortalController::class, 'ask'])->middleware('throttle:20,1,portal-ask')->name('ask');
+        Route::post('ask/{question}/agent', [PortalController::class, 'askAgent'])->middleware('throttle:20,1')->name('ask.agent');
+        Route::post('upload', [PortalController::class, 'upload'])->middleware('throttle:20,1')->name('upload');
+        Route::get('documents/{document}', [PortalController::class, 'document'])->middleware('throttle:60,1')->name('document');
+        Route::post('preferences', [PortalController::class, 'preferences'])->middleware('throttle:20,1')->name('preferences');
+        Route::post('feedback', [PortalController::class, 'feedback'])->middleware('throttle:5,1')->name('feedback');
+    });
 });

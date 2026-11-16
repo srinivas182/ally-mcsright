@@ -20,6 +20,7 @@ export type DealDocument = {
     filename: string;
     version: number;
     via: string;
+    shared?: boolean;
     reading: Reading;
 };
 export type Fact = {
@@ -41,7 +42,13 @@ type Answer = {
 } | null;
 
 /** One document with what DocIQ found: its type, pages, sensitive numbers, safe copy and "ask". */
-export function DocRow({ doc }: { doc: DealDocument }) {
+export function DocRow({
+    doc,
+    dealUlid,
+}: {
+    doc: DealDocument;
+    dealUlid?: string;
+}) {
     const { docAnswer } = usePage<{ docAnswer: Answer }>().props;
     const [asking, setAsking] = useState(docAnswer?.document === doc.ulid);
     const ask = useForm({ question: '' });
@@ -73,6 +80,24 @@ export function DocRow({ doc }: { doc: DealDocument }) {
                 )}
                 {r?.status === 'failed' && (
                     <Badge variant="outline">Could not be read</Badge>
+                )}
+                {dealUlid && (
+                    <Button
+                        size="sm"
+                        variant="ghost"
+                        title="Clients see shared documents in their deal portal"
+                        onClick={() =>
+                            router.post(
+                                `/deals/${dealUlid}/portal/documents/${doc.ulid}`,
+                                {},
+                                { preserveScroll: true },
+                            )
+                        }
+                    >
+                        {doc.shared
+                            ? 'Shared with clients · Stop'
+                            : 'Share with clients'}
+                    </Button>
                 )}
             </span>
             {s?.wire && (
@@ -227,7 +252,7 @@ export function DocIqPanel({
                 <div className="grid gap-2">
                     <h3 className="font-medium">Not yet in the checklist</h3>
                     {visible.map((d) => (
-                        <DocRow key={d.ulid} doc={d} />
+                        <DocRow key={d.ulid} doc={d} dealUlid={deal} />
                     ))}
                 </div>
             )}
