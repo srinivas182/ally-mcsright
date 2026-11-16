@@ -7,6 +7,7 @@ use Modules\Billing\Http\BillingController;
 use Modules\Billing\Http\CallStatusController;
 use Modules\Billing\Http\Credits\CreditsController;
 use Modules\Billing\Http\Credits\HqCreditsController;
+use Modules\Billing\Http\HealthCheckController;
 use Modules\Billing\Http\PaymentsController;
 use Modules\Core\Http\Middleware\EnsureHqConsole;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
@@ -40,6 +41,17 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function
 // Public partner lookup for rightally.io ("My brokerage is a partner").
 Route::domain((string) config('core.hq_host'))->get('partners/{code}', [PaymentsController::class, 'partnerLookup'])->middleware('throttle:30,1')->name('billing.partner');
 
+// The free Brokerage Health Check (specs/billing/06): public on the RightAlly host; reports open with a private link.
+Route::domain((string) config('core.hq_host'))->middleware('web')->group(function (): void {
+    $token = '[A-Za-z0-9]{40}';
+    Route::get('health-check', [HealthCheckController::class, 'start'])->name('health.start');
+    Route::post('health-check', [HealthCheckController::class, 'store'])->middleware('throttle:5,60')->name('health.store');
+    Route::get('health-check/r/{token}', [HealthCheckController::class, 'report'])->where('token', $token)->middleware('throttle:60,1')->name('health.report');
+    Route::get('health-check/r/{token}/preview', [HealthCheckController::class, 'preview'])->where('token', $token)->middleware('throttle:60,1')->name('health.preview');
+    Route::get('health-check/r/{token}/logo', [HealthCheckController::class, 'logo'])->where('token', $token)->middleware('throttle:60,1')->name('health.logo');
+    Route::post('health-check/r/{token}/delete', [HealthCheckController::class, 'destroy'])->where('token', $token)->middleware('throttle:10,1')->name('health.delete');
+});
+
 // Twilio's report of each finished call (real minutes for call allowances); signature-checked, no session.
 Route::domain((string) config('core.hq_host'))->post('billing/twilio/call-status', CallStatusController::class)->middleware('throttle:600,1')->name('billing.call-status');
 
@@ -48,6 +60,10 @@ Route::domain((string) config('core.hq_host'))->post('billing/webhook', [Payment
 
 Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.tenants.manage'])->prefix('hq')->name('hq.')->group(function (): void {
     Route::get('billing', [BillingController::class, 'hq'])->name('billing');
+    Route::get('health-checks', [HealthCheckController::class, 'hq'])->name('health-checks');
+    Route::get('health-checks/{check}', [HealthCheckController::class, 'hqShow'])->where('check', '[0-9A-HJKMNP-TV-Z]{26}')->name('health-checks.show');
+    Route::get('health-checks/{check}/preview', [HealthCheckController::class, 'hqPreview'])->where('check', '[0-9A-HJKMNP-TV-Z]{26}')->name('health-checks.preview');
+    Route::get('health-checks/{check}/logo', [HealthCheckController::class, 'hqLogo'])->where('check', '[0-9A-HJKMNP-TV-Z]{26}')->name('health-checks.logo');
     Route::post('billing/plans', [BillingController::class, 'hqSavePlan'])->name('billing.plans.store');
     Route::put('billing/plans/{plan}', [BillingController::class, 'hqSavePlan'])->name('billing.plans.update');
     Route::post('billing/tiers', [BillingController::class, 'hqSaveTiers'])->name('billing.tiers');

@@ -122,6 +122,7 @@ it('sends every HQ console page the data its component needs', function (string 
     'tenant' => ['/hq/tenants/{tenant}', 'hq/tenants/show'],
     'AI console' => ['/hq/ai', 'hq/ai/index'],
     'pricing' => ['/hq/billing', 'hq/billing'],
+    'health checks' => ['/hq/health-checks', 'hq/health-checks'],
     'payments' => ['/hq/payments', 'hq/payments'],
     'payout rails' => ['/hq/payout-rails', 'hq/payout-rails'],
     'texts and calls' => ['/hq/messaging', 'hq/messaging'],
