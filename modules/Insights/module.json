@@ -3,7 +3,7 @@
     "name": "Insights",
     "version": "0.1.0",
     "provider": "Modules\\Insights\\InsightsServiceProvider",
-    "depends": ["core", "transactions", "crm", "compensation"],
+    "depends": ["core", "ai", "transactions", "crm", "compensation"],
     "entitlement": null,
     "description": "Reports and KPIs: the broker dashboard, each agent's success dashboard, goals and drill-down to the deals behind every number (specs/insights/01)."
 }

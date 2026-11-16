@@ -83,6 +83,8 @@ Schedule::command('core:expire-access')->hourly()->onOneServer();
 // Alerts held for quiet hours and the daily digest (specs/core/10, N1).
 // Automations whose wait is over carry on (specs/core/06, W1).
 Schedule::command('core:workflows')->everyFiveMinutes()->withoutOverlapping()->onOneServer();
+// Scheduled reports, and anomaly alerts on Mondays (specs/insights/01, K2).
+Schedule::command('insights:daily')->dailyAt('11:13')->onOneServer();
 Schedule::command('core:notice-digests')->hourlyAt(7)->onOneServer();
 Schedule::command('core:access-review-reminder')->weeklyOn(1, '14:23')->onOneServer();
 // Brokerage price increases reach existing agents after 30 days (specs/core/07).
