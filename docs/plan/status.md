@@ -1,6 +1,6 @@
 # Delivery status against the plan
 
-Checked 2026-11-16 (R1 to DQ3 added the same day) against `delivery-plan.md` (Sprints 1–57, five teams) and every merged pull request. Update this file at the end of every sprint.
+Checked 2026-11-16 (R1 to DQ4 added the same day) against `delivery-plan.md` (Sprints 1–57, five teams) and every merged pull request. Update this file at the end of every sprint.
 
 "Partly" means part of the item is built; the gap is noted in the item's spec or the sequence below.
 
@@ -9,7 +9,7 @@ Checked 2026-11-16 (R1 to DQ3 added the same day) against `delivery-plan.md` (Sp
 | A    | 32         | 17   | 9      | 6           | 30 / 15 / 12                        |
 | B    | 28         | 16   | 7      | 5           | 39 / 10 / 8                         |
 | C    | 26         | 10   | 10     | 6           | 21 / 20 / 16                        |
-| D    | 27         | 11   | 10     | 6           | 20 / 26 / 11                        |
+| D    | 27         | 12   | 10     | 5           | 22 / 26 / 9                         |
 | E    | 25         | 7    | 1      | 17          | 15 / 3 / 39                         |
 
 Sprints 58–63 (integration, load test, penetration test, SOC 2 readiness, launch): not started.
@@ -135,7 +135,7 @@ Outside the original grid and complete: Connect C1–C8 (except the Partner API,
 | D12 | 25–26   | DocIQ                                                                                                                                                                                 | Done                                                                                                                                                                     |
 | D13 | 27–31   | Deal-IQ (AI transaction coordinator) core: talk or type (voice and text), intake by upload, email, photo or voice, contract and addendum drafting, client concierge, all-party portal | Partly (DQ1–DQ3: talk or type, intake by upload, photo, text and voice, drafting, client concierge and all-party portal in English and Spanish; intake by email to come) |
 | D14 | 32–33   | Deal-IQ paperwork without inbox access (synced platforms, uploads, document requests) and smart timeline engine with state rule packs                                                 | Partly (DQ1–DQ2: upload links and timeline with TX, LA, MS, AL, NJ packs; more state packs and synced platforms to come)                                                 |
-| D15 | 34–35   | Deal-IQ multiple-offer management and inspection response / repair requests                                                                                                           | Not started                                                                                                                                                              |
+| D15 | 34–35   | Deal-IQ multiple-offer management and inspection response / repair requests                                                                                                           | Done (DQ4)                                                                                                                                                               |
 | D16 | 36–37   | Compliance Knowledge                                                                                                                                                                  | Not started                                                                                                                                                              |
 | D17 | 38–39   | RightAlly AI assistant                                                                                                                                                                | Done                                                                                                                                                                     |
 | D18 | 40–41   | Daily game plan and AI coach                                                                                                                                                          | Partly                                                                                                                                                                   |

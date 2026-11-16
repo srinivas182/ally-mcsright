@@ -3,6 +3,7 @@ import { useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { usd } from '@/lib/cents';
 import { postJson } from '@/lib/http';
 
 type Stage = { key: string; state: string; label: string; note: string };
@@ -43,6 +44,29 @@ type Props = {
     agent: { name: string; email: string | null; phone: string | null };
     questions: Question[];
     checkin: boolean;
+    offers: {
+        text: string;
+        offers: {
+            label: string;
+            price_cents: number;
+            net_cents: number;
+            financing: string;
+            closing_date: string | null;
+            grade: string;
+            reasons: string[];
+            status: string;
+        }[];
+    } | null;
+    repairs: {
+        items: {
+            title: string;
+            location: string;
+            ask: string;
+            credit_cents: number;
+            note: string;
+        }[];
+        credit_cents: number;
+    }[];
     t: Record<string, string>;
     locales: Record<string, string>;
     uploaded: boolean;
@@ -254,6 +278,107 @@ export default function MyDealShow(p: Props) {
                         </span>
                     )}
                 </section>
+                {p.offers && (
+                    <section aria-labelledby="offers" className="grid gap-2">
+                        <h2 id="offers" className="font-semibold">
+                            {t.offers}
+                        </h2>
+                        <p>{p.offers.text}</p>
+                        <div className="overflow-x-auto rounded-md border">
+                            <table className="w-full min-w-[32rem] text-left">
+                                <thead className="bg-muted/50">
+                                    <tr>
+                                        <th className="p-2" />
+                                        <th className="p-2">
+                                            {t.offers_price}
+                                        </th>
+                                        <th className="p-2">{t.offers_net}</th>
+                                        <th className="p-2">
+                                            {t.offers_financing}
+                                        </th>
+                                        <th className="p-2">
+                                            {t.offers_closing}
+                                        </th>
+                                        <th className="p-2">
+                                            {t.offers_likely}
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y align-top">
+                                    {p.offers.offers.map((o) => (
+                                        <tr key={o.label}>
+                                            <td className="p-2 font-medium">
+                                                {o.label}
+                                            </td>
+                                            <td className="p-2">
+                                                {usd(o.price_cents)}
+                                            </td>
+                                            <td className="p-2 font-medium">
+                                                {usd(o.net_cents)}
+                                            </td>
+                                            <td className="p-2">
+                                                {o.financing}
+                                            </td>
+                                            <td className="p-2">
+                                                {o.closing_date ?? '—'}
+                                            </td>
+                                            <td className="p-2">
+                                                {o.grade}
+                                                {o.reasons.length > 0 && (
+                                                    <ul className="text-xs text-muted-foreground">
+                                                        {o.reasons.map((r) => (
+                                                            <li key={r}>{r}</li>
+                                                        ))}
+                                                    </ul>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                            {t.offers_note}
+                        </p>
+                    </section>
+                )}
+                {p.repairs.map((r, i) => (
+                    <section
+                        key={i}
+                        aria-labelledby="repairs"
+                        className="grid gap-2"
+                    >
+                        <h2 id="repairs" className="font-semibold">
+                            {t.repairs}
+                        </h2>
+                        <p className="text-muted-foreground">
+                            {t.repairs_note}
+                        </p>
+                        <ul className="divide-y rounded-md border">
+                            {r.items.map((it) => (
+                                <li
+                                    key={it.title + it.location}
+                                    className="flex justify-between gap-2 p-2"
+                                >
+                                    <span>
+                                        {it.title}
+                                        {it.location ? ` · ${it.location}` : ''}
+                                        {it.note && (
+                                            <span className="block text-xs text-muted-foreground">
+                                                {it.note}
+                                            </span>
+                                        )}
+                                    </span>
+                                    <span>
+                                        {it.ask === 'credit'
+                                            ? `${t.repairs_credit}: ${usd(it.credit_cents)}`
+                                            : t.repairs_repair}
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
+                    </section>
+                ))}
                 <section aria-labelledby="dates" className="grid gap-2">
                     <h2 id="dates" className="font-semibold">
                         {t.dates}

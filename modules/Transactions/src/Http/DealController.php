@@ -36,6 +36,7 @@ use Modules\Transactions\Models\Deal;
 use Modules\Transactions\Models\Document;
 use Modules\Transactions\Models\DocumentReading;
 use Modules\Transactions\Models\Item;
+use Modules\Transactions\Offers\Offers;
 use Modules\Transactions\Portal;
 use Modules\Transactions\Reading\DocIq;
 use Modules\Transactions\Referrals;
@@ -130,7 +131,8 @@ final class DealController
             'customFields' => app(CustomFields::class)->valuesFor('deal', $deal->id, $user, $deal->agent_user_id),
             'dealIq' => ['property_type' => $deal->property_type, 'financing' => $deal->financing, 'propertyTypes' => DealIq\Adapt::PROPERTY_TYPES, 'financingTypes' => DealIq\Adapt::FINANCING,
                 'uploadRequests' => app(DealIq\UploadRequests::class)->forDeal($deal), 'history' => app(DealIq\DealAssistant::class)->history($deal, $user),
-                'roles' => DealIq\DealAssistant::ROLES, 'setup' => $deal->setup_status !== null],
+                'roles' => DealIq\DealAssistant::ROLES, 'setup' => $deal->setup_status !== null, 'offers' => Offers::forListing($deal)
+                    ? DB::connection(Connections::cell())->table('tx_offers')->where('deal_id', $deal->id)->whereIn('status', ['received', 'shortlisted', 'countered'])->count() : null],
             'portal' => ['people' => app(Portal\PortalAccess::class)->forDeal($deal), 'questions' => Portal\Concierge::forDeal($deal), 'locales' => Portal\Copy::LOCALES,
                 'feedback' => DB::connection(Connections::cell())->table('tx_portal_feedback')->join('tx_portal_access', 'tx_portal_access.id', '=', 'tx_portal_feedback.access_id')
                     ->where('tx_portal_feedback.deal_id', $deal->id)->get(['tx_portal_access.name', 'tx_portal_feedback.rating', 'tx_portal_feedback.comment', 'tx_portal_feedback.may_quote'])

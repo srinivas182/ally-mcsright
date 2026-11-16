@@ -11,9 +11,12 @@ use Modules\Transactions\Http\DealController;
 use Modules\Transactions\Http\DealIqController;
 use Modules\Transactions\Http\DocumentReadingController;
 use Modules\Transactions\Http\MoneyDeskController;
+use Modules\Transactions\Http\OffersController;
 use Modules\Transactions\Http\PayController;
 use Modules\Transactions\Http\PortalAdminController;
 use Modules\Transactions\Http\PortalController;
+use Modules\Transactions\Http\PublicOfferController;
+use Modules\Transactions\Http\RepairsController;
 
 Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoffice.minimal'])->prefix('deals')->name('deals.')->group(function (): void {
     Route::get('/', [DealController::class, 'index'])->name('index');
@@ -50,6 +53,25 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoff
     Route::delete('{deal}/portal/{access}/devices', [PortalAdminController::class, 'signOutEverywhere'])->name('portal.sign-out');
     Route::post('{deal}/portal/documents/{document}', [PortalAdminController::class, 'share'])->name('portal.share');
     Route::post('{deal}/portal/questions/{question}', [PortalAdminController::class, 'reply'])->middleware('throttle:30,1')->name('portal.reply');
+    // Offers and repair requests (specs/ai/02, DQ4).
+    Route::get('{deal}/offers', [OffersController::class, 'index'])->name('offers');
+    Route::post('{deal}/offers/link', [OffersController::class, 'link'])->name('offers.link');
+    Route::post('{deal}/offers/upload', [OffersController::class, 'upload'])->middleware('throttle:20,1')->name('offers.upload');
+    Route::post('{deal}/offers', [OffersController::class, 'store'])->name('offers.store');
+    Route::post('{deal}/offers/notify', [OffersController::class, 'notify'])->middleware('throttle:10,1')->name('offers.notify');
+    Route::post('{deal}/offers/sheet', [OffersController::class, 'sheet'])->name('offers.sheet');
+    Route::post('{deal}/offers/summary', [OffersController::class, 'summary'])->middleware(['throttle:10,1', 'feature:crm.ai'])->name('offers.summary');
+    Route::post('{deal}/offers/summary/save', [OffersController::class, 'saveSummary'])->name('offers.summary.save');
+    Route::post('{deal}/offers/{offer}', [OffersController::class, 'update'])->name('offers.update');
+    Route::post('{deal}/offers/{offer}/status', [OffersController::class, 'status'])->name('offers.status');
+    Route::post('{deal}/offers/{offer}/counter', [OffersController::class, 'counter'])->middleware('throttle:10,1')->name('offers.counter');
+    Route::post('{deal}/offers/{offer}/accept', [OffersController::class, 'accept'])->name('offers.accept');
+    Route::get('{deal}/offers/{offer}/file', [OffersController::class, 'file'])->name('offers.file');
+    Route::get('{deal}/repairs', [RepairsController::class, 'index'])->name('repairs');
+    Route::post('{deal}/repairs', [RepairsController::class, 'start'])->middleware(['throttle:10,1', 'feature:crm.ai'])->name('repairs.start');
+    Route::post('{deal}/repairs/{repair}', [RepairsController::class, 'save'])->name('repairs.save');
+    Route::post('{deal}/repairs/{repair}/draft', [RepairsController::class, 'draft'])->middleware('throttle:10,1')->name('repairs.draft');
+    Route::post('{deal}/repairs/{repair}/share', [RepairsController::class, 'share'])->name('repairs.share');
     Route::get('{deal}', [DealController::class, 'show'])->name('show');
     Route::get('{deal}/why', [DealController::class, 'why'])->name('why');
     Route::post('{deal}/fields', [DealController::class, 'saveFields'])->name('fields');
@@ -130,4 +152,12 @@ Route::middleware(['web', EnsureTenantWorkspace::class])->prefix('my-deal')->nam
         Route::post('preferences', [PortalController::class, 'preferences'])->middleware('throttle:20,1')->name('preferences');
         Route::post('feedback', [PortalController::class, 'feedback'])->middleware('throttle:5,1')->name('feedback');
     });
+});
+
+// Offers from buyers' agents (specs/ai/02, DQ4): the listing's offer link, and each agent's private revise link.
+Route::middleware(['web', EnsureTenantWorkspace::class])->prefix('offer')->name('offer.')->group(function (): void {
+    Route::get('revise/{token}', [PublicOfferController::class, 'revisePage'])->where('token', '[A-Za-z0-9]{48}')->middleware('throttle:30,1')->name('revise');
+    Route::post('revise/{token}', [PublicOfferController::class, 'revise'])->where('token', '[A-Za-z0-9]{48}')->middleware('throttle:10,1')->name('revise.store');
+    Route::get('{token}', [PublicOfferController::class, 'show'])->where('token', '[A-Za-z0-9]{48}')->middleware('throttle:30,1')->name('show');
+    Route::post('{token}', [PublicOfferController::class, 'store'])->where('token', '[A-Za-z0-9]{48}')->middleware('throttle:10,1')->name('store');
 });

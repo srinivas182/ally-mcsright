@@ -50,6 +50,10 @@ final class TransactionsServiceProvider extends ServiceProvider
         $features->declare(DealIq\Intake::FEATURE, 'ai.deal_intake', 'Deal-IQ: a new deal from what the agent says');
         $features->declare(DealIq\DealAssistant::FEATURE, 'ai.deal_assistant', 'Deal-IQ: talk or type to a deal');
         $features->declare(Portal\Concierge::FEATURE, 'ai.deal_concierge', 'Deal-IQ: the client concierge in the deal portal (English and Spanish)');
+        $features->declare(Offers\OfferReader::FEATURE, 'ai.offer_read', 'Deal-IQ: the terms of an uploaded offer');
+        $features->declare(Offers\OfferSummary::FEATURE, 'ai.offer_summary', 'Deal-IQ: the offer comparison in plain words for the seller (English and Spanish)');
+        $features->declare(Repairs\RepairRequests::FEATURE, 'ai.repair_read', 'Deal-IQ: findings read from a home inspection report');
+        $notices->register(Offers\OfferReceivedMail::class, 'Offers received on your listings', 'Deals');
         $notices->register(Portal\PortalQuestionMail::class, 'Client questions from the deal portal', 'Deals');
         $notices->register(Portal\PortalFeedbackMail::class, 'Client check-ins after closing', 'Deals');
         $features->declare(Reading\DocIq::ASK, 'ai.doc_ask', 'DocIQ: questions answered from one document');

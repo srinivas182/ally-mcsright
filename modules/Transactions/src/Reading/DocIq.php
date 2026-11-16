@@ -315,7 +315,7 @@ final class DocIq
     }
 
     /** The quote states the value: every number in the value appears in the quote, or the words do. */
-    private static function states(string $quote, string $value): bool
+    public static function states(string $quote, string $value): bool
     {
         preg_match_all('/\d[\d,.]*/', $value, $m);
         $digits = fn (string $s): string => (string) preg_replace('/\D/', '', (string) preg_replace('/[.,]00$/', '', $s));
