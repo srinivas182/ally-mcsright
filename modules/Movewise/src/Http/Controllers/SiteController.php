@@ -169,7 +169,7 @@ final class SiteController
                 $urls[] = [$site['base'].$p, null];
                 $urls[] = [$site['base'].'/es'.($p === '/' ? '' : $p), null]; // the Spanish version (specs/movewise/02)
             }
-            foreach (['/how-movewise-is-paid', '/brokers', '/fair-housing', '/privacy', '/terms', '/accessibility'] as $p) {
+            foreach (['/agents', '/how-movewise-is-paid', '/brokers', '/fair-housing', '/privacy', '/terms', '/accessibility'] as $p) {
                 $urls[] = [$site['base'].$p, null];
             }
         } else {

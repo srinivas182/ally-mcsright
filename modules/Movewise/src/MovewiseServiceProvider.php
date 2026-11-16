@@ -34,8 +34,11 @@ final class MovewiseServiceProvider extends ServiceProvider
         $this->app->make(PromptRegistry::class)->addPath(__DIR__.'/../prompts');
         $this->app->make(FeatureCatalog::class)->declare(MovewiseAilly::FEATURE, 'ai.movewise', 'Movewise AIlly (HQ pays)');
         if ($this->app->runningInConsole()) {
-            $this->commands([Console\SendAlerts::class]);
+            $this->commands([Console\SendAlerts::class, Console\RecheckLicences::class]);
         }
-        $this->app->make(NavigationRegistry::class)->add(new NavItem('Platform', 'Movewise', '/hq/movewise', 'house', 39, kinds: [UserKind::HqStaff]));
+        $nav = $this->app->make(NavigationRegistry::class);
+        $nav->add(new NavItem('Platform', 'Movewise', '/hq/movewise', 'house', 39, kinds: [UserKind::HqStaff]));
+        $nav->add(new NavItem('Platform', 'Movewise agents', '/hq/movewise/program', 'users', 40, kinds: [UserKind::HqStaff]));
+        $nav->add(new NavItem('Grow', 'Movewise', '/movewise', 'house', 27, kinds: [UserKind::Owner, UserKind::Agent]));
     }
 }
