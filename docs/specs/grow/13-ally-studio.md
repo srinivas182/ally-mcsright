@@ -149,8 +149,29 @@ shows each with its music, download (MP4) and "Post it".
   listing's best three photos (and a twilight when the allowance allows) before its posts are designed, from the
   allowance only, waiting at most 30 minutes. Every enhanced photo is labelled "Virtually
   enhanced" on the design and in the caption, the original is kept, and MLS photo rules are followed.
-- **Voice narration:** Reels and tours narrated in the agent's own voice, only with their recorded consent; the
-  voice is theirs alone and is deleted when they withdraw consent.
+- **Voice narration (SA5b):** a voice-over on any finished Reel or tour.
+    - **Voices.** Everyone can use a professional stock AI voice (ElevenLabs premade voices licensed for commercial
+      use). An agent can also add **their own voice**:
+        - only the agent can make it, on Studio → My voice, after confirming their password;
+        - they read a consent statement aloud (in their name, naming the brokerage, RightAlly and ElevenLabs, the only
+          use and the deletion rules) plus a short sample, then type their full name as a signature and tick to agree;
+        - the recording is used once to make the voice and is never kept. Only the vendor's voice id (encrypted) and the
+          consent record are stored: the exact text, version, time, IP, and a SHA-256 hash of the recording.
+    - **Who can use it.** Nobody else can see or use an agent's own voice. It narrates only videos they approve, never
+      calls or texts.
+    - **Deletion.** The voice is deleted at the vendor and here when the agent deletes it, when they leave (account
+      no longer active), or after 12 months unused (daily `ads:studio-voices`). These are the retention and
+      destruction rules state biometric laws expect (Illinois BIPA, Texas CUBI).
+    - **Script.** AI writes it to fit the video (about 2.2 words a second), using only the listing's facts. It is
+      Fair Housing checked; wording that fails is never offered. The agent can edit it, and the edited text is checked
+      again.
+    - **Audio.** The voice starts 0.7 s in, with the music lowered to 22% beneath it, then loudness-normalised. The
+      narrated video gets a new file name, so caches never serve the old one, and the old file is deleted.
+    - **Counting and failures.** Each narration counts as one "Voice narration" (allowance, then credits). If the
+      voice service fails, the video stays as it was and the narration goes back to the allowance.
+    - **Disclosure.** YouTube uploads of a video in the agent's own AI voice set `status.containsSyntheticMedia`.
+    - **HQ.** The app is `studio_voice` (ElevenLabs API key). Before go-live, HQ confirms ElevenLabs' current terms
+      for cloning through the API on RightAlly's plan.
 - **Comment and message replies:** Studio drafts replies to comments and messages on the agent's posts (Meta
   permissions `pages_manage_engagement`, `instagram_manage_comments`, `instagram_manage_messages`); interested
   people become leads with consent recorded; replies are Fair Housing checked; Approve first by default; anything

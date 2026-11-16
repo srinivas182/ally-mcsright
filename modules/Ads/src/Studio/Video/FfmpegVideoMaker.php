@@ -22,7 +22,10 @@ final class FfmpegVideoMaker implements VideoMaker
     /** How far the camera moves over one frame (7%). */
     private const ZOOM = 0.07;
 
-    public function make(array $frames, array $seconds, ?string $music, string $out, int $width = 1080, int $height = 1920): string
+    /** How loud the music sits under a voice-over (22%). */
+    private const DUCK = 0.22;
+
+    public function make(array $frames, array $seconds, ?string $music, string $out, int $width = 1080, int $height = 1920, ?string $voice = null): string
     {
         if ($frames === [] || count($frames) !== count($seconds)) {
             throw new RuntimeException('A video needs frames and how long each shows.');
@@ -33,6 +36,9 @@ final class FfmpegVideoMaker implements VideoMaker
             $args = [...$args, '-i', $f];
         }
         $args = [...$args, ...($music !== null ? ['-stream_loop', '-1', '-i', $music] : ['-f', 'lavfi', '-t', (string) ceil($total), '-i', 'anullsrc=r=44100:cl=stereo'])];
+        if ($voice !== null) {
+            $args = [...$args, '-i', $voice];
+        }
         $parts = [];
         foreach ($frames as $i => $_) {
             $n = (int) round($seconds[$i] * self::FPS);
@@ -47,7 +53,16 @@ final class FfmpegVideoMaker implements VideoMaker
             $prev = "x{$i}";
         }
         $audio = count($frames);
-        $parts[] = "[{$audio}:a]atrim=0:".number_format($total, 2, '.', '').',afade=t=in:d=0.5,afade=t=out:st='.number_format(max(0, $total - 1.5), 2, '.', '').':d=1.5,loudnorm=I=-16:TP=-1.5[a]';
+        $len = number_format($total, 2, '.', '');
+        $fades = 'afade=t=in:d=0.5,afade=t=out:st='.number_format(max(0, $total - 1.5), 2, '.', '').':d=1.5';
+        if ($voice !== null) {
+            // The voice starts just after the first frame settles; the music sits low beneath it the whole way.
+            $parts[] = "[{$audio}:a]atrim=0:{$len},volume=".self::DUCK.",{$fades}[m]";
+            $parts[] = '['.($audio + 1).':a]aresample=44100,adelay=700|700,apad,atrim=0:'.$len.'[vo]';
+            $parts[] = '[m][vo]amix=inputs=2:duration=first:normalize=0,loudnorm=I=-16:TP=-1.5[a]';
+        } else {
+            $parts[] = "[{$audio}:a]atrim=0:{$len},{$fades},loudnorm=I=-16:TP=-1.5[a]";
+        }
         $args = [...$args, '-filter_complex', implode(';', $parts), '-map', "[{$prev}]", '-map', '[a]', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20',
             '-pix_fmt', 'yuv420p', '-r', (string) self::FPS, '-c:a', 'aac', '-b:a', '160k', '-ar', '44100', '-t', number_format($total, 2, '.', ''), '-movflags', '+faststart', $out];
         $p = new Process($args);

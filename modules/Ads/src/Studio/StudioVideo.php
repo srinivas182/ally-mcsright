@@ -28,6 +28,9 @@ use Modules\Core\Tenancy\Concerns\HasPublicUlid;
  * @property int $seconds
  * @property string|null $error
  * @property CarbonImmutable|null $used_at
+ * @property string|null $narration the voice-over script (SA5b)
+ * @property string|null $voice stock:{id} or own
+ * @property string|null $narration_error
  * @property CarbonImmutable $created_at
  */
 final class StudioVideo extends Model

@@ -120,7 +120,7 @@ final class FacebookPages implements Connector, SocialChannel, SocialMetrics
     }
 
     /**
-     * @param  array{text: string, link: string|null, image: string|null, images: list<string>, video: string|null, title: string}  $content
+     * @param  array{text: string, link: string|null, image: string|null, images: list<string>, video: string|null, title: string, synthetic?: bool}  $content
      * @return array{id: string, url: string|null}
      */
     private function instagram(ConnectionData $connection, string $account, array $content): array

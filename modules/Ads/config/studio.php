@@ -19,6 +19,10 @@ return [
     'video' => env('STUDIO_VIDEO', 'ffmpeg'), // ffmpeg | fake (tests)
     'ffmpeg' => env('STUDIO_FFMPEG', '/usr/bin/ffmpeg'),
     'video_timeout' => (int) env('STUDIO_VIDEO_TIMEOUT', 240),
+    // Voice-overs (SA5b): ElevenLabs with RightAlly's key (app studio_voice).
+    'voice' => env('STUDIO_VOICE', 'elevenlabs'), // elevenlabs | fake (tests)
     'daily_reels' => (int) env('STUDIO_DAILY_REELS', 10), // Reels and tours one person may make a day
-    'youtube_privacy' => env('STUDIO_YOUTUBE_PRIVACY', 'private'), // public once the Google project passes YouTube's API audit
+    // public or unlisted once the Google project passes YouTube's API audit (until then YouTube keeps uploads private).
+    // YouTube ads (specs/ads/05) need public or unlisted videos.
+    'youtube_privacy' => env('STUDIO_YOUTUBE_PRIVACY', 'private'),
 ];

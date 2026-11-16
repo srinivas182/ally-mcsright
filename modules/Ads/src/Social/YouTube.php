@@ -55,7 +55,9 @@ final class YouTube implements Connector, SocialChannel
         $init = Http::withToken($token)->withHeaders(['X-Upload-Content-Type' => 'video/mp4', 'X-Upload-Content-Length' => (string) strlen($video->body())])
             ->acceptJson()->timeout(30)->post(self::UPLOAD.'?uploadType=resumable&part=snippet,status', [
                 'snippet' => ['title' => $title, 'description' => $description, 'categoryId' => '22'],
-                'status' => ['privacyStatus' => config('studio.youtube_privacy', 'private') === 'public' ? 'public' : 'private', 'selfDeclaredMadeForKids' => false],
+                // A voice-over in the agent's own AI voice is realistic synthetic audio, so it is declared (YouTube's disclosure rules).
+                'status' => ['privacyStatus' => in_array(config('studio.youtube_privacy'), ['public', 'unlisted'], true) ? (string) config('studio.youtube_privacy') : 'private',
+                    'selfDeclaredMadeForKids' => false, 'containsSyntheticMedia' => (bool) ($content['synthetic'] ?? false)],
             ]);
         $session = (string) $init->header('Location');
         if (! $init->successful() || ! str_starts_with($session, 'https://')) {
