@@ -17,6 +17,7 @@ type DesignRow = {
     used: boolean;
     images: Record<'square' | 'portrait' | 'story', string | null>;
     carousel: string[];
+    reelable: boolean;
 };
 
 const select = 'h-12 rounded-md border bg-background px-3';
@@ -146,6 +147,17 @@ export default function StudioCreate({
                     >
                         Post it
                     </Button>
+                    {d.reelable && (
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                                router.post(`/studio/designs/${d.ulid}/reel`)
+                            }
+                        >
+                            Make a Reel
+                        </Button>
+                    )}
                     {d.carousel.length > 1 && (
                         <Button size="sm" variant="outline" asChild>
                             <a

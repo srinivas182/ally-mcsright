@@ -9,6 +9,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Modules\Ads\Studio\MusicLibrary;
 use Modules\Ads\Studio\StudioPlans;
 
 /**
@@ -20,7 +21,30 @@ final class HqStudioController
 {
     public function index(StudioPlans $plans): Response
     {
-        return Inertia::render('hq/studio', $plans->economics() + ['features' => StudioPlans::FEATURES]);
+        return Inertia::render('hq/studio', $plans->economics() + ['features' => StudioPlans::FEATURES, 'music' => app(MusicLibrary::class)->all(),
+            'moods' => MusicLibrary::MOODS]);
+    }
+
+    /** Adds a licensed track to the Reels music library (with the licence RightAlly holds). */
+    public function addMusic(Request $request, MusicLibrary $music): RedirectResponse
+    {
+        $data = $request->validate(['file' => ['required', 'file', 'mimes:mp3,m4a,aac,wav', 'max:25600'], 'title' => ['required', 'string', 'max:120'],
+            'artist' => ['nullable', 'string', 'max:120'], 'mood' => ['required', 'string'], 'licence' => ['required', 'string', 'max:300'], 'licence_url' => ['nullable', 'url', 'max:300']]);
+        $user = $request->user();
+        abort_unless($user instanceof User, 403);
+        $music->add($request->file('file') ?? abort(422), $data, $user);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Track added to the library.']);
+
+        return back();
+    }
+
+    public function toggleMusic(Request $request, string $track, MusicLibrary $music): RedirectResponse
+    {
+        $user = $request->user();
+        abort_unless($user instanceof User, 403);
+        $music->toggle($track, $request->boolean('active'), $user);
+
+        return back();
     }
 
     public function save(Request $request, string $package, StudioPlans $plans): RedirectResponse

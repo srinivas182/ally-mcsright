@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Sleep;
 use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
 use Modules\Ads\Social\LinkedIn;
@@ -202,6 +203,31 @@ it('posts a carousel: a Facebook multi-photo post, an Instagram carousel and a L
     Http::assertSent(fn (HttpRequest $r): bool => $r->url() === 'https://api.linkedin.com/rest/posts'
         && array_column((array) ($r->data()['content']['multiImage']['images'] ?? []), 'id') === ['urn:li:image:A', 'urn:li:image:B', 'urn:li:image:C']
         && str_contains((string) ($r->data()['commentary'] ?? null), 'utm\\_source=linkedin')); // escaped for LinkedIn's little text
+});
+
+it('posts a Reel: an Instagram Reel once processed, a Facebook Page video, and the cover elsewhere', function (): void {
+    Http::fake([
+        'graph.facebook.com/v21.0/111/videos' => Http::response(['id' => 'vid-7']),
+        'graph.facebook.com/v21.0/cont-1?*' => Http::sequence()->push(['status_code' => 'IN_PROGRESS'])->push(['status_code' => 'FINISHED']),
+    ]);
+    Sleep::fake();
+    socialConnect($this->owner, 'facebook_pages');
+    socialConnect($this->owner, 'google_business');
+    $places = collect(app(SocialPosts::class)->places($this->owner))->pluck('key')->all();
+    $this->actingAs($this->owner)->post('/social', ['text' => 'Tour 201 Pine Rd', 'video_url' => 'https://cdn.acme.test/v/reel.mov', 'image_url' => 'https://cdn.acme.test/v/reel.jpg',
+        'places' => $places])->assertSessionHasErrors('video_url');
+    $this->actingAs($this->owner)->post('/social', ['text' => 'Tour 201 Pine Rd', 'link' => 'https://acme.test/201-pine', 'video_url' => 'https://cdn.acme.test/v/reel.mp4',
+        'image_url' => 'https://cdn.acme.test/v/reel.jpg', 'places' => $places])->assertSessionHasNoErrors();
+    $post = SocialPost::query()->sole();
+    expect($post->video_url)->toBe('https://cdn.acme.test/v/reel.mp4')->and($post->status)->toBe('posted')
+        ->and(SocialTarget::query()->pluck('status')->unique()->all())->toBe(['posted']);
+    Http::assertSent(fn (HttpRequest $r): bool => $r->url() === 'https://graph.facebook.com/v21.0/111/videos' && ($r->data()['file_url'] ?? null) === 'https://cdn.acme.test/v/reel.mp4'
+        && str_contains((string) ($r->data()['description'] ?? ''), 'utm_source=facebook'));
+    Http::assertSent(fn (HttpRequest $r): bool => $r->url() === 'https://graph.facebook.com/v21.0/17841/media' && ($r->data()['media_type'] ?? null) === 'REELS'
+        && ($r->data()['video_url'] ?? null) === 'https://cdn.acme.test/v/reel.mp4' && ($r->data()['share_to_feed'] ?? null) === 'true');
+    Http::assertSent(fn (HttpRequest $r): bool => $r->url() === 'https://graph.facebook.com/v21.0/17841/media_publish');
+    Http::assertSent(fn (HttpRequest $r): bool => str_ends_with($r->url(), 'locations/7/localPosts') && ($r->data()['media'][0]['sourceUrl'] ?? null) === 'https://cdn.acme.test/v/reel.jpg');
+    Sleep::assertSleptTimes(1); // waited once for Instagram to finish processing
 });
 
 it('shows the failure in one place without stopping the others', function (): void {

@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 use Modules\Ads\Http\AdsController;
 use Modules\Ads\Http\AutopilotController;
 use Modules\Ads\Http\HqStudioController;
+use Modules\Ads\Http\ReelsController;
 use Modules\Ads\Http\SocialController;
 use Modules\Ads\Http\StudioController;
 use Modules\Ads\Http\StudioFontsController;
@@ -54,11 +55,17 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('studio
     Route::post('review/{item}', [AutopilotController::class, 'review'])->where('item', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('review.decide');
     Route::post('rules', [AutopilotController::class, 'saveRules'])->name('rules');
     Route::post('autopilot/{item}/skip', [AutopilotController::class, 'skip'])->where('item', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('autopilot.skip');
+    Route::get('reels', [ReelsController::class, 'index'])->name('reels');
+    Route::post('designs/{design}/reel', [ReelsController::class, 'store'])->where('design', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->middleware('throttle:10,1')->name('reels.store');
+    Route::get('reels/{reel}/download', [ReelsController::class, 'download'])->where('reel', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('reels.download');
+    Route::post('reels/{reel}/post', [ReelsController::class, 'post'])->where('reel', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('reels.post');
     Route::post('designs/{design}/post', [StudioController::class, 'post'])->where('design', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('designs.post');
 });
 Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.tenants.manage'])->prefix('hq/studio')->name('hq.studio.')->group(function (): void {
     Route::get('/', [HqStudioController::class, 'index'])->name('index');
     Route::post('packages/{package}', [HqStudioController::class, 'save'])->where('package', 'studio_[a-z]+')->name('packages.save');
+    Route::post('music', [HqStudioController::class, 'addMusic'])->middleware('throttle:20,1')->name('music.store');
+    Route::post('music/{track}', [HqStudioController::class, 'toggleMusic'])->where('track', '[0-9a-hjkmnp-tv-z]{26}')->name('music.toggle');
 });
 
 // Ally Studio fonts for printers and previews (specs/grow/13): public, cached, only the bundled files.
