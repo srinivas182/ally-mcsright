@@ -1,6 +1,6 @@
 # Insights 01: reports and KPIs (Team A with B, Sprints K1–K3)
 
-Status: **K1 and K2 delivered (2026-11-16)**. K3 (business planner and the monthly ROI report) is next. Covers plan items A26 and A22. Module: `modules/Insights` (depends on
+Status: **K1, K2 and K3 delivered (2026-11-16)**. Covers plan items A26 and A22. Module: `modules/Insights` (depends on
 core, transactions, crm and compensation).
 
 ## Leader review (November 2026)
@@ -146,9 +146,51 @@ RightAlly's approach:
 - **Ask your numbers:** answers limited to the catalogue.
 - **Alerts:** an anomaly alert sent once.
 
-## K3: business planner and ROI report (next)
+## K3: business planner and the monthly ROI report (delivered)
 
-- **Business planner:** income goal, then the closings, appointments and conversations needed, using the agent's own
-  conversion rates. Weekly targets are compared with actual activity.
-- **Monthly ROI report:** an email to owners covering time saved by automation, payout speed, lead response, and
-  closings attributed to RightAlly tools.
+### Business planner (`/insights/plan`, menu "Business planner" for agents)
+
+- **Inputs:**
+    - the income goal, as take-home or GCI;
+    - average sale price and commission rate;
+    - the share of deals started that close, of appointments that sign, and of conversations that book.
+- **Starting values:** taken from the agent's last 12 months where there is enough history (at least 3 closings, 3
+  deals started, 3 appointments, or 5 conversations). Take-home share comes from their commission calculations.
+  Otherwise common starting points are used, and the page says which is which.
+- **The plan works backwards:**
+    - GCI = take-home ÷ take-home share;
+    - closings = GCI ÷ (price × commission);
+    - then agreements, appointments and conversations from the three shares;
+    - weekly targets over 48 working weeks.
+- **Saving** also sets the agent's yearly goal (GCI and closings), which their success dashboard uses.
+- **Tracking:**
+    - **Conversations:** connected calls, meetings, and the texts and emails the agent sends.
+    - **Appointments:** meetings and completed showings.
+    - **Agreements:** deals started.
+    - **Closings:** closed deals.
+
+    Each is shown for this week and year to date, against pace.
+
+### Monthly ROI report (`/insights/roi`; emailed to owners on the 1st)
+
+- **What it shows:**
+    - hours of work saved;
+    - automation runs and steps;
+    - AI replies to leads;
+    - documents read;
+    - leads with the median first reply;
+    - closings and GCI;
+    - what the brokerage website brought.
+- **Hours saved** use stated minutes per task, shown on the page: 4 per automation step, 3 per AI reply, 6 per
+  document read.
+- **Who sees it:** people who see the whole brokerage's numbers and pay. `insights:daily` sends it on the 1st.
+
+### Tests
+
+`tests/Feature/Insights/PlannerAndRoiTest.php`:
+
+- the plan's arithmetic;
+- starting values from history;
+- saving the plan and goal;
+- this week's activity;
+- the ROI page and the email on the 1st.
