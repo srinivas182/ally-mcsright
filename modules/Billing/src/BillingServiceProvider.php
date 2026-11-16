@@ -26,6 +26,7 @@ final class BillingServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->scoped(Catalogue::class);
+        $this->app->scoped(HealthCheck\HealthChecks::class);
         $this->app->scoped(Pricing::class);
         $this->app->scoped(Entitlements::class);
         $this->app->singleton(PaymentSettings::class);
@@ -53,6 +54,7 @@ final class BillingServiceProvider extends ServiceProvider
         Brief\CreditsBriefItems::register($this->app->make(DailyBriefs::class));
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
+        $this->loadViewsFrom(__DIR__.'/../resources/views', 'billing');
         $this->app->make(Router::class)->aliasMiddleware('feature', RequireFeature::class);
 
         $nav = $this->app->make(NavigationRegistry::class);
@@ -63,6 +65,7 @@ final class BillingServiceProvider extends ServiceProvider
         $nav->add(new NavItem('Platform', 'Pricing', '/hq/billing', 'badge-dollar-sign', 35, kinds: [UserKind::HqStaff]));
         $nav->add(new NavItem('Platform', 'Payments', '/hq/payments', 'credit-card', 40, kinds: [UserKind::HqStaff]));
         $nav->add(new NavItem('Platform', 'RightAlly credits', '/hq/credits', 'coins', 37, kinds: [UserKind::HqStaff]));
+        $nav->add(new NavItem('HQ', 'Health checks', '/hq/health-checks', 'stethoscope', 12, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff]));
         // Agents only see Plans when their brokerage uses the agent-pays model.
         $this->app->make(PermissionRegistry::class)->register('Billing', [
             'billing.credits.manage' => ['Buy RightAlly credits and see the brokerage\'s credit use'],
@@ -72,7 +75,7 @@ final class BillingServiceProvider extends ServiceProvider
         $nav->add(new NavItem('Overview', 'Plans', '/plans', 'gift', 90, ability: 'billing.plans.view'));
 
         if ($this->app->runningInConsole()) {
-            $this->commands([Console\ApplyPriceChanges::class, Console\EndGrace::class, Console\BillSubsidies::class, Console\PartnerPayouts::class, Console\GrantMonthlyCredits::class, Console\WatchCreditMargins::class, Console\ExpirePurchasedCredits::class, Console\RemindPausedMaps::class]);
+            $this->commands([Console\ApplyPriceChanges::class, Console\EndGrace::class, Console\BillSubsidies::class, Console\PartnerPayouts::class, Console\GrantMonthlyCredits::class, Console\WatchCreditMargins::class, Console\ExpirePurchasedCredits::class, Console\RemindPausedMaps::class, Console\PruneHealthChecks::class]);
         }
     }
 }
