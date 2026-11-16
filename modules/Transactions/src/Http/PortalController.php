@@ -16,6 +16,7 @@ use Inertia\Inertia;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
+use Modules\Transactions\Closing\MovingChecklist;
 use Modules\Transactions\DealIq\UploadReceivedMail;
 use Modules\Transactions\DealIq\UploadRequests;
 use Modules\Transactions\Documents;
@@ -203,6 +204,14 @@ final class PortalController
         }
 
         return redirect('/my-deal/'.$a->ulid)->with('portal_thanks', true);
+    }
+
+    public function moving(Request $request, string $access, string $item): RedirectResponse
+    {
+        [$a] = $this->access($request, $access);
+        MovingChecklist::toggle($a, $item);
+
+        return redirect('/my-deal/'.$a->ulid);
     }
 
     /** The person's private calendar feed link (opens their calendar app). */

@@ -16,6 +16,7 @@ export type PortalProps = {
         last_seen: string | null;
         active: boolean;
         devices: number;
+        moving: string | null;
     }[];
     questions: {
         ulid: string;
@@ -135,6 +136,11 @@ export function PortalPanel({
                             <Badge variant="outline">
                                 {portal.locales[p.locale] ?? p.locale}
                             </Badge>
+                            {p.moving && (
+                                <Badge variant="outline">
+                                    Moving checklist {p.moving}
+                                </Badge>
+                            )}
                             {p.texts && (
                                 <Badge variant="secondary">Texts on</Badge>
                             )}

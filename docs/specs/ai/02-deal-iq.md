@@ -236,7 +236,30 @@ status). DQ5a matches them and closes those gaps:
 - **Monday summary for agents** across all open deals: overdue, due in 7 days, MLS updates, emails ready to send,
   and who they are waiting on (upload links, client questions). One email, only when there is something.
 - Scheduled: `transactions:playbooks` hourly (emails due, MLS guard, Monday summary).
-- Still to come (DQ5b): vendor scheduling, moving-day concierge, closing-day plan, after-closing touches.
+
+## Delivered in DQ5b — vendors, moving checklist, closing day, after closing
+
+Leader review (Nov 2026): Updater, MoveEasy and Move AI run moving concierges (utilities, movers, mail forwarding,
+branded invitations triggered from SkySlope or DocuSign) but as a separate app, not tied to the deal's own dates,
+English only; ListedKit and Open to Close schedule dates but leave vendor coordination to email. DQ5b puts it all in
+the deal and the client portal:
+
+- **Preferred vendors** (Deals → Preferred vendors): inspectors, appraisers, surveyors, movers, utilities, internet,
+  insurance, cleaning, locksmiths; https websites only; each can be shown to clients or kept for agents.
+- **Vendor scheduling**: inspections, appraisals, surveys and the final walk-through on the deal. The vendor gets a
+  link (no account, never indexed) to confirm or suggest another time; the agent accepts a new time in one click
+  and the vendor is told; vendors are reminded the day before; an appointment that passes without being marked done
+  is flagged to the agent with the deadlines that depend on it (inspection → option period, appraisal → financing,
+  walk-through → closing). Clients see their inspection, appraisal and walk-through in the portal.
+- **Moving checklist** in the client portal, English and Spanish, dated from the deal's closing date: movers,
+  internet (install lead time), home insurance (before closing), mail forwarding (USPS), utilities to start (buyers)
+  or stop (sellers), keys and codes, locks, address updates, with the brokerage's vendors for each and done ticks;
+  the agent sees progress ("3 of 7").
+- **Closing-day plan**, in the portal in the last week and emailed three days before (again if the date moves):
+  when and where (set on the deal), what to bring, the final walk-through, and "call before you wire" with the title
+  company's phone number from the deal, never from an email.
+- **After closing**: buyers hear the next day (keys and utilities), everyone a month on, and buyers on each home
+  anniversary, with a call-back task for the agent in the CRM. Replies go to the agent.
 
 ## Market review (November 2026)
 

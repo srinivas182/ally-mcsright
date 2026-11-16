@@ -9,6 +9,10 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Modules\Core\Support\Connections;
+use Modules\Core\Tenancy\TenantContext;
+use Modules\Transactions\Closing\Appointments;
+use Modules\Transactions\Closing\ClosingDay;
+use Modules\Transactions\Closing\MovingChecklist;
 use Modules\Transactions\Models\Deal;
 use Modules\Transactions\Models\Document;
 use Modules\Transactions\Offers\OfferSummary;
@@ -189,6 +193,10 @@ final class PortalView
                     'sources' => array_values(array_map(fn ($s): string => Copy::t($locale, 'source.'.$s), (array) json_decode((string) ($q->sources ?? '[]'), true)))])->all()) : [],
             'checkin' => $client && $deal->status === 'closed' && ! $db->table('tx_portal_feedback')->where('access_id', $access->id)->exists(),
             'offers' => $role === 'seller' ? self::offers($deal, $locale) : null,
+            'moving' => MovingChecklist::for($deal, $access),
+            'closingDay' => ClosingDay::soon($deal) ? ClosingDay::plan($deal, $access) : [],
+            'appointments' => $client ? array_map(fn (array $a): array => ['title' => $a['title'], 'when' => Copy::date($locale, substr($a['starts_at'], 0, 10)).', '
+                .CarbonImmutable::parse($a['starts_at'])->setTimezone(app(TenantContext::class)->current()->timezone ?: 'America/Chicago')->format('g:i A')], Appointments::forDeal($deal, true)) : [],
             'repairs' => $role === 'buyer' ? array_map(fn (array $r): array => ['items' => array_values(array_filter($r['items'], fn (array $i): bool => in_array($i['ask'] ?? 'none', ['repair', 'credit'], true))),
                 'credit_cents' => $r['credit_cents']], array_slice(RepairRequests::forDeal($deal, true), 0, 1)) : [],
             't' => Copy::all($locale),

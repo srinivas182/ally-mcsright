@@ -1,4 +1,8 @@
 import {
+    ClosingPanel,
+    type ClosingProps,
+} from '@/components/deals/closing-panel';
+import {
     MoneyDesk,
     type Cda,
     type Deposit,
@@ -93,6 +97,7 @@ type Props = {
     dealIq: DealIqProps;
     portal: PortalProps;
     playbook: PlaybookProps;
+    closing: ClosingProps;
 };
 
 const statusLabel: Record<string, string> = {
@@ -281,6 +286,7 @@ export default function ShowDeal({
     dealIq,
     portal,
     playbook,
+    closing,
     dates,
     unsorted,
     facts,
@@ -332,6 +338,11 @@ export default function ShowDeal({
                     dealUlid={deal.ulid}
                     locked={deal.locked}
                     playbook={playbook}
+                />
+                <ClosingPanel
+                    dealUlid={deal.ulid}
+                    locked={deal.locked}
+                    closing={closing}
                 />
                 <PortalPanel
                     dealUlid={deal.ulid}

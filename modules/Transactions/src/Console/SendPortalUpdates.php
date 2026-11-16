@@ -20,7 +20,7 @@ final class SendPortalUpdates extends Command
 
     public function handle(TenantContext $tenants): int
     {
-        $total = ['milestones' => 0, 'weekly' => 0, 'checkins' => 0, 'texts' => 0];
+        $total = ['milestones' => 0, 'weekly' => 0, 'checkins' => 0, 'texts' => 0, 'closing' => 0, 'after' => 0];
         foreach (Tenant::query()->where('status', 'active')->cursor() as $tenant) {
             $tenants->runAs($tenant, function () use (&$total): void {
                 foreach (app(Updates::class)->run() as $k => $n) {
@@ -28,7 +28,7 @@ final class SendPortalUpdates extends Command
                 }
             });
         }
-        $this->info("Sent {$total['milestones']} milestone update(s), {$total['weekly']} weekly summaries, {$total['checkins']} check-in(s) and {$total['texts']} text(s).");
+        $this->info("Sent {$total['milestones']} milestone update(s), {$total['weekly']} weekly summaries, {$total['checkins']} check-in(s), {$total['closing']} closing plan(s), {$total['after']} after-closing note(s) and {$total['texts']} text(s).");
 
         return self::SUCCESS;
     }

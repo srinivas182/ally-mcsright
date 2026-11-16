@@ -22,6 +22,8 @@ use Modules\Core\Support\Connections;
 use Modules\Crm\ContactVisibility;
 use Modules\Crm\Models\Contact;
 use Modules\Transactions\Cdas;
+use Modules\Transactions\Closing\Appointments;
+use Modules\Transactions\Closing\Vendors;
 use Modules\Transactions\Compliance\ComplianceScan;
 use Modules\Transactions\Compliance\Findings;
 use Modules\Transactions\Deadlines\Deadlines;
@@ -140,6 +142,8 @@ final class DealController
                 'linked' => ($l = $deal->getAttribute('linked_deal_id') !== null ? Deal::query()->whereKey((int) $deal->getAttribute('linked_deal_id'))->first() : null) !== null ? ['ulid' => $l->ulid, 'street' => $l->street] : null,
                 'linkable' => Deal::query()->where('agent_user_id', $deal->agent_user_id)->where('id', '!=', $deal->id)->whereIn('status', ['pre_contract', 'under_contract'])->orderByDesc('id')->limit(30)
                     ->get(['ulid', 'street'])->map(fn (Deal $d): array => ['ulid' => $d->ulid, 'street' => $d->street])->all()],
+            'closing' => ['time' => $deal->getAttribute('closing_time'), 'place' => $deal->getAttribute('closing_place'), 'appointments' => Appointments::forDeal($deal),
+                'kinds' => Appointments::KINDS, 'vendors' => Vendors::all()],
             'portal' => ['people' => app(Portal\PortalAccess::class)->forDeal($deal), 'questions' => Portal\Concierge::forDeal($deal), 'locales' => Portal\Copy::LOCALES,
                 'feedback' => DB::connection(Connections::cell())->table('tx_portal_feedback')->join('tx_portal_access', 'tx_portal_access.id', '=', 'tx_portal_feedback.access_id')
                     ->where('tx_portal_feedback.deal_id', $deal->id)->get(['tx_portal_access.name', 'tx_portal_feedback.rating', 'tx_portal_feedback.comment', 'tx_portal_feedback.may_quote'])
