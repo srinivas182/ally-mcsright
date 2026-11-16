@@ -13,7 +13,7 @@ final class HealthReportMail extends Notification
 {
     use Queueable;
 
-    public function __construct(public readonly string $brokerage, public readonly string $name, public readonly string $url) {}
+    public function __construct(public readonly string $brokerage, public readonly string $name, public readonly string $url, public readonly string $lang = 'en') {}
 
     /**
      * @return list<string>
@@ -25,11 +25,13 @@ final class HealthReportMail extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
-        return (new MailMessage)->subject('Your Brokerage Health Check: '.$this->brokerage)
-            ->greeting('Hello '.$this->name.',')
-            ->line('Your Health Check report for '.$this->brokerage.' is ready: scores, what to fix first, the website check, the savings comparison and a preview of RightAlly in your colours.')
-            ->action('Open my report', $this->url)
-            ->line('The link is private to you and works for 180 days. You can delete the report from the report page at any time.')
-            ->line('If you did not ask for this, ignore this email; nothing else will be sent.');
+        $t = fn (string $key, array $with = []): string => HealthCopy::t($this->lang, $key, $with);
+
+        return (new MailMessage)->subject($t('m.subject', ['name' => $this->brokerage]))
+            ->greeting($t('m.hello', ['name' => $this->name]))
+            ->line($t('m.line1', ['name' => $this->brokerage]))
+            ->action($t('m.action'), $this->url)
+            ->line($t('m.line2'))
+            ->line($t('m.line3'));
     }
 }

@@ -12,6 +12,7 @@ use Modules\Billing\Credits\CreditPurchases;
 use Modules\Billing\Gateway\PaymentGateway;
 use Modules\Billing\Models\AgentPlan;
 use Modules\Billing\Models\AgentSubscription;
+use Modules\Billing\Signup\Signups;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Support\Connections;
@@ -79,6 +80,20 @@ final class AgentPayments
                     'payment_intent.payment_failed' => app(CreditPurchases::class)->failed($purchase, (string) ($object['last_payment_error']['message'] ?? 'The card was declined.')),
                     default => app(CreditPurchases::class)->refunded($purchase, (int) ($object['amount_refunded'] ?? 0)),
                 });
+            }
+            $control->table('billing_gateway_events')->insert(['id' => $id, 'type' => $type, 'processed_at' => now()]);
+
+            return true;
+        }
+        // Self-serve signups (specs/billing/07): the first payment creates the brokerage; later events are its subscription's.
+        if (($meta['kind'] ?? '') === 'signup') {
+            if ($id === '' || $control->table('billing_gateway_events')->where('id', $id)->exists()) {
+                return false;
+            }
+            if ($type === 'checkout.session.completed') {
+                app(Signups::class)->paid($object, $meta);
+            } elseif (($tenantId = Signups::tenantFor((string) ($meta['signup'] ?? ''))) !== null) {
+                app(BrokeragePayments::class)->apply($type, $object, ['tenant_id' => (string) $tenantId] + $meta);
             }
             $control->table('billing_gateway_events')->insert(['id' => $id, 'type' => $type, 'processed_at' => now()]);
 

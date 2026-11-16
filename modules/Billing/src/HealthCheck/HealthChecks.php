@@ -27,7 +27,7 @@ final class HealthChecks
 
     /**
      * @param  array{brokerage: string, contact_name: string, email: string, state?: string|null, agents: int, answers: array<string, string>, who_pays: string,
-     *     tools: list<array{key: string, name?: string|null, cost: string|int|float, per_agent?: bool}>, website_url?: string|null, brand_color?: string|null, contact_ok?: bool}  $in
+     *     tools: list<array{key: string, name?: string|null, cost: string|int|float, per_agent?: bool}>, website_url?: string|null, brand_color?: string|null, contact_ok?: bool, lang?: string}  $in
      * @return array{ulid: string, token: string}
      */
     public function create(array $in, ?UploadedFile $logo): array
@@ -45,6 +45,7 @@ final class HealthChecks
             $tools[] = ['key' => $t['key'], 'name' => $name, 'monthly_cents' => ($t['per_agent'] ?? false) ? $cents * $agents : $cents, 'per_agent' => (bool) ($t['per_agent'] ?? false)];
         }
         $answers = array_intersect_key($in['answers'], HealthScore::QUESTIONS);
+        $lang = HealthCopy::lang($in['lang'] ?? 'en');
         $token = Str::random(40);
         $ulid = (string) Str::ulid();
         $logoPath = $logo?->storeAs('health-checks/'.$ulid, 'logo.'.$logo->extension(), 'local');
@@ -52,12 +53,12 @@ final class HealthChecks
 
         DB::connection(Connections::control())->table('health_checks')->insert([
             'ulid' => $ulid, 'token_hash' => hash('sha256', $token), 'brokerage' => mb_substr(trim($in['brokerage']), 0, 160), 'contact_name' => mb_substr(trim($in['contact_name']), 0, 120),
-            'email' => mb_strtolower(trim($in['email'])), 'state' => isset($in['state']) && $in['state'] !== '' ? strtoupper($in['state']) : null, 'agents' => $agents,
+            'email' => mb_strtolower(trim($in['email'])), 'lang' => $lang, 'state' => isset($in['state']) && $in['state'] !== '' ? strtoupper($in['state']) : null, 'agents' => $agents,
             'answers' => json_encode($answers + ['who_pays' => $in['who_pays']]), 'tools' => json_encode($tools),
             'website_url' => isset($in['website_url']) && trim($in['website_url']) !== '' ? WebsiteScan::normalise($in['website_url']) : null,
             // The form's colour picker starts on RightAlly's colour: left as it is, the website's own colour is used instead.
             'brand_color' => isset($in['brand_color']) && preg_match('/^#[0-9a-f]{6}$/i', $in['brand_color']) && mb_strtolower($in['brand_color']) !== self::DEFAULT_COLOR ? mb_strtolower($in['brand_color']) : null,
-            'logo_path' => $logoPath ?: null, 'scores' => json_encode(HealthScore::score($answers, $plain, $agents, null)),
+            'logo_path' => $logoPath ?: null, 'scores' => json_encode(HealthScore::score($answers, $plain, $agents, null, $lang)),
             'savings' => json_encode($this->savings->compare($plain, $agents, $in['who_pays'])), 'contact_ok' => (bool) ($in['contact_ok'] ?? false),
             'created_at' => now(), 'updated_at' => now(),
         ]);
@@ -66,7 +67,7 @@ final class HealthChecks
         }
         $row = self::find($ulid);
         if ($row !== null) {
-            Notification::route('mail', (string) $row->email)->notify(new HealthReportMail((string) $row->brokerage, (string) $row->contact_name, self::reportUrl($token)));
+            Notification::route('mail', (string) $row->email)->notify(new HealthReportMail((string) $row->brokerage, (string) $row->contact_name, self::reportUrl($token), $lang));
         }
 
         return ['ulid' => $ulid, 'token' => $token];
@@ -87,7 +88,7 @@ final class HealthChecks
         DB::connection(Connections::control())->table('health_checks')->where('id', $row->id)->update([
             'website' => json_encode($result),
             'brand_color' => $row->brand_color ?? $result['theme_color'],
-            'scores' => json_encode(HealthScore::score($answers, $tools, (int) $row->agents, $result['status'] === 'done' ? ['score' => $result['score']] : null)),
+            'scores' => json_encode(HealthScore::score($answers, $tools, (int) $row->agents, $result['status'] === 'done' ? ['score' => $result['score']] : null, (string) ($row->lang ?? 'en'))),
             'updated_at' => now(),
         ]);
     }
@@ -139,7 +140,7 @@ final class HealthChecks
             'ulid' => (string) $row->ulid, 'brokerage' => (string) $row->brokerage, 'contact_name' => (string) $row->contact_name, 'agents' => (int) $row->agents,
             'created' => (string) $row->created_at, 'website_url' => $row->website_url, 'website' => $row->website !== null ? json_decode((string) $row->website, true) : null,
             'scores' => json_decode((string) $row->scores, true), 'savings' => json_decode((string) $row->savings, true), 'tools' => json_decode((string) $row->tools, true),
-            'brand_color' => (string) ($row->brand_color ?? self::DEFAULT_COLOR), 'has_logo' => $row->logo_path !== null,
+            'brand_color' => (string) ($row->brand_color ?? self::DEFAULT_COLOR), 'has_logo' => $row->logo_path !== null, 'lang' => HealthCopy::lang((string) ($row->lang ?? 'en')),
         ];
     }
 }

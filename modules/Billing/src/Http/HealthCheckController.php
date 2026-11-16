@@ -14,6 +14,7 @@ use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Billing\HealthCheck\HealthChecks;
+use Modules\Billing\HealthCheck\HealthCopy;
 use Modules\Billing\HealthCheck\HealthScore;
 use Modules\Billing\HealthCheck\PreviewSamples;
 use Modules\Billing\HealthCheck\Tools;
@@ -29,10 +30,17 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 final class HealthCheckController
 {
-    public function start(): HttpResponse
+    public function start(string $lang = 'en'): HttpResponse
     {
-        return response()->view('billing::health.start', ['tools' => Tools::all(), 'questions' => HealthScore::QUESTIONS, 'whoPays' => HealthScore::WHO_PAYS,
-            'canonical' => 'https://'.config('core.hq_host').'/health-check']);
+        $root = 'https://'.config('core.hq_host').'/health-check';
+
+        return response()->view('billing::health.start', ['tools' => Tools::all(), 'questions' => HealthScore::QUESTIONS, 'whoPays' => HealthScore::WHO_PAYS, 'lang' => $lang,
+            'canonical' => $lang === 'es' ? $root.'/es' : $root, 'alternates' => ['en' => $root, 'es' => $root.'/es', 'x-default' => $root]]);
+    }
+
+    public function startEs(): HttpResponse
+    {
+        return $this->start('es');
     }
 
     public function store(Request $request, HealthChecks $checks): RedirectResponse
@@ -48,10 +56,10 @@ final class HealthCheckController
             'tools.*.cost' => ['nullable', 'numeric', 'min:0', 'max:1000000'], 'tools.*.per_agent' => ['nullable', 'boolean'],
             'website_url' => ['nullable', 'string', 'max:255', 'regex:/^(https?:\/\/)?[a-z0-9.-]+\.[a-z]{2,}(\/\S*)?$/i'], 'website_ok' => ['nullable', 'boolean'],
             'brand_color' => ['nullable', 'regex:/^#[0-9a-fA-F]{6}$/'], 'logo' => ['nullable', 'file', 'mimes:png,jpg,jpeg,webp', 'max:1024'],
-            'contact_ok' => ['nullable', 'boolean'],
+            'contact_ok' => ['nullable', 'boolean'], 'lang' => ['nullable', Rule::in(HealthCopy::LANGS)],
         ], ['website_url.regex' => 'Enter a web address such as yourbrokerage.com.']);
         if (filled($data['website_url'] ?? null) && ! ($data['website_ok'] ?? false)) {
-            throw ValidationException::withMessages(['website_ok' => 'Tick the box to confirm you manage this website, or leave the address empty.']);
+            throw ValidationException::withMessages(['website_ok' => ($data['lang'] ?? 'en') === 'es' ? 'Marque la casilla para confirmar que administra este sitio, o deje la dirección vacía.' : 'Tick the box to confirm you manage this website, or leave the address empty.']);
         }
         $tools = array_values(array_filter((array) ($data['tools'] ?? []), fn ($t): bool => is_array($t) && ($t['key'] ?? '') !== '' && (float) ($t['cost'] ?? 0) > 0));
         $made = $checks->create([
@@ -59,6 +67,7 @@ final class HealthCheckController
             'agents' => (int) $data['agents'], 'answers' => array_map('strval', (array) $data['answers']), 'who_pays' => (string) $data['who_pays'],
             'tools' => array_map(fn (array $t): array => ['key' => (string) $t['key'], 'name' => $data['other_name'] ?? null, 'cost' => (string) $t['cost'], 'per_agent' => (bool) ($t['per_agent'] ?? false)], $tools),
             'website_url' => $data['website_url'] ?? null, 'brand_color' => $data['brand_color'] ?? null, 'contact_ok' => (bool) ($data['contact_ok'] ?? false),
+            'lang' => (string) ($data['lang'] ?? 'en'),
         ], $request->file('logo'));
 
         return redirect('/health-check/r/'.$made['token']);
@@ -76,7 +85,7 @@ final class HealthCheckController
     {
         $row = HealthChecks::byToken($token) ?? abort(404);
 
-        return self::renderPreview($row, $request->query('lang') === 'es' ? 'es' : 'en', '/health-check/r/'.$token);
+        return self::renderPreview($row, HealthCopy::lang((string) $request->query('lang', (string) ($row->lang ?? 'en'))), '/health-check/r/'.$token);
     }
 
     public function logo(string $token): StreamedResponse
@@ -88,9 +97,12 @@ final class HealthCheckController
 
     public function destroy(string $token, HealthChecks $checks): RedirectResponse
     {
-        $checks->delete(HealthChecks::byToken($token) ?? abort(404));
+        $row = HealthChecks::byToken($token) ?? abort(404);
 
-        return redirect('/health-check')->with('deleted', true);
+        $lang = HealthCopy::lang((string) ($row->lang ?? 'en'));
+        $checks->delete($row);
+
+        return redirect($lang === 'es' ? '/health-check/es' : '/health-check')->with('deleted', true);
     }
 
     /** HQ: every check, newest first, and whether the broker asked to be contacted. */

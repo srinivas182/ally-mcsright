@@ -20,7 +20,7 @@ final class Savings
 
     /**
      * @param  list<array{key: string, name: string, monthly_cents: int}>  $tools
-     * @return array{now_cents: int, kept_cents: int, replaced: list<array{name: string, monthly_cents: int, note: string}>, kept: list<array{name: string, monthly_cents: int, note: string, partly: bool}>,
+     * @return array{now_cents: int, kept_cents: int, replaced: list<array{key: string, name: string, monthly_cents: int, note: string}>, kept: list<array{key: string, name: string, monthly_cents: int, note: string, partly: bool}>,
      *     who_pays: string, agent_plan: array{name: string, list_cents: int, earn_cents: int}|null, options: list<array{package: string, package_cents: int, agents_cents: int, after_cents: int, saves_cents: int, saves_yearly_cents: int}>, best: int|null}
      */
     public function compare(array $tools, int $agents, string $whoPays): array
@@ -29,7 +29,7 @@ final class Savings
         $kept = [];
         foreach ($tools as $t) {
             $tool = Tools::find($t['key']) ?? Tools::find('other');
-            $row = ['name' => $t['name'], 'monthly_cents' => $t['monthly_cents'], 'note' => (string) ($tool['note'] ?? '')];
+            $row = ['key' => $t['key'], 'name' => $t['name'], 'monthly_cents' => $t['monthly_cents'], 'note' => (string) ($tool['note'] ?? '')];
             if (($tool['rightally'] ?? '') === Tools::REPLACES) {
                 $replaced[] = $row;
             } else {

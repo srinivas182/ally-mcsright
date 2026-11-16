@@ -7,8 +7,10 @@ use Modules\Billing\Http\BillingController;
 use Modules\Billing\Http\CallStatusController;
 use Modules\Billing\Http\Credits\CreditsController;
 use Modules\Billing\Http\Credits\HqCreditsController;
+use Modules\Billing\Http\GoLiveController;
 use Modules\Billing\Http\HealthCheckController;
 use Modules\Billing\Http\PaymentsController;
+use Modules\Billing\Http\SignupController;
 use Modules\Core\Http\Middleware\EnsureHqConsole;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
 
@@ -35,6 +37,7 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function
     Route::delete('settings/credits/card', [CreditsController::class, 'removeCard'])->name('credits.card.remove');
     Route::get('settings/credits/receipts/{purchase}', [CreditsController::class, 'receipt'])->where('purchase', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('credits.receipt');
     Route::get('settings/credits/export', [CreditsController::class, 'export'])->middleware('throttle:20,1')->name('credits.export');
+    Route::get('switch', [GoLiveController::class, 'index'])->name('switch');
     Route::post('settings/partner/connect', [PaymentsController::class, 'connect'])->middleware('throttle:10,1')->name('billing.connect');
 });
 
@@ -45,10 +48,15 @@ Route::domain((string) config('core.hq_host'))->get('partners/{code}', [Payments
 Route::domain((string) config('core.hq_host'))->middleware('web')->group(function (): void {
     $token = '[A-Za-z0-9]{40}';
     Route::get('health-check', [HealthCheckController::class, 'start'])->name('health.start');
+    Route::get('health-check/es', [HealthCheckController::class, 'startEs'])->name('health.start.es');
     Route::post('health-check', [HealthCheckController::class, 'store'])->middleware('throttle:5,60')->name('health.store');
     Route::get('health-check/r/{token}', [HealthCheckController::class, 'report'])->where('token', $token)->middleware('throttle:60,1')->name('health.report');
     Route::get('health-check/r/{token}/preview', [HealthCheckController::class, 'preview'])->where('token', $token)->middleware('throttle:60,1')->name('health.preview');
     Route::get('health-check/r/{token}/logo', [HealthCheckController::class, 'logo'])->where('token', $token)->middleware('throttle:60,1')->name('health.logo');
+    Route::get('start', [SignupController::class, 'start'])->name('signup.start');
+    Route::post('start', [SignupController::class, 'store'])->middleware('throttle:10,60')->name('signup.store');
+    Route::get('start/address', [SignupController::class, 'address'])->middleware('throttle:60,1')->name('signup.address');
+    Route::get('start/welcome/{signup}', [SignupController::class, 'welcome'])->where('signup', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->middleware('throttle:60,1')->name('signup.welcome');
     Route::post('health-check/r/{token}/delete', [HealthCheckController::class, 'destroy'])->where('token', $token)->middleware('throttle:10,1')->name('health.delete');
 });
 
@@ -61,6 +69,8 @@ Route::domain((string) config('core.hq_host'))->post('billing/webhook', [Payment
 Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.tenants.manage'])->prefix('hq')->name('hq.')->group(function (): void {
     Route::get('billing', [BillingController::class, 'hq'])->name('billing');
     Route::get('health-checks', [HealthCheckController::class, 'hq'])->name('health-checks');
+    Route::get('go-live', [GoLiveController::class, 'hq'])->name('go-live');
+    Route::post('go-live/{tenant}/coach', [GoLiveController::class, 'coach'])->name('go-live.coach');
     Route::get('health-checks/{check}', [HealthCheckController::class, 'hqShow'])->where('check', '[0-9A-HJKMNP-TV-Z]{26}')->name('health-checks.show');
     Route::get('health-checks/{check}/preview', [HealthCheckController::class, 'hqPreview'])->where('check', '[0-9A-HJKMNP-TV-Z]{26}')->name('health-checks.preview');
     Route::get('health-checks/{check}/logo', [HealthCheckController::class, 'hqLogo'])->where('check', '[0-9A-HJKMNP-TV-Z]{26}')->name('health-checks.logo');

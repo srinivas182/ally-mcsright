@@ -27,6 +27,9 @@ final class BillingServiceProvider extends ServiceProvider
     {
         $this->app->scoped(Catalogue::class);
         $this->app->scoped(HealthCheck\HealthChecks::class);
+        $this->app->scoped(GoLive\GoLive::class);
+        $this->app->scoped(GoLive\SwitchCentre::class);
+        $this->app->scoped(Signup\Signups::class);
         $this->app->scoped(Pricing::class);
         $this->app->scoped(Entitlements::class);
         $this->app->singleton(PaymentSettings::class);
@@ -66,6 +69,8 @@ final class BillingServiceProvider extends ServiceProvider
         $nav->add(new NavItem('Platform', 'Payments', '/hq/payments', 'credit-card', 40, kinds: [UserKind::HqStaff]));
         $nav->add(new NavItem('Platform', 'RightAlly credits', '/hq/credits', 'coins', 37, kinds: [UserKind::HqStaff]));
         $nav->add(new NavItem('HQ', 'Health checks', '/hq/health-checks', 'stethoscope', 12, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff]));
+        $nav->add(new NavItem('HQ', 'Go-live', '/hq/go-live', 'rocket', 13, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff]));
+        $nav->add(new NavItem('Settings', 'Switch to RightAlly', '/switch', 'rocket', 65, kinds: [UserKind::Owner, UserKind::Staff]));
         // Agents only see Plans when their brokerage uses the agent-pays model.
         $this->app->make(PermissionRegistry::class)->register('Billing', [
             'billing.credits.manage' => ['Buy RightAlly credits and see the brokerage\'s credit use'],
@@ -75,7 +80,7 @@ final class BillingServiceProvider extends ServiceProvider
         $nav->add(new NavItem('Overview', 'Plans', '/plans', 'gift', 90, ability: 'billing.plans.view'));
 
         if ($this->app->runningInConsole()) {
-            $this->commands([Console\ApplyPriceChanges::class, Console\EndGrace::class, Console\BillSubsidies::class, Console\PartnerPayouts::class, Console\GrantMonthlyCredits::class, Console\WatchCreditMargins::class, Console\ExpirePurchasedCredits::class, Console\RemindPausedMaps::class, Console\PruneHealthChecks::class]);
+            $this->commands([Console\ApplyPriceChanges::class, Console\EndGrace::class, Console\BillSubsidies::class, Console\PartnerPayouts::class, Console\GrantMonthlyCredits::class, Console\WatchCreditMargins::class, Console\ExpirePurchasedCredits::class, Console\RemindPausedMaps::class, Console\PruneHealthChecks::class, Console\GoLiveWeekly::class]);
         }
     }
 }

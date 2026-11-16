@@ -1,5 +1,5 @@
 @php $c = $r['brand_color']; @endphp
-@extends('billing::health.layout', ['title' => 'Preview: '.$r['brokerage'].' | RightAlly', 'description' => 'Private branded preview.'])
+@extends('billing::health.layout', ['title' => 'Preview: '.$r['brokerage'].' | RightAlly', 'description' => 'Private branded preview.', 'lang' => $lang])
 
 @push('head')
 <style>

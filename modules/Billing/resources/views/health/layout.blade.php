@@ -4,7 +4,8 @@
     are private (noindex, no-store).
 --}}
 <!DOCTYPE html>
-<html lang="en">
+@php($L = $lang ?? 'en')
+<html lang="{{ $L }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -18,6 +19,8 @@
     <meta property="og:description" content="{{ $description }}">
     <meta property="og:url" content="{{ $canonical }}">
     @endisset
+    @foreach ($alternates ?? [] as $hl => $href)<link rel="alternate" hreflang="{{ $hl }}" href="{{ $href }}">
+    @endforeach
     <meta name="theme-color" content="#4338ca">
     @isset($jsonld)<script type="application/ld+json">{!! $jsonld !!}</script>@endisset
     <style>
@@ -64,14 +67,14 @@
     @stack('head')
 </head>
 <body>
-<a class="skip" href="#main">Skip to the main content</a>
-<header class="top"><div class="wrap"><a class="brand" href="/health-check">Right<span>Ally</span></a><span class="muted small">Brokerage Health Check</span></div></header>
+<a class="skip" href="#main">{{ \Modules\Billing\HealthCheck\HealthCopy::t($L, 'skip') }}</a>
+<header class="top"><div class="wrap"><a class="brand" href="{{ $home ?? '/health-check' }}">Right<span>Ally</span></a><span class="muted small">{{ $section ?? \Modules\Billing\HealthCheck\HealthCopy::t($L, 'section') }}</span></div></header>
 <main id="main">
     @yield('main')
 </main>
 <footer><div class="wrap">
-    <p>RightAlly is one platform for brokerages: CRM, websites, deals and compliance, e-signature, commissions and agent payouts.</p>
-    <p>Your answers are used only to write your report. We do not sell or share them. Reports are deleted after 180 days, or sooner if you delete yours.</p>
+    <p>{{ \Modules\Billing\HealthCheck\HealthCopy::t($L, 'footer1') }}</p>
+    @unless ($signup ?? false)<p>{{ \Modules\Billing\HealthCheck\HealthCopy::t($L, 'footer2') }}</p>@endunless
 </div></footer>
 </body>
 </html>
