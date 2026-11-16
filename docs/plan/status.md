@@ -1,6 +1,6 @@
 # Delivery status against the plan
 
-Checked 2026-11-16 (R1 to DQ5a added the same day) against `delivery-plan.md` (Sprints 1–57, five teams) and every merged pull request. Update this file at the end of every sprint.
+Checked 2026-11-16 (R1 to DQ5b added the same day) against `delivery-plan.md` (Sprints 1–57, five teams) and every merged pull request. Update this file at the end of every sprint.
 
 "Partly" means part of the item is built; the gap is noted in the item's spec or the sequence below.
 
@@ -8,7 +8,7 @@ Checked 2026-11-16 (R1 to DQ5a added the same day) against `delivery-plan.md` (S
 | ---- | ---------- | ---- | ------ | ----------- | ----------------------------------- |
 | A    | 32         | 17   | 9      | 6           | 30 / 15 / 12                        |
 | B    | 28         | 16   | 7      | 5           | 39 / 10 / 8                         |
-| C    | 26         | 10   | 11     | 5           | 21 / 21 / 15                        |
+| C    | 26         | 11   | 10     | 5           | 22 / 20 / 15                        |
 | D    | 27         | 13   | 10     | 4           | 24 / 26 / 7                         |
 | E    | 25         | 7    | 1      | 17          | 15 / 3 / 39                         |
 
@@ -88,34 +88,34 @@ Outside the original grid and complete: Connect C1–C8 (except the Partner API,
 
 ## Team C
 
-| #   | Sprints | Item                                                                                                                                                                                         | Status                                                                        |
-| --- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| C01 | 1–3     | Design system, component library, theming engine with contrast checks                                                                                                                        | Done                                                                          |
-| C02 | 4–6     | MLS ingestion (RESO Web API), media pipeline, MLS display rules engine                                                                                                                       | Done                                                                          |
-| C03 | 7       | MLS additions: MLS Grid and Trestle, freshness and display-compliance monitor, AI photo tagging, precomputed distances, cross-MLS de-duplication                                             | Partly                                                                        |
-| C04 | 8       | MLS licence approvals: request, HQ approval with scope and expiry, enforcement on every query, revocation, MLS display rules, audit report                                                   | Done                                                                          |
-| C05 | 9–10    | Listing search (OpenSearch, geo, plain-English AI search)                                                                                                                                    | Partly                                                                        |
-| C06 | 11–14   | Site renderer (SSR, edge cache) and IDX templates 1-5                                                                                                                                        | Done                                                                          |
-| C07 | 15–16   | SEO and AEO engine: schema, sitemaps, llms.txt, crawl and audit, Search Console                                                                                                              | Done                                                                          |
-| C08 | 17–18   | Website editor, legal pages, accessibility                                                                                                                                                   | Done                                                                          |
-| C09 | 19–21   | Agent site and landing builder, referral links and QR, compare homes, calculators                                                                                                            | Partly                                                                        |
-| C10 | 22–24   | IDX templates 6-10                                                                                                                                                                           | Not started                                                                   |
-| C11 | 25      | AI website chat                                                                                                                                                                              | Done                                                                          |
-| C12 | 26–28   | Listing marketing centre: listing kit, AI descriptions, sign riders, open house                                                                                                              | Partly                                                                        |
-| C13 | 29–30   | Video tours, 360-degree walk-throughs, floor-plan partner                                                                                                                                    | Partly                                                                        |
-| C14 | 31–32   | Home valuation and CMA, net sheets, buyer cost estimates                                                                                                                                     | Partly                                                                        |
-| C15 | 33–35   | Showings and client portal, ShowingTime connection                                                                                                                                           | Not started                                                                   |
-| C16 | 36–38   | IDX templates 11-15                                                                                                                                                                          | Not started                                                                   |
-| C17 | 39–41   | Ad campaigns from tenants' own Meta and Google accounts                                                                                                                                      | Done                                                                          |
-| C18 | 42–45   | Design polish and accessibility audit                                                                                                                                                        | Not started                                                                   |
-| C19 | 46      | Deal-IQ listing-to-contract coordination, vendor scheduling and closing-day logistics                                                                                                        | Partly (DQ5a: listing to contract; vendor scheduling and closing day in DQ5b) |
-| C20 | 47      | DocIQ additions: auto-sort into checklist, version compare, scans and handwriting, plain-English and Spanish explanations, safe sharing (redaction)                                          | Partly                                                                        |
-| C21 | 48–50   | List-IQ (Listing Marketing Centre upgrade): guided shoot, photo enhancement and virtual staging, motion videos and reels, listing draft, one-go publishing, floor plans                      | Partly                                                                        |
-| C22 | 51      | Branded templates for every output (emails, guides, lead briefs, flyers, social, reports) and branded video intros, outros, captions and voice-over                                          | Partly                                                                        |
-| C23 | 52–53   | Monthly personal content by contact type (equity report, rent vs buy, homes like yours sold) and signal-triggered handwritten cards and postcards (mailing partner)                          | Partly                                                                        |
-| C24 | 54      | AIlly website assistant 1: plain-language and voice home search across licensed MLS listings, Google Maps distances and commute, why-this-home, Fair Housing guardrails                      | Done                                                                          |
-| C25 | 55      | AIlly website assistant 2: listing and area Q&A from approved sources, buying and selling knowledge, valuation hand-off, booking, human hand-off, brokerage and agent branding (name, photo) | Done                                                                          |
-| C26 | 56–57   | Listing management, per-deal email-in address, transaction reports and pending-deal cash forecast, franchise and royalty reports                                                             | Not started                                                                   |
+| #   | Sprints | Item                                                                                                                                                                                         | Status           |
+| --- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| C01 | 1–3     | Design system, component library, theming engine with contrast checks                                                                                                                        | Done             |
+| C02 | 4–6     | MLS ingestion (RESO Web API), media pipeline, MLS display rules engine                                                                                                                       | Done             |
+| C03 | 7       | MLS additions: MLS Grid and Trestle, freshness and display-compliance monitor, AI photo tagging, precomputed distances, cross-MLS de-duplication                                             | Partly           |
+| C04 | 8       | MLS licence approvals: request, HQ approval with scope and expiry, enforcement on every query, revocation, MLS display rules, audit report                                                   | Done             |
+| C05 | 9–10    | Listing search (OpenSearch, geo, plain-English AI search)                                                                                                                                    | Partly           |
+| C06 | 11–14   | Site renderer (SSR, edge cache) and IDX templates 1-5                                                                                                                                        | Done             |
+| C07 | 15–16   | SEO and AEO engine: schema, sitemaps, llms.txt, crawl and audit, Search Console                                                                                                              | Done             |
+| C08 | 17–18   | Website editor, legal pages, accessibility                                                                                                                                                   | Done             |
+| C09 | 19–21   | Agent site and landing builder, referral links and QR, compare homes, calculators                                                                                                            | Partly           |
+| C10 | 22–24   | IDX templates 6-10                                                                                                                                                                           | Not started      |
+| C11 | 25      | AI website chat                                                                                                                                                                              | Done             |
+| C12 | 26–28   | Listing marketing centre: listing kit, AI descriptions, sign riders, open house                                                                                                              | Partly           |
+| C13 | 29–30   | Video tours, 360-degree walk-throughs, floor-plan partner                                                                                                                                    | Partly           |
+| C14 | 31–32   | Home valuation and CMA, net sheets, buyer cost estimates                                                                                                                                     | Partly           |
+| C15 | 33–35   | Showings and client portal, ShowingTime connection                                                                                                                                           | Not started      |
+| C16 | 36–38   | IDX templates 11-15                                                                                                                                                                          | Not started      |
+| C17 | 39–41   | Ad campaigns from tenants' own Meta and Google accounts                                                                                                                                      | Done             |
+| C18 | 42–45   | Design polish and accessibility audit                                                                                                                                                        | Not started      |
+| C19 | 46      | Deal-IQ listing-to-contract coordination, vendor scheduling and closing-day logistics                                                                                                        | Done (DQ5a–DQ5b) |
+| C20 | 47      | DocIQ additions: auto-sort into checklist, version compare, scans and handwriting, plain-English and Spanish explanations, safe sharing (redaction)                                          | Partly           |
+| C21 | 48–50   | List-IQ (Listing Marketing Centre upgrade): guided shoot, photo enhancement and virtual staging, motion videos and reels, listing draft, one-go publishing, floor plans                      | Partly           |
+| C22 | 51      | Branded templates for every output (emails, guides, lead briefs, flyers, social, reports) and branded video intros, outros, captions and voice-over                                          | Partly           |
+| C23 | 52–53   | Monthly personal content by contact type (equity report, rent vs buy, homes like yours sold) and signal-triggered handwritten cards and postcards (mailing partner)                          | Partly           |
+| C24 | 54      | AIlly website assistant 1: plain-language and voice home search across licensed MLS listings, Google Maps distances and commute, why-this-home, Fair Housing guardrails                      | Done             |
+| C25 | 55      | AIlly website assistant 2: listing and area Q&A from approved sources, buying and selling knowledge, valuation hand-off, booking, human hand-off, brokerage and agent branding (name, photo) | Done             |
+| C26 | 56–57   | Listing management, per-deal email-in address, transaction reports and pending-deal cash forecast, franchise and royalty reports                                                             | Not started      |
 
 ## Team D
 

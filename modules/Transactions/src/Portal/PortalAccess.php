@@ -13,6 +13,7 @@ use Illuminate\Validation\ValidationException;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
+use Modules\Transactions\Closing\MovingChecklist;
 use Modules\Transactions\DealIq\DealAssistant;
 use Modules\Transactions\Models\Deal;
 
@@ -126,7 +127,7 @@ final class PortalAccess
     }
 
     /**
-     * @return list<array{ulid: string, role: string, name: string, email: string, locale: string, texts: bool, last_seen: string|null, active: bool, devices: int}>
+     * @return list<array{ulid: string, role: string, name: string, email: string, locale: string, texts: bool, last_seen: string|null, active: bool, devices: int, moving: string|null}>
      */
     public function forDeal(Deal $deal): array
     {
@@ -134,7 +135,8 @@ final class PortalAccess
             ->map(fn ($r): array => ['ulid' => (string) $r->ulid, 'role' => (string) $r->role, 'name' => (string) $r->name, 'email' => (string) $r->email,
                 'locale' => (string) $r->locale, 'texts' => $r->sms_consent_at !== null,
                 'last_seen' => $r->last_seen_at !== null ? CarbonImmutable::parse((string) $r->last_seen_at)->toDateString() : null, 'active' => $r->revoked_at === null,
-                'devices' => DB::connection(Connections::cell())->table('tx_portal_devices')->where('access_id', $r->id)->whereNull('revoked_at')->where('expires_at', '>', now())->count()])->all());
+                'devices' => DB::connection(Connections::cell())->table('tx_portal_devices')->where('access_id', $r->id)->whereNull('revoked_at')->where('expires_at', '>', now())->count(),
+                'moving' => MovingChecklist::progress($r, $deal)])->all());
     }
 
     private function newLink(int $accessId, CarbonImmutable $expires): string

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Route;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
 use Modules\Transactions\Http\BringOverFilesController;
+use Modules\Transactions\Http\ClosingController;
 use Modules\Transactions\Http\ComplianceController;
 use Modules\Transactions\Http\DeadlinesController;
 use Modules\Transactions\Http\DealController;
@@ -34,6 +35,10 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoff
     Route::post('compliance/deadlines', [DeadlinesController::class, 'settings'])->name('compliance.deadlines');
     Route::post('compliance/mls', [ComplianceController::class, 'saveMlsRules'])->name('compliance.mls');
     Route::get('playbooks', [PlaybooksController::class, 'index'])->name('playbooks');
+    Route::get('vendors', [ClosingController::class, 'vendors'])->name('vendors');
+    Route::post('vendors', [ClosingController::class, 'saveVendor'])->name('vendors.store');
+    Route::post('vendors/{vendor}', [ClosingController::class, 'saveVendor'])->name('vendors.update');
+    Route::delete('vendors/{vendor}', [ClosingController::class, 'removeVendor'])->name('vendors.destroy');
     Route::post('playbooks/{key}', [PlaybooksController::class, 'save'])->where('key', '[a-z0-9_]+')->name('playbooks.save');
     Route::delete('playbooks/{key}', [PlaybooksController::class, 'reset'])->where('key', '[a-z0-9_]+')->name('playbooks.reset');
     Route::post('compliance/checks/{code}', [ComplianceController::class, 'saveCheck'])->where('code', '[a-z_.]+')->name('compliance.check');
@@ -64,6 +69,10 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoff
     Route::post('{deal}/playbook/{step}/skip', [PlaybooksController::class, 'skip'])->where('step', '[a-z0-9_]+')->name('playbook.skip');
     Route::post('{deal}/link', [PlaybooksController::class, 'link'])->name('link');
     Route::post('{deal}/portal/calendars', [PlaybooksController::class, 'calendars'])->middleware('throttle:10,1')->name('portal.calendars');
+    // Closing logistics (specs/ai/02, DQ5b).
+    Route::post('{deal}/appointments', [ClosingController::class, 'book'])->middleware('throttle:30,1')->name('appointments.store');
+    Route::post('{deal}/appointments/{appointment}/{action}', [ClosingController::class, 'update'])->whereIn('action', ['accept', 'done', 'cancel'])->name('appointments.update');
+    Route::post('{deal}/closing', [ClosingController::class, 'details'])->name('closing');
     // Offers and repair requests (specs/ai/02, DQ4).
     Route::get('{deal}/offers', [OffersController::class, 'index'])->name('offers');
     Route::post('{deal}/offers/link', [OffersController::class, 'link'])->name('offers.link');
@@ -162,6 +171,7 @@ Route::middleware(['web', EnsureTenantWorkspace::class])->prefix('my-deal')->nam
         Route::post('upload', [PortalController::class, 'upload'])->middleware('throttle:20,1')->name('upload');
         Route::get('documents/{document}', [PortalController::class, 'document'])->middleware('throttle:60,1')->name('document');
         Route::post('preferences', [PortalController::class, 'preferences'])->middleware('throttle:20,1')->name('preferences');
+        Route::post('moving/{item}', [PortalController::class, 'moving'])->where('item', '[a-z_]+')->middleware('throttle:60,1')->name('moving');
         Route::get('calendar', [PortalController::class, 'calendar'])->middleware('throttle:10,1')->name('calendar');
         Route::post('feedback', [PortalController::class, 'feedback'])->middleware('throttle:5,1')->name('feedback');
     });
@@ -173,4 +183,10 @@ Route::middleware(['web', EnsureTenantWorkspace::class])->prefix('offer')->name(
     Route::post('revise/{token}', [PublicOfferController::class, 'revise'])->where('token', '[A-Za-z0-9]{48}')->middleware('throttle:10,1')->name('revise.store');
     Route::get('{token}', [PublicOfferController::class, 'show'])->where('token', '[A-Za-z0-9]{48}')->middleware('throttle:30,1')->name('show');
     Route::post('{token}', [PublicOfferController::class, 'store'])->where('token', '[A-Za-z0-9]{48}')->middleware('throttle:10,1')->name('store');
+});
+
+// A vendor confirms an appointment or suggests another time (specs/ai/02, DQ5b): no account; the link is the key.
+Route::middleware(['web', EnsureTenantWorkspace::class])->prefix('appointment/{token}')->where(['token' => '[A-Za-z0-9]{48}'])->group(function (): void {
+    Route::get('/', [ClosingController::class, 'vendorPage'])->middleware('throttle:30,1')->name('appointment.show');
+    Route::post('/', [ClosingController::class, 'vendorAnswer'])->middleware('throttle:10,1')->name('appointment.answer');
 });

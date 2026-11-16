@@ -57,6 +57,23 @@ type Props = {
             status: string;
         }[];
     } | null;
+    moving: {
+        key: string;
+        label: string;
+        due: string | null;
+        due_on: string | null;
+        done: boolean;
+        overdue: boolean;
+        link: string | null;
+        vendors: {
+            name: string;
+            phone: string | null;
+            website: string | null;
+            note: string | null;
+        }[];
+    }[];
+    closingDay: string[];
+    appointments: { title: string; when: string }[];
     repairs: {
         items: {
             title: string;
@@ -278,6 +295,28 @@ export default function MyDealShow(p: Props) {
                         </span>
                     )}
                 </section>
+                {p.closingDay.length > 0 && (
+                    <section
+                        aria-labelledby="closing-day"
+                        className="grid gap-1 rounded-md border border-primary p-3"
+                    >
+                        <h2 id="closing-day" className="font-semibold">
+                            {t.closing_title}
+                        </h2>
+                        {p.closingDay.map((l) => (
+                            <p key={l}>{l}</p>
+                        ))}
+                    </section>
+                )}
+                {p.appointments.length > 0 && (
+                    <ul className="grid gap-1">
+                        {p.appointments.map((a) => (
+                            <li key={a.title + a.when}>
+                                <strong>{a.title}</strong>: {a.when}
+                            </li>
+                        ))}
+                    </ul>
+                )}
                 {p.offers && (
                     <section aria-labelledby="offers" className="grid gap-2">
                         <h2 id="offers" className="font-semibold">
@@ -416,6 +455,86 @@ export default function MyDealShow(p: Props) {
                         </ul>
                     )}
                 </section>
+                {p.moving.length > 0 && (
+                    <section aria-labelledby="moving" className="grid gap-2">
+                        <h2 id="moving" className="font-semibold">
+                            {t.moving}
+                        </h2>
+                        <ul className="divide-y rounded-md border">
+                            {p.moving.map((m) => (
+                                <li key={m.key} className="grid gap-1 p-2">
+                                    <label className="flex items-start gap-2">
+                                        <input
+                                            type="checkbox"
+                                            className="mt-0.5"
+                                            checked={m.done}
+                                            onChange={() =>
+                                                router.post(
+                                                    `${base}/moving/${m.key}`,
+                                                    {},
+                                                    { preserveScroll: true },
+                                                )
+                                            }
+                                        />
+                                        <span
+                                            className={
+                                                m.done
+                                                    ? 'text-muted-foreground line-through'
+                                                    : ''
+                                            }
+                                        >
+                                            {m.label}
+                                            {m.due && (
+                                                <span
+                                                    className={`block text-xs ${m.overdue ? 'text-destructive' : 'text-muted-foreground'}`}
+                                                >
+                                                    {t.moving_due.replace(
+                                                        ':date',
+                                                        m.due,
+                                                    )}
+                                                </span>
+                                            )}
+                                        </span>
+                                    </label>
+                                    {m.link && (
+                                        <a
+                                            className="ml-6 text-primary underline"
+                                            href={m.link}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                        >
+                                            {m.link.replace('https://', '')}
+                                        </a>
+                                    )}
+                                    {m.vendors.length > 0 && (
+                                        <span className="ml-6 text-xs text-muted-foreground">
+                                            {t.vendors_note}:{' '}
+                                            {m.vendors.map((v, i) => (
+                                                <span key={v.name}>
+                                                    {i > 0 && ' · '}
+                                                    {v.website ? (
+                                                        <a
+                                                            className="underline"
+                                                            href={v.website}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer nofollow"
+                                                        >
+                                                            {v.name}
+                                                        </a>
+                                                    ) : (
+                                                        v.name
+                                                    )}
+                                                    {v.phone && ` ${v.phone}`}
+                                                    {v.note && ` (${v.note})`}
+                                                </span>
+                                            ))}
+                                        </span>
+                                    )}
+                                </li>
+                            ))}
+                        </ul>
+                    </section>
+                )}
                 {access.client && (
                     <section aria-labelledby="documents" className="grid gap-2">
                         <h2 id="documents" className="font-semibold">
