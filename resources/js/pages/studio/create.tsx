@@ -18,6 +18,7 @@ type DesignRow = {
     images: Record<'square' | 'portrait' | 'story', string | null>;
     carousel: string[];
     reelable: boolean;
+    listing: string | null;
 };
 
 const select = 'h-12 rounded-md border bg-background px-3';
@@ -147,6 +148,15 @@ export default function StudioCreate({
                     >
                         Post it
                     </Button>
+                    {d.listing && (
+                        <Button size="sm" variant="outline" asChild>
+                            <Link
+                                href={`/ads/new?listing=${d.listing}&design=${d.ulid}`}
+                            >
+                                Advertise
+                            </Link>
+                        </Button>
+                    )}
                     {d.reelable && (
                         <Button
                             size="sm"

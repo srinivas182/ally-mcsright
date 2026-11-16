@@ -32,6 +32,15 @@ use Modules\Core\Tenancy\Concerns\HasPublicUlid;
  * @property string $listing_label
  * @property string $headline
  * @property string $body
+ * @property string $format
+ * @property string $goal
+ * @property list<string>|null $images
+ * @property string|null $video_url
+ * @property string|null $object_story_id
+ * @property int|null $studio_design_id
+ * @property int|null $studio_video_id
+ * @property int|null $social_post_id
+ * @property string|null $privacy_url
  * @property string $image_url
  * @property string $link
  * @property string $latitude
@@ -78,6 +87,6 @@ final class Campaign extends Model
     /** @return array<string, string> */
     protected function casts(): array
     {
-        return ['meta_ids' => 'array', 'stop_loss' => 'boolean', 'starts_on' => 'immutable_date', 'ends_on' => 'immutable_date', 'results_at' => 'immutable_datetime', 'created_at' => 'immutable_datetime'];
+        return ['meta_ids' => 'array', 'images' => 'array', 'stop_loss' => 'boolean', 'starts_on' => 'immutable_date', 'ends_on' => 'immutable_date', 'results_at' => 'immutable_datetime', 'created_at' => 'immutable_datetime'];
     }
 }

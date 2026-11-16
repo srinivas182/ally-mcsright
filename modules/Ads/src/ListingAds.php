@@ -6,10 +6,17 @@ namespace Modules\Ads;
 
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Modules\Ads\Jobs\PublishCampaign;
 use Modules\Ads\Meta\MetaApi;
 use Modules\Ads\Models\Campaign;
+use Modules\Ads\Social\SocialPost;
+use Modules\Ads\Studio\Design;
+use Modules\Ads\Studio\Designer;
+use Modules\Ads\Studio\Reels;
+use Modules\Ads\Studio\StudioVideo;
+use Modules\Ads\Studio\Styles;
 use Modules\AI\Exceptions\InsufficientCredits;
 use Modules\Billing\Credits\CreditLedger;
 use Modules\Connect\Models\Connection;
@@ -17,6 +24,7 @@ use Modules\Core\Agents\AgentCredentials;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Connect\ConnectorKit;
 use Modules\Core\Identity\Enums\UserKind;
+use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\Models\TenantDomain;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Crm\FairHousing;
@@ -89,12 +97,18 @@ final class ListingAds
             $in['account'] = app(Boost::class)->account()['ad_account_id'];
             $in['page'] = app(Boost::class)->account()['page_id'];
         }
+        $creative = $this->creativeFrom($by, $in, $boost);
+        if ($creative['listing'] !== null) {
+            $in['listing'] = $creative['listing'];
+        }
         $funnel = is_string($in['funnel'] ?? null) && $in['funnel'] !== '' ? ($this->funnel($by, $in['funnel']) ?? throw ValidationException::withMessages(['funnel' => 'Choose one of your funnels.'])) : null;
         $target = $funnel !== null ? $this->funnelTarget($funnel) : $this->listingTarget($by, (string) ($in['listing'] ?? ''));
         $accounts = $boost ? [(string) $in['account']] : array_column((array) ($c->settings['ad_accounts'] ?? []), 'id');
         $pages = $boost ? [(string) $in['page']] : array_column((array) ($c->settings['pages'] ?? []), 'id');
-        $headline = trim((string) ($in['headline'] ?? ''));
-        $body = trim((string) ($in['body'] ?? ''));
+        $headline = trim((string) ($in['headline'] ?? '')) ?: ($creative['format'] === 'post' ? mb_substr(trim((string) strtok((string) $creative['text'], "\n")), 0, 40) : '');
+        $body = trim((string) ($in['body'] ?? '')) ?: ($creative['format'] === 'post' ? mb_substr((string) $creative['text'], 0, 600) : '');
+        $goal = ($in['goal'] ?? 'website') === 'form' ? 'form' : 'website';
+        $privacy = trim((string) ($in['privacy_url'] ?? ''));
         $daily = (int) round((float) ($in['daily_budget'] ?? 0) * 100);
         $days = (int) ($in['days'] ?? 0);
         $errors = array_filter([
@@ -105,6 +119,11 @@ final class ListingAds
             'daily_budget' => $daily < self::MIN_DAILY_CENTS || $daily > self::MAX_DAILY_CENTS ? 'Choose a daily budget from $5 to $500.' : null,
             'days' => $days < 1 || $days > self::MAX_DAYS ? 'Run it for 1 to 60 days.' : null,
             'agree' => ($in['agree'] ?? false) === true || ($in['agree'] ?? null) === '1' ? null : 'Confirm the budget first.',
+            'goal' => $goal !== 'form' ? null : ($boost ? 'Instant forms run from your own Meta ad account. With credits, the ad sends people to the listing page.'
+                : ($creative['format'] === 'post' ? 'A promoted post sends people to the post\'s link. Choose a design or a Reel for an instant-form ad.'
+                    : (! $this->formLeadsArrive((string) ($in['page'] ?? '')) ? 'Connect Facebook Lead Ads for this Page first (Apps), so form leads arrive in your CRM.' : null))),
+            'privacy_url' => $goal === 'form' && (! str_starts_with($privacy, 'https://') || filter_var($privacy, FILTER_VALIDATE_URL) === false)
+                ? 'Add the link to your brokerage\'s privacy policy (https://…): Meta shows it on the form.' : null,
         ]);
         if (($flags = FairHousing::screen($headline.' '.$body, 'ads', 'blocked', 'Ad: '.$target['label'])) !== []) {
             $errors['body'] = 'Fair Housing: please remove "'.implode('", "', $flags).'". Describe the home, not who should live there.';
@@ -119,7 +138,10 @@ final class ListingAds
         $campaign = Campaign::query()->create(['user_id' => $by->id, 'connection_id' => $c?->id, 'billing' => $boost ? 'boost' : 'own', 'margin_bps' => $margin,
             'stop_loss' => ($in['stop_loss'] ?? true) !== false, 'ad_account_id' => (string) $in['account'], 'page_id' => (string) $in['page'],
             'listing_ulid' => $target['listing'], 'listing_label' => mb_substr($target['label'], 0, 200), 'site_funnel_id' => $funnel?->id, 'headline' => $headline, 'body' => $body,
-            'image_url' => str_starts_with($photo, 'http') ? $photo : url($photo),
+            'image_url' => $creative['image'] ?? (str_starts_with($photo, 'http') ? $photo : url($photo)),
+            'format' => $creative['format'], 'goal' => $goal, 'images' => $creative['images'], 'video_url' => $creative['video'], 'object_story_id' => $creative['story'],
+            'studio_design_id' => $creative['design_id'], 'studio_video_id' => $creative['video_id'], 'social_post_id' => $creative['post_id'],
+            'privacy_url' => $goal === 'form' ? $privacy : null,
             'link' => $site.$target['path'].'?'.http_build_query(['utm_source' => 'facebook', 'utm_medium' => 'paid_social']),
             'latitude' => $target['latitude'], 'longitude' => $target['longitude'],
             'radius_miles' => max(MetaApi::MIN_RADIUS_MILES, min(50, (int) ($in['radius'] ?? MetaApi::MIN_RADIUS_MILES))), 'daily_budget_cents' => $daily,
@@ -140,6 +162,96 @@ final class ListingAds
         PublishCampaign::dispatch($campaign->id);
 
         return $campaign;
+    }
+
+    /**
+     * What the ad is made of: an Ally Studio design (its carousel), a Studio Reel or tour (a video ad), a Facebook post
+     * already on the person's Page (promoted as it is), or the listing photo. Only the person's own, finished work.
+     *
+     * @param  array<string, mixed>  $in  studio_design, studio_video, post
+     * @return array{format: string, listing: string|null, image: string|null, images: list<string>|null, video: string|null, story: string|null, text: string|null, design_id: int|null, video_id: int|null, post_id: int|null}
+     */
+    private function creativeFrom(User $by, array $in, bool $boost): array
+    {
+        $out = ['format' => 'photo', 'listing' => null, 'image' => null, 'images' => null, 'video' => null, 'story' => null, 'text' => null, 'design_id' => null, 'video_id' => null, 'post_id' => null];
+        if (is_string($in['studio_video'] ?? null) && $in['studio_video'] !== '') {
+            $v = StudioVideo::query()->where('ulid', $in['studio_video'])->where('user_id', $by->id)->where('status', 'ready')->first()
+                ?? throw ValidationException::withMessages(['studio_video' => 'Choose one of your finished Reels or tours.']);
+            $reels = app(Reels::class);
+
+            return ['format' => 'video', 'listing' => $v->listing_ulid, 'image' => $reels->poster($v), 'video' => $reels->url($v), 'video_id' => $v->id] + $out;
+        }
+        if (is_string($in['studio_design'] ?? null) && $in['studio_design'] !== '') {
+            $d = Design::query()->where('ulid', $in['studio_design'])->where('user_id', $by->id)->where('status', 'ready')->whereNotNull('listing_ulid')->first()
+                ?? throw ValidationException::withMessages(['studio_design' => 'Choose one of your finished listing designs.']);
+            $designer = app(Designer::class);
+            $slides = $designer->carousel($d);
+
+            return ['format' => count($slides) >= 2 ? 'carousel' : 'photo', 'listing' => $d->listing_ulid, 'image' => $designer->url($d, 'portrait'),
+                'images' => count($slides) >= 2 ? $slides : null, 'design_id' => $d->id] + $out;
+        }
+        if (is_string($in['post'] ?? null) && $in['post'] !== '') {
+            $post = SocialPost::query()->where('ulid', $in['post'])->where('user_id', $by->id)->whereIn('status', ['posted', 'partial'])->whereNotNull('listing_ulid')->first();
+            $fb = $post?->targets()->where('channel', 'facebook')->where('status', 'posted')->whereNotNull('external_id')->first();
+            if ($post === null || $fb === null || $boost) {
+                throw ValidationException::withMessages(['post' => $boost ? 'A post on your own Page is promoted from your own Meta ad account.'
+                    : 'Choose one of your listing posts that went out on your Facebook Page.']);
+            }
+            if ((string) ($in['page'] ?? '') !== $fb->target_id) {
+                throw ValidationException::withMessages(['page' => 'A post is promoted as the Page it was posted on.']);
+            }
+
+            return ['format' => 'post', 'listing' => $post->listing_ulid, 'image' => $post->image_url, 'story' => (string) $fb->external_id, 'text' => $post->text, 'post_id' => $post->id] + $out;
+        }
+
+        return $out;
+    }
+
+    /**
+     * What an ad for this listing can be made of: the person's finished Studio designs and videos for it, and their
+     * posts about it that went out on their Facebook Page.
+     *
+     * @return array{designs: list<array{ulid: string, label: string, image: string|null, slides: int}>, videos: list<array{ulid: string, label: string, image: string|null}>, posts: list<array{ulid: string, label: string, image: string|null, page: string}>}
+     */
+    public function creatives(User $user, string $listing): array
+    {
+        $designer = app(Designer::class);
+        $reels = app(Reels::class);
+        $designs = [];
+        foreach (Design::query()->where('user_id', $user->id)->where('listing_ulid', $listing)->where('status', 'ready')->latest('id')->limit(9)->get() as $d) {
+            $designs[] = ['ulid' => $d->ulid, 'label' => (string) Styles::get($d->collection)['name'], 'image' => $designer->url($d, 'portrait'), 'slides' => count($designer->carousel($d))];
+        }
+        $videos = [];
+        foreach (StudioVideo::query()->where('user_id', $user->id)->where('listing_ulid', $listing)->where('status', 'ready')->latest('id')->limit(6)->get() as $v) {
+            $videos[] = ['ulid' => $v->ulid, 'label' => $v->kind === 'tour' ? 'YouTube tour' : 'Reel', 'image' => $reels->poster($v)];
+        }
+        $posts = [];
+        foreach (SocialPost::query()->where('user_id', $user->id)->where('listing_ulid', $listing)->whereIn('status', ['posted', 'partial'])->latest('id')->limit(6)->with('targets')->get() as $p) {
+            $fb = $p->targets->first(fn ($t): bool => $t->channel === 'facebook' && $t->status === 'posted' && $t->external_id !== null);
+            if ($fb !== null) {
+                $posts[] = ['ulid' => $p->ulid, 'label' => mb_substr(strtok($p->text, "\n") ?: 'Post', 0, 60), 'image' => $p->image_url, 'page' => $fb->target_id];
+            }
+        }
+
+        return ['designs' => $designs, 'videos' => $videos, 'posts' => $posts];
+    }
+
+    /**
+     * The Facebook Pages whose instant-form leads reach this brokerage's CRM.
+     *
+     * @return list<string>
+     */
+    public function formPages(): array
+    {
+        return array_values(array_map('strval', DB::connection(Connections::control())->table('connect_routes')->where('app_key', 'facebook_leads')
+            ->where('tenant_id', $this->tenants->id())->pluck('external_key')->all()));
+    }
+
+    /** Whether instant-form leads from this Page reach this brokerage's CRM (Facebook Lead Ads listens to it). */
+    private function formLeadsArrive(string $page): bool
+    {
+        return $page !== '' && DB::connection(Connections::control())->table('connect_routes')->where('app_key', 'facebook_leads')->where('external_key', $page)
+            ->where('tenant_id', $this->tenants->id())->exists();
     }
 
     /** A funnel this person may promote: their own, or (owners and staff) any of the brokerage's. */
