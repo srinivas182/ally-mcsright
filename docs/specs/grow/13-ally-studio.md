@@ -123,10 +123,20 @@ shows each with its music, download (MP4) and "Post it".
 
 ## Results (SA4)
 
-- Per post: reach, views, clicks (network insights where allowed) and, from the link tags, visits, leads,
-  appointments and commission.
-- The weekly **Studio report** in the daily brief: "your 9 posts brought 4 leads and 1 appointment".
-- Studio learns which layouts, times and moments bring leads for each agent and plans more of them.
+- **Numbers per post, read daily for 30 days** (`ads:social-results`, 04:17): Facebook — reactions, comments,
+  shares, unique views (`post_total_media_view_unique`, Meta's metric since June 2026) and clicks; Instagram — reach,
+  views, likes, comments, shares and saves (carousels share no insights, so their likes and comments come from the
+  post). LinkedIn, Google and YouTube don't share numbers on the permissions Studio asks for. A metric Meta stops
+  offering counts as zero rather than failing.
+- **Leads:** people who came in through a post's link (its `utm_campaign`, as for ads).
+- **Studio → Results:** a month at a glance (posts, people reached, interactions, engagement rate, clicks, leads), by
+  format (single photo, carousel, Reel, tour), by style and by time of day, the top five posts, and what Autopilot
+  has learned. Brokerage packages with team reporting add the whole team with a line per agent. Your AI Assistant
+  skill `studio_results` answers "how are my posts doing?".
+- **Learning:** once 8 of a person's posts (last 90 days) have numbers, Autopilot leads with the style that earns the
+  most interactions per person reached (still trying another every third post) and posts first at their best time.
+- **Monthly Studio report** by email on the 1st (`ads:studio-reports`): posts, reach, interactions, leads, the best
+  format and the top post, with a link to the full results.
 
 ## Pro tools (SA5)
 
@@ -188,8 +198,11 @@ designed posts are used it waits for the renewal, unless the person turns on "Us
 | **SA2b** | Calendar (drag to move), listing launch campaign, captions in the agent's voice, closings, reviews, milestones and recruiting moments, broker approval rules                                                                                                                                                                                                                                                                                                                                                                                   |
 | **SA3a** | Reels from listing designs (ffmpeg: camera moves, crossfades, licensed music), HQ music library with licences, Studio → Reels, Instagram Reels and Facebook Page videos                                                                                                                                                                                                                                                                                                                                                                        |
 | **SA3b** | YouTube app (Shorts and videos, private until the API audit), YouTube listing tours with chapters, Autopilot Reels for new listings, progressive-blur legibility on photos                                                                                                                                                                                                                                                                                                                                                                     |
-| **SA4**  | Results, Studio report, learning                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| **SA5**  | Photo enhancement, voice narration, comment and message replies                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+
+| **SA4** | Results: daily numbers from Facebook and Instagram, leads from post links, Studio → Results by format, style and time, team view, Autopilot learning, monthly report, `studio_results` skill |
+| **SA5** | Voice narration, comment and message replies (photo enhancement moved up to SA5a) |
 
 ## For HQ (before go-live)
 

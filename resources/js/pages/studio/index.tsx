@@ -125,6 +125,9 @@ export default function StudioIndex({
                             <Link href="/studio/reels">Reels</Link>
                         </Button>
                         <Button asChild size="lg" variant="outline">
+                            <Link href="/studio/results">Results</Link>
+                        </Button>
+                        <Button asChild size="lg" variant="outline">
                             <Link href="/studio/autopilot">Autopilot</Link>
                         </Button>
                         <Button asChild size="lg" variant="outline">

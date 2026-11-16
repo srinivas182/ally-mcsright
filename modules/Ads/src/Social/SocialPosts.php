@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Modules\Ads\Jobs\PublishSocialPost;
 use Modules\Ads\ListingAds;
+use Modules\Ads\Studio\Design;
+use Modules\Ads\Studio\StudioVideo;
 use Modules\Connect\AppRegistry;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Connect\AppCatalog;
@@ -117,6 +119,9 @@ final class SocialPosts
         $images = array_values(array_filter(array_map(fn ($u): string => trim((string) $u), (array) ($in['images'] ?? [])), fn (string $u): bool => $u !== ''));
         $image ??= $images[0] ?? null;
         $video = trim((string) ($in['video_url'] ?? '')) ?: null;
+        // Which Studio design or video this post came from (only the person's own), for results by style and format.
+        $designId = is_string($in['studio_design'] ?? null) ? Design::query()->where('ulid', $in['studio_design'])->where('user_id', $by->id)->value('id') : null;
+        $videoId = is_string($in['studio_video'] ?? null) ? StudioVideo::query()->where('ulid', $in['studio_video'])->where('user_id', $by->id)->value('id') : null;
         $listing = is_string($in['listing'] ?? null) && $in['listing'] !== '' ? $in['listing'] : null;
         $home = null;
         if ($listing !== null) {
@@ -158,9 +163,16 @@ final class SocialPosts
         if ($errors !== []) {
             throw ValidationException::withMessages($errors);
         }
-        $post = DB::connection(Connections::cell())->transaction(function () use ($by, $listing, $text, $home, $link, $image, $images, $video, $when, $chosen): SocialPost {
+        $post = DB::connection(Connections::cell())->transaction(function () use ($by, $listing, $text, $home, $link, $image, $images, $video, $when, $chosen, $designId, $videoId): SocialPost {
             $post = SocialPost::query()->create(['user_id' => $by->id, 'listing_ulid' => $listing, 'text' => $this->sign($text, $by, $home), 'link' => $link, 'image_url' => $image,
                 'images' => count($images) >= 2 && $video === null ? $images : null, 'video_url' => $video,
+                'studio_design_id' => is_numeric($designId) ? (int) $designId : null, 'studio_video_id' => is_numeric($videoId) ? (int) $videoId : null,
+                'format' => match (true) {
+                    $video !== null => str_contains((string) parse_url($video, PHP_URL_PATH), '/tours/') ? 'tour' : 'reel',
+                    count($images) >= 2 => 'carousel',
+                    $image !== null => 'photo',
+                    default => 'link',
+                },
                 'status' => 'scheduled', 'post_at' => $when]);
             foreach ($chosen as $p) {
                 SocialTarget::query()->create(['post_id' => $post->id, 'connection_id' => $p['connection_id'], 'channel' => $p['channel'], 'target_id' => $p['id'],

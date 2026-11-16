@@ -11,6 +11,7 @@ use Modules\Ads\Http\SocialController;
 use Modules\Ads\Http\StudioController;
 use Modules\Ads\Http\StudioFontsController;
 use Modules\Ads\Http\StudioPhotosController;
+use Modules\Ads\Http\StudioResultsController;
 use Modules\Ads\Http\StylesController;
 use Modules\Core\Http\Middleware\EnsureHqConsole;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
@@ -56,6 +57,7 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('studio
     Route::post('rules', [AutopilotController::class, 'saveRules'])->name('rules');
     Route::post('autopilot/{item}/skip', [AutopilotController::class, 'skip'])->where('item', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('autopilot.skip');
     Route::get('reels', [ReelsController::class, 'index'])->name('reels');
+    Route::get('results', StudioResultsController::class)->name('results');
     Route::post('designs/{design}/reel', [ReelsController::class, 'store'])->where('design', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->middleware('throttle:10,1')->name('reels.store');
     Route::post('tours', [ReelsController::class, 'tour'])->middleware('throttle:10,1')->name('tours.store');
     Route::get('reels/{reel}/download', [ReelsController::class, 'download'])->where('reel', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('reels.download');

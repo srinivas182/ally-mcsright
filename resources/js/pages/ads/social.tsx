@@ -59,6 +59,8 @@ export default function Social({
         image: string | null;
         images?: string[];
         video?: string | null;
+        studio_design?: string;
+        studio_video?: string;
     } | null;
     timezone: string;
     posts: Post[];
@@ -70,6 +72,8 @@ export default function Social({
         image_url: start?.image ?? '',
         images: start?.images ?? ([] as string[]),
         video_url: start?.video ?? '',
+        studio_design: start?.studio_design ?? '',
+        studio_video: start?.studio_video ?? '',
         places: places.map((p) => p.key),
         post_at: '',
     });
