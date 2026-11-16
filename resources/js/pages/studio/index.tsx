@@ -111,12 +111,15 @@ export default function StudioIndex({
                 </section>
 
                 {plan && (
-                    <div className="flex gap-3">
+                    <div className="flex flex-wrap gap-3">
                         <Button asChild size="lg">
                             <Link href="/studio/create">Create a design</Link>
                         </Button>
                         <Button asChild size="lg" variant="outline">
                             <Link href="/studio/styles">Styles</Link>
+                        </Button>
+                        <Button asChild size="lg" variant="outline">
+                            <Link href="/studio/photos">Enhance photos</Link>
                         </Button>
                         <Button asChild size="lg" variant="outline">
                             <Link href="/studio/autopilot">Autopilot</Link>

@@ -363,6 +363,7 @@ final class Designer
             implode(' · ', array_filter([(string) ($c['price'] ?? ''), ...array_map('strval', (array) ($c['facts'] ?? []))])),
             (string) ($c['body'] ?? ''),
             isset($c['by']) && $c['by'] !== '' ? '— '.$c['by'] : '',
+            ! empty($c['enhanced']) ? StudioPhotos::LABEL.'.' : '',
         ]);
 
         return trim(implode("\n", $lines));
@@ -405,10 +406,16 @@ final class Designer
         $photos = [];
         $media = ListingMedia::query()->where('listing_id', $listing->id)->where('status', 'stored')->orderBy('position')->limit(12)->get();
         $media = $media->slice(min($from, max(0, $media->count() - 1)))->concat($media->take(min($from, max(0, $media->count() - 1)))); // start further in, wrap round
+        // Enhanced versions (SA5a) replace the MLS photo in designs; the cover leads with its virtual twilight when there is one.
+        $versions = app(StudioPhotos::class)->versions($ulid);
+        $enhanced = false;
         foreach ($media as $m) {
+            $better = $versions[(int) $m->id] ?? [];
             $bytes = $m->storage_path !== null ? $disk->get($m->storage_path.'-'.$hero.'.webp') : null;
             if (is_string($bytes) && $this->director->photoProblem($bytes) === null) {
-                $photos[] = (string) Photos::url($m->storage_path, 'hero');
+                $use = $photos === [] ? ($better['twilight'] ?? $better['enhanced'] ?? null) : ($better['enhanced'] ?? null);
+                $photos[] = $use ?? (string) Photos::url($m->storage_path, 'hero');
+                $enhanced = $enhanced || $use !== null;
             }
             if (count($photos) === 5) {
                 break;
@@ -424,7 +431,7 @@ final class Designer
 
         return [$ulid, array_filter(['headline' => $street, 'sub' => trim(implode(', ', array_filter([$home['city'] ?? null, trim(($home['state'] ?? '').' '.($home['postal_code'] ?? ''))]))),
             'facts' => $facts, 'price' => is_numeric($home['price'] ?? null) && $moment !== 'under_contract' ? '$'.number_format((int) $home['price']) : null,
-            'attribution' => is_string($home['attribution'] ?? null) ? $home['attribution'] : null,
+            'attribution' => is_string($home['attribution'] ?? null) ? $home['attribution'] : null, 'enhanced' => $enhanced ?: null,
             'area' => is_string($home['subdivision'] ?? null) && $home['subdivision'] !== '' ? $home['subdivision'] : ($home['city'] ?? null)]), $photos];
     }
 

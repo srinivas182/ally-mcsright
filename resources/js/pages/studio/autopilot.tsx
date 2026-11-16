@@ -9,6 +9,8 @@ import { PageHeader } from '@/components/ui/page-header';
 
 type Settings = {
     learn_voice: boolean;
+    auto_enhance: boolean;
+    extra_credits: boolean;
     mode: string;
     places: string[] | null;
     times: string[];
@@ -43,7 +45,11 @@ function QueueItem({ item }: { item: Item }) {
                 />
             ) : (
                 <div className="grid aspect-[4/5] place-items-center rounded-lg bg-muted text-sm">
-                    {item.status === 'designing' ? 'Designing…' : '—'}
+                    {item.status === 'designing'
+                        ? 'Designing…'
+                        : item.status === 'enhancing'
+                          ? 'Enhancing the photos…'
+                          : '—'}
                 </div>
             )}
             <div className="grid content-start gap-2">
@@ -147,6 +153,7 @@ export default function StudioAutopilot({
     has_voice,
     rules,
     review_required,
+    usage,
     queue,
 }: {
     ready: boolean;
@@ -158,6 +165,7 @@ export default function StudioAutopilot({
     has_voice: boolean;
     rules: { require_review: boolean; caption_disclaimer: string } | null;
     review_required: boolean;
+    usage: Record<string, { used: number; extra: number; allowance: number }>;
     queue: Item[];
 }) {
     const firm = useForm({
@@ -171,6 +179,8 @@ export default function StudioAutopilot({
         times: settings.times,
         per_week: settings.per_week,
         learn_voice: settings.learn_voice,
+        auto_enhance: settings.auto_enhance,
+        extra_credits: settings.extra_credits,
     });
     const toggle = (list: string[], key: string, on: boolean) =>
         on ? [...list, key] : list.filter((k) => k !== key);
@@ -336,6 +346,37 @@ export default function StudioAutopilot({
                             (only the words; you can switch it off any time)
                         </label>
                     )}
+                    <p className="text-sm text-muted-foreground">
+                        This month: {usage.post?.used ?? 0} of{' '}
+                        {usage.post?.allowance ?? 0} designed posts and{' '}
+                        {usage.enhance?.used ?? 0} of{' '}
+                        {usage.enhance?.allowance ?? 0} photo enhancements in
+                        your package.
+                    </p>
+                    <label className="flex items-center gap-2">
+                        <input
+                            type="checkbox"
+                            className="size-5"
+                            checked={form.data.auto_enhance}
+                            onChange={(e) =>
+                                form.setData('auto_enhance', e.target.checked)
+                            }
+                        />
+                        Enhance a new listing's best photos (and a twilight of
+                        the cover) before it posts, from my package only
+                    </label>
+                    <label className="flex items-center gap-2">
+                        <input
+                            type="checkbox"
+                            className="size-5"
+                            checked={form.data.extra_credits}
+                            onChange={(e) =>
+                                form.setData('extra_credits', e.target.checked)
+                            }
+                        />
+                        Use credits for extra posts when my package's posts are
+                        used up (off: Autopilot waits for the next month)
+                    </label>
                     {review_required && (
                         <p className="text-sm text-muted-foreground">
                             Your brokerage reviews posts before they go out, so

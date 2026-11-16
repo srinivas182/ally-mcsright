@@ -108,8 +108,14 @@ Wide and Heritage. Earlier style keys map to their nearest new style, so saved k
 
 ## Pro tools (SA5)
 
-- **Photo enhancement (moved up: SA5a, right after SA1e):** upscaling so crops stay sharp, virtual twilight and sky
-  replacement. Every enhanced photo is labelled "Virtually
+- **Photo enhancement (SA5a, moved up):** Studio → Enhance photos: choose a listing's photos; AI brightens and
+  balances them, straightens verticals, brings out a blue sky and a green lawn, and can turn the cover into a virtual
+  twilight. Each enhanced photo (and each twilight) is one "photo enhancement" from the package, then credits past
+  the allowance; a failed one is given back. The MLS originals never change. Designs lead with the twilight and use
+  the enhanced photos, and every image and caption made with them says "Photos virtually enhanced". When HQ switches
+  upscaling on, enhanced photos are doubled in size so crops and Stories stay sharp. Autopilot enhances a new
+  listing's best three photos (and a twilight when the allowance allows) before its posts are designed, from the
+  allowance only, waiting at most 30 minutes. Every enhanced photo is labelled "Virtually
   enhanced" on the design and in the caption, the original is kept, and MLS photo rules are followed.
 - **Voice narration:** Reels and tours narrated in the agent's own voice, only with their recorded consent; the
   voice is theirs alone and is deleted when they withdraw consent.
@@ -117,6 +123,25 @@ Wide and Heritage. Earlier style keys map to their nearest new style, so saved k
   permissions `pages_manage_engagement`, `instagram_manage_comments`, `instagram_manage_messages`); interested
   people become leads with consent recorded; replies are Fair Housing checked; Approve first by default; anything
   sensitive goes to the agent.
+
+## What Studio runs on (all on RightAlly's accounts)
+
+Agents and brokerages only buy a package: every outside service is RightAlly's own account, switched on and paid
+by HQ, with its cost per item in the cost list so package margins stay right (HQ → Ally Studio shows each item's
+"made with", the services and whether each is on).
+
+| Service                  | Used for                                        | HQ app           | Cost key                      |
+| ------------------------ | ----------------------------------------------- | ---------------- | ----------------------------- |
+| RightAlly AI gateway     | Captions, Spanish, hashtags, voice learning     | (AI routes)      | `studio.post` (caption share) |
+| RightAlly render workers | Designs, carousels, postcards (headless Chrome) | `STUDIO_CHROME`  | `studio.post`                 |
+| remove.bg                | Headshot cut-out                                | `studio_cutout`  | `studio.cutout`               |
+| Autoenhance.ai           | Photo enhancement, sky, lawn, virtual twilight  | `studio_enhance` | `studio.enhance`              |
+| Replicate (Real-ESRGAN)  | Upscaling enhanced photos 2x                    | `studio_upscale` | `studio.upscale` (in enhance) |
+| Licensed music library   | Reels, Shorts and tours (SA3)                   | (SA3)            | `studio.reel`, `studio.tour`  |
+| AI voice                 | Narration in the agent's consented voice (SA5)  | (SA5)            | `studio.voice`                |
+
+**Autopilot stays inside the package:** it posts at the person's times and posts-per-week, and when the month's
+designed posts are used it waits for the renewal, unless the person turns on "Use credits for extra posts".
 
 ## Rules (every sprint)
 
@@ -136,6 +161,7 @@ Wide and Heritage. Earlier style keys map to their nearest new style, so saved k
 | **SA1d** | Style library: 18 styles in six families (classic luxury, modern minimal, coastal and resort, editorial and urban, bold, country and land), each with its own type, grounds, ornaments, photo grading and three listing layouts (new: mono, journal, blueprint, colour field); finishes (gold, champagne, platinum, rose gold, bronze, azure, terracotta, emerald, brand colour, black and white); "see your listing in every style" previews; style match; favourites rotated by Autopilot; brokerage-allowed styles when the brand is locked |
 | **SA1e** | Photo-first redesign: 16 styles benchmarked against the market leaders (one line on the cover, details on the last slide), new type system, carousel (cover, photos, details with the agent) and ZIP download, story safe zones, agent-forward covers, per-style photo grade and sharpen, old style keys mapped                                                                                                                                                                                                                                |
 | **SA1f** | Carousel posting: Facebook multi-photo, Instagram carousel, LinkedIn multi-image                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| **SA5a** | Photo enhancement (moved up): Enhance photos page, Autoenhance.ai (sky, lawn, virtual twilight) and Replicate upscaling on RightAlly's accounts, allowance then credits with give-back on failure, designs and captions labelled "Photos virtually enhanced", Autopilot enhances new listings from the allowance and stays inside the package (credits for extra posts only when allowed), HQ sees what each item is made with and the services behind Studio                                                                                  |
 | **SA2a** | Autopilot: listing moments (new, coming soon, price improvement, under contract, sold), weekly market update, holidays; AI captions (Spanish, hashtags, Fair Housing); good times; Approve first and Autopilot; daily brief; Your AI Assistant skills `studio_posts` and `studio_approve`                                                                                                                                                                                                                                                      |
 | **SA2b** | Calendar (drag to move), listing launch campaign, captions in the agent's voice, closings, reviews, milestones and recruiting moments, broker approval rules                                                                                                                                                                                                                                                                                                                                                                                   |
 | **SA3**  | Reels, Shorts and tours, music library, YouTube app                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
@@ -150,5 +176,8 @@ Wide and Heritage. Earlier style keys map to their nearest new style, so saved k
       `/usr/bin/google-chrome`; `STUDIO_CHROME_NO_SANDBOX=true` only inside an isolated container that runs Chrome as
       root). Fonts are bundled (SIL OFL, `modules/Ads/resources/fonts`), so workers need no font service. One design
       set is nine renders (about 1 s each); size the workers for the expected design volume, and cap sets per person
-      per day with `STUDIO_DAILY_SETS` (default 40).
+      per day with `STUDIO_DAILY_SETS` (default 40). SA1e: a listing set is now up to 24 renders (three carousels).
+- SA5a: an Autoenhance.ai account with API access (Connect setup → Photo enhancement), and optionally a Replicate
+  token plus a tested Real-ESRGAN version id (Photo upscaling); enter both real costs per photo in the cost list
+  (`studio.enhance`, `studio.upscale`) and set each package's enhancement allowance under HQ → Ally Studio.
 - Music library licences; YouTube API audit; Meta review for engagement permissions (SA5); voice vendor (SA5).
