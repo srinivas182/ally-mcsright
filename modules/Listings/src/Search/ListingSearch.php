@@ -196,6 +196,9 @@ final class ListingSearch
         if ($filters['agent_mls_id'] !== null) {
             $q->where('list_agent_mls_id', $filters['agent_mls_id']);
         }
+        if ($filters['states'] !== []) {
+            $q->whereIn('state_or_province', $filters['states']); // Movewise: only the states switched on
+        }
         if ($filters['since'] !== null) {
             $q->where(fn (Builder $w) => $w->where('created_at', '>=', $filters['since'])->orWhere('price_changed_at', '>=', $filters['since']));
         }
@@ -223,7 +226,7 @@ final class ListingSearch
 
     /**
      * @param  array<string, mixed>  $f
-     * @return array{q: string, min_price: int|null, max_price: int|null, beds: int|null, baths: int|null, min_sqft: int|null, types: list<string>, statuses: list<string>, bounds: list<float>|null, polygon: list<array{0: float, 1: float}>|null, agent_mls_id: string|null, since: string|null, sort: string, page: int, per_page: int}
+     * @return array{q: string, min_price: int|null, max_price: int|null, beds: int|null, baths: int|null, min_sqft: int|null, types: list<string>, statuses: list<string>, bounds: list<float>|null, polygon: list<array{0: float, 1: float}>|null, agent_mls_id: string|null, since: string|null, states: list<string>, sort: string, page: int, per_page: int}
      */
     public static function clean(array $f): array
     {
@@ -262,6 +265,7 @@ final class ListingSearch
             'beds' => $int('beds', 20), 'baths' => $int('baths', 20), 'min_sqft' => $int('min_sqft', 1_000_000), 'types' => $list('types'),
             'statuses' => $statuses !== [] ? $statuses : ['Active', 'Coming Soon'], 'bounds' => $bounds, 'polygon' => $polygon,
             'agent_mls_id' => is_string($f['agent_mls_id'] ?? null) && $f['agent_mls_id'] !== '' ? mb_substr($f['agent_mls_id'], 0, 30) : null, 'since' => $since,
+            'states' => array_values(array_filter(array_map(fn ($s): string => strtoupper((string) $s), (array) ($f['states'] ?? [])), fn (string $s): bool => preg_match('/^[A-Z]{2}$/', $s) === 1)),
             'sort' => in_array($f['sort'] ?? null, self::SORTS, true) ? (string) $f['sort'] : 'newest',
             'page' => max(1, min(500, (int) (is_numeric($f['page'] ?? null) ? $f['page'] : 1))), 'per_page' => max(1, min(48, (int) (is_numeric($f['per_page'] ?? null) ? $f['per_page'] : 24)))];
     }

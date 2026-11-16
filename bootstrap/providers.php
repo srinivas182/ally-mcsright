@@ -12,6 +12,7 @@ use Modules\Crm\CrmServiceProvider;
 use Modules\Forms\FormsServiceProvider;
 use Modules\Ledger\LedgerServiceProvider;
 use Modules\Listings\ListingsServiceProvider;
+use Modules\Movewise\MovewiseServiceProvider;
 use Modules\Payouts\PayoutsServiceProvider;
 use Modules\Roster\RosterServiceProvider;
 use Modules\Sites\SitesServiceProvider;
@@ -34,4 +35,5 @@ return [
     SitesServiceProvider::class,
     ConnectServiceProvider::class,
     AdsServiceProvider::class,
+    MovewiseServiceProvider::class,
 ];

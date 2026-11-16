@@ -14,6 +14,7 @@ use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Leads\VisitorJourneys;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
+use Modules\Core\Tenancy\TenantContext;
 
 /** Websites: site engine, templates, SEO and AEO (specs/websites/05). */
 final class SitesServiceProvider extends ServiceProvider
@@ -34,7 +35,8 @@ final class SitesServiceProvider extends ServiceProvider
         $this->app->bind(VisitorJourneys::class, Visitors\SiteVisitorJourneys::class);
         // Listing links in the back office, alerts and texts point at the brokerage's live website.
         $this->app->bind('listings.public_url', fn ($app) => function (string $ulid, ?string $label = null) use ($app): ?string {
-            $host = $app->make(SiteSetup::class)->publicHost();
+            // Outside a brokerage (Movewise, HQ) there is no brokerage website to link to.
+            $host = $app->make(TenantContext::class)->check() ? $app->make(SiteSetup::class)->publicHost() : null;
 
             return $host !== null ? 'https://'.$host.Rendering\Urls::listing($ulid, $label) : null;
         });
