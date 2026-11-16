@@ -11,7 +11,7 @@ use Modules\Core\Tenancy\Concerns\BelongsToTenant;
 use Modules\Core\Tenancy\Concerns\HasPublicUlid;
 
 /**
- * One listing ad (specs/ads/01).
+ * One listing ad (specs/ads/01): on Meta, or on Google search or YouTube (`channel` google, specs/ads/05).
  *
  * @property int $id
  * @property string $ulid
@@ -52,6 +52,9 @@ use Modules\Core\Tenancy\Concerns\HasPublicUlid;
  * @property string $status
  * @property string|null $error
  * @property array<string, string>|null $meta_ids
+ * @property array<string, mixed>|null $google_ids customer, login (manager), campaign, ad_group…, the city (YouTube) and the ad text
+ * @property list<string>|null $keywords
+ * @property string|null $youtube_video_id
  * @property int $spend_cents
  * @property int $impressions
  * @property int $clicks
@@ -87,6 +90,6 @@ final class Campaign extends Model
     /** @return array<string, string> */
     protected function casts(): array
     {
-        return ['meta_ids' => 'array', 'images' => 'array', 'stop_loss' => 'boolean', 'starts_on' => 'immutable_date', 'ends_on' => 'immutable_date', 'results_at' => 'immutable_datetime', 'created_at' => 'immutable_datetime'];
+        return ['meta_ids' => 'array', 'google_ids' => 'array', 'keywords' => 'array', 'images' => 'array', 'stop_loss' => 'boolean', 'starts_on' => 'immutable_date', 'ends_on' => 'immutable_date', 'results_at' => 'immutable_datetime', 'created_at' => 'immutable_datetime'];
     }
 }

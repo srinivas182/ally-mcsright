@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Connect;
 
+use Modules\Ads\Google\GoogleAdsConnector;
 use Modules\Ads\Meta\MetaAdsConnector;
 use Modules\Ads\Social\FacebookPages;
 use Modules\Ads\Social\GoogleBusiness;
@@ -307,6 +308,31 @@ final class Catalog
                 'docs' => 'https://developers.facebook.com/docs/marketing-api/'],
             guide: ['steps' => ['Press Connect and sign in to Facebook.', 'Choose your ad account and Pages, and press Allow.', 'Then open Ads to make your first listing ad.']]));
 
+        // Google search and YouTube listing ads (specs/ads/05): one click with Google; RightAlly's developer token.
+        $catalog->add(new App('google_ads', 'Google Ads (search and YouTube)', 'ads', 'Make listing ads for Google search and YouTube with AI and publish them from your own Google Ads account. Results come back here.',
+            scope: 'agent', auth: 'oauth', syncs: ['Your Google Ads accounts', 'Ads you publish from RightAlly', 'Spend, clicks and results, daily'], link: '/ads',
+            driver: GoogleAdsConnector::class, vendorCost: 'Your ad spend, billed by Google to your Google Ads account',
+            oauth: ['provider' => 'google', 'scopes' => ['https://www.googleapis.com/auth/adwords']],
+            setup: ['needs' => 'provider', 'provider' => 'google', 'fields' => [['key' => 'developer_token', 'label' => 'Google Ads developer token', 'secret' => true]],
+                'steps' => ['Set up the Google sign-in app at the top of this page, and add the Google Ads API to it.',
+                    'In RightAlly\'s Google Ads manager account, open API Center and apply for Standard access for the developer token (creating campaigns needs it).',
+                    'Add the "adwords" scope to the Google app\'s verification (a sensitive scope: Google reviews it, free).', 'Paste the developer token here and switch Google Ads on.'],
+                'partner' => 'Google Ads API developer token with Standard access (free review) and Google OAuth verification for the adwords scope. Ads follow Google\'s housing ads policy: place only.',
+                'docs' => 'https://developers.google.com/google-ads/api/docs/start'],
+            guide: ['steps' => ['Press Connect and sign in with the Google account that runs your Google Ads.', 'Press Allow.', 'Then open Ads and choose Google search or YouTube.']]));
+
+        $catalog->add(new App('rightally_boost_google', 'RightAlly Boost on Google', 'ads', 'Boost a listing on Google search and YouTube and pay with RightAlly credits: no Google Ads account needed.',
+            scope: 'both', auth: 'link', syncs: ['Google and YouTube ads paid with credits'], link: '/ads',
+            setup: ['needs' => 'keys', 'fields' => [['key' => 'customer_id', 'label' => 'RightAlly\'s Google Ads customer ID (digits)'],
+                ['key' => 'login_customer_id', 'label' => 'Manager account ID it is reached through (digits; the same ID if none)'],
+                ['key' => 'refresh_token', 'label' => 'Refresh token for RightAlly\'s Google Ads login (adwords scope)', 'secret' => true]],
+                'steps' => ['Set up RightAlly Boost (Meta) and Google Ads first: Boost on Google uses the same margin and Google Ads\' developer token.',
+                    'In RightAlly\'s Google Ads manager account, make (or choose) the account Boosts run from, with billing set up.',
+                    'Sign in once with that Google login through the OAuth playground (or a script) using the Google sign-in app, with the adwords scope and offline access, and copy the refresh token.',
+                    'Paste the IDs and the refresh token here and switch it on.'],
+                'partner' => 'Uses the Google Ads developer token (Google Ads card). RightAlly pays Google for Boost spend.',
+                'docs' => 'https://developers.google.com/google-ads/api/docs/oauth/overview']));
+
         $catalog->add(new App('rightally_boost', 'RightAlly Boost', 'ads', 'Boost a listing on Facebook and Instagram and pay with RightAlly credits: no ad account needed. Unspent credits come back.',
             scope: 'both', auth: 'link', syncs: ['Ads paid with credits', 'Results with the leads and commission they brought'], link: '/ads',
             setup: ['needs' => 'keys', 'fields' => [['key' => 'ad_account_id', 'label' => 'RightAlly\'s Meta ad account ID (digits)'], ['key' => 'page_id', 'label' => 'RightAlly\'s Facebook Page ID'],
@@ -567,7 +593,6 @@ final class Catalog
             ['rechat', 'Rechat', 'crm', 'Bring over contacts, deals and marketing history from Rechat.', 'both', 'Your Rechat plan'],
             ['cloze', 'Cloze', 'crm', 'Bring over contacts, notes and relationship history from Cloze.', 'agent', 'Your Cloze plan'],
             ['nextdoor_ads', 'Nextdoor Ads', 'ads', 'Neighbourhood ads for your listings and open houses.', 'both', 'Ad spend paid to Nextdoor'],
-            ['google_ads', 'Google Ads', 'ads', 'Search, display and YouTube ads for your listings and your area, created and published from RightAlly.', 'both', 'Ad spend: your Google account, or RightAlly Boost credits'],
             ['paperless_pipeline', 'Paperless Pipeline', 'transactions', 'Bring transactions and documents from Paperless Pipeline.', 'brokerage', 'Your Paperless Pipeline plan'],
             ['authentisign', 'Authentisign', 'transactions', 'Signed Authentisign documents filed on the right deal.', 'both', 'Your Authentisign plan'],
             ['zipform', 'zipForm', 'transactions', 'zipForm transactions and forms into RightAlly deals.', 'agent', 'Your zipForm plan'],

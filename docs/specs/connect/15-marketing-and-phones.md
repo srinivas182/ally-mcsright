@@ -63,7 +63,7 @@ Sprint block **C7** (Team A, with D for consent and E for ads). Plan item: C39. 
 - **Google Ads:** search and YouTube campaigns for listings, funnels and the brokerage, from the person's own
   account or RightAlly Boost, with Google's housing ads policy built in: no targeting by age, gender, parental or
   marital status or ZIP code; location by radius only. Results in leads, appointments and commission dollars, with
-  the automatic stop (as Meta ads).
+  the automatic stop (as Meta ads). Built in C7d-2: specs/ads/05.
 - **Canva:** open a design with the brand kit and listing photos (Canva Connect), and bring the finished design back
   for posts, ads and postcards.
 - **Social posting:** Facebook Pages, Instagram (business accounts), LinkedIn and Google Business Profile; post

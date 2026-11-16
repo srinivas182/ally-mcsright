@@ -28,7 +28,7 @@ final class GoogleLsa implements Connector
 
     public static function base(): string
     {
-        return 'https://googleads.googleapis.com/'.config('connect.google_ads_version', 'v22').'/';
+        return 'https://googleads.googleapis.com/'.config('connect.google_ads_version', 'v26').'/';
     }
 
     public function verify(array $credentials, array $settings): string

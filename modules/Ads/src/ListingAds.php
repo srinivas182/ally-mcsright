@@ -8,10 +8,13 @@ use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Modules\Ads\Google\GoogleCopy;
 use Modules\Ads\Jobs\PublishCampaign;
 use Modules\Ads\Meta\MetaApi;
 use Modules\Ads\Models\Campaign;
 use Modules\Ads\Social\SocialPost;
+use Modules\Ads\Social\SocialTarget;
+use Modules\Ads\Studio\BrandKits;
 use Modules\Ads\Studio\Design;
 use Modules\Ads\Studio\Designer;
 use Modules\Ads\Studio\Reels;
@@ -52,6 +55,12 @@ final class ListingAds
 
     public function __construct(private readonly TenantContext $tenants, private readonly ListingSearch $search) {}
 
+    /** The person's own Google Ads connection, if any (specs/ads/05). */
+    public function googleConnection(User $user): ?Connection
+    {
+        return Connection::query()->where('app_key', 'google_ads')->where('owner_user_id', $user->id)->first();
+    }
+
     /** The person's own Meta Ads connection, if any. */
     public function connection(User $user): ?Connection
     {
@@ -88,26 +97,39 @@ final class ListingAds
      */
     public function publish(User $by, array $in): Campaign
     {
+        $google = ($in['network'] ?? 'meta') === 'google';
+        $youtube = $google && ($in['placement'] ?? 'search') === 'youtube';
         $boost = ($in['pay'] ?? 'own') === 'boost';
-        if ($boost && ! app(Boost::class)->ready()) {
-            throw ValidationException::withMessages(['pay' => 'RightAlly Boost isn\'t switched on yet.']);
+        if ($boost && ! ($google ? app(Boost::class)->googleReady() : app(Boost::class)->ready())) {
+            throw ValidationException::withMessages(['pay' => $google ? 'RightAlly Boost on Google isn\'t switched on yet.' : 'RightAlly Boost isn\'t switched on yet.']);
         }
-        $c = $boost ? null : ($this->connection($by) ?? throw ValidationException::withMessages(['account' => 'Connect Meta Ads first (Apps → Meta Ads), or pay with credits.']));
-        if ($boost) {
+        $c = $boost ? null : ($google ? $this->googleConnection($by) ?? throw ValidationException::withMessages(['account' => 'Connect Google Ads first (Apps → Google Ads), or pay with credits.'])
+            : $this->connection($by) ?? throw ValidationException::withMessages(['account' => 'Connect Meta Ads first (Apps → Meta Ads), or pay with credits.']));
+        $login = '';
+        if ($boost && $google) {
+            $in['account'] = app(Boost::class)->googleAccount()['customer_id'];
+            $login = app(Boost::class)->googleAccount()['login_customer_id'];
+        } elseif ($boost) {
             $in['account'] = app(Boost::class)->account()['ad_account_id'];
             $in['page'] = app(Boost::class)->account()['page_id'];
+        } elseif ($google) {
+            $entry = collect((array) ($c->settings['ad_accounts'] ?? []))->first(fn ($a): bool => is_array($a) && (string) ($a['id'] ?? '') === (string) ($in['account'] ?? ''));
+            $login = is_array($entry) ? (string) ($entry['login'] ?? '') : '';
         }
-        $creative = $this->creativeFrom($by, $in, $boost);
+        if ($google) {
+            $in['page'] = '';
+        }
+        $creative = $google ? $this->googleCreative($by, $in, $youtube) : $this->creativeFrom($by, $in, $boost);
         if ($creative['listing'] !== null) {
             $in['listing'] = $creative['listing'];
         }
         $funnel = is_string($in['funnel'] ?? null) && $in['funnel'] !== '' ? ($this->funnel($by, $in['funnel']) ?? throw ValidationException::withMessages(['funnel' => 'Choose one of your funnels.'])) : null;
         $target = $funnel !== null ? $this->funnelTarget($funnel) : $this->listingTarget($by, (string) ($in['listing'] ?? ''));
         $accounts = $boost ? [(string) $in['account']] : array_column((array) ($c->settings['ad_accounts'] ?? []), 'id');
-        $pages = $boost ? [(string) $in['page']] : array_column((array) ($c->settings['pages'] ?? []), 'id');
+        $pages = $google ? [''] : ($boost ? [(string) $in['page']] : array_column((array) ($c->settings['pages'] ?? []), 'id'));
         $headline = trim((string) ($in['headline'] ?? '')) ?: ($creative['format'] === 'post' ? mb_substr(trim((string) strtok((string) $creative['text'], "\n")), 0, 40) : '');
         $body = trim((string) ($in['body'] ?? '')) ?: ($creative['format'] === 'post' ? mb_substr((string) $creative['text'], 0, 600) : '');
-        $goal = ($in['goal'] ?? 'website') === 'form' ? 'form' : 'website';
+        $goal = ! $google && ($in['goal'] ?? 'website') === 'form' ? 'form' : 'website';
         $privacy = trim((string) ($in['privacy_url'] ?? ''));
         $daily = (int) round((float) ($in['daily_budget'] ?? 0) * 100);
         $days = (int) ($in['days'] ?? 0);
@@ -125,7 +147,9 @@ final class ListingAds
             'privacy_url' => $goal === 'form' && (! str_starts_with($privacy, 'https://') || filter_var($privacy, FILTER_VALIDATE_URL) === false)
                 ? 'Add the link to your brokerage\'s privacy policy (https://…): Meta shows it on the form.' : null,
         ]);
-        if (($flags = FairHousing::screen($headline.' '.$body, 'ads', 'blocked', 'Ad: '.$target['label'])) !== []) {
+        $copy = $google ? GoogleCopy::make($target['facts'], $headline, $body, ($funnel !== null ? 'Homes for sale with '.$this->tenants->current()->name : 'Listed by '.$by->name.', '.$this->tenants->current()->name), (string) $this->tenants->current()->name, $funnel !== null) : null;
+        $screened = $headline.' '.$body.($copy !== null ? ' '.implode(' ', [...$copy['headlines'], ...$copy['keywords']]) : '');
+        if (($flags = FairHousing::screen($screened, 'ads', 'blocked', 'Ad: '.$target['label'])) !== []) {
             $errors['body'] = 'Fair Housing: please remove "'.implode('", "', $flags).'". Describe the home, not who should live there.';
         }
         if ($errors !== []) {
@@ -142,7 +166,10 @@ final class ListingAds
             'format' => $creative['format'], 'goal' => $goal, 'images' => $creative['images'], 'video_url' => $creative['video'], 'object_story_id' => $creative['story'],
             'studio_design_id' => $creative['design_id'], 'studio_video_id' => $creative['video_id'], 'social_post_id' => $creative['post_id'],
             'privacy_url' => $goal === 'form' ? $privacy : null,
-            'link' => $site.$target['path'].'?'.http_build_query(['utm_source' => 'facebook', 'utm_medium' => 'paid_social']),
+            'link' => $site.$target['path'].'?'.http_build_query($google ? ['utm_source' => $youtube ? 'youtube' : 'google', 'utm_medium' => $youtube ? 'video' : 'cpc']
+                : ['utm_source' => 'facebook', 'utm_medium' => 'paid_social']),
+            'channel' => $google ? 'google' : 'meta', 'keywords' => $copy !== null && ! $youtube ? $copy['keywords'] : null, 'youtube_video_id' => $creative['youtube'] ?? null,
+            'google_ids' => $google ? ['login' => $login, 'city' => trim(($target['facts']['city'] ?? '').', '.($target['facts']['state'] ?? ''), ', '), 'copy' => $copy] : null,
             'latitude' => $target['latitude'], 'longitude' => $target['longitude'],
             'radius_miles' => max(MetaApi::MIN_RADIUS_MILES, min(50, (int) ($in['radius'] ?? MetaApi::MIN_RADIUS_MILES))), 'daily_budget_cents' => $daily,
             'starts_on' => $start->toDateString(), 'ends_on' => $start->addDays($days - 1)->toDateString(), 'status' => 'publishing']);
@@ -208,10 +235,46 @@ final class ListingAds
     }
 
     /**
+     * A Google ad: a search ad (text, with the listing photo kept for the list of ads), or a YouTube ad from one of
+     * the person's finished Reels or tours that went out on their YouTube channel.
+     *
+     * @param  array<string, mixed>  $in
+     * @return array{format: string, listing: string|null, image: string|null, images: list<string>|null, video: string|null, story: string|null, text: string|null, design_id: int|null, video_id: int|null, post_id: int|null, youtube: string|null}
+     */
+    private function googleCreative(User $by, array $in, bool $youtube): array
+    {
+        $out = ['format' => 'search', 'listing' => null, 'image' => null, 'images' => null, 'video' => null, 'story' => null, 'text' => null, 'design_id' => null, 'video_id' => null,
+            'post_id' => null, 'youtube' => null];
+        if (! $youtube) {
+            return $out;
+        }
+        $v = StudioVideo::query()->where('ulid', (string) ($in['studio_video'] ?? ''))->where('user_id', $by->id)->where('status', 'ready')->first();
+        $id = $v !== null ? $this->youtubeId($v) : null;
+        if ($v === null || $id === null) {
+            throw ValidationException::withMessages(['studio_video' => 'Choose one of your Reels or tours that went out on your YouTube channel (Studio → Reels → Post it).']);
+        }
+        if (app(BrandKits::class)->squareLogo($by) === null) {
+            throw ValidationException::withMessages(['studio_video' => 'YouTube ads show a logo: add the brokerage logo or your headshot in Brand kit first.']);
+        }
+        $reels = app(Reels::class);
+
+        return ['format' => 'video', 'listing' => $v->listing_ulid, 'image' => $reels->poster($v), 'video' => $reels->url($v), 'video_id' => $v->id, 'youtube' => $id] + $out;
+    }
+
+    /** The YouTube id of a Studio video that went out on the person's YouTube channel. */
+    private function youtubeId(StudioVideo $v): ?string
+    {
+        $id = SocialTarget::query()->where('channel', 'youtube')->where('status', 'posted')->whereNotNull('external_id')
+            ->whereIn('post_id', SocialPost::query()->where('studio_video_id', $v->id)->where('user_id', $v->user_id)->select('id'))->latest('id')->value('external_id');
+
+        return is_string($id) && preg_match('/^[A-Za-z0-9_-]{6,20}$/', $id) === 1 ? $id : null;
+    }
+
+    /**
      * What an ad for this listing can be made of: the person's finished Studio designs and videos for it, and their
      * posts about it that went out on their Facebook Page.
      *
-     * @return array{designs: list<array{ulid: string, label: string, image: string|null, slides: int}>, videos: list<array{ulid: string, label: string, image: string|null}>, posts: list<array{ulid: string, label: string, image: string|null, page: string}>}
+     * @return array{designs: list<array{ulid: string, label: string, image: string|null, slides: int}>, videos: list<array{ulid: string, label: string, image: string|null, youtube: bool}>, posts: list<array{ulid: string, label: string, image: string|null, page: string}>}
      */
     public function creatives(User $user, string $listing): array
     {
@@ -223,7 +286,7 @@ final class ListingAds
         }
         $videos = [];
         foreach (StudioVideo::query()->where('user_id', $user->id)->where('listing_ulid', $listing)->where('status', 'ready')->latest('id')->limit(6)->get() as $v) {
-            $videos[] = ['ulid' => $v->ulid, 'label' => $v->kind === 'tour' ? 'YouTube tour' : 'Reel', 'image' => $reels->poster($v)];
+            $videos[] = ['ulid' => $v->ulid, 'label' => $v->kind === 'tour' ? 'YouTube tour' : 'Reel', 'image' => $reels->poster($v), 'youtube' => $this->youtubeId($v) !== null];
         }
         $posts = [];
         foreach (SocialPost::query()->where('user_id', $user->id)->where('listing_ulid', $listing)->whereIn('status', ['posted', 'partial'])->latest('id')->limit(6)->with('targets')->get() as $p) {
@@ -280,7 +343,7 @@ final class ListingAds
      * Where a funnel ad points and whom it reaches: the funnel's page, a photo of a home for sale in its area, and
      * the middle of the homes it shows (housing ads reach everyone within a radius; nothing else narrows them).
      *
-     * @return array{field: string, listing: string|null, label: string, path: string, photo: string, latitude: string, longitude: string}
+     * @return array{field: string, listing: string|null, label: string, path: string, photo: string, latitude: string, longitude: string, facts: array{address?: string|null, city?: string|null, state?: string|null, beds?: int|null, price?: int|null, subdivision?: string|null}}
      */
     public function funnelTarget(SiteFunnel $funnel): array
     {
@@ -299,12 +362,15 @@ final class ListingAds
         $lat = array_sum(array_map(fn (array $h): float => (float) $h['latitude'], $mapped)) / count($mapped);
         $lng = array_sum(array_map(fn (array $h): float => (float) $h['longitude'], $mapped)) / count($mapped);
 
+        $first = $mapped[0];
+
         return ['field' => 'funnel', 'listing' => null, 'label' => 'Funnel: '.$funnel->headline, 'path' => '/go/'.$funnel->slug, 'photo' => $photo,
+            'facts' => ['city' => is_string($first['city'] ?? null) ? $first['city'] : null, 'state' => is_string($first['state'] ?? null) ? $first['state'] : null],
             'latitude' => (string) round($lat, 6), 'longitude' => (string) round($lng, 6)];
     }
 
     /**
-     * @return array{field: string, listing: string|null, label: string, path: string, photo: string, latitude: string, longitude: string}
+     * @return array{field: string, listing: string|null, label: string, path: string, photo: string, latitude: string, longitude: string, facts: array{address?: string|null, city?: string|null, state?: string|null, beds?: int|null, price?: int|null, subdivision?: string|null}}
      */
     private function listingTarget(User $by, string $ulid): array
     {
@@ -317,7 +383,11 @@ final class ListingAds
             throw ValidationException::withMessages(['listing' => 'This listing has no photos yet, and an ad needs one.']);
         }
 
+        $str = fn (string $k): ?string => is_string($home[$k] ?? null) && $home[$k] !== '' ? $home[$k] : null;
+
         return ['field' => 'listing', 'listing' => (string) $home['ulid'], 'label' => ListingSearch::label($home), 'path' => Urls::listing((string) $home['ulid'], ListingSearch::label($home)),
+            'facts' => ['address' => $str('address'), 'city' => $str('city'), 'state' => $str('state'), 'subdivision' => $str('subdivision'),
+                'beds' => is_numeric($home['beds'] ?? null) ? (int) $home['beds'] : null, 'price' => is_numeric($home['price'] ?? null) ? (int) $home['price'] : null],
             'photo' => $photo, 'latitude' => (string) $home['latitude'], 'longitude' => (string) $home['longitude']];
     }
 
@@ -325,7 +395,7 @@ final class ListingAds
     {
         $this->guard($c, $by);
         try {
-            app(MetaApi::class)->setStatus($c, $this->token($c), $active);
+            Networks::for($c)->setStatus($c, $this->token($c), $active);
         } catch (\RuntimeException $e) {
             throw ValidationException::withMessages(['ad' => $e->getMessage()]);
         }
@@ -345,15 +415,15 @@ final class ListingAds
         app(AuditLogger::class)->record('ads.end', $c, metadata: ['credits_refunded' => $c->credits_refunded], severity: 'notice');
     }
 
-    /** The access token the ad runs with: the person's own Meta sign-in, or RightAlly's Boost account. */
+    /** The access token the ad runs with: the person's own Meta or Google sign-in, or RightAlly's Boost account. */
     public function token(Campaign $c): string
     {
         if ($c->isBoost()) {
-            return app(Boost::class)->account()['access_token'];
+            return $c->channel === 'google' ? app(Boost::class)->googleToken() : app(Boost::class)->account()['access_token'];
         }
         $conn = $c->connection_id !== null ? Connection::query()->find($c->connection_id) : null;
 
-        return app(ConnectorKit::class)->accessToken(($conn ?? throw new \RuntimeException('Reconnect Meta Ads first.'))->data());
+        return app(ConnectorKit::class)->accessToken(($conn ?? throw new \RuntimeException($c->channel === 'google' ? 'Reconnect Google Ads first.' : 'Reconnect Meta Ads first.'))->data());
     }
 
     /** Owners see every ad; others their own. */
