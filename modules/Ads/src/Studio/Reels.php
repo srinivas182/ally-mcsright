@@ -49,7 +49,7 @@ final class Reels
         if ($this->plans->current($by) === null) {
             throw ValidationException::withMessages(['reel' => 'Ally Studio is an add-on. Choose a Studio package first.']);
         }
-        if ($design->status !== 'ready' || (Designer::MOMENTS[$design->moment][1] ?? '') !== 'listing') {
+        if ($design->status !== 'ready' || (Designer::MOMENTS[$design->moment][1] ?? '') !== 'listing' || $design->variant === 'canva') {
             throw ValidationException::withMessages(['reel' => 'Reels are made from a finished listing design.']);
         }
         $today = StudioVideo::query()->where('user_id', $by->id)->where('created_at', '>=', CarbonImmutable::now()->startOfDay())->count();

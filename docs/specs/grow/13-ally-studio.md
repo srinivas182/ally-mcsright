@@ -205,6 +205,20 @@ shows each with its music, download (MP4) and "Post it".
       `pages_messaging`, `instagram_manage_comments`, `instagram_manage_messages`. People connected before must
       connect again to allow them.
 
+- **Canva (C7d-3):** "Edit in Canva" on any Studio design, and "Design it in Canva" for a listing, once the agent has
+  connected Canva (app `canva`, Canva Connect, OAuth with PKCE).
+    - **Going to Canva.** The starting image (the Studio design, or the listing's cover) goes to the agent's Canva
+      uploads, with up to four listing photos, the brokerage logo and their headshot. A 1080×1350 design starts with the
+      first image in it and opens in the Canva editor, with `correlation_state` set to the session id.
+    - **Coming back.** Pressing Return in Canva goes to RightAlly's one return address (`/connect/canva/return` on the
+      sign-in host). The `correlation_jwt` is checked against Canva's published keys: the audience is our client id and
+      the type is `rti`. The control table `canva_returns` then sends the agent back to the brokerage website the session
+      started on.
+    - **The result.** There, only the session's owner can bring the design in. Every page is exported as PNG and becomes
+      a Studio design (variant `canva`): page one is the post, later pages are carousel slides, with square and story
+      sizes made from page one. It can be posted, advertised and downloaded like any design. It is not redrawn as a Reel.
+    - **Failures.** If an upload or export fails, the reason is shown, and "Bring it back" tries again.
+
 ## What Studio runs on (all on RightAlly's accounts)
 
 Agents and brokerages only buy a package: every outside service is RightAlly's own account, switched on and paid

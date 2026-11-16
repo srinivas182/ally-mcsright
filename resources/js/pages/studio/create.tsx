@@ -19,6 +19,7 @@ type DesignRow = {
     carousel: string[];
     reelable: boolean;
     listing: string | null;
+    canva: boolean;
 };
 
 const select = 'h-12 rounded-md border bg-background px-3';
@@ -43,6 +44,7 @@ export default function StudioCreate({
     listings,
     batch,
     recent,
+    canva,
 }: {
     ready: boolean;
     moments: Record<string, string>;
@@ -51,6 +53,7 @@ export default function StudioCreate({
     listings: { ulid: string; label: string }[];
     batch: DesignRow[];
     recent: DesignRow[];
+    canva: boolean;
 }) {
     const form = useForm({
         moment: 'just_listed',
@@ -135,7 +138,7 @@ export default function StudioCreate({
                 </div>
             )}
             <div className="flex items-center justify-between text-sm">
-                <span>{d.collection}</span>
+                <span>{d.canva ? 'Made in Canva' : d.collection}</span>
                 {d.used && <Badge variant="outline">used</Badge>}
             </div>
             {d.status === 'ready' && (
@@ -155,6 +158,17 @@ export default function StudioCreate({
                             >
                                 Advertise
                             </Link>
+                        </Button>
+                    )}
+                    {canva && !d.canva && (
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                                router.post('/studio/canva', { design: d.ulid })
+                            }
+                        >
+                            Edit in Canva
                         </Button>
                     )}
                     {d.reelable && (
@@ -388,6 +402,19 @@ export default function StudioCreate({
                         <Button type="submit" disabled={form.processing}>
                             Make three designs
                         </Button>
+                        {canva && forListing && form.data.listing !== '' && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() =>
+                                    router.post('/studio/canva', {
+                                        listing: form.data.listing,
+                                    })
+                                }
+                            >
+                                Design it in Canva
+                            </Button>
+                        )}
                         <Link
                             href="/studio/styles"
                             className="text-sm underline"
