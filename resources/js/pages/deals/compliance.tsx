@@ -104,7 +104,7 @@ export default function ComplianceSettings({
                                 >
                                     <Link
                                         className="underline"
-                                        href={`/deals/${d.ulid}`}
+                                        href={`/deals/${d.ulid}/file-review`}
                                     >
                                         {d.street}
                                     </Link>

@@ -11,10 +11,12 @@ use Modules\Transactions\Http\DeadlinesController;
 use Modules\Transactions\Http\DealController;
 use Modules\Transactions\Http\DealIqController;
 use Modules\Transactions\Http\DocumentReadingController;
+use Modules\Transactions\Http\FileReviewController;
 use Modules\Transactions\Http\MoneyDeskController;
 use Modules\Transactions\Http\OffersController;
 use Modules\Transactions\Http\PayController;
 use Modules\Transactions\Http\PlaybooksController;
+use Modules\Transactions\Http\PoliciesController;
 use Modules\Transactions\Http\PortalAdminController;
 use Modules\Transactions\Http\PortalController;
 use Modules\Transactions\Http\PublicOfferController;
@@ -69,6 +71,12 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoff
     Route::post('{deal}/playbook/{step}/skip', [PlaybooksController::class, 'skip'])->where('step', '[a-z0-9_]+')->name('playbook.skip');
     Route::post('{deal}/link', [PlaybooksController::class, 'link'])->name('link');
     Route::post('{deal}/portal/calendars', [PlaybooksController::class, 'calendars'])->middleware('throttle:10,1')->name('portal.calendars');
+    // AI document review (specs/ai/02, DQ6).
+    Route::post('{deal}/compliance/ask-sign', [ComplianceController::class, 'askSign'])->middleware('throttle:20,1')->name('compliance.ask-sign');
+    Route::get('{deal}/file-review', [FileReviewController::class, 'show'])->name('file-review');
+    Route::post('{deal}/file-review/brief', [FileReviewController::class, 'brief'])->middleware(['throttle:20,1', 'feature:crm.ai'])->name('file-review.brief');
+    Route::post('{deal}/file-review/approve', [FileReviewController::class, 'approve'])->name('file-review.approve');
+    Route::post('{deal}/file-review/send-back', [FileReviewController::class, 'sendBack'])->name('file-review.send-back');
     // Closing logistics (specs/ai/02, DQ5b).
     Route::post('{deal}/appointments', [ClosingController::class, 'book'])->middleware('throttle:30,1')->name('appointments.store');
     Route::post('{deal}/appointments/{appointment}/{action}', [ClosingController::class, 'update'])->whereIn('action', ['accept', 'done', 'cancel'])->name('appointments.update');
@@ -189,4 +197,15 @@ Route::middleware(['web', EnsureTenantWorkspace::class])->prefix('offer')->name(
 Route::middleware(['web', EnsureTenantWorkspace::class])->prefix('appointment/{token}')->where(['token' => '[A-Za-z0-9]{48}'])->group(function (): void {
     Route::get('/', [ClosingController::class, 'vendorPage'])->middleware('throttle:30,1')->name('appointment.show');
     Route::post('/', [ClosingController::class, 'vendorAnswer'])->middleware('throttle:10,1')->name('appointment.answer');
+});
+
+// Compliance Knowledge (specs/ai/05, DQ6): policy questions, the brokerage's documents, acknowledgements.
+Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoffice.minimal'])->prefix('policies')->name('policies.')->group(function (): void {
+    Route::get('/', [PoliciesController::class, 'index'])->name('index');
+    Route::post('ask', [PoliciesController::class, 'ask'])->middleware(['throttle:30,1', 'feature:crm.ai'])->name('ask');
+    Route::post('documents', [PoliciesController::class, 'add'])->middleware('throttle:20,1')->name('documents.store');
+    Route::delete('documents/{doc}', [PoliciesController::class, 'remove'])->name('documents.destroy');
+    Route::post('documents/{doc}/acknowledge', [PoliciesController::class, 'acknowledge'])->name('documents.acknowledge');
+    Route::post('questions/{question}/reply', [PoliciesController::class, 'reply'])->name('questions.reply');
+    Route::post('questions/{question}/close', [PoliciesController::class, 'closeGap'])->name('questions.close');
 });

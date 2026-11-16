@@ -9,6 +9,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Core\Access\Can;
@@ -21,9 +22,11 @@ use Modules\Transactions\Compliance\Evidence;
 use Modules\Transactions\Compliance\Findings;
 use Modules\Transactions\Compliance\Rules;
 use Modules\Transactions\Deadlines\Deadlines;
+use Modules\Transactions\DealIq\UploadRequests;
 use Modules\Transactions\Mls\MlsGuard;
 use Modules\Transactions\Models\Deal;
 use Modules\Transactions\Models\Document;
+use Modules\Transactions\Models\Item;
 
 /** Deal-IQ compliance scan: findings on a deal, the broker's checks and rules (specs/ai/02, Sprint 15B). */
 final class ComplianceController
@@ -94,6 +97,21 @@ final class ComplianceController
             'at_risk' => $db->table('tx_deals')->whereIn('status', ['pre_contract', 'under_contract'])->where('compliance_score', '<', 100)->orderBy('compliance_score')->limit(50)
                 ->get(['ulid', 'street', 'status', 'compliance_score']),
         ]);
+    }
+
+    /** "Ask them to sign" from a signature finding: a secure upload link for the signed copy (specs/ai/02, DQ6). */
+    public function askSign(Request $request, Deal $deal, UploadRequests $requests): RedirectResponse
+    {
+        $user = $this->work($request, $deal);
+        $d = $request->validate(['role' => ['required', 'in:buyer,seller'], 'document' => ['required', 'string', 'size:26'], 'page' => ['nullable', 'integer', 'min:1']]);
+        $doc = Document::query()->where('deal_id', $deal->id)->where('ulid', $d['document'])->firstOrFail();
+        $party = DB::connection(Connections::cell())->table('tx_parties')->where('deal_id', $deal->id)->where('role', $d['role'])->whereNotNull('email')->first()
+            ?? throw ValidationException::withMessages(['role' => 'Add the '.$d['role'].' with an email address to the deal first.']);
+        $requests->send($deal, $doc->item_id !== null ? Item::query()->whereKey($doc->item_id)->first() : null, 'The signed '.$doc->filename.(isset($d['page']) ? ' (signature or initials on page '.$d['page'].')' : ''),
+            $d['role'], (string) $party->name, (string) $party->email, 'Please sign or initial where marked and upload the signed copy.', $user);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Sent '.$party->name.' a secure link to upload the signed copy.']);
+
+        return back();
     }
 
     public function saveMlsRules(Request $request, MlsGuard $guard): RedirectResponse

@@ -261,6 +261,28 @@ the deal and the client portal:
 - **After closing**: buyers hear the next day (keys and utilities), everyone a month on, and buyers on each home
   anniversary, with a call-back task for the agent in the CRM. Replies go to the agent.
 
+## Delivered in DQ6 — AI document review (with Compliance Knowledge, specs/ai/05)
+
+Leader review (Nov 2026): BoldTrail BackOffice ComplianceAI (missing forms, fields, initials and signatures,
+conflicting information; flags only, the broker still interprets), ListedKit Compliance Scan (signatures against the
+deal's parties, blanks, mismatches, missing referenced forms, graded with fixes; no policy answers), SkySlope
+(checklist-driven audit), Brokerbot (policy answers from the brokerage's documents, separate from the file). DQ6 adds
+to the existing 24-check scan:
+
+- **Signature and initial lines, page by page**: a party's signature or initial line left empty on a text page with
+  no e-sign platform mark is flagged with the page and the line, and "Ask the buyer/seller to sign" sends that
+  party a secure upload link for the signed copy. E-signed documents and scanned pages are not guessed at (scans
+  keep the "check by eye" note).
+- **Addenda marked as attached but missing**: DocIQ reads which addenda a contract marks as attached (a checked
+  box or "attached" wording, kept only with the quote on the page) and the scan flags any not in the file, with
+  "Upload it" when a checklist item matches. Empty boxes are ignored.
+- **Earnest money** checked against the accepted offer and across documents.
+- **Review copilot for the broker** (Deals → Compliance → files sent for review, or "Review this file"): a brief
+  written from the file's own facts (what is there, what was waived or dismissed and why, what deserves a second
+  look; any amount not in the file and it is written from the facts instead), the findings ranked with how often
+  each check has been right, a suggested send-back note, and one-click approve or send back (the agent is emailed).
+  The AI never approves.
+
 ## Market review (November 2026)
 
 | Capability                                                   | ProxiClose | Transaction Wingman | Deal-IQ                                                 |

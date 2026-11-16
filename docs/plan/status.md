@@ -1,6 +1,6 @@
 # Delivery status against the plan
 
-Checked 2026-11-16 (R1 to DQ5b added the same day) against `delivery-plan.md` (Sprints 1–57, five teams) and every merged pull request. Update this file at the end of every sprint.
+Checked 2026-11-16 (R1 to DQ6 added the same day) against `delivery-plan.md` (Sprints 1–57, five teams) and every merged pull request. Update this file at the end of every sprint.
 
 "Partly" means part of the item is built; the gap is noted in the item's spec or the sequence below.
 
@@ -9,7 +9,7 @@ Checked 2026-11-16 (R1 to DQ5b added the same day) against `delivery-plan.md` (S
 | A    | 32         | 17   | 9      | 6           | 30 / 15 / 12                        |
 | B    | 28         | 16   | 7      | 5           | 39 / 10 / 8                         |
 | C    | 26         | 11   | 10     | 5           | 22 / 20 / 15                        |
-| D    | 27         | 13   | 10     | 4           | 24 / 26 / 7                         |
+| D    | 27         | 15   | 10     | 2           | 27 / 26 / 4                         |
 | E    | 25         | 7    | 1      | 17          | 15 / 3 / 39                         |
 
 Sprints 58–63 (integration, load test, penetration test, SOC 2 readiness, launch): not started.
@@ -136,7 +136,7 @@ Outside the original grid and complete: Connect C1–C8 (except the Partner API,
 | D13 | 27–31   | Deal-IQ (AI transaction coordinator) core: talk or type (voice and text), intake by upload, email, photo or voice, contract and addendum drafting, client concierge, all-party portal | Partly (DQ1–DQ3: talk or type, intake by upload, photo, text and voice, drafting, client concierge and all-party portal in English and Spanish; intake by email to come) |
 | D14 | 32–33   | Deal-IQ paperwork without inbox access (synced platforms, uploads, document requests) and smart timeline engine with state rule packs                                                 | Partly (DQ1–DQ2: upload links and timeline with TX, LA, MS, AL, NJ packs; more state packs and synced platforms to come)                                                 |
 | D15 | 34–35   | Deal-IQ multiple-offer management and inspection response / repair requests                                                                                                           | Done (DQ4)                                                                                                                                                               |
-| D16 | 36–37   | Compliance Knowledge                                                                                                                                                                  | Not started                                                                                                                                                              |
+| D16 | 36–37   | Compliance Knowledge                                                                                                                                                                  | Done (DQ6)                                                                                                                                                               |
 | D17 | 38–39   | RightAlly AI assistant                                                                                                                                                                | Done                                                                                                                                                                     |
 | D18 | 40–41   | Daily game plan and AI coach                                                                                                                                                          | Partly                                                                                                                                                                   |
 | D19 | 42–44   | AI quality tuning and cost optimisation                                                                                                                                               | Not started                                                                                                                                                              |
@@ -147,7 +147,7 @@ Outside the original grid and complete: Connect C1–C8 (except the Partner API,
 | D24 | 53      | AIlly hand-off: CRM sync with lead brief and consent, routing, notifications; Google and Outlook calendar sync for real availability                                                  | Done                                                                                                                                                                     |
 | D25 | 54      | Revenue share screens (with Team B): genealogy and coaching, every-cent statements, income disclosure, retention alerts, simulator and what-if                                        | Done                                                                                                                                                                     |
 | D26 | 55–56   | Deal-IQ special deal types (new construction, lease, short sale/REO, probate, 1031) and MLS status compliance reminders                                                               | Done (DQ5a)                                                                                                                                                              |
-| D27 | 57      | AI document review                                                                                                                                                                    | Not started                                                                                                                                                              |
+| D27 | 57      | AI document review                                                                                                                                                                    | Done (DQ6)                                                                                                                                                               |
 
 ## Team E
 

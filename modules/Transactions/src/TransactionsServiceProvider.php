@@ -60,6 +60,14 @@ final class TransactionsServiceProvider extends ServiceProvider
         $notices->register(Offers\OfferReceivedMail::class, 'Offers received on your listings', 'Deals');
         $notices->register(Portal\PortalQuestionMail::class, 'Client questions from the deal portal', 'Deals');
         $notices->register(Portal\PortalFeedbackMail::class, 'Client check-ins after closing', 'Deals');
+        $features->declare(Reading\DocIq::REFERENCED, 'ai.doc_referenced', 'DocIQ: addenda a contract marks as attached');
+        $features->declare(Review\FileReview::FEATURE, 'ai.review_brief', 'Deal-IQ: the broker\'s review brief for a submitted file');
+        $features->declare(Policies\PolicyAnswers::FEATURE, 'ai.policy_answer', 'Compliance Knowledge: answers from the brokerage\'s policy documents');
+        $features->declare(Policies\PolicyLibrary::CHANGE_FEATURE, 'ai.policy_change', 'Compliance Knowledge: what changed in a new policy version');
+        $notices->register(Review\FileReviewMail::class, 'File approved or sent back', 'Deals');
+        $notices->register(Policies\PolicyChangedMail::class, 'Policy updates to acknowledge', 'Deals');
+        $notices->register(Policies\PolicyQuestionMail::class, 'Policy questions for the broker', 'Deals');
+        $notices->register(Policies\PolicyReplyMail::class, 'Answers to your policy questions', 'Deals');
         $features->declare(Reading\DocIq::ASK, 'ai.doc_ask', 'DocIQ: questions answered from one document');
         $features->declare(Compliance\Rules::FEATURE, 'ai.compliance_rule', 'Deal-IQ: a brokerage rule written in plain English, read into a check');
         if ($this->app->runningInConsole()) {
@@ -79,10 +87,12 @@ final class TransactionsServiceProvider extends ServiceProvider
         // Tools for people's AI assistants (MCP, specs/connect/03): the same deal access rule as the screens.
         $this->app->make(McpToolbox::class)->add(Mcp\MyDeals::class);
         $this->app->make(McpToolbox::class)->add(Mcp\DealDetails::class);
+        $this->app->make(McpToolbox::class)->add(Mcp\PolicyLookup::class);
         $this->app->make(McpToolbox::class)->brief('deal_deadlines', Mcp\DealDeadlines::forBrief(...));
         Gate::define('transactions.queue', fn (User $user): bool => Can::manage($user, 'transactions.review'));
         $nav->add(new NavItem('Overview', 'Deals', '/deals', 'briefcase', 25, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant], mobile: true));
         $nav->add(new NavItem('Overview', 'Review queue', '/deals/review', 'clipboard-check', 26, ability: 'transactions.queue'));
+        $nav->add(new NavItem('Overview', 'Policies', '/policies', 'book-open', 28, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant]));
         $nav->add(new NavItem('Overview', 'Risk', '/deals/risk', 'shield-alert', 27, ability: 'transactions.queue'));
         $nav->add(new NavItem('Settings', 'Transactions', '/settings/transactions', 'briefcase', 76, ability: 'transactions.queue'));
     }
