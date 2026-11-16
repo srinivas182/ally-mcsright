@@ -7,11 +7,14 @@ namespace Modules\Transactions\Http;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Core\Access\Can;
 use Modules\Core\Audit\AuditLogger;
+use Modules\Core\Support\Connections;
+use Modules\Core\Undo\Undo;
 use Modules\Transactions\DealAccess;
 use Modules\Transactions\DealIq\DealAssistant;
 use Modules\Transactions\Models\Deal;
@@ -42,7 +45,11 @@ final class PlaybooksController
 
     public function skip(Request $request, Deal $deal, string $step, Playbooks $playbooks): RedirectResponse
     {
-        $playbooks->skip($deal, $step, self::authorise($request, $deal));
+        $user = self::authorise($request, $deal);
+        $was = (string) (DB::connection(Connections::cell())->table('tx_playbook_steps')->where('deal_id', $deal->id)->where('step', $step)->value('status') ?? 'waiting');
+        $playbooks->skip($deal, $step, $user);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Skipped: '.str_replace('_', ' ', $step).' email',
+            'undo' => app(Undo::class)->offer($user, 'deal.step.skip', ['deal' => $deal->id, 'step' => $step, 'was' => $was], 'skipped the '.str_replace('_', ' ', $step).' email')]);
 
         return back();
     }

@@ -13,6 +13,22 @@ export function useFlashToast(): void {
                 return;
             }
 
+            if (data.undo) {
+                const id = data.undo;
+                toast[data.type](data.message, {
+                    duration: 10000,
+                    action: {
+                        label: 'Undo',
+                        onClick: () =>
+                            router.post(
+                                `/undo/${id}`,
+                                {},
+                                { preserveScroll: true },
+                            ),
+                    },
+                });
+                return;
+            }
             toast[data.type](data.message);
         });
     }, []);

@@ -9,6 +9,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Modules\Core\Simple\SimpleMode;
 
 /**
  * The daily brief on the home pages (specs/core/09): Dashboard for owners and staff, Today for agents and their
@@ -16,16 +17,22 @@ use Inertia\Response;
  */
 final class BriefController
 {
-    public function dashboard(Request $request, DailyBriefs $briefs): Response
+    public function dashboard(Request $request, DailyBriefs $briefs): Response|RedirectResponse
     {
         $user = self::user($request);
+        if (SimpleMode::on($user)) {
+            return redirect('/simple');
+        }
 
         return Inertia::render('dashboard', ['firstName' => $user->first_name, 'brief' => $briefs->for($user), 'briefEmail' => self::emailOn($briefs, $user)]);
     }
 
-    public function agent(Request $request, DailyBriefs $briefs): Response
+    public function agent(Request $request, DailyBriefs $briefs): Response|RedirectResponse
     {
         $user = self::user($request);
+        if (SimpleMode::on($user)) {
+            return redirect('/simple');
+        }
         $for = $user->assistedAgent ?? $user;
 
         return Inertia::render('agent/home', ['firstName' => $user->first_name, 'assisting' => $user->assistedAgent?->name, 'brief' => $briefs->for($for),

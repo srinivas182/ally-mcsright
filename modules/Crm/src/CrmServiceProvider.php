@@ -18,6 +18,7 @@ use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Mcp\McpToolbox;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
+use Modules\Core\Undo\Undo;
 use Modules\Core\Workflows\WorkflowRegistry;
 use Modules\Crm\Actions\ManageContacts;
 use Modules\Crm\Actions\Pipelines;
@@ -80,6 +81,11 @@ final class CrmServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        $this->app->make(Undo::class)->register('crm.task.complete', function (array $p, User $u): void { // SM1
+            $task = Models\Task::query()->whereKey((int) ($p['task'] ?? 0))->first();
+            abort_unless($task !== null && app(Tasks::class)->canSee($u, $task), 403);
+            app(Tasks::class)->reopen($task);
+        });
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'crm');

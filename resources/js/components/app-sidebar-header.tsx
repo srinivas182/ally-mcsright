@@ -1,6 +1,8 @@
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { CommandBar } from '@/components/command-bar';
 import { NotificationBell } from '@/components/notification-bell';
+import { ShowMe } from '@/components/simple/show-me';
+import { ViewSwitch } from '@/components/simple/view-switch';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import type { BreadcrumbItem as BreadcrumbItemType } from '@/types';
 
@@ -18,6 +20,8 @@ export function AppSidebarHeader({
                 </div>
             </div>
             <div className="ml-auto flex flex-1 items-center justify-end gap-2 md:flex-none">
+                <ShowMe />
+                <ViewSwitch />
                 <CommandBar />
                 <NotificationBell />
             </div>

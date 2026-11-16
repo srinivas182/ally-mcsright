@@ -515,7 +515,9 @@ export default function ShowDeal({
                 />
                 <KeyDates deal={deal.ulid} dates={dates} />
                 <section className="grid gap-2">
-                    <h2 className="font-semibold">Checklist</h2>
+                    <h2 className="font-semibold" data-tour="checklist">
+                        Checklist
+                    </h2>
                     <ul className="divide-y rounded-lg border">
                         {items.map((i) => (
                             <ChecklistItem

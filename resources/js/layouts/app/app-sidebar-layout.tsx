@@ -9,12 +9,20 @@ import { ImpersonationBanner } from '@/components/impersonation-banner';
 import { MobileNav } from '@/components/mobile-nav';
 import { PaymentsTestBanner } from '@/components/payments-test-banner';
 import { PasskeyPrompt } from '@/components/passkey-prompt';
+import { ChooseView, TalkButton } from '@/components/simple/view-switch';
 import type { AppLayoutProps } from '@/types';
+import { usePage } from '@inertiajs/react';
+import { useEffect } from 'react';
 
 export default function AppSidebarLayout({
     children,
     breadcrumbs = [],
 }: AppLayoutProps) {
+    const simple = usePage().props.simple?.mode === 'simple';
+    useEffect(() => {
+        document.documentElement.classList.toggle('simple', simple);
+    }, [simple]);
+
     return (
         <AppShell variant="sidebar">
             <AppSidebar />
@@ -23,11 +31,13 @@ export default function AppSidebarLayout({
                 <ImpersonationBanner />
                 <CreditsBanner />
                 <AppSidebarHeader breadcrumbs={breadcrumbs} />
+                <ChooseView />
                 <div className="pb-20 md:pb-0">{children}</div>
             </AppContent>
             <MobileNav />
             <PasskeyPrompt />
             <CreditConsentHost />
+            <TalkButton />
             <YourAiAssistant />
         </AppShell>
     );

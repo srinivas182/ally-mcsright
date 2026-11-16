@@ -12,6 +12,7 @@ use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Support\Connections;
+use Modules\Core\Undo\Undo;
 use Modules\Transactions\DealAccess;
 use Modules\Transactions\DealIq\DealAssistant;
 use Modules\Transactions\Models\Deal;
@@ -37,8 +38,10 @@ final class PortalAdminController
 
     public function revoke(Request $request, Deal $deal, string $access, PortalAccess $portal): RedirectResponse
     {
-        $portal->revoke($deal, $access, self::authorise($request, $deal));
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Removed from the portal.']);
+        $user = self::authorise($request, $deal);
+        $portal->revoke($deal, $access, $user);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Removed from the portal.',
+            'undo' => app(Undo::class)->offer($user, 'deal.portal.remove', ['deal' => $deal->id, 'access' => $access], 'removed someone from the portal')]);
 
         return back();
     }

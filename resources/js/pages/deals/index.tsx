@@ -114,6 +114,8 @@ export default function Deals({
                 <section
                     className="grid gap-3 rounded-lg border p-4 text-sm"
                     aria-label="Start a deal with Deal-IQ"
+                    id="start"
+                    data-tour="deal-start"
                 >
                     <p className="font-medium">Start a deal the fast way</p>
                     <div className="flex flex-wrap items-center gap-2">
@@ -182,6 +184,7 @@ export default function Deals({
                     )}
                 </section>
                 <AtRisk items={atRisk} alerts={alerts} />
+                <span data-tour="deal-list" />
                 {forecast && (
                     <section className="grid gap-2 rounded-lg border p-4 text-sm">
                         <p className="font-medium">

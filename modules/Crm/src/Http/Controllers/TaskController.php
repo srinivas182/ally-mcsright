@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
+use Modules\Core\Undo\Undo;
 use Modules\Crm\Actions\Tasks;
 use Modules\Crm\ContactVisibility;
 use Modules\Crm\Models\Contact;
@@ -70,6 +71,7 @@ final class TaskController
         $user = self::user($request);
         abort_unless($this->tasks->canSee($user, $task), 404);
         $this->tasks->complete($task, $user);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Done: '.$task->title, 'undo' => app(Undo::class)->offer($user, 'crm.task.complete', ['task' => $task->id], 'marked done: '.$task->title)]);
 
         return back();
     }

@@ -15,6 +15,12 @@ declare module '@inertiajs/core' {
             sidebarOpen: boolean;
             tenant: TenantInfo | null;
             navigation: NavGroup[];
+            simple: {
+                mode: 'simple' | 'full' | null;
+                locale: 'en' | 'es';
+                words: Record<string, string>;
+                locales: Record<string, string>;
+            } | null;
             paymentsTestMode: boolean;
             impersonation: {
                 by: string;

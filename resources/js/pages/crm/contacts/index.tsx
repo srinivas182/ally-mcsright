@@ -348,7 +348,12 @@ export default function ContactsIndex({
     sources,
     isManager,
 }: Props) {
-    const [adding, setAdding] = useState(false);
+    // Simple mode's "Add a person" opens the quick add straight away (/contacts?add=1).
+    const [adding, setAdding] = useState(
+        () =>
+            typeof window !== 'undefined' &&
+            new URLSearchParams(window.location.search).has('add'),
+    );
     const [search, setSearch] = useState(filters.search);
 
     const apply = (next: Partial<Props['filters']>) => {
