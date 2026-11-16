@@ -80,7 +80,7 @@ it('turns each signed lead into one lead, routed by the brokerage, with the form
     fbConnect($this->owner);
     Http::swap(new Factory);
     Http::fake(['graph.facebook.com/v21.0/777*' => Http::response(['field_data' => [['name' => 'full_name', 'values' => ['Rosa Diaz']], ['name' => 'email', 'values' => ['rosa@x.test']],
-        ['name' => 'phone_number', 'values' => ['+15125550101']], ['name' => 'when_are_you_buying?', 'values' => ['3 months']]], 'campaign_name' => 'Spring buyers', 'ad_name' => 'Zilker']),
+        ['name' => 'phone_number', 'values' => ['+15125550101']], ['name' => 'when_are_you_buying?', 'values' => ['3 months']]], 'campaign_name' => 'RightAlly: 201 Pine Rd · rightally-01jabcdefghjkmnpqrstvwxyz0', 'ad_name' => 'Zilker']),
     ]);
     fbLead('111', '777')->assertOk();
     fbLead('111', '777')->assertOk(); // Meta retries: still one lead
@@ -89,7 +89,8 @@ it('turns each signed lead into one lead, routed by the brokerage, with the form
     $contact = Contact::query()->sole();
     expect([$contact->first_name, $contact->last_name, $contact->primary_email])->toBe(['Rosa', 'Diaz', 'rosa@x.test'])
         ->and(LeadSource::query()->find($lead->source_id)?->name)->toBe('Facebook Lead Ads')
-        ->and($lead->external_id)->toBe('777')->and($lead->message)->toContain('When Are You Buying?: 3 months');
+        ->and($lead->external_id)->toBe('777')->and($lead->message)->toContain('When Are You Buying?: 3 months')
+        ->and($lead->utm['utm_campaign'] ?? null)->toBe('rightally-01jabcdefghjkmnpqrstvwxyz0'); // a RightAlly ad's lead is credited to that ad
     Http::assertSent(fn (HttpRequest $r): bool => str_contains($r->url(), '/777?') && str_contains($r->url(), 'access_token=page-111'));
 });
 

@@ -9,6 +9,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Modules\Ads\Models\Campaign;
 use Modules\Ads\Social\SocialPost;
 use Modules\Ads\Studio\StudioPlans;
 use Modules\Ads\Studio\StudioResults;
@@ -42,11 +43,28 @@ final class StudioResultsController
             'report' => $team ? $results->month($user, $month, array_values(array_map(fn ($id): int => (int) $id, SocialPost::query()->distinct()->pluck('user_id')->all())))
                 : $results->month($user, $month),
             'learned' => $results->learned($user),
+            'ads' => $this->ads($team ? null : $user, $month),
             'learn_after' => StudioResults::LEARN_AFTER,
             'can_team' => $canTeam,
             'team' => $team,
             'agents' => $agents,
             'months' => array_map(fn (int $i): string => CarbonImmutable::now()->startOfMonth()->subMonths($i)->format('Y-m'), range(0, 11)),
         ]);
+    }
+
+    /**
+     * Paid ads that ran in the month (C4c): Meta's totals for each, to date, with the leads they brought.
+     *
+     * @return array{ads: int, spend_cents: int, impressions: int, clicks: int, leads: int, cost_per_lead_cents: int|null}
+     */
+    private function ads(?User $user, string $month): array
+    {
+        $start = CarbonImmutable::parse($month.'-01');
+        $rows = Campaign::query()->when($user !== null, fn ($q) => $q->where('user_id', $user?->id))->whereIn('status', ['active', 'paused', 'ended'])
+            ->where('starts_on', '<=', $start->endOfMonth()->toDateString())->where('ends_on', '>=', $start->toDateString())->get();
+        $leads = (int) $rows->sum('leads');
+
+        return ['ads' => $rows->count(), 'spend_cents' => (int) $rows->sum('spend_cents'), 'impressions' => (int) $rows->sum('impressions'), 'clicks' => (int) $rows->sum('clicks'),
+            'leads' => $leads, 'cost_per_lead_cents' => $leads > 0 ? intdiv((int) $rows->sum('spend_cents'), $leads) : null];
     }
 }

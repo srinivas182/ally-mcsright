@@ -17,6 +17,8 @@ type Row = Totals & { key: string };
 
 type Top = {
     ulid: string;
+    listing: string | null;
+    facebook: boolean;
     text: string;
     image: string | null;
     format: string;
@@ -80,6 +82,7 @@ export default function StudioResults({
     ready,
     report,
     learned,
+    ads,
     learn_after,
     can_team,
     team,
@@ -97,6 +100,14 @@ export default function StudioResults({
         top: Top[];
     };
     learned: { style: string | null; times: string[]; measured: number };
+    ads: {
+        ads: number;
+        spend_cents: number;
+        impressions: number;
+        clicks: number;
+        leads: number;
+        cost_per_lead_cents: number | null;
+    };
     learn_after: number;
     can_team: boolean;
     team: boolean;
@@ -183,6 +194,22 @@ export default function StudioResults({
                         </div>
                     ))}
                 </dl>
+                {ads.ads > 0 && (
+                    <section className="grid gap-2 rounded-xl border p-4">
+                        <h2 className="font-medium">Paid ads this month</h2>
+                        <p className="text-sm">
+                            {n(ads.ads)} {ads.ads === 1 ? 'ad' : 'ads'} · $
+                            {(ads.spend_cents / 100).toFixed(2)} spent ·{' '}
+                            {n(ads.impressions)} seen · {n(ads.clicks)} clicks ·{' '}
+                            {n(ads.leads)} leads
+                            {ads.cost_per_lead_cents !== null &&
+                                ` · $${(ads.cost_per_lead_cents / 100).toFixed(2)} a lead`}
+                        </p>
+                        <Link href="/ads" className="text-sm underline">
+                            See every ad
+                        </Link>
+                    </section>
+                )}
                 <p className="rounded-lg border p-3 text-sm">
                     {learned.measured < learn_after
                         ? `Autopilot learns what works once ${learn_after} of your posts have numbers (${learned.measured} so far).`
@@ -227,6 +254,14 @@ export default function StudioResults({
                                                 {n(p.interactions)} interactions
                                                 · {n(p.leads)} leads
                                             </span>
+                                            {p.listing && p.facebook && (
+                                                <Link
+                                                    href={`/ads/new?listing=${p.listing}&post=${p.ulid}`}
+                                                    className="underline"
+                                                >
+                                                    Promote this post
+                                                </Link>
+                                            )}
                                             {p.url && (
                                                 <a
                                                     href={p.url}

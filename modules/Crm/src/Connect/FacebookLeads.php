@@ -136,7 +136,9 @@ final class FacebookLeads implements AppWebhooks
             'external_id' => (string) $payload['leadgen_id'], 'name' => $fields['full_name'] ?? '', 'first_name' => $fields['first_name'] ?? '', 'last_name' => $fields['last_name'] ?? '',
             'email' => $fields['email'] ?? '', 'phone' => $fields['phone_number'] ?? '', 'zip' => $fields['zip_code'] ?? $fields['post_code'] ?? '',
             'message' => implode("\n", array_map(fn (string $k, string $v): string => Str::headline($k).': '.$v, array_keys($extra), $extra)),
-            'utm_source' => 'facebook', 'utm_medium' => 'lead_ad', 'utm_campaign' => is_string($r->json('campaign_name')) ? $r->json('campaign_name') : null,
+            // A RightAlly ad carries its tag in the campaign name, so the lead is credited to that ad (specs/ads/03).
+            'utm_source' => 'facebook', 'utm_medium' => 'lead_ad', 'utm_campaign' => is_string($r->json('campaign_name'))
+                ? (preg_match('/rightally-[0-9a-hjkmnp-tv-z]{26}/', (string) $r->json('campaign_name'), $tag) === 1 ? $tag[0] : $r->json('campaign_name')) : null,
             'utm_content' => is_string($r->json('ad_name')) ? $r->json('ad_name') : null,
         ]);
         if (! $taken) {

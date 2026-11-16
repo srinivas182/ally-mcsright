@@ -94,7 +94,7 @@ final class StudioResults
             'styles' => $by('style'),
             'times' => $by('time'),
             'top' => $posts->sortByDesc(fn (array $p): int => $p['interactions'] * 10 + $p['reach'])->take(5)->map(fn (array $p): array => array_intersect_key($p,
-                array_flip(['ulid', 'text', 'image', 'format', 'style', 'reach', 'interactions', 'clicks', 'leads', 'url', 'posted'])))->values()->all(),
+                array_flip(['ulid', 'listing', 'facebook', 'text', 'image', 'format', 'style', 'reach', 'interactions', 'clicks', 'leads', 'url', 'posted'])))->values()->all(),
         ];
     }
 
@@ -121,7 +121,7 @@ final class StudioResults
      * Posted posts with their numbers, origin and leads.
      *
      * @param  list<int>  $users
-     * @return Collection<int, array{ulid: string, text: string, image: string|null, format: string, style_key: string|null, style: string, time: string, hhmm: string, posted: string, reach: int, interactions: int, clicks: int, leads: int, url: string|null}>
+     * @return Collection<int, array{ulid: string, listing: string|null, facebook: bool, text: string, image: string|null, format: string, style_key: string|null, style: string, time: string, hhmm: string, posted: string, reach: int, interactions: int, clicks: int, leads: int, url: string|null}>
      */
     private function posts(array $users, CarbonImmutable $from, CarbonImmutable $to): Collection
     {
@@ -143,7 +143,8 @@ final class StudioResults
             $local = ($p->posted_at ?? $p->post_at)->setTimezone($tz);
             $styleKey = isset($styles[$p->studio_design_id]) ? Styles::key((string) $styles[$p->studio_design_id]) : null;
 
-            return ['ulid' => $p->ulid, 'text' => mb_substr($p->text, 0, 140), 'image' => $p->image_url, 'format' => $p->format ?? 'photo',
+            return ['ulid' => $p->ulid, 'listing' => $p->listing_ulid, 'facebook' => $p->targets->contains(fn (SocialTarget $t): bool => $t->channel === 'facebook' && $t->status === 'posted'),
+                'text' => mb_substr($p->text, 0, 140), 'image' => $p->image_url, 'format' => $p->format ?? 'photo',
                 'style_key' => $styleKey, 'style' => $styleKey !== null ? (string) Styles::get($styleKey)['name'] : 'Not from Studio',
                 'time' => match (true) {
                     $local->hour < 12 => 'Morning',

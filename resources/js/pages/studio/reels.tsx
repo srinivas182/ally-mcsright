@@ -8,6 +8,7 @@ import { PageHeader } from '@/components/ui/page-header';
 
 type Reel = {
     ulid: string;
+    listing: string | null;
     kind: 'reel' | 'tour';
     chapters: { at: number; title: string }[];
     status: 'rendering' | 'ready' | 'failed';
@@ -169,6 +170,19 @@ export default function StudioReels({
                                         >
                                             Post it
                                         </Button>
+                                        {r.listing && (
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                asChild
+                                            >
+                                                <Link
+                                                    href={`/ads/new?listing=${r.listing}&reel=${r.ulid}`}
+                                                >
+                                                    Advertise
+                                                </Link>
+                                            </Button>
+                                        )}
                                         <Button
                                             size="sm"
                                             variant="outline"

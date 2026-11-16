@@ -78,7 +78,8 @@ billing model; RightAlly Boost (ads paid with credits) is C4b.
 ## Next
 
 - **C4b (done, Ads 02):** RightAlly Boost, the stop-loss and commission-aware results.
-- **Later:** lead-form ads (instant forms), which can reuse the Facebook Lead Ads intake, and an MCP tool for ads
+- **C4c (done, Ads 03):** ads made from Studio designs, Reels and posts, and instant-form lead ads.
+- **Later:** an MCP tool for ads
   using confirm-first.
 
 ## Tests
