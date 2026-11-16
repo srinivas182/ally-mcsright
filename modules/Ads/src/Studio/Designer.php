@@ -52,8 +52,21 @@ final class Designer
     /** size => [width, height, type scale] */
     public const SIZES = ['square' => [1080, 1080, 0.92], 'portrait' => [1080, 1350, 1.0], 'story' => [1080, 1920, 1.08]];
 
-    /** The type system, bundled in modules/Ads/resources/fonts (SIL OFL): family => [[file, weight, style]]. */
+    /** Inner carousel slides after the cover: up to four more photographs, then the details. */
+    public const MAX_SLIDES = 6;
+
+    /** The type system, bundled in modules/Ads/resources/fonts (SIL OFL): family => [[file, weight, style]]; a variable font gives a weight range. */
     private const FONT_FILES = [
+        'Instrument Serif' => [['instrument-serif-latin-400-normal', 400, 'normal'], ['instrument-serif-latin-400-italic', 400, 'italic']],
+        'Inter Tight' => [['inter-tight-latin-300-normal', 300, 'normal'], ['inter-tight-latin-400-normal', 400, 'normal'], ['inter-tight-latin-500-normal', 500, 'normal'],
+            ['inter-tight-latin-600-normal', 600, 'normal']],
+        'Archivo' => [['archivo-latin-wdth-normal', '100 900', 'normal']],
+        'Fraunces' => [['fraunces-latin-300-normal', 300, 'normal'], ['fraunces-latin-300-italic', 300, 'italic'], ['fraunces-latin-500-normal', 500, 'normal']],
+        'Newsreader' => [['newsreader-latin-300-normal', 300, 'normal'], ['newsreader-latin-300-italic', 300, 'italic']],
+        'Bricolage Grotesque' => [['bricolage-grotesque-latin-500-normal', 500, 'normal'], ['bricolage-grotesque-latin-800-normal', 800, 'normal']],
+        'Space Grotesk' => [['space-grotesk-latin-400-normal', 400, 'normal'], ['space-grotesk-latin-500-normal', 500, 'normal']],
+        'Unbounded' => [['unbounded-latin-300-normal', 300, 'normal'], ['unbounded-latin-500-normal', 500, 'normal']],
+        'Manrope' => [['manrope-latin-400-normal', 400, 'normal'], ['manrope-latin-600-normal', 600, 'normal']],
         'Cormorant Garamond' => [['cormorant-garamond-latin-300-normal', 300, 'normal'], ['cormorant-garamond-latin-500-normal', 500, 'normal'],
             ['cormorant-garamond-latin-300-italic', 300, 'italic'], ['cormorant-garamond-latin-400-italic', 400, 'italic'], ['cormorant-garamond-latin-500-italic', 500, 'italic']],
         'Bodoni Moda' => [['bodoni-moda-latin-400-normal', 400, 'normal'], ['bodoni-moda-latin-500-normal', 500, 'normal'], ['bodoni-moda-latin-400-italic', 400, 'italic']],
@@ -149,12 +162,13 @@ final class Designer
             throw ValidationException::withMessages(['headline' => $problems[0]]);
         }
 
-        // Three designs: for a listing, three layouts on three different photos; otherwise three collections (one if brand-locked).
-        // Three designs: for a listing, the collection's three signature layouts, each leading with a different photo; otherwise three
-        // collections (one if brand-locked). A gallery needs three good photos, so with fewer it gives way to the cover.
+        // Three designs: for a listing, the style's signature layout and two alternates, each leading with a different photo and each a
+        // full carousel; otherwise three styles (one if brand-locked).
         // A style asked for (the style picker, Autopilot's rotation) is used when the person may use it.
-        $style = is_string($in['style'] ?? null) && isset(Styles::ALL[$in['style']]) && in_array($in['style'], $kit['allowed'], true) ? $in['style'] : $kit['collection'];
-        $layouts = array_map(fn (string $l): string => $l === 'gallery' && count($photos) < 3 ? 'cover' : $l, (array) Styles::get($style)['layouts']);
+        $style = is_string($in['style'] ?? null) && Styles::known($in['style']) && in_array(Styles::key($in['style']), $kit['allowed'], true) ? Styles::key($in['style']) : $kit['collection'];
+        // A collage needs three photographs and a diptych two; with fewer they give way to the gallery print.
+        $layouts = array_map(fn (string $l): string => ($l === 'collage' && count($photos) < 3) || ($l === 'diptych' && count($photos) < 2) ? 'mat' : $l,
+            (array) Styles::get($style)['layouts']);
         $layouts = array_values(array_unique($layouts));
         $styles = array_slice(array_values(array_unique(array_filter([$style, ...$kit['favorites'], ...Styles::match([$style])],
             fn (string $k): bool => in_array($k, $kit['allowed'], true)))), 0, 3);
@@ -166,7 +180,7 @@ final class Designer
         $made = [];
         foreach ($plans as [$collection, $variant, $shots]) {
             $made[] = $d = Design::query()->create(['user_id' => $by->id, 'batch' => $batch, 'moment' => $moment, 'listing_ulid' => $listing, 'collection' => $collection,
-                'variant' => $variant, 'content' => $content + ['moment' => $moment, 'photo' => $shots[0] ?? null, 'photos' => array_slice($shots, 0, 3)], 'status' => 'rendering']);
+                'variant' => $variant, 'content' => $content + ['moment' => $moment, 'photo' => $shots[0] ?? null, 'photos' => array_slice($shots, 0, self::MAX_SLIDES - 1)], 'status' => 'rendering']);
             RenderDesign::dispatch($d->id);
         }
         app(AuditLogger::class)->record('studio.designs_made', metadata: ['moment' => $moment, 'listing' => $listing, 'designs' => count($made)]);
@@ -195,43 +209,72 @@ final class Designer
 
                     continue;
                 }
-                $img = imagecreatefromstring($png);
-                if ($img === false) {
+                if (@imagecreatefromstring($png) === false) {
                     $checks[] = "The {$size} design could not be read.";
 
                     continue;
                 }
-                ob_start();
-                imagejpeg($img, null, 90);
-                $path = 'studio/'.strtolower($this->tenants->current()->ulid).'/designs/'.strtolower($design->ulid).'-'.$size.'.jpg';
-                Storage::disk('public')->put($path, (string) ob_get_clean(), ['visibility' => 'public']);
-                $files[$size] = $path;
+                $files[$size] = $this->store($design, $png, $size);
             }
         } catch (Throwable $e) {
             report($e);
             $checks[] = 'The design couldn\'t be drawn just now. Please try again.';
         }
-        $ok = count($files) === count(self::SIZES);
+        if ($kind === 'listing' && $checks === []) {
+            // The carousel: the portrait cover, then each further photograph and the details, all 4:5 (Instagram keeps one shape).
+            $photos = array_values(array_filter((array) ($design->content['photos'] ?? [])));
+            $slides = self::slides($photos);
+            [$w, $h] = self::SIZES['portrait'];
+            try {
+                foreach ($slides as $i => [$slide, $shots]) {
+                    $png = app(StudioRenderer::class)->render($this->page($kit, $design->collection, $design->variant, $kind, $design->content + ['moment' => $design->moment],
+                        $shots, $w, $h, $slide, $i + 2, count($slides) + 1), $w, $h);
+                    $files['slides'][] = $this->store($design, $png, 'slide-'.($i + 2));
+                }
+            } catch (Throwable $e) {
+                report($e);
+                unset($files['slides']); // the cover still works on its own
+            }
+        }
+        $ok = count(array_intersect_key($files, self::SIZES)) === count(self::SIZES);
         $design->forceFill(['files' => $files, 'checks' => $checks, 'status' => $ok ? 'ready' : 'failed'])->save();
     }
 
     /**
-     * One design page (HTML) for a brand kit, style and layout at a size: what the renderer draws.
+     * One design page (HTML) for a brand kit, style and layout at a size: what the renderer draws. A slide other than
+     * the cover is an inner carousel slide (one photograph) or the closing details slide.
      *
      * @param  array<string, mixed>  $kit  BrandKits::forUser()
      * @param  array<string, mixed>  $content
      * @param  list<string>  $photos
      */
-    public function page(array $kit, string $style, string $layout, string $kind, array $content, array $photos, int $w, int $h): string
+    public function page(array $kit, string $style, string $layout, string $kind, array $content, array $photos, int $w, int $h, string $slide = 'cover', int $n = 1, int $total = 1): string
     {
         $p = $this->director->palette((array) $kit['colors'], $style, is_string($kit['finish'] ?? null) ? $kit['finish'] : null);
-        $words = preg_split('/\s+/', trim((string) $kit['brokerage'])) ?: [];
-        $monogram = mb_strtoupper(implode('', array_map(fn (string $w): string => mb_substr($w, 0, 1),
-            array_slice(array_values(array_filter($words, fn (string $w): bool => ! in_array(mb_strtolower($w), ['the', 'of', 'and', '&'], true))), 0, 2))));
+        $str = fn (string $k): ?string => is_string($kit[$k] ?? null) && $kit[$k] !== '' ? $kit[$k] : null;
 
-        return view('ads::studio.design', ['w' => $w, 'h' => $h, 'layout' => $layout, 'type' => $kind, 'collection' => Styles::key($style), 'p' => $p, 't' => Styles::get($style),
-            'kit' => $kit, 'c' => $content, 'fonts' => self::fontFaces(), 'photos' => $photos, 'agent' => $kit['cutout'] ?? $kit['headshot'], 'monogram' => $monogram !== '' ? $monogram : 'R',
-            'logo' => in_array($layout, ['cover', 'masthead', 'mono', 'colorfield'], true) || $p['dark'] ? ($kit['logo_dark'] ?? null) : ($kit['logo'] ?? $kit['logo_dark'])])->render();
+        return view('ads::studio.design', ['w' => $w, 'h' => $h, 'layout' => $layout, 'slide' => $slide, 'n' => $n, 'total' => $total, 'type' => $kind,
+            'collection' => Styles::key($style), 'p' => $p, 't' => Styles::get($style), 'grade' => Styles::grade($style), 'kit' => $kit, 'c' => $content,
+            'fonts' => self::fontFaces(), 'photos' => $photos, 'headshot' => $str('headshot'), 'cutout' => $str('cutout'),
+            'logoLight' => $str('logo_dark') ?? $str('logo'), 'logoInk' => $str('logo') ?? $str('logo_dark')])->render();
+    }
+
+    /**
+     * The carousel after the cover (portrait): each further photograph, then the details slide.
+     *
+     * @param  list<string>  $photos
+     * @return list<array{0: string, 1: list<string>}> [slide, photos]
+     */
+    public static function slides(array $photos): array
+    {
+        $out = [];
+        foreach (array_slice($photos, 1, self::MAX_SLIDES - 2) as $ph) {
+            $out[] = ['photo', [$ph]];
+        }
+        $last = $photos === [] ? [] : [$photos[count($photos) - 1]];
+        $out[] = ['details', $last]; // closes on a last look at the home
+
+        return $out;
     }
 
     /**
@@ -270,12 +313,44 @@ final class Designer
         }
     }
 
+    /** A rendered PNG saved as a high-quality JPEG next to the design; returns its path. */
+    private function store(Design $design, string $png, string $name): string
+    {
+        $img = imagecreatefromstring($png);
+        ob_start();
+        if ($img !== false) {
+            imagejpeg($img, null, 92);
+        }
+        $path = 'studio/'.strtolower($this->tenants->current()->ulid).'/designs/'.strtolower($design->ulid).'-'.$name.'.jpg';
+        Storage::disk('public')->put($path, (string) ob_get_clean(), ['visibility' => 'public']);
+
+        return $path;
+    }
+
+    /**
+     * The whole carousel's images, cover first (portrait).
+     *
+     * @return list<string>
+     */
+    public function carousel(Design $design): array
+    {
+        $paths = array_values(array_filter([$design->files['portrait'] ?? null, ...(array) ($design->files['slides'] ?? [])], 'is_string'));
+
+        return array_map(fn (string $p): string => $this->link($p), $paths);
+    }
+
     public function url(Design $design, string $size): ?string
     {
         $path = $design->files[$size] ?? null;
+
+        return is_string($path) ? $this->link($path) : null;
+    }
+
+    private function link(string $path): string
+    {
         $cdn = config('listings.cdn_url');
 
-        return $path === null ? null : (is_string($cdn) && $cdn !== '' ? rtrim($cdn, '/').'/'.$path : Storage::disk('public')->url($path));
+        return is_string($cdn) && $cdn !== '' ? rtrim($cdn, '/').'/'.$path : Storage::disk('public')->url($path);
     }
 
     /** A plain caption to start from (Studio's AI captions arrive with Autopilot, SA2). */
@@ -359,7 +434,8 @@ final class Designer
         $css = '';
         foreach (self::FONT_FILES as $family => $faces) {
             foreach ($faces as [$file, $weight, $style]) {
-                $css .= "@font-face{font-family:'".$family."';font-weight:".$weight.';font-style:'.$style.";src:url('file://".dirname(__DIR__, 2).'/resources/fonts/'.$file.".woff2') format('woff2')}";
+                $css .= "@font-face{font-family:'".$family."';font-weight:".$weight.';font-style:'.$style.';'.(str_contains($file, '-wdth-') ? 'font-stretch:62% 125%;' : '')
+                    ."src:url('file://".dirname(__DIR__, 2).'/resources/fonts/'.$file.".woff2') format('woff2')}";
             }
         }
 

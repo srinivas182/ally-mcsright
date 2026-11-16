@@ -61,13 +61,13 @@ final class BrandKits
             'email' => (string) $user->email], array_filter($this->json($b->details ?? null) ?? []), array_filter($this->json($a->details ?? null) ?? []));
 
         // Locked: agents use the brokerage's style, or one of the styles the brokerage allows.
-        $allowed = $locked ? array_values(array_filter(array_map('strval', (array) ($this->json($b->styles ?? null) ?? [])), fn (string $k): bool => isset(Styles::ALL[$k]))) : array_keys(Styles::ALL);
+        $allowed = $locked ? array_values(array_filter(array_unique(array_map(fn (string $k): string => Styles::key($k), array_filter(array_map('strval', (array) ($this->json($b->styles ?? null) ?? [])), fn (string $k): bool => Styles::known($k)))))) : array_keys(Styles::ALL);
         $mine = $a->collection ?? null;
         $myFinish = $a->finish ?? null;
         $firmFinish = $b->finish ?? null;
         $style = $locked ? ($allowed !== [] && is_string($mine) && in_array(Styles::key($mine), $allowed, true) ? $mine : ($b->collection ?? null)) : ($mine ?? $b->collection ?? null);
-        $favorites = array_values(array_filter(array_map(fn (string $k): string => Styles::key($k), array_map('strval', (array) ($this->json($a->favorites ?? null) ?? []))),
-            fn (string $k): bool => ! $locked || $allowed === [] || in_array($k, $allowed, true)));
+        $favorites = array_values(array_unique(array_filter(array_map(fn (string $k): string => Styles::key($k), array_map('strval', (array) ($this->json($a->favorites ?? null) ?? []))),
+            fn (string $k): bool => ! $locked || $allowed === [] || in_array($k, $allowed, true))));
 
         return [
             'collection' => Styles::key(is_string($style) ? $style : null),
@@ -136,17 +136,17 @@ final class BrandKits
             array_map('strval', (array) ($in['languages'] ?? ['en'])))) ?: ['en'])];
         if (! $locked) {
             $chosen = (string) ($in['collection'] ?? '');
-            $values += ['collection' => isset(Styles::ALL[Styles::ALIASES[$chosen] ?? $chosen]) ? Styles::key($chosen) : null,
+            $values += ['collection' => Styles::known($chosen) ? Styles::key($chosen) : null,
                 'finish' => isset(Styles::FINISHES[$in['finish'] ?? '']) ? (string) $in['finish'] : null,
                 'colors' => json_encode($this->colors((array) ($in['colors'] ?? []))) ?: null, 'fonts' => json_encode($this->fonts((array) ($in['fonts'] ?? []))) ?: null];
         }
         if ($for === null) {
             $values['brand_lock'] = (bool) ($in['brand_lock'] ?? false);
-            $values['styles'] = json_encode(array_values(array_intersect(array_keys(Styles::ALL), array_map('strval', (array) ($in['styles'] ?? [])))));
+            $values['styles'] = json_encode(array_values(array_intersect(array_keys(Styles::ALL), array_map(fn (string $k): string => Styles::key($k), array_filter(array_map('strval', (array) ($in['styles'] ?? [])), fn (string $k): bool => Styles::known($k))))));
         } elseif (array_key_exists('favorites', $in)) {
-            $values['favorites'] = json_encode(array_slice(array_values(array_intersect(array_keys(Styles::ALL), array_map('strval', (array) $in['favorites']))), 0, 6));
-        } elseif ($locked && isset(Styles::ALL[$in['collection'] ?? ''])) {
-            $values['collection'] = (string) $in['collection']; // checked against the allowed styles when used
+            $values['favorites'] = json_encode(array_slice(array_values(array_intersect(array_keys(Styles::ALL), array_map(fn (string $k): string => Styles::key($k), array_filter(array_map('strval', (array) $in['favorites']), fn (string $k): bool => Styles::known($k))))), 0, 6));
+        } elseif ($locked && Styles::known((string) ($in['collection'] ?? ''))) {
+            $values['collection'] = Styles::key((string) $in['collection']); // checked against the allowed styles when used
         }
         foreach (['headshot' => $for !== null, 'logo' => $for === null, 'logo_dark' => $for === null] as $field => $allowed) {
             $file = $files[$field] ?? null;
@@ -179,7 +179,7 @@ final class BrandKits
             throw ValidationException::withMessages(['collection' => 'Your brokerage uses its own styles. Choose one of them.']);
         }
         $values = ['collection' => $style, 'finish' => isset(Styles::FINISHES[$finish ?? '']) ? $finish : null,
-            'favorites' => json_encode(array_slice(array_values(array_unique(array_intersect(array_map(fn (string $k): string => Styles::key($k), array_filter($favorites, fn (string $k): bool => isset(Styles::ALL[Styles::ALIASES[$k] ?? $k]))), $kit['allowed']))), 0, 6)),
+            'favorites' => json_encode(array_slice(array_values(array_unique(array_intersect(array_map(fn (string $k): string => Styles::key($k), array_filter($favorites, fn (string $k): bool => Styles::known($k))), $kit['allowed']))), 0, 6)),
             'updated_at' => now()];
         $db = DB::connection(Connections::cell())->table('studio_brand_kits');
         $this->row($user->id) !== null ? (clone $db)->where('tenant_id', $this->tenants->id())->where('user_id', $user->id)->update($values)

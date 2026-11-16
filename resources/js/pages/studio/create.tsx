@@ -16,6 +16,7 @@ type DesignRow = {
     checks: string[];
     used: boolean;
     images: Record<'square' | 'portrait' | 'story', string | null>;
+    carousel: string[];
 };
 
 const select = 'h-12 rounded-md border bg-background px-3';
@@ -115,6 +116,22 @@ export default function StudioCreate({
                         : 'Designing…'}
                 </div>
             )}
+            {d.status === 'ready' && d.carousel.length > 1 && (
+                <div
+                    className="flex snap-x gap-1 overflow-x-auto pb-1"
+                    aria-label="Carousel slides"
+                >
+                    {d.carousel.map((src, i) => (
+                        <img
+                            key={src}
+                            src={src}
+                            alt={`Slide ${i + 1}`}
+                            loading="lazy"
+                            className="aspect-[4/5] w-14 flex-none snap-start rounded object-cover"
+                        />
+                    ))}
+                </div>
+            )}
             <div className="flex items-center justify-between text-sm">
                 <span>{d.collection}</span>
                 {d.used && <Badge variant="outline">used</Badge>}
@@ -129,6 +146,15 @@ export default function StudioCreate({
                     >
                         Post it
                     </Button>
+                    {d.carousel.length > 1 && (
+                        <Button size="sm" variant="outline" asChild>
+                            <a
+                                href={`/studio/designs/${d.ulid}/download?size=carousel`}
+                            >
+                                Carousel ({d.carousel.length})
+                            </a>
+                        </Button>
+                    )}
                     {(['portrait', 'square', 'story'] as const).map((s) => (
                         <Button key={s} size="sm" variant="outline" asChild>
                             <a
@@ -153,7 +179,7 @@ export default function StudioCreate({
             <div className="grid max-w-5xl gap-6 p-4 text-base">
                 <PageHeader
                     title="Create"
-                    description="Three designs in your brand, in feed, square and story sizes. Making them is free; one counts when you download or post it."
+                    description="Three designs in your brand: for a listing, each is a full carousel (cover, photos, details) plus square and story sizes. Making them is free; one counts when you download or post it."
                 />
 
                 <form

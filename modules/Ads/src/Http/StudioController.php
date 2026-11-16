@@ -21,6 +21,7 @@ use Modules\Connect\AppRegistry;
 use Modules\Core\Connect\AppCatalog;
 use Modules\Core\Identity\Enums\UserKind;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use ZipArchive;
 
 /** Grow → Ally Studio (specs/grow/13): the package and this month's use, the brand kit, and where posts go. */
 final class StudioController
@@ -88,7 +89,8 @@ final class StudioController
         $batch = $request->query('batch');
         $row = fn (Design $d): array => ['ulid' => $d->ulid, 'status' => $d->status, 'collection' => (string) Styles::get($d->collection)['name'], 'variant' => $d->variant,
             'moment' => Designer::MOMENTS[$d->moment][0] ?? $d->moment, 'checks' => $d->checks ?? [], 'used' => $d->used_at !== null,
-            'images' => array_map(fn (string $size): ?string => $designer->url($d, $size), array_combine(array_keys(Designer::SIZES), array_keys(Designer::SIZES)))];
+            'images' => array_map(fn (string $size): ?string => $designer->url($d, $size), array_combine(array_keys(Designer::SIZES), array_keys(Designer::SIZES))),
+            'carousel' => $designer->carousel($d)];
 
         return Inertia::render('studio/create', [
             'ready' => $this->plans->current($user) !== null,
@@ -112,6 +114,24 @@ final class StudioController
     {
         $user = self::user($request);
         $d = Design::query()->where('ulid', $design)->where('user_id', $user->id)->firstOrFail();
+        if ($request->query('size') === 'carousel') {
+            $paths = array_values(array_filter([$d->files['portrait'] ?? null, ...(array) ($d->files['slides'] ?? [])], 'is_string'));
+            abort_if(count($paths) < 2, 404);
+            $designer->use($d, $user);
+
+            // The whole carousel in posting order, as one ZIP.
+            return response()->streamDownload(function () use ($paths): void {
+                $tmp = (string) tempnam(sys_get_temp_dir(), 'studio');
+                $zip = new ZipArchive;
+                $zip->open($tmp, ZipArchive::OVERWRITE);
+                foreach ($paths as $i => $path) {
+                    $zip->addFromString(sprintf('%02d.jpg', $i + 1), (string) Storage::disk('public')->get($path));
+                }
+                $zip->close();
+                readfile($tmp);
+                @unlink($tmp);
+            }, 'rightally-'.$d->moment.'-carousel.zip', ['Content-Type' => 'application/zip']);
+        }
         $size = isset(Designer::SIZES[(string) $request->query('size')]) ? (string) $request->query('size') : 'portrait';
         $designer->use($d, $user);
 

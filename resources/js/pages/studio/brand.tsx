@@ -76,7 +76,7 @@ export default function StudioBrand({
         for: 'brokerage',
         logo: null as File | null,
         logo_dark: null as File | null,
-        collection: brokerage?.collection ?? 'noir_atelier',
+        collection: brokerage?.collection ?? 'gallery',
         styles: brokerage?.styles ?? [],
         colors: { ...kit.colors, ...brokerage?.colors },
         fonts: { ...kit.fonts, ...brokerage?.fonts },
