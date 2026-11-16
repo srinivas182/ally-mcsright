@@ -13,14 +13,15 @@ final class MonthlyCost
     /**
      * @return array{total: int, lines: list<array{key: string, label: string, amount: int|null, note: string}>, assumptions: array{rate: float, down: int, tax: float, insurance: float, utilities: int}}
      */
-    public static function for(int $price, string $state): array
+    public static function for(int $price, string $state, ?int $downPayment = null): array
     {
         $rate = (float) config('movewise.mortgage_rate', 6.5);
-        $down = (int) config('movewise.down_payment', 10);
+        // A down payment in dollars (from the visitor) or the usual 10%.
+        $down = $downPayment !== null && $price > 0 ? (int) max(0, min(100, round($downPayment * 100 / $price))) : (int) config('movewise.down_payment', 10);
         $tax = (float) (config('movewise.tax_rate')[$state] ?? 1.0);
         $insurance = (float) (config('movewise.insurance_rate')[$state] ?? 0.9);
         $utilities = (int) config('movewise.utilities', 280);
-        $loan = $price * (1 - $down / 100);
+        $loan = $downPayment !== null ? max(0, $price - $downPayment) : $price * (1 - $down / 100);
         $r = $rate / 100 / 12;
         $n = 360;
         $pi = $r > 0 ? $loan * $r / (1 - (1 + $r) ** -$n) : $loan / $n;

@@ -53,6 +53,7 @@ final class RateCard
         'studio.tour' => [120, false, 'Ally Studio YouTube listing tour beyond the allowance'],
         'studio.enhance' => [40, false, 'Ally Studio photo enhancement beyond the allowance'],
         'studio.voice' => [25, false, 'Ally Studio voice narration beyond the allowance'],
+        'ai.movewise' => [0, true, 'Movewise AIlly reply (HQ pays)'],
         // Property data (specs/connect/21): one lookup each, kept for 30 days.
         'data.property' => [40, false, 'Property facts, last sale and value range (ATTOM), per address'],
         'data.owner' => [15, false, 'Owner names and mailing address (BatchData), per address'],

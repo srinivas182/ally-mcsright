@@ -7,6 +7,7 @@
             <span>{{ implode(' · ', array_filter([isset($h['beds']) ? $h['beds'].' bd' : null, isset($h['baths_full']) ? ($h['baths_full'] + 0.5 * (int) ($h['baths_half'] ?? 0)).' ba' : null, isset($h['sqft']) ? number_format((int) $h['sqft']).' sq ft' : null])) }}</span>
             <a href="{{ $h['href'] }}">{{ $h['label'] }}</a>
             <span class="attr">{{ $h['attribution'] ?? '' }}</span>
+            <button class="save" type="button" data-save="{{ $h['ulid'] }}" aria-pressed="false" hidden>{{ $t('save') }}</button>
         </div>
     </li>
 @endforeach

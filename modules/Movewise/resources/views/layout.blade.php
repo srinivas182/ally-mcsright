@@ -4,7 +4,7 @@
     when Texas is on, carries TREC's two required notices.
 --}}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ \Modules\Movewise\I18n::locale() }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -12,6 +12,8 @@
     <meta name="description" content="{{ $seo['description'] }}">
     <meta name="robots" content="{{ $seo['indexable'] ? 'index, follow' : 'noindex, follow' }}">
     <link rel="canonical" href="{{ $seo['canonical'] }}">
+    @foreach ($seo['alternates'] ?? [] as $hl => $href)<link rel="alternate" hreflang="{{ $hl }}" href="{{ $href }}">
+    @endforeach
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Movewise Homes">
     <meta property="og:title" content="{{ $seo['title'] }}">
@@ -60,16 +62,30 @@
         footer a{color:var(--muted)}footer .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px}
         footer .notices a{font-size:14px}
         .eho{display:inline-flex;gap:6px;align-items:center}
+        .btn.ghost{background:transparent;color:var(--brand);border:1px solid var(--line)}
+        .save{min-height:40px;padding:0 14px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:600 15px/1 inherit;cursor:pointer}
+        .save[aria-pressed=true]{background:var(--brand-2);border-color:var(--brand)}
+        dialog{border:1px solid var(--line);border-radius:var(--radius);background:var(--card);color:var(--ink);padding:20px;width:min(520px,calc(100vw - 32px))}
+        dialog::backdrop{background:rgb(0 0 0 / .45)}
+        dialog form{display:grid;gap:10px}dialog input,form.tool input,form.tool select,form.plan input{min-height:48px;border:1px solid var(--line);border-radius:10px;padding:0 12px;font:inherit;background:var(--bg);color:var(--ink)}
+        .chat{max-height:50vh;overflow:auto;display:grid;gap:8px;margin:8px 0}.chat p{margin:0;padding:10px 12px;border-radius:12px;background:var(--bg);white-space:pre-wrap}.chat p.me{background:var(--brand-2);justify-self:end}
+        #mw-ailly-open{position:fixed;right:16px;bottom:16px;z-index:5;box-shadow:0 6px 24px rgb(0 0 0 / .2)}
+        form.tool{display:grid;gap:12px;max-width:560px}form.tool label{display:grid;gap:4px;font-weight:600}
+        .tasks{list-style:none;padding:0}.tasks li{padding:6px 0}
+        [hidden]{display:none!important}
     </style>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
 <header class="top">
     <div class="wrap">
-        <a class="brand" href="/" aria-label="Movewise Homes home">Move<span>wise</span> Homes</a>
+        <a class="brand" href="{{ $u('/') }}" aria-label="Movewise Homes home">Move<span>wise</span> Homes</a>
         <nav class="main" aria-label="Main">
-            @if ($site['states'] !== [])<a href="/homes">Homes for sale</a>@endif
-            <a href="/how-movewise-is-paid">How we're paid</a>
+            @if ($site['states'] !== [])<a href="{{ $u('/homes') }}">{{ $t('nav.homes') }}</a>@endif
+            <a href="{{ $u('/afford') }}">{{ $t('nav.tools') }}</a>
+            <a href="{{ $u('/how-movewise-is-paid') }}">{{ $t('nav.paid') }}</a>
+            <a href="{{ $u('/account') }}" data-account>{{ $t('nav.account') }}</a>
+            @isset($seo['alternates'])<a href="{{ \Modules\Movewise\I18n::locale() === 'es' ? $seo['alternates']['en'] : $seo['alternates']['es'] }}" hreflang="{{ \Modules\Movewise\I18n::locale() === 'es' ? 'en' : 'es' }}" lang="{{ \Modules\Movewise\I18n::locale() === 'es' ? 'en' : 'es' }}">{{ $t('nav.lang') }}</a>@endisset
         </nav>
     </div>
 </header>
@@ -79,12 +95,13 @@
 <footer>
     <div class="wrap cols">
         <div>
-            <p><strong>Movewise Homes</strong>: search homes and plan your move. No spam: nobody contacts you unless you choose an agent.</p>
+            <p>{{ $t('footer.about') }}</p>
+            @if ($t('footer.english_only') !== '')<p>{{ $t('footer.english_only') }}</p>@endif
             <p class="eho"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2 1 11h3v11h16V11h3L12 2zm-5 12h10v2H7v-2zm0 4h10v2H7v-2z"/></svg> Equal Housing Opportunity</p>
             <p>&copy; {{ $site['year'] }} RightAlly. Movewise Homes is not a lender, title company or insurer.</p>
         </div>
         <div>
-            <p><strong>Brokers of record</strong></p>
+            <p><strong>{{ $t('footer.brokers') }}</strong></p>
             @forelse ($site['states'] as $s)
                 @if ($s['partner'])<p>{{ $s['name'] }}: {{ $s['partner']['name'] }}, licence {{ $s['partner']['licence'] }}. Managing broker {{ $s['partner']['broker'] }}.</p>@endif
             @empty
@@ -97,10 +114,28 @@
             @endif
         </div>
         <div>
-            <p><a href="/how-movewise-is-paid">How Movewise is paid</a><br><a href="/brokers">Brokers and licences</a><br><a href="/fair-housing">Fair Housing</a><br>
+            <p><a href="{{ $u('/how-movewise-is-paid') }}">How Movewise is paid</a><br><a href="{{ $u('/afford') }}">{{ $t('tools.afford') }}</a><br><a href="{{ $u('/net-sheet') }}">{{ $t('tools.net') }}</a><br><a href="{{ $u('/move-planner') }}">{{ $t('tools.planner') }}</a><br><a href="/brokers">Brokers and licences</a><br><a href="/fair-housing">Fair Housing</a><br>
             <a href="/privacy">Privacy notice</a><br><a href="/terms">Terms of use</a><br><a href="/accessibility">Accessibility</a></p>
         </div>
     </div>
 </footer>
+@unless (isset($plain))
+<button class="btn" id="mw-ailly-open" type="button" hidden>{{ $t('ailly.open') }}</button>
+<dialog id="mw-ailly" aria-labelledby="mw-ailly-h">
+    <h2 id="mw-ailly-h" style="margin-top:0">{{ $t('ailly.title') }}</h2>
+    <div class="chat" aria-live="polite"><p>{{ $t('ailly.intro') }}</p></div>
+    <form data-ailly>
+        <label class="skip" for="mw-ailly-q">{{ $t('ailly.placeholder') }}</label>
+        <input id="mw-ailly-q" name="message" maxlength="1000" required placeholder="{{ $t('ailly.placeholder') }}" autocomplete="off">
+        <div style="display:flex;gap:8px"><button class="btn">{{ $t('ailly.send') }}</button><button class="btn ghost" type="button" data-close>×</button></div>
+    </form>
+</dialog>
+<dialog id="mw-signin" aria-labelledby="mw-signin-h">
+    <h2 id="mw-signin-h" style="margin-top:0">{{ $t('signin.title') }}</h2>
+    @include('movewise::_signin')
+</dialog>
+<script type="application/json" id="mw-i18n">{!! json_encode(['saved' => $t('saved'), 'save' => $t('save'), 'error' => $t('ailly.error'), 'search_saved' => $t('search.saved'), 'prefix' => $u('')], JSON_HEX_TAG | JSON_UNESCAPED_UNICODE) !!}</script>
+<script src="/assets/movewise.js?v=2" defer></script>
+@endunless
 </body>
 </html>
