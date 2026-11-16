@@ -12,6 +12,7 @@ use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
 use Modules\Ads\Studio\ArtDirector;
 use Modules\Ads\Studio\Design;
+use Modules\Ads\Studio\Designer;
 use Modules\Ads\Studio\Render\FakeRenderer;
 use Modules\Ads\Studio\Render\StudioRenderer;
 use Modules\Ads\Studio\StudioPlans;
@@ -87,22 +88,34 @@ beforeEach(function (): void {
 it('makes three listing designs on three sharp photos in three sizes, counted once when used, and starts a post', function (): void {
     $this->actingAs($this->jane)->post('/studio/designs', ['moment' => 'just_listed', 'listing' => $this->home->ulid])->assertSessionHasNoErrors()->assertRedirect();
     $designs = Design::query()->orderBy('id')->get();
-    expect($designs->pluck('variant')->all())->toBe(['cover', 'cinema', 'gallery'])->and($designs->pluck('status')->unique()->all())->toBe(['ready'])
+    expect($designs->pluck('variant')->all())->toBe(['gallery', 'monograph', 'frosted'])->and($designs->pluck('status')->unique()->all())->toBe(['ready'])
         ->and($designs->map(fn (Design $d): string => basename((string) $d->content['photo']))->all())->toBe(['sharp-1-1600.webp', 'sharp-2-1600.webp', 'sharp-3-1600.webp'])
         ->and($designs[0]->content)->toMatchArray(['kicker' => 'Just listed', 'headline' => '201 Pine Rd', 'sub' => 'Austin, TX 78704', 'facts' => ['3 Beds', '2.5 Baths', '2,140 Sq Ft'],
             'price' => '$501,000']);
     foreach (['square', 'portrait', 'story'] as $size) {
         Storage::disk('public')->assertExists((string) $designs[0]->files[$size]);
     }
-    expect($this->renderer->pages)->toHaveCount(9)->and($this->renderer->pages[0])->toContain('201 Pine Rd')->toContain('$501,000')->toContain('Equal Housing Opportunity')
-        ->toContain('Listing courtesy of Acme Realty')->toContain('TX #0123456')->toContain('512-555-0100')->not->toContain('<script');
+    // Each listing design is a carousel too: the cover, the two further photographs and the details slide (with the agent).
+    expect($designs[0]->files['slides'])->toHaveCount(3)->and(app(Designer::class)->carousel($designs[0]))->toHaveCount(4);
+    Storage::disk('public')->assertExists((string) $designs[0]->files['slides'][2]);
+    expect($this->renderer->pages)->toHaveCount(18)->and($this->renderer->pages[5])->toContain('Book a tour')->toContain('$501,000')->toContain('512-555-0100')->toContain('Equal Housing Opportunity')
+        ->and($this->renderer->pages[0])->toContain('201 Pine Rd')->toContain('$501,000')->toContain('Equal Housing Opportunity')
+        ->toContain('Listing courtesy of Acme Realty')->toContain('TX #0123456')->not->toContain('<script');
     expect(app(StudioPlans::class)->usage($this->jane)['post']['used'])->toBe(0); // making designs is free
 
     $this->actingAs($this->jane)->get('/studio/create?batch='.$designs[0]->batch)->assertInertia(fn (Assert $p) => $p->component('studio/create')->has('batch', 3)
-        ->where('batch.0.images.portrait', fn ($u): bool => str_ends_with((string) $u, '-portrait.jpg')));
+        ->where('batch.0.images.portrait', fn ($u): bool => str_ends_with((string) $u, '-portrait.jpg'))->has('batch.0.carousel', 4));
+    $zip = $this->actingAs($this->jane)->get('/studio/designs/'.$designs[0]->ulid.'/download?size=carousel')->assertOk()->assertDownload('rightally-just_listed-carousel.zip');
+    $file = (string) tempnam(sys_get_temp_dir(), 'zip');
+    file_put_contents($file, $zip->streamedContent());
+    $archive = new ZipArchive;
+    $archive->open($file);
+    expect($archive->numFiles)->toBe(4)->and($archive->getNameIndex(0))->toBe('01.jpg');
+    $archive->close();
+    @unlink($file);
     $this->actingAs($this->jane)->get('/studio/designs/'.$designs[0]->ulid.'/download?size=story')->assertOk()->assertDownload('rightally-just_listed-story.jpg');
     $this->actingAs($this->jane)->get('/studio/designs/'.$designs[0]->ulid.'/download?size=square')->assertOk();
-    expect(app(StudioPlans::class)->usage($this->jane)['post']['used'])->toBe(1); // once per design
+    expect(app(StudioPlans::class)->usage($this->jane)['post']['used'])->toBe(1); // once per design, however many sizes
     $this->actingAs($this->owner)->get('/studio/designs/'.$designs[1]->ulid.'/download')->assertNotFound(); // only theirs
 
     $this->actingAs($this->jane)->post('/studio/designs/'.$designs[1]->ulid.'/post')->assertRedirect('/social?design='.$designs[1]->ulid);
@@ -123,7 +136,7 @@ it('keeps designs honest: MLS status, Fair Housing, open house time, a photo of 
     $this->actingAs($this->jane)->post('/studio/designs', ['moment' => 'market_update', 'headline' => 'Austin this week', 'body' => 'Buyers are back.',
         'stats' => [['value' => '42', 'label' => 'New listings'], ['value' => '<b>$485K</b>', 'label' => 'Median price']]])->assertSessionHasNoErrors();
     $text = Design::query()->orderBy('id')->get();
-    expect($text->pluck('collection')->all())->toBe(['noir_atelier', 'heritage_navy', 'emerald_club'])->and($text->pluck('variant')->unique()->all())->toBe(['statement'])
+    expect($text->pluck('collection')->all())->toBe(['gallery', 'frosted', 'seal'])->and($text->pluck('variant')->unique()->all())->toBe(['statement'])
         ->and($text[0]->content['stats'][1])->toEqual(['value' => '$485K', 'label' => 'Median price']); // MySQL JSON may reorder keys
 
     $this->renderer->blank = true;

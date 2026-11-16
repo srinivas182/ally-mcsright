@@ -40,16 +40,24 @@ monthly renewal, cancel at month end, "included in package X"):
 
 ## Designer collections and the studio
 
-**Style library (SA1d):** Noir Atelier, Estate Ivory, Champagne Soirée, Heritage Navy, Emerald Club, Gallery White,
-Monochrome Luxe, Stone & Linen, Architect, Coastal Light, Riviera, Desert Modern, Magazine Cover, Metropolitan,
-Editorial Journal, Bold Contemporary, Ranch & Land, Farmhouse Modern. New styles are added each season; each must
-pass the art director and a proof with real listing photos before it ships.
+**Photo-first library (SA1e), replacing SA1c/SA1d:** benchmarked against how the leading luxury brokerages and
+template studios post today. The photograph is the hero; the cover carries one short line ("Just listed", the street)
+and a small logo; the price, rooms and agent move to the last carousel slide and the caption. Two type families at
+most: modern serifs (Instrument Serif, Fraunces, Newsreader, Cormorant) with clean grotesks (Inter Tight, Archivo
+Expanded, Bricolage, Space Grotesk, Unbounded, Manrope). Sixteen styles, each a signature cover and two alternates:
+Gallery, Glass (frosted card), Passe-partout (ivory mat), Monograph (oversized headline), Swiss Modern, Diptych,
+Cinema, Arch, Noir, Collage, Bold Block (brand-colour field, agent cut-out), Index, Horizon, Seal (rotating badge),
+Wide and Heritage. Earlier style keys map to their nearest new style, so saved kits and favourites keep working.
 
-**Quality bar (SA1c):** every design must look like a luxury brokerage's in-house studio made it: editorial
-typography, generous space, hairline rules, metallic accents from the brand colour, gentle photo grading and film
-grain, a signature and a monogram. No boxes, badges or generic templates. Each collection has three signature
-layouts for listings (Luxury Noir: cover, cinema, gallery; Estate: frame, gallery, arch; Modern: masthead, split,
-gallery; Coastal: arch, split, cover) and a statement layout for words, numbers, quotes and the agent's portrait.
+- **Carousel by default for listings:** cover, up to four more photographs (bleed or framed, numbered), then a
+  details slide (price, rooms, a last look at the home, the agent and "Book a tour"). All slides 4:5, downloadable as
+  one ZIP; posting carousels to Facebook, Instagram and LinkedIn follows in SA1f.
+- **Agent-forward:** the headshot sits on the cover where the style allows (Gallery, Glass, Noir), the cut-out stands
+  in Bold Block, and every details slide closes on the agent. Text and agent posts use a statement layout with the
+  cut-out portrait in an arch.
+- **Photo grade:** every photo gets a gentle grade (warm, clean, rich or bright, by style) and a fine sharpen.
+  Heavier enhancement (upscaling, virtual twilight, sky) is SA5a, labelled "Virtually enhanced".
+- **Stories** keep words clear of the app's top and bottom bars; the brokerage and Equal Housing are on every image.
 
 - **Collections** designed by RightAlly (not stock), refreshed each season: _Luxury Noir_ (black, gold, serif),
   _Modern_ (white space, sans), _Coastal_ (warm, light), _Estate_ (classic, framed), plus seasonal sets.
@@ -100,7 +108,8 @@ gallery; Coastal: arch, split, cover) and a statement layout for words, numbers,
 
 ## Pro tools (SA5)
 
-- **Photo enhancement:** virtual twilight and sky replacement. Every enhanced photo is labelled "Virtually
+- **Photo enhancement (moved up: SA5a, right after SA1e):** upscaling so crops stay sharp, virtual twilight and sky
+  replacement. Every enhanced photo is labelled "Virtually
   enhanced" on the design and in the caption, the original is kept, and MLS photo rules are followed.
 - **Voice narration:** Reels and tours narrated in the agent's own voice, only with their recorded consent; the
   voice is theirs alone and is deleted when they withdraw consent.
@@ -125,6 +134,8 @@ gallery; Coastal: arch, split, cover) and a statement layout for words, numbers,
 | **SA1b** | Render workers, the four collections and their layouts in three sizes, AI art director, the studio page, download and post                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | **SA1c** | Premium design system v2: editorial type (Cormorant Garamond, Bodoni Moda, Cinzel, Jost, Pinyon Script, Italiana), metallic accents from the brand colour, hairlines, film grain, photo grading; signature layouts per collection (cover, cinema, gallery, frame, arch, masthead, split, statement); premium postcards; public font route for printers                                                                                                                                                                                         |
 | **SA1d** | Style library: 18 styles in six families (classic luxury, modern minimal, coastal and resort, editorial and urban, bold, country and land), each with its own type, grounds, ornaments, photo grading and three listing layouts (new: mono, journal, blueprint, colour field); finishes (gold, champagne, platinum, rose gold, bronze, azure, terracotta, emerald, brand colour, black and white); "see your listing in every style" previews; style match; favourites rotated by Autopilot; brokerage-allowed styles when the brand is locked |
+| **SA1e** | Photo-first redesign: 16 styles benchmarked against the market leaders (one line on the cover, details on the last slide), new type system, carousel (cover, photos, details with the agent) and ZIP download, story safe zones, agent-forward covers, per-style photo grade and sharpen, old style keys mapped                                                                                                                                                                                                                                |
+| **SA1f** | Carousel posting: Facebook multi-photo, Instagram carousel, LinkedIn multi-image                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | **SA2a** | Autopilot: listing moments (new, coming soon, price improvement, under contract, sold), weekly market update, holidays; AI captions (Spanish, hashtags, Fair Housing); good times; Approve first and Autopilot; daily brief; Your AI Assistant skills `studio_posts` and `studio_approve`                                                                                                                                                                                                                                                      |
 | **SA2b** | Calendar (drag to move), listing launch campaign, captions in the agent's voice, closings, reviews, milestones and recruiting moments, broker approval rules                                                                                                                                                                                                                                                                                                                                                                                   |
 | **SA3**  | Reels, Shorts and tours, music library, YouTube app                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |

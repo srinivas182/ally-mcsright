@@ -85,41 +85,41 @@ beforeEach(function (): void {
 });
 
 it('shows every style with the person\'s own listing, made once and kept until the brand changes', function (): void {
-    expect(Styles::ALL)->toHaveCount(18);
-    $this->actingAs($this->jane)->get('/studio/styles')->assertInertia(fn (Assert $p) => $p->component('studio/styles')->has('styles', 18)
-        ->where('current.style', 'noir_atelier')->where('styles.0.preview', null)); // being made
+    expect(Styles::ALL)->toHaveCount(16);
+    $this->actingAs($this->jane)->get('/studio/styles')->assertInertia(fn (Assert $p) => $p->component('studio/styles')->has('styles', 16)
+        ->where('current.style', 'gallery')->where('styles.0.preview', null)); // being made
     $this->actingAs($this->jane)->get('/studio/styles')->assertInertia(fn (Assert $p) => $p->where('styles.0.preview', fn ($v): bool => is_string($v) && str_ends_with($v, '.jpg')));
     $urls = app(StylePreviews::class)->urls($this->jane);
-    expect(array_filter($urls))->toHaveCount(18)->and($this->renderer->pages)->toHaveCount(18)
-        ->and(collect($this->renderer->pages)->first(fn (string $h): bool => str_contains($h, "'Syne'")))->toContain('201 Pine Rd'); // Architect, with her listing
+    expect(array_filter($urls))->toHaveCount(16)->and($this->renderer->pages)->toHaveCount(16)
+        ->and(collect($this->renderer->pages)->first(fn (string $h): bool => str_contains($h, "--sans:'Space Grotesk'")))->toContain('201 Pine Rd'); // Index, with her listing
     $this->actingAs($this->jane)->get('/studio/styles')->assertOk();
-    expect($this->renderer->pages)->toHaveCount(18); // not made again
+    expect($this->renderer->pages)->toHaveCount(16); // not made again
 });
 
 it('saves a style, a finish and favourites, matches styles to taste, and rotates favourites on Autopilot designs', function (): void {
-    $this->actingAs($this->jane)->post('/studio/styles', ['style' => 'architect', 'finish' => 'platinum', 'favorites' => ['riviera', 'desert_modern', 'nonsense']])
+    $this->actingAs($this->jane)->post('/studio/styles', ['style' => 'architect', 'finish' => 'platinum', 'favorites' => ['horizon', 'arch', 'nonsense']])
         ->assertSessionHasNoErrors();
     $kit = app(BrandKits::class)->forUser($this->jane);
-    expect($kit['collection'])->toBe('architect')->and($kit['finish'])->toBe('platinum')->and($kit['favorites'])->toBe(['riviera', 'desert_modern'])
+    expect($kit['collection'])->toBe('index')->and($kit['finish'])->toBe('platinum')->and($kit['favorites'])->toBe(['horizon', 'arch']) // an earlier key maps to its new style
         ->and($kit['details']['licence_line'])->toBe('TX #0123456'); // the rest of the kit is untouched
 
     $this->actingAs($this->jane)->post('/studio/designs', ['moment' => 'just_listed', 'listing' => $this->home->ulid])->assertSessionHasNoErrors();
-    expect(Design::query()->pluck('variant')->all())->toBe(['blueprint', 'split', 'cover'])->and($this->renderer->pages[0])->toContain("'IBM Plex Mono'");
-    $this->actingAs($this->jane)->post('/studio/designs', ['moment' => 'just_listed', 'listing' => $this->home->ulid, 'style' => 'riviera'])->assertSessionHasNoErrors();
-    expect(Design::query()->latest('id')->firstOrFail()->collection)->toBe('riviera');
+    expect(Design::query()->pluck('variant')->all())->toBe(['index', 'swiss', 'mat'])->and($this->renderer->pages[0])->toContain("--sans:'Space Grotesk'");
+    $this->actingAs($this->jane)->post('/studio/designs', ['moment' => 'just_listed', 'listing' => $this->home->ulid, 'style' => 'horizon'])->assertSessionHasNoErrors();
+    expect(Design::query()->latest('id')->firstOrFail()->collection)->toBe('horizon');
 
-    $this->actingAs($this->jane)->post('/studio/styles/match', ['liked' => ['riviera', 'desert_modern']])->assertRedirect('/studio/styles?match=riviera,desert_modern,coastal_light');
-    expect(Styles::match(['noir_atelier', 'emerald_club', 'gallery_white']))->toBe(['noir_atelier', 'emerald_club', 'heritage_navy']);
+    $this->actingAs($this->jane)->post('/studio/styles/match', ['liked' => ['horizon', 'arch']])->assertRedirect('/studio/styles?match=horizon,arch,collage');
+    expect(Styles::match(['noir', 'cinema', 'gallery']))->toBe(['noir', 'heritage', 'cinema'])->and(Styles::match(['noir_atelier']))->toBe(['noir', 'heritage', 'gallery']);
 });
 
 it('keeps agents to the styles the brokerage allows when the brand is locked', function (): void {
-    $this->actingAs($this->owner)->post('/studio/brand', ['for' => 'brokerage', 'collection' => 'heritage_navy', 'brand_lock' => '1', 'styles' => ['heritage_navy', 'emerald_club']])
+    $this->actingAs($this->owner)->post('/studio/brand', ['for' => 'brokerage', 'collection' => 'heritage', 'brand_lock' => '1', 'styles' => ['heritage', 'emerald_club']])
         ->assertSessionHasNoErrors();
-    expect(app(BrandKits::class)->forUser($this->jane)['collection'])->toBe('heritage_navy');
-    $this->actingAs($this->jane)->post('/studio/styles', ['style' => 'bold_contemporary'])->assertSessionHasErrors('collection');
-    $this->actingAs($this->jane)->post('/studio/styles', ['style' => 'emerald_club', 'favorites' => ['emerald_club', 'riviera']])->assertSessionHasNoErrors();
+    expect(app(BrandKits::class)->forUser($this->jane)['collection'])->toBe('heritage');
+    $this->actingAs($this->jane)->post('/studio/styles', ['style' => 'block'])->assertSessionHasErrors('collection');
+    $this->actingAs($this->jane)->post('/studio/styles', ['style' => 'noir', 'favorites' => ['emerald_club', 'horizon']])->assertSessionHasNoErrors();
     $kit = app(BrandKits::class)->forUser($this->jane);
-    expect($kit['collection'])->toBe('emerald_club')->and($kit['favorites'])->toBe(['emerald_club'])->and($kit['allowed'])->toBe(['heritage_navy', 'emerald_club']);
-    $this->actingAs($this->jane)->post('/studio/designs', ['moment' => 'tip', 'headline' => 'Three ways to price well', 'style' => 'riviera'])->assertSessionHasNoErrors();
-    expect(Design::query()->pluck('collection')->unique()->values()->all())->toBe(['emerald_club', 'heritage_navy']); // never a style outside the brokerage's
+    expect($kit['collection'])->toBe('noir')->and($kit['favorites'])->toBe(['noir'])->and($kit['allowed'])->toBe(['noir', 'heritage']);
+    $this->actingAs($this->jane)->post('/studio/designs', ['moment' => 'tip', 'headline' => 'Three ways to price well', 'style' => 'horizon'])->assertSessionHasNoErrors();
+    expect(Design::query()->pluck('collection')->unique()->values()->all())->toBe(['noir', 'heritage']); // never a style outside the brokerage's
 });

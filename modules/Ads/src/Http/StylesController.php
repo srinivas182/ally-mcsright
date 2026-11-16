@@ -25,7 +25,7 @@ final class StylesController
         $user = self::user($request);
         $kit = $kits->forUser($user);
         $urls = $previews->urls($user);
-        $match = array_values(array_filter(explode(',', (string) $request->query('match', '')), fn (string $k): bool => isset(Styles::ALL[$k])));
+        $match = array_values(array_unique(array_map(fn (string $k): string => Styles::key($k), array_filter(explode(',', (string) $request->query('match', '')), fn (string $k): bool => Styles::known($k)))));
 
         return Inertia::render('studio/styles', [
             'styles' => array_map(fn (string $k, array $s): array => ['key' => $k, 'name' => $s['name'], 'family' => $s['family'], 'about' => $s['about'],
@@ -50,7 +50,7 @@ final class StylesController
     /** Style match: from the styles someone loves, the two or three that suit them best. */
     public function match(Request $request): RedirectResponse
     {
-        $liked = array_values(array_filter(array_map('strval', (array) $request->input('liked', [])), fn (string $k): bool => isset(Styles::ALL[$k])));
+        $liked = array_values(array_filter(array_map('strval', (array) $request->input('liked', [])), fn (string $k): bool => Styles::known($k)));
         abort_if($liked === [], 422);
 
         return redirect('/studio/styles?match='.implode(',', Styles::match($liked)));

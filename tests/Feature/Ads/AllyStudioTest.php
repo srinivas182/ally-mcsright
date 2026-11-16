@@ -113,7 +113,7 @@ it('builds the brand kit: headshot re-encoded and cut out, brokerage logo and br
         ->assertSessionHasNoErrors();
     Http::assertSent(fn (HttpRequest $r): bool => $r->url() === 'https://api.remove.bg/v1.0/removebg' && $r->hasHeader('X-Api-Key', 'rbg-key'));
     $kit = app(BrandKits::class)->forUser($this->ann);
-    expect($kit['collection'])->toBe('coastal_light')->and($kit['colors'])->toBe(['primary' => '#0A2540', 'accent' => '#C9A227', 'ink' => '#111111', 'paper' => '#FFFFFF'])
+    expect($kit['collection'])->toBe('horizon')->and($kit['colors'])->toBe(['primary' => '#0A2540', 'accent' => '#C9A227', 'ink' => '#111111', 'paper' => '#FFFFFF'])
         ->and($kit['fonts'])->toBe(['heading' => 'Cormorant Garamond', 'body' => 'Inter'])->and($kit['details']['tagline'])->toBe('Homes with heart')
         ->and($kit['details']['display_name'])->toBe('Ann Agent')->and($kit['languages'])->toBe(['en', 'es'])
         ->and($kit['cutout'])->toEndWith('-cutout.png')->and($kit['headshot'])->toEndWith('.png');
@@ -123,7 +123,7 @@ it('builds the brand kit: headshot re-encoded and cut out, brokerage logo and br
     $this->actingAs($this->owner)->post('/studio/brand', ['for' => 'brokerage', 'logo' => UploadedFile::fake()->image('logo.png', 600, 200), 'collection' => 'luxury_noir',
         'colors' => ['primary' => '#000000', 'accent' => '#d4af37'], 'brand_lock' => '1', 'details' => ['disclaimer' => 'Each office independently owned.']])->assertSessionHasNoErrors();
     $kit = app(BrandKits::class)->forUser($this->ann);
-    expect($kit['locked'])->toBeTrue()->and($kit['collection'])->toBe('noir_atelier')->and($kit['colors']['primary'])->toBe('#000000')
+    expect($kit['locked'])->toBeTrue()->and($kit['collection'])->toBe('noir')->and($kit['colors']['primary'])->toBe('#000000')
         ->and($kit['details']['disclaimer'])->toBe('Each office independently owned.')->and($kit['details']['title'])->toBe('Luxury Home Specialist') // details stay hers
         ->and($kit['logo'])->not->toBeNull()->and(app(BrandKits::class)->missing($this->ann))->toBe([]);
     $this->actingAs($this->ann)->get('/studio/brand')->assertInertia(fn (Assert $p) => $p->component('studio/brand')->where('kit.locked', true)->where('brokerage', null));
