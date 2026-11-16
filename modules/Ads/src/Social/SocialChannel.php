@@ -17,9 +17,10 @@ interface SocialChannel
     public function places(ConnectionData $connection): array;
 
     /**
-     * Post once to one place. With two or more images it is a carousel (in order). Throws PostFailed with a reason people can act on.
+     * Post once to one place. With two or more images it is a carousel (in order); with a video,
+     * a Reel where the network takes one (Instagram, Facebook) and the cover image elsewhere. Throws PostFailed with a reason people can act on.
      *
-     * @param  array{text: string, link: string|null, image: string|null, images: list<string>, title: string}  $content
+     * @param  array{text: string, link: string|null, image: string|null, images: list<string>, video: string|null, title: string}  $content
      * @return array{id: string, url: string|null}
      */
     public function post(ConnectionData $connection, string $channel, string $target, array $content): array;

@@ -90,7 +90,7 @@ final class StudioController
         $row = fn (Design $d): array => ['ulid' => $d->ulid, 'status' => $d->status, 'collection' => (string) Styles::get($d->collection)['name'], 'variant' => $d->variant,
             'moment' => Designer::MOMENTS[$d->moment][0] ?? $d->moment, 'checks' => $d->checks ?? [], 'used' => $d->used_at !== null,
             'images' => array_map(fn (string $size): ?string => $designer->url($d, $size), array_combine(array_keys(Designer::SIZES), array_keys(Designer::SIZES))),
-            'carousel' => $designer->carousel($d)];
+            'carousel' => $designer->carousel($d), 'reelable' => (Designer::MOMENTS[$d->moment][1] ?? '') === 'listing'];
 
         return Inertia::render('studio/create', [
             'ready' => $this->plans->current($user) !== null,

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Ads\Social;
 
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Sleep;
 use Modules\Ads\Meta\MetaApi;
 use Modules\Core\Connect\ConnectionData;
 use Modules\Core\Connect\Connector;
@@ -83,7 +84,12 @@ final class FacebookPages implements Connector, SocialChannel
         }
         $token = $this->pageToken($connection, $target);
         $http = Http::asForm()->timeout(30);
-        if (count($content['images']) >= 2) {
+        if ($content['video'] !== null) {
+            // A video post on the Page (Facebook fetches the MP4 from RightAlly's CDN).
+            $r = Http::asForm()->timeout(120)->post(MetaApi::GRAPH.$target.'/videos', ['file_url' => $content['video'],
+                'description' => $content['text'].($content['link'] !== null ? "\n\n".$content['link'] : ''), 'access_token' => $token]);
+            $id = (string) ($r->json('id') ?? '');
+        } elseif (count($content['images']) >= 2) {
             // A multi-photo post: each photo uploaded unpublished, then one feed post that attaches them in order.
             $attached = [];
             foreach ($content['images'] as $url) {
@@ -114,7 +120,7 @@ final class FacebookPages implements Connector, SocialChannel
     }
 
     /**
-     * @param  array{text: string, link: string|null, image: string|null, images: list<string>, title: string}  $content
+     * @param  array{text: string, link: string|null, image: string|null, images: list<string>, video: string|null, title: string}  $content
      * @return array{id: string, url: string|null}
      */
     private function instagram(ConnectionData $connection, string $account, array $content): array
@@ -131,7 +137,14 @@ final class FacebookPages implements Connector, SocialChannel
         $token = $this->pageToken($connection, $page);
         // Instagram captions can't hold links, so the link is written out.
         $caption = mb_substr($content['text'].($content['link'] !== null ? "\n\n".$content['link'] : ''), 0, 2200);
-        if (count($content['images']) >= 2) {
+        if ($content['video'] !== null) {
+            // A Reel: Instagram fetches and processes the video; publish once the container is FINISHED.
+            $made = Http::asForm()->timeout(60)->post(MetaApi::GRAPH.$account.'/media', ['media_type' => 'REELS', 'video_url' => $content['video'],
+                'caption' => $caption, 'share_to_feed' => 'true', 'access_token' => $token]);
+            if ($made->successful() && is_string($made->json('id'))) {
+                $this->waitFor((string) $made->json('id'), $token);
+            }
+        } elseif (count($content['images']) >= 2) {
             // A carousel: one item container per image (up to 10), then the carousel container with the caption.
             $children = [];
             foreach (array_slice($content['images'], 0, 10) as $url) {
@@ -156,6 +169,22 @@ final class FacebookPages implements Connector, SocialChannel
         $link = Http::timeout(10)->get(MetaApi::GRAPH.$r->json('id'), ['fields' => 'permalink', 'access_token' => $token])->json('permalink');
 
         return ['id' => (string) $r->json('id'), 'url' => is_string($link) && str_starts_with($link, 'https://') ? $link : null];
+    }
+
+    /** Instagram processes videos before they can be published: check every 5 seconds, for up to 3 minutes. */
+    private function waitFor(string $container, string $token): void
+    {
+        for ($i = 0; $i < 36; $i++) {
+            $state = (string) Http::timeout(10)->get(MetaApi::GRAPH.$container, ['fields' => 'status_code', 'access_token' => $token])->json('status_code');
+            if ($state === 'FINISHED') {
+                return;
+            }
+            if (in_array($state, ['ERROR', 'EXPIRED'], true)) {
+                throw new PostFailed('Instagram could not process the video. Try posting it again.');
+            }
+            Sleep::sleep(5);
+        }
+        throw new PostFailed('Instagram is still processing the video. Try posting it again in a few minutes.');
     }
 
     private function pageToken(ConnectionData $connection, string $page): string

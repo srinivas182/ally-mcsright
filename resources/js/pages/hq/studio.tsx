@@ -1,4 +1,4 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,158 @@ type Pkg = {
     cost_cents: number;
     margin_pct: number | null;
 };
+
+type Track = {
+    ulid: string;
+    title: string;
+    artist: string;
+    mood: string;
+    licence: string;
+    licence_url: string | null;
+    seconds: number;
+    active: boolean;
+};
+
+/** The licensed music library for Reels: only tracks RightAlly holds a licence for. */
+function MusicSection({
+    music,
+    moods,
+}: {
+    music: Track[];
+    moods: Record<string, string>;
+}) {
+    const form = useForm<{
+        file: File | null;
+        title: string;
+        artist: string;
+        mood: string;
+        licence: string;
+        licence_url: string;
+    }>({
+        file: null,
+        title: '',
+        artist: '',
+        mood: 'luxury',
+        licence: '',
+        licence_url: '',
+    });
+
+    return (
+        <section className="grid gap-3">
+            <h2 className="font-medium">Reels music library</h2>
+            <p className="text-sm text-muted-foreground">
+                Only add tracks RightAlly holds a licence for that covers
+                customers&apos; social videos (for example a royalty-free
+                library subscription). Agents choose a mood; Studio picks from
+                these.
+            </p>
+            <ul className="grid gap-1 text-sm">
+                {music.map((t) => (
+                    <li key={t.ulid} className="flex items-center gap-2">
+                        <Badge variant={t.active ? 'default' : 'outline'}>
+                            {moods[t.mood] ?? t.mood}
+                        </Badge>
+                        <span>
+                            {t.title} · {t.artist} ({t.seconds}s) — {t.licence}
+                        </span>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                                router.post(
+                                    `/hq/studio/music/${t.ulid}`,
+                                    { active: !t.active },
+                                    { preserveScroll: true },
+                                )
+                            }
+                        >
+                            {t.active ? 'Turn off' : 'Turn on'}
+                        </Button>
+                    </li>
+                ))}
+            </ul>
+            <form
+                className="grid gap-2 rounded-lg border p-3 sm:grid-cols-2"
+                onSubmit={(e) => {
+                    e.preventDefault();
+                    form.post('/hq/studio/music', {
+                        forceFormData: true,
+                        preserveScroll: true,
+                        onSuccess: () => form.reset(),
+                    });
+                }}
+            >
+                <label className="grid gap-1 text-sm">
+                    Track (MP3, M4A or WAV)
+                    <Input
+                        type="file"
+                        accept=".mp3,.m4a,.aac,.wav"
+                        onChange={(e) =>
+                            form.setData('file', e.target.files?.[0] ?? null)
+                        }
+                    />
+                </label>
+                <label className="grid gap-1 text-sm">
+                    Title
+                    <Input
+                        value={form.data.title}
+                        onChange={(e) => form.setData('title', e.target.value)}
+                    />
+                </label>
+                <label className="grid gap-1 text-sm">
+                    Artist
+                    <Input
+                        value={form.data.artist}
+                        onChange={(e) => form.setData('artist', e.target.value)}
+                    />
+                </label>
+                <label className="grid gap-1 text-sm">
+                    Mood
+                    <select
+                        className="h-10 rounded-md border bg-background px-3"
+                        value={form.data.mood}
+                        onChange={(e) => form.setData('mood', e.target.value)}
+                    >
+                        {Object.entries(moods).map(([k, v]) => (
+                            <option key={k} value={k}>
+                                {v}
+                            </option>
+                        ))}
+                    </select>
+                </label>
+                <label className="grid gap-1 text-sm">
+                    Licence RightAlly holds
+                    <Input
+                        value={form.data.licence}
+                        onChange={(e) =>
+                            form.setData('licence', e.target.value)
+                        }
+                    />
+                </label>
+                <label className="grid gap-1 text-sm">
+                    Licence link (optional)
+                    <Input
+                        type="url"
+                        value={form.data.licence_url}
+                        onChange={(e) =>
+                            form.setData('licence_url', e.target.value)
+                        }
+                    />
+                </label>
+                {Object.values(form.errors).map((m) => (
+                    <p key={m} className="text-sm text-destructive">
+                        {m}
+                    </p>
+                ))}
+                <div>
+                    <Button type="submit" disabled={form.processing}>
+                        Add track
+                    </Button>
+                </div>
+            </form>
+        </section>
+    );
+}
 
 const money = (cents: number | null) =>
     cents === null ? 'not priced' : `$${(cents / 100).toFixed(2)}`;
@@ -121,6 +273,8 @@ export default function HqStudio({
     items,
     services,
     features,
+    music,
+    moods,
 }: {
     packages: Pkg[];
     items: {
@@ -134,6 +288,8 @@ export default function HqStudio({
     }[];
     services: { key: string; does: string; on: boolean }[];
     features: Record<string, string>;
+    music: Track[];
+    moods: Record<string, string>;
 }) {
     return (
         <>
@@ -176,6 +332,7 @@ export default function HqStudio({
                 {packages.map((p) => (
                     <PackageCard key={p.key} pkg={p} features={features} />
                 ))}
+                <MusicSection music={music} moods={moods} />
                 <section className="grid gap-2">
                     <h2 className="font-medium">Beyond the allowance</h2>
                     <table className="w-full text-sm">

@@ -14,4 +14,10 @@ return [
     'no_sandbox' => (bool) env('STUDIO_CHROME_NO_SANDBOX', false),
     'timeout' => (int) env('STUDIO_RENDER_TIMEOUT', 45),
     'daily_sets' => (int) env('STUDIO_DAILY_SETS', 40), // design sets one person may make a day
+
+    // Reels and Shorts (SA3): ffmpeg on the same workers turns a design's story frames into a 9:16 video.
+    'video' => env('STUDIO_VIDEO', 'ffmpeg'), // ffmpeg | fake (tests)
+    'ffmpeg' => env('STUDIO_FFMPEG', '/usr/bin/ffmpeg'),
+    'video_timeout' => (int) env('STUDIO_VIDEO_TIMEOUT', 240),
+    'daily_reels' => (int) env('STUDIO_DAILY_REELS', 10), // Reels one person may make a day
 ];
