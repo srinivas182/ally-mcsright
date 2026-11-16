@@ -124,6 +124,7 @@ final class Deals
         $calc = $this->commissions->calculate($this->input($deal, $gci, $price, $closing), $deal->ulid);
         $deal->update(['status' => 'under_contract', 'price_cents' => $price, 'gci_cents' => $gci, 'contract_date' => $data['contract_date'],
             'closing_date' => $closing->toDateString(), 'calculation_id' => $calc->id]);
+        app(Timeline\Timeline::class)->refresh($deal); // the timeline from the contract date (specs/ai/02, §8)
     }
 
     private function close(Deal $deal, User $by): void

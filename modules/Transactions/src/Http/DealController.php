@@ -26,6 +26,7 @@ use Modules\Transactions\Compliance\ComplianceScan;
 use Modules\Transactions\Compliance\Findings;
 use Modules\Transactions\Deadlines\Deadlines;
 use Modules\Transactions\DealAccess;
+use Modules\Transactions\DealIq;
 use Modules\Transactions\Deals;
 use Modules\Transactions\Documents;
 use Modules\Transactions\EarnestMoney;
@@ -126,6 +127,9 @@ final class DealController
             ]),
             'missing' => $deals->missing($deal),
             'customFields' => app(CustomFields::class)->valuesFor('deal', $deal->id, $user, $deal->agent_user_id),
+            'dealIq' => ['property_type' => $deal->property_type, 'financing' => $deal->financing, 'propertyTypes' => DealIq\Adapt::PROPERTY_TYPES, 'financingTypes' => DealIq\Adapt::FINANCING,
+                'uploadRequests' => app(DealIq\UploadRequests::class)->forDeal($deal), 'history' => app(DealIq\DealAssistant::class)->history($deal, $user),
+                'roles' => DealIq\DealAssistant::ROLES, 'setup' => $deal->setup_status !== null],
             'dates' => app(KeyDates::class)->forDeal($deal),
             'unsorted' => $all->filter(fn (Document $d): bool => $d->item_id === null)->map($doc)->values(),
             'facts' => DocIq::dealFacts($deal),

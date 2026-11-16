@@ -12,6 +12,7 @@ use Modules\AI\Support\PromptRegistry;
 use Modules\Core\Access\PermissionRegistry;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
+use Modules\Transactions\DealIq\FormDrafter;
 
 final class FormsServiceProvider extends ServiceProvider
 {
@@ -20,6 +21,7 @@ final class FormsServiceProvider extends ServiceProvider
         foreach ([Templates::class, Packets::class, Signing::class, Sealer::class, Negotiations::class, Identity\IdentityChecks::class, Summaries::class, ClauseCheck::class, Library\Libraries::class, Library\Importer::class] as $service) {
             $this->app->scoped($service);
         }
+        $this->app->bind(FormDrafter::class, AiDrafter::class); // Deal-IQ drafting (specs/ai/02, §3)
         $this->app->bindIf(Identity\IdentityProvider::class, fn ($app): Identity\IdentityProvider => config('forms.identity_driver') === 'fake'
             ? $app->make(Identity\FakeIdentity::class) : $app->make(Identity\StripeIdentity::class));
         $this->app->bindIf(Identity\OwnerRecords::class, Identity\NoOwnerRecords::class);
@@ -37,6 +39,7 @@ final class FormsServiceProvider extends ServiceProvider
         ]);
         // AI: the plain-English summary prompt lives with the module; the feature is declared for ai:sync-features.
         $this->app->make(PromptRegistry::class)->addPath(__DIR__.'/../prompts');
+        $this->app->make(FeatureCatalog::class)->declare(AiDrafter::FEATURE, 'ai.forms_draft', 'Deal-IQ: contracts and addendums drafted on your forms');
         $this->app->make(FeatureCatalog::class)->declare(Summaries::FEATURE, 'ai.forms_summary', 'Plain-English summary of a forms packet for signers');
         Gate::define('forms.templates', fn (User $user): bool => Templates::manages($user));
         $this->app->make(NavigationRegistry::class)->add(new NavItem('Settings', 'Forms', '/forms/templates', 'file-text', 77, ability: 'forms.templates'));

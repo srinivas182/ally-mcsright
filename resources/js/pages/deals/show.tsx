@@ -14,6 +14,10 @@ import {
     type DealDocument,
     type Fact,
 } from '@/components/deals/doc-iq';
+import {
+    DealIqPanel,
+    type DealIqProps,
+} from '@/components/deals/deal-iq-panel';
 import { DealPay, type PayOverrides } from '@/components/deals/deal-pay';
 import { KeyDates, type KeyDate } from '@/components/deals/key-dates';
 import {
@@ -81,6 +85,7 @@ type Props = {
     reviewer: boolean;
     reasons: string[];
     customFields: CustomFieldValue[];
+    dealIq: DealIqProps;
 };
 
 const statusLabel: Record<string, string> = {
@@ -266,6 +271,7 @@ export default function ShowDeal({
     items,
     missing,
     customFields,
+    dealIq,
     dates,
     unsorted,
     facts,
@@ -307,6 +313,12 @@ export default function ShowDeal({
                     description={`${[deal.city, deal.state_code, deal.postal_code].filter(Boolean).join(', ')} · ${deal.agent ?? ''}${deal.locked ? ' · Closed and locked' : ''}${deal.imported_from ? ` · Brought over from ${deal.imported_from}` : ''}`}
                 />
                 <WhyCanISee url={`/deals/${deal.ulid}/why`} />
+                <DealIqPanel
+                    dealUlid={deal.ulid}
+                    locked={deal.locked}
+                    iq={dealIq}
+                    parties={parties}
+                />
                 <section className="grid gap-2 rounded-lg border p-4 text-sm md:grid-cols-4">
                     <span>
                         Status:{' '}

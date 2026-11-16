@@ -18,6 +18,9 @@ use Modules\Core\Tenancy\Concerns\HasPublicUlid;
  * @property string $status
  * @property int $agent_user_id
  * @property int|null $contact_id
+ * @property string|null $property_type
+ * @property string|null $financing
+ * @property string|null $setup_status
  * @property string $street
  * @property string|null $city
  * @property string $state_code
@@ -45,7 +48,7 @@ final class Deal extends Model
 
     protected $table = 'tx_deals';
 
-    protected $fillable = ['type', 'status', 'agent_user_id', 'contact_id', 'street', 'city', 'state_code', 'postal_code', 'mls_number', 'price_cents', 'gci_cents', 'contract_date', 'closing_date', 'closed_on', 'cancel_reason', 'calculation_id', 'locked_at', 'created_by', 'imported_from', 'pay_overrides', 'money_status', 'money_note', 'paid_fingerprint', 'agent_paid_outside'];
+    protected $fillable = ['type', 'status', 'agent_user_id', 'contact_id', 'street', 'city', 'state_code', 'postal_code', 'mls_number', 'price_cents', 'gci_cents', 'contract_date', 'closing_date', 'closed_on', 'cancel_reason', 'calculation_id', 'locked_at', 'created_by', 'imported_from', 'pay_overrides', 'money_status', 'money_note', 'paid_fingerprint', 'agent_paid_outside', 'property_type', 'financing', 'setup_status'];
 
     public function getConnectionName(): ?string
     {
