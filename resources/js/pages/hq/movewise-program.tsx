@@ -335,6 +335,19 @@ function Review({ a }: { a: AgentRow }) {
                         Resume
                     </Button>
                 )}
+                <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                        router.post(
+                            `/hq/movewise/program/agents/${a.ulid}/strike`,
+                            { reason: note },
+                            { preserveScroll: true },
+                        )
+                    }
+                >
+                    Strike ({a.strikes}/3, give a reason)
+                </Button>
                 {a.status !== 'removed' && (
                     <Button
                         size="sm"

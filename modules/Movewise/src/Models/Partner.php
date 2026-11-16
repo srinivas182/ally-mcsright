@@ -24,6 +24,7 @@ use Modules\Core\Tenancy\Concerns\HasPublicUlid;
  * @property string|null $iabs_url
  * @property CarbonImmutable|null $contract_signed_on
  * @property string $status
+ * @property float $hq_share_pct
  */
 final class Partner extends Model
 {
@@ -40,6 +41,6 @@ final class Partner extends Model
 
     protected function casts(): array
     {
-        return ['contract_signed_on' => 'immutable_date'];
+        return ['contract_signed_on' => 'immutable_date', 'hq_share_pct' => 'float'];
     }
 }

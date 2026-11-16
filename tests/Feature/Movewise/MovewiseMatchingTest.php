@@ -249,7 +249,7 @@ it('books "Pick a time" on the agent\'s real calendar, and handles a wrong-numbe
 
 /* MW5: the bridge — relay numbers, personal messages only, PAUSE / RESUME / CHANGE / STOP, and handing over. */
 
-function mwAccepted(object $t, string $method = 'text'): Connection
+function mwAccepted(object $t, string $method = 'text', array $accept = []): Connection
 {
     DB::connection(Connections::control())->table('movewise_relay_numbers')->insert(['number' => '+17135550900', 'area' => 'Houston', 'active' => true, 'created_at' => now(), 'updated_at' => now()]);
     app(MessagingSettings::class)->save('AC'.str_repeat('1', 32), 'twilio-auth-token-0000000', '+15125550111', '+15125550112', true, false, $t->staff);
@@ -257,9 +257,9 @@ function mwAccepted(object $t, string $method = 'text'): Connection
     $show = mwShow($t);
     mwVerify($t, $show);
     mwAs($t)->post(MWH.'/connect/'.$show.'/choose', ['agent' => $t->agents['Ann'][0]->ulid, 'method' => $method], $t->from)->assertRedirect();
-    $c = Connection::query()->sole();
+    $c = Connection::query()->orderByDesc('id')->firstOrFail();
     app(TenantContext::class)->set($t->tenant);
-    $t->actingAs($t->agents['Ann'][1])->post('/movewise/introductions/'.$c->ulid, ['action' => 'accept'])->assertSessionHasNoErrors();
+    $t->actingAs($t->agents['Ann'][1])->post('/movewise/introductions/'.$c->ulid, ['action' => 'accept'] + $accept)->assertSessionHasNoErrors();
 
     return $c->refresh();
 }
@@ -325,4 +325,117 @@ it('stops contact when the person texts STOP', function (): void {
     expect(app(Inbox::class)->receiveSms('+17135550142', 'STOP', 'SM9'))->toBeNull();
     expect($c->refresh()->status)->toBe('stopped')->and($c->end_reason)->toBe('Replied STOP')
         ->and(Contact::query()->findOrFail($c->contact_id)->sms_opt_out_at)->not->toBeNull();
+});
+
+/* MW6: status flow-back, reminders and pauses, per-appointment and share-at-close billing, referral invoices,
+   partner settlements, ratings, the scorecard and tiers, and strikes. */
+
+function mwModel(object $t, string $model): void
+{
+    State::query()->findOrFail('TX')->forceFill(['pricing' => ['models' => ['connection', 'appointment', 'share'], 'connection' => ['buyer' => 300, 'seller' => 450],
+        'appointment' => 200, 'share_pct' => 25]])->save();
+    Package::query()->update(['model' => $model]);
+}
+
+it('keeps the status flowing back, reminds after 14 days and pauses the package a week later', function (): void {
+    $c = mwAccepted($this);
+    [, $ann] = $this->agents['Ann'];
+    $this->actingAs($ann)->post('/movewise/introductions/'.$c->ulid, ['action' => 'status', 'stage' => 'appointment'])->assertSessionHasNoErrors();
+    $this->actingAs($ann)->post('/movewise/introductions/'.$c->ulid, ['action' => 'status', 'stage' => 'contacted'])->assertSessionHasErrors('stage'); // forward only
+    $this->travel(15)->days();
+    $this->artisan('movewise:outcomes')->assertSuccessful();
+    Notification::assertSentTo($ann, IntroductionClosed::class, fn ($n): bool => str_contains($n->subject, 'Update your Movewise client'));
+    $this->travel(8)->days();
+    $this->artisan('movewise:outcomes');
+    expect(Package::query()->findOrFail($c->package_id)->status)->toBe('paused');
+});
+
+it('charges per appointment only when both sides say it was held', function (): void {
+    mwModel($this, 'appointment');
+    $c = mwAccepted($this);
+    [, $ann] = $this->agents['Ann'];
+    expect($c->price_credits)->toBe(0);
+    $this->actingAs($ann)->post('/movewise/introductions/'.$c->ulid, ['action' => 'status', 'stage' => 'met'])->assertSessionHasNoErrors();
+    expect($c->refresh()->price_credits)->toBe(0);
+    app(TenantContext::class)->forget();
+    mwAs($this)->get(MWH.'/account')->assertSee('Did you meet Ann Agent?');
+    mwAs($this)->post(MWH.'/account/connections/'.$c->ulid.'/feedback', ['met' => '1'], $this->from)->assertRedirect('/account#agent');
+    mwAs($this)->post(MWH.'/account/connections/'.$c->ulid.'/feedback', ['met' => '1'], $this->from);
+    expect($c->refresh()->price_credits)->toBe(200)
+        ->and(app(TenantContext::class)->runAs($this->tenant, fn () => app(CreditLedger::class)->balanceOf($ann->id)))->toBe(800); // once
+});
+
+it('signs the referral agreement at accept, invoices at closing, and settles HQ\'s share with the partner', function (): void {
+    mwModel($this, 'share');
+    Partner::query()->update(['hq_share_pct' => 40]);
+    DB::connection(Connections::control())->table('movewise_relay_numbers')->insert(['number' => '+17135550900', 'area' => 'Houston', 'active' => true, 'created_at' => now(), 'updated_at' => now()]);
+    $show = mwShow($this);
+    mwVerify($this, $show);
+    mwAs($this)->post(MWH.'/connect/'.$show.'/choose', ['agent' => $this->agents['Ann'][0]->ulid, 'method' => 'call'], $this->from)->assertRedirect();
+    $c = Connection::query()->sole();
+    [, $ann] = $this->agents['Ann'];
+    app(TenantContext::class)->set($this->tenant);
+    $this->actingAs($ann)->post('/movewise/introductions/'.$c->ulid, ['action' => 'accept'])->assertSessionHasErrors('introduction');
+    $this->actingAs($ann)->post('/movewise/introductions/'.$c->ulid, ['action' => 'accept', 'agree_referral' => '1'])->assertSessionHasNoErrors();
+    expect($c->refresh()->referral_agreement)->toContain('a referral fee of 25% of the gross commission')->and($c->price_credits)->toBe(0)->and($c->share_pct)->toBe(25.0);
+
+    $this->actingAs($ann)->post('/movewise/introductions/'.$c->ulid, ['action' => 'status', 'stage' => 'closed'])->assertSessionHasErrors('close_price');
+    $this->actingAs($ann)->post('/movewise/introductions/'.$c->ulid, ['action' => 'status', 'stage' => 'closed', 'close_price' => '400,000', 'commission' => '12000',
+        'close_date' => '2026-07-30'])->assertSessionHasNoErrors();
+    $inv = DB::connection(Connections::control())->table('movewise_invoices')->sole();
+    expect((int) $inv->amount_cents)->toBe(300_000)->and($inv->status)->toBe('issued');
+    Notification::assertSentTo($this->owner, IntroductionClosed::class, fn ($n): bool => str_contains($n->subject, $inv->number));
+
+    app(TenantContext::class)->forget();
+    $hq = 'http://app.rightally.io';
+    $as = fn () => $this->actingAs($this->staff)->withSession(['auth.password_confirmed_at' => time()]);
+    $as()->post($hq.'/hq/movewise/money/invoices/'.$inv->ulid, ['status' => 'paid'])->assertSessionHasNoErrors();
+    $this->artisan('movewise:outcomes --settle='.now()->format('Y-m'))->assertSuccessful();
+    $s = DB::connection(Connections::control())->table('movewise_settlements')->sole();
+    expect((int) $s->collected_cents)->toBe(300_000)->and((int) $s->hq_cents)->toBe(120_000);
+    $as()->get($hq.'/hq/movewise/money')->assertInertia(fn (Assert $p) => $p->component('hq/movewise-money')->where('invoices.0.status', 'paid')
+        ->where('settlements.0.hq_cents', 120_000)->where('revenue.0.model', 'share'));
+});
+
+it('falls back to the per-connection price when a share-at-close lead goes quiet for 30 days', function (): void {
+    mwModel($this, 'share');
+    $c = mwAccepted($this, 'text', ['agree_referral' => '1']);
+    expect($c->model)->toBe('share')->and($c->price_credits)->toBe(0);
+    $this->travel(31)->days();
+    $this->artisan('movewise:outcomes')->assertSuccessful();
+    expect($c->refresh()->model)->toBe('connection')->and($c->price_credits)->toBe(300)
+        ->and(app(TenantContext::class)->runAs($this->tenant, fn () => app(CreditLedger::class)->balanceOf($this->agents['Ann'][1]->id)))->toBe(700);
+    $this->artisan('movewise:outcomes');
+    expect(app(TenantContext::class)->runAs($this->tenant, fn () => app(CreditLedger::class)->balanceOf($this->agents['Ann'][1]->id)))->toBe(700); // once
+});
+
+it('rates agents, scores them weekly with the reasons shown, and removes them on the third strike', function (): void {
+    [$annAgent, $ann] = $this->agents['Ann'];
+    $now = CarbonImmutable::now();
+    foreach (range(1, 5) as $i) {
+        $p = Person::query()->create(['email' => "p{$i}@x.test", 'locale' => 'en']);
+        Connection::query()->create(['person_id' => $p->id, 'show_id' => 1, 'agent_id' => $annAgent->id, 'package_id' => 1, 'tenant_id' => $this->tenant->id, 'lead_type' => 'buyer',
+            'method' => 'text', 'consent_text' => 'x', 'consent_at' => $now, 'status' => 'accepted', 'offered_at' => $now->subDays(20), 'accept_by' => $now->subDays(20)->addMinutes(5),
+            'accepted_at' => $now->subDays(20)->addMinutes(3), 'model' => 'connection', 'stage' => 'met', 'stage_at' => $now->subDays(2), 'rating' => 5]);
+    }
+    $this->artisan('movewise:outcomes --scorecards')->assertSuccessful();
+    $card = $annAgent->refresh()->scorecard;
+    expect($annAgent->tier)->toBe('preferred')->and($card['median_accept_minutes'])->toEqual(3)->and($card['appointments_per_100'])->toEqual(100)
+        ->and($card['why'])->toContain('Met: Rating 4.5 or more');
+    expect($this->agents['Ben'][0]->refresh()->tier)->toBe('new'); // nothing rated yet
+
+    // Ratings: a week after the introduction.
+    $c = mwAccepted($this);
+    app(TenantContext::class)->forget();
+    mwAs($this)->post(MWH.'/account/connections/'.$c->ulid.'/feedback', ['rating' => 5], $this->from)->assertStatus(422);
+    $this->travel(8)->days();
+    mwAs($this)->post(MWH.'/account/connections/'.$c->ulid.'/feedback', ['rating' => 4, 'note' => 'Quick and kind'], $this->from)->assertRedirect();
+    expect($c->refresh()->rating)->toBe(4);
+
+    $hq = 'http://app.rightally.io';
+    foreach (range(1, 3) as $i) {
+        $this->actingAs($this->staff)->withSession(['auth.password_confirmed_at' => time()])->post($hq.'/hq/movewise/program/agents/'.$annAgent->ulid.'/strike', ['reason' => 'Bulk texted a lead'])
+            ->assertSessionHasNoErrors();
+    }
+    expect($annAgent->refresh()->status)->toBe('removed')->and($annAgent->strikes)->toBe(3);
 });

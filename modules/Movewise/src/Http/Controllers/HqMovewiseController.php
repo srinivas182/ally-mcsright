@@ -30,7 +30,7 @@ final class HqMovewiseController
             'checklist' => Movewise::CHECKLIST,
             'partners' => Partner::query()->orderBy('licence_state')->orderBy('name')->get()->map(fn (Partner $p): array => ['ulid' => $p->ulid, 'name' => $p->name,
                 'broker_name' => $p->broker_name, 'licence_number' => $p->licence_number, 'licence_state' => $p->licence_state, 'phone' => $p->phone, 'email' => $p->email,
-                'address' => $p->address, 'iabs_url' => $p->iabs_url, 'contract_signed_on' => $p->contract_signed_on?->toDateString(), 'status' => $p->status])->values()->all(),
+                'address' => $p->address, 'iabs_url' => $p->iabs_url, 'contract_signed_on' => $p->contract_signed_on?->toDateString(), 'status' => $p->status, 'hq_share_pct' => $p->hq_share_pct])->values()->all(),
             'states' => State::query()->with('partner')->orderBy('name')->get()->map(fn (State $s): array => ['code' => $s->code, 'name' => $s->name, 'on' => $s->on,
                 'partner' => $s->partner?->ulid, 'checklist' => $s->checklist ?? [], 'missing' => $this->movewise->missing($s),
                 'feeds' => MlsSource::query()->get()->filter(fn (MlsSource $m): bool => in_array($s->code, $m->states, true))->map(fn (MlsSource $m): array => ['ulid' => $m->ulid,

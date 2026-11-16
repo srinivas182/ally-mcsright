@@ -36,6 +36,11 @@ type Props = {
     paused_until: string | null;
     handover_asked: boolean;
     handed_over: boolean;
+    stage: string | null;
+    stages: Record<string, string>;
+    referral: string | null;
+    referral_signed: boolean;
+    history: { stage: string; note: string | null; at: string }[];
 };
 
 const HOW: Record<string, string> = {
@@ -71,6 +76,14 @@ export default function MovewiseIntroduction(props: Props) {
     const { brief } = props;
     const [reason, setReason] = useState('');
     const [signed, setSigned] = useState(false);
+    const [agree, setAgree] = useState(false);
+    const [update, setUpdate] = useState({
+        stage: '',
+        note: '',
+        close_price: '',
+        commission: '',
+        close_date: '',
+    });
     const act = (action: string, extra: Record<string, string> = {}) =>
         router.post(
             `/movewise/introductions/${props.ulid}`,
@@ -97,9 +110,32 @@ export default function MovewiseIntroduction(props: Props) {
                         </span>
                     )}
                 </div>
+                {props.status === 'offered' && props.referral && (
+                    <label className="flex items-start gap-2 rounded-xl border p-3 text-sm">
+                        <input
+                            type="checkbox"
+                            className="mt-1"
+                            checked={agree}
+                            onChange={(e) => setAgree(e.target.checked)}
+                        />
+                        <span>
+                            I sign this referral agreement for my brokerage:{' '}
+                            <span className="text-muted-foreground">
+                                {props.referral}
+                            </span>
+                        </span>
+                    </label>
+                )}
                 {props.status === 'offered' && (
                     <div className="flex gap-2">
-                        <Button onClick={() => act('accept')}>
+                        <Button
+                            onClick={() =>
+                                act(
+                                    'accept',
+                                    agree ? { agree_referral: '1' } : {},
+                                )
+                            }
+                        >
                             Accept the introduction
                         </Button>
                         <Button
@@ -191,6 +227,110 @@ export default function MovewiseIntroduction(props: Props) {
                             </p>
                         )}
                     </section>
+                )}
+                {props.status === 'accepted' &&
+                    !['closed', 'lost'].includes(props.stage ?? '') && (
+                        <form
+                            className="grid gap-2 rounded-xl border p-3 text-sm md:grid-cols-2"
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                act('status', update);
+                            }}
+                        >
+                            <strong className="md:col-span-2">
+                                Where things stand{' '}
+                                {props.stage
+                                    ? `(now: ${props.stages[props.stage]})`
+                                    : ''}
+                                . Update at least every 14 days.
+                            </strong>
+                            <select
+                                aria-label="Status"
+                                className="h-9 rounded-md border bg-background px-2"
+                                value={update.stage}
+                                onChange={(e) =>
+                                    setUpdate({
+                                        ...update,
+                                        stage: e.target.value,
+                                    })
+                                }
+                            >
+                                <option value="">Choose</option>
+                                {Object.entries(props.stages).map(([k, l]) => (
+                                    <option key={k} value={k}>
+                                        {l}
+                                    </option>
+                                ))}
+                            </select>
+                            <Input
+                                aria-label="Note"
+                                placeholder="Note (optional)"
+                                value={update.note}
+                                onChange={(e) =>
+                                    setUpdate({
+                                        ...update,
+                                        note: e.target.value,
+                                    })
+                                }
+                            />
+                            {update.stage === 'closed' && (
+                                <>
+                                    <Input
+                                        aria-label="Sale price"
+                                        placeholder="Sale price ($)"
+                                        inputMode="decimal"
+                                        value={update.close_price}
+                                        onChange={(e) =>
+                                            setUpdate({
+                                                ...update,
+                                                close_price: e.target.value,
+                                            })
+                                        }
+                                    />
+                                    <Input
+                                        aria-label="Your side's gross commission"
+                                        placeholder="Your side's gross commission ($)"
+                                        inputMode="decimal"
+                                        value={update.commission}
+                                        onChange={(e) =>
+                                            setUpdate({
+                                                ...update,
+                                                commission: e.target.value,
+                                            })
+                                        }
+                                    />
+                                    <Input
+                                        aria-label="Closing date"
+                                        type="date"
+                                        value={update.close_date}
+                                        onChange={(e) =>
+                                            setUpdate({
+                                                ...update,
+                                                close_date: e.target.value,
+                                            })
+                                        }
+                                    />
+                                </>
+                            )}
+                            <div className="md:col-span-2">
+                                <Button
+                                    size="sm"
+                                    disabled={update.stage === ''}
+                                >
+                                    Update status
+                                </Button>
+                            </div>
+                        </form>
+                    )}
+                {props.history.length > 0 && (
+                    <ol className="grid gap-1 text-sm text-muted-foreground">
+                        {props.history.map((h, i) => (
+                            <li key={i}>
+                                {new Date(h.at).toLocaleDateString()}: {h.stage}
+                                {h.note ? ` (${h.note})` : ''}
+                            </li>
+                        ))}
+                    </ol>
                 )}
                 <section className="grid gap-2 text-sm">
                     <h2 className="text-base font-semibold">

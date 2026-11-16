@@ -23,6 +23,18 @@
                         <form method="post" action="{{ $u('/account/connections/'.$a['ulid'].'/change') }}"><button class="save">{{ $t('account.change') }}</button></form>
                         <form method="post" action="{{ $u('/account/connections/'.$a['ulid'].'/stop') }}"><button class="save">{{ $t('account.stop') }}</button></form>
                     </div>
+                    @if ($a['ask_met'])
+                        <form method="post" action="{{ $u('/account/connections/'.$a['ulid'].'/feedback') }}" style="margin-top:8px">{{ $t('account.met_q', ['name' => $a['name']]) }}
+                            <button class="save" name="met" value="1">{{ $t('connect.yes') }}</button> <button class="save" name="met" value="0">{{ $t('connect.no') }}</button></form>
+                    @endif
+                    @if ($a['can_rate'])
+                        <form method="post" action="{{ $u('/account/connections/'.$a['ulid'].'/feedback') }}" style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+                            <span>{{ $t('account.rate_q', ['name' => $a['name']]) }}</span>
+                            <select name="rating" aria-label="{{ $t('account.rate_q', ['name' => $a['name']]) }}">@foreach ([5, 4, 3, 2, 1] as $s)<option value="{{ $s }}" @selected($a['rating'] === $s)>{{ str_repeat('★', $s) }}</option>@endforeach</select>
+                            <input name="note" maxlength="500" placeholder="{{ $t('account.rate_note') }}" aria-label="{{ $t('account.rate_note') }}">
+                            <button class="save">{{ $t('save') }}</button>
+                        </form>
+                    @endif
                 @elseif ($a['status'] === 'stopped')
                     {{ $t('account.stopped', ['name' => $a['name']]) }}
                 @else

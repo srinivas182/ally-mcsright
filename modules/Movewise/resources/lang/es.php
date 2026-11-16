@@ -63,4 +63,5 @@ return [
     'account.expired' => ':name todavía no ha podido responder.', 'account.declined' => ':name no puede tomar tu solicitud ahora.', 'account.wait' => 'Esperar a :name', 'account.choose_other' => 'Elegir a otro agente',
     'account.relay' => 'Te escribe desde tu número de Movewise, :number.', 'account.paused' => 'En pausa hasta el :date.', 'account.pause' => 'Pausar 2 semanas',
     'account.resume' => 'Reanudar', 'account.change' => 'Cambiar de agente', 'account.stop' => 'Terminé: no más contacto', 'account.stopped' => 'Terminaste el contacto con :name.',
+    'account.met_q' => '¿Te reuniste con :name?', 'account.rate_q' => '¿Qué tal va :name?', 'account.rate_note' => 'Algo más (opcional)',
 ];
