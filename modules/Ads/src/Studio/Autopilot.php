@@ -50,7 +50,7 @@ final class Autopilot
 
     public function __construct(private readonly TenantContext $tenants, private readonly Designer $designer, private readonly StudioPlans $plans) {}
 
-    /** @return array{mode: string, places: list<string>|null, times: list<string>, per_week: int, moments: list<string>, learn_voice: bool, voice: list<string>} */
+    /** @return array{mode: string, places: list<string>|null, times: list<string>, per_week: int, moments: list<string>, learn_voice: bool, voice: list<string>, auto_enhance: bool, extra_credits: bool} */
     public function settings(User $user): array
     {
         $r = DB::connection(Connections::cell())->table('studio_autopilot')->where('tenant_id', $this->tenants->id())->where('user_id', $user->id)->first();
@@ -58,10 +58,10 @@ final class Autopilot
 
         return ['mode' => (string) ($r->mode ?? 'approve'), 'places' => $json($r->places ?? null), 'times' => $json($r->times ?? null) ?? self::DEFAULT_TIMES,
             'per_week' => (int) ($r->per_week ?? 5), 'moments' => $json($r->moments ?? null) ?? array_keys(self::KINDS), 'learn_voice' => (bool) ($r->learn_voice ?? false),
-            'voice' => $json($r->voice ?? null) ?? []];
+            'voice' => $json($r->voice ?? null) ?? [], 'auto_enhance' => (bool) ($r->auto_enhance ?? true), 'extra_credits' => (bool) ($r->extra_credits ?? false)];
     }
 
-    /** @param array<string, mixed> $in mode, places[], times[], per_week, moments[], learn_voice */
+    /** @param array<string, mixed> $in mode, places[], times[], per_week, moments[], learn_voice, auto_enhance, extra_credits */
     public function save(User $user, array $in): void
     {
         $times = array_values(array_unique(array_filter(array_map('strval', (array) ($in['times'] ?? [])), fn (string $t): bool => preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $t) === 1)));
@@ -70,7 +70,8 @@ final class Autopilot
         $values = ['mode' => isset(self::MODES[$in['mode'] ?? '']) ? (string) $in['mode'] : 'approve', 'places' => $places !== null ? json_encode($places) : null,
             'times' => json_encode($times !== [] ? array_slice($times, 0, 4) : self::DEFAULT_TIMES), 'per_week' => max(1, min(14, (int) ($in['per_week'] ?? 5))),
             'moments' => json_encode(array_values(array_intersect(array_keys(self::KINDS), array_map('strval', (array) ($in['moments'] ?? []))))),
-            'learn_voice' => (bool) ($in['learn_voice'] ?? false), 'updated_at' => now()];
+            'learn_voice' => (bool) ($in['learn_voice'] ?? false), 'auto_enhance' => (bool) ($in['auto_enhance'] ?? true), 'extra_credits' => (bool) ($in['extra_credits'] ?? false),
+            'updated_at' => now()];
         if (! $values['learn_voice']) {
             $values += ['voice' => null, 'voice_at' => null]; // forget the samples when the person says no
         }
@@ -120,6 +121,14 @@ final class Autopilot
     public function advance(User $user): void
     {
         $s = $this->settings($user);
+        // Posts waiting for a new listing's photo enhancement: designed once the photos are ready (or after 30 minutes, with the originals).
+        foreach (QueuedPost::query()->where('user_id', $user->id)->where('status', 'enhancing')->orderBy('id')->get() as $item) {
+            if ($item->listing_ulid !== null && app(StudioPhotos::class)->pending($item->listing_ulid) && $item->created_at->gt(CarbonImmutable::now()->subMinutes(30))) {
+                continue;
+            }
+            $item->forceFill(['status' => 'designing'])->save();
+            $this->design($item, $user, self::input($item));
+        }
         foreach (QueuedPost::query()->where('user_id', $user->id)->where('status', 'designing')->orderBy('id')->get() as $item) {
             $designs = Design::query()->where('batch', (string) $item->batch)->orderBy('id')->get();
             $ready = $designs->firstWhere('status', 'ready');
@@ -206,7 +215,7 @@ final class Autopilot
     public function move(QueuedPost $item, User $by, string $date): QueuedPost
     {
         abort_unless($item->user_id === $by->id, 404);
-        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) !== 1 || ! in_array($item->status, ['awaiting', 'review', 'scheduled', 'designing'], true)) {
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) !== 1 || ! in_array($item->status, ['awaiting', 'review', 'scheduled', 'designing', 'enhancing'], true)) {
             throw ValidationException::withMessages(['date' => 'This post can\'t be moved.']);
         }
         $local = ($item->post_at ?? CarbonImmutable::now())->setTimezone($this->tz());
@@ -247,7 +256,7 @@ final class Autopilot
     public function skip(QueuedPost $item, User $by): void
     {
         abort_unless($item->user_id === $by->id, 404);
-        if (in_array($item->status, ['designing', 'awaiting'], true)) {
+        if (in_array($item->status, ['enhancing', 'designing', 'awaiting'], true)) {
             $item->forceFill(['status' => 'skipped'])->save();
         }
     }
@@ -257,7 +266,10 @@ final class Autopilot
     {
         $tags = array_map(fn (string $t): string => '#'.$t, $item->hashtags ?? []);
 
-        return trim(implode("\n\n", array_filter([(string) $item->caption, (string) $item->caption_es, implode(' ', $tags), $this->rules()['caption_disclaimer']])));
+        $enhanced = $item->design_id !== null && ! empty(Design::query()->find($item->design_id)?->content['enhanced']);
+
+        return trim(implode("\n\n", array_filter([(string) $item->caption, (string) $item->caption_es, implode(' ', $tags), $enhanced ? StudioPhotos::LABEL.'.' : '',
+            $this->rules()['caption_disclaimer']])));
     }
 
     private function listingMoments(User $user): int
@@ -294,6 +306,10 @@ final class Autopilot
             $db->table('studio_listing_seen')->updateOrInsert(['tenant_id' => $tenant, 'user_id' => $user->id, 'listing_ulid' => $l->ulid],
                 ['status' => $status, 'price_cents' => $l->list_price_cents, 'updated_at' => now(), 'created_at' => now()]);
             if ($moment !== null && $key !== null) {
+                if (in_array($moment, ['just_listed', 'coming_soon'], true) && $this->settings($user)['auto_enhance']
+                    && ! QueuedPost::query()->where('user_id', $user->id)->where('source_key', $key)->exists()) {
+                    app(StudioPhotos::class)->auto($user, $l->ulid); // the best photos first, from the allowance only
+                }
                 $made = $this->enqueue($user, $key, $moment, ['moment' => $moment, 'listing' => $l->ulid]);
                 $new += $made;
                 if ($made === 1 && $moment === 'just_listed' && $this->plans->has($user, 'launch_campaign')) {
@@ -438,10 +454,39 @@ final class Autopilot
         if (QueuedPost::query()->where('user_id', $user->id)->where('source_key', $key)->exists()) {
             return 0;
         }
-        $item = QueuedPost::query()->create(['user_id' => $user->id, 'source_key' => $key, 'moment' => $moment, 'listing_ulid' => $design['listing'] ?? null, 'status' => 'designing']);
+        // A new listing's posts wait while its best photos are enhanced (SA5a), so they launch with the enhanced versions.
+        $wait = isset($design['listing']) && app(StudioPhotos::class)->pending((string) $design['listing']);
+        $item = QueuedPost::query()->create(['user_id' => $user->id, 'source_key' => $key, 'moment' => $moment, 'listing_ulid' => $design['listing'] ?? null,
+            'status' => $wait ? 'enhancing' : 'designing']);
         if ($at !== null) {
             $item->forceFill(['post_at' => $at])->save();
         }
+        if (! $wait) {
+            $this->design($item, $user, $design);
+        }
+
+        return 1;
+    }
+
+    /**
+     * What a queued post is designed from (for one that waited on photo enhancement).
+     *
+     * @return array<string, mixed>
+     */
+    private static function input(QueuedPost $item): array
+    {
+        $from = match (true) {
+            str_ends_with($item->source_key, ':inside') => 3,
+            str_ends_with($item->source_key, ':area') => 1,
+            default => 0,
+        };
+
+        return array_filter(['moment' => $item->moment, 'listing' => $item->listing_ulid, 'photo_from' => $from], fn ($v): bool => $v !== null && $v !== 0);
+    }
+
+    /** @param array<string, mixed> $design */
+    private function design(QueuedPost $item, User $user, array $design): void
+    {
         // Rotate through the person's favourite styles, so the feed never looks the same twice in a row.
         $favorites = app(BrandKits::class)->forUser($user)['favorites'];
         if ($favorites !== [] && ! isset($design['style'])) {
@@ -453,8 +498,6 @@ final class Autopilot
         } catch (ValidationException $e) {
             $item->forceFill(['status' => 'failed', 'reason' => mb_substr((string) collect($e->errors())->flatten()->first(), 0, 300)])->save();
         }
-
-        return 1;
     }
 
     private function caption(QueuedPost $item, Design $design, User $user): void
@@ -502,6 +545,11 @@ final class Autopilot
         $places = array_column(app(SocialPosts::class)->places($user), 'key');
         $places = $s['places'] !== null ? array_values(array_intersect($places, $s['places'])) : $places;
         try {
+            if ($design !== null && $design->used_at === null && ! $s['extra_credits'] && $this->plans->left($user, 'post') < 1) {
+                // Autopilot stays inside the package: no surprise credit spend unless the person allows it.
+                throw ValidationException::withMessages(['places' => 'This month\'s designed posts in your Studio package are used. Studio posts again when the package '
+                    .'renews, or turn on "Use credits for extra posts" in Autopilot settings.']);
+            }
             if ($design === null || $places === []) {
                 throw ValidationException::withMessages(['places' => $design === null ? 'The design is missing.' : 'Connect where to post (Facebook Pages and Instagram, LinkedIn or Google) first.']);
             }
@@ -532,7 +580,7 @@ final class Autopilot
         if ($notBefore !== null && $notBefore->gt($now)) {
             $now = $notBefore->setTimezone($tz)->startOfDay();
         }
-        $taken = QueuedPost::query()->where('user_id', $user->id)->whereIn('status', ['designing', 'awaiting', 'review', 'scheduled'])->whereNotNull('post_at')->pluck('post_at')
+        $taken = QueuedPost::query()->where('user_id', $user->id)->whereIn('status', ['enhancing', 'designing', 'awaiting', 'review', 'scheduled'])->whereNotNull('post_at')->pluck('post_at')
             ->map(fn ($d): CarbonImmutable => CarbonImmutable::parse($d)->setTimezone($tz));
         for ($i = 0; $i < 21; $i++) {
             $day = $now->startOfDay()->addDays($i);

@@ -8,6 +8,7 @@ use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Modules\Ads\Studio\Enhance\PhotoUpscaler;
 use Modules\AI\Exceptions\InsufficientCredits;
 use Modules\Billing\Credits\CreditLedger;
 use Modules\Billing\Credits\Economics;
@@ -34,6 +35,15 @@ final class StudioPlans
     public const PACKAGES = ['studio_essentials' => 1, 'studio_luxury' => 2, 'studio_brokerage' => 3];
 
     public const ITEMS = ['post' => 'Designed posts', 'reel' => 'Reels and Shorts', 'tour' => 'YouTube listing tours', 'enhance' => 'Photo enhancements', 'voice' => 'Voice narrations'];
+
+    /** What each item is made with: RightAlly's own accounts, so customers never need their own. */
+    public const MADE_WITH = ['post' => 'AI caption (RightAlly AI gateway), design rendered on RightAlly render workers',
+        'reel' => 'Video rendered on RightAlly workers, licensed music library, AI caption', 'tour' => 'Longer video rendered on RightAlly workers, AI chapters and caption',
+        'enhance' => 'Autoenhance.ai (light, colour, sky, lawn, twilight), Replicate upscaling when on', 'voice' => 'AI voice in the agent\'s own consented voice'];
+
+    /** The outside services behind Studio, all on RightAlly's accounts (HQ → Connect setup): app key => what it does. */
+    public const SERVICES = ['studio_cutout' => 'Headshot background removal (remove.bg)', 'studio_enhance' => 'Photo enhancement and virtual twilight (Autoenhance.ai)',
+        'studio_upscale' => 'Photo upscaling (Replicate, Real-ESRGAN)'];
 
     public const FEATURES = ['launch_campaign' => 'Listing launch campaigns', 'spanish' => 'Spanish captions', 'voice_learning' => 'Captions in your own voice',
         'recruiting' => 'Recruiting posts', 'approval_rules' => 'Brokerage approval rules', 'team_report' => 'Team reporting'];
@@ -151,6 +161,14 @@ final class StudioPlans
         return 'credits';
     }
 
+    /** How many of an item are left in this month's allowance (0 without a package). */
+    public function left(User $user, string $item): int
+    {
+        $u = $this->usage($user)[$item] ?? ['used' => 0, 'allowance' => 0];
+
+        return max(0, $u['allowance'] - $u['used']);
+    }
+
     /** Gives back one item used for something that then failed (an allowance item; credits are refunded by the ledger's caller). */
     public function giveBack(User $user, string $item): void
     {
@@ -165,11 +183,13 @@ final class StudioPlans
      * HQ's view: for each package its price, what its full allowance costs RightAlly and the margin; for each item
      * past the allowance its credits, price, cost and margin.
      *
-     * @return array{packages: list<array<string, mixed>>, items: list<array<string, mixed>>}
+     * @return array{packages: list<array<string, mixed>>, items: list<array<string, mixed>>, services: list<array{key: string, does: string, on: bool}>}
      */
     public function economics(): array
     {
         $costs = app(Economics::class)->catalogCosts(); // micro-cents per item
+        // An enhanced photo costs the enhancement, plus the upscaling when HQ has switched it on.
+        $costs['studio.enhance'] = ($costs['studio.enhance'] ?? 0) + (app(PhotoUpscaler::class)->ready() ? ($costs['studio.upscale'] ?? 0) : 0);
         $value = app(RateCard::class)->creditValueMicrocents();
         $pct = fn (int $revenue, int $cost): ?int => $revenue > 0 ? (int) round(($revenue - $cost) * 100 / $revenue) : null;
         $packages = [];
@@ -177,7 +197,7 @@ final class StudioPlans
             $app = app(AppCatalog::class)->find($key);
             $price = $app !== null ? $this->registry->price($app) : null;
             $cost = $p['posts'] * ($costs['studio.post'] ?? 0) + $p['reels'] * ($costs['studio.reel'] ?? 0) + $p['tours'] * ($costs['studio.tour'] ?? 0)
-                + $p['enhance'] * ($costs['studio.enhance'] ?? 0) + $p['voice'] * ($costs['studio.voice'] ?? 0) + ($costs['studio.cutout'] ?? 0);
+                + $p['enhance'] * $costs['studio.enhance'] + $p['voice'] * ($costs['studio.voice'] ?? 0) + ($costs['studio.cutout'] ?? 0);
             $revenue = ($price['cents'] ?? 0) * 1_000_000;
             $packages[] = ['key' => $key, 'name' => $app->name ?? $key, 'price_cents' => $price['cents'] ?? null, 'allowances' => $p, 'cost_cents' => intdiv($cost, 1_000_000),
                 'margin_pct' => $price !== null ? $pct($revenue, $cost) : null];
@@ -187,10 +207,16 @@ final class StudioPlans
             $credits = app(RateCard::class)->rate('studio.'.$item)['credits'];
             $revenue = $credits * $value;
             $cost = $costs['studio.'.$item] ?? 0;
-            $items[] = ['item' => $item, 'label' => $label, 'credits' => $credits, 'price_cents' => intdiv($revenue, 1_000_000), 'cost_cents' => intdiv($cost, 1_000_000),
+            $items[] = ['item' => $item, 'label' => $label, 'made_with' => self::MADE_WITH[$item], 'credits' => $credits, 'price_cents' => intdiv($revenue, 1_000_000), 'cost_cents' => intdiv($cost, 1_000_000),
                 'margin_pct' => $pct($revenue, $cost)];
         }
 
-        return ['packages' => $packages, 'items' => $items];
+        $services = [];
+        foreach (self::SERVICES as $key => $does) {
+            $app = app(AppCatalog::class)->find($key);
+            $services[] = ['key' => $key, 'does' => $does, 'on' => $app !== null && $this->registry->ready($app)];
+        }
+
+        return ['packages' => $packages, 'items' => $items, 'services' => $services];
     }
 }

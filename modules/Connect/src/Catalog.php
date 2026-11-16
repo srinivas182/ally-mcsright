@@ -529,6 +529,21 @@ final class Catalog
                 'steps' => ['Open a remove.bg account for RightAlly and buy a subscription or credits.', 'Copy the API key here and switch Headshot cut-out on.'],
                 'partner' => 'remove.bg bills RightAlly per image.', 'docs' => 'https://www.remove.bg/api']));
 
+        $catalog->add(new App('studio_enhance', 'Photo enhancement', 'marketing', 'AI enhancement of listing photos for Ally Studio: light, colour, straight lines, a blue sky, a green lawn, and virtual twilight.',
+            scope: 'both', auth: 'link', syncs: ['Enhanced listing photos (the MLS originals are never changed)', 'Virtual twilight of the cover photo'], link: '/studio/photos',
+            vendorCost: 'Included with Ally Studio packages',
+            setup: ['needs' => 'keys', 'fields' => [['key' => 'api_key', 'label' => 'Autoenhance.ai API key', 'secret' => true]],
+                'steps' => ['Open an Autoenhance.ai account for RightAlly and choose pay-per-image or a plan with API access.', 'Copy the API key here and switch Photo enhancement on.',
+                    'Enter the real cost per photo under HQ → Costs (studio.enhance) so Studio package margins stay right.'],
+                'partner' => 'Autoenhance.ai bills RightAlly per downloaded photo.', 'docs' => 'https://docs.autoenhance.ai']));
+        $catalog->add(new App('studio_upscale', 'Photo upscaling', 'marketing', 'Doubles the size of enhanced photos with AI, so posts and Stories stay razor sharp.',
+            scope: 'both', auth: 'link', syncs: ['Enhanced photos at twice the size'], link: '/studio/photos', vendorCost: 'Included with Ally Studio packages',
+            setup: ['needs' => 'keys', 'fields' => [['key' => 'api_token', 'label' => 'Replicate API token', 'secret' => true],
+                ['key' => 'model_version', 'label' => 'Real-ESRGAN model version id']],
+                'steps' => ['Open a Replicate account for RightAlly and add billing.', 'Copy an API token, and the version id of the Real-ESRGAN model you have tested.',
+                    'Switch Photo upscaling on; enter the real cost per photo under HQ → Costs (studio.upscale).'],
+                'partner' => 'Replicate bills RightAlly per second of compute.', 'docs' => 'https://replicate.com/docs']));
+
         // On the roadmap (people can ask for them; HQ sees the demand). Some need a partner agreement first.
         foreach ([
             ['real_geeks', 'Real Geeks', 'crm', 'Bring over leads and their activity from Real Geeks.', 'both', 'Your Real Geeks plan'],

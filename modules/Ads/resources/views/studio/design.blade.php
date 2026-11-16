@@ -31,7 +31,7 @@
     $name = (string) ($kit['details']['display_name'] ?? '');
     $title = (string) ($kit['details']['title'] ?? '');
     $phone = (string) ($kit['details']['phone'] ?? '');
-    $legal = implode(' · ', array_filter([$c['attribution'] ?? null, $kit['details']['disclaimer'] ?? null, $kit['details']['licence_line'] ?? null, $kit['brokerage']]));
+    $legal = implode(' · ', array_filter([! empty($c['enhanced']) ? 'Photos virtually enhanced' : null, $c['attribution'] ?? null, $kit['details']['disclaimer'] ?? null, $kit['details']['licence_line'] ?? null, $kit['brokerage']]));
     $dark = $p['dark'];
     $agent = $headshot ?? $cutout;
     $initials = mb_strtoupper(implode('', array_map(fn (string $w): string => mb_substr($w, 0, 1), array_slice(preg_split('/\s+/', trim($name)) ?: [], 0, 2))));

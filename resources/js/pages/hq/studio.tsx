@@ -119,17 +119,20 @@ function PackageCard({
 export default function HqStudio({
     packages,
     items,
+    services,
     features,
 }: {
     packages: Pkg[];
     items: {
         item: string;
         label: string;
+        made_with: string;
         credits: number;
         price_cents: number;
         cost_cents: number;
         margin_pct: number | null;
     }[];
+    services: { key: string; does: string; on: boolean }[];
     features: Record<string, string>;
 }) {
     return (
@@ -152,6 +155,24 @@ export default function HqStudio({
                     </Link>
                     .
                 </p>
+                <section className="grid gap-2">
+                    <h2 className="font-medium">Services behind Studio</h2>
+                    <p className="text-sm text-muted-foreground">
+                        All on RightAlly&apos;s own accounts: agents and
+                        brokerages just buy a package. Switch each on with its
+                        key under Connect setup.
+                    </p>
+                    <ul className="grid gap-1 text-sm">
+                        {services.map((s) => (
+                            <li key={s.key} className="flex items-center gap-2">
+                                <Badge variant={s.on ? 'default' : 'outline'}>
+                                    {s.on ? 'on' : 'off'}
+                                </Badge>
+                                {s.does}
+                            </li>
+                        ))}
+                    </ul>
+                </section>
                 {packages.map((p) => (
                     <PackageCard key={p.key} pkg={p} features={features} />
                 ))}
@@ -170,7 +191,12 @@ export default function HqStudio({
                         <tbody>
                             {items.map((i) => (
                                 <tr key={i.item} className="border-t">
-                                    <td className="py-2">{i.label}</td>
+                                    <td className="py-2">
+                                        {i.label}
+                                        <div className="text-xs text-muted-foreground">
+                                            {i.made_with}
+                                        </div>
+                                    </td>
                                     <td>{i.credits}</td>
                                     <td>{money(i.price_cents)}</td>
                                     <td>{money(i.cost_cents)}</td>

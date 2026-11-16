@@ -38,9 +38,10 @@ final class AutopilotController
             'places' => array_map(fn (array $p): array => ['key' => $p['key'], 'label' => SocialPosts::CHANNELS[$p['channel']].': '.$p['name']], app(SocialPosts::class)->places($user)),
             'timezone' => $tz,
             'has_voice' => app(StudioPlans::class)->has($user, 'voice_learning'),
+            'usage' => app(StudioPlans::class)->usage($user),
             'rules' => $user->kind === UserKind::Owner ? $this->autopilot->rules() : null,
             'review_required' => $this->autopilot->rules()['require_review'] && $user->kind === UserKind::Agent,
-            'queue' => QueuedPost::query()->where('user_id', $user->id)->whereNotIn('status', ['skipped'])->orderByRaw("case status when 'awaiting' then 0 when 'designing' then 1 else 2 end")
+            'queue' => QueuedPost::query()->where('user_id', $user->id)->whereNotIn('status', ['skipped'])->orderByRaw("case status when 'awaiting' then 0 when 'enhancing' then 1 when 'designing' then 1 else 2 end")
                 ->latest('id')->limit(40)->get()->map(function (QueuedPost $q) use ($designer, $tz): array {
                     $d = $q->design_id !== null ? Design::query()->find($q->design_id) : null;
 
@@ -53,7 +54,7 @@ final class AutopilotController
 
     public function save(Request $request): RedirectResponse
     {
-        $this->autopilot->save(self::user($request), $request->only(['mode', 'places', 'times', 'per_week', 'moments', 'learn_voice']));
+        $this->autopilot->save(self::user($request), $request->only(['mode', 'places', 'times', 'per_week', 'moments', 'learn_voice', 'auto_enhance', 'extra_credits']));
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Autopilot saved.']);
 
         return back();
@@ -91,7 +92,7 @@ final class AutopilotController
         $tz = $tenants->current()->timezone ?: 'America/New_York';
         $month = preg_match('/^\d{4}-\d{2}$/', (string) $request->query('month')) === 1 ? CarbonImmutable::parse($request->query('month').'-01', $tz) : CarbonImmutable::now($tz)->startOfMonth();
         [$from, $to] = [$month->startOfMonth()->utc(), $month->endOfMonth()->utc()];
-        $studio = QueuedPost::query()->where('user_id', $user->id)->whereIn('status', ['designing', 'awaiting', 'review', 'scheduled'])->whereBetween('post_at', [$from, $to])->get();
+        $studio = QueuedPost::query()->where('user_id', $user->id)->whereIn('status', ['enhancing', 'designing', 'awaiting', 'review', 'scheduled'])->whereBetween('post_at', [$from, $to])->get();
         $linked = $studio->pluck('social_post_id')->filter()->all();
         $events = $studio->map(function (QueuedPost $q) use ($designer, $tz): array {
             $d = $q->design_id !== null ? Design::query()->find($q->design_id) : null;

@@ -31,6 +31,8 @@ final class AdsServiceProvider extends ServiceProvider
         $this->app->scoped(Studio\StylePreviews::class);
         $this->mergeConfigFrom(__DIR__.'/../config/studio.php', 'studio');
         $this->app->bind(Studio\Render\StudioRenderer::class, fn () => config('studio.renderer') === 'fake' ? new Studio\Render\FakeRenderer : new Studio\Render\ChromeRenderer);
+        $this->app->bind(Studio\Enhance\PhotoEnhancer::class, Studio\Enhance\Autoenhance::class);
+        $this->app->bind(Studio\Enhance\PhotoUpscaler::class, Studio\Enhance\Replicate::class);
     }
 
     public function boot(): void
