@@ -53,13 +53,8 @@ Nobody is contacted. Agents and connections come in MW3 and MW4.
 
 ## 3. Not in MW2 (honest gaps)
 
-- **Home value estimates:**
-    - AIlly does not give automated valuations yet.
-    - The C8b property-data service (ATTOM) is tenant-billed.
-    - An HQ-paid valuation with its cost cap comes with market reports in MW7.
-- **Spanish coverage:**
-    - Move-planner task names, the cost-table lines and the legal pages are English only. The Spanish footer says so.
-    - The legal pages need a translated, counsel-reviewed version before Spanish marketing starts (MW8).
+- **Home value estimates:** closed in [MW9](09-gaps.md) §3 (HQ-paid ATTOM estimates with a cost cap, `/home-value`, and AIlly).
+- **Spanish coverage:** closed in [MW9](09-gaps.md) §4 (planner, cost table, calculators and courtesy translations of the legal pages).
 - **Delete scope.** Deleting an account removes the person, sessions, saved homes and searches, sign-in codes and their chats. Once MW4 adds connections, deletion must also respect records the brokerage is required to keep. That is noted for MW4.
 
 ## 4. Tests

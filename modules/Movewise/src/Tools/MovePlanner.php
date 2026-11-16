@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Movewise\Tools;
 
 use Carbon\CarbonImmutable;
+use Modules\Movewise\I18n;
 
 /**
  * The move planner (specs/movewise/02): a checklist dated back from the move day, so nothing is forgotten (utilities,
@@ -33,12 +34,12 @@ final class MovePlanner
         $out = [];
         foreach (self::TASKS as $weeks => $tasks) {
             $when = match (true) {
-                $weeks > 0 => $weeks.' '.($weeks === 1 ? 'week' : 'weeks').' before',
-                $weeks === 0 => 'Moving day',
-                default => 'After you move',
+                $weeks > 0 => I18n::t($weeks === 1 ? 'plan.week_before' : 'tools.weeks_before', ['n' => $weeks]),
+                $weeks === 0 => I18n::t('tools.week_of'),
+                default => I18n::t('tools.after'),
             };
             $out[] = ['weeks' => $weeks, 'when' => $when, 'date' => $day?->subWeeks(max(0, $weeks))->addWeeks($weeks < 0 ? 1 : 0)->toDateString(),
-                'tasks' => array_map(fn (string $k, string $label): array => ['key' => $k, 'label' => $label, 'done' => in_array($k, $done, true)], array_keys($tasks), array_values($tasks))];
+                'tasks' => array_map(fn (string $k, string $label): array => ['key' => $k, 'label' => I18n::t('plan.'.$k) === 'plan.'.$k ? $label : I18n::t('plan.'.$k), 'done' => in_array($k, $done, true)], array_keys($tasks), array_values($tasks))];
         }
 
         return $out;

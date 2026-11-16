@@ -96,6 +96,40 @@ final class Outcomes
         return $c;
     }
 
+    /**
+     * The status from what the agent did in RightAlly (AutoStatus): forward only, never over a closed or lost one, and
+     * recorded with where it came from. Closing uses the deal's own figures.
+     *
+     * @param  array{close_price_cents?: int, commission_cents?: int, close_date?: string}  $close
+     */
+    public function advance(Connection $c, string $stage, string $from, array $close): void
+    {
+        $order = array_keys(self::STAGES);
+        if ($c->status !== 'accepted' || in_array($c->stage, ['closed', 'lost'], true)
+            || ($c->stage !== null && $stage !== 'lost' && array_search($stage, $order, true) <= array_search($c->stage, $order, true))) {
+            return;
+        }
+        if ($stage === 'closed' && (($close['commission_cents'] ?? 0) <= 0 || ($close['close_price_cents'] ?? 0) <= 0)) {
+            $stage = 'contract'; // closed without figures: the agent confirms them by hand
+            if ($c->stage === 'contract') {
+                return;
+            }
+        }
+        $now = CarbonImmutable::now();
+        DB::connection(ControlDb::control())->table('movewise_status_events')->insert(['connection_id' => $c->id, 'stage' => $stage,
+            'note' => 'Automatically, from '.$from, 'close_price_cents' => $stage === 'closed' ? $close['close_price_cents'] : null,
+            'commission_cents' => $stage === 'closed' ? $close['commission_cents'] : null, 'close_date' => $stage === 'closed' ? $close['close_date'] ?? null : null,
+            'by_user_id' => null, 'created_at' => $now]);
+        $c->forceFill(['stage' => $stage, 'stage_at' => $now, 'reminded_at' => null] + ($stage === 'met' ? ['met_agent_at' => $now] : []))->save();
+        if ($stage === 'met') {
+            $this->chargeAppointment($c);
+        }
+        if ($stage === 'closed' && $c->model === 'share') {
+            app(Invoices::class)->raise($c, (int) $close['commission_cents']);
+        }
+        app(AuditLogger::class)->record('movewise.connection.stage', $c, metadata: ['stage' => $stage, 'from' => $from], tenantId: $c->tenant_id);
+    }
+
     /** The person confirms (or not) that they met the agent. */
     public function confirmMet(Connection $c, Person $p, bool $yes): Connection
     {

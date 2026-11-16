@@ -49,7 +49,7 @@ Status: **Built** (sprint MW7). Follows [00-overview](00-overview.md) §8, §11 
         - the last 7 days cost more per accepted introduction than the stop-loss (or had spend and no accepted introductions);
         - the month's budget is spent.
     - When the numbers come back under, the status returns to OK.
-- **Movewise doesn't move ad money itself.** The hold tells HQ not to top up the ad accounts. Pulling spend automatically from HQ's Meta and Google accounts can follow once Movewise campaigns run through the Ads module.
+- **Movewise doesn't move ad money itself.** The hold tells HQ not to top up the ad accounts. Spend is pulled automatically from HQ's Meta and Google accounts since [MW9](09-gaps.md) §2.
 
 ## 5. Tests
 

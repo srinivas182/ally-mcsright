@@ -207,6 +207,7 @@ final class Connections
             app(Timeline::class)->system($lead->contact, "Movewise introduction. The person chose you and agreed: \"{$c->consent_text}\"\n\n".$brief['transcript']);
             if ($c->method === 'time' && $c->slot_at !== null) {
                 app(Availability::class)->book($by, $lead->contact, $c->slot_at, 'call', 'Movewise appointment the person booked');
+                $c->forceFill(['stage' => 'appointment', 'stage_at' => CarbonImmutable::now()]); // booked at the moment of choosing
             }
         }
         $c->forceFill(['status' => 'accepted', 'accepted_at' => CarbonImmutable::now(), 'price_credits' => $price, 'lead_id' => $lead->id, 'contact_id' => $lead->contact_id])->save();

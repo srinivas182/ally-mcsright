@@ -63,7 +63,7 @@ final class SiteController
     {
         $site = $this->chrome();
         if ($site['states'] === []) {
-            return $this->view('movewise::soon', ['site' => $site, 'seo' => $this->seo($site, '/', 'Movewise Homes: home search without the spam', 'A home search and moving site for buyers and sellers. Coming soon.', false)]);
+            return $this->view('movewise::soon', ['site' => $site, 'seo' => $this->seo($site, '/', I18n::t('soon.title'), I18n::t('soon.description'), false)]);
         }
         $tenant = $this->movewise->feedTenant();
         $newest = $tenant !== null ? $this->search->search($tenant->id, ['states' => array_column($site['states'], 'code'), 'per_page' => 8, 'sort' => 'newest'])['results'] : [];
@@ -116,9 +116,9 @@ final class SiteController
 
         return $this->view('movewise::listing', ['site' => $site, 'home' => $home, 'label' => $label, 'cost' => $cost,
             'updated' => $updated !== null ? CarbonImmutable::parse((string) $updated) : null,
-            'seo' => $this->seo($site, $path, ($label ?: 'Home for sale').($price > 0 ? ' | $'.number_format($price) : '').' | Movewise Homes',
-                trim(implode(', ', array_filter([isset($home['beds']) ? $home['beds'].' beds' : null, isset($home['sqft']) ? number_format((int) $home['sqft']).' sq ft' : null,
-                    $home['city'] ?? null])).'. See the photos, the true monthly cost and the risks in plain English.'), true, [$node], [], [['Homes for sale', '/homes'],
+            'seo' => $this->seo($site, $path, ($label ?: I18n::t('listing.home_for_sale')).($price > 0 ? ' | $'.number_format($price) : '').' | Movewise Homes',
+                trim(implode(', ', array_filter([isset($home['beds']) ? I18n::t('listing.beds', ['n' => $home['beds']]) : null, isset($home['sqft']) ? I18n::t('listing.sqft', ['n' => number_format((int) $home['sqft'])]) : null,
+                    $home['city'] ?? null])).'. '.I18n::t('listing.description')), true, [$node], [], [[I18n::t('nav.homes'), '/homes'],
                         [$this->stateName((string) $home['state']), '/'.Str::slug($this->stateName((string) $home['state']))], [$label, $path]])]);
     }
 
@@ -135,21 +135,28 @@ final class SiteController
 
         return $this->view('movewise::state', ['site' => $site, 'state' => $s, 'results' => array_map(fn (array $h): array => $this->card($h), $found['results']),
             'total' => $found['total'], 'cities' => $cities,
-            'seo' => $this->seo($site, '/'.$s['slug'], 'Homes for sale in '.$s['name'].' | Movewise Homes', number_format($found['total']).' homes for sale in '.$s['name'].
-                ', fresh from the MLS. See the true monthly cost of each, with no spam and no sign-up.', true, [], [
-                    ['How many homes are for sale in '.$s['name'].' on Movewise?', 'There are '.number_format($found['total']).' homes for sale in '.$s['name'].' right now, updated from the MLS through the day.'],
-                    ['Who is the broker for Movewise in '.$s['name'].'?', $s['partner'] !== null ? $s['partner']['name'].' (licence '.$s['partner']['licence'].') is the broker of record for Movewise in '.$s['name'].'.' : 'Movewise\'s managing broker in '.$s['name'].' is listed on the Brokers page.'],
+            'seo' => $this->seo($site, '/'.$s['slug'], I18n::t('home.state_link', ['state' => $s['name']]).' | Movewise Homes', I18n::t('state.description', ['n' => number_format($found['total']), 'state' => $s['name']]),
+                true, [], [
+                    [I18n::t('state.q_count', ['state' => $s['name']]), I18n::t('state.a_count', ['n' => number_format($found['total']), 'state' => $s['name']])],
+                    [I18n::t('state.q_broker', ['state' => $s['name']]), $s['partner'] !== null ? I18n::t('state.a_broker', ['name' => $s['partner']['name'], 'licence' => $s['partner']['licence'], 'state' => $s['name']])
+                        : I18n::t('state.a_broker_none', ['state' => $s['name']])],
                 ], [[$s['name'], '/'.$s['slug']]])]);
     }
 
     public function page(string $page): Response
     {
         $site = $this->chrome();
-        $titles = ['how-movewise-is-paid' => 'How Movewise is paid', 'privacy' => 'Privacy notice', 'terms' => 'Terms of use', 'fair-housing' => 'Fair Housing',
-            'brokers' => 'Brokers of record and licences', 'accessibility' => 'Accessibility'];
+        $es = I18n::locale() === 'es';
+        $titles = $es ? ['how-movewise-is-paid' => 'Cómo se le paga a Movewise', 'privacy' => 'Aviso de privacidad', 'terms' => 'Términos de uso', 'fair-housing' => 'Vivienda justa',
+            'brokers' => 'Corredores responsables y licencias', 'accessibility' => 'Accesibilidad']
+            : ['how-movewise-is-paid' => 'How Movewise is paid', 'privacy' => 'Privacy notice', 'terms' => 'Terms of use', 'fair-housing' => 'Fair Housing',
+                'brokers' => 'Brokers of record and licences', 'accessibility' => 'Accessibility'];
+        // Spanish legal pages are courtesy translations; the English version prevails (specs/movewise/09).
+        $view = $es ? 'movewise::pages.es.'.$page : 'movewise::pages.'.$page;
 
-        return $this->view('movewise::pages.'.$page, ['site' => $site, 'title' => $titles[$page],
-            'seo' => $this->seo($site, '/'.$page, $titles[$page].' | Movewise Homes', $titles[$page].' for Movewise Homes, in plain English.', true, [], [], [[$titles[$page], '/'.$page]])]);
+        return $this->view($view, ['site' => $site, 'title' => $titles[$page],
+            'seo' => $this->seo($site, '/'.$page, $titles[$page].' | Movewise Homes', $es ? $titles[$page].' de Movewise Homes, en palabras sencillas.' : $titles[$page].' for Movewise Homes, in plain English.',
+                true, [], [], [[$titles[$page], '/'.$page]])]);
     }
 
     public function robots(): Response
@@ -178,12 +185,15 @@ final class SiteController
         $site = $this->chrome();
         $urls = [];
         if ($state === 'pages') {
-            foreach (['/', '/homes', '/afford', '/net-sheet', '/move-planner', ...array_map(fn (array $s): string => '/'.$s['slug'], $site['states'])] as $p) {
+            foreach (['/', '/homes', '/afford', '/net-sheet', '/move-planner', '/home-value', ...array_map(fn (array $s): string => '/'.$s['slug'], $site['states'])] as $p) {
                 $urls[] = [$site['base'].$p, null];
                 $urls[] = [$site['base'].'/es'.($p === '/' ? '' : $p), null]; // the Spanish version (specs/movewise/02)
             }
             foreach (['/agents', '/how-movewise-is-paid', '/brokers', '/fair-housing', '/privacy', '/terms', '/accessibility'] as $p) {
                 $urls[] = [$site['base'].$p, null];
+                if ($p !== '/agents') {
+                    $urls[] = [$site['base'].'/es'.$p, null]; // courtesy translations of the legal pages
+                }
             }
         } else {
             $code = strtoupper($state);

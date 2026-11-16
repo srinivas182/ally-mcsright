@@ -6,7 +6,11 @@ namespace Modules\Movewise\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Validation\ValidationException;
+use Modules\Movewise\Growth\HomeValues;
+use Modules\Movewise\Http\Guard;
 use Modules\Movewise\I18n;
+use Modules\Movewise\People\Accounts;
 use Modules\Movewise\Tools\Affordability;
 use Modules\Movewise\Tools\MovePlanner;
 use Modules\Movewise\Tools\NetSheet;
@@ -42,6 +46,38 @@ final class ToolsController
         return $this->page('movewise::tools.net-sheet', $chrome, '/net-sheet', I18n::t('tools.net'), 'See what you would walk away with when you sell: payoff, agents, closing costs and repairs.',
             ['in' => $in, 'result' => $result], $request->query() === [], [['How much will I get when I sell my house?', 'Start from the sale price, then take off your mortgage payoff, the commission you agree with your listing agent, any amount you choose to offer the buyer\'s agent, closing costs (title, escrow and recording, about 1% to 1.5%), and repairs or credits.'],
                 ['Do I have to pay the buyer\'s agent?', 'No. Commissions are negotiable. Whether you offer to pay the buyer\'s agent is your choice, often agreed in the offer.']]);
+    }
+
+    /**
+     * "What's my home worth?" (specs/movewise/09): ATTOM's automated estimate, HQ-paid. The page and its answers are
+     * public; the estimate itself needs a free account (it costs money, and keeps addresses out of URLs and logs).
+     */
+    public function homeValue(Request $request, Accounts $accounts, HomeValues $values): Response
+    {
+        $chrome = $this->site->chrome();
+        $person = $accounts->current($request);
+        $in = ['street' => '', 'city' => '', 'state' => '', 'zip' => ''];
+        $result = null;
+        $error = null;
+        if ($request->isMethod('POST')) {
+            Guard::check($request, 'value:'.$request->ip(), 10);
+            $in = ['street' => mb_substr(trim((string) $request->input('street', '')), 0, 120), 'city' => mb_substr(trim((string) $request->input('city', '')), 0, 60),
+                'state' => strtoupper((string) $request->input('state', '')), 'zip' => preg_replace('/\D/', '', (string) $request->input('zip', '')) ?? ''];
+            if ($person === null) {
+                $error = I18n::t('value.signin');
+            } else {
+                try {
+                    $result = $values->for($in, $person);
+                    $error = $result === null ? I18n::t('value.none') : null;
+                } catch (ValidationException $e) {
+                    $error = (string) collect($e->errors())->flatten()->first();
+                }
+            }
+        }
+        $response = $this->page('movewise::tools.value', $chrome, '/home-value', I18n::t('value.title'), I18n::t('value.description'),
+            ['in' => $in, 'result' => $result, 'error' => $error, 'person' => $person], ! $request->isMethod('POST'), [[I18n::t('value.q1'), I18n::t('value.a1')], [I18n::t('value.q2'), I18n::t('value.a2')]]);
+
+        return $request->isMethod('POST') ? $response->header('Cache-Control', 'no-store') : $response;
     }
 
     public function planner(Request $request): Response

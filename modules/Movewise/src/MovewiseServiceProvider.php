@@ -6,6 +6,7 @@ namespace Modules\Movewise;
 
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\ValidationException;
@@ -14,6 +15,10 @@ use Modules\AI\Support\PromptRegistry;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
+use Modules\Crm\Events\ActivityLogged;
+use Modules\Crm\Events\ContactStageChanged;
+use Modules\Crm\Events\TaskCompleted;
+use Modules\Transactions\Events\DealStatusChanged;
 
 /** Movewise Homes (specs/movewise): HQ's consumer site and lead marketplace, on the control plane. */
 final class MovewiseServiceProvider extends ServiceProvider
@@ -28,6 +33,11 @@ final class MovewiseServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // The introduction's status follows the agent's work in RightAlly (specs/movewise/09).
+        Event::listen(DealStatusChanged::class, [Outcomes\AutoStatus::class, 'deal']);
+        Event::listen(ActivityLogged::class, [Outcomes\AutoStatus::class, 'activity']);
+        Event::listen(TaskCompleted::class, [Outcomes\AutoStatus::class, 'task']);
+        Event::listen(ContactStageChanged::class, [Outcomes\AutoStatus::class, 'stage']);
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'movewise');

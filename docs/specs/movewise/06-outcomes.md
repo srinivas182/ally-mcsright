@@ -73,7 +73,7 @@ Status: **Built** (sprint MW6). Follows [00-overview](00-overview.md) §6.3, §9
 
 ## 5. Not in MW6
 
-- **Automatic status from CRM events** (deal stage changes, completed appointments). The status is reported by the agent for now. Linking it to the deal pipeline is a follow-up once Movewise leads are mapped to deals.
+- **Automatic status from CRM events:** closed in [MW9](09-gaps.md) §1. The status now follows replies, showings, meetings and the deal pipeline.
 - **Fair Housing and consent audit exports.** These come in MW8.
 
 ## 6. Tests

@@ -53,6 +53,7 @@ final class MovewiseRouter
                 $r->get('afford', [ToolsController::class, 'afford']);
                 $r->get('net-sheet', [ToolsController::class, 'netSheet']);
                 $r->get('move-planner', [ToolsController::class, 'planner']);
+                $r->match(['GET', 'POST'], 'home-value', [ToolsController::class, 'homeValue']);
                 $r->post('_auth/start', [AccountController::class, 'start']);
                 $r->post('_auth/verify', [AccountController::class, 'verify']);
                 $r->get('_me', [AccountController::class, 'me']);

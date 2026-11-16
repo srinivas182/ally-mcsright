@@ -25,6 +25,8 @@ return [
     'after_hours_minutes' => (int) env('MOVEWISE_AFTER_HOURS_MINUTES', 30), // after the next start, when chosen outside them
     'fresh_days' => 7,                                        // one of the three places goes to an agent not shown in this many days
     'refund_days' => 7,
+    'ad_campaign_marker' => env('MOVEWISE_AD_CAMPAIGN_MARKER', 'Movewise'),     // campaigns in RightAlly's ad accounts whose name contains this count as Movewise's
+    'home_values_per_month' => (int) env('MOVEWISE_HOME_VALUES_PER_MONTH', 1500), // HQ-paid ATTOM estimates a month (specs/movewise/09)
 
     // Launch (specs/movewise/08): the first state, and how long it runs before the next may go live.
     'launch_order' => ['TX', 'LA', 'MS', 'AL'],

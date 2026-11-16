@@ -31,6 +31,11 @@ final class Outcomes extends Command
 
             return self::SUCCESS;
         }
+        try {
+            app(AdBudget::class)->sync(); // spend from RightAlly's own Meta and Google ad accounts first
+        } catch (\Throwable $e) {
+            report($e);
+        }
         $ads = app(AdBudget::class)->check();
         $r = $outcomes->sweep();
         $this->info($r['reminded'].' reminded, '.$r['paused'].' paused, '.$r['fallback'].' moved to the per-connection price; ads '.$ads.'.');

@@ -76,7 +76,7 @@
     </style>
 </head>
 <body>
-<a class="skip" href="#main">Skip to content</a>
+<a class="skip" href="#main">{{ $t('layout.skip') }}</a>
 <header class="top">
     <div class="wrap">
         <a class="brand" href="{{ $u('/') }}" aria-label="Movewise Homes home">Move<span>wise</span> Homes</a>
@@ -97,15 +97,15 @@
         <div>
             <p>{{ $t('footer.about') }}</p>
             @if ($t('footer.english_only') !== '')<p>{{ $t('footer.english_only') }}</p>@endif
-            <p class="eho"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2 1 11h3v11h16V11h3L12 2zm-5 12h10v2H7v-2zm0 4h10v2H7v-2z"/></svg> Equal Housing Opportunity</p>
-            <p>&copy; {{ $site['year'] }} RightAlly. Movewise Homes is not a lender, title company or insurer.</p>
+            <p class="eho"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2 1 11h3v11h16V11h3L12 2zm-5 12h10v2H7v-2zm0 4h10v2H7v-2z"/></svg> {{ $t('layout.eho') }}</p>
+            <p>&copy; {{ $site['year'] }} RightAlly. {{ $t('layout.not_lender') }}</p>
         </div>
         <div>
             <p><strong>{{ $t('footer.brokers') }}</strong></p>
             @forelse ($site['states'] as $s)
-                @if ($s['partner'])<p>{{ $s['name'] }}: {{ $s['partner']['name'] }}, licence {{ $s['partner']['licence'] }}. Managing broker {{ $s['partner']['broker'] }}.</p>@endif
+                @if ($s['partner'])<p>{{ $t('layout.broker_line', ['state' => $s['name'], 'name' => $s['partner']['name'], 'licence' => $s['partner']['licence'], 'broker' => $s['partner']['broker']]) }}</p>@endif
             @empty
-                <p>Listed on the Brokers page.</p>
+                <p>{{ $t('layout.brokers_page') }}</p>
             @endforelse
             @php $tx = collect($site['states'])->firstWhere('code', 'TX'); @endphp
             @if ($tx)
@@ -114,8 +114,8 @@
             @endif
         </div>
         <div>
-            <p><a href="{{ $u('/how-movewise-is-paid') }}">How Movewise is paid</a><br><a href="{{ $u('/afford') }}">{{ $t('tools.afford') }}</a><br><a href="{{ $u('/net-sheet') }}">{{ $t('tools.net') }}</a><br><a href="{{ $u('/move-planner') }}">{{ $t('tools.planner') }}</a><br><a href="{{ $u('/agents') }}">For agents</a><br><a href="/brokers">Brokers and licences</a><br><a href="/fair-housing">Fair Housing</a><br>
-            <a href="/privacy">Privacy notice</a><br><a href="/terms">Terms of use</a><br><a href="/accessibility">Accessibility</a></p>
+            <p><a href="{{ $u('/how-movewise-is-paid') }}">{{ $t('nav.paid') }}</a><br><a href="{{ $u('/afford') }}">{{ $t('tools.afford') }}</a><br><a href="{{ $u('/net-sheet') }}">{{ $t('tools.net') }}</a><br><a href="{{ $u('/move-planner') }}">{{ $t('tools.planner') }}</a><br><a href="{{ $u('/home-value') }}">{{ $t('value.title') }}</a><br><a href="/agents">{{ $t('layout.for_agents') }}</a><br><a href="{{ $u('/brokers') }}">{{ $t('layout.brokers') }}</a><br><a href="{{ $u('/fair-housing') }}">{{ $t('layout.fair_housing') }}</a><br>
+            <a href="{{ $u('/privacy') }}">{{ $t('layout.privacy') }}</a><br><a href="{{ $u('/terms') }}">{{ $t('layout.terms') }}</a><br><a href="{{ $u('/accessibility') }}">{{ $t('layout.accessibility') }}</a></p>
         </div>
     </div>
 </footer>
