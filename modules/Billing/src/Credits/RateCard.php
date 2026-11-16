@@ -54,6 +54,8 @@ final class RateCard
         'studio.enhance' => [40, false, 'Ally Studio photo enhancement beyond the allowance'],
         'studio.voice' => [25, false, 'Ally Studio voice narration beyond the allowance'],
         'ai.movewise' => [0, true, 'Movewise AIlly reply (HQ pays)'],
+        // Movewise introductions (specs/movewise/04): charged as the state's price in credits, one credit per unit.
+        'movewise.connection' => [1, false, 'Movewise introduction, charged when the agent accepts (the state\'s price, in credits)'],
         // Property data (specs/connect/21): one lookup each, kept for 30 days.
         'data.property' => [40, false, 'Property facts, last sale and value range (ATTOM), per address'],
         'data.owner' => [15, false, 'Owner names and mailing address (BatchData), per address'],

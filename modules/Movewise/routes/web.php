@@ -25,6 +25,7 @@ Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.tenants.manage
     Route::post('program/agents/{agent}/review', [HqProgramController::class, 'review'])->where('agent', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('program.review');
     Route::post('program/agents/{agent}/status', [HqProgramController::class, 'status'])->where('agent', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('program.status');
     Route::post('program/seats/{seat}', [HqProgramController::class, 'seat'])->where('seat', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('program.seat');
+    Route::post('program/refunds/{connection}', [HqProgramController::class, 'refund'])->where('connection', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->middleware('password.confirm')->name('program.refund');
 });
 
 // Back office → Movewise (specs/movewise/03): apply, profile card, terms, packages; owners confirm their agents.
@@ -39,4 +40,6 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('movewi
     Route::post('packages/{package}', [ProgramController::class, 'savePackage'])->where('package', $u)->name('packages.update');
     Route::post('packages/{package}/activate', [ProgramController::class, 'activate'])->where('package', $u)->name('packages.activate');
     Route::post('packages/{package}/pause', [ProgramController::class, 'pause'])->where('package', $u)->name('packages.pause');
+    Route::get('introductions/{connection}', [ProgramController::class, 'introduction'])->where('connection', $u)->name('introductions.show');
+    Route::post('introductions/{connection}', [ProgramController::class, 'decide'])->where('connection', $u)->middleware('throttle:30,1')->name('introductions.decide');
 });

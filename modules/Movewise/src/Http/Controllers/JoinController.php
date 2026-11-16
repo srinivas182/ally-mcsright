@@ -8,6 +8,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Validation\ValidationException;
+use Modules\Movewise\Http\Guard;
 use Modules\Movewise\I18n;
 use Modules\Movewise\Program\Seats;
 
@@ -27,8 +28,7 @@ final class JoinController
 
     public function join(Request $request, Seats $seats): Response|RedirectResponse
     {
-        $origin = (string) ($request->headers->get('Origin') ?? $request->headers->get('Referer') ?? '');
-        abort_unless(parse_url($origin, PHP_URL_HOST) === config('movewise.host'), 403);
+        Guard::check($request, 'join:'.$request->ip(), 10);
         try {
             $seats->request($request->all(), (string) $request->ip());
         } catch (ValidationException $e) {

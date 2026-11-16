@@ -9,6 +9,7 @@ use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Router;
 use Modules\Movewise\Http\Controllers\AccountController;
+use Modules\Movewise\Http\Controllers\ConnectController;
 use Modules\Movewise\Http\Controllers\JoinController;
 use Modules\Movewise\Http\Controllers\SiteController;
 use Modules\Movewise\Http\Controllers\ToolsController;
@@ -40,6 +41,7 @@ final class MovewiseRouter
         $r->get('assets/movewise.js', fn () => response((string) file_get_contents(__DIR__.'/../../resources/assets/movewise.js'), 200,
             ['Content-Type' => 'text/javascript; charset=utf-8', 'Cache-Control' => 'public, max-age=86400']));
         $r->match(['GET', 'POST'], 'alerts/off/{search}/{sig}', [AccountController::class, 'stopAlerts'])->where(['search' => '[0-9A-Z]{26}', 'sig' => '[a-f0-9]{32}']);
+        $r->match(['GET', 'POST'], 'connect/withdraw/{connection}/{sig}', [ConnectController::class, 'withdraw'])->where(['connection' => '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}', 'sig' => '[a-f0-9]{32}']);
         foreach (['', 'es'] as $prefix) {
             $r->group(['prefix' => $prefix], function (Router $r): void {
                 $r->get('/', [SiteController::class, 'home']);
@@ -56,6 +58,12 @@ final class MovewiseRouter
                 $r->post('_me/homes', [AccountController::class, 'saveHome']);
                 $r->post('_me/searches', [AccountController::class, 'saveSearch']);
                 $r->post('_ailly', [AccountController::class, 'ailly']);
+                $r->get('connect', [ConnectController::class, 'start']);
+                $r->post('connect', [ConnectController::class, 'saveAbout']);
+                $r->get('connect/{show}', [ConnectController::class, 'show'])->where('show', '[0-9A-HJKMNP-TV-Z]{26}');
+                $r->post('connect/{show}/phone', [ConnectController::class, 'phone'])->where('show', '[0-9A-HJKMNP-TV-Z]{26}');
+                $r->post('connect/{show}/choose', [ConnectController::class, 'choose'])->where('show', '[0-9A-HJKMNP-TV-Z]{26}');
+                $r->post('account/connections/{connection}/wait', [ConnectController::class, 'wait'])->where('connection', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}');
                 $r->get('account', [AccountController::class, 'account']);
                 $r->get('account/export', [AccountController::class, 'export']);
                 $r->post('account/searches/{search}', [AccountController::class, 'frequency'])->where('search', '[0-9A-Z]{26}');

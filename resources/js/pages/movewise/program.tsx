@@ -69,7 +69,18 @@ type StateRow = {
     };
 };
 
+type Intro = {
+    ulid: string;
+    status: string;
+    lead_type: string;
+    offered_at: string;
+    accept_by: string;
+    credits: number;
+    refund_status: string | null;
+};
+
 type Props = {
+    introductions: Intro[];
     is_owner: boolean;
     terms_version: string;
     specialties: Record<string, string>;
@@ -686,6 +697,47 @@ export default function MovewiseProgram(props: Props) {
                     <Application key={a.ulid} agent={a} props={props} />
                 ))}
                 {canApply && <Application agent={null} props={props} />}
+
+                {props.introductions.length > 0 && (
+                    <section className="grid gap-2">
+                        <h2 className="text-lg font-semibold">Introductions</h2>
+                        {props.introductions.map((i) => (
+                            <a
+                                key={i.ulid}
+                                href={`/movewise/introductions/${i.ulid}`}
+                                className="flex flex-wrap items-center gap-2 rounded-xl border p-3 text-sm hover:bg-muted/50"
+                            >
+                                {statusBadge(
+                                    i.status === 'offered'
+                                        ? 'waiting'
+                                        : i.status,
+                                )}
+                                <span>
+                                    A {i.lead_type},{' '}
+                                    {new Date(i.offered_at).toLocaleString()}
+                                </span>
+                                {i.status === 'offered' && (
+                                    <strong>
+                                        Accept by{' '}
+                                        {new Date(
+                                            i.accept_by,
+                                        ).toLocaleTimeString()}
+                                    </strong>
+                                )}
+                                {i.credits > 0 && (
+                                    <span className="text-muted-foreground">
+                                        {i.credits} credits
+                                    </span>
+                                )}
+                                {i.refund_status && (
+                                    <Badge variant="outline">
+                                        Refund {i.refund_status}
+                                    </Badge>
+                                )}
+                            </a>
+                        ))}
+                    </section>
+                )}
 
                 <section className="grid gap-3">
                     <div className="flex items-center justify-between">

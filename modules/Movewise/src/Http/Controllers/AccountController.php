@@ -10,13 +10,15 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Modules\Core\Support\Connections;
 use Modules\Listings\Search\ListingSearch;
 use Modules\Movewise\Alerts;
+use Modules\Movewise\Http\Guard;
 use Modules\Movewise\I18n;
+use Modules\Movewise\Models\Agent;
+use Modules\Movewise\Models\Connection;
 use Modules\Movewise\Models\Person;
 use Modules\Movewise\Movewise;
 use Modules\Movewise\MovewiseAilly;
@@ -109,11 +111,18 @@ final class AccountController
             }
         }
         $plan = (array) ($p->plan ?? []);
+        $agents = [];
+        foreach (Connection::query()->where('person_id', $p->id)->whereIn('status', ['offered', 'accepted', 'expired', 'declined'])->where('offered_at', '>=', now()->subDays(60))
+            ->orderByDesc('id')->limit(5)->get() as $c) {
+            $a = Agent::query()->find($c->agent_id);
+            $agents[] = ['ulid' => $c->ulid, 'status' => $c->status, 'name' => (string) ($a->profile['display_name'] ?? ''), 'by' => $c->accept_by->setTimezone('America/Chicago')->format('g:i a T'),
+                'show' => DB::connection(Connections::control())->table('movewise_shows')->where('id', $c->show_id)->value('ulid'), 'waited' => $c->refund_reason === 'waited'];
+        }
 
         return response()->view('movewise::account', ['site' => $chrome, 'person' => $p, 'homes' => $homes,
             'searches' => $db->table('movewise_saved_searches')->where('person_id', $p->id)->orderByDesc('id')->get()->all(),
             'plan' => MovePlanner::plan(is_string($plan['move_date'] ?? null) ? $plan['move_date'] : null, array_values(array_map('strval', (array) ($plan['done'] ?? [])))),
-            'move_date' => $plan['move_date'] ?? null,
+            'move_date' => $plan['move_date'] ?? null, 'agents' => $agents,
             'seo' => $site->seo($chrome, '/account', I18n::t('account.title').' | Movewise Homes', I18n::t('account.title'), false)])->header('Cache-Control', 'no-store');
     }
 
@@ -199,12 +208,8 @@ final class AccountController
         return $this->accounts->current($request) ?? abort(401);
     }
 
-    /** Changes come only from Movewise's own pages, and not too fast. */
     private function guard(Request $request, string $key, int $perMinute): void
     {
-        $origin = (string) ($request->headers->get('Origin') ?? $request->headers->get('Referer') ?? '');
-        abort_unless(parse_url($origin, PHP_URL_HOST) === config('movewise.host'), 403);
-        abort_if(RateLimiter::tooManyAttempts('movewise:'.$key, $perMinute), 429);
-        RateLimiter::hit('movewise:'.$key, 60);
+        Guard::check($request, $key, $perMinute);
     }
 }

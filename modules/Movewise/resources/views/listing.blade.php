@@ -44,6 +44,7 @@
     @if (! empty($home['disclaimer']))<p class="attr">{{ $home['disclaimer'] }}</p>@endif
     @if (! empty($home['logo']))<img src="{{ $home['logo'] }}" alt="MLS" height="32" loading="lazy">@endif
 
+    <p><a class="btn" href="{{ $u('/connect') }}?listing={{ $home['ulid'] }}" rel="nofollow">{{ $t('connect.cta') }}</a></p>
     <p class="note">{{ $t('listing.ask') }} <button class="save" type="button" data-ailly-open data-listing="{{ $home['ulid'] }}" hidden>{{ $t('ailly.open') }}</button></p>
 </div>
 @endsection

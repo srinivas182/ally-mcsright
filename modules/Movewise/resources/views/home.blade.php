@@ -24,6 +24,7 @@
     @endif
     <h2>{{ $t('home.by_state') }}</h2>
     <p>@foreach ($site['states'] as $s)<a href="{{ $u('/'.$s['slug']) }}">{{ $t('home.state_link', ['state' => $s['name']]) }}</a>@if (! $loop->last) · @endif @endforeach</p>
+    <p><a class="btn ghost" href="{{ $u('/connect') }}?type=sell" rel="nofollow">{{ $t('connect.sell_cta') }}</a></p>
     <h2>{{ $t('tools.title') }}</h2>
     <p><a href="{{ $u('/afford') }}">{{ $t('tools.afford') }}</a> · <a href="{{ $u('/net-sheet') }}">{{ $t('tools.net') }}</a> · <a href="{{ $u('/move-planner') }}">{{ $t('tools.planner') }}</a></p>
     @foreach ($seo['faqs'] as [$q, $a])

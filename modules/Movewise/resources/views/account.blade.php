@@ -4,6 +4,25 @@
     <h1>{{ $t('account.title') }}</h1>
     <p class="muted">{{ $t('account.signed_in_as', ['email' => $person->email]) }}</p>
 
+    @if ($agents !== [])
+        <h2 id="agent">{{ $t('account.agent') }}</h2>
+        @foreach ($agents as $a)
+            <div class="note" style="margin-bottom:8px">
+                @if ($a['status'] === 'offered')
+                    {{ $t('account.waiting', ['name' => $a['name'], 'time' => $a['by']]) }}
+                @elseif ($a['status'] === 'accepted')
+                    {{ $t('account.working', ['name' => $a['name']]) }}
+                @else
+                    {{ $t('account.'.$a['status'], ['name' => $a['name']]) }}
+                    @if ($a['status'] === 'expired' && ! $a['waited'])
+                        <form method="post" action="{{ $u('/account/connections/'.$a['ulid'].'/wait') }}" style="display:inline"><button class="save">{{ $t('account.wait', ['name' => $a['name']]) }}</button></form>
+                    @endif
+                    @if ($a['show'])<a class="save" style="display:inline-flex;align-items:center;text-decoration:none" href="{{ $u('/connect/'.$a['show']) }}">{{ $t('account.choose_other') }}</a>@endif
+                @endif
+            </div>
+        @endforeach
+    @endif
+
     <h2>{{ $t('account.homes') }}</h2>
     @if ($homes === [])
         <p>{{ $t('account.none_homes') }} <a href="{{ $u('/homes') }}">{{ $t('nav.homes') }}</a></p>

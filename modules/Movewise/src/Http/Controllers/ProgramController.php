@@ -11,7 +11,10 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Tenancy\TenantContext;
+use Modules\Movewise\Matching\Brief;
+use Modules\Movewise\Matching\Connections;
 use Modules\Movewise\Models\Agent;
+use Modules\Movewise\Models\Connection;
 use Modules\Movewise\Models\Package;
 use Modules\Movewise\Models\State;
 use Modules\Movewise\Program\Agents;
@@ -45,6 +48,9 @@ final class ProgramController
             'states' => $states->map(fn (State $s): array => ['code' => $s->code, 'name' => $s->name, 'on' => $s->on, 'models' => Pricing::offered($s), 'pricing' => Pricing::for($s)])->values()->all(),
             'mine' => $mine->map(fn (Agent $a): array => $this->agentRow($a))->values()->all(),
             'team' => $team->map(fn (Agent $a): array => $this->agentRow($a) + ['name' => $names[$a->user_id]->name ?? 'Agent'])->values()->all(),
+            'introductions' => Connection::query()->where('tenant_id', $tenantId)->whereIn('agent_id', $mine->pluck('id'))->orderByDesc('id')->limit(50)->get()
+                ->map(fn (Connection $c): array => ['ulid' => $c->ulid, 'status' => $c->status, 'lead_type' => $c->lead_type, 'offered_at' => $c->offered_at->toIso8601String(),
+                    'accept_by' => $c->accept_by->toIso8601String(), 'credits' => $c->price_credits, 'refund_status' => $c->refund_status])->values()->all(),
             'packages' => $packages->map(fn (Package $p): array => ['ulid' => $p->ulid, 'name' => $p->name, 'state' => $p->state, 'broker' => $p->agent_id === null, 'status' => $p->status,
                 'pause_reason' => $p->pause_reason, 'model' => $p->model, 'lead_types' => $p->lead_types, 'languages' => $p->languages, 'price_min' => $p->price_min, 'price_max' => $p->price_max,
                 'zips' => implode(' ', $p->areas['zips']), 'cities' => implode(', ', $p->areas['cities']), 'monthly_cap' => $p->monthly_cap, 'daily_cap' => $p->daily_cap, 'hours' => $p->hours,
@@ -108,6 +114,44 @@ final class ProgramController
         $this->packages->pause(Package::query()->where('ulid', $package)->firstOrFail(), self::user($request), 'Paused by you');
 
         return back();
+    }
+
+    /** One introduction: the brief (contact details once accepted), and accept, decline or report a problem. */
+    public function introduction(Request $request, string $connection, Brief $brief): Response
+    {
+        $c = $this->mineConnection($request, $connection);
+
+        return Inertia::render('movewise/introduction', ['ulid' => $c->ulid, 'status' => $c->status, 'accept_by' => $c->accept_by->toIso8601String(),
+            'credits' => $c->price_credits, 'model' => $c->model, 'refund_status' => $c->refund_status, 'refund_days' => (int) config('movewise.refund_days', 7),
+            'brief' => $brief->for($c, $c->status === 'accepted')]);
+    }
+
+    public function decide(Request $request, string $connection, Connections $connections): RedirectResponse
+    {
+        $c = $this->mineConnection($request, $connection);
+        $user = self::user($request);
+        match ((string) $request->input('action')) {
+            'accept' => $connections->accept($c, $user),
+            'decline' => $connections->decline($c, $user),
+            'report' => $connections->report($c, $user, (string) $request->input('reason', '')),
+            default => abort(422),
+        };
+        Inertia::flash('toast', ['type' => 'success', 'message' => match ((string) $request->input('action')) {
+            'accept' => 'Accepted. They are in your contacts now: reach out the way they asked.',
+            'decline' => 'Declined. They will choose another agent; nothing was charged.',
+            default => 'Sent to Movewise. We\'ll reply within two working days.',
+        }]);
+
+        return back();
+    }
+
+    private function mineConnection(Request $request, string $ulid): Connection
+    {
+        $user = self::user($request);
+        $c = Connection::query()->where('ulid', $ulid)->where('tenant_id', $this->tenants->id())->firstOrFail();
+        abort_unless(Agent::query()->whereKey($c->agent_id)->value('user_id') === $user->id, 404);
+
+        return $c;
     }
 
     /** @return array<string, mixed> */

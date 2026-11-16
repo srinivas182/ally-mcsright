@@ -61,7 +61,23 @@ type SeatRow = {
     note: string | null;
 };
 
+type RefundRow = {
+    ulid: string;
+    account: string | null;
+    agent: string;
+    credits: number;
+    reason: string | null;
+    method: string;
+    accepted_at: string | null;
+};
+
 type Props = {
+    refunds: RefundRow[];
+    introductions: {
+        offered: number;
+        accepted_30d: number;
+        expired_30d: number;
+    };
     models: Record<string, string>;
     states: StateRow[];
     agents: AgentRow[];
@@ -335,6 +351,8 @@ export default function HqMovewiseProgram({
     states,
     agents,
     seats,
+    refunds,
+    introductions,
 }: Props) {
     const [declineNote, setDeclineNote] = useState('');
 
@@ -346,6 +364,57 @@ export default function HqMovewiseProgram({
                     title="Movewise agents"
                     description="Prices per state, agent reviews and free Movewise Agent seats."
                 />
+                <p className="text-sm text-muted-foreground">
+                    Introductions: {introductions.offered} waiting now,{' '}
+                    {introductions.accepted_30d} accepted and{' '}
+                    {introductions.expired_30d} not answered in the last 30
+                    days.
+                </p>
+                {refunds.length > 0 && (
+                    <section className="grid gap-3">
+                        <h2 className="text-lg font-semibold">
+                            Refund requests
+                        </h2>
+                        {refunds.map((r) => (
+                            <div
+                                key={r.ulid}
+                                className="flex flex-wrap items-center gap-2 rounded-xl border p-3 text-sm"
+                            >
+                                <strong>{r.agent}</strong>
+                                <span className="text-muted-foreground">
+                                    {r.account} · {r.credits} credits ·{' '}
+                                    {r.method} · {r.reason}
+                                </span>
+                                <span className="grow" />
+                                <Button
+                                    size="sm"
+                                    onClick={() =>
+                                        router.post(
+                                            `/hq/movewise/program/refunds/${r.ulid}`,
+                                            { approve: true },
+                                            { preserveScroll: true },
+                                        )
+                                    }
+                                >
+                                    Refund
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() =>
+                                        router.post(
+                                            `/hq/movewise/program/refunds/${r.ulid}`,
+                                            { approve: false },
+                                            { preserveScroll: true },
+                                        )
+                                    }
+                                >
+                                    Decline
+                                </Button>
+                            </div>
+                        ))}
+                    </section>
+                )}
                 <section className="grid gap-3">
                     <h2 className="text-lg font-semibold">Prices</h2>
                     {states.map((s) => (
