@@ -33,6 +33,9 @@ final class ComplianceScan
     /** Contract-type documents a broker expects to carry an e-signature record when signed elsewhere. */
     private const SIGNED_TYPES = ['purchase_agreement', 'counter_offer', 'amendment', 'listing_agreement', 'buyer_agreement'];
 
+    /** A signature or initial line for a party ("Buyer's Signature ____", "Seller Initials [  ]"). */
+    private const SIGN_LINE = '/\b(buyers?|sellers?|purchasers?|owners?|tenants?|landlords?)[\'’]?s?\s*(signature|initials?)\b/i';
+
     private const ESIGN_MARKS = '/docusign envelope id|dotloop (verified|signature verification)|authentisign|signnow|adobe (acrobat )?sign|digisign|zipsign|electronically signed|signature certificate|certificate of completion/i';
 
     /** @var list<array{code: string, severity: string, key: string, message: string, evidence: ?array<string, mixed>, fix: ?array<string, mixed>}> */
@@ -65,6 +68,8 @@ final class ComplianceScan
             }
         }
         $this->mismatches($deal, $docs, $readings);
+        $this->earnest($deal, $docs, $readings);
+        $this->referenced($deal, $docs, $readings, $items);
         $this->money($deal, $docs, $readings);
         $this->risk($deal, $items, $readings);
         $this->buyerAgreement($deal, $items, $readings);
@@ -126,6 +131,7 @@ final class ComplianceScan
             $this->add('docs.no_signature_record', null, "esign:{$doc->ulid}", "{$doc->filename} has no e-signature record. Check every signature and initial by eye.",
                 null, ['action' => 'view', 'label' => 'Open', 'document' => $doc->ulid, 'page' => 1]);
         }
+        $this->signatures($deal, $doc, $reading, $pages);
         $s = (array) $reading->sensitive;
         if ((bool) ($s['wire'] ?? false)) {
             $this->add('docs.wire', null, "wire:{$doc->ulid}", "{$doc->filename} contains wiring or bank instructions. Never forward it; confirm payment details by phone on a known number.",
@@ -135,6 +141,134 @@ final class ComplianceScan
             $this->add('docs.sensitive', null, "sensitive:{$doc->ulid}", "{$doc->filename} holds Social Security, bank or birth-date numbers. Share only the safe copy.",
                 null, ['action' => 'safe_copy', 'label' => 'Safe copy', 'document' => $doc->ulid]);
         }
+    }
+
+    /**
+     * Signature and initial lines left empty, page by page (specs/ai/02, DQ6). Pages signed electronically carry the
+     * e-sign platform's mark; scanned pages (read by OCR) cannot show ink, so they are left to the "check by eye" note.
+     *
+     * @param  list<string>  $pages
+     */
+    private function signatures(Deal $deal, Document $doc, DocumentReading $reading, array $pages): void
+    {
+        if ($doc->via === 'esign' || ($doc->getAttribute('parent_document_id') !== null && Document::query()->whereKey($doc->getAttribute('parent_document_id'))->value('via') === 'esign')) {
+            return;
+        }
+        $methods = (array) $reading->methods;
+        $found = 0;
+        foreach ($pages as $i => $text) {
+            if (($methods[$i] ?? 'text') !== 'text' || preg_match(self::ESIGN_MARKS, $text) === 1) {
+                continue;
+            }
+            foreach (explode("\n", $text) as $line) {
+                if ($found >= 6 || preg_match(self::SIGN_LINE, $line, $m) !== 1 || preg_match('/_{4,}|\[\s{0,3}\]/', $line) !== 1) {
+                    continue;
+                }
+                $role = self::signerRole($m[1]);
+                $what = str_starts_with(mb_strtolower($m[2]), 'init') ? 'initials' : 'signature';
+                $found++;
+                $this->add('docs.signatures', null, "sign:{$doc->ulid}:".($i + 1).":{$role}:{$what}", 'Page '.($i + 1)." of {$doc->filename}: the {$role}'s {$what} line looks empty.",
+                    self::evidence($doc, $i + 1, trim($line)), ['action' => 'ask_sign', 'label' => "Ask the {$role} to sign", 'role' => $role, 'document' => $doc->ulid, 'page' => $i + 1]);
+            }
+        }
+    }
+
+    /**
+     * Earnest money: the same in every document, and as the accepted offer said.
+     *
+     * @param  Collection<int, Document>  $docs
+     * @param  Collection<int, DocumentReading>  $readings
+     */
+    private function earnest(Deal $deal, $docs, $readings): void
+    {
+        $seen = [];
+        foreach ($docs as $doc) {
+            $reading = $readings->get($doc->id);
+            if ($reading === null || in_array($reading->doc_type, ['counter_offer', 'amendment'], true)) {
+                continue;
+            }
+            foreach ((array) $reading->facts as $f) {
+                if ($f['name'] === 'earnest_money' && ($c = self::cents($f['value'])) !== null) {
+                    $seen[] = ['cents' => $c, 'doc' => $doc, 'fact' => $f];
+                }
+            }
+        }
+        $terms = (array) json_decode((string) ($deal->getAttribute('terms') ?? ''), true);
+        $offered = isset($terms['earnest_cents']) && (int) $terms['earnest_cents'] > 0 ? (int) $terms['earnest_cents'] : null;
+        foreach ($seen as $s) {
+            if ($offered !== null && $s['cents'] !== $offered) {
+                $this->add('docs.mismatch', null, "earnest-offer:{$s['doc']->ulid}", "{$s['doc']->filename} gives earnest money of ".self::usd($s['cents']).'; the accepted offer said '.self::usd($offered).'.',
+                    self::evidence($s['doc'], $s['fact']['page'], $s['fact']['quote']), ['action' => 'view', 'label' => 'See the page', 'document' => $s['doc']->ulid, 'page' => $s['fact']['page']]);
+            }
+        }
+        $amounts = array_values(array_unique(array_column($seen, 'cents')));
+        if (count($amounts) > 1) {
+            $first = $seen[0];
+            $this->add('docs.mismatch', null, 'earnest-docs', 'Earnest money differs between documents: '.implode(', ', array_map(fn (array $s): string => $s['doc']->filename.' '.self::usd($s['cents']), $seen)).'.',
+                self::evidence($first['doc'], $first['fact']['page'], $first['fact']['quote']), ['action' => 'view', 'label' => 'See the page', 'document' => $first['doc']->ulid, 'page' => $first['fact']['page']]);
+        }
+    }
+
+    /**
+     * Addenda the contract marks as attached but that are not in the file (specs/ai/02, DQ6).
+     *
+     * @param  Collection<int, Document>  $docs
+     * @param  Collection<int, DocumentReading>  $readings
+     * @param  Collection<int, Item>  $items
+     */
+    private function referenced(Deal $deal, $docs, $readings, $items): void
+    {
+        $have = [];
+        foreach ($docs as $doc) {
+            $r = $readings->get($doc->id);
+            $have[] = $doc->filename;
+            if ($r !== null) {
+                $have[] = (string) $r->title;
+                foreach ((array) $r->segments as $seg) {
+                    $have[] = $seg['title'];
+                }
+            }
+        }
+        foreach ($items as $item) {
+            if (! in_array($item->status, ['missing', 'needs_fix'], true)) {
+                $have[] = $item->label;
+            }
+        }
+        $haveWords = array_map(fn (string $h): array => self::words($h), $have);
+        foreach ($docs as $doc) {
+            $r = $readings->get($doc->id);
+            foreach ((array) ($r?->getAttribute('referenced') ?? []) as $a) {
+                $want = self::words((string) $a['name']);
+                if ($want === [] || collect($haveWords)->contains(fn (array $h): bool => count(array_intersect($want, $h)) >= min(2, count($want)))) {
+                    continue;
+                }
+                $item = $items->first(fn (Item $i): bool => count(array_intersect($want, self::words($i->label))) >= min(2, count($want)));
+                $this->add('docs.referenced_missing', null, "ref:{$doc->ulid}:".md5((string) $a['name']), "{$doc->filename} marks “{$a['name']}” as attached, but it is not in the file.",
+                    self::evidence($doc, (int) $a['page'], (string) $a['quote']),
+                    $item !== null ? ['action' => 'upload', 'label' => 'Upload it', 'item' => $item->ulid] : ['action' => 'view', 'label' => 'See the page', 'document' => $doc->ulid, 'page' => (int) $a['page']]);
+            }
+        }
+    }
+
+    /**
+     * Significant words, for matching document names.
+     *
+     * @return list<string>
+     */
+    private static function words(string $s): array
+    {
+        $stop = ['the', 'and', 'for', 'of', 'to', 'a', 'an', 'addendum', 'form', 'by', 'or', 'in', 'on', 'pdf', 'docx', 'notice', 'with'];
+        preg_match_all('/[a-z]{3,}/', mb_strtolower($s), $m);
+
+        return array_values(array_unique(array_diff($m[0], $stop)));
+    }
+
+    private static function signerRole(string $word): string
+    {
+        return match (mb_strtolower(rtrim($word, 's'))) {
+            'seller', 'owner', 'landlord' => 'seller',
+            default => 'buyer',
+        };
     }
 
     /**

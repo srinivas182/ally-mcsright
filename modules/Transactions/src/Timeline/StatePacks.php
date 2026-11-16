@@ -41,6 +41,24 @@ final class StatePacks
         return self::PACKS[strtoupper((string) $state)] ?? self::DEFAULT;
     }
 
+    /**
+     * Each state pack in plain words, for Compliance Knowledge answers (specs/ai/05).
+     *
+     * @return array<string, string> state name => rules
+     */
+    public static function summaries(): array
+    {
+        $out = [];
+        foreach (self::PACKS as $code => $p) {
+            $out[$p['name']] = $p['name'].' ('.$code.') deadline rules in RightAlly: deadlines that fall on a weekend or holiday move to the next business day. '
+                .($p['earnest_money_days'] !== null ? "Earnest money is due within {$p['earnest_money_days']} days of the contract (effective) date. " : '')
+                .($p['attorney_review_business_days'] !== null ? "Attorney review lasts {$p['attorney_review_business_days']} business days after the contract is delivered. " : '')
+                .($p['holidays'] !== [] ? 'State holidays also count: '.implode(', ', $p['holidays']).' (month-day). ' : '').'Basis: '.$p['source'].'.';
+        }
+
+        return $out;
+    }
+
     public static function isBusinessDay(CarbonImmutable $day, ?string $state): bool
     {
         return ! $day->isWeekend() && ! in_array($day->toDateString(), self::holidays($day->year, $state), true);

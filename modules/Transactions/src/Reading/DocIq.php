@@ -41,6 +41,14 @@ final class DocIq
 
     public const ASK = 'docs.ask';
 
+    /** Addenda a contract marks as attached (specs/ai/02, DQ6). */
+    public const REFERENCED = 'docs.referenced';
+
+    private const CONTRACT_TYPES = ['purchase_agreement', 'listing_agreement', 'lease', 'counter_offer'];
+
+    /** A box shown as checked, or "attached" wording, in a quote. */
+    private const CHECKED = '/[☒☑✓✔]|\[\s*x\s*\]|\(\s*x\s*\)|\battached\b|\bmade a part\b/iu';
+
     public const FACTS = ['buyer_names', 'seller_names', 'property_address', 'price', 'earnest_money', 'contract_date', 'closing_date', 'option_period_end',
         'inspection_deadline', 'financing_deadline', 'appraisal_deadline', 'year_built', 'title_company', 'lender',
         'commission_total', 'commission_listing', 'commission_buyer', 'earnest_money_credit'];
@@ -84,6 +92,9 @@ final class DocIq
         $reading->update(['status' => 'read', 'pages' => count($pages), 'page_text' => $pages, 'methods' => $text['methods'], 'doc_type' => $first,
             'title' => DocTypes::label($first), 'segments' => array_map(fn (array $s): array => $s + ['title' => DocTypes::label($s['type'])], $segments),
             'sensitive' => Sensitive::scan($pages), 'facts' => $this->facts($doc, $pages), 'read_at' => now(), 'error' => null]);
+        if (in_array($first, self::CONTRACT_TYPES, true)) {
+            $reading->forceFill(['referenced' => $this->referenced($doc, $pages)])->save();
+        }
 
         $deal = Deal::query()->findOrFail($doc->deal_id);
         if ($doc->via !== 'esign' && $doc->via !== 'split') {
@@ -301,6 +312,37 @@ final class DocIq
         $out = [];
         foreach (array_slice($pages, 0, 40) as $i => $p) {
             $out[] = '[Page '.($i + 1)."]\n".mb_substr($p, 0, 6000);
+        }
+
+        return $out;
+    }
+
+    /**
+     * The addenda a contract marks as attached, each kept only when its quote is on the page and shows the box
+     * checked or the "attached" wording.
+     *
+     * @param  list<string>  $pages
+     * @return list<array{name: string, page: int, quote: string}>
+     */
+    private function referenced(Document $doc, array $pages): array
+    {
+        try {
+            $result = $this->gateway->run(new AiTask(self::REFERENCED, 'docs.referenced_addenda', 'docs-referenced:'.$doc->ulid, untrustedContent: self::pagesForAi($pages),
+                outputSchema: ['type' => 'object', 'required' => ['addenda'], 'properties' => ['addenda' => ['type' => 'array']]], userId: $doc->getAttribute('uploaded_by')));
+        } catch (\Throwable $e) {
+            report($e);
+
+            return [];
+        }
+        $out = [];
+        foreach (array_slice((array) ($result->json['addenda'] ?? []), 0, 30) as $a) {
+            $a = (array) $a;
+            $name = mb_substr(trim((string) ($a['name'] ?? '')), 0, 120);
+            $page = (int) ($a['page'] ?? 0);
+            $quote = trim((string) ($a['quote'] ?? ''));
+            if ($name !== '' && self::onPage($quote, $pages[$page - 1] ?? '') && preg_match(self::CHECKED, $quote) === 1) {
+                $out[] = ['name' => $name, 'page' => $page, 'quote' => mb_substr($quote, 0, 200)];
+            }
         }
 
         return $out;

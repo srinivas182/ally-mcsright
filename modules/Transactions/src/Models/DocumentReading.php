@@ -44,7 +44,7 @@ final class DocumentReading extends Model
      */
     protected function casts(): array
     {
-        return ['page_text' => 'encrypted:array', 'methods' => 'array', 'segments' => 'array', 'facts' => 'encrypted:array', 'sensitive' => 'array',
+        return ['page_text' => 'encrypted:array', 'methods' => 'array', 'segments' => 'array', 'facts' => 'encrypted:array', 'sensitive' => 'array', 'referenced' => 'array',
             'read_at' => 'immutable_datetime', 'pages' => 'integer'];
     }
 }

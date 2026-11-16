@@ -17,6 +17,8 @@ final class Checks
         'docs.blank' => ['No blank-looking fields (price, dates, names) in uploaded documents', 'warning'],
         'docs.mismatch' => ['Price, address, closing date and names agree across documents and the deal', 'warning'],
         'docs.wrong_year' => ['Dates in documents are in the right year', 'warning'],
+        'docs.signatures' => ['Signature and initial lines are signed on every page', 'warning'],
+        'docs.referenced_missing' => ['Addenda the contract marks as attached are in the file', 'warning'],
         'docs.no_signature_record' => ['Contracts signed outside RightAlly carry an e-signature record', 'info'],
         'docs.buyer_agreement' => ['A buyer agreement is on file for buyer deals (NAR settlement)', 'blocker'],
         'docs.wire' => ['No wiring or bank instructions in the file', 'warning'],

@@ -15,6 +15,7 @@ type Fix = {
     user?: string;
     packet?: string;
     rule?: string;
+    role?: string;
 } | null;
 export type Finding = {
     id: number;
@@ -88,6 +89,27 @@ function FixButton({
             return link('/settings/transactions');
         case 'dates':
             return link('#key-dates');
+        case 'ask_sign':
+            return (
+                <Button
+                    size="sm"
+                    variant="outline"
+                    className="bg-background"
+                    onClick={() =>
+                        router.post(
+                            `/deals/${deal}/compliance/ask-sign`,
+                            {
+                                role: fix.role,
+                                document: fix.document,
+                                page: fix.page,
+                            },
+                            opts,
+                        )
+                    }
+                >
+                    {fix.label}
+                </Button>
+            );
         case 'apply_fact':
             return (
                 <Button
@@ -184,6 +206,13 @@ export function CompliancePanel({
                     >
                         Check again
                     </Button>
+                    {reviewer && (
+                        <Button size="sm" variant="outline" asChild>
+                            <a href={`/deals/${deal}/file-review`}>
+                                Review this file
+                            </a>
+                        </Button>
+                    )}
                     {!locked && !compliance.submitted_at && (
                         <Button
                             size="sm"
