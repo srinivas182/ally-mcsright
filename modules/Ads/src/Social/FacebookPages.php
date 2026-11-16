@@ -17,7 +17,7 @@ use Modules\Core\Connect\NeedsReconnect;
  * person's Pages, their Page tokens (kept encrypted) and the Instagram business accounts linked to them are read.
  * Posts go to a Page's feed (with the link as a preview, or a photo) and to Instagram (container, then publish).
  */
-final class FacebookPages implements Connector, SocialChannel
+final class FacebookPages implements Connector, SocialChannel, SocialMetrics
 {
     public function __construct(private readonly ConnectorKit $kit) {}
 
@@ -169,6 +169,61 @@ final class FacebookPages implements Connector, SocialChannel
         $link = Http::timeout(10)->get(MetaApi::GRAPH.$r->json('id'), ['fields' => 'permalink', 'access_token' => $token])->json('permalink');
 
         return ['id' => (string) $r->json('id'), 'url' => is_string($link) && str_starts_with($link, 'https://') ? $link : null];
+    }
+
+    /**
+     * A post's numbers. Facebook: reactions, comments and shares on the post, and its unique views (Meta's metric since
+     * June 2026). Instagram: reach, views, likes, comments, shares and saves (carousels don't share insights, so their
+     * likes and comments are read from the post). A metric Meta no longer offers just counts as zero.
+     */
+    public function metrics(ConnectionData $connection, string $channel, string $target, string $postId): ?array
+    {
+        $out = ['reach' => 0, 'views' => 0, 'likes' => 0, 'comments' => 0, 'shares' => 0, 'saves' => 0, 'clicks' => 0];
+        if ($channel === 'instagram') {
+            $page = null;
+            foreach ((array) ($connection->settings['instagram'] ?? []) as $ig) {
+                if (is_array($ig) && ($ig['id'] ?? null) === $target) {
+                    $page = (string) ($ig['page'] ?? '');
+                }
+            }
+            if ($page === null) {
+                return null;
+            }
+            $token = $this->pageToken($connection, $page);
+            $r = Http::timeout(20)->get(MetaApi::GRAPH.$postId.'/insights', ['metric' => 'reach,views,likes,comments,shares,saved', 'access_token' => $token]);
+            if ($r->successful()) {
+                foreach ((array) $r->json('data', []) as $m) {
+                    $key = ['saved' => 'saves'][$m['name'] ?? ''] ?? (string) ($m['name'] ?? '');
+                    if (isset($out[$key])) {
+                        $out[$key] = (int) ($m['values'][0]['value'] ?? $m['total_value']['value'] ?? 0);
+                    }
+                }
+
+                return $out;
+            }
+            $f = Http::timeout(20)->get(MetaApi::GRAPH.$postId, ['fields' => 'like_count,comments_count', 'access_token' => $token]);
+
+            return $f->successful() ? ['likes' => (int) $f->json('like_count'), 'comments' => (int) $f->json('comments_count')] + $out : null;
+        }
+        $token = $this->pageToken($connection, $target);
+        $f = Http::timeout(20)->get(MetaApi::GRAPH.$postId, ['fields' => 'reactions.summary(total_count).limit(0),comments.summary(total_count).limit(0),shares', 'access_token' => $token]);
+        if (! $f->successful()) {
+            return null;
+        }
+        $out['likes'] = (int) $f->json('reactions.summary.total_count');
+        $out['comments'] = (int) $f->json('comments.summary.total_count');
+        $out['shares'] = (int) $f->json('shares.count');
+        $i = Http::timeout(20)->get(MetaApi::GRAPH.$postId.'/insights', ['metric' => 'post_total_media_view_unique,post_clicks', 'access_token' => $token]);
+        foreach ((array) ($i->successful() ? $i->json('data', []) : []) as $m) {
+            $v = (int) ($m['values'][0]['value'] ?? 0);
+            match ($m['name'] ?? '') {
+                'post_total_media_view_unique' => $out['reach'] = $v,
+                'post_clicks' => $out['clicks'] = $v,
+                default => null,
+            };
+        }
+
+        return $out;
     }
 
     /** Instagram processes videos before they can be published: check every 5 seconds, for up to 3 minutes. */

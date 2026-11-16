@@ -40,11 +40,13 @@ final class SocialController
             $start['text'] = 'Tour: '.$base['text']."\n\n".Reels::chapterLines($reel);
             $start['image'] = app(Reels::class)->poster($reel);
             $start['video'] = app(Reels::class)->url($reel);
+            $start['studio_video'] = $reel->ulid;
         } elseif ($reel !== null && ($from = Design::query()->find($reel->design_id)) !== null) {
             // A Reel: the design's caption and link, the video, and its first frame as the cover (for places that take a photo).
             $start = ['images' => []] + $this->fromDesign($user, $from);
             $start['image'] = app(Reels::class)->poster($reel);
             $start['video'] = app(Reels::class)->url($reel);
+            $start['studio_video'] = $reel->ulid;
         }
 
         return Inertia::render('ads/social', [
@@ -63,7 +65,7 @@ final class SocialController
 
     public function store(Request $request): RedirectResponse
     {
-        $post = $this->social->schedule(self::user($request), $request->only(['text', 'link', 'image_url', 'images', 'video_url', 'listing', 'places', 'post_at']));
+        $post = $this->social->schedule(self::user($request), $request->only(['text', 'link', 'image_url', 'images', 'video_url', 'studio_design', 'studio_video', 'listing', 'places', 'post_at']));
         Inertia::flash('toast', ['type' => 'success', 'message' => $post->post_at->isFuture() ? 'Scheduled.' : 'Posting now: results show below in a moment.']);
 
         return redirect('/social');
@@ -89,7 +91,7 @@ final class SocialController
         $link = $design->listing_ulid !== null ? ($this->social->fromListing($user, $design->listing_ulid)['link']) : '';
 
         return ['listing' => $design->listing_ulid ?? '', 'text' => $designer->caption($design), 'link' => $link, 'image' => $designer->url($design, 'portrait'),
-            'images' => count($c = $designer->carousel($design)) >= 2 ? $c : []];
+            'images' => count($c = $designer->carousel($design)) >= 2 ? $c : [], 'studio_design' => $design->ulid];
     }
 
     private static function user(Request $request): User

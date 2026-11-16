@@ -42,7 +42,7 @@ final class AdsServiceProvider extends ServiceProvider
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'ads');
         if ($this->app->runningInConsole()) {
-            $this->commands([Console\RefreshBoosts::class, Console\SendSocialPosts::class, Console\RunStudioAutopilot::class]);
+            $this->commands([Console\RefreshBoosts::class, Console\SendSocialPosts::class, Console\RunStudioAutopilot::class, Console\ReadSocialResults::class, Console\SendStudioReports::class]);
         }
         $this->app->make(PromptRegistry::class)->addPath(__DIR__.'/../prompts');
         $this->app->make(FeatureCatalog::class)->declare(AdCopy::FEATURE, 'ai.ads_copy', 'AI listing ad copy');
@@ -55,5 +55,6 @@ final class AdsServiceProvider extends ServiceProvider
         $this->app->make(McpToolbox::class)->add(Mcp\SocialPostTool::class);
         $this->app->make(McpToolbox::class)->add(Mcp\StudioQueueTool::class);
         $this->app->make(McpToolbox::class)->add(Mcp\StudioApproveTool::class);
+        $this->app->make(McpToolbox::class)->add(Mcp\StudioResultsTool::class);
     }
 }

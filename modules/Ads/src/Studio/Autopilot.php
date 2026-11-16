@@ -529,10 +529,18 @@ final class Autopilot
     /** @param array<string, mixed> $design */
     private function design(QueuedPost $item, User $user, array $design): void
     {
-        // Rotate through the person's favourite styles, so the feed never looks the same twice in a row.
-        $favorites = app(BrandKits::class)->forUser($user)['favorites'];
-        if ($favorites !== [] && ! isset($design['style'])) {
-            $design['style'] = $favorites[QueuedPost::query()->where('user_id', $user->id)->count() % count($favorites)];
+        // Rotate through the person's favourite styles, so the feed never looks the same twice in a row. Once Studio has
+        // learned which style does best for them (SA4), it leads with that one, still trying another every third post.
+        $kit = app(BrandKits::class)->forUser($user);
+        $favorites = $kit['favorites'];
+        $turn = QueuedPost::query()->where('user_id', $user->id)->count();
+        $best = app(StudioResults::class)->learned($user)['style'];
+        if (! isset($design['style'])) {
+            if ($best !== null && in_array($best, $kit['allowed'], true) && $turn % 3 !== 2) {
+                $design['style'] = $best;
+            } elseif ($favorites !== []) {
+                $design['style'] = $favorites[$turn % count($favorites)];
+            }
         }
         try {
             $made = $this->designer->create($user, $design);
@@ -605,7 +613,7 @@ final class Autopilot
             $at = $item->post_at !== null && $item->post_at->isFuture() ? $item->post_at->setTimezone($this->tz())->format('Y-m-d\TH:i') : '';
             $carousel = $this->designer->carousel($design);
             $post = app(SocialPosts::class)->schedule($user, ['text' => $this->text($item), 'image_url' => $this->designer->url($design, 'portrait'),
-                'images' => count($carousel) >= 2 ? $carousel : [],
+                'images' => count($carousel) >= 2 ? $carousel : [], 'studio_design' => $design->ulid,
                 'listing' => $item->listing_ulid, 'places' => $places, 'post_at' => $at]);
             $item->forceFill(['status' => 'scheduled', 'social_post_id' => $post->id, 'reason' => null])->save();
         } catch (ValidationException $e) {
@@ -640,6 +648,7 @@ final class Autopilot
         $reels->use($video, $user);
         $at = $item->post_at !== null && $item->post_at->isFuture() ? $item->post_at->setTimezone($this->tz())->format('Y-m-d\TH:i') : '';
         $post = app(SocialPosts::class)->schedule($user, ['text' => $this->text($item), 'image_url' => $reels->poster($video), 'video_url' => $reels->url($video),
+            'studio_video' => $video->ulid, 'studio_design' => Design::query()->whereKey($item->design_id)->value('ulid'),
             'listing' => $item->listing_ulid, 'places' => $places, 'post_at' => $at]);
         $item->forceFill(['status' => 'scheduled', 'social_post_id' => $post->id, 'reason' => null])->save();
     }
@@ -656,6 +665,9 @@ final class Autopilot
         if ($notBefore !== null && $notBefore->gt($now)) {
             $now = $notBefore->setTimezone($tz)->startOfDay();
         }
+        // The person's times of day, best first once Studio has learned which do best for them (SA4).
+        $learned = app(StudioResults::class)->learned($user)['times'];
+        $times = [...array_values(array_intersect($learned, $s['times'])), ...array_values(array_diff($s['times'], $learned))];
         $taken = QueuedPost::query()->where('user_id', $user->id)->whereIn('status', ['enhancing', 'designing', 'filming', 'awaiting', 'review', 'scheduled'])->whereNotNull('post_at')->pluck('post_at')
             ->map(fn ($d): CarbonImmutable => CarbonImmutable::parse($d)->setTimezone($tz));
         for ($i = 0; $i < 21; $i++) {
@@ -664,7 +676,7 @@ final class Autopilot
                 || $taken->filter(fn (CarbonImmutable $d): bool => $d->isoWeek() === $day->isoWeek() && $d->isoWeekYear() === $day->isoWeekYear())->count() >= $s['per_week']) {
                 continue;
             }
-            foreach ($s['times'] as $t) {
+            foreach ($times as $t) {
                 [$h, $m] = array_map('intval', explode(':', $t));
                 $at = $day->setTime($h, $m);
                 if ($at->gt($now->addHour())) {
