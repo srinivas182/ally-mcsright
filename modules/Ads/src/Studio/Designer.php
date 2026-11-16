@@ -278,6 +278,35 @@ final class Designer
     }
 
     /**
+     * A listing for a YouTube tour: its facts and up to eight sharp photos with their MLS captions (room names).
+     *
+     * @return array{content: array<string, mixed>, photos: list<string>, captions: list<string|null>}
+     */
+    public function tourOf(User $by, string $ulid): array
+    {
+        [, $facts, $photos, $captions] = $this->listing($by, $ulid, 'listing_feature', 0, 8);
+        unset($facts['area']);
+
+        return ['content' => ['kicker' => 'Welcome to', 'moment' => 'listing_feature'] + $facts, 'photos' => $photos, 'captions' => $captions];
+    }
+
+    /**
+     * One YouTube tour frame (1920x1080) in the person's style: intro, chapter or outro.
+     *
+     * @param  array<string, mixed>  $kit
+     * @param  array<string, mixed>  $content
+     */
+    public function tourPage(array $kit, string $style, string $slide, array $content, ?string $photo, string $chapter = '', int $n = 1, int $total = 1): string
+    {
+        $str = fn (string $k): ?string => is_string($kit[$k] ?? null) && $kit[$k] !== '' ? $kit[$k] : null;
+
+        return view('ads::studio.tour', ['slide' => $slide, 't' => Styles::get($style), 'grade' => Styles::grade($style), 'fonts' => self::fontFaces(), 'kit' => $kit,
+            'p' => $this->director->palette((array) $kit['colors'], $style, is_string($kit['finish'] ?? null) ? $kit['finish'] : null), 'c' => $content,
+            'photo' => $photo, 'chapter' => $chapter, 'n' => $n, 'total' => $total, 'headshot' => $str('headshot') ?? $str('cutout'),
+            'logoLight' => $str('logo_dark') ?? $str('logo'), 'logoInk' => $str('logo') ?? $str('logo_dark')])->render();
+    }
+
+    /**
      * Sample content for previews of every style: the person's newest listing with good photos, otherwise a
      * "meet your agent" statement.
      *
@@ -390,9 +419,9 @@ final class Designer
     /**
      * One of the person's listings, its facts and its best photos.
      *
-     * @return array{0: string, 1: array<string, mixed>, 2: list<string>}
+     * @return array{0: string, 1: array<string, mixed>, 2: list<string>, 3: list<string|null>}
      */
-    private function listing(User $by, string $ulid, string $moment, int $from = 0): array
+    private function listing(User $by, string $ulid, string $moment, int $from = 0, int $max = 5): array
     {
         $home = app(ListingAds::class)->listing($by, $ulid) ?? throw ValidationException::withMessages(['listing' => 'Choose one of your listings.']);
         $fits = self::MOMENTS[$moment][2] ?? null;
@@ -409,15 +438,17 @@ final class Designer
         // Enhanced versions (SA5a) replace the MLS photo in designs; the cover leads with its virtual twilight when there is one.
         $versions = app(StudioPhotos::class)->versions($ulid);
         $enhanced = false;
+        $captions = [];
         foreach ($media as $m) {
             $better = $versions[(int) $m->id] ?? [];
             $bytes = $m->storage_path !== null ? $disk->get($m->storage_path.'-'.$hero.'.webp') : null;
             if (is_string($bytes) && $this->director->photoProblem($bytes) === null) {
                 $use = $photos === [] ? ($better['twilight'] ?? $better['enhanced'] ?? null) : ($better['enhanced'] ?? null);
                 $photos[] = $use ?? (string) Photos::url($m->storage_path, 'hero');
+                $captions[] = is_string($m->caption) && trim($m->caption) !== '' ? mb_substr(trim(strip_tags($m->caption)), 0, 40) : null;
                 $enhanced = $enhanced || $use !== null;
             }
-            if (count($photos) === 5) {
+            if (count($photos) === $max) {
                 break;
             }
         }
@@ -432,7 +463,7 @@ final class Designer
         return [$ulid, array_filter(['headline' => $street, 'sub' => trim(implode(', ', array_filter([$home['city'] ?? null, trim(($home['state'] ?? '').' '.($home['postal_code'] ?? ''))]))),
             'facts' => $facts, 'price' => is_numeric($home['price'] ?? null) && $moment !== 'under_contract' ? '$'.number_format((int) $home['price']) : null,
             'attribution' => is_string($home['attribution'] ?? null) ? $home['attribution'] : null, 'enhanced' => $enhanced ?: null,
-            'area' => is_string($home['subdivision'] ?? null) && $home['subdivision'] !== '' ? $home['subdivision'] : ($home['city'] ?? null)]), $photos];
+            'area' => is_string($home['subdivision'] ?? null) && $home['subdivision'] !== '' ? $home['subdivision'] : ($home['city'] ?? null)]), $photos, $captions];
     }
 
     /** The premium type system every design uses (bundled, SIL OFL). */

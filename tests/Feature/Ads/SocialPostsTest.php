@@ -70,6 +70,7 @@ beforeEach(function (): void {
     app(AppRegistry::class)->save(app(AppCatalog::class)->find('facebook_leads'), true, ['client_id' => '123', 'client_secret' => 'app-secret', 'verify_token' => 'vt'], null, $hq);
     app(AppRegistry::class)->save(app(AppCatalog::class)->find('facebook_pages'), true, [], null, $hq);
     app(AppRegistry::class)->save(app(AppCatalog::class)->find('google_business'), true, [], null, $hq);
+    app(AppRegistry::class)->save(app(AppCatalog::class)->find('youtube'), true, [], null, $hq);
     app(AppRegistry::class)->save(app(AppCatalog::class)->find('linkedin'), true, ['client_id' => 'li-id', 'client_secret' => 'li-secret'], null, $hq);
 
     Http::fake([
@@ -228,6 +229,26 @@ it('posts a Reel: an Instagram Reel once processed, a Facebook Page video, and t
     Http::assertSent(fn (HttpRequest $r): bool => $r->url() === 'https://graph.facebook.com/v21.0/17841/media_publish');
     Http::assertSent(fn (HttpRequest $r): bool => str_ends_with($r->url(), 'locations/7/localPosts') && ($r->data()['media'][0]['sourceUrl'] ?? null) === 'https://cdn.acme.test/v/reel.jpg');
     Sleep::assertSleptTimes(1); // waited once for Instagram to finish processing
+});
+
+it('uploads Reels and tours to YouTube (private until the API audit), and only videos go there', function (): void {
+    Http::fake([
+        'www.googleapis.com/upload/youtube/v3/videos*' => Http::sequence()->push([], 200, ['Location' => 'https://www.googleapis.com/upload/youtube/v3/videos?upload_id=s1'])
+            ->push(['id' => 'yt123']),
+        'cdn.acme.test/*' => Http::response('MP4DATA', 200, ['Content-Type' => 'video/mp4']),
+    ]);
+    $yt = socialConnect($this->jane, 'youtube');
+    expect($yt->settings['channel'])->toBe(['id' => 'mine', 'name' => 'YouTube channel']);
+    $place = collect(app(SocialPosts::class)->places($this->jane))->firstWhere('channel', 'youtube')['key'];
+    $this->actingAs($this->jane)->post('/social', ['text' => 'Just listed', 'places' => [$place]])->assertSessionHasErrors('video_url');
+    $tour = 'https://cdn.acme.test/studio/t/tours/x.mp4';
+    $this->actingAs($this->jane)->post('/social', ['text' => "Tour: 201 Pine Rd\n\n0:00 Welcome\n0:05 Kitchen", 'link' => 'https://acme.test/201-pine', 'video_url' => $tour,
+        'image_url' => 'https://cdn.acme.test/studio/t/tours/x.jpg', 'places' => [$place]])->assertSessionHasNoErrors();
+    expect(SocialTarget::query()->sole()->only(['status', 'url']))->toBe(['status' => 'posted', 'url' => 'https://www.youtube.com/watch?v=yt123']);
+    Http::assertSent(fn (HttpRequest $r): bool => str_starts_with($r->url(), 'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable')
+        && ($r->data()['snippet']['title'] ?? null) === 'Tour: 201 Pine Rd' && str_contains((string) ($r->data()['snippet']['description'] ?? ''), '0:05 Kitchen')
+        && ($r->data()['status']['privacyStatus'] ?? null) === 'private' && $r->hasHeader('X-Upload-Content-Type', 'video/mp4'));
+    Http::assertSent(fn (HttpRequest $r): bool => $r->method() === 'PUT' && str_contains($r->url(), 'upload_id=s1') && $r->body() === 'MP4DATA');
 });
 
 it('shows the failure in one place without stopping the others', function (): void {

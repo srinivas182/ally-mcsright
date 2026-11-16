@@ -33,7 +33,14 @@ final class SocialController
         $reel = is_string($request->query('reel')) ? StudioVideo::query()->where('ulid', $request->query('reel'))->where('user_id', $user->id)->where('status', 'ready')->first() : null;
         $tz = $tenants->current()->timezone ?: 'America/New_York';
         $start = $design !== null ? $this->fromDesign($user, $design) : (is_string($listing) && $listing !== '' ? $this->social->fromListing($user, $listing) : null);
-        if ($reel !== null && ($from = Design::query()->find($reel->design_id)) !== null) {
+        if ($reel !== null && $reel->kind === 'tour' && $reel->listing_ulid !== null) {
+            // A listing tour: the listing's words and page, the chapters (YouTube shows them), the video and its first frame.
+            $base = $this->social->fromListing($user, $reel->listing_ulid);
+            $start = ['images' => []] + $base;
+            $start['text'] = 'Tour: '.$base['text']."\n\n".Reels::chapterLines($reel);
+            $start['image'] = app(Reels::class)->poster($reel);
+            $start['video'] = app(Reels::class)->url($reel);
+        } elseif ($reel !== null && ($from = Design::query()->find($reel->design_id)) !== null) {
             // A Reel: the design's caption and link, the video, and its first frame as the cover (for places that take a photo).
             $start = ['images' => []] + $this->fromDesign($user, $from);
             $start['image'] = app(Reels::class)->poster($reel);

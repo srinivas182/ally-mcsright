@@ -102,6 +102,8 @@ beforeEach(function (): void {
     Http::fake(['graph.facebook.com/v21.0/111/feed' => Http::response(['id' => '111_9']), 'graph.facebook.com/v21.0/111/photos' => Http::response(['id' => '111_9'])]);
     $this->actingAs($this->jane)->post('/studio/brand', ['headshot' => UploadedFile::fake()->image('me.jpg', 800, 1000), 'details' => ['phone' => '512-555-0100',
         'licence_line' => 'TX #0123456']])->assertSessionHasNoErrors();
+    // Launch Reels have their own test (ReelsTest); here they're off so each moment is one post.
+    app(Autopilot::class)->save($this->jane, ['mode' => 'approve', 'moments' => array_keys(Autopilot::KINDS), 'per_week' => 5, 'auto_reels' => false]);
 });
 
 function caption(object $t, string $text = 'Light-filled 3 bed on a quiet street, with a big yard and room to grow. Book a private showing.'): void
@@ -139,7 +141,7 @@ it('turns a new listing into a designed, captioned post at a good time, waiting 
 });
 
 it('schedules by itself on Autopilot, notices price improvements, and never uses wording that fails Fair Housing', function (): void {
-    $this->actingAs($this->jane)->post('/studio/autopilot', ['mode' => 'auto', 'moments' => ['listings'], 'times' => ['09:30', '18:00'], 'per_week' => 5])->assertSessionHasNoErrors();
+    $this->actingAs($this->jane)->post('/studio/autopilot', ['auto_reels' => false, 'mode' => 'auto', 'moments' => ['listings'], 'times' => ['09:30', '18:00'], 'per_week' => 5])->assertSessionHasNoErrors();
     caption($this, 'Perfect for families, in a safe neighborhood.');
     app(Autopilot::class)->runFor($this->jane);
     $first = QueuedPost::query()->sole();
@@ -152,7 +154,7 @@ it('schedules by itself on Autopilot, notices price improvements, and never uses
     expect($price->status)->toBe('scheduled')->and($price->post_at?->toIso8601String())->toBe('2026-06-02T14:30:00+00:00') // one a day: tomorrow 9:30
         ->and(SocialPost::query()->count())->toBe(2);
 
-    $this->actingAs($this->jane)->post('/studio/autopilot', ['mode' => 'off', 'moments' => ['listings']]);
+    $this->actingAs($this->jane)->post('/studio/autopilot', ['auto_reels' => false, 'mode' => 'off', 'moments' => ['listings']]);
     $this->home->forceFill(['standard_status' => 'Pending'])->save();
     expect(app(Autopilot::class)->runFor($this->jane))->toBe(0); // switched off
 });
@@ -197,7 +199,7 @@ it('asks for the client\'s OK before a closing post, celebrates work anniversari
         'price_cents' => 40_000_000, 'gci_cents' => 1_200_000, 'closed_on' => '2026-05-29', 'created_by' => $this->jane->id]);
     Http::fake(['graph.facebook.com/v21.0/111/posts*' => Http::response(['data' => [['message' => 'Sunday open house on Pine Rd was packed. Thank you, Austin, see you next week!'],
         ['message' => 'Hi']]])]);
-    $this->actingAs($this->jane)->post('/studio/autopilot', ['mode' => 'approve', 'moments' => ['closings', 'milestones'], 'learn_voice' => true])->assertSessionHasNoErrors();
+    $this->actingAs($this->jane)->post('/studio/autopilot', ['auto_reels' => false, 'mode' => 'approve', 'moments' => ['closings', 'milestones'], 'learn_voice' => true])->assertSessionHasNoErrors();
     caption($this);
     caption($this);
     app(Autopilot::class)->runFor($this->jane);
@@ -210,14 +212,14 @@ it('asks for the client\'s OK before a closing post, celebrates work anniversari
     $this->actingAs($this->jane)->post('/studio/autopilot/'.$closing->ulid.'/approve', ['client_ok' => true])->assertSessionHasNoErrors();
     expect($closing->fresh()?->status)->toBe('scheduled');
 
-    $this->actingAs($this->jane)->post('/studio/autopilot', ['mode' => 'approve', 'moments' => ['closings'], 'learn_voice' => false]);
+    $this->actingAs($this->jane)->post('/studio/autopilot', ['auto_reels' => false, 'mode' => 'approve', 'moments' => ['closings'], 'learn_voice' => false]);
     expect(app(Autopilot::class)->settings($this->jane)['voice'])->toBe([]); // forgotten when switched off
 });
 
 it('lets the brokerage review agents\' posts before they go out, with its own caption line', function (): void {
     $this->actingAs($this->jane)->post('/studio/rules', ['require_review' => true])->assertForbidden();
     $this->actingAs($this->owner)->post('/studio/rules', ['require_review' => true, 'caption_disclaimer' => 'Each office independently owned and operated.'])->assertSessionHasNoErrors();
-    $this->actingAs($this->jane)->post('/studio/autopilot', ['mode' => 'auto', 'moments' => ['listings']]);
+    $this->actingAs($this->jane)->post('/studio/autopilot', ['auto_reels' => false, 'mode' => 'auto', 'moments' => ['listings']]);
     expect(app(Autopilot::class)->settings($this->jane)['mode'])->toBe('approve'); // review means no Autopilot for agents
     caption($this);
     app(Autopilot::class)->runFor($this->jane);

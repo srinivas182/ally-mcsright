@@ -22,7 +22,7 @@ final class FfmpegVideoMaker implements VideoMaker
     /** How far the camera moves over one frame (7%). */
     private const ZOOM = 0.07;
 
-    public function make(array $frames, array $seconds, ?string $music, string $out): string
+    public function make(array $frames, array $seconds, ?string $music, string $out, int $width = 1080, int $height = 1920): string
     {
         if ($frames === [] || count($frames) !== count($seconds)) {
             throw new RuntimeException('A video needs frames and how long each shows.');
@@ -37,7 +37,7 @@ final class FfmpegVideoMaker implements VideoMaker
         foreach ($frames as $i => $_) {
             $n = (int) round($seconds[$i] * self::FPS);
             $z = $i % 2 === 0 ? '1+'.self::ZOOM.'*on/'.$n : (1 + self::ZOOM).'-'.self::ZOOM.'*on/'.$n;
-            $parts[] = "[{$i}:v]scale=2160:3840:flags=lanczos,zoompan=z='{$z}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={$n}:s=1080x1920:fps=".self::FPS.",setsar=1,format=yuv420p[v{$i}]";
+            $parts[] = "[{$i}:v]scale=".($width * 2).':'.($height * 2).":flags=lanczos,zoompan=z='{$z}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={$n}:s={$width}x{$height}:fps=".self::FPS.",setsar=1,format=yuv420p[v{$i}]";
         }
         $prev = 'v0';
         $offset = 0.0;

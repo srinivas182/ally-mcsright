@@ -55,10 +55,18 @@ body{position:relative;background:var(--bg);color:var(--ink);font-family:var(--s
 .display{font-family:var(--display);font-weight:var(--dw);font-style:var(--ds);text-transform:var(--dt);letter-spacing:var(--dl);line-height:1}
 .ital{font-family:var(--italic);font-style:italic;font-weight:400}
 .light{color:#fff}
-.shadow{text-shadow:0 2px 24px rgba(0,0,0,.35)}
+.shadow{text-shadow:0 1px 2px rgba(0,0,0,.28),0 2px 24px rgba(0,0,0,.42)}
+/* Legibility on photographs: a progressive blur that frosts and deepens the photo toward the text edge, so type
+   reads on any photo (a bright sky, a white wall) without a box or a visible band. */
+.veil{position:absolute;left:0;right:0;pointer-events:none;backdrop-filter:blur(var(--vb,5px));-webkit-backdrop-filter:blur(var(--vb,5px))}
+.veil-b{bottom:-48px;padding-bottom:48px;box-sizing:content-box;-webkit-mask-image:linear-gradient(180deg,transparent 0%,#000 45%);mask-image:linear-gradient(180deg,transparent 0%,#000 45%);
+  background:linear-gradient(180deg,rgba(8,8,10,0) 0%,rgba(8,8,10,.42) 50%,rgba(8,8,10,.7) 100%)}
+.veil-t{top:-48px;padding-top:48px;box-sizing:content-box;-webkit-mask-image:linear-gradient(0deg,transparent 0%,#000 50%);mask-image:linear-gradient(0deg,transparent 0%,#000 50%);
+  background:linear-gradient(0deg,rgba(8,8,10,0) 0%,rgba(8,8,10,.38) 55%,rgba(8,8,10,.56) 100%)}
+.onph{color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.3),0 2px 18px rgba(0,0,0,.35)}
 .logo{display:block;max-height:{{ $px(38) }};max-width:{{ $px(300) }};object-fit:contain}
 .legal{position:absolute;left:{{ $px(56) }};right:{{ $px(56) }};bottom:{{ round(22 * $u + $safeB * 0.5) }}px;display:flex;justify-content:center;align-items:center;gap:{{ $px(10) }};
-  font:400 {{ $px(13) }}/1.2 var(--sans);letter-spacing:.06em;text-align:center;color:{{ $legalOnPhoto ? 'rgba(255,255,255,.72)' : 'var(--muted)' }}}
+  font:400 {{ $px(13) }}/1.2 var(--sans);letter-spacing:.06em;text-align:center;color:{{ $legalOnPhoto ? 'rgba(255,255,255,.86);text-shadow:0 1px 2px rgba(0,0,0,.45)' : 'var(--muted)' }}}
 .legal svg{flex:none}
 .portrait{border-radius:50%;object-fit:cover;object-position:50% 18%}
 .pill{display:inline-block;border-radius:999px;padding:{{ $px(16) }} {{ $px(26) }};font:500 {{ $px(17) }}/1 var(--sans);letter-spacing:.16em;text-transform:uppercase;white-space:nowrap}
@@ -83,8 +91,8 @@ body{position:relative;background:var(--bg);color:var(--ink);font-family:var(--s
 {{-- Inner carousel slide: one photograph. Bleed styles fill the frame; framed styles hang it on the ground. --}}
     @if ($t['slide'] === 'bleed')
         <img class="ph" src="{{ $photo(0) }}" alt="">
-        <div class="abs" style="inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 62%,rgba(0,0,0,.5) 100%)"></div>
-        <div class="abs cap light shadow" style="left:{{ $px(64) }};bottom:{{ $bot(72) }}">{{ $nn }} — {{ $city !== '' ? $city : $kit['brokerage'] }}</div>
+        <div class="veil veil-b" style="height:{{ $hh(0.3) + $safeB }}px"></div>
+        <div class="abs cap onph" style="left:{{ $px(64) }};bottom:{{ $bot(72) }}">{{ $nn }} — {{ $city !== '' ? $city : $kit['brokerage'] }}</div>
         <div class="abs" style="right:{{ $px(64) }};bottom:{{ $bot(66) }}">{!! $mark(false, 28) !!}</div>
     @else
         <img class="pic abs" src="{{ $photo(0) }}" alt="" style="top:{{ $top(56) }};left:{{ $px(56) }};width:{{ $w - round(112 * $u) }}px;height:{{ $h - round(250 * $u) - $safeT - $safeB }}px;border-radius:{{ round($t['radius'] * 0.6) }}px">
@@ -168,7 +176,8 @@ body{position:relative;background:var(--bg);color:var(--ink);font-family:var(--s
 
 @case('frosted')
     <img class="ph" src="{{ $photo(0) }}" alt="">
-    <div class="abs" style="inset:0;background:linear-gradient(180deg,rgba(0,0,0,.32) 0%,rgba(0,0,0,0) 18%)"></div>
+    <div class="veil veil-t" style="height:{{ $hh(0.2) + $safeT }}px"></div>
+    <div class="veil veil-b" style="height:{{ $hh(0.14) + $safeB }}px"></div>
     <div class="abs" style="top:{{ $top(58) }};left:0;right:0;display:flex;justify-content:center">{!! $mark(false, 38) !!}</div>
     <div class="abs light" style="left:{{ $px(52) }};right:{{ $px(52) }};bottom:{{ $bot(80) }};padding:{{ $px(38) }} {{ $px(44) }};border-radius:{{ $px(30) }};background:rgba(18,18,18,.3);backdrop-filter:blur(30px) saturate(.85);border:1px solid rgba(255,255,255,.3)">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:{{ $px(20) }}">
@@ -193,9 +202,10 @@ body{position:relative;background:var(--bg);color:var(--ink);font-family:var(--s
 
 @case('monograph')
     <img class="ph" src="{{ $photo(0) }}" alt="">
-    <div class="abs" style="inset:0;background:linear-gradient(180deg,rgba(0,0,0,.32) 0%,rgba(0,0,0,0) 20%,rgba(0,0,0,0) 46%,rgba(0,0,0,.66) 100%)"></div>
+    <div class="veil veil-t" style="height:{{ $hh(0.2) + $safeT }}px"></div>
+    <div class="veil veil-b" style="height:{{ $hh(0.5) + $safeB }}px"></div>
     <div class="abs" style="top:{{ $top(58) }};left:{{ $px(64) }}">{!! $mark(false, 34) !!}</div>
-    @if ($city !== '')<div class="abs cap light" style="top:{{ $top(70) }};right:{{ $px(64) }}">{{ $city }}</div>@endif
+    @if ($city !== '')<div class="abs cap onph" style="top:{{ $top(70) }};right:{{ $px(64) }}">{{ $city }}</div>@endif
     @php $words = preg_split('/\s+/', $kicker) ?: [$kicker]; @endphp
     <div class="abs display light" style="left:{{ $px(50) }};right:{{ $px(40) }};bottom:{{ $bot($square ? 120 : 150) }};font-size:{{ $px(mb_strlen($kicker) > 14 ? 150 : 196) }};line-height:.86">{{ $words[0] }}@if (count($words) > 1)<br><i>{{ implode(' ', array_slice($words, 1)) }}</i>@endif</div>
     <div class="abs light" style="left:{{ $px(64) }};right:{{ $px(64) }};bottom:{{ $bot(82) }};display:flex;justify-content:space-between;gap:{{ $px(20) }};font:400 {{ $px(20) }}/1 var(--sans);letter-spacing:.08em;text-transform:uppercase">
@@ -310,7 +320,8 @@ body{position:relative;background:var(--bg);color:var(--ink);font-family:var(--s
 
 @case('seal')
     <img class="ph" src="{{ $photo(0) }}" alt="">
-    <div class="abs" style="inset:0;background:linear-gradient(180deg,rgba(0,0,0,.25) 0%,rgba(0,0,0,0) 18%,rgba(0,0,0,0) 58%,rgba(0,0,0,.58) 100%)"></div>
+    <div class="veil veil-t" style="height:{{ $hh(0.18) + $safeT }}px"></div>
+    <div class="veil veil-b" style="height:{{ $hh(0.42) + $safeB }}px"></div>
     @php $ring = mb_strtoupper($kicker.' • '.($city !== '' ? explode(',', $city)[0] : $kit['brokerage']).' • '); $ring = str_repeat($ring, max(1, (int) floor(60 / max(1, mb_strlen($ring))))); @endphp
     <svg viewBox="0 0 200 200" width="{{ round(240 * $u) }}" height="{{ round(240 * $u) }}" style="position:absolute;top:{{ $top(54) }};right:{{ $px(54) }}" aria-hidden="true">
         <circle cx="100" cy="100" r="96" fill="var(--paper)"/><defs><path id="ring" d="M100,100 m-70,0 a70,70 0 1,1 140,0 a70,70 0 1,1 -140,0"/></defs>
@@ -325,7 +336,8 @@ body{position:relative;background:var(--bg);color:var(--ink);font-family:var(--s
 
 @case('wide')
     <img class="ph" src="{{ $photo(0) }}" alt="" style="object-position:50% 70%">
-    <div class="abs" style="inset:0;background:linear-gradient(180deg,rgba(10,16,28,.62) 0%,rgba(10,16,28,.3) 22%,rgba(0,0,0,0) 40%,rgba(0,0,0,0) 70%,rgba(0,0,0,.5) 100%)"></div>
+    <div class="veil veil-t" style="height:{{ $hh(0.32) + $safeT }}px"></div>
+    <div class="veil veil-b" style="height:{{ $hh(0.24) + $safeB }}px"></div>
     <div class="abs light" style="top:{{ $top(104) }};left:{{ $px(30) }};right:{{ $px(30) }};text-align:center">
         <div style="font:300 {{ $px(20) }}/1 var(--display);letter-spacing:.6em;margin-right:-.6em;text-transform:uppercase">{{ $kicker }}</div>
         <div class="display shadow" style="font-size:{{ $fit(84, 12) }};margin-top:{{ $px(26) }}">{{ $hl }}</div>
@@ -347,8 +359,9 @@ body{position:relative;background:var(--bg);color:var(--ink);font-family:var(--s
 
 @default {{-- gallery --}}
     <img class="ph" src="{{ $photo(0) }}" alt="">
-    <div class="abs" style="inset:0;background:linear-gradient(180deg,rgba(0,0,0,.36) 0%,rgba(0,0,0,0) 22%,rgba(0,0,0,0) 58%,rgba(0,0,0,.62) 100%)"></div>
-    <div class="abs cap light" style="top:{{ $top(66) }};left:{{ $px(68) }}">{{ $kicker }}</div>
+    <div class="veil veil-t" style="height:{{ $hh(0.2) + $safeT }}px"></div>
+    <div class="veil veil-b" style="height:{{ $hh(0.45) + $safeB }}px"></div>
+    <div class="abs cap onph" style="top:{{ $top(66) }};left:{{ $px(68) }}">{{ $kicker }}</div>
     <div class="abs" style="top:{{ $top(56) }};right:{{ $px(68) }}">{!! $mark(false, 34) !!}</div>
     <div class="abs light" style="left:{{ $px(68) }};right:{{ $px(68) }};bottom:{{ $bot(112) }};display:flex;justify-content:space-between;align-items:flex-end;gap:{{ $px(24) }}">
         <div><div class="display shadow" style="font-size:{{ $fit(82, 22) }}">{{ $hl }}</div>
