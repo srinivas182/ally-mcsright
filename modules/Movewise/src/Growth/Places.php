@@ -6,6 +6,7 @@ namespace Modules\Movewise\Growth;
 
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Modules\Core\Support\Connections;
@@ -27,6 +28,18 @@ final class Places
      * @return array<string, mixed>|null null when Movewise has no homes there
      */
     public function facts(array $where): ?array
+    {
+        // Cached for 15 minutes: the MLS refreshes through the day, and these pages get heavy traffic (MW8).
+        ksort($where);
+
+        return Cache::remember('movewise:place:'.md5((string) json_encode($where)), 900, fn (): ?array => $this->compute($where));
+    }
+
+    /**
+     * @param  array{state: string, city?: string|null, zip?: string|null, hood?: string|null}  $where
+     * @return array<string, mixed>|null
+     */
+    private function compute(array $where): ?array
     {
         $tenant = $this->movewise->feedTenant();
         if ($tenant === null) {

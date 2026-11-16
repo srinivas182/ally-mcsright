@@ -36,8 +36,9 @@ final class Relay
     /** Gives an accepted introduction its relay number: one the person isn't already using with another agent. */
     public function assign(Connection $c, Person $p): ?string
     {
-        $busy = Connection::query()->where('person_id', $p->id)->where('id', '!=', $c->id)->where('status', 'accepted')->whereNull('handed_over_at')
-            ->whereNotNull('relay_number')->pluck('relay_number')->all();
+        // Not a number this person, or this agent, already uses with someone else: a number then means one pair, for texts and calls.
+        $busy = Connection::query()->where(fn ($q) => $q->where('person_id', $p->id)->orWhere('agent_id', $c->agent_id))->where('id', '!=', $c->id)->where('status', 'accepted')
+            ->whereNull('handed_over_at')->whereNotNull('relay_number')->pluck('relay_number')->all();
         $use = DB::connection(ControlDb::control())->table('movewise_connections')->where('status', 'accepted')->whereNull('handed_over_at')->whereNotNull('relay_number')
             ->groupBy('relay_number')->pluck(DB::raw('count(*)'), 'relay_number')->all();
         $numbers = DB::connection(ControlDb::control())->table('movewise_relay_numbers')->where('active', true)->whereNotIn('number', $busy)->pluck('number')->all();

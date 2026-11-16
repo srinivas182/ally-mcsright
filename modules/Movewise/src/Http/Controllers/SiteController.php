@@ -7,6 +7,7 @@ namespace Modules\Movewise\Http\Controllers;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Modules\Core\Support\Connections;
@@ -35,6 +36,18 @@ final class SiteController
      * @return array{base: string, states: list<array{code: string, name: string, slug: string, partner: array{name: string, broker: string, licence: string, phone: string|null, email: string|null, iabs: string|null}|null}>, year: int}
      */
     public function chrome(): array
+    {
+        // Every page needs this; cached briefly and dropped whenever a state or partner changes (MW8).
+        /** @var array{base: string, states: list<array{code: string, name: string, slug: string, partner: array{name: string, broker: string, licence: string, phone: string|null, email: string|null, iabs: string|null}|null}>, year: int} */
+        return Cache::remember(self::CHROME_KEY, 60, fn (): array => $this->buildChrome());
+    }
+
+    public const CHROME_KEY = 'movewise:chrome';
+
+    /**
+     * @return array{base: string, states: list<array{code: string, name: string, slug: string, partner: array{name: string, broker: string, licence: string, phone: string|null, email: string|null, iabs: string|null}|null}>, year: int}
+     */
+    private function buildChrome(): array
     {
         $states = [];
         foreach (State::query()->with('partner')->where('on', true)->orderBy('name')->get() as $s) {

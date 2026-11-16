@@ -5,9 +5,11 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Route;
 use Modules\Core\Http\Middleware\EnsureHqConsole;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
+use Modules\Movewise\Http\Controllers\HqAuditController;
 use Modules\Movewise\Http\Controllers\HqMovewiseController;
 use Modules\Movewise\Http\Controllers\HqProgramController;
 use Modules\Movewise\Http\Controllers\ProgramController;
+use Modules\Movewise\Http\Controllers\VoiceRelayController;
 
 // HQ → Movewise (specs/movewise/01): states, managing broker partners, the legal checklist and MLS feeds.
 Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.tenants.manage'])->prefix('hq/movewise')->name('hq.movewise.')->group(function (): void {
@@ -26,6 +28,10 @@ Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.tenants.manage
     Route::post('program/agents/{agent}/status', [HqProgramController::class, 'status'])->where('agent', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('program.status');
     Route::post('program/seats/{seat}', [HqProgramController::class, 'seat'])->where('seat', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('program.seat');
     Route::get('money', [HqProgramController::class, 'money'])->name('money');
+    // MW8: launch checks and the audit packs.
+    Route::get('launch', [HqAuditController::class, 'index'])->name('launch');
+    Route::get('audit/fair-housing.csv', [HqAuditController::class, 'fairHousing'])->middleware('password.confirm')->name('audit.fair-housing');
+    Route::get('audit/consent.csv', [HqAuditController::class, 'consent'])->middleware('password.confirm')->name('audit.consent');
     Route::post('money/invoices/{invoice}', [HqProgramController::class, 'invoice'])->where('invoice', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->middleware('password.confirm')->name('money.invoice');
     Route::post('money/ads', [HqProgramController::class, 'ads'])->middleware('password.confirm')->name('money.ads');
     Route::post('money/reviews/{connection}/remove', [HqProgramController::class, 'removeReview'])->where('connection', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->middleware('password.confirm')->name('money.reviews.remove');
@@ -50,3 +56,6 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('movewi
     Route::get('introductions/{connection}', [ProgramController::class, 'introduction'])->where('connection', $u)->name('introductions.show');
     Route::post('introductions/{connection}', [ProgramController::class, 'decide'])->where('connection', $u)->middleware('throttle:30,1')->name('introductions.decide');
 });
+
+// MW8: calls through the Movewise relay (Twilio voice webhook for each relay number; Twilio-signed).
+Route::middleware('throttle:600,1,movewise-voice')->post('webhooks/movewise/voice', VoiceRelayController::class)->name('movewise.voice');

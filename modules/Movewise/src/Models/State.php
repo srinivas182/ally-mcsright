@@ -7,7 +7,9 @@ namespace Modules\Movewise\Models;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Cache;
 use Modules\Core\Support\Connections;
+use Modules\Movewise\Http\Controllers\SiteController;
 
 /**
  * A Movewise state, with its own switch, managing broker and legal checklist (specs/movewise/00 §2, §12).
@@ -33,6 +35,12 @@ final class State extends Model
     public $incrementing = false;
 
     protected $guarded = [];
+
+    protected static function booted(): void
+    {
+        self::saved(fn () => Cache::forget(SiteController::CHROME_KEY)); // the site's header and footer change at once
+        self::deleted(fn () => Cache::forget(SiteController::CHROME_KEY));
+    }
 
     public function getConnectionName(): ?string
     {
