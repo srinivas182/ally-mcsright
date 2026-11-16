@@ -11,6 +11,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Support\Connections;
@@ -25,6 +26,7 @@ use Modules\Transactions\Portal\Copy;
 use Modules\Transactions\Portal\PortalAccess;
 use Modules\Transactions\Portal\PortalFeedbackMail;
 use Modules\Transactions\Portal\PortalView;
+use Modules\Transactions\Portal\SignIn;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -34,11 +36,10 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 final class PortalController
 {
-    private const SESSION = 'deal_portal';
-
     public function signIn(Request $request): Response
     {
         $locale = Copy::locale((string) $request->query('lang', 'en'));
+        app(SignIn::class)->fromDevice($request);
         $mine = $this->mine($request);
         if (count($mine) === 1) {
             return redirect('/my-deal/'.$mine[0]->ulid);
@@ -46,7 +47,8 @@ final class PortalController
 
         return $this->render($request, 'public/my-deal', ['t' => Copy::all($locale), 'locales' => Copy::LOCALES, 'locale' => $locale,
             'deals' => array_map(fn (\stdClass $a): array => ['ulid' => (string) $a->ulid, 'street' => (string) (Deal::query()->whereKey((int) $a->deal_id)->value('street') ?? '')], $mine),
-            'sent' => (bool) $request->session()->get('portal_sent', false), 'expired' => $request->boolean('expired')]);
+            'sent' => (bool) $request->session()->get('portal_sent', false), 'expired' => $request->boolean('expired'),
+            'locked' => $request->session()->get('portal_error') === 'code_locked']);
     }
 
     public function sendLink(Request $request, PortalAccess $portal): RedirectResponse
@@ -57,17 +59,72 @@ final class PortalController
         return redirect('/my-deal?lang='.Copy::locale($data['lang'] ?? 'en'))->with('portal_sent', true);
     }
 
-    public function enter(Request $request, string $token, PortalAccess $portal): RedirectResponse
+    /**
+     * The emailed link opens a page that asks for the invited address; opening it changes nothing, so email
+     * security scanners cannot use it up. A remembered device for the same person goes straight in.
+     */
+    public function enter(Request $request, string $token, SignIn $signIn): Response
     {
-        $access = $portal->login($token);
+        $access = $signIn->pending($token);
         if ($access === null) {
             return redirect('/my-deal?expired=1');
         }
-        $request->session()->regenerate();
-        $ids = array_values(array_unique([...(array) $request->session()->get(self::SESSION, []), (int) $access->id]));
-        $request->session()->put(self::SESSION, $ids);
+        $signIn->fromDevice($request);
+        if ($signIn->allowed($request, $access)) {
+            return redirect('/my-deal/'.$access->ulid);
+        }
+        $locale = Copy::locale((string) $access->locale);
 
-        return redirect('/my-deal/'.$access->ulid);
+        return $this->render($request, 'public/my-deal-verify', ['t' => Copy::all($locale), 'locale' => $locale, 'token' => $token,
+            'street' => (string) (Deal::query()->whereKey((int) $access->deal_id)->value('street') ?? ''),
+            'sms' => $signIn->canText($access) ? '•••'.substr((string) $access->phone, -4) : null,
+            'sentTo' => $request->session()->get('portal_code_sent'), 'error' => $request->session()->get('portal_error')]);
+    }
+
+    public function sendCode(Request $request, string $token, SignIn $signIn): RedirectResponse
+    {
+        $data = $request->validate(['email' => ['required', 'string', 'max:254'], 'via' => ['nullable', 'in:email,sms']]);
+        try {
+            $where = $signIn->sendCode($token, $data['email'], $data['via'] ?? 'email');
+        } catch (ValidationException $e) {
+            return $this->failed($token, $e);
+        }
+
+        $request->session()->put('portal_code_sent_last', $where);
+
+        return redirect('/my-deal/in/'.$token)->with('portal_code_sent', $where);
+    }
+
+    public function verify(Request $request, string $token, SignIn $signIn): RedirectResponse
+    {
+        $data = $request->validate(['code' => ['required', 'string', 'max:12'], 'remember' => ['boolean']]);
+        try {
+            $result = $signIn->verify($request, $token, $data['code'], (bool) ($data['remember'] ?? false));
+        } catch (ValidationException $e) {
+            return $this->failed($token, $e, true);
+        }
+        $request->session()->regenerate();
+        $response = redirect('/my-deal/'.$result['access']->ulid);
+
+        return $result['cookie'] !== null ? $response->withCookie($result['cookie']) : $response;
+    }
+
+    /** "This was not me" from the new sign-in email: a page with a button, so a scanner opening the link does nothing. */
+    public function notMe(Request $request, string $token, SignIn $signIn): Response
+    {
+        $access = $signIn->reported($token);
+        $locale = Copy::locale((string) ($access->locale ?? 'en'));
+
+        return $this->render($request, 'public/my-deal-not-me', ['t' => Copy::all($locale), 'locale' => $locale, 'valid' => $access !== null,
+            'done' => (bool) $request->session()->get('portal_not_me', false)]);
+    }
+
+    public function confirmNotMe(Request $request, string $token, SignIn $signIn): RedirectResponse
+    {
+        abort_unless($signIn->notMe($token), 404);
+        $request->session()->forget(SignIn::SESSION);
+
+        return redirect('/my-deal/not-me/'.$token)->with('portal_not_me', true)->withCookie(cookie()->forget(SignIn::COOKIE, '/my-deal'));
     }
 
     public function show(Request $request, string $access): Response
@@ -147,12 +204,11 @@ final class PortalController
         return redirect('/my-deal/'.$a->ulid)->with('portal_thanks', true);
     }
 
-    public function signOut(Request $request): RedirectResponse
+    public function signOut(Request $request, SignIn $signIn): RedirectResponse
     {
-        $request->session()->forget(self::SESSION);
-        $request->session()->regenerate();
+        $signIn->signOut($request);
 
-        return redirect('/my-deal');
+        return redirect('/my-deal')->withCookie(cookie()->forget(SignIn::COOKIE, '/my-deal'));
     }
 
     /**
@@ -162,9 +218,12 @@ final class PortalController
      */
     private function access(Request $request, string $ulid): array
     {
+        $signIn = app(SignIn::class);
         $a = app(PortalAccess::class)->find($ulid);
-        if ($a === null || ! in_array((int) $a->id, array_map('intval', (array) $request->session()->get(self::SESSION, [])), true)
-            || (int) $a->tenant_id !== app(TenantContext::class)->id()) {
+        if ($a !== null && ! $signIn->allowed($request, $a)) {
+            $signIn->fromDevice($request);
+        }
+        if ($a === null || (int) $a->tenant_id !== app(TenantContext::class)->id() || ! $signIn->allowed($request, $a)) {
             throw new HttpResponseException($request->expectsJson() ? response()->json(['message' => 'Sign in again.'], 403) : redirect('/my-deal'));
         }
         $deal = Deal::query()->whereKey((int) $a->deal_id)->firstOrFail();
@@ -177,9 +236,21 @@ final class PortalController
      */
     private function mine(Request $request): array
     {
-        $ids = array_map('intval', (array) $request->session()->get(self::SESSION, []));
+        $ids = app(SignIn::class)->signedIn($request);
 
         return $ids === [] ? [] : array_values(DB::connection(Connections::cell())->table('tx_portal_access')->whereIn('id', $ids)->whereNull('revoked_at')->get()->all());
+    }
+
+    /** Back to the sign-in page with the reason (the page words it in the client's language). */
+    private function failed(string $token, ValidationException $e, bool $codeStep = false): RedirectResponse
+    {
+        $reason = (string) collect($e->errors())->flatten()->first();
+        if ($reason === 'expired' || $reason === 'code_locked') {
+            return redirect('/my-deal?expired=1')->with('portal_error', $reason);
+        }
+        $back = redirect('/my-deal/in/'.$token)->with('portal_error', $reason);
+
+        return $codeStep ? $back->with('portal_code_sent', session('portal_code_sent_last')) : $back;
     }
 
     /**

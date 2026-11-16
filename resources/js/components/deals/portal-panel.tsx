@@ -15,6 +15,7 @@ export type PortalProps = {
         texts: boolean;
         last_seen: string | null;
         active: boolean;
+        devices: number;
     }[];
     questions: {
         ulid: string;
@@ -142,6 +143,21 @@ export function PortalPanel({
                                     ? `Last visit ${p.last_seen}`
                                     : 'Not visited yet'}
                             </span>
+                            {p.active && p.devices > 0 && (
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    title="Ends every session; they sign in again with a new link and code"
+                                    onClick={() =>
+                                        router.delete(
+                                            `/deals/${dealUlid}/portal/${p.ulid}/devices`,
+                                            { preserveScroll: true },
+                                        )
+                                    }
+                                >
+                                    Sign out on {p.devices} device(s)
+                                </Button>
+                            )}
                             {p.active && (
                                 <Button
                                     size="sm"

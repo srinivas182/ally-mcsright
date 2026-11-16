@@ -47,6 +47,7 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoff
     // The deal portal, agent side (specs/ai/02, DQ3).
     Route::post('{deal}/portal', [PortalAdminController::class, 'invite'])->middleware('throttle:30,1')->name('portal.invite');
     Route::delete('{deal}/portal/{access}', [PortalAdminController::class, 'revoke'])->name('portal.revoke');
+    Route::delete('{deal}/portal/{access}/devices', [PortalAdminController::class, 'signOutEverywhere'])->name('portal.sign-out');
     Route::post('{deal}/portal/documents/{document}', [PortalAdminController::class, 'share'])->name('portal.share');
     Route::post('{deal}/portal/questions/{question}', [PortalAdminController::class, 'reply'])->middleware('throttle:30,1')->name('portal.reply');
     Route::get('{deal}', [DealController::class, 'show'])->name('show');
@@ -113,7 +114,13 @@ Route::middleware(['web', EnsureTenantWorkspace::class])->prefix('my-deal')->nam
     Route::get('/', [PortalController::class, 'signIn'])->middleware('throttle:60,1')->name('sign-in');
     Route::post('link', [PortalController::class, 'sendLink'])->middleware('throttle:5,1,portal-link')->name('link');
     Route::post('sign-out', [PortalController::class, 'signOut'])->name('sign-out');
-    Route::get('in/{token}', [PortalController::class, 'enter'])->where('token', '[A-Za-z0-9]{48}')->middleware('throttle:20,1')->name('enter');
+    Route::prefix('in/{token}')->where(['token' => '[A-Za-z0-9]{48}'])->group(function (): void {
+        Route::get('/', [PortalController::class, 'enter'])->middleware('throttle:30,1')->name('enter');
+        Route::post('code', [PortalController::class, 'sendCode'])->middleware('throttle:5,1,portal-code')->name('code');
+        Route::post('verify', [PortalController::class, 'verify'])->middleware('throttle:10,1,portal-verify')->name('verify');
+    });
+    Route::get('not-me/{token}', [PortalController::class, 'notMe'])->where('token', '[A-Za-z0-9]{48}')->middleware('throttle:20,1')->name('not-me');
+    Route::post('not-me/{token}', [PortalController::class, 'confirmNotMe'])->where('token', '[A-Za-z0-9]{48}')->middleware('throttle:5,1')->name('not-me.confirm');
     Route::prefix('{access}')->where(['access' => '[0-9A-HJKMNP-TV-Z]{26}'])->group(function (): void {
         Route::get('/', [PortalController::class, 'show'])->middleware('throttle:120,1')->name('show');
         Route::post('ask', [PortalController::class, 'ask'])->middleware('throttle:20,1,portal-ask')->name('ask');

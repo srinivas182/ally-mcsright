@@ -10,6 +10,7 @@ type Props = {
     deals: { ulid: string; street: string }[];
     sent: boolean;
     expired: boolean;
+    locked?: boolean;
 };
 
 /** Sign in to the deal portal with an emailed link (specs/ai/02, DQ3). */
@@ -20,6 +21,7 @@ export default function MyDeal({
     deals,
     sent,
     expired,
+    locked = false,
 }: Props) {
     const form = useForm({ email: '', lang: locale });
 
@@ -64,7 +66,7 @@ export default function MyDeal({
                 )}
                 {expired && (
                     <p role="alert" className="text-destructive">
-                        {t.signin_expired}
+                        {locked ? t.code_locked : t.signin_expired}
                     </p>
                 )}
                 {sent ? (

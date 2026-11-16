@@ -18,8 +18,9 @@ use Modules\Transactions\Models\Deal;
 
 /**
  * Who can open a deal's portal (specs/ai/02, §§6, 22): the agent invites the buyers or sellers and the other side by
- * email. There is no password: each sign-in is a single-use link (7 days from an invite, 30 minutes when asked
- * for again), stored only as a hash. The agent can remove someone at any time.
+ * email. There is no password: each sign-in starts from a single-use link (7 days from an invite, 30 minutes when
+ * asked for again, stored only as a hash) and needs a one-time code sent to the invited address (SignIn). The agent
+ * can remove someone, or sign them out everywhere, at any time.
  */
 final class PortalAccess
 {
@@ -90,19 +91,6 @@ final class PortalAccess
         return $rows->count();
     }
 
-    /** Uses a sign-in link once; null when it was used, has expired or was removed. */
-    public function login(string $token): ?\stdClass
-    {
-        $db = DB::connection(Connections::cell());
-        $row = $db->table('tx_portal_access')->where('login_hash', hash('sha256', $token))->first();
-        if ($row === null || $row->revoked_at !== null || $row->login_expires_at === null || CarbonImmutable::parse((string) $row->login_expires_at)->isPast()) {
-            return null;
-        }
-        $db->table('tx_portal_access')->where('id', $row->id)->update(['login_hash' => null, 'login_expires_at' => null, 'last_seen_at' => now(), 'updated_at' => now()]);
-
-        return $row;
-    }
-
     /** The access behind a portal page, if it is still allowed. */
     public function find(string $ulid): ?\stdClass
     {
@@ -113,7 +101,8 @@ final class PortalAccess
     {
         $db = DB::connection(Connections::cell());
         $row = $db->table('tx_portal_access')->where('deal_id', $deal->id)->where('ulid', $ulid)->first() ?? abort(404);
-        $db->table('tx_portal_access')->where('id', $row->id)->update(['revoked_at' => now(), 'login_hash' => null, 'login_expires_at' => null, 'updated_at' => now()]);
+        $db->table('tx_portal_access')->where('id', $row->id)->update(['revoked_at' => now(), 'updated_at' => now()]);
+        app(SignIn::class)->everywhere($row);
         app(AuditLogger::class)->record('transactions.portal.removed', $deal, metadata: ['role' => $row->role, 'to' => AuditLogger::mask((string) $row->email)], label: $deal->street);
     }
 
@@ -137,14 +126,15 @@ final class PortalAccess
     }
 
     /**
-     * @return list<array{ulid: string, role: string, name: string, email: string, locale: string, texts: bool, last_seen: string|null, active: bool}>
+     * @return list<array{ulid: string, role: string, name: string, email: string, locale: string, texts: bool, last_seen: string|null, active: bool, devices: int}>
      */
     public function forDeal(Deal $deal): array
     {
         return array_values(DB::connection(Connections::cell())->table('tx_portal_access')->where('deal_id', $deal->id)->orderBy('id')->get()
             ->map(fn ($r): array => ['ulid' => (string) $r->ulid, 'role' => (string) $r->role, 'name' => (string) $r->name, 'email' => (string) $r->email,
                 'locale' => (string) $r->locale, 'texts' => $r->sms_consent_at !== null,
-                'last_seen' => $r->last_seen_at !== null ? CarbonImmutable::parse((string) $r->last_seen_at)->toDateString() : null, 'active' => $r->revoked_at === null])->all());
+                'last_seen' => $r->last_seen_at !== null ? CarbonImmutable::parse((string) $r->last_seen_at)->toDateString() : null, 'active' => $r->revoked_at === null,
+                'devices' => DB::connection(Connections::cell())->table('tx_portal_devices')->where('access_id', $r->id)->whereNull('revoked_at')->where('expires_at', '>', now())->count()])->all());
     }
 
     private function newLink(int $accessId, CarbonImmutable $expires): string

@@ -8,7 +8,8 @@ use Illuminate\Support\Facades\Schema;
 use Modules\Core\Support\Connections;
 
 /**
- * Deal-IQ DQ3 (specs/ai/02, §§6, 22): the deal portal for clients and the other side (sign-in links, no password),
+ * Deal-IQ DQ3 (specs/ai/02, §§6, 22): the deal portal for clients and the other side (sign-in link plus a one-time
+ * code, remembered devices, no password),
  * the client concierge's questions, the updates sent (each once), the post-closing check-in, and documents the
  * agent shares with clients.
  */
@@ -30,12 +31,29 @@ return new class extends Migration
             $table->dateTime('sms_consent_at')->nullable(); // texts only with the client's own opt-in, 8am–9pm
             $table->string('login_hash', 64)->nullable()->unique();
             $table->dateTime('login_expires_at')->nullable();
+            // The link alone never signs anyone in: a 6-digit code goes to the invited email (or their opted-in mobile).
+            $table->string('code_hash', 64)->nullable();
+            $table->dateTime('code_expires_at')->nullable();
+            $table->unsignedTinyInteger('code_attempts')->default(0);
+            $table->dateTime('sessions_after')->nullable(); // sign-ins before this time no longer work (removed, or "this wasn't me")
             $table->dateTime('last_seen_at')->nullable();
             $table->unsignedBigInteger('invited_by');
             $table->dateTime('revoked_at')->nullable();
             $table->timestamps();
             $table->unique(['deal_id', 'email']);
             $table->index(['tenant_id', 'email']);
+        });
+        $schema->create('tx_portal_devices', function (Blueprint $table): void {
+            $table->id();
+            $table->tenant();
+            $table->foreignId('access_id')->constrained('tx_portal_access')->cascadeOnDelete();
+            $table->string('token_hash', 64)->unique(); // the remembered browser's cookie, hashed
+            $table->string('report_hash', 64)->unique(); // the "this wasn't me" link in the new sign-in email, hashed
+            $table->string('label', 80); // e.g. "Chrome on Windows"
+            $table->dateTime('expires_at');
+            $table->dateTime('last_seen_at')->nullable();
+            $table->dateTime('revoked_at')->nullable();
+            $table->timestamps();
         });
         $schema->create('tx_portal_questions', function (Blueprint $table): void {
             $table->id();
@@ -88,6 +106,7 @@ return new class extends Migration
         $schema->dropIfExists('tx_portal_feedback');
         $schema->dropIfExists('tx_portal_updates');
         $schema->dropIfExists('tx_portal_questions');
+        $schema->dropIfExists('tx_portal_devices');
         $schema->dropIfExists('tx_portal_access');
     }
 };

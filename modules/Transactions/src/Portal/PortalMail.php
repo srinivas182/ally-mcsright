@@ -20,7 +20,7 @@ final class PortalMail extends Notification
      * @param  list<string>  $lines
      */
     public function __construct(public readonly string $lang, public readonly string $subject, public readonly array $lines, public readonly string $url,
-        public readonly ?string $replyTo = null) {}
+        public readonly ?string $replyTo = null, public readonly string $actionKey = 'mail.open') {}
 
     /**
      * @return list<string>
@@ -36,7 +36,7 @@ final class PortalMail extends Notification
         foreach ($this->lines as $line) {
             $mail->line($line);
         }
-        $mail->action(Copy::t($this->lang, 'mail.open'), $this->url)->line(Copy::t($this->lang, 'fraud'));
+        $mail->action(Copy::t($this->lang, $this->actionKey), $this->url)->line(Copy::t($this->lang, 'fraud'));
         if ($this->replyTo !== null && $this->replyTo !== '') {
             $mail->replyTo($this->replyTo);
         }

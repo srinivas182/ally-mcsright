@@ -7,9 +7,11 @@ namespace Modules\Transactions\Http;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Modules\Core\Audit\AuditLogger;
+use Modules\Core\Support\Connections;
 use Modules\Transactions\DealAccess;
 use Modules\Transactions\DealIq\DealAssistant;
 use Modules\Transactions\Models\Deal;
@@ -17,6 +19,7 @@ use Modules\Transactions\Models\Document;
 use Modules\Transactions\Portal\Concierge;
 use Modules\Transactions\Portal\Copy;
 use Modules\Transactions\Portal\PortalAccess;
+use Modules\Transactions\Portal\SignIn;
 
 /** The agent's side of the deal portal: who is in it, sharing documents with clients, and replying to questions. */
 final class PortalAdminController
@@ -36,6 +39,17 @@ final class PortalAdminController
     {
         $portal->revoke($deal, $access, self::authorise($request, $deal));
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Removed from the portal.']);
+
+        return back();
+    }
+
+    public function signOutEverywhere(Request $request, Deal $deal, string $access, SignIn $signIn): RedirectResponse
+    {
+        self::authorise($request, $deal);
+        $row = DB::connection(Connections::cell())->table('tx_portal_access')->where('deal_id', $deal->id)->where('ulid', $access)->first() ?? abort(404);
+        $signIn->everywhere($row);
+        app(AuditLogger::class)->record('transactions.portal.signed_out_everywhere', $deal, metadata: ['who' => AuditLogger::mask((string) $row->email)], label: $deal->street);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Signed out on every device. They can sign in again with a new link and code.']);
 
         return back();
     }

@@ -144,9 +144,20 @@ wire-instruction detection with payout holds.
 
 - **Deal portal** at `/my-deal` on the brokerage's own domain. The agent invites the buyers or sellers and the
   other side from the deal page (one click for anyone already on the deal with an email), choosing English or
-  Spanish. There is no account or password: each sign-in is a single-use emailed link (7 days from an invitation,
-  30 minutes when asked for again; stored only as a hash). Asking for a link never reveals whether an address is
-  known. The agent can remove anyone at once. Pages are never indexed or cached.
+  Spanish. There is no account or password. Pages are never indexed or cached.
+- **Signing in: link plus code.** The emailed link (single use; 7 days from an invitation, 30 minutes when asked
+  for again; stored only as a hash) never signs anyone in by itself:
+    1. Opening it changes nothing, so email security scanners cannot use it up. The page asks for the email
+       address the link was sent to; a forwarded link without that inbox gets no code.
+    2. A 6-digit code goes to that address, or by text to a mobile the client opted in with (8am–9pm, where HQ
+       allows texts). It works for 10 minutes and is stored only as a keyed hash.
+    3. Five wrong tries (addresses or codes) and the link stops working (audited); the client asks for a new one.
+    4. The right code signs that browser in for 12 hours, or 30 days if the client ticks "remember this device"
+       (a hashed device cookie, scoped to `/my-deal`, HTTP-only).
+    5. Every sign-in emails the client the device and time, with a "this was not me" link. It opens a page with a
+       button (so a scanner cannot trigger it); confirming signs out every device and emails the agent.
+    6. The agent sees each person's active devices and can sign them out everywhere; removing someone ends every
+       session and device at once. Asking for a link never reveals whether an address is known.
 - **What clients see**: a progress tracker (offer accepted, inspections, loan and appraisal (not for cash),
   getting ready to close, closed) with a plain note on the current step; the next three things (what is waiting
   on them, then dates in the next two weeks); every key date in their language (internal reminders such as
