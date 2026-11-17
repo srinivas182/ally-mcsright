@@ -89,6 +89,7 @@ type Props = {
     missing: { label: string; status: string }[];
     dates: KeyDate[];
     unsorted: DealDocument[];
+    emailIn: string;
     facts: Fact[];
     compliance: Compliance;
     reviewer: boolean;
@@ -289,6 +290,7 @@ export default function ShowDeal({
     closing,
     dates,
     unsorted,
+    emailIn,
     facts,
     compliance,
     reviewer,
@@ -507,6 +509,7 @@ export default function ShowDeal({
                     reviewer={reviewer}
                     locked={deal.locked}
                 />
+                <EmailIn address={emailIn} />
                 <DocIqPanel
                     deal={deal.ulid}
                     locked={deal.locked}
@@ -566,3 +569,32 @@ export default function ShowDeal({
 }
 
 ShowDeal.layout = { breadcrumbs: [{ title: 'Deals', href: '/deals' }] };
+
+/** LM1: the deal's own email address; attachments land in the unsorted documents. */
+function EmailIn({ address }: { address: string }) {
+    const [copied, setCopied] = useState(false);
+
+    return (
+        <section className="flex flex-wrap items-center gap-2 rounded-lg border p-3 text-sm">
+            <span className="font-medium">Email documents to this deal:</span>
+            <code className="rounded bg-muted px-2 py-1 break-all">
+                {address}
+            </code>
+            <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                    void navigator.clipboard
+                        ?.writeText(address)
+                        .then(() => setCopied(true));
+                }}
+            >
+                {copied ? 'Copied' : 'Copy'}
+            </Button>
+            <span className="w-full text-muted-foreground">
+                Give it to the lender, title company or the other agent. PDFs
+                and photos arrive under &ldquo;Unsorted&rdquo; for you to file.
+            </span>
+        </section>
+    );
+}

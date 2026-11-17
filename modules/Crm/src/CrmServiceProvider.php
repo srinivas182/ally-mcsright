@@ -45,6 +45,7 @@ final class CrmServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->app->singleton(Inbox\InboundMailboxes::class);
         $this->app->scoped(Booking\Availability::class);
         $this->app->scoped(ContactVisibility::class);
         $this->app->scoped(ManageContacts::class);
