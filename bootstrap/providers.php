@@ -4,6 +4,7 @@ use App\Providers\AppServiceProvider;
 use App\Providers\FortifyServiceProvider;
 use Modules\Ads\AdsServiceProvider;
 use Modules\AI\AiServiceProvider;
+use Modules\Appointments\AppointmentsServiceProvider;
 use Modules\Billing\BillingServiceProvider;
 use Modules\Compensation\CompensationServiceProvider;
 use Modules\Connect\ConnectServiceProvider;
@@ -43,6 +44,7 @@ return [
     MovewiseServiceProvider::class,
     RecruitingServiceProvider::class,
     OutreachServiceProvider::class,
+    AppointmentsServiceProvider::class,
     PricingServiceProvider::class,
     ListIqServiceProvider::class,
     InsightsServiceProvider::class,
