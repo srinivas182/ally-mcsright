@@ -64,6 +64,7 @@
             "Modules\\Outreach\\": "modules/Outreach/src/",
             "Modules\\Team\\": "modules/Team/src/",
             "Modules\\Learn\\": "modules/Learn/src/",
+            "Modules\\Engage\\": "modules/Engage/src/",
             "Modules\\Recruiting\\": "modules/Recruiting/src/",
             "Modules\\Pricing\\": "modules/Pricing/src/",
             "Modules\\ListIq\\": "modules/ListIq/src/",
