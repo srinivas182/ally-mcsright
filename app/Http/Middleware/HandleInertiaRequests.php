@@ -14,6 +14,7 @@ use Modules\Core\Identity\Impersonation;
 use Modules\Core\Identity\Security\TwoFactorPolicy;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Notices\Notices;
+use Modules\Core\Simple\EasierReading;
 use Modules\Core\Simple\SimpleMode;
 use Modules\Core\Tenancy\TenantContext;
 
@@ -97,6 +98,7 @@ class HandleInertiaRequests extends Middleware
                 ? ['unread' => app(Notices::class)->unread($request->user())] : null,
             'simple' => fn (): ?array => $request->user() instanceof User ? ['mode' => SimpleMode::mode($request->user()), 'locale' => SimpleMode::locale($request->user()),
                 'words' => SimpleMode::words(SimpleMode::locale($request->user())), 'locales' => SimpleMode::LOCALES] : null,
+            'reading' => fn (): array => EasierReading::for($request->user() instanceof User ? $request->user() : null), // AX1
             'navigation' => fn (): array => app(NavigationRegistry::class)->for($request->user() instanceof User ? $request->user() : null),
             // The credit meter at the foot of the menu (brokerage workspaces only).
             'credits' => function () use ($request): ?array {

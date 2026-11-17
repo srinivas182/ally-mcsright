@@ -1,5 +1,6 @@
 import type { Auth } from '@/types/auth';
 import type { NavGroup, TenantInfo } from '@/types/navigation';
+import type { Reading } from '@/types/reading';
 
 declare module 'react' {
     interface InputHTMLAttributes<T> {
@@ -21,6 +22,7 @@ declare module '@inertiajs/core' {
                 words: Record<string, string>;
                 locales: Record<string, string>;
             } | null;
+            reading: Reading;
             paymentsTestMode: boolean;
             impersonation: {
                 by: string;

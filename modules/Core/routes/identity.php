@@ -46,6 +46,7 @@ Route::middleware(['web', EnsureTenantHost::class, 'auth'])->group(function (): 
     // Simple mode and undo (SM1).
     Route::get('simple', [SimpleController::class, 'home'])->name('simple.home');
     Route::post('settings/view', [SimpleController::class, 'set'])->name('simple.set');
+    Route::post('settings/reading', [SimpleController::class, 'reading'])->middleware('throttle:60,1')->name('simple.reading'); // AX1
     Route::post('undo/{undo}', UndoController::class)->where('undo', '[0-9A-HJKMNP-TV-Z]{26}')->middleware('throttle:30,1')->name('undo');
     Route::post('brief/email', [BriefController::class, 'email'])->name('brief.email');
 

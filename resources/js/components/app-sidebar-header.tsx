@@ -1,6 +1,7 @@
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { CommandBar } from '@/components/command-bar';
 import { NotificationBell } from '@/components/notification-bell';
+import { TextSizeButton } from '@/components/reading/easier-reading';
 import { ShowMe } from '@/components/simple/show-me';
 import { ViewSwitch } from '@/components/simple/view-switch';
 import { SidebarTrigger } from '@/components/ui/sidebar';
@@ -21,6 +22,7 @@ export function AppSidebarHeader({
             </div>
             <div className="ml-auto flex flex-1 items-center justify-end gap-2 md:flex-none">
                 <ShowMe />
+                <TextSizeButton />
                 <ViewSwitch />
                 <CommandBar />
                 <NotificationBell />
