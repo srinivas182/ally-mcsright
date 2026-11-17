@@ -27,6 +27,7 @@ use Modules\Compensation\Insights;
 use Modules\Compensation\Models\Plan;
 use Modules\Compensation\Models\PlanAssignment;
 use Modules\Compensation\Models\PlanVersion;
+use Modules\Compensation\PlanReader;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Support\Connections;
 use Modules\Ledger\Money\Money;
@@ -57,7 +58,20 @@ final class CompensationController
                 ->map(fn (User $u): array => ['ulid' => $u->ulid, 'name' => $u->name, 'plan' => $this->currentPlanName($u->id)]),
             'fees' => DB::connection(Connections::cell())->table('comp_fees')->orderBy('name')->get(['code', 'name']),
             'canManage' => $user->can('compensation.plans.manage'),
+            'reading' => $request->session()->get('planReading'),
         ]);
+    }
+
+    /** CP1: a draft plan from the brokerage's plan document, read by AI (never published until the broker does). */
+    public function read(Request $request, PlanReader $reader): RedirectResponse
+    {
+        $user = $this->can($request, 'compensation.plans.manage');
+        $data = $request->validate(['file' => ['nullable', 'file', 'max:10240'], 'text' => ['nullable', 'string', 'max:30000']]);
+        $r = $reader->read($request->file('file'), $data['text'] ?? null, $user);
+        $request->session()->flash('planReading', ['plan' => $r['plan']->ulid, 'name' => $r['plan']->name, 'summary' => $r['summary'], 'evidence' => $r['evidence'], 'unclear' => $r['unclear']]);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Draft plan made from your document. Check it, try it in the simulator, then publish.']);
+
+        return back();
     }
 
     public function store(Request $request): RedirectResponse

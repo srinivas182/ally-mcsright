@@ -3,7 +3,7 @@
     "name": "Compensation",
     "version": "0.1.0",
     "provider": "Modules\\Compensation\\CompensationServiceProvider",
-    "depends": ["core", "ledger"],
+    "depends": ["core", "ledger", "ai"],
     "entitlement": null,
     "description": "Commission plans and versions, the commission calculator with plain-English steps, caps and revenue share."
 }

@@ -76,6 +76,20 @@ it('invoices recurring fees on schedule as receivable against fee revenue', func
         ->and(DB::table('bill_assignments')->whereNotNull('ended_on')->count())->toBe(1);
 });
 
+it('charges a fee in a set number of instalments, then stops (CP1)', function (): void {
+    expect(fn () => $this->billing->saveItem('Franchise fee', 30_000, 'once', $this->owner, 4))->toThrow(ValidationException::class);
+    $fee = $this->billing->saveItem('Franchise fee', 30_000, 'quarterly', $this->owner, 4);
+    $this->billing->assign($this->ann, $fee, CarbonImmutable::parse('2026-06-01'), $this->owner);
+    foreach (['2026-06-01', '2026-09-01', '2026-12-01', '2027-03-01', '2027-06-01', '2027-09-01'] as $day) {
+        $this->travelTo(CarbonImmutable::parse($day.' 09:00'));
+        $this->billing->daily();
+    }
+    $lines = DB::table('bill_invoice_lines')->orderBy('id')->pluck('description')->all();
+    expect($lines)->toBe(['Franchise fee — payment 1 of 4', 'Franchise fee — payment 2 of 4', 'Franchise fee — payment 3 of 4', 'Franchise fee — payment 4 of 4'])
+        ->and($this->billing->owed($this->ann->id))->toBe(120_000)
+        ->and(DB::table('bill_assignments')->value('ended_on'))->toBe('2027-03-01');
+});
+
 it('takes unpaid invoices from commission in a payout run and sends the rest', function (): void {
     app(BankAccounts::class)->set($this->ann, 'Ann A', '021000021', '111122223333', 'checking', $this->ann);
     $this->travel(73)->hours();

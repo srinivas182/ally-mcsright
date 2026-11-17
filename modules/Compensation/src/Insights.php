@@ -75,7 +75,39 @@ final class Insights
             'pending_deals' => $deals,
             'pending_take_home_cents' => $pending,
             'forecast' => $forecast,
+            'year' => $this->yearForecast($agent, $now, $pending),
         ];
+    }
+
+    /**
+     * The agent's take-home this calendar year (CP1, specs/compensation/03): what closed, what is under contract, and
+     * the rest of the year at their pace over the last 12 months. An estimate, and it says so.
+     *
+     * @return array{closed_cents: int, pending_cents: int, projected_cents: int, total_cents: int, deals_per_month: float, average_cents: int, months_left: int}
+     */
+    public function yearForecast(User $agent, CarbonImmutable $now, int $pendingCents): array
+    {
+        $ids = CalculationAgent::query()->where('agent_user_id', $agent->id)->where('status', 'final')->pluck('calculation_id');
+        $closed = 0;
+        $trailing = [];
+        foreach (Calculation::query()->whereIn('id', $ids)->where('created_at', '>=', $now->subYear())->get() as $calc) {
+            foreach ((array) ($calc->result['agents'] ?? []) as $row) {
+                if ((int) ($row['user_id'] ?? 0) === $agent->id) {
+                    $net = (int) ($row['agent_net_cents'] ?? 0);
+                    $trailing[] = $net;
+                    if ($calc->getAttribute('created_at') instanceof \DateTimeInterface && (int) $calc->getAttribute('created_at')->format('Y') === $now->year) {
+                        $closed += $net;
+                    }
+                }
+            }
+        }
+        $monthsLeft = 12 - $now->month;
+        $perMonth = count($trailing) / 12;
+        $average = $trailing !== [] ? (int) round(array_sum($trailing) / count($trailing)) : 0;
+        $projected = (int) round($perMonth * $monthsLeft * $average);
+
+        return ['closed_cents' => $closed, 'pending_cents' => $pendingCents, 'projected_cents' => $projected, 'total_cents' => $closed + $pendingCents + $projected,
+            'deals_per_month' => round($perMonth, 1), 'average_cents' => $average, 'months_left' => $monthsLeft];
     }
 
     /**

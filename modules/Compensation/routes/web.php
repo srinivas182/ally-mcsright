@@ -11,6 +11,7 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function
     Route::prefix('compensation')->name('compensation.')->group(function (): void {
         Route::get('plans', [CompensationController::class, 'index'])->name('plans');
         Route::post('plans', [CompensationController::class, 'store'])->name('plans.store');
+        Route::post('plans/read', [CompensationController::class, 'read'])->middleware('throttle:10,1')->name('plans.read'); // CP1
         Route::put('plans/{plan}/draft', [CompensationController::class, 'saveDraft'])->name('plans.draft');
         Route::post('plans/{plan}/default', [CompensationController::class, 'makeDefault'])->name('plans.default');
         Route::post('plans/{plan}/archive', [CompensationController::class, 'archive'])->name('plans.archive');

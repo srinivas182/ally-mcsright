@@ -1,7 +1,8 @@
-import { Head, router, usePage } from '@inertiajs/react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
 import { RulesForm, type Rules } from '@/components/compensation/rules-form';
+import { confirmCredits } from '@/components/credit-consent';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,7 +26,15 @@ type Plan = {
     agents: number;
     versions: Version[];
 };
+type Reading = {
+    plan: string;
+    name: string;
+    summary: string;
+    evidence: { rule: string; quote: string }[];
+    unclear: string[];
+};
 type Props = {
+    reading?: Reading | null;
     plans: Plan[];
     agents: { ulid: string; name: string; plan: string | null }[];
     fees: { code: string; name: string }[];
@@ -202,7 +211,13 @@ function PlanCard({
     );
 }
 
-export default function Plans({ plans, agents, fees, canManage }: Props) {
+export default function Plans({
+    plans,
+    agents,
+    fees,
+    canManage,
+    reading,
+}: Props) {
     const [creating, setCreating] = useState(false);
     const [name, setName] = useState('');
     const [type, setType] = useState('commission');
@@ -231,6 +246,7 @@ export default function Plans({ plans, agents, fees, canManage }: Props) {
                     }
                 />
                 <Errors />
+                {canManage && <ReadPlan reading={reading ?? null} />}
                 {creating && (
                     <section className="grid gap-3 rounded-lg border p-4">
                         <span className="flex flex-wrap gap-2">
@@ -382,3 +398,109 @@ export default function Plans({ plans, agents, fees, canManage }: Props) {
 Plans.layout = {
     breadcrumbs: [{ title: 'Compensation plans', href: '/compensation/plans' }],
 };
+
+/** CP1: set a plan up from the brokerage's own plan document; it becomes a draft to check, never published by itself. */
+function ReadPlan({ reading }: { reading: Reading | null }) {
+    const form = useForm<{ file: File | null; text: string }>({
+        file: null,
+        text: '',
+    });
+    const [open, setOpen] = useState(false);
+
+    return (
+        <section className="grid gap-3 rounded-lg border p-4 text-sm">
+            <div className="flex flex-wrap items-center gap-2">
+                <h2 className="font-semibold">
+                    Set a plan up from your plan document
+                </h2>
+                <Button
+                    size="sm"
+                    variant="outline"
+                    className="ml-auto"
+                    onClick={() => setOpen(!open)}
+                >
+                    {open ? 'Close' : 'Upload the plan (AI)'}
+                </Button>
+            </div>
+            {open && (
+                <form
+                    className="grid gap-2"
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        void confirmCredits('ai.plan_reader').then(
+                            (ok) =>
+                                ok &&
+                                form.post('/compensation/plans/read', {
+                                    forceFormData: true,
+                                    preserveScroll: true,
+                                }),
+                        );
+                    }}
+                >
+                    <p className="text-muted-foreground">
+                        Upload the PDF your agents sign, or paste its words. We
+                        make a draft plan and show the sentence behind every
+                        number. Nothing changes for agents until you publish.
+                    </p>
+                    <input
+                        type="file"
+                        accept="application/pdf"
+                        onChange={(e) =>
+                            form.setData('file', e.target.files?.[0] ?? null)
+                        }
+                    />
+                    <textarea
+                        className="min-h-24 rounded-md border bg-background p-2"
+                        placeholder="Or paste the plan's words here"
+                        value={form.data.text}
+                        onChange={(e) => form.setData('text', e.target.value)}
+                    />
+                    {form.errors.file && (
+                        <p className="text-destructive">{form.errors.file}</p>
+                    )}
+                    <div>
+                        <Button
+                            disabled={
+                                form.processing ||
+                                (form.data.file === null &&
+                                    form.data.text.trim() === '')
+                            }
+                        >
+                            Read it
+                        </Button>
+                    </div>
+                </form>
+            )}
+            {reading && (
+                <div className="grid gap-2 rounded-md bg-muted/40 p-3">
+                    <p className="font-medium">Draft made: {reading.name}</p>
+                    {reading.summary && <p>{reading.summary}</p>}
+                    {reading.evidence.length > 0 && (
+                        <ul className="grid gap-1">
+                            {reading.evidence.map((e, i) => (
+                                <li key={i}>
+                                    <strong>{e.rule}:</strong>{' '}
+                                    <q className="text-muted-foreground">
+                                        {e.quote}
+                                    </q>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                    {reading.unclear.length > 0 && (
+                        <div className="rounded-md border border-amber-300 p-2">
+                            <p className="font-medium">
+                                Check these before publishing
+                            </p>
+                            <ul className="list-disc pl-5">
+                                {reading.unclear.map((u) => (
+                                    <li key={u}>{u}</li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+                </div>
+            )}
+        </section>
+    );
+}
