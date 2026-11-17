@@ -103,6 +103,7 @@ export default function RecruitPage({
     earn,
     manual,
     reach,
+    joining,
     campaigns,
     enrollments,
 }: {
@@ -114,6 +115,12 @@ export default function RecruitPage({
     earn: Earn;
     manual: { deals: number | null; price: number | null };
     reach: Reach;
+    joining: {
+        can_invite: boolean;
+        invited_on: string | null;
+        joined_on: string | null;
+        sponsor: string | null;
+    };
     campaigns: { ulid: string; name: string }[];
     enrollments: Enrollment[];
 }) {
@@ -344,6 +351,56 @@ export default function RecruitPage({
                         {reach.application.message && (
                             <p className="whitespace-pre-line">
                                 {reach.application.message}
+                            </p>
+                        )}
+                    </section>
+                )}
+
+                {(joining.can_invite ||
+                    joining.invited_on ||
+                    joining.joined_on ||
+                    joining.sponsor) && (
+                    <section
+                        className="grid gap-2 rounded-lg border p-4"
+                        aria-labelledby="joining"
+                    >
+                        <h2 id="joining" className="font-semibold">
+                            Joining
+                        </h2>
+                        {joining.sponsor && (
+                            <p className="text-sm">
+                                Referred by {joining.sponsor} (their sponsor for
+                                revenue share).
+                            </p>
+                        )}
+                        {joining.joined_on ? (
+                            <p className="text-sm">
+                                Joined on {joining.joined_on}.
+                            </p>
+                        ) : joining.invited_on ? (
+                            <p className="text-sm">
+                                Invited to RightAlly on {joining.invited_on}.
+                            </p>
+                        ) : null}
+                        {joining.can_invite && (
+                            <Button
+                                className="justify-self-start"
+                                onClick={() =>
+                                    router.post(
+                                        `/recruiting/${recruit.ulid}/invite`,
+                                        {},
+                                        opts,
+                                    )
+                                }
+                            >
+                                {joining.invited_on
+                                    ? 'Send the invitation again'
+                                    : 'Invite them to RightAlly'}
+                            </Button>
+                        )}
+                        {errors.invite && (
+                            <p role="alert" className="text-sm text-red-700">
+                                {errors.invite}
                             </p>
                         )}
                     </section>

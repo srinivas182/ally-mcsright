@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Route;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
 use Modules\Recruiting\Http\AttractionController;
+use Modules\Recruiting\Http\GrowthController;
 use Modules\Recruiting\Http\RecruitingController;
 
 // Recruiting (specs/grow/17).
@@ -23,12 +24,21 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('recrui
     Route::get('my-story', [AttractionController::class, 'myStory'])->name('story');
     Route::post('my-story', [AttractionController::class, 'saveStory'])->name('story.save');
     Route::delete('my-story', [AttractionController::class, 'removeStory'])->name('story.remove');
+    Route::get('refer', [GrowthController::class, 'refer'])->name('refer');
+    Route::post('refer', [GrowthController::class, 'storeReferral'])->middleware('throttle:20,1')->name('refer.store');
+    Route::post('refer/draft', [GrowthController::class, 'draft'])->middleware(['throttle:10,1', 'feature:crm.ai'])->name('refer.draft');
+    Route::post('refer/database', [GrowthController::class, 'databaseForAgents'])->name('refer.database');
+    Route::get('retention', [GrowthController::class, 'retention'])->name('retention');
+    Route::post('retention/{agent}', [GrowthController::class, 'checkIn'])->name('retention.checkin');
+    Route::get('results', [GrowthController::class, 'results'])->name('results');
+    Route::post('results/spend', [GrowthController::class, 'spend'])->name('results.spend');
     Route::get('{recruit}', [RecruitingController::class, 'show'])->name('show');
     Route::put('{recruit}', [RecruitingController::class, 'update'])->name('update');
     Route::post('{recruit}/stage', [RecruitingController::class, 'stage'])->name('stage');
     Route::post('{recruit}/note', [RecruitingController::class, 'note'])->middleware('throttle:60,1')->name('note');
     Route::post('{recruit}/plan', [RecruitingController::class, 'plan'])->name('plan');
     Route::post('{recruit}/campaign', [AttractionController::class, 'start'])->name('campaign.start');
+    Route::post('{recruit}/invite', [GrowthController::class, 'invite'])->name('invite');
     Route::post('{recruit}/campaign/{campaign}/stop', [AttractionController::class, 'stop'])->name('campaign.stop');
 });
 

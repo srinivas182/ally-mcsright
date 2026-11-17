@@ -149,6 +149,9 @@ export default function Recruiting({
                                     Careers page
                                 </Link>
                             </Button>
+                            <Button variant="outline" asChild>
+                                <Link href="/recruiting/results">Results</Link>
+                            </Button>
                             <Button onClick={() => setAdding(!adding)}>
                                 Add someone
                             </Button>

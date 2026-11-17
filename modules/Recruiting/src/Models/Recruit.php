@@ -38,6 +38,11 @@ use Modules\Core\Tenancy\Concerns\HasPublicUlid;
  * @property string|null $text_consent_wording
  * @property CarbonImmutable|null $text_opt_out_at
  * @property array<string, mixed>|null $application
+ * @property int|null $sponsor_user_id
+ * @property int|null $invitation_id
+ * @property CarbonImmutable|null $invited_at
+ * @property int|null $user_id
+ * @property CarbonImmutable|null $joined_on
  * @property CarbonImmutable $created_at
  * @property-read MlsAgent|null $mlsAgent
  */
@@ -58,7 +63,7 @@ final class Recruit extends Model
 
     protected $fillable = ['mls_agent_id', 'name', 'email', 'phone', 'brokerage', 'stage', 'source', 'owner_user_id', 'next_step', 'next_step_on', 'not_now_reason',
         'stage_changed_on', 'current_split', 'current_cap_cents', 'current_fee_cents', 'compare_plan_id', 'email_opt_out_at', 'text_consent_at', 'text_consent_wording',
-        'text_opt_out_at', 'application'];
+        'text_opt_out_at', 'application', 'sponsor_user_id', 'invitation_id', 'invited_at', 'user_id', 'joined_on'];
 
     public function getConnectionName(): ?string
     {
@@ -95,6 +100,7 @@ final class Recruit extends Model
     {
         return ['next_step_on' => 'immutable_date', 'stage_changed_on' => 'immutable_date', 'created_at' => 'immutable_datetime',
             'current_cap_cents' => 'integer', 'current_fee_cents' => 'integer',
-            'email_opt_out_at' => 'immutable_datetime', 'text_consent_at' => 'immutable_datetime', 'text_opt_out_at' => 'immutable_datetime', 'application' => 'array'];
+            'email_opt_out_at' => 'immutable_datetime', 'text_consent_at' => 'immutable_datetime', 'text_opt_out_at' => 'immutable_datetime', 'application' => 'array',
+            'invited_at' => 'immutable_datetime', 'joined_on' => 'immutable_date'];
     }
 }
