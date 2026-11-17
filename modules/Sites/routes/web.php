@@ -61,6 +61,7 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])
         Route::post('domains', [WebsiteSettingsController::class, 'domain'])->middleware('throttle:10,1,site-domain')->name('domains.store');
         Route::post('menus', [WebsiteSettingsController::class, 'menus'])->name('menus');
         Route::post('agents', [WebsiteSettingsController::class, 'agentRules'])->name('agents.rules');
+        Route::post('calculators', [WebsiteSettingsController::class, 'calculators'])->name('calculators');
         Route::post('agents/{agent}/publish', [WebsiteSettingsController::class, 'agentPublish'])->name('agents.publish');
         Route::post('redirects', [WebsiteSettingsController::class, 'redirect'])->name('redirects.store');
         Route::post('redirects/import', [WebsiteSettingsController::class, 'importRedirects'])->name('redirects.import');
@@ -107,6 +108,7 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])
         Route::post('/', [MyWebsiteController::class, 'store'])->name('store');
         Route::patch('/', [MyWebsiteController::class, 'update'])->name('update');
         Route::post('publish', [MyWebsiteController::class, 'publish'])->name('publish');
+        Route::get('qr.png', [MyWebsiteController::class, 'qr'])->middleware('throttle:30,1')->name('qr');
         Route::post('domains', [MyWebsiteController::class, 'domain'])->middleware('throttle:10,1,agent-domain')->name('domains');
     });
 

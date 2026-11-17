@@ -23,6 +23,7 @@ use Modules\Sites\Models\SitePage;
 use Modules\Sites\PoweredBy;
 use Modules\Sites\SiteAccess;
 use Modules\Sites\SiteSetup;
+use Modules\Sites\Tools\HomeCalculators;
 
 /** Settings → Website: create the brokerage site from a template, edit details, SEO and AI visibility, publish, domains. */
 final class WebsiteSettingsController
@@ -46,6 +47,7 @@ final class WebsiteSettingsController
             'templates' => collect((array) config('sites.templates'))->map(fn (array $t, string $k): array => ['key' => $k, 'name' => $t['name'], 'description' => $t['description']])->values(),
             'powered_by' => $powered->forTenant($tenants->id()),
             'agent_rules' => AgentSites::rules(),
+            'calculators' => HomeCalculators::defaults($site),
             'agent_sites' => Site::query()->where('kind', 'agent')->orderBy('slug')->limit(500)->get()->map(fn (Site $s): array => ['ulid' => $s->ulid,
                 'name' => (string) ($s->info['name'] ?? $s->slug), 'slug' => (string) $s->slug, 'status' => $s->status])->values(),
             'menus' => $site === null ? null : ['main' => $site->menus['main'] ?? Menus::defaults($site), 'footer' => $site->menus['footer'] ?? [], 'custom' => ! empty($site->menus['main'])],
@@ -136,8 +138,22 @@ final class WebsiteSettingsController
     {
         $user = self::manager($request);
         $agents->saveRules($request->validate(['enabled' => ['required', 'boolean'], 'template' => ['required', 'boolean'], 'colours' => ['required', 'boolean'],
-            'sections' => ['required', 'boolean'], 'domain' => ['required', 'boolean']]), $user);
+            'sections' => ['required', 'boolean'], 'domain' => ['required', 'boolean'], 'referrals' => ['sometimes', 'boolean'], 'approval' => ['sometimes', 'boolean']]), $user);
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Brand kit saved.']);
+
+        return back();
+    }
+
+    /** AW1: the brokerage's own figures for the website calculators and listing payment estimates. */
+    public function calculators(Request $request, SiteSetup $sites): RedirectResponse
+    {
+        $user = self::manager($request);
+        $data = $request->validate(['rate' => ['required', 'numeric', 'min:0', 'max:20'], 'down_pct' => ['required', 'numeric', 'min:0', 'max:100'],
+            'tax_rate' => ['required', 'numeric', 'min:0', 'max:5'], 'insurance' => ['required', 'integer', 'min:0', 'max:5000']]);
+        $site = self::site($sites);
+        $site->forceFill(['settings' => ['calculators' => array_map(fn ($v): float => (float) $v, $data)] + ($site->settings ?? [])])->save();
+        app(AuditLogger::class)->record('sites.calculators_saved', $site, metadata: $data, severity: 'info');
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Calculator figures saved.']);
 
         return back();
     }

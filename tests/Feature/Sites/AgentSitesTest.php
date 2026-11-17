@@ -24,6 +24,7 @@ use Modules\Sites\AgentSites;
 use Modules\Sites\Models\Site;
 use Modules\Sites\Models\SitePage;
 use Modules\Sites\SiteSetup;
+use Modules\Sites\Tools\HomeCalculators;
 
 require_once __DIR__.'/../Contracts/contract-helpers.php';
 
@@ -179,4 +180,71 @@ it('makes landing pages for ads: no menu, hidden from search engines, leads repo
     expect(LeadSource::query()->find($lead->source_id)?->name)->toBe('Landing page: Free home value in 78704')
         ->and($lead->utm['utm_campaign'] ?? null)->toBe('spring');
     expect(AgentSites::rules()['enabled'])->toBeTrue();
+});
+
+/* AW1: referral links and QR codes, approval before agent websites go live, and the website calculators (specs/websites/18). */
+
+it('gives agents a referral link and QR code that send later leads to them', function (): void {
+    $site = janeSite($this);
+    $this->actingAs($this->jane)->get('/settings/my-website')->assertInertia(fn ($p) => $p->where('site.referral', fn ($u) => str_ends_with((string) $u, '/r/jane-doe')));
+    $qr = $this->actingAs($this->jane)->get('/settings/my-website/qr.png')->assertOk()->assertHeader('Content-Type', 'image/png');
+    expect(substr((string) $qr->getContent(), 1, 3))->toBe('PNG');
+
+    $r = $this->get($this->web.'/r/jane-doe?to=/homes')->assertRedirect($this->web.'/homes')->assertHeader('Cache-Control', 'no-store, private');
+    $cookie = collect($r->headers->getCookies())->first(fn ($c) => $c->getName() === 'ra_agent');
+    expect($cookie)->not->toBeNull()->and($cookie->isHttpOnly())->toBeTrue();
+    $this->get($this->web.'/r/jane-doe?to=//evil.example')->assertRedirect($this->web.'/agents/jane-doe'); // only this site
+    $this->get($this->web.'/r/nobody')->assertRedirect($this->web.'/');
+
+    // Days later the visitor sends the brokerage contact form: it goes to Jane, not the routing rules.
+    $form = ['name' => 'Ref Buyer', 'email' => 'ref@x.test', 'message' => 'Hello', 'return' => '/contact', 't' => Crypt::encryptString((string) (time() - 30))];
+    $this->withUnencryptedCookie('ra_agent', $cookie->getValue())->post($this->web.'/_lead', $form)->assertRedirect();
+    expect(Lead::query()->latest('id')->first()->assigned_user_id)->toBe($this->jane->id);
+
+    // The broker can switch referral links off.
+    $this->actingAs($this->owner)->post('/settings/website/agents', ['enabled' => true, 'template' => false, 'colours' => false, 'sections' => true, 'domain' => false,
+        'referrals' => false, 'approval' => false])->assertSessionHasNoErrors();
+    $this->get($this->web.'/r/jane-doe')->assertRedirect($this->web.'/');
+    $this->actingAs($this->jane)->get('/settings/my-website/qr.png')->assertNotFound();
+});
+
+it('lets the broker approve agent websites before they go live', function (): void {
+    $this->actingAs($this->owner)->post('/settings/website/agents', ['enabled' => true, 'template' => false, 'colours' => false, 'sections' => true, 'domain' => false,
+        'referrals' => true, 'approval' => true])->assertSessionHasNoErrors();
+    $site = janeSite($this);
+    expect($site->status)->toBe('review');
+    $this->get($this->web.'/agents/jane-doe')->assertNotFound();
+    $this->actingAs($this->owner)->get('/settings/website')->assertInertia(fn ($p) => $p->where('agent_sites.0.status', 'review'));
+    $this->actingAs($this->owner)->post('/settings/website/agents/'.$site->ulid.'/publish', ['live' => true])->assertSessionHasNoErrors();
+    expect($site->refresh()->status)->toBe('live');
+    $this->get($this->web.'/agents/jane-doe')->assertOk();
+});
+
+it('has free calculators that work without JavaScript and are found by search engines', function (): void {
+    $hub = (string) $this->get($this->web.'/calculators')->assertOk()->getContent();
+    expect($hub)->toContain('href="/calculators/mortgage"')->toContain('href="/calculators/affordability"')->toContain('href="/calculators/rent-vs-buy"');
+
+    $page = (string) $this->get($this->web.'/calculators/mortgage')->assertOk()->assertHeader('Cache-Control', 'max-age=300, public, s-maxage=900')->getContent();
+    expect($page)->toContain('"@type":"FAQPage"')->toContain('"@type":"HowTo"')->toContain('<link rel="canonical" href="http://acme.rightally.site/calculators/mortgage">')
+        ->toContain('a month');
+
+    $mine = (string) $this->get($this->web.'/calculators/mortgage?price=500,000&down_pct=10&rate=6&years=30&tax_rate=1&insurance=100&hoa=50')->assertOk()
+        ->assertHeader('Cache-Control', 'no-store, private')->getContent();
+    $m = HomeCalculators::mortgage(500000, 10, 6, 30, 1, 100, 50, 0.5);
+    expect($m['principal_interest'])->toBe(2698)->and($m['tax'])->toBe(417)->and($m['pmi'])->toBe(188)->and($m['total'])->toBe(3452)
+        ->and($mine)->toContain('$3,452')->toContain('Mortgage insurance')->toContain('content="noindex');
+
+    $a = HomeCalculators::affordability(120000, 500, 60000, 6.5, 30, 1.2, 150, 0);
+    expect($a['monthly'])->toBe(2800)->and($a['price'])->toBeGreaterThan(400000)->toBeLessThan(500000);
+    expect((string) $this->get($this->web.'/calculators/affordability?income=120000&debts=500&down=60000&rate=6.5')->getContent())->toContain('/homes?max_price='.$a['price']);
+
+    $rb = HomeCalculators::rentVsBuy(2500, 400000, 20, 6.5, 30, 10, 1.2, 150, 3, 3);
+    expect($rb['better'])->toBeIn(['buy', 'rent'])->and($rb['rent_total'])->toBeGreaterThan(300000);
+    $this->get($this->web.'/calculators/nope')->assertNotFound();
+
+    // The brokerage's own figures.
+    $this->actingAs($this->owner)->post('/settings/website/calculators', ['rate' => 5.875, 'down_pct' => 15, 'tax_rate' => 2.1, 'insurance' => 175])->assertSessionHasNoErrors();
+    expect((string) $this->get($this->web.'/calculators/mortgage')->getContent())->toContain('value="5.875"')->toContain('value="2.1"');
+    expect((string) $this->get($this->web.'/sitemap.xml')->getContent())->toContain('/calculators/rent-vs-buy</loc>');
+    expect((string) $this->get($this->web.'/llms.txt')->getContent())->toContain('/calculators/affordability');
 });

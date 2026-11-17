@@ -2396,3 +2396,32 @@ h3 {
 .heard strong {
     color: var(--text);
 }
+
+/* AW1: home calculators (specs/websites/18). */
+.calc-cards {
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+}
+.calc-card {
+    padding: 1.4rem;
+}
+.calc-card h2 {
+    font-size: 1.25rem;
+    margin: 0 0 0.5rem;
+}
+.calc-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.75rem 0;
+    font-size: 1.05rem;
+}
+.calc-table th,
+.calc-table td {
+    padding: 0.45rem 0;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+    font-weight: 400;
+}
+.calc-table td {
+    text-align: right;
+    font-weight: 600;
+}

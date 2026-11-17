@@ -55,6 +55,11 @@ final class SitesServiceProvider extends ServiceProvider
             $this->commands([Console\WriteMarketUpdates::class, Console\AillyWeekly::class, Console\SendHomeReports::class]);
         }
         $this->app->make(PromptRegistry::class)->addPath(__DIR__.'/../prompts');
+        // AW1: the calculators in the sitemap and llms.txt (specs/websites/18).
+        $this->app->make(Http\SiteExtensions::class)->pages(fn (): array => array_merge(
+            [['path' => '/calculators', 'title' => 'Home buying calculators', 'description' => 'monthly payment, what you can afford, and rent or buy']],
+            array_map(fn (string $k, array $c): array => ['path' => '/calculators/'.$k, 'title' => $c['title'], 'description' => lcfirst($c['description'])],
+                array_keys(Tools\HomeCalculators::KINDS), Tools\HomeCalculators::KINDS)));
         $features = $this->app->make(FeatureCatalog::class);
         $features->declare(Visitors\JourneySummary::FEATURE, 'ai.site_journey', 'Website visitor journey summary on new leads');
         $features->declare(Ai\ContentStudio::POST, 'ai.site_post', 'AI blog post drafts for websites');

@@ -22,6 +22,7 @@ use Modules\Sites\Models\Site;
 use Modules\Sites\Rendering\Chrome;
 use Modules\Sites\Rendering\Seo;
 use Modules\Sites\Rendering\Urls;
+use Modules\Sites\Tools\HomeCalculators;
 
 /**
  * The website's IDX pages (specs/websites/06): map search, listing pages and market pages. Everything is complete
@@ -279,12 +280,12 @@ final class IdxController
      */
     private static function mortgage(?int $price): array
     {
-        $c = (array) config('sites.mortgage');
-        $rate = (float) ($c['rate'] ?? 6.5);
-        $down = (int) ($c['down_pct'] ?? 20);
-        $years = (int) ($c['years'] ?? 30);
-        $tax = (float) ($c['tax_rate'] ?? 1.2);
-        $ins = (int) ($c['insurance'] ?? 150);
+        $c = HomeCalculators::defaults(Site::query()->where('kind', 'brokerage')->first()); // AW1: the brokerage's own figures
+        $rate = $c['rate'];
+        $down = (int) round($c['down_pct']);
+        $years = $c['years'];
+        $tax = $c['tax_rate'];
+        $ins = $c['insurance'];
         $monthly = null;
         if ($price !== null && $price > 0) {
             $loan = $price * (1 - $down / 100);

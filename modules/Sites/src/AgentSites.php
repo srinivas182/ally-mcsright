@@ -23,14 +23,14 @@ use Modules\Sites\Models\SitePage;
  */
 final class AgentSites
 {
-    public const DEFAULT_RULES = ['enabled' => true, 'template' => false, 'colours' => false, 'sections' => true, 'domain' => false];
+    public const DEFAULT_RULES = ['enabled' => true, 'template' => false, 'colours' => false, 'sections' => true, 'domain' => false, 'referrals' => true, 'approval' => false];
 
     public function __construct(private readonly SiteSetup $sites) {}
 
     /**
      * The brand kit rules for agents (from the brokerage website's settings).
      *
-     * @return array{enabled: bool, template: bool, colours: bool, sections: bool, domain: bool}
+     * @return array{enabled: bool, template: bool, colours: bool, sections: bool, domain: bool, referrals: bool, approval: bool}
      */
     public static function rules(): array
     {
@@ -130,6 +130,13 @@ final class AgentSites
     public function publish(Site $site, bool $live, User $by): void
     {
         self::guardOwner($site, $by);
+        // AW1: when the broker reviews agent websites first, an agent's "publish" asks for approval instead.
+        if ($live && self::rules()['approval'] && ! SiteAccess::manager($by)) {
+            $site->forceFill(['status' => 'review'])->save();
+            app(AuditLogger::class)->record('sites.agent_site_review_requested', $site, severity: 'notice');
+
+            return;
+        }
         $site->forceFill(['status' => $live ? 'live' : 'draft', 'published_at' => $live ? ($site->published_at ?? CarbonImmutable::now()) : $site->published_at])->save();
         app(AuditLogger::class)->record($live ? 'sites.agent_site_published' : 'sites.agent_site_unpublished', $site, severity: 'notice');
     }
