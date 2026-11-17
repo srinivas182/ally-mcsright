@@ -7,6 +7,7 @@ namespace Modules\Ads;
 use Illuminate\Support\ServiceProvider;
 use Modules\AI\FeatureCatalog;
 use Modules\AI\Support\PromptRegistry;
+use Modules\Core\Access\PermissionRegistry;
 use Modules\Core\Branding\EmailSignature;
 use Modules\Core\Brief\DailyBriefs;
 use Modules\Core\Identity\Enums\UserKind;
@@ -21,6 +22,8 @@ final class AdsServiceProvider extends ServiceProvider
     {
         $this->app->bind(EmailSignature::class, Studio\BrandSignature::class); // MK2
         $this->app->scoped(ListingAds::class);
+        $this->app->scoped(Review\AdCheck::class);
+        $this->app->scoped(Review\MarketingReviews::class);
         $this->app->scoped(AdCopy::class);
         $this->app->scoped(Boost::class);
         $this->app->scoped(Lifecycle::class);
@@ -52,11 +55,16 @@ final class AdsServiceProvider extends ServiceProvider
         }
         $this->app->make(PromptRegistry::class)->addPath(__DIR__.'/../prompts');
         $this->app->make(FeatureCatalog::class)->declare(AdCopy::FEATURE, 'ai.ads_copy', 'AI listing ad copy');
+        $this->app->make(FeatureCatalog::class)->declare(Review\MarketingReviews::FEATURE, 'ai.ad_compliance', 'Marketing check AI rewrite'); // MK3
+        $this->app->make(PermissionRegistry::class)->register('Marketing', [
+            'marketing.review' => ['Approve agents\' ads, flyers and posts before they go out'],
+        ]);
         $this->app->make(FeatureCatalog::class)->declare(Studio\Autopilot::FEATURE, 'ai.studio_caption', 'Ally Studio captions (included in each post)');
         $this->app->make(FeatureCatalog::class)->declare(Studio\Replies\StudioReplies::FEATURE, 'ai.studio_caption', 'Ally Studio reply drafts (included)');
         $this->app->make(FeatureCatalog::class)->declare(Studio\Voice\Narration::FEATURE, 'ai.studio_caption', 'Ally Studio voice-over scripts (included in each narration)');
         Studio\StudioBriefItems::register($this->app->make(DailyBriefs::class));
         $this->app->make(NavigationRegistry::class)->add(new NavItem('Grow', 'Ads', '/ads', 'megaphone', 30, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent]));
+        $this->app->make(NavigationRegistry::class)->add(new NavItem('Grow', 'Marketing check', '/marketing-check', 'shield-check', 31, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent]));
         $this->app->make(NavigationRegistry::class)->add(new NavItem('Grow', 'Social posts', '/social', 'send', 27, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent]));
         $this->app->make(NavigationRegistry::class)->add(new NavItem('Grow', 'Ally Studio', '/studio', 'sparkles', 24, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent]));
         $this->app->make(NavigationRegistry::class)->add(new NavItem('Platform', 'Ally Studio', '/hq/studio', 'sparkles', 38, kinds: [UserKind::HqStaff]));

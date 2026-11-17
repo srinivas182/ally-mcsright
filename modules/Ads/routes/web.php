@@ -8,6 +8,7 @@ use Modules\Ads\Http\AutopilotController;
 use Modules\Ads\Http\CanvaController;
 use Modules\Ads\Http\CanvaReturnController;
 use Modules\Ads\Http\HqStudioController;
+use Modules\Ads\Http\MarketingCheckController;
 use Modules\Ads\Http\ReelsController;
 use Modules\Ads\Http\SocialController;
 use Modules\Ads\Http\StudioController;
@@ -95,3 +96,13 @@ Route::get('studio-fonts/{file}.woff2', StudioFontsController::class)->where('fi
 
 // Canva sends everyone back to one address (specs/grow/13, C7d-3).
 Route::domain((string) config('core.sso_host'))->middleware(['web', 'throttle:60,1'])->get('connect/canva/return', CanvaReturnController::class)->name('studio.canva.return');
+
+// Grow → Marketing check (MK3, specs/ads/06).
+Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('marketing-check')->name('ads.marketing-check.')->group(function (): void {
+    Route::get('/', [MarketingCheckController::class, 'index'])->name('index');
+    Route::post('/', [MarketingCheckController::class, 'check'])->middleware('throttle:60,1')->name('check');
+    Route::post('submit', [MarketingCheckController::class, 'submit'])->middleware('throttle:20,1')->name('submit');
+    Route::post('settings', [MarketingCheckController::class, 'settings'])->name('settings');
+    Route::post('{review}/decide', [MarketingCheckController::class, 'decide'])->where('review', '[0-9A-HJKMNP-TV-Z]{26}')->name('decide');
+    Route::get('{review}/file', [MarketingCheckController::class, 'file'])->where('review', '[0-9A-HJKMNP-TV-Z]{26}')->name('file');
+});
