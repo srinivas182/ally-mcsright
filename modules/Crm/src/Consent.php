@@ -12,6 +12,8 @@ use Modules\Core\Audit\AuditLogger;
 use Modules\Crm\Models\ConsentEvent;
 use Modules\Crm\Models\Contact;
 use Modules\Crm\Models\ContactBrief;
+use Modules\Crm\Prospector\DncRegistry;
+use Modules\Crm\Prospector\Prospector;
 
 /**
  * Texting, email and calling consent (TCPA / CAN-SPAM), recorded as append-only evidence.
@@ -160,7 +162,14 @@ final class Consent
 
     public function canCall(Contact $contact): bool
     {
-        return $contact->primary_phone !== null && ! $contact->do_not_call;
+        if ($contact->primary_phone === null || $contact->do_not_call) {
+            return false;
+        }
+        // A prospect who never answered (no prior relationship) may be called only when the brokerage's copy of the
+        // Do Not Call Registry says the number is clear (LQ2, specs/grow/15).
+        $prospector = app(Prospector::class);
+
+        return ! $prospector->isCold($contact) || app(DncRegistry::class)->status($contact->primary_phone) === DncRegistry::CLEAR;
     }
 
     /** @param  array{source?: string, ref?: string|null, evidence?: array<string, mixed>|null}  $proof */

@@ -26,6 +26,7 @@ use Modules\Crm\Http\Controllers\PlanController;
 use Modules\Crm\Http\Controllers\PortabilityController;
 use Modules\Crm\Http\Controllers\PostcardsController;
 use Modules\Crm\Http\Controllers\PropertyLookupController;
+use Modules\Crm\Http\Controllers\ProspectorController;
 use Modules\Crm\Http\Controllers\RelationshipController;
 use Modules\Crm\Http\Controllers\SavedSearchController;
 use Modules\Crm\Http\Controllers\TaskController;
@@ -81,6 +82,14 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'throttle:20,1'])->group
 });
 
 Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function (): void {
+    Route::get('prospector', [ProspectorController::class, 'index'])->name('crm.prospector');
+    Route::post('prospector/fsbo', [ProspectorController::class, 'fsbo'])->name('crm.prospector.fsbo');
+    Route::post('prospector/settings', [ProspectorController::class, 'settings'])->name('crm.prospector.settings');
+    Route::post('prospector/registry', [ProspectorController::class, 'registry'])->middleware('throttle:10,1')->name('crm.prospector.registry');
+    Route::post('prospector/{prospect}/phone', [ProspectorController::class, 'phone'])->name('crm.prospector.phone');
+    Route::post('prospector/{prospect}/owner', [ProspectorController::class, 'owner'])->middleware('throttle:30,1')->name('crm.prospector.owner');
+    Route::post('prospector/{prospect}/contact', [ProspectorController::class, 'contact'])->name('crm.prospector.contact');
+    Route::post('prospector/{prospect}/dismiss', [ProspectorController::class, 'dismiss'])->name('crm.prospector.dismiss');
     Route::get('my-people/download', [PortabilityController::class, 'download'])->middleware('throttle:10,1')->name('crm.portability.download');
     // C8b: property data (ATTOM, BatchData), paid with credits per address.
     Route::get('property-lookup', [PropertyLookupController::class, 'show'])->name('property.lookup');

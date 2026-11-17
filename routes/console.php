@@ -44,6 +44,7 @@ Schedule::command('crm:ponds')->hourly()->onOneServer();
 Schedule::command('crm:leads-reassign')->everyMinute()->withoutOverlapping()->onOneServer();
 Schedule::command('crm:inbox-sweep')->everyMinute()->withoutOverlapping()->onOneServer();
 Schedule::command('crm:score-leads')->dailyAt('03:40')->onOneServer();
+Schedule::command('crm:prospector')->dailyAt('11:35')->onOneServer();
 Schedule::command('credits:grant-monthly')->dailyAt('00:20')->onOneServer();
 Schedule::command('credits:margin-watch')->dailyAt('06:10')->onOneServer();
 Schedule::command('credits:expire-purchases')->dailyAt('00:40')->onOneServer();

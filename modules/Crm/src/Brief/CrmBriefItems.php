@@ -11,6 +11,7 @@ use Modules\Crm\Models\Contact;
 use Modules\Crm\Models\Conversation;
 use Modules\Crm\Models\Lead;
 use Modules\Crm\Models\Task;
+use Modules\Crm\Prospector\Prospector;
 use Modules\Crm\TodaysTen;
 
 /**
@@ -25,6 +26,13 @@ final class CrmBriefItems
     public static function register(DailyBriefs $briefs): void
     {
         $briefs->add('crm', self::items(...));
+        // LQ2: new prospects for the agent today.
+        $briefs->add('prospector', function (User $user): array {
+            $n = app(Prospector::class)->waiting($user);
+
+            return $n === 0 ? [] : [['key' => 'prospects', 'title' => $n.' new prospect'.($n === 1 ? '' : 's').' to work', 'why' => 'Owners of expired or withdrawn listings near you, each with the reason.',
+                'action' => 'Open the Prospector', 'url' => '/prospector', 'urgency' => 2, 'stakes_cents' => null]];
+        });
     }
 
     /** @return list<array<string, mixed>> */
