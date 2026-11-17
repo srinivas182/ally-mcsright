@@ -7,6 +7,7 @@ use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
 use Modules\Learn\Http\LearnAdminController;
 use Modules\Learn\Http\LearnController;
 use Modules\Learn\Http\LearnIqController;
+use Modules\Learn\Http\PracticeController;
 
 // Learn (LN1, specs/learn/01).
 Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('learn')->name('learn.')->group(function (): void {
@@ -26,6 +27,15 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('learn'
     Route::post('mentor', [LearnIqController::class, 'mentor'])->name('mentor');
     Route::post('manage/gates', [LearnIqController::class, 'gate'])->name('gates');
     Route::post('manage/build', [LearnIqController::class, 'build'])->middleware('throttle:10,1')->name('build');
+
+    // The role-play academy (LN3, specs/learn/03).
+    Route::get('practice', [PracticeController::class, 'index'])->name('practice');
+    Route::post('practice', [PracticeController::class, 'start'])->middleware('throttle:30,1')->name('practice.start');
+    Route::post('practice/coach', [PracticeController::class, 'coach'])->middleware('throttle:10,1')->name('practice.coach');
+    Route::get('practice/{session}', [PracticeController::class, 'show'])->where('session', '[0-9A-HJKMNP-TV-Z]{26}')->name('practice.show');
+    Route::post('practice/{session}/reply', [PracticeController::class, 'reply'])->where('session', '[0-9A-HJKMNP-TV-Z]{26}')->middleware('throttle:40,1')->name('practice.reply');
+    Route::post('practice/{session}/finish', [PracticeController::class, 'finish'])->where('session', '[0-9A-HJKMNP-TV-Z]{26}')->middleware('throttle:10,1')->name('practice.finish');
+    Route::post('practice/{session}/suggest', [PracticeController::class, 'suggest'])->where('session', '[0-9A-HJKMNP-TV-Z]{26}')->middleware('throttle:10,1')->name('practice.suggest');
 
     Route::get('manage', [LearnAdminController::class, 'index'])->name('manage');
     Route::get('manage/report.csv', [LearnAdminController::class, 'report'])->name('report');
