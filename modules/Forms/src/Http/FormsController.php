@@ -17,6 +17,7 @@ use Modules\Forms\Identity\IdentityChecks;
 use Modules\Forms\Negotiations;
 use Modules\Forms\Packets;
 use Modules\Forms\Signing;
+use Modules\Forms\SmartForm;
 use Modules\Forms\Summaries;
 use Modules\Forms\Templates;
 use Modules\Transactions\Models\Deal;
@@ -52,6 +53,18 @@ final class FormsController
         $data = $request->validate(['fields' => ['present', 'array', 'max:400']]);
         $templates->saveFields($template, array_values($data['fields']), self::user($request));
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Fields saved as a new version.']);
+
+        return back();
+    }
+
+    /** PDF to smart form (specs/forms/04): find the blanks and add them as fields for the agent to check. */
+    public function findFields(Request $request, string $template, SmartForm $smart): RedirectResponse
+    {
+        abort_unless(Templates::manages(self::user($request)), 403);
+        $data = $request->validate(['ai' => ['sometimes', 'boolean']]);
+        $r = $smart->detect($template, self::user($request), (bool) ($data['ai'] ?? true));
+        $msg = "Found {$r['added']} field(s)".($r['skipped'] > 0 ? " ({$r['skipped']} already placed)" : '').'. Please check each one before you use the form.';
+        Inertia::flash('toast', ['type' => 'success', 'message' => $r['scanned'] ? $msg.' This form is a scan, so check the names carefully.' : $msg]);
 
         return back();
     }

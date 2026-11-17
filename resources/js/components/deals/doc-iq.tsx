@@ -41,6 +41,189 @@ type Answer = {
     citations: { page: number; quote: string }[];
 } | null;
 
+type Compare = {
+    document: string;
+    ready: boolean;
+    message: string | null;
+    before: {
+        filename: string;
+        version: number;
+        uploaded: string | null;
+    } | null;
+    facts: { label: string; before: string; after: string }[];
+    added: string[];
+    removed: string[];
+    more: number;
+    scanned: boolean;
+} | null;
+type Explain = {
+    document: string;
+    lang: string;
+    headline: string;
+    points: { text: string; page: number; quote: string; kind: string }[];
+    removed: number;
+    scanned: string | null;
+    disclaimer: string;
+} | null;
+type Share = { document: string; link: string; until: string } | null;
+
+/** Compare, explain (English or Spanish) and share-by-link for one document (specs/ai/07). */
+function DocExtras({ doc }: { doc: DealDocument }) {
+    const { docCompare, docExplain, docShare } = usePage<{
+        docCompare: Compare;
+        docExplain: Explain;
+        docShare: Share;
+    }>().props;
+    const [days, setDays] = useState('3');
+    const compare = docCompare?.document === doc.ulid ? docCompare : null;
+    const explain = docExplain?.document === doc.ulid ? docExplain : null;
+    const share = docShare?.document === doc.ulid ? docShare : null;
+    const post = (path: string, data: Record<string, string> = {}) =>
+        router.post(`/deals/documents/${doc.ulid}/${path}`, data, {
+            preserveScroll: true,
+        });
+
+    return (
+        <div className="grid gap-1 text-xs">
+            <span className="flex flex-wrap items-center gap-3">
+                {doc.version > 1 && (
+                    <button
+                        type="button"
+                        className="underline"
+                        onClick={() => post('compare')}
+                    >
+                        What changed from the last version?
+                    </button>
+                )}
+                <button
+                    type="button"
+                    className="underline"
+                    onClick={() => post('explain', { lang: 'en' })}
+                >
+                    Explain in plain English
+                </button>
+                <button
+                    type="button"
+                    className="underline"
+                    lang="es"
+                    onClick={() => post('explain', { lang: 'es' })}
+                >
+                    Explicar en español
+                </button>
+                <span className="flex items-center gap-1">
+                    <label htmlFor={`share-${doc.ulid}`}>Safe link for</label>
+                    <select
+                        id={`share-${doc.ulid}`}
+                        className="rounded border px-1 py-0.5"
+                        value={days}
+                        onChange={(e) => setDays(e.target.value)}
+                    >
+                        <option value="1">1 day</option>
+                        <option value="3">3 days</option>
+                        <option value="7">7 days</option>
+                    </select>
+                    <button
+                        type="button"
+                        className="underline"
+                        title="A link to a copy with Social Security, bank and birth-date numbers blacked out"
+                        onClick={() => post('share', { days })}
+                    >
+                        Make link
+                    </button>
+                </span>
+            </span>
+            {share && (
+                <p className="rounded border bg-muted/30 p-2">
+                    Safe copy link (works until {share.until}):{' '}
+                    <input
+                        readOnly
+                        aria-label="Safe copy link"
+                        className="w-full rounded border px-1"
+                        value={share.link}
+                        onFocus={(e) => e.currentTarget.select()}
+                    />
+                </p>
+            )}
+            {compare && (
+                <div className="rounded border bg-muted/30 p-2">
+                    {compare.before && (
+                        <p className="font-medium">
+                            Compared with {compare.before.filename} (version{' '}
+                            {compare.before.version})
+                        </p>
+                    )}
+                    {compare.message && <p>{compare.message}</p>}
+                    {compare.facts.map((f, i) => (
+                        <p key={i}>
+                            <strong>{f.label}:</strong> {f.before} → {f.after}
+                        </p>
+                    ))}
+                    {compare.added.length > 0 && (
+                        <>
+                            <p className="mt-1 font-medium">Added</p>
+                            {compare.added.map((l, i) => (
+                                <p key={i} className="text-green-800">
+                                    + {l}
+                                </p>
+                            ))}
+                        </>
+                    )}
+                    {compare.removed.length > 0 && (
+                        <>
+                            <p className="mt-1 font-medium">Taken out</p>
+                            {compare.removed.map((l, i) => (
+                                <p key={i} className="text-red-800">
+                                    − {l}
+                                </p>
+                            ))}
+                        </>
+                    )}
+                    {compare.more > 0 && (
+                        <p className="text-muted-foreground">
+                            …and {compare.more} more line(s). Open both versions
+                            to see everything.
+                        </p>
+                    )}
+                    {compare.scanned && (
+                        <p className="text-muted-foreground">
+                            One version was scanned, so some words may be
+                            misread.
+                        </p>
+                    )}
+                </div>
+            )}
+            {explain && (
+                <div
+                    className="rounded border bg-muted/30 p-2 text-sm"
+                    lang={explain.lang}
+                >
+                    {explain.headline && (
+                        <p className="font-medium">{explain.headline}</p>
+                    )}
+                    <ul className="list-disc pl-5">
+                        {explain.points.map((p, i) => (
+                            <li key={i}>
+                                {p.text}{' '}
+                                <span className="text-xs text-muted-foreground">
+                                    (page {p.page})
+                                </span>
+                            </li>
+                        ))}
+                    </ul>
+                    {explain.scanned && (
+                        <p className="text-xs text-amber-900">
+                            {explain.scanned}
+                        </p>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                        {explain.disclaimer}
+                    </p>
+                </div>
+            )}
+        </div>
+    );
+}
+
 /** One document with what DocIQ found: its type, pages, sensitive numbers, safe copy and "ask". */
 export function DocRow({
     doc,
@@ -161,6 +344,9 @@ export function DocRow({
                             </Button>
                         </form>
                     )}
+                    <div className="mt-1">
+                        <DocExtras doc={doc} />
+                    </div>
                     {answer && (
                         <div className="mt-1 rounded border bg-muted/30 p-2">
                             <p className="text-muted-foreground">

@@ -12,6 +12,7 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('forms'
     Route::get('templates', [FormsController::class, 'templates'])->name('templates');
     Route::post('templates', [FormsController::class, 'upload'])->middleware('throttle:20,1')->name('templates.upload');
     Route::post('templates/{template}/fields', [FormsController::class, 'fields'])->name('templates.fields');
+    Route::post('templates/{template}/find-fields', [FormsController::class, 'findFields'])->middleware('throttle:10,1')->name('templates.find');
     Route::get('templates/{template}/pages/{page}', [FormsController::class, 'page'])->whereNumber('page')->name('templates.page');
     Route::post('clauses', [FormsController::class, 'clause'])->name('clauses');
     Route::post('identity-settings', [FormsController::class, 'identitySettings'])->name('identity-settings');

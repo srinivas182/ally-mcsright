@@ -128,6 +128,9 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoff
     Route::get('documents/{document}/evidence', [ComplianceController::class, 'evidence'])->name('document.evidence');
     Route::get('documents/{document}/safe', [DocumentReadingController::class, 'safe'])->name('document.safe');
     Route::post('documents/{document}/ask', [DocumentReadingController::class, 'ask'])->middleware('throttle:20,1,doc-ask')->name('document.ask');
+    Route::post('documents/{document}/compare', [DocumentReadingController::class, 'compare'])->middleware('throttle:30,1')->name('document.compare');
+    Route::post('documents/{document}/explain', [DocumentReadingController::class, 'explain'])->middleware('throttle:10,1,doc-explain')->name('document.explain');
+    Route::post('documents/{document}/share', [DocumentReadingController::class, 'share'])->middleware('throttle:20,1')->name('document.share');
     Route::post('items/{item}/review', [DealController::class, 'review'])->name('item.review');
     Route::post('review/bulk', [MoneyDeskController::class, 'bulkApprove'])->name('review.bulk');
     Route::post('{deal}/deposits', [MoneyDeskController::class, 'expectDeposit'])->name('deposits.expect');
@@ -191,6 +194,10 @@ Route::middleware(['web', EnsureTenantWorkspace::class])->prefix('my-deal')->nam
         Route::post('feedback', [PortalController::class, 'feedback'])->middleware('throttle:5,1')->name('feedback');
     });
 });
+
+// A safe copy shared by link (specs/ai/07): sensitive numbers blacked out, signed and short-lived.
+Route::middleware(['web', EnsureTenantWorkspace::class, 'throttle:30,1'])->get('shared/doc/{document}', [DocumentReadingController::class, 'shared'])
+    ->where('document', '[0-9A-HJKMNP-TV-Z]{26}')->name('shared.document');
 
 // Offers from buyers' agents (specs/ai/02, DQ4): the listing's offer link, and each agent's private revise link.
 Route::middleware(['web', EnsureTenantWorkspace::class])->prefix('offer')->name('offer.')->group(function (): void {

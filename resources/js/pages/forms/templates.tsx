@@ -282,7 +282,27 @@ function FieldEditor({
                 >
                     Save fields
                 </Button>
+                <Button
+                    size="sm"
+                    variant="outline"
+                    title="Finds the fill-in lines and tick boxes on this PDF and adds them as fields for you to check"
+                    onClick={() =>
+                        router.post(
+                            `/forms/templates/${t.ulid}/find-fields`,
+                            {},
+                            { preserveScroll: true },
+                        )
+                    }
+                >
+                    Find the fields for me
+                </Button>
             </span>
+            <p className="mt-1 text-xs text-muted-foreground">
+                “Find the fields for me” reads the PDF (scans too), adds a field
+                for every blank line and tick box, and links it to the deal
+                (price, address, names) or a signer where it can. Check each one
+                before you use the form.
+            </p>
         </details>
     );
 }
@@ -368,7 +388,7 @@ export default function FormTemplates({
                 </form>
                 {templates.map((t) => (
                     <FieldEditor
-                        key={t.ulid}
+                        key={`${t.ulid}-${t.version}`}
                         t={t}
                         bindings={bindings}
                         types={types}

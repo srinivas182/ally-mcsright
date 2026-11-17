@@ -41,6 +41,7 @@ final class FormsServiceProvider extends ServiceProvider
         $this->app->make(PromptRegistry::class)->addPath(__DIR__.'/../prompts');
         $this->app->make(FeatureCatalog::class)->declare(AiDrafter::FEATURE, 'ai.forms_draft', 'Deal-IQ: contracts and addendums drafted on your forms');
         $this->app->make(FeatureCatalog::class)->declare(Summaries::FEATURE, 'ai.forms_summary', 'Plain-English summary of a forms packet for signers');
+        $this->app->make(FeatureCatalog::class)->declare(SmartForm::FEATURE, 'ai.smart_fields', 'Form builder: names and links for the blanks found on a PDF');
         Gate::define('forms.templates', fn (User $user): bool => Templates::manages($user));
         $this->app->make(NavigationRegistry::class)->add(new NavItem('Settings', 'Forms', '/forms/templates', 'file-text', 77, ability: 'forms.templates'));
     }
