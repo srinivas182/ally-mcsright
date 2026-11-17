@@ -1,0 +1,17 @@
+{
+    "id": "listiq",
+    "name": "List-IQ",
+    "version": "0.1.0",
+    "provider": "Modules\\ListIq\\ListIqServiceProvider",
+    "depends": [
+        "core",
+        "crm",
+        "transactions",
+        "ads",
+        "ai",
+        "billing",
+        "connect"
+    ],
+    "entitlement": null,
+    "description": "List-IQ (specs/listings/02): getting a listing ready — readiness checklist, guided photo shoot, AI descriptions checked for Fair Housing, labelled virtual staging, photo enhancement, and the MLS-ready package."
+}

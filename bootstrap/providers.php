@@ -13,6 +13,7 @@ use Modules\Forms\FormsServiceProvider;
 use Modules\Insights\InsightsServiceProvider;
 use Modules\Ledger\LedgerServiceProvider;
 use Modules\Listings\ListingsServiceProvider;
+use Modules\ListIq\ListIqServiceProvider;
 use Modules\Movewise\MovewiseServiceProvider;
 use Modules\Payouts\PayoutsServiceProvider;
 use Modules\Pricing\PricingServiceProvider;
@@ -41,5 +42,6 @@ return [
     MovewiseServiceProvider::class,
     RecruitingServiceProvider::class,
     PricingServiceProvider::class,
+    ListIqServiceProvider::class,
     InsightsServiceProvider::class,
 ];

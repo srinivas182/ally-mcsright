@@ -1,6 +1,6 @@
 # Delivery status against the plan
 
-Checked 2026-11-16 (R1 to DQ6, SM1, HC1a, HC1b, SO1, SO2, LQ1, LQ2, DH1, RC1–RC3 and CM1 added the same day; RN1 parked by Srini until the end) against `delivery-plan.md` (Sprints 1–57, five teams) and every merged pull request. Update this file at the end of every sprint.
+Checked 2026-11-16 (R1 to DQ6, SM1, HC1a, HC1b, SO1, SO2, LQ1, LQ2, DH1, RC1–RC3, CM1 and LI1 added the same day; RN1 parked by Srini until the end) against `delivery-plan.md` (Sprints 1–57, five teams) and every merged pull request. Update this file at the end of every sprint.
 
 "Partly" means part of the item is built; the gap is noted in the item's spec or the sequence below.
 
@@ -203,7 +203,7 @@ Every sprint keeps the definition of ready: a review of the leading products fir
 | 4. Recruiting and referrals         | 16    | RC1–RC3 Recruiting suite, attraction engine, AI recruiting assistant, career sites (RC1–RC3, done)                                                                                            | E           | E14–E17                           |
 |                                     | 17    | RN1 Agent referral network, Trust Score, AI Networking Assistant, affiliate programme and win cards (parked)                                                                                  | E           | E12, E13, E03                     |
 | 5. Listings, websites and marketing | 18    | CM1 CMA and buyer cost estimates (CM1, done)                                                                                                                                                  | C           | C14                               |
-|                                     | 19    | LI1–LI2 List-IQ and listing marketing centre: guided shoot, virtual staging, sign riders, open house, floor plans                                                                             | C           | C21, C12, C13                     |
+|                                     | 19    | LI1–LI2 List-IQ and listing marketing centre: guided shoot, virtual staging, sign riders, open house, floor plans (LI1 done)                                                                  | C           | C21, C12, C13                     |
 |                                     | 20    | SH1 Showings and client portal; ShowingTime, BrokerBay (Connect C8 remainder)                                                                                                                 | C with A    | C15                               |
 |                                     | 21    | IX1–IX2 IDX templates 6–15; MLS Grid and Trestle; freshness monitor; listing search with plain-English AI search                                                                              | C           | C10, C16, C03, C05                |
 |                                     | 22    | AW1 Agent sites and landing pages, referral links and QR, compare homes, calculators                                                                                                          | C           | C09                               |

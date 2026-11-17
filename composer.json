@@ -62,6 +62,7 @@
             "Modules\\Movewise\\": "modules/Movewise/src/",
             "Modules\\Recruiting\\": "modules/Recruiting/src/",
             "Modules\\Pricing\\": "modules/Pricing/src/",
+            "Modules\\ListIq\\": "modules/ListIq/src/",
             "Modules\\Insights\\": "modules/Insights/src/",
             "Modules\\AI\\": "modules/AI/src/",
             "Modules\\AI\\Database\\Factories\\": "modules/AI/database/factories/"
