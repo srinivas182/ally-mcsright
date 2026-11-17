@@ -13,6 +13,7 @@ Schedule::command('tenants:lifecycle')->dailyAt('03:00')->onOneServer();
 Schedule::command('ledger:reconcile')->dailyAt('04:00')->onOneServer();
 // Month-end checklist for finished months still open; owners hear once about anything that must be fixed (specs/finance/22).
 Schedule::command('ledger:close-check')->dailyAt('04:15')->onOneServer();
+Schedule::command('ledger:expire-audit-packs')->dailyAt('03:55')->onOneServer();
 // Weekly red-team run against real models (specs/ai/01); exits non-zero on any leak.
 Schedule::command('ai:red-team')->weeklyOn(1, '05:00')->onOneServer();
 // Collect finished AI batches and purge stored results after 7 days (specs/ai/01).

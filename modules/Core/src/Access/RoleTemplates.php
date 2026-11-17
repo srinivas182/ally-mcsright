@@ -59,6 +59,9 @@ final class RoleTemplates
                 'finance.ledger.view' => null, 'finance.ledger.export' => null, 'finance.ledger.adjust' => null, 'finance.ledger.approve' => null, 'finance.periods.close' => null,
                 'finance.amounts.view' => null, 'finance.receipts.record' => null, 'finance.billing.manage' => null, 'compensation.plans.view' => null,
             ]],
+            'auditor' => ['name' => 'Outside auditor (read-only)', 'description' => 'An outside CPA or auditor: reads the books and downloads statements and audit packs. Cannot change anything. Given for a set number of days.', 'permissions' => [
+                'finance.ledger.view' => null, 'finance.ledger.export' => null, 'finance.amounts.view' => null, 'compensation.plans.view' => null,
+            ]],
             'bookkeeper' => ['name' => 'Bookkeeper (read-only)', 'description' => 'Reads the books and exports them. Cannot post, close periods or change payouts.', 'permissions' => [
                 'finance.ledger.view' => null, 'finance.ledger.export' => null, 'finance.amounts.view' => null, 'compensation.plans.view' => null,
             ]],

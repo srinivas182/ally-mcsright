@@ -7,6 +7,7 @@ use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
 use Modules\Ledger\Http\Controllers\AccountController;
 use Modules\Ledger\Http\Controllers\AccountingController;
 use Modules\Ledger\Http\Controllers\AdjustmentController;
+use Modules\Ledger\Http\Controllers\AuditController;
 use Modules\Ledger\Http\Controllers\BooksController;
 use Modules\Ledger\Http\Controllers\JournalController;
 use Modules\Ledger\Http\Controllers\PeriodController;
@@ -59,5 +60,12 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])
         Route::post('periods/{period}/check', [PeriodController::class, 'check'])->middleware('throttle:20,1')->name('periods.check');
         Route::get('periods/{period}/statements.pdf', [PeriodController::class, 'statements'])->middleware('throttle:20,1')->name('periods.statements');
         Route::get('adjustments', [AdjustmentController::class, 'index'])->name('adjustments.index');
+        // FH2 (specs/finance/23): audit pack and outside-auditor access.
+        Route::get('audit', [AuditController::class, 'index'])->name('audit.index');
+        Route::post('audit/packs', [AuditController::class, 'requestPack'])->middleware('throttle:6,1')->name('audit.packs.store');
+        Route::get('audit/packs/{pack}', [AuditController::class, 'download'])->where('pack', '[0-9A-HJKMNP-TV-Z]{26}')->middleware(['password.confirm', 'throttle:20,1'])->name('audit.packs.download');
+        Route::post('audit/packs/{pack}/password', [AuditController::class, 'password'])->where('pack', '[0-9A-HJKMNP-TV-Z]{26}')->middleware(['password.confirm', 'throttle:20,1'])->name('audit.packs.password');
+        Route::post('audit/auditors', [AuditController::class, 'grant'])->middleware('throttle:10,1')->name('audit.auditors.store');
+        Route::post('audit/auditors/{access}/revoke', [AuditController::class, 'revoke'])->where('access', '[0-9A-HJKMNP-TV-Z]{26}')->name('audit.auditors.revoke');
         Route::post('adjustments/{adjustment}/decide', [AdjustmentController::class, 'decide'])->where('adjustment', '[0-9A-HJKMNP-TV-Z]{26}')->middleware('throttle:30,1')->name('adjustments.decide');
     });

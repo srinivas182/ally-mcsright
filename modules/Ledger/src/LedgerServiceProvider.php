@@ -7,6 +7,7 @@ namespace Modules\Ledger;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Modules\Core\Access\PermissionRegistry;
+use Modules\Core\Identity\Events\UserActivated;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
 use Modules\Core\Tenancy\Events\TenantProvisioned;
@@ -23,6 +24,7 @@ final class LedgerServiceProvider extends ServiceProvider
         $this->app->scoped(LedgerService::class);
         $this->app->scoped(ChartOfAccounts::class);
         $this->app->singleton(Close\CloseChecks::class);
+        $this->app->singleton(Audit\AuditPack::class);
     }
 
     public function boot(): void
@@ -37,6 +39,9 @@ final class LedgerServiceProvider extends ServiceProvider
         foreach ([Close\Checks\BooksBalance::class, Close\Checks\WaitingAdjustments::class, Close\Checks\BankReconciled::class] as $check) {
             $checks->register($check);
         }
+        // FH2 (specs/finance/23): the audit pack and outside-auditor access.
+        $this->app->make(Audit\AuditPack::class)->register(Audit\LedgerPart::class);
+        Event::listen(UserActivated::class, [Audit\AuditorAccess::class, 'onActivated']);
 
         $nav = $this->app->make(NavigationRegistry::class);
         $nav->add(new NavItem('Finance', 'Chart of accounts', '/finance/accounts', 'landmark', 10, ability: 'finance.ledger.view', mobile: true));
@@ -48,6 +53,7 @@ final class LedgerServiceProvider extends ServiceProvider
         $nav->add(new NavItem('Finance', 'Invoices', '/finance/invoices', 'file-text', 37, ability: 'finance.ledger.view'));
         $nav->add(new NavItem('Finance', 'Bank reconciliation', '/finance/bank', 'landmark', 38, ability: 'finance.ledger.view'));
         $nav->add(new NavItem('Finance', 'Profit and loss', '/finance/statements', 'chart-column', 39, ability: 'finance.ledger.view')); // AC2
+        $nav->add(new NavItem('Finance', 'Audit pack', '/finance/audit', 'shield-check', 41, ability: 'finance.ledger.export')); // FH2
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
 
         // Interim until roles and permissions (Sprints 5-6, specs/core/03): only the brokerage's
@@ -69,7 +75,7 @@ final class LedgerServiceProvider extends ServiceProvider
             'One person cannot both change bank details and approve payouts (separation of duties).');
 
         if ($this->app->runningInConsole()) {
-            $this->commands([ReconcileBalances::class, Console\CloseCheck::class]);
+            $this->commands([ReconcileBalances::class, Console\CloseCheck::class, Console\ExpireAuditPacks::class]);
         }
     }
 }
