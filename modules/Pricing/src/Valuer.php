@@ -97,9 +97,9 @@ final class Valuer
     /**
      * The market in the subject's ZIP code: last 90 days.
      *
-     * @return array{zip: string, sold_90: int, median_dom: int|null, sale_to_list: float|null, active: int, months_of_inventory: float|null, ppsf_change: float|null}
      *
      * @param  list<int>  $soldSources
+     * @return array{zip: string, sold_90: int, median_dom: int|null, sale_to_list: float|null, active: int, months_of_inventory: float|null, ppsf_change: float|null}
      */
     public function market(int $tenantId, string $zip, array $soldSources, ?CarbonImmutable $today = null): array
     {
