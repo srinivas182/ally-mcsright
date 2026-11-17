@@ -47,15 +47,21 @@ final class AgentBilling
         app(AuditLogger::class)->record('billing.agent.settings', metadata: compact('deduct', 'lateFeeCents', 'graceDays', 'dueDays'), severity: 'notice');
     }
 
-    public function saveItem(string $name, int $amountCents, string $frequency, User $by): string
+    /**
+     * @param  int|null  $instalments  CP1: charge it this many times, then stop (e.g. a yearly franchise fee in 4 quarterly payments)
+     */
+    public function saveItem(string $name, int $amountCents, string $frequency, User $by, ?int $instalments = null): string
     {
         $this->guard($by);
-        if (trim($name) === '' || $amountCents <= 0 || ! in_array($frequency, ['monthly', 'yearly', 'once'], true)) {
+        if (trim($name) === '' || $amountCents <= 0 || ! in_array($frequency, ['monthly', 'quarterly', 'yearly', 'once'], true)) {
             throw ValidationException::withMessages(['item' => 'Give the fee a name, an amount and how often it is charged.']);
+        }
+        if ($instalments !== null && ($instalments < 2 || $instalments > 60 || $frequency === 'once')) {
+            throw ValidationException::withMessages(['item' => 'Instalments are 2 to 60 payments of a monthly, quarterly or yearly fee.']);
         }
         $ulid = (string) Str::ulid();
         DB::connection(Connections::cell())->table('bill_items')->insert(['ulid' => $ulid, 'tenant_id' => $this->tenants->id(), 'name' => mb_substr(trim($name), 0, 80),
-            'amount_cents' => $amountCents, 'frequency' => $frequency, 'created_at' => now(), 'updated_at' => now()]);
+            'amount_cents' => $amountCents, 'frequency' => $frequency, 'instalments' => $instalments, 'created_at' => now(), 'updated_at' => now()]);
 
         return $ulid;
     }
@@ -68,7 +74,8 @@ final class AgentBilling
             throw ValidationException::withMessages(['item' => 'Choose an active fee.']);
         }
         DB::connection(Connections::cell())->table('bill_assignments')->insert(['tenant_id' => $this->tenants->id(), 'user_id' => $agent->id, 'item_id' => $item->id,
-            'amount_cents' => $amountCents ?? (int) $item->amount_cents, 'next_bill_on' => $startsOn->toDateString(), 'created_at' => now(), 'updated_at' => now()]);
+            'amount_cents' => $amountCents ?? (int) $item->amount_cents, 'next_bill_on' => $startsOn->toDateString(),
+            'charges_left' => $item->instalments, 'charges_total' => $item->instalments, 'created_at' => now(), 'updated_at' => now()]);
         app(AuditLogger::class)->record('billing.agent.fee_assigned', $agent, metadata: ['fee' => $item->name, 'from' => $startsOn->toDateString()], severity: 'notice', label: $agent->name);
     }
 
@@ -214,11 +221,17 @@ final class AgentBilling
                 continue;
             }
             $on = CarbonImmutable::parse((string) $a->next_bill_on);
-            $this->issue((int) $a->user_id, [['description' => $item->name.' — '.$on->format('F Y'), 'cents' => (int) $a->amount_cents, 'item_id' => (int) $item->id]], $on);
+            $left = $a->charges_left !== null ? (int) $a->charges_left : null;
+            $label = $left !== null ? ' — payment '.((int) $a->charges_total - $left + 1).' of '.(int) $a->charges_total : ' — '.$on->format('F Y');
+            $this->issue((int) $a->user_id, [['description' => $item->name.$label, 'cents' => (int) $a->amount_cents, 'item_id' => (int) $item->id]], $on);
             $next = match ($item->frequency) {
-                'monthly' => $on->addMonthNoOverflow(), 'yearly' => $on->addYear(), default => null
+                'monthly' => $on->addMonthNoOverflow(), 'quarterly' => $on->addMonthsNoOverflow(3), 'yearly' => $on->addYear(), default => null
             };
-            $db->table('bill_assignments')->where('id', $a->id)->update($next !== null ? ['next_bill_on' => $next->toDateString(), 'updated_at' => now()] : ['ended_on' => $on->toDateString(), 'updated_at' => now()]);
+            if ($left !== null && $left <= 1) {
+                $next = null; // the last instalment
+            }
+            $db->table('bill_assignments')->where('id', $a->id)->update(($next !== null ? ['next_bill_on' => $next->toDateString(), 'updated_at' => now()] : ['ended_on' => $on->toDateString(), 'updated_at' => now()])
+                + ($left !== null ? ['charges_left' => max(0, $left - 1)] : []));
             $issued++;
         }
 

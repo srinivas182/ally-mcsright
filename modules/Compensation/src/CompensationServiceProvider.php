@@ -6,6 +6,8 @@ namespace Modules\Compensation;
 
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
+use Modules\AI\FeatureCatalog;
+use Modules\AI\Support\PromptRegistry;
 use Modules\Compensation\Actions\ManagePlans;
 use Modules\Compensation\Calculator\CommissionCalculator;
 use Modules\Compensation\Console\CheckCapPeriods;
@@ -30,6 +32,8 @@ final class CompensationServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        $this->app->make(PromptRegistry::class)->addPath(__DIR__.'/../prompts'); // CP1
+        $this->app->make(FeatureCatalog::class)->declare(PlanReader::FEATURE, 'ai.plan_reader', 'Commission plan set up from a document');
         // Permissions (specs/core/03); amounts are guarded by finance.amounts.view.
         $this->app->make(PermissionRegistry::class)->register('Compensation', [
             'compensation.plans.view' => ['See compensation plans'],

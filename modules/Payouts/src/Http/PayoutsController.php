@@ -264,7 +264,7 @@ final class PayoutsController
 
         return Inertia::render('finance/agent-billing', [
             'settings' => $billing->settings(),
-            'items' => $db->table('bill_items')->where('active', true)->orderBy('name')->get(['ulid', 'name', 'amount_cents', 'frequency']),
+            'items' => $db->table('bill_items')->where('active', true)->orderBy('name')->get(['ulid', 'name', 'amount_cents', 'frequency', 'instalments']),
             'agents' => $agents->map(fn (User $u): array => ['ulid' => $u->ulid, 'name' => $u->name, 'owed_cents' => $billing->owed($u->id),
                 'owes_brokerage_cents' => max(0, -$ledger->balance($accounts->subAccount('2000', 'user', $u->id, 'Commission payable'))->cents)])->values(),
             'invoices' => $db->table('bill_invoices')->orderByDesc('id')->limit(100)->get()->map(fn ($i): array => ['ulid' => $i->ulid, 'number' => $i->number,
@@ -284,8 +284,9 @@ final class PayoutsController
 
     public function billingItem(Request $request, AgentBilling $billing): RedirectResponse
     {
-        $data = $request->validate(['name' => ['required', 'string', 'max:80'], 'amount' => ['required', 'numeric', 'min:0.01'], 'frequency' => ['required', 'in:monthly,yearly,once']]);
-        $billing->saveItem($data['name'], (int) round((float) $data['amount'] * 100), $data['frequency'], $this->billingUser($request));
+        $data = $request->validate(['name' => ['required', 'string', 'max:80'], 'amount' => ['required', 'numeric', 'min:0.01'], 'frequency' => ['required', 'in:monthly,quarterly,yearly,once'],
+            'instalments' => ['nullable', 'integer', 'min:2', 'max:60']]);
+        $billing->saveItem($data['name'], (int) round((float) $data['amount'] * 100), $data['frequency'], $this->billingUser($request), isset($data['instalments']) ? (int) $data['instalments'] : null);
 
         return back();
     }

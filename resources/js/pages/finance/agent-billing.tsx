@@ -18,6 +18,7 @@ type Props = {
         name: string;
         amount_cents: number;
         frequency: string;
+        instalments: number | null;
     }[];
     agents: {
         ulid: string;
@@ -53,7 +54,12 @@ export default function AgentBilling({
         grace_days: String(settings.grace_days),
         due_days: String(settings.due_days),
     });
-    const item = useForm({ name: '', amount: '', frequency: 'monthly' });
+    const item = useForm({
+        name: '',
+        amount: '',
+        frequency: 'monthly',
+        instalments: '',
+    });
     const assign = useForm({
         agent: '',
         item: '',
@@ -150,7 +156,10 @@ export default function AgentBilling({
                                 {i.name} — {usd(i.amount_cents)}{' '}
                                 {i.frequency === 'once'
                                     ? 'once'
-                                    : `per ${i.frequency.replace('ly', '').replace('month', 'month')}`}
+                                    : `per ${{ monthly: 'month', quarterly: 'quarter', yearly: 'year' }[i.frequency] ?? i.frequency}`}
+                                {i.instalments
+                                    ? `, ${i.instalments} payments`
+                                    : ''}
                             </li>
                         ))}
                     </ul>
@@ -193,9 +202,22 @@ export default function AgentBilling({
                             }
                         >
                             <option value="monthly">Monthly</option>
+                            <option value="quarterly">Quarterly</option>
                             <option value="yearly">Yearly</option>
                             <option value="once">Once</option>
                         </select>
+                        <Input
+                            aria-label="Number of payments (blank: until stopped)"
+                            placeholder="Payments (optional)"
+                            type="number"
+                            min={2}
+                            max={60}
+                            className="w-40"
+                            value={item.data.instalments}
+                            onChange={(e) =>
+                                item.setData('instalments', e.target.value)
+                            }
+                        />
                         <Button type="submit" size="sm" variant="outline">
                             Add fee
                         </Button>

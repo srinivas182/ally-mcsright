@@ -16,6 +16,15 @@ type Me = {
     pending_deals?: number;
     pending_take_home_cents?: number;
     forecast?: string | null;
+    year?: {
+        closed_cents: number;
+        pending_cents: number;
+        projected_cents: number;
+        total_cents: number;
+        deals_per_month: number;
+        average_cents: number;
+        months_left: number;
+    };
 };
 
 /** The agent's own plan: distance to cap, pending take-home and forecast. */
@@ -108,6 +117,39 @@ export default function MyPlan({ me }: { me: Me }) {
                                 deal(s) not closed yet.
                             </p>
                         </section>
+                        {me.year && (
+                            <section className="grid gap-2 rounded-lg border p-4">
+                                <p className="text-sm text-muted-foreground">
+                                    This year, if you keep your pace
+                                </p>
+                                <p className="text-3xl font-semibold">
+                                    {usd(me.year.total_cents)}
+                                </p>
+                                <dl className="grid grid-cols-[1fr_auto] gap-1 text-sm">
+                                    <dt>Closed so far</dt>
+                                    <dd className="text-right">
+                                        {usd(me.year.closed_cents)}
+                                    </dd>
+                                    <dt>Under contract</dt>
+                                    <dd className="text-right">
+                                        {usd(me.year.pending_cents)}
+                                    </dd>
+                                    <dt>
+                                        Rest of the year ({me.year.months_left}{' '}
+                                        months at {me.year.deals_per_month}{' '}
+                                        deals a month)
+                                    </dt>
+                                    <dd className="text-right">
+                                        {usd(me.year.projected_cents)}
+                                    </dd>
+                                </dl>
+                                <p className="text-sm text-muted-foreground">
+                                    An estimate from your last 12 months: about{' '}
+                                    {usd(me.year.average_cents)} take-home a
+                                    deal. More deals means a bigger number.
+                                </p>
+                            </section>
+                        )}
                     </>
                 )}
             </div>

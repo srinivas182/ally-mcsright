@@ -85,7 +85,10 @@ it('shows each agent their plan: cap progress, forecast and pending take-home', 
     $this->actingAs($this->agent)->get('/my-plan')->assertInertia(fn (Assert $page) => $page
         ->component('compensation/my-plan')->where('me.plan', '80/20 capped')->where('me.paid_cents', 500_000)->where('me.to_cap_cents', 1_100_000)
         ->where('me.pending_deals', 1)->where('me.pending_take_home_cents', 800_000)
-        ->where('me.forecast', fn ($f) => str_starts_with((string) $f, "At your current pace you'll cap in")));
+        ->where('me.forecast', fn ($f) => str_starts_with((string) $f, "At your current pace you'll cap in"))
+        // CP1: this year's take-home: closed, under contract, and the rest of the year at the last 12 months' pace.
+        ->where('me.year.closed_cents', 2_000_000)->where('me.year.pending_cents', 800_000)->where('me.year.months_left', 6)
+        ->where('me.year.projected_cents', 1_000_000)->where('me.year.total_cents', 3_800_000));
 
     closed(10_000_000, '2026-05-01', $this->agent->id);
     $this->actingAs($this->agent)->get('/my-plan')->assertInertia(fn (Assert $page) => $page->where('me.capped', true));
