@@ -16,10 +16,13 @@ type Rules = {
     colours: boolean;
     sections: boolean;
     domain: boolean;
+    referrals: boolean;
+    approval: boolean;
 };
 type Site = {
     ulid: string;
-    status: 'draft' | 'live';
+    status: 'draft' | 'live' | 'review';
+    referral: string | null;
     template: string;
     brand: Record<string, string | null>;
     info: Record<string, string | null>;
@@ -184,7 +187,11 @@ function Manage({
                 <Badge
                     variant={site.status === 'live' ? 'default' : 'secondary'}
                 >
-                    {site.status === 'live' ? 'Live' : 'Draft'}
+                    {site.status === 'live'
+                        ? 'Live'
+                        : site.status === 'review'
+                          ? 'Waiting for approval'
+                          : 'Draft'}
                 </Badge>
                 {site.url && (
                     <a
@@ -212,9 +219,15 @@ function Manage({
                         )
                     }
                 >
-                    {site.status === 'live' ? 'Take offline' : 'Publish'}
+                    {site.status === 'live'
+                        ? 'Take offline'
+                        : site.status === 'review'
+                          ? 'Ask again'
+                          : 'Publish'}
                 </Button>
             </section>
+
+            {site.referral && <ReferralLink url={site.referral} />}
 
             <form
                 className="grid gap-3 rounded-lg border p-4 text-sm"
@@ -490,5 +503,57 @@ function Manage({
                 </section>
             )}
         </>
+    );
+}
+
+/** AW1: the agent's referral link and QR code; leads from it come to them for 30 days. */
+function ReferralLink({ url }: { url: string }) {
+    const [copied, setCopied] = useState(false);
+
+    return (
+        <section className="grid gap-3 rounded-lg border p-4 text-sm sm:grid-cols-[1fr_auto]">
+            <div className="grid gap-2">
+                <h2 className="font-semibold">Your referral link</h2>
+                <p className="text-muted-foreground">
+                    Share this link or QR code on your cards, signs, emails and
+                    social posts. For 30 days, anyone who comes in through it
+                    and gets in touch anywhere on the website comes to you.
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                    <code className="rounded bg-muted px-2 py-1 text-base">
+                        {url}
+                    </code>
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                            void navigator.clipboard
+                                ?.writeText(url)
+                                .then(() => setCopied(true));
+                        }}
+                    >
+                        {copied ? 'Copied' : 'Copy link'}
+                    </Button>
+                </div>
+                <p className="text-muted-foreground">
+                    To send people to a particular page, add it at the end, for
+                    example {url}?to=/homes
+                </p>
+            </div>
+            <a
+                href="/settings/my-website/qr.png"
+                download="my-website-qr.png"
+                className="grid justify-items-center gap-1"
+            >
+                <img
+                    src="/settings/my-website/qr.png"
+                    alt="QR code for your referral link"
+                    width={140}
+                    height={140}
+                    className="rounded border bg-white p-1"
+                />
+                <span className="underline">Download QR code</span>
+            </a>
+        </section>
     );
 }

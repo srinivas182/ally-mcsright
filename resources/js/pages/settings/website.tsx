@@ -50,6 +50,12 @@ type Props = {
         hits: number;
     }[];
     agent_rules: AgentRules;
+    calculators: {
+        rate: number;
+        down_pct: number;
+        tax_rate: number;
+        insurance: number;
+    };
     agent_sites: { ulid: string; name: string; slug: string; status: string }[];
 };
 type AgentRules = {
@@ -58,6 +64,8 @@ type AgentRules = {
     colours: boolean;
     sections: boolean;
     domain: boolean;
+    referrals: boolean;
+    approval: boolean;
 };
 type MenuItem = { label: string; url: string };
 
@@ -214,6 +222,7 @@ function Manage({
     redirects,
     agent_rules,
     agent_sites,
+    calculators,
 }: Props & { site: Site }) {
     const social = (site.info.social ?? {}) as Record<string, string>;
     const form = useForm({
@@ -496,6 +505,7 @@ function Manage({
                 sites={agent_sites}
                 liveHost={live_host}
             />
+            <CalculatorsPanel values={calculators} />
             <RedirectsPanel redirects={redirects} />
 
             <section className="grid gap-3 rounded-lg border p-4 text-sm">
@@ -1019,6 +1029,14 @@ function AgentsPanel({
                 {box('template', 'Agents can choose their own design')}
                 {box('colours', 'Agents can change colours')}
                 {box('domain', 'Agents can use their own domain')}
+                {box(
+                    'referrals',
+                    'Agents get a referral link and QR code (leads through it go to them for 30 days)',
+                )}
+                {box(
+                    'approval',
+                    'I approve agent websites before they go live',
+                )}
                 <div>
                     <Button variant="outline" disabled={form.processing}>
                         Save brand kit
@@ -1051,8 +1069,27 @@ function AgentsPanel({
                                         : 'outline'
                                 }
                             >
-                                {s.status === 'live' ? 'Live' : 'Draft'}
+                                {s.status === 'live'
+                                    ? 'Live'
+                                    : s.status === 'review'
+                                      ? 'Waiting for your approval'
+                                      : 'Draft'}
                             </Badge>
+                            {s.status === 'review' && (
+                                <Button
+                                    size="sm"
+                                    className="ml-auto"
+                                    onClick={() =>
+                                        router.post(
+                                            `/settings/website/agents/${s.ulid}/publish`,
+                                            { live: true },
+                                            opts,
+                                        )
+                                    }
+                                >
+                                    Approve and publish
+                                </Button>
+                            )}
                             {s.status === 'live' && (
                                 <Button
                                     size="sm"
@@ -1073,6 +1110,59 @@ function AgentsPanel({
                     ))}
                 </ul>
             )}
+        </section>
+    );
+}
+
+/** AW1: the figures the website's calculators and listing payment estimates start from. */
+function CalculatorsPanel({ values }: { values: Props['calculators'] }) {
+    const form = useForm({
+        ...values,
+        insurance: Math.round(values.insurance),
+    });
+    const field = (
+        key: 'rate' | 'down_pct' | 'tax_rate' | 'insurance',
+        label: string,
+        step: string,
+    ) => (
+        <label className="grid gap-1">
+            {label}
+            <Input
+                type="number"
+                step={step}
+                min={0}
+                value={form.data[key]}
+                onChange={(e) => form.setData(key, Number(e.target.value))}
+            />
+        </label>
+    );
+
+    return (
+        <section className="grid gap-3 rounded-lg border p-4 text-sm">
+            <h2 className="font-semibold">Calculators</h2>
+            <p className="text-muted-foreground">
+                Your website has free calculators at /calculators (monthly
+                payment, what you can afford, rent or buy). Visitors can change
+                every number; these are the figures they start from, and the
+                payment estimate on listing pages uses them too.
+            </p>
+            <form
+                className="grid gap-3 sm:grid-cols-4"
+                onSubmit={(e) => {
+                    e.preventDefault();
+                    form.post('/settings/website/calculators', opts);
+                }}
+            >
+                {field('rate', 'Interest rate (%)', '0.125')}
+                {field('down_pct', 'Down payment (%)', '0.5')}
+                {field('tax_rate', 'Property tax (% a year)', '0.05')}
+                {field('insurance', 'Insurance ($ a month)', '1')}
+                <div className="sm:col-span-4">
+                    <Button variant="outline" disabled={form.processing}>
+                        Save calculator figures
+                    </Button>
+                </div>
+            </form>
         </section>
     );
 }

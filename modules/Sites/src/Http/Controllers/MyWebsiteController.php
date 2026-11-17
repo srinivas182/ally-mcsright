@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace Modules\Sites\Http\Controllers;
 
 use App\Models\User;
+use BaconQrCode\Renderer\GDLibRenderer;
+use BaconQrCode\Writer;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Arr;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -38,6 +41,7 @@ final class MyWebsiteController
             'site' => $site === null ? null : [
                 'ulid' => $site->ulid, 'status' => $site->status, 'template' => $site->template, 'brand' => $site->brand, 'info' => $site->info,
                 'url' => $host !== null ? 'https://'.$host.'/agents/'.$site->slug : null,
+                'referral' => $host !== null && $site->status === 'live' && $rules['referrals'] ? 'https://'.$host.'/r/'.$site->slug : null,
                 'pages' => SitePage::query()->where('site_id', $site->id)->orderBy('position')->get()->map(fn (SitePage $p): array => ['ulid' => $p->ulid, 'path' => $p->path, 'title' => $p->title,
                     'has_draft' => $p->draft_sections !== null])->values(),
                 'domains' => TenantDomain::query()->where('site_ulid', $site->ulid)->get()->map(fn (TenantDomain $d): array => ['host' => $d->host,
@@ -50,6 +54,17 @@ final class MyWebsiteController
             'media' => $site !== null ? PageEditorController::mediaList($site, $media) : [],
             'cname_target' => (string) config('sites.cname_target'),
         ]);
+    }
+
+    /** A QR code for the agent's referral link (AW1), for cards, signs and flyers. */
+    public function qr(Request $request): HttpResponse
+    {
+        $site = self::mine($this->agents, self::user($request));
+        $host = $this->sites->liveHost();
+        abort_unless($host !== null && $site->status === 'live' && AgentSites::rules()['referrals'], 404);
+        $png = (new Writer(new GDLibRenderer(600, 2)))->writeString('https://'.$host.'/r/'.$site->slug);
+
+        return response($png, 200, ['Content-Type' => 'image/png', 'Content-Disposition' => 'inline; filename="my-website-qr.png"', 'Cache-Control' => 'private, max-age=300']);
     }
 
     public function store(Request $request): RedirectResponse

@@ -12,6 +12,7 @@ use Modules\Crm\Enums\Source;
 use Modules\Crm\Leads\LeadIntake;
 use Modules\Crm\Models\Lead;
 use Modules\Crm\Models\LeadSource;
+use Modules\Sites\Http\Controllers\ReferralController;
 use Modules\Sites\Models\Site;
 use Modules\Sites\Rendering\SiteContext;
 
@@ -46,6 +47,8 @@ final class SiteLeads
         if ($agentSite === null && is_string($request->input('agent')) && preg_match('/^[0-9A-HJKMNP-TV-Z]{26}$/', (string) $request->input('agent')) === 1) {
             $agentSite = Site::query()->where('ulid', $request->input('agent'))->where('kind', 'agent')->where('status', 'live')->first();
         }
+        // Arrived through an agent's referral link in the last 30 days (AW1).
+        $agentSite ??= ReferralController::agentFor($request);
         $agent = $assignTo ?? ($agentSite !== null ? User::query()->find($agentSite->user_id) : null);
         $agent = $agent instanceof User && $agent->isActive() ? $agent : null;
         if ($agent !== null && $source->name === 'Website') {
