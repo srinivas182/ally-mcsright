@@ -47,12 +47,12 @@ it('turns a plan document into a draft plan with the sentence behind every numbe
     $plan = Plan::query()->sole();
     $version = $plan->versions()->sole();
     expect($plan->name)->toBe('80/20 with $18,000 cap (draft from document)')->and($version->status)->toBe(VersionStatus::Draft)
-        ->and($version->rules['split'])->toBe(['mode' => 'percentage', 'agent_percent' => '80'])
-        ->and($version->rules['cap'])->toBe(['amount_cents' => 1_800_000, 'anchor' => 'anniversary'])
-        ->and($version->rules['post_cap'])->toBe(['fee' => ['calc' => 'flat', 'amount' => 25_000]])
-        ->and($version->rules['pre_split'][0])->toBe(['code' => 'franchise_royalty', 'name' => 'Franchise royalty', 'calc' => 'percent', 'amount' => '6', 'payable_to' => 'franchisor', 'annual_cap_cents' => 300_000])
+        ->and($version->rules['split'])->toEqual(['mode' => 'percentage', 'agent_percent' => '80'])
+        ->and($version->rules['cap'])->toEqual(['amount_cents' => 1_800_000, 'anchor' => 'anniversary']) // MySQL JSON may reorder keys
+        ->and($version->rules['post_cap'])->toEqual(['fee' => ['calc' => 'flat', 'amount' => 25_000]])
+        ->and($version->rules['pre_split'][0])->toEqual(['code' => 'franchise_royalty', 'name' => 'Franchise royalty', 'calc' => 'percent', 'amount' => '6', 'payable_to' => 'franchisor', 'annual_cap_cents' => 300_000])
         ->and($version->rules['post_split'][0]['amount'])->toBe(39_500)
-        ->and($version->rules['deal_classes'])->toBe(['lease' => ['split' => ['mode' => 'percentage', 'agent_percent' => '90']]])
+        ->and($version->rules['deal_classes'])->toEqual(['lease' => ['split' => ['mode' => 'percentage', 'agent_percent' => '90']]])
         ->and($this->ai->requests[0]->userMessage)->toContain('6% franchise royalty');
 
     $this->actingAs($this->owner)->get('/compensation/plans')->assertInertia(fn (Assert $p) => $p->where('reading.evidence.0.quote', 'Agents receive 80% of each commission side')
