@@ -33,6 +33,9 @@ export function AgentCard({
                     ` · ${card.trust.count} referral${card.trust.count === 1 ? '' : 's'} received`}
             </p>
             {card.bio && <p className="text-sm">{card.bio}</p>}
+            {card.trust.score !== null && (
+                <TrustDetails parts={card.trust.parts} />
+            )}
             <div className="flex flex-wrap gap-2">
                 {card.phone && (
                     <a
@@ -45,5 +48,28 @@ export function AgentCard({
                 {children}
             </div>
         </li>
+    );
+}
+
+/** What the Trust Score is made of, in plain words. */
+export function TrustDetails({
+    parts,
+}: {
+    parts: NetworkCard['trust']['parts'];
+}) {
+    return (
+        <details className="text-sm">
+            <summary className="cursor-pointer underline-offset-4 hover:underline">
+                What makes up this score
+            </summary>
+            <ul className="mt-1 grid gap-1">
+                {Object.entries(parts).map(([key, p]) => (
+                    <li key={key}>
+                        <strong>{p.label}</strong> ({p.score} of 100):{' '}
+                        {p.detail}
+                    </li>
+                ))}
+            </ul>
+        </details>
     );
 }

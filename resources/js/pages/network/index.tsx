@@ -1,7 +1,7 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 
-import { AgentCard } from '@/components/network/agent-card';
+import { AgentCard, TrustDetails } from '@/components/network/agent-card';
 import { ProfileForm, type MyProfile } from '@/components/network/profile-form';
 import { ReferralItem } from '@/components/network/referral-item';
 import { SendForm } from '@/components/network/send-form';
@@ -113,6 +113,29 @@ export default function Network({
                             </p>
                         )}
 
+                        {tab === 'profile' && profile !== null && (
+                            <section className="grid gap-2 rounded-lg border p-4 text-base">
+                                <h2 className="text-lg font-semibold">
+                                    Your Referral Trust Score:{' '}
+                                    {profile.trust.score ?? 'not yet'}
+                                </h2>
+                                <p className="text-sm text-muted-foreground">
+                                    Worked out only from how you handle
+                                    referrals: answering, updates, closing,
+                                    paying fees on time and ratings.
+                                </p>
+                                {profile.trust.score !== null && (
+                                    <TrustDetails parts={profile.trust.parts} />
+                                )}
+                                {profile.tips.length > 0 && (
+                                    <ul className="list-disc pl-5">
+                                        {profile.tips.map((t) => (
+                                            <li key={t}>{t}</li>
+                                        ))}
+                                    </ul>
+                                )}
+                            </section>
+                        )}
                         {tab === 'profile' && (
                             <ProfileForm profile={profile} sides={sides} />
                         )}

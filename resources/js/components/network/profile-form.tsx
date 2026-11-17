@@ -17,6 +17,7 @@ export type MyProfile = {
     status: string;
     code: string;
     public_url: string;
+    tips: string[];
 };
 
 /** The agent's own network profile: where they work, which side, languages, and what others may see. */

@@ -45,4 +45,9 @@ export type NetworkReferral = {
     fee_paid: boolean;
     answer_by: string | null;
     sent_at: string;
+    rating: number | null;
+    disputed: boolean;
+    dispute_note: string | null;
+    dispute_reply: string | null;
+    can_dispute: boolean;
 };
