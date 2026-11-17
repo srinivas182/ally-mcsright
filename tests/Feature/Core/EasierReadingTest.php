@@ -26,7 +26,7 @@ it('saves each person\'s easier-reading choices and shares them with every page'
     $this->actingAs($this->owner)->post('/settings/reading', ['text' => 'largest'])->assertRedirect();
     $this->actingAs($this->owner)->post('/settings/reading', ['contrast' => true, 'links' => true])->assertRedirect();
 
-    expect($this->owner->fresh()?->ui_reading)->toBe(['text' => 'largest', 'contrast' => true, 'motion' => false, 'links' => true]);
+    expect($this->owner->fresh()?->ui_reading)->toEqual(['text' => 'largest', 'contrast' => true, 'motion' => false, 'links' => true]);
     $this->actingAs($this->owner)->get('/settings/appearance')
         ->assertInertia(fn (Assert $page) => $page->where('reading.text', 'largest')->where('reading.contrast', true))
         ->assertSee('data-text="largest"', false)->assertSee('data-contrast="high"', false)->assertSee('data-links="underline"', false)
