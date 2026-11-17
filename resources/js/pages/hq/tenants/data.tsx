@@ -1,4 +1,5 @@
 import { Head, router, useForm } from '@inertiajs/react';
+import { useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,6 +16,25 @@ type Export = {
     by: string | null;
     created_at: string;
     expires_at: string | null;
+};
+type Move = {
+    ulid: string;
+    kind: string;
+    status: string;
+    from: string;
+    to: string;
+    step: string | null;
+    progress: number;
+    plan: {
+        rows?: number;
+        minutes?: number;
+        read_only_minutes?: number;
+        checks?: { label: string; ok: boolean; detail: string }[];
+    } | null;
+    error: string | null;
+    keep_until: string | null;
+    mine: boolean;
+    created_at: string;
 };
 type Restore = {
     ulid: string;
@@ -35,17 +55,41 @@ export default function TenantData({
     exports,
     restores,
     password,
+    moves,
+    shared,
+    keys,
 }: {
     tenant: {
         ulid: string;
         name: string;
         cell: string | null;
         connection: string;
+        dedicated: boolean;
     };
     exports: Export[];
     restores: Restore[];
     password: { export: string; password: string } | null;
+    moves: Move[];
+    shared: { id: number; name: string }[];
+    keys: {
+        version: number | null;
+        versions: number;
+        sealed: number;
+        legacy: number;
+    };
 }) {
+    const move = useForm({
+        target: 'dedicated',
+        cell: '',
+        driver: 'mysql',
+        host: '',
+        port: '3306',
+        database: '',
+        username: '',
+        password: '',
+        region: 'us-east',
+    });
+    const [showMove, setShowMove] = useState(false);
     const base = `/hq/tenants/${tenant.ulid}/data`;
     const ask = useForm({ export: '', reason: '', confirm: '' });
     const restorable = exports.filter(
@@ -124,6 +168,247 @@ export default function TenantData({
                             )}
                         </div>
                     ))}
+                </section>
+                <section className="grid gap-2 rounded-lg border p-4">
+                    <h2 className="text-lg font-semibold">Database</h2>
+                    <p className="text-sm">
+                        {tenant.dedicated
+                            ? 'This brokerage has its own database.'
+                            : 'This brokerage shares a database with others (kept apart by brokerage).'}
+                    </p>
+                    {!showMove ? (
+                        <Button
+                            variant="outline"
+                            className="justify-self-start"
+                            onClick={() => setShowMove(true)}
+                        >
+                            {tenant.dedicated
+                                ? 'Move back to shared, or run a drill'
+                                : 'Move to a dedicated database, or run a drill'}
+                        </Button>
+                    ) : (
+                        <form
+                            className="grid gap-2"
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                move.post(`${base}/moves`, {
+                                    preserveScroll: true,
+                                    onSuccess: () => setShowMove(false),
+                                });
+                            }}
+                        >
+                            <select
+                                aria-label="What to do"
+                                className="rounded border px-2 py-2"
+                                value={move.data.target}
+                                onChange={(e) =>
+                                    move.setData('target', e.target.value)
+                                }
+                            >
+                                <option value="dedicated">
+                                    Move to a new dedicated database
+                                </option>
+                                <option value="shared">
+                                    Move to a shared database
+                                </option>
+                                <option value="drill">
+                                    Drill: copy and check, then remove (no
+                                    switch)
+                                </option>
+                            </select>
+                            {move.data.target === 'shared' ? (
+                                <select
+                                    aria-label="Shared database"
+                                    className="rounded border px-2 py-2"
+                                    value={move.data.cell}
+                                    onChange={(e) =>
+                                        move.setData('cell', e.target.value)
+                                    }
+                                >
+                                    <option value="">Choose…</option>
+                                    {shared.map((c) => (
+                                        <option key={c.id} value={c.id}>
+                                            {c.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            ) : (
+                                <div className="grid gap-2 sm:grid-cols-2">
+                                    <select
+                                        aria-label="Engine"
+                                        className="rounded border px-2 py-2"
+                                        value={move.data.driver}
+                                        onChange={(e) =>
+                                            move.setData(
+                                                'driver',
+                                                e.target.value,
+                                            )
+                                        }
+                                    >
+                                        <option value="mysql">MySQL 8</option>
+                                        <option value="mariadb">MariaDB</option>
+                                    </select>
+                                    <input
+                                        aria-label="Host"
+                                        placeholder="Host"
+                                        className="rounded border px-3 py-2"
+                                        value={move.data.host}
+                                        onChange={(e) =>
+                                            move.setData('host', e.target.value)
+                                        }
+                                    />
+                                    <input
+                                        aria-label="Port"
+                                        placeholder="Port"
+                                        className="rounded border px-3 py-2"
+                                        value={move.data.port}
+                                        onChange={(e) =>
+                                            move.setData('port', e.target.value)
+                                        }
+                                    />
+                                    <input
+                                        aria-label="Database"
+                                        placeholder="Database name"
+                                        className="rounded border px-3 py-2"
+                                        value={move.data.database}
+                                        onChange={(e) =>
+                                            move.setData(
+                                                'database',
+                                                e.target.value,
+                                            )
+                                        }
+                                    />
+                                    <input
+                                        aria-label="User"
+                                        placeholder="User"
+                                        className="rounded border px-3 py-2"
+                                        value={move.data.username}
+                                        onChange={(e) =>
+                                            move.setData(
+                                                'username',
+                                                e.target.value,
+                                            )
+                                        }
+                                    />
+                                    <input
+                                        aria-label="Password"
+                                        type="password"
+                                        placeholder="Password (never shown again)"
+                                        className="rounded border px-3 py-2"
+                                        value={move.data.password}
+                                        onChange={(e) =>
+                                            move.setData(
+                                                'password',
+                                                e.target.value,
+                                            )
+                                        }
+                                    />
+                                </div>
+                            )}
+                            {Object.values(move.errors).map((m) => (
+                                <p
+                                    key={m}
+                                    role="alert"
+                                    className="text-sm text-red-700"
+                                >
+                                    {m}
+                                </p>
+                            ))}
+                            <Button className="justify-self-start">
+                                Test and plan
+                            </Button>
+                        </form>
+                    )}
+                    {moves.map((m) => (
+                        <div
+                            key={m.ulid}
+                            className="grid gap-1 border-t pt-2 text-sm"
+                        >
+                            <p className="flex flex-wrap items-center gap-2">
+                                <Badge variant="outline">
+                                    {m.kind === 'drill' ? 'drill' : 'move'}
+                                </Badge>
+                                <Badge>{m.status}</Badge>
+                                {m.from} → {m.to} · {m.created_at.slice(0, 16)}
+                            </p>
+                            {m.plan?.rows !== undefined && (
+                                <p className="text-muted-foreground">
+                                    {m.plan.rows} rows · about {m.plan.minutes}{' '}
+                                    min · read-only about{' '}
+                                    {m.plan.read_only_minutes} min
+                                </p>
+                            )}
+                            {m.step && (
+                                <p>
+                                    {m.step} ({m.progress}%)
+                                </p>
+                            )}
+                            {m.error && (
+                                <p className="text-red-700">{m.error}</p>
+                            )}
+                            <span className="flex flex-wrap gap-2">
+                                {m.status === 'planned' && !m.mine && (
+                                    <Button
+                                        size="sm"
+                                        variant="destructive"
+                                        onClick={() =>
+                                            router.post(
+                                                `${base}/moves/${m.ulid}/approve`,
+                                            )
+                                        }
+                                    >
+                                        Approve and start
+                                    </Button>
+                                )}
+                                {m.status === 'planned' && (
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() =>
+                                            router.post(
+                                                `${base}/moves/${m.ulid}/cancel`,
+                                            )
+                                        }
+                                    >
+                                        Cancel
+                                    </Button>
+                                )}
+                                {m.status === 'switched' && m.keep_until && (
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() =>
+                                            router.post(
+                                                `${base}/moves/${m.ulid}/switch-back`,
+                                            )
+                                        }
+                                    >
+                                        Switch back (until{' '}
+                                        {m.keep_until.slice(0, 10)})
+                                    </Button>
+                                )}
+                            </span>
+                        </div>
+                    ))}
+                </section>
+                <section className="grid gap-2 rounded-lg border p-4">
+                    <h2 className="text-lg font-semibold">Brokerage key</h2>
+                    <p className="text-sm">
+                        Tax ids and bank numbers are sealed with this
+                        brokerage's own key
+                        {keys.version !== null
+                            ? ` (version ${keys.version})`
+                            : ' (made on first use)'}
+                        . {keys.sealed} sealed with the current key,{' '}
+                        {keys.legacy} waiting to be re-sealed.
+                    </p>
+                    <Button
+                        variant="outline"
+                        className="justify-self-start"
+                        onClick={() => router.post(`${base}/keys/rotate`)}
+                    >
+                        Make a new key and re-seal
+                    </Button>
                 </section>
                 <section className="grid gap-2 rounded-lg border p-4">
                     <h2 className="text-lg font-semibold">

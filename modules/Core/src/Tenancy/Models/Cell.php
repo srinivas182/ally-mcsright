@@ -33,6 +33,9 @@ final class Cell extends Model
 
     protected $fillable = ['name', 'region', 'status', 'db_connection', 'capacity_tenants', 'capacity_agents'];
 
+    /** DS2: a dedicated database's connection details never leave the server. */
+    protected $hidden = ['credentials'];
+
     public function getConnectionName(): ?string
     {
         return Connections::control() ?? parent::getConnectionName();

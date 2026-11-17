@@ -16,6 +16,7 @@ use Modules\Core\Identity\Http\Middleware\EnsureSecondFactor;
 use Modules\Core\Identity\Http\Middleware\EnsureTenantHost;
 use Modules\Core\Identity\Http\Middleware\EnsureValidSignedInUser;
 use Modules\Core\Identity\Http\Middleware\ImpersonationGuard;
+use Modules\Core\Safeguards\Http\BrokerageMoving;
 use Modules\Core\Tenancy\Http\Middleware\ResolveTenant;
 use Modules\Movewise\Http\Middleware\ServeMovewise;
 use Modules\Sites\Http\Middleware\ServeWebsite;
@@ -43,6 +44,7 @@ return Application::configure(basePath: dirname(__DIR__))
             EnsureSecondFactor::class,
             ImpersonationGuard::class,
             EnsureNotBlocked::class,
+            BrokerageMoving::class,
             BrokerageReadOnly::class,
             HandleAppearance::class,
             HandleInertiaRequests::class,

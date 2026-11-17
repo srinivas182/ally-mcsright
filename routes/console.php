@@ -118,6 +118,8 @@ Schedule::command('forms:reminders')->dailyAt('10:00')->onOneServer();
 
 // DS1: brokerage exports are kept 7 days.
 Schedule::command('safeguards:expire-exports')->dailyAt('03:50')->onOneServer();
+// DS2: old copies 14 days after a move; dedicated databases' structure after a release.
+Schedule::command('safeguards:daily')->dailyAt('04:20')->onOneServer();
 
 // EN1: Monday check-in drafts for agents and retention alerts for owners.
 Schedule::command('engage:weekly')->weeklyOn(1, '07:40')->onOneServer();

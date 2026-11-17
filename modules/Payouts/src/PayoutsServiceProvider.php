@@ -12,6 +12,7 @@ use Modules\Core\Brief\DailyBriefs;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
+use Modules\Core\Safeguards\BrokerageKeys;
 use Modules\Transactions\Events\PayoutHoldCleared;
 use Modules\Transactions\Models\Deal;
 
@@ -30,6 +31,12 @@ final class PayoutsServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // DS2: these columns hold values sealed with each brokerage's own key.
+        $keys = $this->app->make(BrokerageKeys::class);
+        foreach ([['pay_w9s', 'tin_sealed', 'id'], ['pay_bank_accounts', 'routing_sealed', 'id'], ['pay_bank_accounts', 'account_sealed', 'id'],
+            ['pay_1099_payer', 'ein_sealed', 'tenant_id'], ['pay_settings', 'operating_account_sealed', 'tenant_id']] as [$table, $column, $key]) {
+            $keys->register($table, $column, $key);
+        }
         Brief\MoneyBriefItems::register($this->app->make(DailyBriefs::class));
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
