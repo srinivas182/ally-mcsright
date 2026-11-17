@@ -71,6 +71,7 @@ it('sends every brokerage page the data its component needs', function (string $
     'adjustment' => ['owner', '/finance/adjustments/create', 'finance/adjustments/create'],
     'apps' => ['owner', '/apps', 'apps/index'],
     'switch to RightAlly' => ['owner', '/switch', 'switch/index'],
+    'prospector' => ['owner', '/prospector', 'crm/prospector'],
     'apps (agent)' => ['agent', '/apps', 'apps/index'],
     'an app: webhooks' => ['owner', '/apps/webhooks', 'apps/show'],
     'an app: lead forwarding email' => ['owner', '/apps/lead_email', 'apps/show'],
