@@ -176,6 +176,17 @@ it('lets HQ add feeds, set write-only credentials, approve licences and see fres
     expect($har->refresh()->credentials)->toBe(['client_id' => 'c', 'client_secret' => 'super-secret', 'token_url' => 'https://auth.example/token', 'scope' => 'api'])
         ->and(DB::connection(Connections::listings())->table('mls_sources')->where('key', 'har')->value('credentials'))->not->toContain('super-secret');
 
+    // IX2: presets fill the MLS Grid and Trestle addresses; Bridge still needs its dataset address.
+    $this->actingAs($admin)->post($hq.'/hq/mls/sources', ['key' => 'ntreis', 'name' => 'NTREIS', 'provider' => 'trestle', 'base_url' => '',
+        'states' => ['tx'], 'timezone' => 'America/Chicago', 'sync_interval_minutes' => 5, 'rate_limit_per_hour' => 7200])->assertSessionHasNoErrors();
+    $ntreis = MlsSource::query()->where('key', 'ntreis')->sole();
+    expect($ntreis->base_url)->toBe(MlsSource::PRESETS['trestle']['base_url']);
+    $this->actingAs($admin)->withSession(['auth.password_confirmed_at' => time()])->post($hq."/hq/mls/sources/{$ntreis->ulid}/credentials",
+        ['client_id' => 'c2', 'client_secret' => 's2'])->assertSessionHasNoErrors();
+    expect($ntreis->refresh()->credentials['token_url'] ?? null)->toBe(MlsSource::PRESETS['trestle']['token_url']);
+    $this->actingAs($admin)->post($hq.'/hq/mls/sources', ['key' => 'brx', 'name' => 'Bridge X', 'provider' => 'bridge',
+        'states' => ['tx'], 'timezone' => 'America/Chicago', 'sync_interval_minutes' => 5, 'rate_limit_per_hour' => 7200])->assertSessionHasErrors('base_url');
+
     $page = $this->actingAs($admin)->get($hq.'/hq/mls')->assertOk();
     expect(json_encode($page->viewData('page')))->not->toContain('super-secret')->not->toContain('secret-mls-token');
     $page->assertInertia(fn (Assert $p) => $p->component('hq/mls')->where('licences.0.brokerage', 'Jones Realty')->where('licences.0.status', 'pending')

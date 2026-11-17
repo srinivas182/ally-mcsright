@@ -5,8 +5,8 @@
 <div hidden data-track="search"></div>
 <main id="main" class="idx {{ $chrome['mapbox'] ? 'idx-has-map' : '' }}" data-search data-mapbox="{{ $chrome['mapbox'] ? '1' : '' }}" data-bounds="{{ $query['bounds'] ?? '' }}" data-poly="{{ $query['poly'] ?? '' }}">
     <form class="filters" action="/homes" method="get" role="search" data-filters>
-        <label class="sr-only" for="f-q">City, ZIP, neighborhood or address</label>
-        <input id="f-q" class="f-q" name="q" value="{{ $query['q'] ?? '' }}" placeholder="City, ZIP, neighborhood or address" enterkeyhint="search">
+        <label class="sr-only" for="f-q">City, ZIP, address, or describe the home</label>
+        <input id="f-q" class="f-q" name="q" value="{{ $query['q'] ?? '' }}" placeholder="Try: 3 bed homes under $500k in Austin" enterkeyhint="search">
         <label class="sr-only" for="f-min">Minimum price</label>
         <select id="f-min" name="min_price">
             <option value="">Min price</option>
@@ -45,6 +45,15 @@
                 <button type="button" class="btn btn-ghost" data-save-search>Save search</button>
                 @if ($chrome['mapbox'])<button type="button" class="btn btn-ghost map-toggle" data-map-toggle aria-pressed="false">Map</button>@endif
             </div>
+            @if ($heard)
+                <p class="heard" role="status" data-heard lang="{{ $heard['language'] }}">
+                    {{ $heard['language'] === 'es' ? 'Buscamos' : 'We searched for' }}: <strong>{{ $heard['understood'] === [] ? ($heard['language'] === 'es' ? 'todas las casas' : 'all homes') : implode(' · ', $heard['understood']) }}</strong>.
+                    @if ($heard['not_filtered'] !== [])
+                        {{ $heard['language'] === 'es' ? 'Aún no podemos filtrar por' : 'We can’t filter by' }} {{ implode(', ', $heard['not_filtered']) }}{{ $heard['language'] === 'es' ? ';' : ' yet;' }}
+                        <a href="/contact">{{ $heard['language'] === 'es' ? 'pídale a un agente que lo busque' : 'ask an agent to find it for you' }}</a>.
+                    @endif
+                </p>
+            @endif
             @if ($stale)<p class="notice" role="status" data-stale>Listing updates are running a little late right now. Prices and status may have changed; <a href="/contact">ask us</a> for the latest on any home.</p>@endif
             @if ($found['total'] === 0)
                 <p class="lead-muted" data-empty>No homes match yet. Try a wider area or fewer filters, or <a href="/contact">ask an agent</a> to look for you.</p>
@@ -71,5 +80,5 @@
 @endsection
 
 @push('scripts')
-    <script src="/site-assets/search.js?v=2" defer></script>
+    <script src="/site-assets/search.js?v=3" defer></script>
 @endpush

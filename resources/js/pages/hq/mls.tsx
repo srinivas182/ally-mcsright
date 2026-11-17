@@ -65,6 +65,15 @@ type Props = {
     profiles: Profile[];
     licences: Licence[];
     providers: string[];
+    presets: Record<
+        string,
+        {
+            base_url: string | null;
+            token_url: string | null;
+            auth: string;
+            help: string;
+        }
+    >;
     scopes: string[];
 };
 
@@ -81,6 +90,7 @@ export default function HqMls({
     profiles,
     licences,
     providers,
+    presets,
     scopes,
 }: Props) {
     const opts = { preserveScroll: true };
@@ -169,13 +179,19 @@ export default function HqMls({
                         </select>
                         <Input
                             aria-label="Base URL"
-                            placeholder="https://api.mlsgrid.com/v2"
+                            placeholder={
+                                presets[add.data.provider]?.base_url ??
+                                'Address from the MLS'
+                            }
                             className="md:col-span-2"
                             value={add.data.base_url}
                             onChange={(e) =>
                                 add.setData('base_url', e.target.value)
                             }
                         />
+                        <p className="text-sm text-muted-foreground md:col-span-3">
+                            {presets[add.data.provider]?.help}
+                        </p>
                         <Input
                             aria-label="States"
                             placeholder="States, e.g. TX"
@@ -429,7 +445,7 @@ function SourceCard({
                             />
                             <Input
                                 aria-label="Token URL"
-                                placeholder="Token URL"
+                                placeholder="Token URL (filled in for Trestle)"
                                 value={creds.data.token_url}
                                 onChange={(e) =>
                                     creds.setData('token_url', e.target.value)
