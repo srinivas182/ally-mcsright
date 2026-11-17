@@ -1,4 +1,4 @@
-/* RightAlly websites — shared markup, five templates (Aurum, Modern, Hearth, Coastal, Metro). Brand colours come from --brand and --accent. */
+/* RightAlly websites — shared markup, ten templates (Aurum, Modern, Hearth, Coastal, Metro; IX1: Estate, Nordic, Heritage, Summit, Atrium). Brand colours come from --brand and --accent. */
 :root {
     --bg: #ffffff;
     --surface: #f6f7f9;
@@ -84,6 +84,190 @@
 .theme-metro .hero h1 {
     font-size: clamp(2.6rem, 6vw, 4.6rem);
     text-transform: none;
+}
+/* Estate: light luxury, editorial serif, fine rules (IX1). */
+.theme-estate {
+    --bg: #faf8f4;
+    --surface: #f2eee6;
+    --text: #1d1b18;
+    --muted: #6a645a;
+    --line: #e2dccf;
+    --font-head: 'Playfair Display', Georgia, 'Times New Roman', serif;
+    --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --radius: 2px;
+    --radius-sm: 2px;
+    --shadow: 0 1px 0 var(--line), 0 24px 48px -32px rgb(29 27 24 / 0.35);
+    --head-weight: 500;
+    --head-tracking: -0.005em;
+}
+.theme-estate .brand,
+.theme-estate .nav a {
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    font-size: 0.78rem;
+}
+.theme-estate .btn {
+    border-radius: 0;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    padding: 1rem 1.7rem;
+}
+.theme-estate .section-title {
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 0.6rem;
+}
+.theme-estate .hero h1 {
+    font-style: italic;
+    font-weight: 500;
+}
+/* Nordic: minimal, white space, square corners (IX1). */
+.theme-nordic {
+    --bg: #ffffff;
+    --surface: #f5f5f4;
+    --text: #111827;
+    --muted: #6b7280;
+    --line: #e7e5e4;
+    --font-head: 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-body: 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --radius: 0;
+    --radius-sm: 0;
+    --shadow: none;
+    --head-weight: 500;
+    --head-tracking: -0.035em;
+}
+.theme-nordic .section {
+    padding-block: clamp(4rem, 9vw, 8rem);
+}
+.theme-nordic .btn {
+    border-radius: 0;
+}
+.theme-nordic .btn-primary {
+    background: var(--text);
+    color: var(--bg);
+}
+.theme-nordic .hero h1 {
+    font-weight: 500;
+    letter-spacing: -0.045em;
+}
+/* Heritage: classic serif, navy and brass (IX1). */
+.theme-heritage {
+    --bg: #fdfcf9;
+    --surface: #f4f1ea;
+    --text: #1b2433;
+    --muted: #5b6372;
+    --line: #e4ded1;
+    --font-head: 'Libre Baskerville', Georgia, 'Times New Roman', serif;
+    --font-body: 'Lato', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --radius: 6px;
+    --radius-sm: 4px;
+    --shadow:
+        0 1px 2px rgb(27 36 51 / 0.08), 0 14px 30px -18px rgb(27 36 51 / 0.3);
+    --head-weight: 700;
+    --head-tracking: 0;
+}
+.theme-heritage .site-header {
+    border-top: 4px solid var(--accent);
+}
+.theme-heritage .section-title::after {
+    content: '';
+    display: block;
+    width: 3rem;
+    height: 2px;
+    margin-top: 0.6rem;
+    background: var(--accent);
+}
+.theme-heritage .btn {
+    border-radius: 4px;
+}
+/* Summit: outdoorsy forest tones, sturdy type (IX1). */
+.theme-summit {
+    --bg: #f4f6f2;
+    --surface: #e8ede4;
+    --text: #1d2a22;
+    --muted: #55645a;
+    --line: #d5ddd0;
+    --font-head: 'Outfit', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-body: 'Outfit', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --radius: 14px;
+    --radius-sm: 8px;
+    --shadow:
+        0 1px 2px rgb(29 42 34 / 0.08), 0 18px 36px -20px rgb(29 42 34 / 0.35);
+    --head-weight: 700;
+    --head-tracking: -0.02em;
+}
+.theme-summit .hero h1 {
+    text-transform: uppercase;
+    letter-spacing: 0.01em;
+    font-size: clamp(2.4rem, 5.5vw, 4.4rem);
+}
+.theme-summit .btn {
+    border-radius: 8px;
+}
+/* Atrium: architectural, frosted glass, crisp lines (IX1). */
+.theme-atrium {
+    --bg: #f7f9fb;
+    --surface: #eef3f6;
+    --text: #0b1f2a;
+    --muted: #4f6573;
+    --line: #dbe5eb;
+    --font-head:
+        'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-body:
+        'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --radius: 18px;
+    --radius-sm: 10px;
+    --shadow:
+        0 1px 1px rgb(11 31 42 / 0.05), 0 20px 50px -24px rgb(11 31 42 / 0.3);
+    --head-weight: 800;
+    --head-tracking: -0.03em;
+}
+.theme-atrium .site-header {
+    background: color-mix(in oklab, var(--bg) 70%, transparent);
+    backdrop-filter: saturate(170%) blur(16px);
+}
+.theme-atrium .form-card,
+.theme-atrium .card {
+    background: color-mix(in oklab, var(--bg) 78%, transparent);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--line);
+}
+@media (prefers-color-scheme: dark) {
+    .theme-estate {
+        --bg: #151412;
+        --surface: #1e1c19;
+        --text: #f1ece3;
+        --muted: #b3aa9b;
+        --line: #33302a;
+    }
+    .theme-nordic {
+        --bg: #0f1011;
+        --surface: #17181a;
+        --text: #f4f4f5;
+        --muted: #a1a1aa;
+        --line: #26272b;
+    }
+    .theme-heritage {
+        --bg: #0f1520;
+        --surface: #172031;
+        --text: #eef1f6;
+        --muted: #a7b0bf;
+        --line: #26324a;
+    }
+    .theme-summit {
+        --bg: #111813;
+        --surface: #18221b;
+        --text: #e8efe9;
+        --muted: #a3b3a7;
+        --line: #26342a;
+    }
+    .theme-atrium {
+        --bg: #0a141a;
+        --surface: #0f1d25;
+        --text: #e6f0f4;
+        --muted: #9db3bf;
+        --line: #1c2f39;
+    }
 }
 @media (prefers-color-scheme: dark) {
     .theme-hearth {
@@ -2043,4 +2227,16 @@ h3 {
     text-align: center;
     padding: 0;
     font-style: italic;
+}
+
+/* IX1: plain note when the MLS feed is running late (specs/websites/16). */
+.notice {
+    margin: 0 0 1rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid color-mix(in oklab, var(--accent) 45%, var(--line));
+    border-radius: var(--radius-sm);
+    background: color-mix(in oklab, var(--accent) 10%, var(--bg));
+    color: var(--text);
+    font-size: 1rem;
+    line-height: 1.5;
 }

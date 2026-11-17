@@ -45,6 +45,7 @@
                 <button type="button" class="btn btn-ghost" data-save-search>Save search</button>
                 @if ($chrome['mapbox'])<button type="button" class="btn btn-ghost map-toggle" data-map-toggle aria-pressed="false">Map</button>@endif
             </div>
+            @if ($stale)<p class="notice" role="status" data-stale>Listing updates are running a little late right now. Prices and status may have changed; <a href="/contact">ask us</a> for the latest on any home.</p>@endif
             @if ($found['total'] === 0)
                 <p class="lead-muted" data-empty>No homes match yet. Try a wider area or fewer filters, or <a href="/contact">ask an agent</a> to look for you.</p>
             @endif

@@ -52,6 +52,7 @@ final class IdxController
 
         return response()->view('sites::idx.search', [
             'site' => $site, 'current' => '/homes', 'found' => $found, 'query' => $query, 'heading' => self::heading($found['total'], $found['filters']['q']),
+            'stale' => in_array(true, array_column($found['results'], 'stale'), true),
             'pages' => self::pagination($found['total'], $found['page'], $query),
             'seo' => Seo::build($site, $base, '/homes'.($plain && $found['page'] > 1 ? '?page='.$found['page'] : ''), $title, $description, null,
                 $plain && $found['total'] > 0, [['Homes for sale', '/homes']]),

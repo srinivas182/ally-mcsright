@@ -32,6 +32,17 @@ return [
             'theme' => '#f3f8fa', 'css' => 'family=Nunito+Sans:wght@400;600;700;800', 'brand' => ['primary' => '#0e7490', 'accent' => '#164e63']],
         'metro' => ['name' => 'Metro', 'description' => 'Bold and high-contrast with large type; suits city condos and new construction.', 'fonts' => 'Manrope',
             'theme' => '#0f0f10', 'css' => 'family=Manrope:wght@400;600;800', 'brand' => ['primary' => '#e11d48', 'accent' => '#0f0f10']],
+        // IX1: five more designs (specs/websites/16).
+        'estate' => ['name' => 'Estate', 'description' => 'Light luxury: ivory, editorial serif headlines and fine rules; suits luxury and architectural homes.', 'fonts' => 'Playfair Display + Inter',
+            'theme' => '#faf8f4', 'css' => 'family=Playfair+Display:wght@500;600&family=Inter:wght@400;500;600', 'brand' => ['primary' => '#1f3a33', 'accent' => '#b08d57']],
+        'nordic' => ['name' => 'Nordic', 'description' => 'Minimal and calm with lots of white space and square corners; suits modern homes and design-led teams.', 'fonts' => 'DM Sans',
+            'theme' => '#ffffff', 'css' => 'family=DM+Sans:wght@400;500;700', 'brand' => ['primary' => '#111827', 'accent' => '#6b7280']],
+        'heritage' => ['name' => 'Heritage', 'description' => 'Classic and trusted: a traditional serif, navy and brass; suits established brokerages and historic districts.', 'fonts' => 'Libre Baskerville + Lato',
+            'theme' => '#fdfcf9', 'css' => 'family=Libre+Baskerville:wght@400;700&family=Lato:wght@400;700', 'brand' => ['primary' => '#1e3a5f', 'accent' => '#a67c2e']],
+        'summit' => ['name' => 'Summit', 'description' => 'Outdoorsy and strong: forest tones and sturdy type; suits mountain, lake and acreage markets.', 'fonts' => 'Outfit',
+            'theme' => '#f4f6f2', 'css' => 'family=Outfit:wght@400;500;700', 'brand' => ['primary' => '#2f5d3a', 'accent' => '#1d2a22']],
+        'atrium' => ['name' => 'Atrium', 'description' => 'Architectural and bright: frosted glass, big photography and crisp lines; suits new construction and urban teams.', 'fonts' => 'Plus Jakarta Sans',
+            'theme' => '#f7f9fb', 'css' => 'family=Plus+Jakarta+Sans:wght@400;500;700;800', 'brand' => ['primary' => '#0f766e', 'accent' => '#0b1f2a']],
     ],
     // Crawlers that read sites for AI answers; allowed unless the brokerage opts out.
     'ai_crawlers' => ['GPTBot', 'OAI-SearchBot', 'ChatGPT-User', 'PerplexityBot', 'Perplexity-User', 'ClaudeBot', 'Claude-User', 'Claude-SearchBot', 'Google-Extended', 'Applebot-Extended', 'CCBot', 'Bytespider', 'Meta-ExternalAgent'],
