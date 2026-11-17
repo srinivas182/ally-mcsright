@@ -18,6 +18,7 @@ final class SetupServiceProvider extends ServiceProvider
     {
         $this->app->scoped(Imports\FileImports::class);
         $this->app->scoped(Imports\Detector::class);
+        $this->app->scoped(Guide\Guide::class);
     }
 
     public function boot(): void
@@ -26,6 +27,9 @@ final class SetupServiceProvider extends ServiceProvider
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
         $this->app->make(PromptRegistry::class)->addPath(__DIR__.'/../prompts');
         $this->app->make(FeatureCatalog::class)->declare(Imports\Detector::FEATURE, 'ai.setup_map', 'Setup: match the columns of a file from another system (column names only)');
-        $this->app->make(NavigationRegistry::class)->add(new NavItem('Settings', 'Bring your old files', '/setup/import', 'list-plus', 66, kinds: [UserKind::Owner]));
+        $this->app->make(FeatureCatalog::class)->declare(Guide\Guide::FEATURE, 'ai.setup_describe', 'Setup: read the broker\'s description of their brokerage into setup answers');
+        $nav = $this->app->make(NavigationRegistry::class);
+        $nav->add(new NavItem('Settings', 'Guided setup', '/setup/guide', 'list-checks', 66, kinds: [UserKind::Owner])); // SU2
+        $nav->add(new NavItem('Settings', 'Bring your old files', '/setup/import', 'list-plus', 67, kinds: [UserKind::Owner]));
     }
 }

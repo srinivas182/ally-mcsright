@@ -147,7 +147,7 @@ final class Checks
     private static function get(array $data, string $path): mixed
     {
         if (array_key_exists($path, $data)) {
-            return $data[$path]; // a key that itself contains a dot, e.g. "Prop. Addr"
+            return $data[$path] ?? ''; // present but null reads as empty; also keys with a dot, e.g. "Prop. Addr"
         }
         $dot = strpos($path, '.');
         if ($dot === false) {
