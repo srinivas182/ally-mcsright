@@ -41,12 +41,12 @@ export function ContactPicker({
                 onChange={(e) => setQ(e.target.value)}
             />
             {found.length > 0 && (
-                <ul
+                <div
                     role="listbox"
                     className="absolute top-full z-10 mt-1 w-full rounded-md border bg-popover shadow"
                 >
                     {found.map((c) => (
-                        <li key={c.ulid}>
+                        <div key={c.ulid} role="presentation">
                             <button
                                 type="button"
                                 role="option"
@@ -65,9 +65,9 @@ export function ContactPicker({
                                     </span>
                                 )}
                             </button>
-                        </li>
+                        </div>
                     ))}
-                </ul>
+                </div>
             )}
         </div>
     );

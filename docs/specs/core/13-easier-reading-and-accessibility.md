@@ -1,6 +1,6 @@
 # Easier reading and accessibility (AX1, AX2)
 
-Status: AX1 done. Tracker: C18 Partly (AX2 completes the audit and fixes).
+Status: Done (AX1 and AX2). Tracker: C18 Done.
 
 ## What it does, in plain words
 
@@ -19,6 +19,39 @@ Status: AX1 done. Tracker: C18 Partly (AX2 completes the audit and fixes).
     - how to get help or the same information another way, with a reply within two business days.
 
     It is linked from every page's footer and listed in the sitemap.
+
+## The audit (AX2)
+
+- **Accessibility rules in every build.** The linter now checks every page and component against the accessibility rules below. A change that breaks one can't be merged.
+    - Images have alt text.
+    - Labels are tied to their fields, including our own input components.
+    - Links and headings have content.
+    - ARIA roles and properties are valid.
+    - Clicks have keyboard equivalents.
+    - Nothing gets focus on its own when a page opens (no autofocus).
+    - There is no positive tab order.
+    - Videos have captions.
+- **What we fixed.**
+    - Removed autofocus from 10 screens (sign-in pages, dialogs, contact search) so screen readers start at the top.
+    - Removed a forced tab order on the sign-in page.
+    - Gave empty table headers a spoken name ("Actions", "Offer").
+    - Fixed the contact picker's list structure for screen readers.
+    - Rewrote image descriptions that said "image of" or "photo".
+    - Named the form editor and its drawing surface.
+- **Deliberate exceptions**, each documented where it occurs:
+    - A scrolling agreement is reachable by keyboard, as WCAG requires.
+    - Drag and drop on the contact board has a "Move to" list for keyboards.
+    - The agent's own recording previews have no captions.
+    - Reels have their captions burned into the video.
+- **Contrast is tested.** A test checks every text colour against its background, in light and dark, at 4.5:1 or better. It also checks the focus outline at 3:1, and the stronger-contrast colours at 7:1.
+- **Public pages are tested.** The home page, home search, home value, privacy and accessibility pages are all checked for:
+    - a language;
+    - one main heading;
+    - a working skip link;
+    - alt text on every image;
+    - a label on every form field;
+    - a name on every button and link;
+    - no positive tab order.
 
 ## Market leaders
 

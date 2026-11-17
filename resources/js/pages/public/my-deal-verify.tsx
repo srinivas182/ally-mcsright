@@ -88,7 +88,6 @@ export default function MyDealVerify({
                                 pattern="[0-9 ]{6,7}"
                                 maxLength={7}
                                 required
-                                autoFocus
                                 value={code.data.code}
                                 onChange={(e) =>
                                     code.setData('code', e.target.value)

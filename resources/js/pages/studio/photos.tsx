@@ -142,7 +142,7 @@ export default function StudioPhotos({
                                         {p.original && (
                                             <img
                                                 src={p.original}
-                                                alt="MLS photo"
+                                                alt="Original, before enhancement"
                                                 loading="lazy"
                                                 className="aspect-[4/3] w-full rounded object-cover"
                                             />
@@ -150,7 +150,7 @@ export default function StudioPhotos({
                                         {after ? (
                                             <img
                                                 src={after}
-                                                alt="Enhanced photo"
+                                                alt="After enhancement"
                                                 loading="lazy"
                                                 className="aspect-[4/3] w-full rounded object-cover"
                                             />

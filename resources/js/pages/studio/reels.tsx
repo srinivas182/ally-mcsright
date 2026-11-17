@@ -237,6 +237,7 @@ export default function StudioReels({
                                 className="grid content-start gap-2 rounded-xl border p-2"
                             >
                                 {r.status === 'ready' && r.url ? (
+                                    // oxlint-disable-next-line jsx-a11y/media-has-caption -- reels have their captions burned into the video
                                     <video
                                         src={r.url}
                                         poster={r.poster ?? undefined}
