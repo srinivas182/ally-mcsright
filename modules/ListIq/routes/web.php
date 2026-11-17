@@ -20,4 +20,13 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('list-i
     Route::post('{prep}/describe', [ListIqController::class, 'write'])->middleware(['throttle:10,1', 'feature:crm.ai'])->name('describe');
     Route::post('{prep}/translate', [ListIqController::class, 'translate'])->middleware(['throttle:10,1', 'feature:crm.ai'])->name('translate');
     Route::get('{prep}/package', [ListIqController::class, 'package'])->middleware('throttle:10,1')->name('package');
+    Route::post('{prep}/mls', [ListIqController::class, 'mls'])->name('mls');
+    Route::post('{prep}/codes', [ListIqController::class, 'addCode'])->middleware('throttle:30,1')->name('codes');
+    Route::get('{prep}/codes/{code}', [ListIqController::class, 'qr'])->where('code', '[a-z0-9]{7}')->name('codes.qr');
+    Route::post('{prep}/floor-plan', [ListIqController::class, 'floorPlan'])->middleware('throttle:10,1')->name('floor-plan');
+    Route::get('{prep}/flyer', [ListIqController::class, 'flyer'])->middleware('throttle:20,1')->name('flyer');
+    Route::post('{prep}/open-houses', [ListIqController::class, 'openHouse'])->name('open-houses');
+    Route::get('{prep}/open-houses/{openHouse}', [ListIqController::class, 'kiosk'])->name('kiosk');
+    Route::post('{prep}/open-houses/{openHouse}/sign-in', [ListIqController::class, 'signIn'])->middleware('throttle:60,1')->name('kiosk.sign-in');
+    Route::post('{prep}/open-houses/{openHouse}/end', [ListIqController::class, 'endOpenHouse'])->name('kiosk.end');
 });

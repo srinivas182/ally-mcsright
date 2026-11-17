@@ -37,6 +37,33 @@ type Room = {
     suggested: number;
     count: number;
 };
+type Marketing = {
+    in_mls: boolean;
+    page_url: string | null;
+    codes: {
+        code: string;
+        kind: string;
+        label: string;
+        scans: number;
+        leads: number;
+        url: string | null;
+    }[];
+    kinds: Record<string, string>;
+    activity: {
+        views: number;
+        scans: number;
+        code_leads: number;
+        open_houses: number;
+        visitors: number;
+    };
+    floor_plan: string | null;
+    open_houses: {
+        ulid: string;
+        starts: string;
+        ended: boolean;
+        visitors: number;
+    }[];
+};
 type Photo = {
     ulid: string;
     kind: string;
@@ -59,6 +86,7 @@ export default function ListIqShow({
     photos,
     styles,
     can,
+    marketing: m,
 }: {
     listing: Listing;
     checklist: Item[];
@@ -67,6 +95,7 @@ export default function ListIqShow({
     photos: Photo[];
     styles: string[];
     can: { stage: boolean; enhance: boolean };
+    marketing: Marketing;
 }) {
     const opts = { preserveScroll: true };
     const errors = usePage().props.errors as Record<string, string>;
@@ -81,6 +110,8 @@ export default function ListIqShow({
     const [text, setText] = useState(l.description ?? '');
     const [es, setEs] = useState(l.description_es ?? '');
     const [style, setStyle] = useState(styles[0] ?? 'modern');
+    const [kind, setKind] = useState('sign');
+    const [oh, setOh] = useState({ date: '', from: '13:00', to: '16:00' });
     const done = checklist.filter((i) => i.done).length;
     const busy = photos.some(
         (p) => p.status === 'queued' || p.status === 'processing',
@@ -380,6 +411,218 @@ export default function ListIqShow({
                         </ol>
                     </section>
                 )}
+
+                <section
+                    className="grid gap-3 rounded-lg border p-4"
+                    aria-labelledby="marketing"
+                >
+                    <h2 id="marketing" className="font-semibold">
+                        Marketing
+                    </h2>
+                    <label className="flex items-start gap-2">
+                        <input
+                            type="checkbox"
+                            className="mt-1 size-5"
+                            checked={m.in_mls}
+                            onChange={(e) =>
+                                router.post(
+                                    `${base}/mls`,
+                                    { on: e.target.checked },
+                                    opts,
+                                )
+                            }
+                        />
+                        <span>
+                            It's in the MLS
+                            <span className="block text-sm text-muted-foreground">
+                                The listing's page, QR codes and flyer go public
+                                only then (the MLS Clear Cooperation rule:
+                                public marketing must reach the MLS within one
+                                business day).
+                            </span>
+                        </span>
+                    </label>
+                    {m.in_mls && m.page_url && (
+                        <p className="text-sm">
+                            Listing page:{' '}
+                            <a
+                                className="break-all underline"
+                                href={m.page_url}
+                                target="_blank"
+                                rel="noreferrer"
+                            >
+                                {m.page_url}
+                            </a>
+                        </p>
+                    )}
+                    <ul className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-5">
+                        {(
+                            [
+                                [m.activity.views, 'page views'],
+                                [m.activity.scans, 'QR scans'],
+                                [m.activity.code_leads, 'leads from codes'],
+                                [m.activity.open_houses, 'open houses'],
+                                [m.activity.visitors, 'visitors'],
+                            ] as const
+                        ).map(([n, label]) => (
+                            <li key={label} className="rounded border p-2">
+                                <strong className="block text-lg">{n}</strong>
+                                {label}
+                            </li>
+                        ))}
+                    </ul>
+                    <div className="grid gap-2">
+                        <h3 className="text-sm font-semibold">QR codes</h3>
+                        <div className="flex flex-wrap items-end gap-2">
+                            <select
+                                className="h-10 rounded-md border bg-background px-3"
+                                aria-label="Where the code goes"
+                                value={kind}
+                                onChange={(e) => setKind(e.target.value)}
+                            >
+                                {Object.entries(m.kinds).map(([k, label]) => (
+                                    <option key={k} value={k}>
+                                        {label}
+                                    </option>
+                                ))}
+                            </select>
+                            <Button
+                                variant="outline"
+                                onClick={() =>
+                                    router.post(`${base}/codes`, { kind }, opts)
+                                }
+                            >
+                                New code
+                            </Button>
+                            <Button variant="outline" asChild>
+                                <a href={`${base}/flyer`}>Flyer (PDF)</a>
+                            </Button>
+                        </div>
+                        {m.codes.length > 0 && (
+                            <ul className="grid gap-1 text-sm">
+                                {m.codes.map((c) => (
+                                    <li
+                                        key={c.code}
+                                        className="flex flex-wrap items-center gap-2"
+                                    >
+                                        <span className="min-w-0 flex-1">
+                                            {c.label}: {c.scans} scans,{' '}
+                                            {c.leads} leads
+                                        </span>
+                                        {c.url && (
+                                            <a
+                                                className="underline"
+                                                href={`${base}/codes/${c.code}`}
+                                            >
+                                                Download QR
+                                            </a>
+                                        )}
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
+                    <div className="grid gap-2">
+                        <h3 className="text-sm font-semibold">Open houses</h3>
+                        <form
+                            className="flex flex-wrap items-end gap-2"
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                router.post(`${base}/open-houses`, oh, opts);
+                            }}
+                        >
+                            <label className="grid gap-1 text-sm">
+                                Date
+                                <Input
+                                    type="date"
+                                    value={oh.date}
+                                    onChange={(e) =>
+                                        setOh({ ...oh, date: e.target.value })
+                                    }
+                                />
+                            </label>
+                            <label className="grid gap-1 text-sm">
+                                From
+                                <Input
+                                    type="time"
+                                    value={oh.from}
+                                    onChange={(e) =>
+                                        setOh({ ...oh, from: e.target.value })
+                                    }
+                                />
+                            </label>
+                            <label className="grid gap-1 text-sm">
+                                To
+                                <Input
+                                    type="time"
+                                    value={oh.to}
+                                    onChange={(e) =>
+                                        setOh({ ...oh, to: e.target.value })
+                                    }
+                                />
+                            </label>
+                            <Button variant="outline">Add</Button>
+                        </form>
+                        {(errors.starts_at || errors.ends_at) && (
+                            <p className="text-sm text-red-700">
+                                {errors.starts_at ?? errors.ends_at}
+                            </p>
+                        )}
+                        <ul className="grid gap-1 text-sm">
+                            {m.open_houses.map((o) => (
+                                <li
+                                    key={o.ulid}
+                                    className="flex flex-wrap items-center gap-2"
+                                >
+                                    <span className="min-w-0 flex-1">
+                                        {o.starts} · {o.visitors} visitors
+                                        {o.ended ? ' · ended' : ''}
+                                    </span>
+                                    {!o.ended && (
+                                        <Button size="sm" asChild>
+                                            <Link
+                                                href={`${base}/open-houses/${o.ulid}`}
+                                            >
+                                                Open the sign-in kiosk
+                                            </Link>
+                                        </Button>
+                                    )}
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                    <label className="grid gap-1 text-sm">
+                        Floor plan (PDF or image from your floor-plan app)
+                        <input
+                            type="file"
+                            accept=".pdf,image/*"
+                            onChange={(e) => {
+                                const f = e.target.files?.[0];
+                                if (f)
+                                    router.post(
+                                        `${base}/floor-plan`,
+                                        { floor_plan: f },
+                                        { ...opts, forceFormData: true },
+                                    );
+                            }}
+                        />
+                    </label>
+                    {m.floor_plan && (
+                        <a
+                            className="text-sm underline"
+                            href={m.floor_plan}
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            See the floor plan
+                        </a>
+                    )}
+                    {errors.floor_plan && (
+                        <p className="text-sm text-red-700">
+                            {errors.floor_plan}
+                        </p>
+                    )}
+                </section>
 
                 <section
                     className="grid gap-3 rounded-lg border p-4"

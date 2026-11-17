@@ -1,0 +1,58 @@
+@extends('sites::layout')
+
+@section('content')
+<main id="main">
+    <section class="section">
+        <div class="wrap">
+            <h1 class="section-title">{{ $prep->street }}@if ($prep->city), {{ $prep->city }}@endif</h1>
+            <p class="answer">
+                @if (isset($facts['price']))<strong>${{ number_format((int) $facts['price']) }}</strong> · @endif
+                @if (isset($facts['beds'])){{ $facts['beds'] }} bd · @endif
+                @if (isset($facts['baths'])){{ $facts['baths'] }} ba · @endif
+                @if (isset($facts['sqft'])){{ number_format((int) $facts['sqft']) }} sq ft @endif
+                @if (isset($facts['year_built'])) · built {{ $facts['year_built'] }}@endif
+            </p>
+            @if ($photos !== [])
+                <ul class="cards">
+                    @foreach ($photos as $i => $p)
+                        <li><figure style="margin:0">
+                            <img src="{{ $p['url'] }}" alt="{{ $p['caption'] }}" @if ($i > 0) loading="lazy" @endif style="width:100%;aspect-ratio:3/2;object-fit:cover;border-radius:8px">
+                            <figcaption class="lead-muted">{{ $p['caption'] }}@if ($p['staged']) <strong>(virtually staged)</strong>@endif</figcaption>
+                        </figure></li>
+                    @endforeach
+                </ul>
+            @endif
+        </div>
+    </section>
+    <section class="section section-alt">
+        <div class="wrap contact-grid" id="ask">
+            <div>
+                <h2 class="section-title">About this home</h2>
+                @if ($prep->description)<p>{{ $prep->description }}</p>@endif
+                @if ($floorPlan)<p><a class="btn" href="{{ $floorPlan }}" target="_blank" rel="noopener">See the floor plan</a></p>@endif
+                @if ($agent)
+                    <p class="lead-muted">Listed by {{ $agent['details']['display_name'] ?? '' }}, {{ $agent['brokerage'] ?? '' }}@if (! empty($agent['details']['phone'])) · {{ $agent['details']['phone'] }}@endif</p>
+                @endif
+            </div>
+            <div class="form-card">
+                @if ($sent)
+                    <p class="form-ok" role="status">Thank you. The listing agent will be in touch shortly.</p>
+                @else
+                    <h2 class="form-title">Ask about this home or book a showing</h2>
+                    @if ($formError)<p class="form-error" role="alert">{{ $formError }}</p>@endif
+                    <form method="post" action="/_listing/{{ $prep->ulid }}">
+                        <label>Name <input name="name" required autocomplete="name"></label>
+                        <label>Email <input type="email" name="email" autocomplete="email"></label>
+                        <label>Mobile phone <input type="tel" name="phone" autocomplete="tel"></label>
+                        <label>Message <textarea name="message" rows="3">I'd like to know more about {{ $prep->street }}.</textarea></label>
+                        <label class="consent"><input type="checkbox" name="sms_consent" value="1"> <span>{{ $consent }}</span></label>
+                        <div class="hp" aria-hidden="true"><label>Leave empty <input name="website" tabindex="-1" autocomplete="off"></label></div>
+                        <input type="hidden" name="t" value="{{ $t }}"><input type="hidden" name="src" value="{{ $src }}">
+                        <button class="btn btn-primary" type="submit">Send</button>
+                    </form>
+                @endif
+            </div>
+        </div>
+    </section>
+</main>
+@endsection

@@ -31,6 +31,9 @@ use Modules\Core\Tenancy\Concerns\HasPublicUlid;
  * @property string|null $description_es
  * @property int $remarks_limit
  * @property string $status
+ * @property string|null $floor_plan_path
+ * @property bool $in_mls
+ * @property int $page_views
  * @property CarbonImmutable $updated_at
  */
 final class Prep extends Model
@@ -41,7 +44,7 @@ final class Prep extends Model
     protected $table = 'listiq_listings';
 
     protected $fillable = ['owner_user_id', 'deal_id', 'street', 'city', 'state', 'zip', 'facts', 'notes', 'showing', 'manual', 'descriptions', 'description', 'description_es',
-        'remarks_limit', 'status'];
+        'remarks_limit', 'status', 'floor_plan_path', 'in_mls'];
 
     public function getConnectionName(): ?string
     {
@@ -59,6 +62,6 @@ final class Prep extends Model
      */
     protected function casts(): array
     {
-        return ['facts' => 'array', 'manual' => 'array', 'descriptions' => 'array', 'updated_at' => 'immutable_datetime', 'remarks_limit' => 'integer'];
+        return ['facts' => 'array', 'manual' => 'array', 'descriptions' => 'array', 'updated_at' => 'immutable_datetime', 'remarks_limit' => 'integer', 'in_mls' => 'boolean', 'page_views' => 'integer'];
     }
 }
