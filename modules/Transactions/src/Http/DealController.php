@@ -47,6 +47,7 @@ use Modules\Transactions\Portal;
 use Modules\Transactions\Reading\DocIq;
 use Modules\Transactions\Referrals;
 use Modules\Transactions\Reviews;
+use Modules\Transactions\Risk\DealRisk;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -169,6 +170,7 @@ final class DealController
                 'managePay' => $user->isKind(UserKind::Owner) || $user->can('compensation.calculations.manage')],
             'reviewer' => self::reviewer($user),
             'reasons' => self::reviewer($user) ? $reviews->reasons() : [],
+            'risk' => DealRisk::forDeals([$deal->id])[$deal->id], // RD1
         ]);
     }
 
@@ -244,12 +246,16 @@ final class DealController
     {
         abort_unless(self::reviewer(self::user($request)), 403);
 
+        $queue = Item::query()->where('status', 'submitted')->orderBy('submitted_at')->limit(200)->get();
+        $risk = DealRisk::forDeals(array_values($queue->pluck('deal_id')->unique()->map(fn ($v): int => (int) $v)->all())); // RD1
+
         return Inertia::render('deals/review', [
             'sla_hours' => $reviews->slaHours(),
-            'items' => Item::query()->where('status', 'submitted')->orderBy('submitted_at')->limit(200)->get()->map(function (Item $i) use ($reviews, $request): array {
+            'items' => $queue->map(function (Item $i) use ($reviews, $request, $risk): array {
                 $deal = Deal::query()->findOrFail($i->deal_id);
 
                 return ['ulid' => $i->ulid, 'label' => $i->label, 'deal' => $deal->ulid, 'street' => $deal->street, 'agent' => User::query()->whereKey($deal->agent_user_id)->value('first_name'),
+                    'risk' => $risk[$deal->id] ?? ['score' => 0, 'level' => 'low', 'reasons' => []],
                     'submitted_at' => $i->submitted_at?->toIso8601String(), 'overdue' => $reviews->overdue($i),
                     'mine' => $i->getAttribute('assigned_reviewer_id') === $request->user()?->getAuthIdentifier(),
                     'reviewer' => $i->getAttribute('assigned_reviewer_id') !== null ? User::query()->whereKey($i->getAttribute('assigned_reviewer_id'))->value('first_name') : null];

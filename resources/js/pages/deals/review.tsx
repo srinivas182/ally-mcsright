@@ -17,6 +17,7 @@ type Props = {
         overdue: boolean;
         mine: boolean;
         reviewer: string | null;
+        risk: { score: number; level: string; reasons: string[] };
     }[];
     reasons: string[];
 };
@@ -25,10 +26,14 @@ type Props = {
 export default function ReviewQueue({ sla_hours, items }: Props) {
     const [onlyMine, setOnlyMine] = useState(true);
     const [picked, setPicked] = useState<string[]>([]);
-    const shown =
+    const [riskFirst, setRiskFirst] = useState(false);
+    const filtered =
         onlyMine && items.some((i) => i.mine)
             ? items.filter((i) => i.mine)
             : items;
+    const shown = riskFirst
+        ? [...filtered].sort((a, b) => b.risk.score - a.risk.score)
+        : filtered;
     const toggle = (ulid: string) =>
         setPicked(
             picked.includes(ulid)
@@ -74,6 +79,14 @@ export default function ReviewQueue({ sla_hours, items }: Props) {
                             Everyone
                         </button>
                     </div>
+                    <label className="flex items-center gap-2">
+                        <input
+                            type="checkbox"
+                            checked={riskFirst}
+                            onChange={(e) => setRiskFirst(e.target.checked)}
+                        />
+                        Riskiest deals first
+                    </label>
                     <Button
                         size="sm"
                         disabled={picked.length === 0}
@@ -131,6 +144,18 @@ export default function ReviewQueue({ sla_hours, items }: Props) {
                                 </span>
                             </label>
                             <span className="flex items-center gap-2">
+                                {i.risk.level !== 'low' && (
+                                    <Badge
+                                        variant={
+                                            i.risk.level === 'high'
+                                                ? 'destructive'
+                                                : 'outline'
+                                        }
+                                        title={i.risk.reasons.join(', ')}
+                                    >
+                                        Risk {i.risk.score}
+                                    </Badge>
+                                )}
                                 {i.overdue && (
                                     <Badge variant="destructive">Overdue</Badge>
                                 )}

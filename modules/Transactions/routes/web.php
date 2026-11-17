@@ -38,6 +38,7 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoff
     Route::get('compliance', [ComplianceController::class, 'settings'])->name('compliance');
     Route::get('risk', [DeadlinesController::class, 'risk'])->name('risk');
     Route::get('risk.csv', [DeadlinesController::class, 'export'])->name('risk.export');
+    Route::get('risk/audit-pack', [DeadlinesController::class, 'auditPack'])->middleware(['password.confirm', 'throttle:10,1'])->name('risk.audit-pack'); // RD1
     Route::post('alerts', [DeadlinesController::class, 'consent'])->name('alerts');
     Route::post('calendar', [DeadlinesController::class, 'calendar'])->name('calendar');
     Route::post('compliance/deadlines', [DeadlinesController::class, 'settings'])->name('compliance.deadlines');

@@ -16,13 +16,18 @@ type Risk = {
     link: string;
 };
 type Props = {
+    agents: { agent: string; deals: number; average: number; high: number }[];
     risks: Risk[];
     trend: { week: string; open: number; opened: number; resolved: number }[];
     counts: { high: number; medium: number };
 };
 
 /** The broker risk dashboard: every open risk, its level, owner and due date; trend; export for insurers. */
-export default function RiskDashboard({ risks, trend, counts }: Props) {
+export default function RiskDashboard({ risks, trend, counts, agents }: Props) {
+    const [from, setFrom] = useState(
+        new Date(new Date().getFullYear(), 0, 1).toISOString().slice(0, 10),
+    );
+    const [to, setTo] = useState(new Date().toISOString().slice(0, 10));
     const [category, setCategory] = useState('');
     const categories = [...new Set(risks.map((r) => r.category))].sort();
     const shown = category
@@ -45,6 +50,63 @@ export default function RiskDashboard({ risks, trend, counts }: Props) {
                         </Button>
                     }
                 />
+                <section className="flex flex-wrap items-end gap-2 rounded-lg border p-3 text-sm">
+                    <span className="font-medium">
+                        Audit pack for a state audit or your E&O insurer:
+                    </span>
+                    <label className="grid gap-1">
+                        From
+                        <input
+                            type="date"
+                            className="rounded border bg-background p-1.5"
+                            value={from}
+                            onChange={(e) => setFrom(e.target.value)}
+                        />
+                    </label>
+                    <label className="grid gap-1">
+                        To
+                        <input
+                            type="date"
+                            className="rounded border bg-background p-1.5"
+                            value={to}
+                            onChange={(e) => setTo(e.target.value)}
+                        />
+                    </label>
+                    <Button variant="outline" asChild>
+                        <a
+                            href={`/deals/risk/audit-pack?from=${from}&to=${to}`}
+                        >
+                            Download the audit pack (ZIP)
+                        </a>
+                    </Button>
+                </section>
+                {agents.length > 0 && (
+                    <section className="grid gap-2 text-sm">
+                        <h2 className="font-semibold">Agents to coach</h2>
+                        <ul className="grid gap-1">
+                            {agents.map((a) => (
+                                <li
+                                    key={a.agent}
+                                    className="flex flex-wrap items-center gap-2 rounded border p-2"
+                                >
+                                    <span className="font-medium">
+                                        {a.agent}
+                                    </span>
+                                    <span className="text-muted-foreground">
+                                        {a.deals} open{' '}
+                                        {a.deals === 1 ? 'deal' : 'deals'} ·
+                                        average risk {a.average}
+                                    </span>
+                                    {a.high > 0 && (
+                                        <Badge variant="destructive">
+                                            {a.high} high risk
+                                        </Badge>
+                                    )}
+                                </li>
+                            ))}
+                        </ul>
+                    </section>
+                )}
                 <div className="flex flex-wrap gap-3 text-sm">
                     <Badge variant="destructive">{counts.high} high</Badge>
                     <Badge variant="outline">{counts.medium} medium</Badge>

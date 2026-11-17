@@ -38,6 +38,17 @@ final class Checks
         'risk.closing_docs' => ['A closing disclosure or settlement statement is on file a week before closing', 'warning'],
         'risk.earnest_late' => ['Earnest money arrives by its due date', 'warning'],
         'wire.title_unverified' => ['The title company on the settlement statement is one verified by call-back', 'warning'],
+        // RD1: state rule packs (StatePacks).
+        'state.tx_iabs' => ['Texas: Information About Brokerage Services (IABS) is in the file', 'warning'],
+        'state.tx_seller_disclosure' => ['Texas: Seller\'s Disclosure Notice is in the file', 'warning'],
+        'state.ca_agency' => ['California: agency relationship disclosure (AD) is in the file', 'warning'],
+        'state.ca_tds' => ['California: Transfer Disclosure Statement is in the file', 'warning'],
+        'state.fl_relationship' => ['Florida: brokerage relationship disclosure is in the file', 'warning'],
+        'state.ny_agency' => ['New York: agency disclosure form is in the file', 'warning'],
+        'state.ny_fair_housing' => ['New York: Housing and Anti-Discrimination Disclosure is in the file', 'warning'],
+        'state.az_spds' => ['Arizona: Seller\'s Property Disclosure Statement is in the file', 'warning'],
+        'state.co_brokerage_disclosure' => ['Colorado: Brokerage Disclosure to Buyer or Seller is in the file', 'warning'],
+        'state.ms_working_relationships' => ['Mississippi: Working Relationships Disclosure is in the file', 'warning'],
     ];
 
     public const SEVERITIES = ['blocker', 'warning', 'info'];
@@ -51,7 +62,8 @@ final class Checks
         $out = [];
         foreach (self::CATALOG as $code => [, $severity]) {
             $row = $saved->get($code);
-            $out[$code] = ['enabled' => $row === null || (bool) $row->enabled, 'severity' => $row->severity ?? $severity];
+            // RD1: state rule packs are off until the brokerage turns its state's rules on.
+            $out[$code] = ['enabled' => $row === null ? ! str_starts_with($code, 'state.') : (bool) $row->enabled, 'severity' => $row->severity ?? $severity];
         }
 
         return $out;

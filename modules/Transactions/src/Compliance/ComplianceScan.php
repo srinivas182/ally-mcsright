@@ -73,6 +73,9 @@ final class ComplianceScan
         $this->money($deal, $docs, $readings);
         $this->risk($deal, $items, $readings);
         $this->buyerAgreement($deal, $items, $readings);
+        foreach (StatePacks::missing($deal, $items, $readings, $docs) as $f) { // RD1
+            $this->add($f['code'], null, $f['key'], $f['message'], null, $f['item'] !== null ? ['action' => 'upload', 'label' => 'Upload', 'item' => $f['item']] : null);
+        }
         $this->agent($deal);
         $this->forms($deal);
         foreach (Rules::evaluate($deal, $items, $readings) as $f) {
