@@ -59,14 +59,14 @@ final class Documents
     }
 
     /**
-     * A document brought over from another transaction app (specs/connect/12). It goes into the deal's unsorted
+     * A document brought over from another transaction app (specs/connect/12) or emailed to the deal (LM1, via "email"). It goes into the deal's unsorted
      * documents (the broker files it into the checklist), is not read by AI automatically (that costs credits; it
      * can be read on request), and is added even to a closed, locked deal, because the file is the deal's history.
      * The same file twice in one deal is kept once.
      *
      * @return Document|null null when it is not a PDF or image we keep, is too big, or is already there
      */
-    public function imported(Deal $deal, string $filename, string $bytes): ?Document
+    public function imported(Deal $deal, string $filename, string $bytes, string $via = 'import'): ?Document
     {
         $mime = self::sniff($bytes);
         if ($mime === null || strlen($bytes) > self::MAX_BYTES) {
@@ -83,7 +83,7 @@ final class Documents
         $name = $name === '' ? 'document.'.$ext : (str_ends_with(mb_strtolower($name), '.'.$ext) ? $name : $name.'.'.$ext);
 
         return Document::query()->create(['deal_id' => $deal->id, 'item_id' => null, 'filename' => mb_substr($name, -200), 'path' => $path, 'mime' => $mime,
-            'size' => strlen($bytes), 'sha256' => $sha, 'version' => 1, 'via' => 'import', 'uploaded_by' => null]);
+            'size' => strlen($bytes), 'sha256' => $sha, 'version' => 1, 'via' => $via, 'uploaded_by' => null]);
     }
 
     /** What the bytes really are (never the other app's word for it). */

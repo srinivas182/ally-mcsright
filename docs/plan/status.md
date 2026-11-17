@@ -8,7 +8,7 @@ Checked 2026-11-16 (R1 to DQ6, SM1, HC1a, HC1b, SO1, SO2, LQ1, LQ2, DH1, RC1–R
 | ---- | ---------- | ---- | ------ | ----------- | ----------------------------------- |
 | A    | 32         | 17   | 10     | 5           | 30 / 18 / 9                         |
 | B    | 28         | 17   | 7      | 4           | 40 / 10 / 7                         |
-| C    | 26         | 17   | 7      | 2           | 39 / 12 / 6                         |
+| C    | 26         | 18   | 7      | 1           | 41 / 12 / 4                         |
 | D    | 27         | 15   | 10     | 2           | 27 / 26 / 4                         |
 | E    | 25         | 16   | 3      | 6           | 34 / 8 / 15                         |
 
@@ -115,7 +115,7 @@ Outside the original grid and complete: Connect C1–C8 (except the Partner API,
 | C23 | 52–53   | Monthly personal content by contact type (equity report, rent vs buy, homes like yours sold) and signal-triggered handwritten cards and postcards (mailing partner)                          | Partly                                                                                                                                           |
 | C24 | 54      | AIlly website assistant 1: plain-language and voice home search across licensed MLS listings, Google Maps distances and commute, why-this-home, Fair Housing guardrails                      | Done                                                                                                                                             |
 | C25 | 55      | AIlly website assistant 2: listing and area Q&A from approved sources, buying and selling knowledge, valuation hand-off, booking, human hand-off, brokerage and agent branding (name, photo) | Done                                                                                                                                             |
-| C26 | 56–57   | Listing management, per-deal email-in address, transaction reports and pending-deal cash forecast, franchise and royalty reports                                                             | Not started                                                                                                                                      |
+| C26 | 56–57   | Listing management, per-deal email-in address, transaction reports and pending-deal cash forecast, franchise and royalty reports                                                             | Done (LM1: listings board, per-deal email-in, weekly cash forecast, franchise and royalty report)                                                |
 
 ## Team D
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
+use Modules\Transactions\Http\BoardController;
 use Modules\Transactions\Http\BringOverFilesController;
 use Modules\Transactions\Http\ClosingController;
 use Modules\Transactions\Http\ComplianceController;
@@ -25,6 +26,11 @@ use Modules\Transactions\Http\RepairsController;
 Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoffice.minimal'])->prefix('deals')->name('deals.')->group(function (): void {
     Route::get('/', [DealController::class, 'index'])->name('index');
     Route::get('review', [DealController::class, 'queue'])->name('review');
+    Route::get('listings', [BoardController::class, 'listings'])->name('listings'); // LM1
+    Route::get('money', [BoardController::class, 'money'])->name('money');
+    Route::get('money/forecast.csv', [BoardController::class, 'forecastCsv'])->middleware('throttle:20,1')->name('money.forecast');
+    Route::get('money/royalties.csv', [BoardController::class, 'royaltiesCsv'])->middleware('throttle:20,1')->name('money.royalties');
+    Route::post('{deal}/listing', [BoardController::class, 'saveListing'])->name('listing.save');
     Route::get('bring-over-files', [BringOverFilesController::class, 'index'])->name('files.index');
     Route::post('bring-over-files', [BringOverFilesController::class, 'store'])->middleware('throttle:10,1')->name('files.store');
     Route::post('pay-settings', [PayController::class, 'settings'])->name('pay.settings');

@@ -29,6 +29,7 @@ use Modules\Transactions\Compliance\ComplianceScan;
 use Modules\Transactions\Compliance\Findings;
 use Modules\Transactions\Deadlines\Deadlines;
 use Modules\Transactions\DealAccess;
+use Modules\Transactions\DealInbox;
 use Modules\Transactions\DealIq;
 use Modules\Transactions\Deals;
 use Modules\Transactions\Documents;
@@ -151,6 +152,7 @@ final class DealController
                     ->map(fn ($f): array => ['name' => (string) $f->name, 'rating' => (int) $f->rating, 'comment' => $f->comment !== null ? (string) $f->comment : null, 'may_quote' => (bool) $f->may_quote])->all()],
             'dates' => app(KeyDates::class)->forDeal($deal),
             'unsorted' => $all->filter(fn (Document $d): bool => $d->item_id === null)->map($doc)->values(),
+            'emailIn' => app(DealInbox::class)->address($deal),
             'facts' => DocIq::dealFacts($deal),
             'docAnswer' => $request->session()->get('docAnswer'),
             'compliance' => $deal->getAttribute('compliance_scanned_at') === null ? (function () use ($deal): array {

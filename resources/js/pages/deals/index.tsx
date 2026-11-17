@@ -184,6 +184,21 @@ export default function Deals({
                     )}
                 </section>
                 <AtRisk items={atRisk} alerts={alerts} />
+                <nav
+                    aria-label="Deal boards"
+                    className="flex flex-wrap gap-2 text-sm"
+                >
+                    <Button asChild variant="outline" size="sm">
+                        <Link href="/deals/listings">Listings board</Link>
+                    </Button>
+                    {forecast && (
+                        <Button asChild variant="outline" size="sm">
+                            <Link href="/deals/money">
+                                Money coming in and royalties
+                            </Link>
+                        </Button>
+                    )}
+                </nav>
                 <span data-tour="deal-list" />
                 {forecast && (
                     <section className="grid gap-2 rounded-lg border p-4 text-sm">

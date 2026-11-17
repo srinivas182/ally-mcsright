@@ -345,7 +345,7 @@ final class CommissionService
                     'team_split_cents' => $a->teamSplit !== null ? $a->teamSplit->cents : 0,
                     'credit_used_cents' => $a->creditUsed !== null ? $a->creditUsed->cents : 0,
                     'brokerage_fees_cents' => array_sum(array_map(fn ($l) => $l->amount->cents, $a->brokerageFees)),
-                    'fees' => array_map(fn ($l): array => ['code' => $l->code, 'cents' => $l->amount->cents], [...$a->preSplit, ...$a->postSplit, ...$a->brokerageFees]),
+                    'fees' => array_map(fn ($l): array => ['code' => $l->code, 'name' => $l->name, 'cents' => $l->amount->cents, 'payable_to' => $l->payableTo], [...$a->preSplit, ...$a->postSplit, ...$a->brokerageFees]),
                 ];
             }, $result->agents),
         ];
