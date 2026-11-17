@@ -1,0 +1,18 @@
+{
+    "id": "engage",
+    "name": "Engage",
+    "version": "0.1.0",
+    "provider": "Modules\\Engage\\EngageServiceProvider",
+    "depends": [
+        "core",
+        "ai",
+        "crm",
+        "transactions",
+        "insights",
+        "recruiting",
+        "learn",
+        "ads"
+    ],
+    "entitlement": null,
+    "description": "EN1 (specs/engage/01): the daily game plan and AI coach, agent activity and retention alerts, the database assistant by email, and broker recognition voice messages."
+}

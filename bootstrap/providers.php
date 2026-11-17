@@ -10,6 +10,7 @@ use Modules\Compensation\CompensationServiceProvider;
 use Modules\Connect\ConnectServiceProvider;
 use Modules\Core\CoreServiceProvider;
 use Modules\Crm\CrmServiceProvider;
+use Modules\Engage\EngageServiceProvider;
 use Modules\Forms\FormsServiceProvider;
 use Modules\Insights\InsightsServiceProvider;
 use Modules\Learn\LearnServiceProvider;
@@ -52,4 +53,5 @@ return [
     InsightsServiceProvider::class,
     TeamServiceProvider::class,
     LearnServiceProvider::class,
+    EngageServiceProvider::class,
 ];
