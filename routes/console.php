@@ -45,6 +45,7 @@ Schedule::command('crm:leads-reassign')->everyMinute()->withoutOverlapping()->on
 Schedule::command('crm:inbox-sweep')->everyMinute()->withoutOverlapping()->onOneServer();
 Schedule::command('crm:score-leads')->dailyAt('03:40')->onOneServer();
 Schedule::command('crm:prospector')->dailyAt('11:35')->onOneServer();
+Schedule::command('recruiting:refresh')->dailyAt('10:50')->onOneServer(); // RC1, after the night's MLS sync
 Schedule::command('credits:grant-monthly')->dailyAt('00:20')->onOneServer();
 Schedule::command('credits:margin-watch')->dailyAt('06:10')->onOneServer();
 Schedule::command('credits:expire-purchases')->dailyAt('00:40')->onOneServer();

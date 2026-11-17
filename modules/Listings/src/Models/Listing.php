@@ -49,6 +49,9 @@ use Modules\Listings\Access\MlsAccess;
  * @property string|null $list_office_mls_id
  * @property string|null $list_office_name
  * @property string|null $list_agent_name
+ * @property string|null $co_list_agent_mls_id
+ * @property string|null $buyer_agent_mls_id
+ * @property string|null $buyer_office_mls_id
  * @property string|null $virtual_tour_url_unbranded
  * @property int $photos_count
  * @property CarbonImmutable|null $on_market_date

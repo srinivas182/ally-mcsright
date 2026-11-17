@@ -1,0 +1,9 @@
+{
+    "id": "recruiting",
+    "name": "Recruiting",
+    "version": "0.1.0",
+    "provider": "Modules\\Recruiting\\RecruitingServiceProvider",
+    "depends": ["core", "listings", "compensation"],
+    "entitlement": null,
+    "description": "Recruiting (specs/grow/17): the MLS agent database from licensed back-office data, the recruiting pipeline, alerts, and what an agent would earn here."
+}

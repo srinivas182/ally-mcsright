@@ -21,7 +21,7 @@ final class RoleTemplates
                 'core.users.view' => null, 'core.users.invite' => null, 'core.audit.view' => null,
                 'crm.contacts.view' => 'office', 'crm.contacts.manage' => 'office', 'crm.contacts.reassign' => 'office',
                 'compensation.plans.view' => null, 'finance.amounts.view' => null,
-                'transactions.review' => null, 'transactions.cda.approve' => null, 'roster.manage' => null, 'core.access.review' => null, 'insights.view' => 'office',
+                'transactions.review' => null, 'transactions.cda.approve' => null, 'roster.manage' => null, 'core.access.review' => null, 'insights.view' => 'office', 'recruiting.manage' => null,
             ]],
             'office_admin' => ['name' => 'Office admin', 'description' => 'Day-to-day office work. Sees deals but not commission amounts or bank details.', 'permissions' => [
                 'core.users.view' => null, 'core.users.invite' => null,
@@ -50,7 +50,7 @@ final class RoleTemplates
                 'marketing.manage' => null, 'sites.manage' => null, 'crm.contacts.view' => 'tenant',
             ]],
             'recruiter' => ['name' => 'Recruiter', 'description' => 'Invites new agents and keeps the roster up to date.', 'permissions' => [
-                'core.users.view' => null, 'core.users.invite' => null, 'roster.manage' => null,
+                'core.users.view' => null, 'core.users.invite' => null, 'roster.manage' => null, 'recruiting.manage' => null,
             ]],
             'lender_partner' => ['name' => 'Lender partner', 'description' => 'An outside partner: only the contacts shared with them. Never money, deals or bank details.', 'permissions' => [
                 'crm.contacts.view' => 'own',
