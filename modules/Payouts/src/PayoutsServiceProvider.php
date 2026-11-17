@@ -33,9 +33,9 @@ final class PayoutsServiceProvider extends ServiceProvider
     {
         // DS2: these columns hold values sealed with each brokerage's own key.
         $keys = $this->app->make(BrokerageKeys::class);
-        foreach ([['pay_w9s', 'tin_sealed'], ['pay_bank_accounts', 'routing_sealed'], ['pay_bank_accounts', 'account_sealed'], ['pay_1099_payer', 'ein_sealed'],
-            ['pay_settings', 'operating_account_sealed']] as [$table, $column]) {
-            $keys->register($table, $column);
+        foreach ([['pay_w9s', 'tin_sealed', 'id'], ['pay_bank_accounts', 'routing_sealed', 'id'], ['pay_bank_accounts', 'account_sealed', 'id'],
+            ['pay_1099_payer', 'ein_sealed', 'tenant_id'], ['pay_settings', 'operating_account_sealed', 'tenant_id']] as [$table, $column, $key]) {
+            $keys->register($table, $column, $key);
         }
         Brief\MoneyBriefItems::register($this->app->make(DailyBriefs::class));
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');

@@ -23,7 +23,7 @@ final class BrokerageKeys
 {
     private const PREFIX = 'bk1:';
 
-    /** @var list<array{table: string, column: string}> */
+    /** @var list<array{table: string, column: string, key: string}> */
     private array $columns = [];
 
     /** @var array<string, Encrypter> tenant:version => encrypter */
@@ -31,12 +31,16 @@ final class BrokerageKeys
 
     public function __construct(private readonly TenantContext $tenants) {}
 
-    public function register(string $table, string $column): void
+    /**
+     * Registers a sealed column. $key is the column that identifies a row; one-row-per-brokerage
+     * tables (like pay_settings) have no id, so they pass 'tenant_id'.
+     */
+    public function register(string $table, string $column, string $key = 'id'): void
     {
-        $this->columns[] = ['table' => $table, 'column' => $column];
+        $this->columns[] = ['table' => $table, 'column' => $column, 'key' => $key];
     }
 
-    /** @return list<array{table: string, column: string}> */
+    /** @return list<array{table: string, column: string, key: string}> */
     public function columns(): array
     {
         return $this->columns;
@@ -90,16 +94,18 @@ final class BrokerageKeys
         $n = 0;
         foreach ($this->columns as $c) {
             $db = DB::connection(Connections::cell());
-            $db->table($c['table'])->where('tenant_id', $tenant)->whereNotNull($c['column'])->orderBy('id')
-                ->chunkById(500, function ($rows) use ($db, $c, $version, &$n): void {
+            $key = $c['key'];
+            $db->table($c['table'])->where('tenant_id', $tenant)->whereNotNull($c['column'])
+                ->chunkById(500, function ($rows) use ($db, $c, $key, $tenant, $version, &$n): void {
                     foreach ($rows as $r) {
                         $value = (string) $r->{$c['column']};
                         if ($value !== '' && ! self::isCurrent($value, $version)) {
-                            $db->table($c['table'])->where('id', $r->id)->update([$c['column'] => $this->seal($this->open($value))]);
+                            $db->table($c['table'])->where('tenant_id', $tenant)->where($key, $r->{$key})
+                                ->update([$c['column'] => $this->seal($this->open($value))]);
                             $n++;
                         }
                     }
-                });
+                }, $key);
         }
         app(AuditLogger::class)->record('safeguards.key.rekeyed', metadata: ['tenant' => $tenant, 'version' => $version, 'values' => $n], severity: 'notice');
 
