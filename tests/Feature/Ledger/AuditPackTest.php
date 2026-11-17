@@ -72,7 +72,7 @@ it('lets the owner give an auditor read-only access that ends by itself', functi
     $this->actingAs($auditor)->get('/finance/journals')->assertOk();
     $this->actingAs($auditor)->get('/finance/audit')->assertOk()->assertInertia(fn (Assert $page) => $page->where('can.auditors', false)->where('auditors', []));
     $this->actingAs($auditor)->post('/finance/adjustments', [])->assertForbidden();
-    $this->actingAs($auditor)->post('/finance/periods/1/check')->assertForbidden();
+    $this->actingAs($auditor)->post('/finance/periods/'.LedgerPeriod::query()->sole()->id.'/check')->assertForbidden();
     $this->actingAs($auditor)->post('/finance/audit/auditors', ['email' => 'x@y.test', 'first_name' => 'A', 'last_name' => 'B', 'days' => 14])->assertForbidden();
 
     $this->travelTo(CarbonImmutable::parse('2026-12-01 10:00'));
