@@ -17,6 +17,7 @@
                         <p style="margin:0;color:#475569;">{{ $change > 0 ? 'Up '.$change.'%' : ($change < 0 ? 'Down '.abs($change).'%' : 'About the same') }} since last month.</p>
                     @endif
                     <p style="margin:8px 0 0;font-size:12px;color:#64748b;">From {{ (int) $estimate['comps'] }} similar homes for sale near you. Asking prices can differ from what homes sell for; your agent can confirm it with recent sales and your home's condition.</p>
+                    @if ($dashboardUrl)<p style="margin:12px 0 0;"><a href="{{ $dashboardUrl }}" style="display:inline-block;background:#0f172a;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;font-weight:600;">See your home dashboard</a></p>@endif
                 @else
                     <p style="margin:0;">There aren't enough similar homes for sale near you this month to estimate online. Reply and your agent will prepare a price range from recent sales.</p>
                 @endif

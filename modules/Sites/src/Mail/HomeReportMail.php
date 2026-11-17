@@ -22,7 +22,7 @@ final class HomeReportMail extends Mailable
      */
     public function __construct(public readonly string $address, public readonly string $firstName, public readonly ?array $estimate, public readonly ?float $change,
         public readonly array $nearby, public readonly string $brokerage, public readonly ?string $agent, public readonly ?string $agentPhone, public readonly string $stopUrl,
-        public readonly string $replyAddress) {}
+        public readonly string $replyAddress, public readonly ?string $dashboardUrl = null) {}
 
     public function envelope(): Envelope
     {

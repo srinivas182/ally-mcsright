@@ -7,6 +7,7 @@ namespace Modules\Ads;
 use Illuminate\Support\ServiceProvider;
 use Modules\AI\FeatureCatalog;
 use Modules\AI\Support\PromptRegistry;
+use Modules\Core\Branding\EmailSignature;
 use Modules\Core\Brief\DailyBriefs;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Mcp\McpToolbox;
@@ -18,6 +19,7 @@ final class AdsServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->app->bind(EmailSignature::class, Studio\BrandSignature::class); // MK2
         $this->app->scoped(ListingAds::class);
         $this->app->scoped(AdCopy::class);
         $this->app->scoped(Boost::class);

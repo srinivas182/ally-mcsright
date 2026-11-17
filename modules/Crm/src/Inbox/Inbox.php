@@ -12,6 +12,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Modules\AI\AiGateway;
 use Modules\AI\Data\AiTask;
+use Modules\Core\Branding\EmailSignature;
 use Modules\Core\Messaging\MessagingSettings;
 use Modules\Core\Messaging\SmsSender;
 use Modules\Core\Support\Connections;
@@ -98,7 +99,10 @@ final class Inbox
                 $providerId = app(SmsSender::class)->deliver($from, (string) $contact->primary_phone, $body);
                 $this->messaging->remember((string) $contact->primary_phone, $from, $this->tenants->id());
             } else {
-                $mail = new MessageMail((string) $subject, $body, $by->name.' · '.$this->tenants->current()->name, self::replyAddress($conversation));
+                // MK2: the sender's signature from their brand kit (once).
+                $signature = trim(app(EmailSignature::class)->text($by));
+                $signed = $signature !== '' && ! str_contains($body, $signature) ? $body."\n\n--\n".$signature : $body;
+                $mail = new MessageMail((string) $subject, $signed, $by->name.' · '.$this->tenants->current()->name, self::replyAddress($conversation));
                 Mail::to((string) $contact->primary_email, $contact->name)->send($mail);
             }
         } catch (\Throwable $e) {

@@ -10,6 +10,7 @@ use Modules\Sites\Http\Controllers\AillyLiveController;
 use Modules\Sites\Http\Controllers\BlogAdminController;
 use Modules\Sites\Http\Controllers\DemandController;
 use Modules\Sites\Http\Controllers\FunnelAdminController;
+use Modules\Sites\Http\Controllers\HomeDashboardController;
 use Modules\Sites\Http\Controllers\HomeReportController;
 use Modules\Sites\Http\Controllers\HqSitesController;
 use Modules\Sites\Http\Controllers\MediaController;
@@ -127,3 +128,6 @@ Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.sites.manage']
 // The monthly home-value report's one-click stop (specs/grow/03).
 Route::middleware(['tenant', EnsureTenantWorkspace::class, 'throttle:30,1,home-report-stop'])->match(['get', 'post'], 'home-reports/{report}/stop', [HomeReportController::class, 'stop'])
     ->where('report', '[0-9A-HJKMNP-TV-Z]{26}')->name('sites.home-reports.stop');
+// The homeowner dashboard (MK2, specs/crm/21): private, signed, never indexed.
+Route::middleware(['tenant', EnsureTenantWorkspace::class, 'throttle:30,1,home-dashboard'])->match(['get', 'post'], 'my-home/{report}', [HomeDashboardController::class, 'show'])
+    ->where('report', '[0-9A-HJKMNP-TV-Z]{26}')->name('sites.home-reports.dashboard');

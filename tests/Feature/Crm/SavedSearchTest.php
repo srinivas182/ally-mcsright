@@ -129,7 +129,7 @@ it('sends a listing to a client as a one-to-one email through the inbox', functi
     $ulid = Listing::query()->where('listing_key', 'K2')->value('ulid');
     $this->actingAs($this->ann)->post("/contacts/{$this->jane->ulid}/send-listing", ['listing' => $ulid, 'note' => 'Thought of you for this one!'])->assertSessionHasNoErrors();
     Mail::assertSent(MessageMail::class, fn (MessageMail $m): bool => $m->subjectLine === 'A home for you: 2 Oak St, Austin, TX'
-        && str_starts_with($m->text, "Thought of you for this one!\n\n2 Oak St, Austin, TX\n\$420,000 · 3 bd · 2 ba · 1,800 sq ft") && str_ends_with($m->text, 'Listing courtesy of Acme Realty'));
+        && str_starts_with($m->text, "Thought of you for this one!\n\n2 Oak St, Austin, TX\n\$420,000 · 3 bd · 2 ba · 1,800 sq ft") && str_contains($m->text, "Listing courtesy of Acme Realty\n\n--\n"));
     expect(Message::query()->sole()->channel)->toBe('email');
     $this->actingAs($this->ann)->post("/contacts/{$this->jane->ulid}/send-listing", ['listing' => str_repeat('0', 26)])->assertSessionHasErrors('listing');
 });
