@@ -113,3 +113,32 @@ it('reads OFX and QFX downloads', function (): void {
     expect($lines)->toHaveCount(2)->and($lines[0])->toBe(['posted_on' => '2026-05-12', 'description' => 'CHECK 1001', 'amount_cents' => -120000, 'fitid' => 'A1'])
         ->and($lines[1]['description'])->toBe('DEPOSIT Owner');
 });
+
+it('reports profit and loss beside last year, and a balance sheet that balances (AC2)', function (): void {
+    $post = fn (string $key, string $on, string $dr, string $cr, int $cents) => $this->ledger->post(JournalDraft::make('test', $key)->effectiveOn(CarbonImmutable::parse($on))->describe($key)
+        ->debit($this->chart->account($dr), Money::of($cents))->credit($this->chart->account($cr), Money::of($cents)));
+    $post('capital', '2025-01-02', '1000', '3000', 5_000_000);
+    $post('cd-2025', '2025-03-01', '1000', '4000', 800_000);
+    $post('rent-2025', '2025-03-05', '6000', '1000', 200_000);
+    $post('cd-2026', '2026-03-01', '1000', '4000', 1_000_000);
+    $post('fees-2026', '2026-04-01', '1000', '4100', 150_000);
+    $post('rent-2026', '2026-03-05', '6000', '1000', 220_000);
+    $post('mls-2026', '2026-04-05', '6300', '2400', 30_000); // a bill not yet paid
+    // A per-agent sub-account rolls up into its parent.
+    $this->ledger->post(JournalDraft::make('test', 'payable')->effectiveOn(CarbonImmutable::parse('2026-05-01'))->describe('payable')
+        ->debit($this->chart->account('1000'), Money::of(10_000))->credit($this->chart->subAccount('2000', 'agent', $this->agent->id), Money::of(10_000)));
+
+    assertPageContract($this->actingAs($this->owner)->get('/finance/statements'), 'finance/statements');
+    $this->actingAs($this->owner)->get('/finance/statements?preset=ytd')->assertInertia(fn (Assert $p) => $p
+        ->where('pnl.revenue_cents', 1_150_000)->where('pnl.expense_cents', 250_000)->where('pnl.net_cents', 900_000)
+        ->where('pnl.prior_revenue_cents', 800_000)->where('pnl.prior_net_cents', 600_000)
+        ->where('pnl.revenue.0.code', '4000')->where('pnl.revenue.0.prior_cents', 800_000)
+        ->where('balance.balanced', true)->where('balance.liabilities_cents', 40_000)
+        ->where('balance.assets_cents', 5_000_000 + 800_000 - 200_000 + 1_000_000 + 150_000 - 220_000 + 10_000)
+        ->where('balance.equity', fn ($e) => collect($e)->firstWhere('name', 'Profit not yet closed into equity')['cents'] === 1_500_000));
+    $this->actingAs($this->owner)->get('/finance/statements?preset=last_year')->assertInertia(fn (Assert $p) => $p->where('pnl.net_cents', 600_000)->where('pnl.from', '2025-01-01'));
+    $this->actingAs($this->owner)->get('/finance/statements.pdf?preset=ytd')->assertOk()->assertHeader('Content-Type', 'application/pdf');
+    $csv = $this->actingAs($this->owner)->get('/finance/statements.csv?preset=ytd')->assertOk()->streamedContent();
+    expect($csv)->toContain('"Net profit",9000.00,6000.00')->toContain('Balance sheet');
+    $this->actingAs($this->agent)->get('/finance/statements')->assertForbidden();
+});

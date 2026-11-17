@@ -44,6 +44,9 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function
         Route::get('finance/tax/tin-file', [PayoutsController::class, 'tinFile'])->name('payouts.tax.tin-file');
     });
     Route::post('finance/tax/tin-results', [PayoutsController::class, 'tinResults'])->name('payouts.tax.tin-results');
+    Route::post('finance/tax/payer', [PayoutsController::class, 'taxPayer'])->middleware('password.confirm')->name('payouts.tax.payer'); // AC2
+    Route::post('finance/tax/efile', [PayoutsController::class, 'taxFile'])->middleware(['password.confirm', 'throttle:5,1'])->name('payouts.tax.efile');
+    Route::post('finance/tax/efile/{filing}/refresh', [PayoutsController::class, 'taxRefresh'])->where('filing', '[0-9A-HJKMNP-TV-Z]{26}')->middleware('throttle:20,1')->name('payouts.tax.efile.refresh');
     Route::post('my-money/invoices/{invoice}/pay', [PayoutsController::class, 'payInvoice'])->middleware('throttle:10,1')->name('payouts.invoice.pay');
     Route::get('finance/agent-billing', [PayoutsController::class, 'billing'])->name('payouts.billing');
     Route::post('finance/agent-billing/settings', [PayoutsController::class, 'billingSettings'])->name('payouts.billing.settings');

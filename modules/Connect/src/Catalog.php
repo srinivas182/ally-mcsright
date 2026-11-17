@@ -631,6 +631,13 @@ final class Catalog
                     'Read ElevenLabs\' terms for voice cloning: RightAlly collects each agent\'s written and spoken consent before their voice is made, and deletes it when they withdraw.',
                     'Copy the API key here and switch AI voice-overs on. Enter the real cost per narration under HQ → Costs (studio.voice).'],
                 'partner' => 'ElevenLabs bills RightAlly per character spoken and per plan.', 'docs' => 'https://elevenlabs.io/docs/api-reference']));
+        $catalog->add(new App('efile_1099', '1099 e-filing', 'accounting', 'Files each brokerage\'s 1099-NECs with the IRS (IRIS) and, if asked, mails recipient copies.',
+            scope: 'both', auth: 'link', syncs: ['1099-NEC returns from Finance, Tax (1099)'], link: '/finance/tax', vendorCost: 'Per return, billed by the partner',
+            setup: ['needs' => 'keys', 'fields' => [['key' => 'client_id', 'label' => 'TaxBandits client ID'], ['key' => 'client_secret', 'label' => 'Client secret', 'secret' => true],
+                ['key' => 'user_token', 'label' => 'User token', 'secret' => true], ['key' => 'environment', 'label' => 'sandbox or live']],
+                'steps' => ['Open a TaxBandits API account for RightAlly (Console, Settings, API credentials).', 'Paste the client ID, secret and user token; start with "sandbox" and file a test return.',
+                    'Switch to "live" before January filing season; set the per-return price brokerages see.'],
+                'partner' => 'TaxBandits bills RightAlly per return filed and per copy mailed.', 'docs' => 'https://developer.taxbandits.com']));
         $catalog->add(new App('listing_staging', 'Virtual staging', 'marketing', 'Furnishes empty rooms in listing photos, always labelled "Virtually staged", with the original kept.',
             scope: 'both', auth: 'link', syncs: ['Staged copies of listing photos in List-IQ, labelled'], link: '/list-iq', vendorCost: 'Credits per staged photo',
             setup: ['needs' => 'keys', 'fields' => [['key' => 'api_token', 'label' => 'Replicate API token', 'secret' => true],

@@ -25,6 +25,7 @@ use Modules\Payouts\AgentBilling;
 use Modules\Payouts\AutoPayouts;
 use Modules\Payouts\Balances;
 use Modules\Payouts\BankAccounts;
+use Modules\Payouts\EFile1099;
 use Modules\Payouts\GetPaidNow;
 use Modules\Payouts\PayoutRuns;
 use Modules\Payouts\Rails\RailPlatform;
@@ -366,9 +367,39 @@ final class PayoutsController
         $this->billingUser($request);
         $year = (int) $request->query('year', (string) (now()->month <= 2 ? now()->year - 1 : now()->year));
 
+        $efile = app(EFile1099::class);
+
         return Inertia::render('finance/tax', ['year' => $year, 'threshold_cents' => Tax1099::threshold($year), 'rows' => $tax->forYear($year),
+            'efile' => ['ready' => $efile->ready(), 'payer' => $efile->payer(), 'problems' => $efile->problems($year), 'filings' => $efile->filings()],
             'referrals' => DB::connection(Connections::cell())->table('tx_referrals')->where('direction', 'out')
                 ->where('w9_received', false)->get(['ulid', 'brokerage', 'agent_name'])]);
+    }
+
+    /** AC2: the brokerage's payer details for its 1099s. */
+    public function taxPayer(Request $request, EFile1099 $efile): RedirectResponse
+    {
+        $data = $request->validate(['legal_name' => ['required', 'string', 'max:120'], 'ein' => ['nullable', 'string', 'max:12'], 'street' => ['required', 'string', 'max:120'],
+            'city' => ['required', 'string', 'max:60'], 'state' => ['required', 'string', 'size:2'], 'zip' => ['required', 'string', 'max:10'], 'phone' => ['nullable', 'string', 'max:20']]);
+        $efile->savePayer($data, $this->billingUser($request));
+
+        return back();
+    }
+
+    /** AC2: e-file the year's 1099-NECs with the IRS through the partner. */
+    public function taxFile(Request $request, EFile1099 $efile): RedirectResponse
+    {
+        $data = $request->validate(['year' => ['required', 'integer', 'min:2024', 'max:2100'], 'mail_copies' => ['nullable', 'boolean']]);
+        $efile->file((int) $data['year'], $this->billingUser($request), (bool) ($data['mail_copies'] ?? false));
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Sent to the IRS. We will show the IRS answer here, usually within 2 business days.']);
+
+        return back();
+    }
+
+    public function taxRefresh(Request $request, EFile1099 $efile, string $filing): RedirectResponse
+    {
+        $efile->refresh($filing, $this->billingUser($request));
+
+        return back();
     }
 
     public function taxExport(Request $request, Tax1099 $tax): \Symfony\Component\HttpFoundation\Response
