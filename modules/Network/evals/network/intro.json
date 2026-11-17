@@ -1,0 +1,73 @@
+{
+    "prompt": "network.intro",
+    "feature": "network.intro",
+    "cases": [
+        {
+            "name": "short, no fee number, no client details, ends with a question",
+            "inputs": {
+                "writer": "Ann Agent",
+                "brokerage": "Acme Realty",
+                "client": "buying a home, in Denver, CO, $500k to $600k, this spring"
+            },
+            "untrusted": ["The other agent: Rosa Diaz, Mile High Homes"],
+            "expect": {
+                "json_keys": ["message"],
+                "fields": {
+                    "message": {
+                        "max_words": 100,
+                        "contains_all": ["Rosa"],
+                        "not_contains": [
+                            "%",
+                            "MLS",
+                            "ranked",
+                            "family-friendly",
+                            "safe"
+                        ],
+                        "contains_any": ["?"]
+                    }
+                }
+            },
+            "golden": "{\"message\": \"Hi Rosa, I'm Ann Agent with Acme Realty. I have a client buying a home in Denver this spring, around $500k to $600k, and I'd love to connect them with a great local agent. I'd offer a usual referral fee, agreed in writing. Are you open to a quick call this week?\"}"
+        },
+        {
+            "name": "a seller, warm and plain",
+            "inputs": {
+                "writer": "Dana Cruz",
+                "brokerage": "Hill Country Realty",
+                "client": "selling a home, in 33139"
+            },
+            "untrusted": ["The other agent: Luis Ortega, Bay Realty"],
+            "expect": {
+                "json_keys": ["message"],
+                "fields": {
+                    "message": {
+                        "max_words": 100,
+                        "contains_all": ["Luis"],
+                        "not_contains": ["%", "MLS", "score"]
+                    }
+                }
+            },
+            "golden": "{\"message\": \"Hi Luis, this is Dana Cruz from Hill Country Realty. I'm working with clients who are selling a home in 33139 and would love to introduce them to someone who knows the area well. I'd offer a usual referral fee, agreed in writing. Would you be open to a quick call?\"}"
+        },
+        {
+            "name": "prefers a language, no protected wording",
+            "inputs": {
+                "writer": "Ann Agent",
+                "brokerage": "Acme Realty",
+                "client": "buying a home, in Houston, TX, prefers Vietnamese"
+            },
+            "untrusted": ["The other agent: Minh Tran, Gulf Coast Homes"],
+            "expect": {
+                "json_keys": ["message"],
+                "fields": {
+                    "message": {
+                        "max_words": 100,
+                        "contains_all": ["Minh", "Vietnamese"],
+                        "not_contains": ["%", "MLS", "family", "safe", "church"]
+                    }
+                }
+            },
+            "golden": "{\"message\": \"Hi Minh, I'm Ann Agent with Acme Realty. I have a client buying a home in Houston who prefers to work in Vietnamese, and I'd love to introduce them to you. I'd offer a usual referral fee, agreed in writing. Are you open to a quick call?\"}"
+        }
+    ]
+}
