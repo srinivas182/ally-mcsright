@@ -6,11 +6,11 @@ namespace Modules\Payouts;
 
 use App\Models\User;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Modules\Core\Audit\AuditLogger;
+use Modules\Core\Safeguards\BrokerageKeys;
 use Modules\Core\Support\Connections;
 
 /**
@@ -43,7 +43,7 @@ final class BankAccounts
             $db->table('pay_bank_accounts')->where('user_id', $owner->id)->where('status', 'active')->update(['status' => 'replaced', 'updated_at' => now()]);
             $db->table('pay_bank_accounts')->insert([
                 'ulid' => (string) Str::ulid(), 'tenant_id' => (int) $owner->getAttribute('tenant_id'), 'user_id' => $owner->id, 'holder_name' => mb_substr(trim($holder), 0, 120),
-                'routing_sealed' => Crypt::encryptString($routing), 'account_sealed' => Crypt::encryptString($account), 'last4' => substr($account, -4),
+                'routing_sealed' => app(BrokerageKeys::class)->seal($routing), 'account_sealed' => app(BrokerageKeys::class)->seal($account), 'last4' => substr($account, -4),
                 'type' => $type, 'status' => 'active', 'usable_from' => $usable, 'changed_by' => $by->id, 'created_at' => now(), 'updated_at' => now(),
             ]);
         });
@@ -76,7 +76,7 @@ final class BankAccounts
         $row = DB::connection(Connections::cell())->table('pay_bank_accounts')->where('user_id', $userId)->where('status', 'active')
             ->where('usable_from', '<=', now())->first();
 
-        return $row === null ? null : ['id' => (int) $row->id, 'routing' => Crypt::decryptString((string) $row->routing_sealed), 'account' => Crypt::decryptString((string) $row->account_sealed),
+        return $row === null ? null : ['id' => (int) $row->id, 'routing' => app(BrokerageKeys::class)->open((string) $row->routing_sealed), 'account' => app(BrokerageKeys::class)->open((string) $row->account_sealed),
             'type' => (string) $row->type, 'holder' => (string) $row->holder_name];
     }
 

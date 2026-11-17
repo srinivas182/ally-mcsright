@@ -33,6 +33,12 @@ Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.tenants.manage
         Route::post('tenants/{tenant}/data/restores', [HqDataController::class, 'ask'])->middleware('password.confirm')->name('tenants.data.restore');
         Route::post('tenants/{tenant}/data/restores/{restore}/approve', [HqDataController::class, 'approve'])->where('restore', '[0-9A-HJKMNP-TV-Z]{26}')->middleware('password.confirm')->name('tenants.data.approve');
         Route::post('tenants/{tenant}/data/restores/{restore}/cancel', [HqDataController::class, 'cancel'])->where('restore', '[0-9A-HJKMNP-TV-Z]{26}')->name('tenants.data.cancel');
+        // DS2: moves to or from a dedicated database, drills, and per-brokerage keys.
+        Route::post('tenants/{tenant}/data/moves', [HqDataController::class, 'planMove'])->middleware('password.confirm')->name('tenants.data.moves');
+        Route::post('tenants/{tenant}/data/moves/{move}/approve', [HqDataController::class, 'approveMove'])->where('move', '[0-9A-HJKMNP-TV-Z]{26}')->middleware('password.confirm')->name('tenants.data.moves.approve');
+        Route::post('tenants/{tenant}/data/moves/{move}/cancel', [HqDataController::class, 'cancelMove'])->where('move', '[0-9A-HJKMNP-TV-Z]{26}')->name('tenants.data.moves.cancel');
+        Route::post('tenants/{tenant}/data/moves/{move}/switch-back', [HqDataController::class, 'switchBack'])->where('move', '[0-9A-HJKMNP-TV-Z]{26}')->middleware('password.confirm')->name('tenants.data.moves.back');
+        Route::post('tenants/{tenant}/data/keys/rotate', [HqDataController::class, 'rotateKey'])->middleware('password.confirm')->name('tenants.data.keys.rotate');
         Route::get('messaging', [MessagingController::class, 'index'])->name('messaging');
         Route::post('messaging', [MessagingController::class, 'save'])->middleware('password.confirm')->name('messaging.save');
         Route::post('messaging/tenants/{tenant}', [MessagingController::class, 'tenant'])->name('messaging.tenant');

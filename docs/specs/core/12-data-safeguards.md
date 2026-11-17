@@ -1,6 +1,6 @@
 # Core 12: Data safeguards (DS1 and DS2)
 
-Status: DS1 built (tracker A14). DS2 adds dedicated databases and per-brokerage keys (A15, A16).
+Status: DS1 built (tracker A14); DS2 built (A15 dedicated databases and moves, A16 per-brokerage keys and move drills).
 
 ## What the market leaders do
 
@@ -80,3 +80,57 @@ or HQ (backup).
 - **Same key needed.** Encrypted fields stay encrypted in a backup (they are not readable in a portable export
   either). A backup can only be restored with the same application key; DS2 adds per-brokerage keys.
 - **Size.** Very large brokerages (millions of rows) export in the background; the job has a one-hour limit.
+
+## What RightAlly does (DS2)
+
+### HQ › Tenants › a brokerage › Data and backups › Database (A15)
+
+A brokerage can move to or from a dedicated database.
+
+1. **Target.**
+    - **A new dedicated database:** enter the engine (MySQL 8 or MariaDB), host, port, database, user and password.
+      These details are stored encrypted, **never shown again**, and hidden from every API response.
+    - **Or an existing shared cell.**
+2. **Test.** The target must be reachable, on a supported version, and **empty for this brokerage**. Failed
+   checks are listed in plain words.
+3. **Plan.** Rows per table, estimated time, and the read-only window.
+4. **A second HQ person approves.** The owners are emailed before the move starts.
+5. **Run** (a background job, with progress on the page):
+    - **Structure:** missing tables and columns are created from the main cell. A dedicated database's new ids start
+      at `cell id × 10¹²`, so moving back to a shared cell never clashes with another brokerage's ids.
+    - **Copy** while the brokerage keeps working.
+    - **Final copy** in a short **read-only window**: pages open, but saving returns "try again in a few minutes"
+      (503, Retry-After).
+    - **Verify** every table: row counts and every `*_cents` total.
+    - **Switch** the brokerage's cell in the control plane.
+    - The owners are emailed afterwards.
+6. **Switch-back.** The old copy is kept **14 days** with **one-click switch-back**. Switching back copies the
+   current data home and switches back. After 14 days, `safeguards:daily` removes the old copy.
+
+**Drill (A16).** The same copy-and-verify into a target, after which the copy is removed and nothing is switched:
+regular proof that a move would work.
+
+**Releases.** After a release, `safeguards:daily` brings each dedicated database's structure in step: new tables,
+new columns.
+
+**Audit trail.** Audit tables are append-only. They are copied by adding missing rows and are never deleted by a move.
+
+**Control-plane tables** are never part of an export, restore or move. They are listed in `ControlTables`, kept in
+step with the migrations by an architecture test.
+
+### Per-brokerage encryption keys (A16)
+
+**What is covered.** Tax ids (W-9 TINs, the payer EIN), agents' bank routing and account numbers, and the
+brokerage's operating account.
+
+**How they are sealed.**
+
+- Each brokerage has its own 256-bit data key, wrapped by the platform key (envelope encryption). Sealed values read
+  `bk1:{version}:…`.
+- Values sealed before this change still open with the platform key. `safeguards:rekey` (or **Make a new key and
+  re-seal** on the HQ page) moves them to the brokerage key.
+- Rotating makes a new version. Old versions stay readable.
+- Another brokerage's key cannot open them.
+
+**Registration.** Modules register the columns they seal (`BrokerageKeys::register`). The HQ page shows how many
+values are sealed with the current key and how many are waiting.

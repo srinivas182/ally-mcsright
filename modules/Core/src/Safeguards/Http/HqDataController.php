@@ -14,10 +14,15 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Safeguards\BrokerageExport;
+use Modules\Core\Safeguards\BrokerageKeys;
 use Modules\Core\Safeguards\BrokerageRestore;
+use Modules\Core\Safeguards\DatabaseMoves;
+use Modules\Core\Safeguards\DedicatedCells;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\CellRouting;
+use Modules\Core\Tenancy\Models\Cell;
 use Modules\Core\Tenancy\Models\Tenant;
+use Modules\Core\Tenancy\TenantContext;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /** HQ → Tenants → a brokerage → Data (DS1): where its data lives, backups, and two-person restores. */
@@ -27,12 +32,70 @@ final class HqDataController
     {
         $user = self::user($request);
 
+        $moves = DB::connection(Connections::control())->table('brokerage_moves')->where('tenant_id', $tenant->id)->orderByDesc('id')->limit(20)->get();
+        $cells = Cell::query()->whereIn('id', $moves->pluck('to_cell_id')->merge($moves->pluck('from_cell_id'))->push((int) $tenant->getAttribute('cell_id')))->pluck('name', 'id');
+
         return Inertia::render('hq/tenants/data', [
-            'tenant' => ['ulid' => $tenant->ulid, 'name' => $tenant->name, 'cell' => $tenant->cell?->name, 'connection' => $routing->connectionFor($tenant) ?? 'default'],
+            'tenant' => ['ulid' => $tenant->ulid, 'name' => $tenant->name, 'cell' => $tenant->cell?->name, 'connection' => $routing->connectionFor($tenant) ?? 'default',
+                'dedicated' => (bool) $tenant->cell?->getAttribute('dedicated')],
             'exports' => BrokerageExport::list($tenant->id),
             'restores' => BrokerageRestore::list($tenant->id, $user),
             'password' => $request->session()->get('exportPassword'),
+            'moves' => $moves->map(fn (\stdClass $m): array => ['ulid' => (string) $m->ulid, 'kind' => (string) $m->kind, 'status' => (string) $m->status,
+                'from' => (string) ($cells[$m->from_cell_id] ?? ''), 'to' => (string) ($cells[$m->to_cell_id] ?? ''), 'step' => $m->step, 'progress' => (int) $m->progress,
+                'plan' => json_decode((string) ($m->plan ?? 'null'), true), 'error' => $m->error, 'keep_until' => $m->keep_until !== null ? (string) $m->keep_until : null,
+                'mine' => (int) $m->requested_by === $user->id, 'created_at' => (string) $m->created_at])->values(),
+            'shared' => Cell::query()->where('dedicated', false)->where('status', 'active')->get(['id', 'name']),
+            'keys' => app(TenantContext::class)->runAs($tenant, fn (): array => app(BrokerageKeys::class)->status()),
         ]);
+    }
+
+    /** A new dedicated database (connection details, never shown again) or an existing shared cell, then the plan. */
+    public function planMove(Request $request, Tenant $tenant, DedicatedCells $cells, DatabaseMoves $moves): RedirectResponse
+    {
+        $data = $request->validate(['target' => ['required', 'in:dedicated,shared,drill'], 'cell' => ['nullable', 'integer'], 'driver' => ['nullable', 'in:mysql,mariadb,sqlite'],
+            'host' => ['nullable', 'string', 'max:200'], 'port' => ['nullable', 'integer'], 'database' => ['nullable', 'string', 'max:200'], 'username' => ['nullable', 'string', 'max:100'],
+            'password' => ['nullable', 'string', 'max:200'], 'region' => ['nullable', 'string', 'max:30']]);
+        $to = $data['target'] === 'shared' ? Cell::query()->whereKey((int) ($data['cell'] ?? 0))->where('dedicated', false)->firstOrFail()
+            : $cells->create($tenant, $data);
+        $moves->ask($tenant, $to, $data['target'] === 'drill' ? 'drill' : 'move', self::user($request));
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Planned. A second HQ person must approve it.']);
+
+        return back();
+    }
+
+    public function approveMove(Request $request, Tenant $tenant, string $move, DatabaseMoves $moves): RedirectResponse
+    {
+        $moves->approve($move, self::user($request));
+
+        return back();
+    }
+
+    public function cancelMove(Request $request, Tenant $tenant, string $move, DatabaseMoves $moves): RedirectResponse
+    {
+        $moves->cancel($move, self::user($request));
+
+        return back();
+    }
+
+    public function switchBack(Request $request, Tenant $tenant, string $move, DatabaseMoves $moves): RedirectResponse
+    {
+        $moves->switchBack($move, self::user($request));
+
+        return back();
+    }
+
+    public function rotateKey(Request $request, Tenant $tenant, TenantContext $tenants, BrokerageKeys $keys): RedirectResponse
+    {
+        self::user($request);
+        $n = $tenants->runAs($tenant, function () use ($keys): int {
+            $keys->rotate();
+
+            return $keys->rekey();
+        });
+        Inertia::flash('toast', ['type' => 'success', 'message' => "New key made; {$n} value(s) re-sealed."]);
+
+        return back();
     }
 
     public function export(Request $request, Tenant $tenant, BrokerageExport $exports): RedirectResponse

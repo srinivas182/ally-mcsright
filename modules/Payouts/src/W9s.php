@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace Modules\Payouts;
 
 use App\Models\User;
-use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Modules\Core\Audit\AuditLogger;
+use Modules\Core\Safeguards\BrokerageKeys;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
 
@@ -49,7 +49,7 @@ final class W9s
                 ->update(['status' => 'replaced', 'updated_at' => now()]);
             $db->table('pay_w9s')->insert(['ulid' => $ulid, 'tenant_id' => $this->tenants->id(), 'user_id' => $agent?->id, 'referral_id' => $referralId,
                 'legal_name' => mb_substr(trim($data['legal_name']), 0, 120), 'business_name' => isset($data['business_name']) ? mb_substr(trim((string) $data['business_name']), 0, 120) : null,
-                'tax_class' => $data['tax_class'], 'tin_type' => $data['tin_type'], 'tin_sealed' => Crypt::encryptString($tin), 'tin_last4' => substr($tin, -4),
+                'tax_class' => $data['tax_class'], 'tin_type' => $data['tin_type'], 'tin_sealed' => app(BrokerageKeys::class)->seal($tin), 'tin_last4' => substr($tin, -4),
                 'address' => mb_substr(trim($data['address']), 0, 200), 'signature_name' => mb_substr(trim($data['signature_name']), 0, 120), 'signed_at' => now(),
                 'created_at' => now(), 'updated_at' => now()]);
             if ($referralId !== null) {
@@ -83,7 +83,7 @@ final class W9s
         $lines = [];
         foreach (DB::connection(Connections::cell())->table('pay_w9s')->where('status', 'current')->whereIn('match_status', ['pending', 'mismatch', 'invalid'])->get() as $w) {
             $name = mb_strtoupper(preg_replace('/[^A-Za-z0-9 &-]/', '', (string) $w->legal_name) ?? '');
-            $lines[] = ($w->tin_type === 'ein' ? '1' : '2').';'.Crypt::decryptString((string) $w->tin_sealed).';'.mb_substr($name, 0, 40).';'.$w->ulid;
+            $lines[] = ($w->tin_type === 'ein' ? '1' : '2').';'.app(BrokerageKeys::class)->open((string) $w->tin_sealed).';'.mb_substr($name, 0, 40).';'.$w->ulid;
         }
         app(AuditLogger::class)->record('payouts.tin.bulk_file', metadata: ['records' => count($lines)], severity: 'warning');
 
@@ -111,7 +111,7 @@ final class W9s
 
     public function tin(int $w9Id): string
     {
-        return Crypt::decryptString((string) DB::connection(Connections::cell())->table('pay_w9s')->where('id', $w9Id)->value('tin_sealed'));
+        return app(BrokerageKeys::class)->open((string) DB::connection(Connections::cell())->table('pay_w9s')->where('id', $w9Id)->value('tin_sealed'));
     }
 
     private function guard(User $by): void

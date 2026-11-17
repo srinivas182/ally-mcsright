@@ -7,13 +7,13 @@ namespace Modules\Payouts;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Identity\Enums\UserStatus;
+use Modules\Core\Safeguards\BrokerageKeys;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Ledger\ChartOfAccounts;
@@ -330,7 +330,7 @@ final class PayoutRuns
         $row = DB::connection(Connections::cell())->table('pay_settings')->first();
 
         return ['company_name' => $row?->company_name, 'company_id' => $row?->company_id, 'odfi_routing' => $row?->odfi_routing, 'bank_name' => $row?->bank_name,
-            'operating_account' => $row?->operating_account_sealed !== null ? Crypt::decryptString((string) $row->operating_account_sealed) : null,
+            'operating_account' => $row?->operating_account_sealed !== null ? app(BrokerageKeys::class)->open((string) $row->operating_account_sealed) : null,
             'next_check_number' => (int) ($row->next_check_number ?? 1001), 'instant_enabled' => (bool) ($row->instant_enabled ?? false),
             'instant_fee_flat_cents' => (int) ($row->instant_fee_flat_cents ?? 0), 'instant_fee_percent' => (string) ($row->instant_fee_percent ?? '0'),
             'instant_min_cents' => (int) ($row->instant_min_cents ?? 10_000)];
@@ -347,7 +347,7 @@ final class PayoutRuns
         $values = ['company_name' => mb_substr(mb_strtoupper(trim($companyName)), 0, 16), 'company_id' => $companyId, 'odfi_routing' => $odfiRouting,
             'bank_name' => mb_substr(trim($bankName), 0, 23), 'updated_at' => now(), 'created_at' => now()];
         if ($operatingAccount !== null && $operatingAccount !== '') {
-            $values['operating_account_sealed'] = Crypt::encryptString(preg_replace('/\D/', '', $operatingAccount) ?? '');
+            $values['operating_account_sealed'] = app(BrokerageKeys::class)->seal(preg_replace('/\D/', '', $operatingAccount) ?? '');
         }
         if ($nextCheck !== null) {
             $values['next_check_number'] = $nextCheck;

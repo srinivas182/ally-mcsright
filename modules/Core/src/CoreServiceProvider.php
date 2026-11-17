@@ -55,8 +55,11 @@ use Modules\Core\Leads\NoVisitorJourneys;
 use Modules\Core\Leads\VisitorJourneys;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
+use Modules\Core\Safeguards\BrokerageKeys;
+use Modules\Core\Safeguards\DedicatedCells;
 use Modules\Core\Tenancy\CellRouting;
 use Modules\Core\Tenancy\DomainResolver;
+use Modules\Core\Tenancy\Models\Cell;
 use Modules\Core\Tenancy\Models\Tenant;
 use Modules\Core\Tenancy\TenantCache;
 use Modules\Core\Tenancy\TenantContext;
@@ -135,6 +138,8 @@ final class CoreServiceProvider extends ServiceProvider
         // Scoped: reset between requests (Octane) and between queued jobs.
         $this->app->scoped(TenantContext::class);
         $this->app->singleton(CellRouting::class); // DS1: per-request cell routing
+        $this->app->singleton(BrokerageKeys::class); // DS2: per-brokerage keys (columns registered by modules)
+        $this->app->make(CellRouting::class)->resolveWith(fn (Cell $cell): ?string => DedicatedCells::register($cell)); // DS2: dedicated databases
         $this->app->scoped(TenantCache::class);
         $this->app->singleton(DomainResolver::class);
         $this->app->bind(BrandColourSource::class, NullBrandColourSource::class);
@@ -172,7 +177,7 @@ final class CoreServiceProvider extends ServiceProvider
         }
 
         if ($this->app->runningInConsole()) {
-            $this->commands([CompileDesignTokens::class, RunTenantLifecycle::class, BootstrapHq::class, Console\FlushAudit::class, Console\VerifyAudit::class, Console\AuditMaintenance::class, Console\ExpireAccess::class, Console\AccessReviewReminder::class, Console\SendNoticeDigests::class, Console\RunWorkflows::class, Console\RebuildDirectory::class, Console\SendDailyBriefs::class, Safeguards\Console\ExpireExports::class]);
+            $this->commands([CompileDesignTokens::class, RunTenantLifecycle::class, BootstrapHq::class, Console\FlushAudit::class, Console\VerifyAudit::class, Console\AuditMaintenance::class, Console\ExpireAccess::class, Console\AccessReviewReminder::class, Console\SendNoticeDigests::class, Console\RunWorkflows::class, Console\RebuildDirectory::class, Console\SendDailyBriefs::class, Safeguards\Console\ExpireExports::class, Safeguards\Console\SafeguardsDaily::class, Safeguards\Console\Rekey::class]);
         }
     }
 

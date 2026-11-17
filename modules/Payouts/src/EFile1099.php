@@ -7,13 +7,13 @@ namespace Modules\Payouts;
 use App\Models\User;
 use Illuminate\Http\Client\Factory as Http;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Modules\Connect\AppRegistry;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Connect\AppCatalog;
+use Modules\Core\Safeguards\BrokerageKeys;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
 use Throwable;
@@ -60,7 +60,7 @@ final class EFile1099
         DB::connection(Connections::cell())->table('pay_1099_payer')->updateOrInsert(['tenant_id' => $this->tenants->id()], array_filter([
             'legal_name' => mb_substr(trim($in['legal_name']), 0, 120), 'street' => mb_substr(trim($in['street']), 0, 120), 'city' => mb_substr(trim($in['city']), 0, 60),
             'state' => strtoupper($in['state']), 'zip' => $in['zip'], 'phone' => ($in['phone'] ?? '') !== '' ? mb_substr((string) $in['phone'], 0, 20) : null,
-            'ein_sealed' => $ein !== '' ? Crypt::encryptString($ein) : null, 'ein_last4' => $ein !== '' ? substr($ein, -4) : null, 'updated_at' => now(), 'created_at' => $current === null ? now() : null,
+            'ein_sealed' => $ein !== '' ? app(BrokerageKeys::class)->seal($ein) : null, 'ein_last4' => $ein !== '' ? substr($ein, -4) : null, 'updated_at' => now(), 'created_at' => $current === null ? now() : null,
         ], fn ($v): bool => $v !== null));
         app(AuditLogger::class)->record('payouts.1099.payer_saved', metadata: ['ein_changed' => $ein !== ''], severity: 'warning');
     }
@@ -136,7 +136,7 @@ final class EFile1099
         }
         $payload = ['SubmissionManifest' => ['TaxYear' => (string) $year, 'IRSFilingType' => 'IRIS', 'IsFederalFiling' => true, 'IsStateFiling' => false, 'IsPostal' => $mailCopies,
             'IsOnlineAccess' => false], 'ReturnHeader' => ['Business' => ['BusinessNm' => (string) $payerRow->legal_name, 'IsEIN' => true,
-                'EINorSSN' => Crypt::decryptString((string) $payerRow->ein_sealed), 'IsForeign' => false, 'Phone' => $payerRow->phone,
+                'EINorSSN' => app(BrokerageKeys::class)->open((string) $payerRow->ein_sealed), 'IsForeign' => false, 'Phone' => $payerRow->phone,
                 'USAddress' => ['Address1' => (string) $payerRow->street, 'City' => (string) $payerRow->city, 'State' => (string) $payerRow->state, 'ZipCd' => (string) $payerRow->zip]]],
             'ReturnData' => $records];
         $ulid = (string) Str::ulid();
