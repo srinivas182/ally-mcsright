@@ -39,6 +39,7 @@ final class LedgerServiceProvider extends ServiceProvider
         $nav->add(new NavItem('Finance', 'Bills', '/finance/bills', 'receipt', 36, ability: 'finance.ledger.view')); // AC1
         $nav->add(new NavItem('Finance', 'Invoices', '/finance/invoices', 'file-text', 37, ability: 'finance.ledger.view'));
         $nav->add(new NavItem('Finance', 'Bank reconciliation', '/finance/bank', 'landmark', 38, ability: 'finance.ledger.view'));
+        $nav->add(new NavItem('Finance', 'Profit and loss', '/finance/statements', 'chart-column', 39, ability: 'finance.ledger.view')); // AC2
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
 
         // Interim until roles and permissions (Sprints 5-6, specs/core/03): only the brokerage's

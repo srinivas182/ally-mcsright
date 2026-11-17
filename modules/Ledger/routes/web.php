@@ -9,6 +9,7 @@ use Modules\Ledger\Http\Controllers\AccountingController;
 use Modules\Ledger\Http\Controllers\BooksController;
 use Modules\Ledger\Http\Controllers\JournalController;
 use Modules\Ledger\Http\Controllers\PeriodController;
+use Modules\Ledger\Http\Controllers\StatementsController;
 
 Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])
     ->prefix('finance')
@@ -45,6 +46,11 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])
         Route::post('bank/lines/{line}/add', [AccountingController::class, 'addToBooks'])->whereNumber('line')->name('bank.add');
         Route::post('bank/lines/{line}/match', [AccountingController::class, 'matchBank'])->whereNumber('line')->name('bank.match');
         Route::post('bank/approve', [AccountingController::class, 'approveBank'])->name('bank.approve');
+
+        // AC2 (specs/finance/21): profit and loss, and the balance sheet.
+        Route::get('statements', [StatementsController::class, 'index'])->name('statements.index');
+        Route::get('statements.pdf', [StatementsController::class, 'pdf'])->middleware('throttle:20,1')->name('statements.pdf');
+        Route::get('statements.csv', [StatementsController::class, 'csv'])->middleware('throttle:20,1')->name('statements.csv');
 
         Route::get('periods', [PeriodController::class, 'index'])->name('periods.index');
         Route::post('periods/{period}/close', [PeriodController::class, 'close'])->name('periods.close');

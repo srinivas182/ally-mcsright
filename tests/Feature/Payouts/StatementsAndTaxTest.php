@@ -6,15 +6,19 @@ use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Inertia\Testing\AssertableInertia as Assert;
 use Modules\Compensation\Actions\ManagePlans;
 use Modules\Compensation\Enums\PlanType;
 use Modules\Compensation\Models\Calculation;
+use Modules\Connect\AppRegistry;
 use Modules\Core\Audit\FlushAuditOutbox;
+use Modules\Core\Connect\AppCatalog;
 use Modules\Payouts\AgentBilling;
 use Modules\Payouts\BankAccounts;
+use Modules\Payouts\EFile1099;
 use Modules\Payouts\PayoutRuns;
 use Modules\Payouts\Receipts;
 use Modules\Payouts\Statements;
@@ -139,4 +143,47 @@ it('lets title pay agents directly: CDA lines, no payable booked, still counted 
     expect(json_decode((string) $rec->payables, true))->toBe([])->and(json_decode((string) $rec->paid_by_title, true))->toBe([(string) $this->ann->id => 1_200_000])
         ->and(app(Tax1099::class)->forYear(2026)[0])->toMatchArray(['paid_cents' => 1_200_000, 'reportable' => true])
         ->and(array_column(app(Statements::class)->month($this->ann, '2026-06')['lines'], 'text'))->toContain('Commission for 7 Lake Dr, paid to you directly by title');
+});
+
+it('e-files the year\'s 1099-NECs through the partner once everything is ready (AC2)', function (): void {
+    Http::fake([
+        'testoauth.expressauth.net/*' => Http::response(['AccessToken' => 'tok-1', 'TokenType' => 'Bearer']),
+        'testapi.taxbandits.com/*/Form1099NEC/Create' => Http::response(['SubmissionId' => 'sub-123', 'Form1099Records' => ['SuccessRecords' => [['RecordId' => 'r1']]]]),
+        'testapi.taxbandits.com/*/Form1099NEC/Transmit' => Http::response(['SubmissionId' => 'sub-123', 'StatusCode' => 200]),
+        'testapi.taxbandits.com/*/Form1099NEC/Status*' => Http::response(['Form1099Records' => [['Status' => 'ACCEPTED']]]),
+    ]);
+    app(BankAccounts::class)->set($this->ann, 'Ann Agent', '021000021', '111122223333', 'checking', $this->ann);
+    $this->travel(73)->hours();
+    receive(closeAndReceive($this->ann));
+    $runs = app(PayoutRuns::class);
+    $run = $runs->build(CarbonImmutable::today(), false, $this->owner);
+    $runs->approve($run, $this->second);
+    $runs->saveSettings('ACME REALTY', '1123456789', '021000021', 'First National', null, null, $this->owner);
+    $runs->send($run, $this->owner);
+    $this->w9s->submit(w9(), $this->ann);
+
+    $efile = app(EFile1099::class);
+    expect($efile->problems(2026))->toContain('Add the brokerage\'s payer details: legal name, EIN and address.')
+        ->and(collect($efile->problems(2026))->contains(fn ($p) => str_contains($p, 'not switched on')))->toBeTrue();
+    $hq = User::factory()->make(['id' => 999999]);
+    app(AppRegistry::class)->save(app(AppCatalog::class)->find('efile_1099'), true,
+        ['client_id' => 'cid', 'client_secret' => 'csecret', 'user_token' => 'ut', 'environment' => 'sandbox'], null, $hq);
+
+    $this->actingAs($this->owner)->withSession(['auth.password_confirmed_at' => time()])->post('/finance/tax/payer', ['legal_name' => 'Acme Realty LLC', 'ein' => '12-3456789',
+        'street' => '100 Congress Ave', 'city' => 'Austin', 'state' => 'TX', 'zip' => '78701'])->assertSessionHasNoErrors();
+    expect($efile->problems(2026))->toBe([]);
+    $this->actingAs($this->owner)->get('/finance/tax?year=2026')->assertInertia(fn (Assert $p) => $p->where('efile.payer.ein_last4', '6789')->where('efile.problems', []));
+
+    $this->actingAs($this->owner)->withSession(['auth.password_confirmed_at' => time()])->post('/finance/tax/efile', ['year' => 2026, 'mail_copies' => true])->assertSessionHasNoErrors();
+    Http::assertSent(fn ($r) => str_ends_with($r->url(), 'Form1099NEC/Create') && $r->hasHeader('Authorization', 'Bearer tok-1')
+        && $r['ReturnData'][0]['Recipient']['TIN'] === '123456789' && $r['ReturnData'][0]['Recipient']['LastNm'] === 'Agent'
+        && $r['ReturnData'][0]['Recipient']['USAddress']['ZipCd'] === '78701' && $r['ReturnData'][0]['NECFormData']['B1NEC'] == 12000
+        && $r['ReturnHeader']['Business']['EINorSSN'] === '123456789' && $r['SubmissionManifest']['IsPostal'] === true);
+    $filing = DB::table('pay_1099_filings')->sole();
+    expect($filing->status)->toBe('transmitted')->and($filing->submission_id)->toBe('sub-123')->and((int) $filing->records)->toBe(1);
+    expect($efile->problems(2026))->toContain('2026 has already been filed. Corrections are made with the partner.');
+
+    $this->actingAs($this->owner)->post("/finance/tax/efile/{$filing->ulid}/refresh")->assertRedirect();
+    expect(DB::table('pay_1099_filings')->value('status'))->toBe('accepted');
+    $this->actingAs($this->ann)->withSession(['auth.password_confirmed_at' => time()])->post('/finance/tax/efile', ['year' => 2026])->assertForbidden();
 });
