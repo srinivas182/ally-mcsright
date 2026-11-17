@@ -13,6 +13,7 @@ use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
 use Modules\Core\Safeguards\BrokerageKeys;
+use Modules\Ledger\Audit\AuditPack;
 use Modules\Ledger\Close\CloseChecks;
 use Modules\Transactions\Events\PayoutHoldCleared;
 use Modules\Transactions\Models\Deal;
@@ -44,6 +45,7 @@ final class PayoutsServiceProvider extends ServiceProvider
         foreach ([Close\TrustReconciled::class, Close\SplitsMatch::class, Close\PayoutRunsMatch::class] as $check) {
             $close->register($check);
         }
+        $this->app->make(AuditPack::class)->register(Close\PayoutsAuditPart::class); // FH2
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
 
