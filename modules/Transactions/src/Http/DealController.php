@@ -48,6 +48,7 @@ use Modules\Transactions\Reading\DocIq;
 use Modules\Transactions\Referrals;
 use Modules\Transactions\Reviews;
 use Modules\Transactions\Risk\DealRisk;
+use Modules\Transactions\WinCards;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -166,6 +167,7 @@ final class DealController
             })() : Findings::forDeal($deal),
             'deposits' => app(EarnestMoney::class)->forDeal($deal),
             'referrals' => app(Referrals::class)->forDeal($deal),
+            'winCard' => $deal->status === 'closed' && ($user->id === $deal->agent_user_id || self::reviewer($user)) ? app(WinCards::class)->forDeal($deal) : null, // RF1
             'cdas' => self::reviewer($user) ? app(Cdas::class)->forDeal($deal) : [],
             'titles' => self::reviewer($user) ? DB::connection(Connections::cell())->table('tx_title_companies')->whereNotNull('verified_at')->orderBy('name')->get(['ulid', 'name']) : [],
             'can' => ['trust' => $user->isKind(UserKind::Owner) || $user->can('transactions.trust.manage'), 'approveCda' => $user->isKind(UserKind::Owner) || $user->can('transactions.cda.approve'),

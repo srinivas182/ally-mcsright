@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Transactions;
 
 use App\Models\User;
+use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
@@ -21,9 +22,11 @@ use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
 use Modules\Core\Notices\NoticeTypes;
 use Modules\Core\Support\Connections;
+use Modules\Core\Tenancy\TenantContext;
 use Modules\Core\Undo\Undo;
 use Modules\Core\Workflows\WorkflowRegistry;
 use Modules\Crm\Inbox\InboundMailboxes;
+use Modules\Sites\Http\SiteExtensions;
 
 final class TransactionsServiceProvider extends ServiceProvider
 {
@@ -49,6 +52,14 @@ final class TransactionsServiceProvider extends ServiceProvider
         Brief\DealBriefItems::register($this->app->make(DailyBriefs::class));
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
+        $this->loadViewsFrom(__DIR__.'/../resources/views', 'transactions');
+        // RF1: a closed deal's win card on the brokerage website (specs/transactions/32).
+        $this->app->make(SiteExtensions::class)->routes(function (Router $r): void {
+            $r->get('wins/{card}', [Http\WinCardController::class, 'show'])->where('card', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}');
+        });
+        $this->app->make(SiteExtensions::class)->pages(fn (): array => array_values(DB::connection(Connections::cell())->table('tx_win_cards')
+            ->where('tenant_id', app(TenantContext::class)->id())->where('status', 'live')->orderByDesc('id')->limit(200)->get(['ulid', 'headline'])
+            ->map(fn ($c): array => ['path' => '/wins/'.$c->ulid, 'title' => (string) $c->headline, 'description' => 'a recent closing'])->all()));
         // DocIQ: prompts live with the module; features are declared for ai:sync-features.
         $this->app->make(PromptRegistry::class)->addPath(__DIR__.'/../prompts');
         $features = $this->app->make(FeatureCatalog::class);

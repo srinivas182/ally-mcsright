@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Modules\Billing\Affiliates\Affiliates;
 use Modules\Billing\BrokeragePayments;
 use Modules\Billing\Gateway\PaymentGateway;
 use Modules\Billing\GoLive\GoLive;
@@ -51,7 +52,7 @@ final class Signups
      *
      * A solo agent's signup (type "solo") creates a RightAlly of their own; its name is the agent's or team's name.
      *
-     * @param  array{brokerage: string, slug: string, owner_name: string, owner_email: string, state?: string|null, agents?: int|null, package: string, interval: string, health_check_id?: int|null}  $in
+     * @param  array{brokerage: string, slug: string, owner_name: string, owner_email: string, state?: string|null, agents?: int|null, package: string, interval: string, health_check_id?: int|null, ref?: string|null}  $in
      */
     public function begin(array $in, string $returnBase, string $type = 'brokerage'): string
     {
@@ -75,7 +76,8 @@ final class Signups
             'ulid' => $ulid, 'type' => $type, 'brokerage' => mb_substr(trim($in['brokerage']), 0, 150), 'slug' => $slug, 'owner_name' => mb_substr(trim($in['owner_name']), 0, 120),
             'owner_email' => mb_strtolower(trim($in['owner_email'])), 'state' => isset($in['state']) && $in['state'] !== '' ? strtoupper($in['state']) : null,
             'agents' => $in['agents'] ?? null, 'package_id' => $package->id, 'interval' => $interval, 'health_check_id' => $in['health_check_id'] ?? null,
-            'status' => 'pending', 'created_at' => now(), 'updated_at' => now(),
+            'status' => 'pending', 'referral_code' => isset($in['ref']) && preg_match('/^[a-z0-9]{3,24}$/', (string) $in['ref']) === 1 ? (string) $in['ref'] : null,
+            'created_at' => now(), 'updated_at' => now(),
         ]);
 
         return $this->gateway->subscriptionCheckout(mb_strtolower(trim($in['owner_email'])), "RightAlly {$package->name} — ".trim($in['brokerage']), $price, $interval,
@@ -119,6 +121,9 @@ final class Signups
         });
         app(GoLive::class)->start($tenant);
         $db->table('signups')->where('id', $signup->id)->update(['status' => 'live', 'tenant_id' => $tenant->id, 'updated_at' => now()]);
+        // RF1 (specs/billing/08): a signup that came through a referral link.
+        app(Affiliates::class)->attribute($signup->referral_code ?? null, $tenant, (string) $signup->owner_email);
+        app(Affiliates::class)->paid($tenant->id, (int) ($object['amount_total'] ?? 0), (int) ($signup->interval === 'year' ? intdiv((int) ($meta['price_cents'] ?? 0), 12) : (int) ($meta['price_cents'] ?? 0)));
         app(AuditLogger::class)->record('billing.signup.live', metadata: ['brokerage' => $signup->brokerage, 'package_id' => (int) $signup->package_id, 'interval' => $signup->interval],
             severity: 'notice', tenantId: $tenant->id);
     }
