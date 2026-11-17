@@ -32,6 +32,26 @@ export default function Outreach({ booking, videos, website, texting }: Props) {
                     ? `${videos} video${videos === 1 ? '' : 's'}. See who watched.`
                     : 'Record a short video and send the link. You see when it is watched.',
         },
+        {
+            href: '/outreach/content',
+            title: 'Monthly content',
+            text: 'Real market numbers for your area, written up as posts and a newsletter (English and Spanish).',
+        },
+        {
+            href: '/outreach/homeowners',
+            title: 'Homeowners',
+            text: 'A monthly home-value email and private dashboard for past clients.',
+        },
+        {
+            href: '/outreach/cards',
+            title: 'Handwritten cards',
+            text: 'A real pen-written card for birthdays, home anniversaries and thank-yous.',
+        },
+        {
+            href: '/outreach/signature',
+            title: 'Email signature',
+            text: 'Made from your brand kit, on every email you send.',
+        },
         ...(texting !== null
             ? [
                   {

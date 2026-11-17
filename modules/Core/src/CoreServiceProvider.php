@@ -32,7 +32,9 @@ use Modules\Core\Agents\AgentCredentials;
 use Modules\Core\Agents\NoAgentCredentials;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Branding\BrandColourSource;
+use Modules\Core\Branding\EmailSignature;
 use Modules\Core\Branding\NullBrandColourSource;
+use Modules\Core\Branding\PlainEmailSignature;
 use Modules\Core\Console\BootstrapHq;
 use Modules\Core\Console\CompileDesignTokens;
 use Modules\Core\Console\RunTenantLifecycle;
@@ -77,6 +79,7 @@ final class CoreServiceProvider extends ServiceProvider
         $this->app->singleton(Messaging\MessagingSettings::class);
         $this->app->bindIf(DealOutcomes::class, NoDealOutcomes::class);
         $this->app->bindIf(ListingActivity::class, NoListingActivity::class);
+        $this->app->bindIf(EmailSignature::class, PlainEmailSignature::class);
         $this->app->bindIf(VisitorJourneys::class, NoVisitorJourneys::class);
         $this->app->bindIf(AgentCredentials::class, NoAgentCredentials::class);
         $this->app->bindIf(Usage\WebsiteMaps::class, Usage\UnlimitedWebsiteMaps::class);

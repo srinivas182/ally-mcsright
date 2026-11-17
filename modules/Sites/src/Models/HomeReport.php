@@ -28,6 +28,8 @@ use Modules\Core\Tenancy\Concerns\HasPublicUlid;
  * @property CarbonImmutable|null $last_sent_at
  * @property int $sent_count
  * @property CarbonImmutable|null $unsubscribed_at
+ * @property list<array{on: string, mid: int}>|null $history
+ * @property CarbonImmutable|null $dashboard_viewed_at
  */
 final class HomeReport extends Model
 {
@@ -46,6 +48,6 @@ final class HomeReport extends Model
     protected function casts(): array
     {
         return ['next_on' => 'immutable_date', 'last_sent_at' => 'immutable_datetime', 'unsubscribed_at' => 'immutable_datetime', 'beds' => 'integer', 'sqft' => 'integer',
-            'last_mid' => 'integer', 'sent_count' => 'integer'];
+            'last_mid' => 'integer', 'sent_count' => 'integer', 'history' => 'array', 'dashboard_viewed_at' => 'immutable_datetime'];
     }
 }

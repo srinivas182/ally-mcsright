@@ -20,6 +20,8 @@ final class OutreachServiceProvider extends ServiceProvider
         $this->app->scoped(Videos::class);
         $this->app->scoped(CallQueue::class);
         $this->app->scoped(TextingRegistration::class);
+        $this->app->scoped(ContentPack::class);
+        $this->app->scoped(HandwrittenCards::class);
     }
 
     public function boot(): void

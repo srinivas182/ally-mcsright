@@ -78,8 +78,14 @@ final class HomeReports
             $change = $estimate !== null && $report->last_mid !== null && $report->last_mid > 0 ? round(($estimate['mid'] - $report->last_mid) * 100 / $report->last_mid, 1) : null;
             $agent = User::query()->find($report->user_id);
             Mail::to((string) $contact->primary_email, $contact->name)->send(new HomeReportMail($report->address, $contact->first_name, $estimate, $change, $nearby,
-                $this->tenants->current()->name, $agent?->name, $agent?->phone, $this->stopUrl($report), Inbox::replyAddress(app(Inbox::class)->conversationFor($contact))));
-            $report->forceFill(['last_mid' => $estimate['mid'] ?? $report->last_mid, 'last_sent_at' => CarbonImmutable::now(), 'sent_count' => $report->sent_count + 1])->save();
+                $this->tenants->current()->name, $agent?->name, $agent?->phone, $this->stopUrl($report), Inbox::replyAddress(app(Inbox::class)->conversationFor($contact)),
+                $this->dashboardUrl($report)));
+            $history = $report->history ?? [];
+            if ($estimate !== null) {
+                $history[] = ['on' => $local->toDateString(), 'mid' => (int) $estimate['mid']];
+            }
+            $report->forceFill(['last_mid' => $estimate['mid'] ?? $report->last_mid, 'last_sent_at' => CarbonImmutable::now(), 'sent_count' => $report->sent_count + 1,
+                'history' => array_slice($history, -36)])->save();
             $this->timeline->system($contact, 'Sent the monthly home value report for '.$report->address.($estimate !== null
                 ? ': $'.number_format($estimate['low']).' to $'.number_format($estimate['high']) : ''));
             $sent++;
@@ -96,6 +102,26 @@ final class HomeReports
             $this->timeline->system($contact, 'Turned off the monthly home value report for '.$report->address);
         }
         app(AuditLogger::class)->record('sites.home_report.stopped', $report, label: $report->address);
+    }
+
+    /** The homeowner's own dashboard (MK2): a private, signed link that does not expire. */
+    public function dashboardUrl(HomeReport $report): string
+    {
+        return app(SpeedToLead::class)->link(URL::signedRoute('sites.home-reports.dashboard', ['report' => $report->ulid], null, false));
+    }
+
+    /**
+     * Past clients with an address and email who are not getting the report yet, for the agent (or, for brokers, everyone's).
+     *
+     * @return list<Contact>
+     */
+    public function pastClientsWithout(?int $ownerId): array
+    {
+        $have = HomeReport::query()->pluck('contact_id')->all();
+
+        return array_values(Contact::query()->where('lifecycle', 'past_client')->whereNotNull('primary_email')->whereNotNull('zip')->whereNotNull('address_line1')
+            ->when($ownerId !== null, fn ($q) => $q->where('owner_user_id', $ownerId))->whereNotIn('id', $have ?: [0])->orderBy('last_name')->limit(500)->get()
+            ->filter(fn (Contact $c): bool => ConsentEvent::query()->where('contact_id', $c->id)->where('channel', 'email')->latest('id')->value('action') !== 'opt_out')->all());
     }
 
     public function stopUrl(HomeReport $report): string
