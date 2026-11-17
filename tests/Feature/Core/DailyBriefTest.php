@@ -72,7 +72,7 @@ it('gives brokers the brokerage view: slow agents, payouts to approve, credits r
 it('keeps the brief when a source fails', function (): void {
     briefSetup($this);
     app(DailyBriefs::class)->add('broken', fn (User $u): array => throw new RuntimeException('down'));
-    expect(app(DailyBriefs::class)->for($this->ann))->toHaveCount(5);
+    expect(app(DailyBriefs::class)->for($this->ann))->toHaveCount(6); // incl. database health
 });
 
 it('emails the brief at 7am on weekdays, once, unless turned off', function (): void {
@@ -84,7 +84,7 @@ it('emails the brief at 7am on weekdays, once, unless turned off', function (): 
     Notification::assertSentTo($this->ann, DailyBriefMail::class, function (DailyBriefMail $n) {
         $mail = $n->toMail($this->ann);
 
-        return $n->home === '/agent' && str_contains((string) $mail->subject, 'need you today') && count($n->items) === 5;
+        return $n->home === '/agent' && str_contains((string) $mail->subject, 'need you today') && count($n->items) === 6;
     });
 
     $this->actingAs($this->ann)->post('/brief/email', ['on' => false])->assertRedirect();

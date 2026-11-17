@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
+use Modules\Insights\Http\DatabaseController;
 use Modules\Insights\Http\InsightsController;
 use Modules\Insights\Http\ReportsController;
 
@@ -16,6 +17,7 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('insigh
     Route::get('plan', [InsightsController::class, 'plan'])->name('plan');
     Route::post('plan', [InsightsController::class, 'savePlan'])->name('plan.save');
     Route::get('roi', [InsightsController::class, 'roi'])->name('roi');
+    Route::get('database', [DatabaseController::class, 'show'])->name('database');
     Route::get('reports', [ReportsController::class, 'index'])->name('reports');
     Route::post('reports/run', [ReportsController::class, 'run'])->middleware('throttle:60,1')->name('reports.run');
     Route::post('reports/export', [ReportsController::class, 'export'])->middleware('throttle:20,1')->name('reports.export');

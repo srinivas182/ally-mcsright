@@ -12,6 +12,7 @@ use Modules\Core\CustomFields\CustomFields;
 use Modules\Crm\Enums\Lifecycle;
 use Modules\Crm\Enums\Origin;
 use Modules\Crm\Enums\Source;
+use Modules\Crm\Health\DatabaseHealth;
 use Modules\Crm\Models\Contact;
 use Modules\Crm\Models\SmartList;
 use Modules\Crm\Models\Stage;
@@ -30,12 +31,19 @@ final class SmartLists
         'birthdays-week' => ['Birthdays this week', ['birthday_within_days' => 7]],
         'anniversaries-week' => ['Home anniversaries this week', ['anniversary_within_days' => 7]],
         'referral-ask' => ['Good moment to ask for a referral', ['referral_moment' => true]],
+        // Database health (DH1): the people behind each fix.
+        'no-way-to-reach' => ['No email or phone', ['health' => 'unreachable']],
+        'not-contacted-6m' => ['Not contacted in 6 months', ['lifecycle' => ['lead', 'active', 'past_client', 'sphere'], 'no_contact_days' => 180]],
+        'no-next-step' => ['Leads with no next step', ['health' => 'no_next_step']],
+        'past-no-date' => ['Past clients with no closing date', ['health' => 'missing_close_date']],
     ];
 
     /** Keep-in-touch cadence in days by A/B/C/D ranking. */
     public const RHYTHM_DAYS = ['A' => 30, 'B' => 60, 'C' => 90, 'D' => 180];
 
-    private const KEYS = ['lifecycle', 'origin', 'source', 'stage', 'tags', 'no_contact_days', 'overdue_task', 'created_within_days', 'cities', 'pipeline', 'keywords', 'rhythm', 'rhythm_due', 'birthday_within_days', 'anniversary_within_days', 'referral_moment', 'custom'];
+    private const KEYS = ['lifecycle', 'origin', 'source', 'stage', 'tags', 'no_contact_days', 'overdue_task', 'created_within_days', 'cities', 'pipeline', 'keywords', 'rhythm', 'rhythm_due', 'birthday_within_days', 'anniversary_within_days', 'referral_moment', 'custom', 'health'];
+
+    public const HEALTH = ['unreachable', 'no_next_step', 'missing_close_date'];
 
     public function __construct(private readonly ContactVisibility $visibility) {}
 
@@ -66,6 +74,9 @@ final class SmartLists
             if (isset($filters[$days]) && (! is_int($filters[$days]) || $filters[$days] < 1 || $filters[$days] > 3650)) {
                 $errors["filters.{$days}"] = 'Use a number of days from 1 to 3650.';
             }
+        }
+        if (isset($filters['health']) && ! in_array($filters['health'], self::HEALTH, true)) {
+            $errors['filters.health'] = 'Unknown check.';
         }
         if (isset($filters['custom'])) {
             $known = array_column(app(CustomFields::class)->definitions('contact'), 'key');
@@ -115,6 +126,7 @@ final class SmartLists
                         ->where('crm_activities.type', 'call')->where('crm_activities.outcome', 'connected')->where('crm_activities.occurred_at', '>=', $now->subDays(7)))
                     ->orWhere(fn ($d) => self::monthDayWithin($d, 'closed_md', $now, 14))))
             ->when(! empty($filters['custom']) && is_array($filters['custom']), fn ($q) => $this->custom($q, (array) $filters['custom']))
+            ->when(($filters['health'] ?? null) !== null, fn ($q) => DatabaseHealth::filter($q, (string) $filters['health']))
             ->when(($filters['overdue_task'] ?? false) === true, fn ($q) => $q->whereExists(fn ($t) => $t->selectRaw('1')->from('crm_tasks')
                 ->whereColumn('crm_tasks.contact_id', 'crm_contacts.id')->whereNull('crm_tasks.completed_at')->where('crm_tasks.due_at', '<', $now)));
     }
