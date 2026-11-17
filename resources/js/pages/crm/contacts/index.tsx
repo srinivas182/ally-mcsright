@@ -153,7 +153,6 @@ function QuickAdd({
                             {(c) => (
                                 <Input
                                     {...c}
-                                    autoFocus
                                     value={form.data.first_name}
                                     onChange={(e) =>
                                         form.setData(

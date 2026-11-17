@@ -178,7 +178,6 @@ export function CreditConsentHost() {
                     <Button
                         onClick={() => answer(true)}
                         disabled={quote !== undefined && known && !quote.enough}
-                        autoFocus
                     >
                         Continue
                     </Button>

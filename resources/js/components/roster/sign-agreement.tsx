@@ -28,6 +28,7 @@ export function SignAgreement({
             </h2>
             <div
                 className="max-h-64 overflow-y-auto rounded border bg-muted/30 p-3 whitespace-pre-wrap"
+                // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scrolling region must be reachable by keyboard (WCAG 2.1.1)
                 tabIndex={0}
             >
                 {agreement.body}

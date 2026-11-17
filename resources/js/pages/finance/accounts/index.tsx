@@ -78,7 +78,9 @@ export default function AccountsIndex({ accounts, types, can }: Props) {
                                 <th className="p-3 text-right font-medium">
                                     Balance
                                 </th>
-                                <th className="p-3" />
+                                <th className="p-3">
+                                    <span className="sr-only">Actions</span>
+                                </th>
                             </tr>
                         </thead>
                         <tbody>

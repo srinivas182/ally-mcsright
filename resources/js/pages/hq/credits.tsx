@@ -1056,7 +1056,9 @@ export default function HqCredits(props: Props) {
                                     <th className="p-2 text-right">
                                         Worst margin
                                     </th>
-                                    <th className="p-2" />
+                                    <th className="p-2">
+                                        <span className="sr-only">Actions</span>
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>

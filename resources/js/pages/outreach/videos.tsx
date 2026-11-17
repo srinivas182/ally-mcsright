@@ -133,6 +133,7 @@ export default function Videos({ videos, website, contact }: Props) {
                     <h2 className="font-semibold">
                         New video{contact ? ` for ${contact.name}` : ''}
                     </h2>
+                    {/* oxlint-disable-next-line jsx-a11y/media-has-caption -- the agent's own camera preview while recording */}
                     <video
                         ref={preview}
                         className="aspect-video w-full max-w-xl rounded-md bg-black"

@@ -68,6 +68,7 @@ export default function Board({ pipelines, pipeline, stages }: Props) {
                 </Tabs>
                 <div className="flex gap-3 overflow-x-auto pb-4">
                     {stages.map((stage) => (
+                        // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- drag and drop is extra; each card has a "Move to" list for keyboards
                         <section
                             key={stage.ulid}
                             aria-label={`${stage.name}, ${stage.count} contacts`}
@@ -103,6 +104,7 @@ export default function Board({ pipelines, pipeline, stages }: Props) {
                                 </Badge>
                             </h2>
                             {stage.contacts.map((card) => (
+                                // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- drag and drop is extra; the "Move to" list works by keyboard
                                 <article
                                     key={card.ulid}
                                     draggable

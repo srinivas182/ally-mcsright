@@ -195,6 +195,7 @@ export default function Social({
                                         Post the cover only
                                     </Button>
                                 </div>
+                                {/* oxlint-disable-next-line jsx-a11y/media-has-caption -- a preview of the agent's own upload; captions are added on the posted video */}
                                 <video
                                     src={form.data.video_url}
                                     controls
@@ -227,7 +228,7 @@ export default function Social({
                                         <img
                                             key={src}
                                             src={src}
-                                            alt={`Carousel image ${i + 1}`}
+                                            alt={`Carousel slide ${i + 1}`}
                                             loading="lazy"
                                             className="aspect-[4/5] w-16 flex-none rounded object-cover"
                                         />
@@ -240,7 +241,7 @@ export default function Social({
                             form.data.image_url.startsWith('https://') && (
                                 <img
                                     src={form.data.image_url}
-                                    alt="The photo for this post"
+                                    alt="Post cover"
                                     className="max-h-48 w-fit rounded border"
                                 />
                             )}

@@ -257,7 +257,11 @@ export default function HqMovewiseMoney({
                                             Amount
                                         </th>
                                         <th className="p-2">Status</th>
-                                        <th className="p-2" />
+                                        <th className="p-2">
+                                            <span className="sr-only">
+                                                Actions
+                                            </span>
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody>

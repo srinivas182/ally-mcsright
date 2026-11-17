@@ -454,7 +454,11 @@ export default function MyDealShow(p: Props) {
                             <table className="w-full min-w-[32rem] text-left">
                                 <thead className="bg-muted/50">
                                     <tr>
-                                        <th className="p-2" />
+                                        <th className="p-2">
+                                            <span className="sr-only">
+                                                Offer
+                                            </span>
+                                        </th>
                                         <th className="p-2">
                                             {t.offers_price}
                                         </th>

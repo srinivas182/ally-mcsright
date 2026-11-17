@@ -180,6 +180,7 @@ export default function StudioVoice({
                                 </Button>
                             )}
                             {clip && !recording && (
+                                // oxlint-disable-next-line jsx-a11y/media-has-caption -- the person's own voice sample, played back to themselves
                                 <audio
                                     controls
                                     src={clip}

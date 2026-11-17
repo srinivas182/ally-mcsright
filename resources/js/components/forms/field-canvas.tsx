@@ -234,7 +234,13 @@ export function FieldCanvas({
     const sel = selected !== null ? fields[selected] : null;
 
     return (
-        <div className="grid gap-3 lg:grid-cols-[1fr_18rem]" onKeyDown={onKey}>
+        // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- keyboard shortcuts for the whole editor
+        <div
+            role="group"
+            aria-label="Form field editor. Arrow keys move the selected field; Delete removes it."
+            className="grid gap-3 lg:grid-cols-[1fr_18rem]"
+            onKeyDown={onKey}
+        >
             <div className="grid gap-2">
                 <div className="flex items-center gap-2 text-xs">
                     <Button
@@ -278,6 +284,8 @@ export function FieldCanvas({
                         onPointerDown={startDraw}
                         onPointerMove={onMove}
                         onPointerUp={onUp}
+                        role="application"
+                        // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- the drawing surface takes keyboard focus for its shortcuts
                         tabIndex={0}
                         aria-label={`Page ${page} of the form`}
                     >
