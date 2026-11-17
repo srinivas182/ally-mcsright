@@ -19,6 +19,7 @@ use Modules\Core\Identity\Http\Controllers\UserController;
 use Modules\Core\Identity\Http\Middleware\EnsureTenantHost;
 use Modules\Core\Identity\Security\SingleSignOn;
 use Modules\Core\Notices\NoticesController;
+use Modules\Core\Safeguards\Http\DataExportController;
 use Modules\Core\Simple\SimpleController;
 use Modules\Core\Undo\UndoController;
 use Modules\Core\Workflows\WorkflowsController;
@@ -154,4 +155,12 @@ Route::middleware(['web', EnsureTenantHost::class, 'auth'])->group(function (): 
     Route::post('settings/offices', [AccessController::class, 'saveOffice'])->name('offices.store');
     Route::post('settings/teams', [AccessController::class, 'saveTeam'])->name('teams.store');
     Route::post('settings/membership', [AccessController::class, 'membership'])->name('organisation.membership');
+});
+
+// Settings → Your data (DS1, specs/core/12): the owner's full export of the brokerage.
+Route::middleware(['web', EnsureTenantHost::class, 'auth', 'password.confirm'])->prefix('settings/data-export')->name('settings.data-export.')->group(function (): void {
+    Route::get('/', [DataExportController::class, 'show'])->name('show');
+    Route::post('/', [DataExportController::class, 'request'])->middleware('throttle:3,1')->name('request');
+    Route::get('{export}', [DataExportController::class, 'download'])->where('export', '[0-9A-HJKMNP-TV-Z]{26}')->name('download');
+    Route::post('{export}/password', [DataExportController::class, 'password'])->where('export', '[0-9A-HJKMNP-TV-Z]{26}')->name('password');
 });

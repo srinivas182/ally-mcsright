@@ -119,6 +119,9 @@ export default function ShowTenant({
                         </p>
                     </div>
                     <div className="flex gap-2">
+                        <Button variant="outline" asChild>
+                            <a href={`${base}/data`}>Data and backups</a>
+                        </Button>
                         {canReactivate && (
                             <Button
                                 disabled={reactivateForm.processing}

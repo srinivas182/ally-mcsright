@@ -116,5 +116,8 @@ Schedule::command('roster:verify')->dailyAt('03:30')->onOneServer();
 // Signers who have not signed yet (specs/forms/01).
 Schedule::command('forms:reminders')->dailyAt('10:00')->onOneServer();
 
+// DS1: brokerage exports are kept 7 days.
+Schedule::command('safeguards:expire-exports')->dailyAt('03:50')->onOneServer();
+
 // EN1: Monday check-in drafts for agents and retention alerts for owners.
 Schedule::command('engage:weekly')->weeklyOn(1, '07:40')->onOneServer();

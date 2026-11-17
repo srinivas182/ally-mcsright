@@ -24,11 +24,13 @@ final class TenantContext
     public function set(Tenant $tenant): void
     {
         $this->tenant = $tenant;
+        $this->route();
     }
 
     public function forget(): void
     {
         $this->tenant = null;
+        $this->route();
     }
 
     public function check(): bool
@@ -59,6 +61,7 @@ final class TenantContext
     {
         $this->stack[] = $this->tenant;
         $this->tenant = $tenant;
+        $this->route();
     }
 
     /**
@@ -67,6 +70,7 @@ final class TenantContext
     public function pop(): void
     {
         $this->tenant = $this->stack === [] ? null : array_pop($this->stack);
+        $this->route();
     }
 
     /**
@@ -81,11 +85,19 @@ final class TenantContext
     {
         $previous = $this->tenant;
         $this->tenant = $tenant;
+        $this->route();
 
         try {
             return $callback();
         } finally {
             $this->tenant = $previous;
+            $this->route();
         }
+    }
+
+    /** Points the cell connection at the current brokerage's cell (DS1, per-request cell routing). */
+    private function route(): void
+    {
+        app(CellRouting::class)->apply($this->tenant);
     }
 }

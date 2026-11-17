@@ -1,4 +1,4 @@
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import type { PropsWithChildren } from 'react';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
@@ -30,6 +30,20 @@ const sidebarNavItems: NavItem[] = [
 
 export default function SettingsLayout({ children }: PropsWithChildren) {
     const { isCurrentOrParentUrl } = useCurrentUrl();
+    const { auth } = usePage<{ auth: { user: { kind?: string } | null } }>()
+        .props;
+    // DS1: the owner can download everything the brokerage has in RightAlly.
+    const items: NavItem[] =
+        auth.user?.kind === 'owner'
+            ? [
+                  ...sidebarNavItems,
+                  {
+                      title: 'Your data',
+                      href: '/settings/data-export',
+                      icon: null,
+                  },
+              ]
+            : sidebarNavItems;
 
     return (
         <div className="px-4 py-6">
@@ -44,7 +58,7 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
                         className="flex flex-col space-y-1 space-x-0"
                         aria-label="Settings"
                     >
-                        {sidebarNavItems.map((item, index) => (
+                        {items.map((item, index) => (
                             <Button
                                 key={`${toUrl(item.href)}-${index}`}
                                 size="sm"

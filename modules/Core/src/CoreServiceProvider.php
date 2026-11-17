@@ -55,6 +55,7 @@ use Modules\Core\Leads\NoVisitorJourneys;
 use Modules\Core\Leads\VisitorJourneys;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
+use Modules\Core\Tenancy\CellRouting;
 use Modules\Core\Tenancy\DomainResolver;
 use Modules\Core\Tenancy\Models\Tenant;
 use Modules\Core\Tenancy\TenantCache;
@@ -133,6 +134,7 @@ final class CoreServiceProvider extends ServiceProvider
 
         // Scoped: reset between requests (Octane) and between queued jobs.
         $this->app->scoped(TenantContext::class);
+        $this->app->singleton(CellRouting::class); // DS1: per-request cell routing
         $this->app->scoped(TenantCache::class);
         $this->app->singleton(DomainResolver::class);
         $this->app->bind(BrandColourSource::class, NullBrandColourSource::class);
@@ -170,7 +172,7 @@ final class CoreServiceProvider extends ServiceProvider
         }
 
         if ($this->app->runningInConsole()) {
-            $this->commands([CompileDesignTokens::class, RunTenantLifecycle::class, BootstrapHq::class, Console\FlushAudit::class, Console\VerifyAudit::class, Console\AuditMaintenance::class, Console\ExpireAccess::class, Console\AccessReviewReminder::class, Console\SendNoticeDigests::class, Console\RunWorkflows::class, Console\RebuildDirectory::class, Console\SendDailyBriefs::class]);
+            $this->commands([CompileDesignTokens::class, RunTenantLifecycle::class, BootstrapHq::class, Console\FlushAudit::class, Console\VerifyAudit::class, Console\AuditMaintenance::class, Console\ExpireAccess::class, Console\AccessReviewReminder::class, Console\SendNoticeDigests::class, Console\RunWorkflows::class, Console\RebuildDirectory::class, Console\SendDailyBriefs::class, Safeguards\Console\ExpireExports::class]);
         }
     }
 
