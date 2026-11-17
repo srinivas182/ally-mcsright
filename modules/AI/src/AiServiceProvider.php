@@ -67,8 +67,9 @@ final class AiServiceProvider extends ServiceProvider
         Gate::define('hq.ai.manage', fn (User $user): bool => $user->kind === UserKind::HqStaff);
         $this->app->make(NavigationRegistry::class)->add(new NavItem('HQ', 'AI gateway', '/hq/ai', 'sparkles', 20, ability: 'hq.ai.manage', kinds: [UserKind::HqStaff]));
         $this->app->make(NavigationRegistry::class)->add(new NavItem('HQ', 'AI quality', '/hq/ai/quality', 'clipboard-check', 21, ability: 'hq.ai.manage', kinds: [UserKind::HqStaff])); // AQ1
+        $this->app->make(NavigationRegistry::class)->add(new NavItem('HQ', 'AI cost', '/hq/ai/cost', 'badge-dollar-sign', 22, ability: 'hq.ai.manage', kinds: [UserKind::HqStaff])); // AQ2
         if ($this->app->runningInConsole()) {
-            $this->commands([RunRedTeam::class, CollectBatches::class, SyncFeatures::class, Console\PruneAssistant::class, Console\RunEvals::class]);
+            $this->commands([RunRedTeam::class, CollectBatches::class, SyncFeatures::class, Console\PruneAssistant::class, Console\RunEvals::class, Console\WatchAiCost::class]);
         }
 
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');

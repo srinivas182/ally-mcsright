@@ -1,6 +1,6 @@
 # AI quality and cost (AQ1, AQ2)
 
-Status: AQ1 done. Tracker: D19 Partly (AQ2 adds cost routing, caching and the cost dashboard).
+Status: Done (AQ1 and AQ2). Tracker: D19 Done.
 
 ## What it does, in plain words (AQ1: quality)
 
@@ -26,6 +26,25 @@ Status: AQ1 done. Tracker: D19 Partly (AQ2 adds cost routing, caching and the co
     - Each case goes through the real AI gateway: redaction, the output policy and the feature's model chain.
     - **HQ → AI quality** shows, for each prompt: its version, number of cases, latest score, and what failed, in plain words (for example `Elm St / ignores steering words: Fair Housing: says "perfect for families".`).
     - It also shows the untested prompts and recent runs with their cost.
+
+## What it does, in plain words (AQ2: cost)
+
+- **A lighter model for short requests.** For each feature, HQ can choose a cheaper model for requests up to a set length. Most texts and quick replies fit. If the lighter model is down, the usual model answers.
+- **Reusing answers.**
+    - For features where the same question should always get the same answer (for example, translating a listing or reading a lead email), HQ can let an identical request reuse the answer for up to 24 hours.
+    - The reused answer is free to the brokerage: the credit is refunded.
+    - It is stored encrypted, kept only for that brokerage, and never shared with another brokerage.
+- **Prompt caching.** Long instructions sent to Claude are marked for Anthropic's prompt cache, so repeat calls read them at a fraction of the price. Writing to the cache is counted as input at 1.25 times the normal rate, so costs stay exact.
+- **HQ → AI cost**:
+    - cost for the last 7, 30 or 90 days, compared with the period before;
+    - AI answers, answers reused (with the money saved), and answers from a lighter model;
+    - a bar for each of the last 30 days;
+    - cost by brokerage and by feature (cost per answer, share reused);
+    - each feature's cost settings, on the same page.
+
+    It shows only figures from the request log. No one's questions or answers are stored, so nothing here shows what anyone asked.
+
+- **Cost jump alert.** Every morning HQ is emailed when a brokerage spent more than three times its usual day on AI, and over $5. The email lists common causes: a new automation, a big import, or a loop.
 
 ## First test sets (12 prompts, 36 cases)
 
@@ -53,6 +72,9 @@ Status: AQ1 done. Tracker: D19 Partly (AQ2 adds cost routing, caching and the co
 | Generic LLM evaluation tools             | Evaluation frameworks                      | Not real-estate aware; need engineers                             | Real-estate checks built in, and an HQ page anyone can read           |
 
 ## Settings and review
+
+- **Review:** reusing answers is off for every feature until HQ turns it on. Turn it on only for features where the same question should always get the same answer.
+- **Review:** the cost-jump alert is set at more than three times the usual day and over $5.
 
 - **Review:** the live test budget is $3 a run (`ai.eval_budget_cents`). Raise it once all prompts have sets.
 - **Review:** 45 prompts are still on the untested list. Each future sprint that touches a prompt adds its set.

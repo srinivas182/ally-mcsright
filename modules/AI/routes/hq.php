@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use Modules\AI\Http\Controllers\Hq\AiConsoleController;
+use Modules\AI\Http\Controllers\Hq\AiCostController;
 use Modules\AI\Http\Controllers\Hq\AiQualityController;
 use Modules\Core\Http\Middleware\EnsureHqConsole;
 
@@ -21,4 +22,7 @@ Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.ai.manage'])
         // AQ1 (specs/ai/08): AI test sets and scores.
         Route::get('quality', [AiQualityController::class, 'index'])->name('quality');
         Route::post('quality/run', [AiQualityController::class, 'run'])->middleware('throttle:3,10')->name('quality.run');
+        // AQ2 (specs/ai/08): AI cost and per-feature cost settings.
+        Route::get('cost', [AiCostController::class, 'index'])->name('cost');
+        Route::put('cost/routes/{route}', [AiCostController::class, 'updateRoute'])->name('cost.routes');
     });
