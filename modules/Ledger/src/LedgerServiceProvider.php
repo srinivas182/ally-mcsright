@@ -27,6 +27,7 @@ final class LedgerServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
+        $this->loadViewsFrom(__DIR__.'/../resources/views', 'ledger');
 
         Event::listen(TenantProvisioned::class, SeedChartOfAccounts::class);
 
@@ -35,6 +36,9 @@ final class LedgerServiceProvider extends ServiceProvider
         $nav->add(new NavItem('Finance', 'Journals', '/finance/journals', 'book-open', 20, ability: 'finance.ledger.view'));
         $nav->add(new NavItem('Finance', 'Periods', '/finance/periods', 'calendar-check', 30, ability: 'finance.ledger.view'));
         $nav->add(new NavItem('Finance', 'Books (QuickBooks, Xero)', '/finance/books', 'book-open', 35, ability: 'finance.ledger.view'));
+        $nav->add(new NavItem('Finance', 'Bills', '/finance/bills', 'receipt', 36, ability: 'finance.ledger.view')); // AC1
+        $nav->add(new NavItem('Finance', 'Invoices', '/finance/invoices', 'file-text', 37, ability: 'finance.ledger.view'));
+        $nav->add(new NavItem('Finance', 'Bank reconciliation', '/finance/bank', 'landmark', 38, ability: 'finance.ledger.view'));
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
 
         // Interim until roles and permissions (Sprints 5-6, specs/core/03): only the brokerage's

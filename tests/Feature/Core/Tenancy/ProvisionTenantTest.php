@@ -15,6 +15,7 @@ use Modules\Core\Tenancy\Exceptions\NoCellAvailable;
 use Modules\Core\Tenancy\Models\Cell;
 use Modules\Core\Tenancy\Models\Tenant;
 use Modules\Core\Tenancy\TenantContext;
+use Modules\Ledger\ChartOfAccounts;
 use Modules\Ledger\Models\LedgerAccount;
 
 beforeEach(fn () => Route::middleware('web')->get('/_probe', fn () => 'ok'));
@@ -95,5 +96,5 @@ it('seeds the ledger chart of accounts for new brokerages', function (): void {
 
     $count = app(TenantContext::class)->runAs($tenant, fn () => LedgerAccount::query()->where('is_system', true)->count());
 
-    expect($count)->toBe(15);
+    expect($count)->toBe(count(ChartOfAccounts::SYSTEM));
 });

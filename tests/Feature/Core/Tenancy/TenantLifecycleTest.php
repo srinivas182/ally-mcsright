@@ -130,7 +130,7 @@ it('only allows marked classes to query across tenants, and announces each use',
         $context->runAs($tenant, fn () => app(ChartOfAccounts::class)->seed());
     }
 
-    expect((new AllowedHqReport)->count())->toBe(30)
+    expect((new AllowedHqReport)->count())->toBe(2 * count(ChartOfAccounts::SYSTEM))
         ->and(fn () => (new UnmarkedReport)->count())->toThrow(LogicException::class);
     Event::assertDispatched(CrossTenantAccessed::class, fn ($e) => $e->callerClass === AllowedHqReport::class);
 });
