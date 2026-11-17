@@ -30,6 +30,7 @@ type Skill = {
     courses: number;
     finished: number;
     score: number | null;
+    practice: number | null;
     next: { ulid: string; title: string } | null;
 };
 
@@ -189,6 +190,8 @@ export default function LearnLaunch({
                                         : `${s.finished} of ${s.courses} courses finished`}
                                     {s.score !== null &&
                                         ` · quiz average ${s.score}%`}
+                                    {s.practice !== null &&
+                                        ` · practice ${s.practice}%`}
                                 </span>
                                 {s.next && (
                                     <a

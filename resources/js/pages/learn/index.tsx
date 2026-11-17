@@ -96,6 +96,11 @@ export default function LearnIndex({
                     description="Short courses and your office's how-to pages."
                     actions={
                         <div className="flex flex-wrap gap-2">
+                            <Button asChild>
+                                <a href="/learn/practice">
+                                    Practice a conversation
+                                </a>
+                            </Button>
                             <Button asChild variant="outline">
                                 <a href="/learn/launch">
                                     Launch, mentors and scorecard
