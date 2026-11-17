@@ -37,7 +37,9 @@ use Modules\Core\Console\BootstrapHq;
 use Modules\Core\Console\CompileDesignTokens;
 use Modules\Core\Console\RunTenantLifecycle;
 use Modules\Core\Deals\DealOutcomes;
+use Modules\Core\Deals\ListingActivity;
 use Modules\Core\Deals\NoDealOutcomes;
+use Modules\Core\Deals\NoListingActivity;
 use Modules\Core\Identity\Auth\TenantPasswordBrokerManager;
 use Modules\Core\Identity\Auth\TenantUserProvider;
 use Modules\Core\Identity\Enums\UserKind;
@@ -74,6 +76,7 @@ final class CoreServiceProvider extends ServiceProvider
         // change in HQ settings applies to the next request or job.
         $this->app->singleton(Messaging\MessagingSettings::class);
         $this->app->bindIf(DealOutcomes::class, NoDealOutcomes::class);
+        $this->app->bindIf(ListingActivity::class, NoListingActivity::class);
         $this->app->bindIf(VisitorJourneys::class, NoVisitorJourneys::class);
         $this->app->bindIf(AgentCredentials::class, NoAgentCredentials::class);
         $this->app->bindIf(Usage\WebsiteMaps::class, Usage\UnlimitedWebsiteMaps::class);

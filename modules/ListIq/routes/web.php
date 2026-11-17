@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
+use Modules\ListIq\Http\FeedbackController;
 use Modules\ListIq\Http\ListIqController;
 
 // List-IQ (specs/listings/02).
@@ -21,6 +22,7 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('list-i
     Route::post('{prep}/translate', [ListIqController::class, 'translate'])->middleware(['throttle:10,1', 'feature:crm.ai'])->name('translate');
     Route::get('{prep}/package', [ListIqController::class, 'package'])->middleware('throttle:10,1')->name('package');
     Route::post('{prep}/mls', [ListIqController::class, 'mls'])->name('mls');
+    Route::post('{prep}/showings/{showing}', [ListIqController::class, 'decide'])->name('showings.decide');
     Route::post('{prep}/codes', [ListIqController::class, 'addCode'])->middleware('throttle:30,1')->name('codes');
     Route::get('{prep}/codes/{code}', [ListIqController::class, 'qr'])->where('code', '[a-z0-9]{7}')->name('codes.qr');
     Route::post('{prep}/floor-plan', [ListIqController::class, 'floorPlan'])->middleware('throttle:10,1')->name('floor-plan');
@@ -30,3 +32,7 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('list-i
     Route::post('{prep}/open-houses/{openHouse}/sign-in', [ListIqController::class, 'signIn'])->middleware('throttle:60,1')->name('kiosk.sign-in');
     Route::post('{prep}/open-houses/{openHouse}/end', [ListIqController::class, 'endOpenHouse'])->name('kiosk.end');
 });
+
+// Feedback from buyers' agents after a showing (a random link in their email; no sign-in, never indexed).
+Route::middleware(['tenant', EnsureTenantWorkspace::class, 'throttle:30,1,showing-feedback'])
+    ->match(['get', 'post'], 'showing-feedback/{token}', [FeedbackController::class, 'handle'])->where('token', '[A-Za-z0-9]{40}')->name('listiq.feedback');

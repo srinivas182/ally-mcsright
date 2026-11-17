@@ -18,6 +18,7 @@ use Modules\ListIq\Marketing;
 use Modules\ListIq\Models\Photo;
 use Modules\ListIq\Models\Prep;
 use Modules\ListIq\Photos;
+use Modules\ListIq\Showings;
 use Modules\Sites\Http\Controllers\SiteController;
 use Modules\Sites\Models\Site;
 use Modules\Sites\Rendering\Chrome;
@@ -60,12 +61,30 @@ final class PublicController
 
         return response()->view('listiq::page', [
             'site' => $site, 'current' => '/listing/'.$prep->ulid, 'prep' => $prep, 'photos' => $photos, 'facts' => $f, 'agent' => $owner !== null ? app(BrandKits::class)->forUser($owner) : null,
-            'floorPlan' => Photos::url($prep->floor_plan_path), 'src' => preg_match('/^[a-z0-9]{7}$/', (string) $request->query('src')) === 1 ? (string) $request->query('src') : '',
+            'floorPlan' => Photos::url($prep->floor_plan_path), 'booked' => (string) $request->query('booked', ''),
+            'showingError' => is_string($request->query('showing_error')) ? mb_substr((string) $request->query('showing_error'), 0, 200) : null, 'src' => preg_match('/^[a-z0-9]{7}$/', (string) $request->query('src')) === 1 ? (string) $request->query('src') : '',
             'seo' => Seo::build($site, $root, '/listing/'.$prep->ulid, $title.' | '.$site->displayName(), $description, $photos[0]['url'] ?? null, true, [[$prep->street, '/listing/'.$prep->ulid]],
                 [], [$listingLd], $prep->updated_at->toIso8601String()),
             'chrome' => Chrome::for($site, app(TenantContext::class)->id()),
             ...SiteController::form($request),
-        ])->header('Cache-Control', $request->query('sent') !== null || $request->query('error') !== null ? 'no-store' : 'public, max-age=60, s-maxage=300');
+        ])->header('Cache-Control', $request->query('sent') !== null || $request->query('error') !== null || $request->query('booked') !== null || $request->query('showing_error') !== null
+            ? 'no-store' : 'public, max-age=60, s-maxage=300');
+    }
+
+    public function showing(string $listing, Request $request, Showings $showings): RedirectResponse
+    {
+        $prep = Prep::query()->where('ulid', $listing)->first();
+        $back = $request->getSchemeAndHttpHost().'/listing/'.$listing;
+        if ($prep === null || ! $prep->in_mls || trim((string) $request->input('website', '')) !== '' || ! RateLimiter::attempt('listing-showing:'.$request->ip(), 10, fn (): bool => true)) {
+            return redirect($back.'?booked=1#showing', 303);
+        }
+        try {
+            $s = $showings->request($prep, $request->only(['name', 'email', 'phone', 'brokerage', 'date', 'time']));
+        } catch (ValidationException $e) {
+            return redirect($back.'?showing_error='.urlencode((string) (collect($e->errors())->flatten()->first() ?? 'Please check the form.')).'#showing', 303);
+        }
+
+        return redirect($back.'?booked='.($s->status === 'approved' ? '2' : '1').'#showing', 303);
     }
 
     public function lead(string $listing, Request $request, Marketing $marketing, SiteLeads $leads): RedirectResponse

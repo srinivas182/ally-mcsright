@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\ListIq;
 
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Modules\Core\Audit\AuditLogger;
@@ -64,6 +65,16 @@ final class Preps
         }
         if (isset($in['manual']) && is_array($in['manual'])) {
             $prep->manual = array_intersect_key(array_map(fn ($v): bool => (bool) $v, $in['manual']), self::MANUAL) + (array) $prep->manual;
+        }
+        if (isset($in['showing_mode']) && in_array($in['showing_mode'], ['approve', 'auto'], true)) {
+            $prep->showing_mode = (string) $in['showing_mode'];
+        }
+        if (array_key_exists('access', $in)) {
+            $prep->access = $in['access'] !== null && trim((string) $in['access']) !== '' ? mb_substr(trim((string) $in['access']), 0, 1000) : null;
+        }
+        if (array_key_exists('seller_note', $in)) {
+            $prep->seller_note = $in['seller_note'] !== null && trim((string) $in['seller_note']) !== '' ? mb_substr(trim(strip_tags((string) $in['seller_note'])), 0, 2000) : null;
+            $prep->seller_note_at = $prep->seller_note !== null ? CarbonImmutable::now() : null;
         }
         if (isset($in['remarks_limit']) && is_numeric($in['remarks_limit'])) {
             $prep->remarks_limit = max(250, min(5000, (int) $in['remarks_limit']));

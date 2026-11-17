@@ -64,6 +64,32 @@ type Marketing = {
         visitors: number;
     }[];
 };
+type Showings = {
+    mode: string;
+    access: string | null;
+    seller_note: string | null;
+    summary: {
+        shown: number;
+        answered: number;
+        interest: number | null;
+        price: { low: number; right: number; high: number };
+        comments: string[];
+    };
+    list: {
+        ulid: string;
+        when: string;
+        name: string;
+        brokerage: string | null;
+        status: string;
+        feedback: {
+            interest: number;
+            price: string;
+            comments: string | null;
+        } | null;
+        upcoming: boolean;
+    }[];
+    portal: boolean;
+};
 type Photo = {
     ulid: string;
     kind: string;
@@ -87,6 +113,7 @@ export default function ListIqShow({
     styles,
     can,
     marketing: m,
+    showings: sh,
 }: {
     listing: Listing;
     checklist: Item[];
@@ -96,6 +123,7 @@ export default function ListIqShow({
     styles: string[];
     can: { stage: boolean; enhance: boolean };
     marketing: Marketing;
+    showings: Showings;
 }) {
     const opts = { preserveScroll: true };
     const errors = usePage().props.errors as Record<string, string>;
@@ -111,6 +139,8 @@ export default function ListIqShow({
     const [es, setEs] = useState(l.description_es ?? '');
     const [style, setStyle] = useState(styles[0] ?? 'modern');
     const [kind, setKind] = useState('sign');
+    const [access, setAccess] = useState(sh.access ?? '');
+    const [note, setNote] = useState(sh.seller_note ?? '');
     const [oh, setOh] = useState({ date: '', from: '13:00', to: '16:00' });
     const done = checklist.filter((i) => i.done).length;
     const busy = photos.some(
@@ -411,6 +441,121 @@ export default function ListIqShow({
                         </ol>
                     </section>
                 )}
+
+                <section
+                    className="grid gap-3 rounded-lg border p-4"
+                    aria-labelledby="showings"
+                    id="showings"
+                >
+                    <h2 id="showings" className="font-semibold">
+                        Showings
+                    </h2>
+                    <div
+                        className="flex flex-wrap gap-2"
+                        role="radiogroup"
+                        aria-label="How showings are approved"
+                    >
+                        {(
+                            [
+                                ['approve', 'I approve each one'],
+                                ['auto', 'Approve automatically (8am–8pm)'],
+                            ] as const
+                        ).map(([k, label]) => (
+                            <Button
+                                key={k}
+                                size="sm"
+                                variant={sh.mode === k ? 'default' : 'outline'}
+                                aria-pressed={sh.mode === k}
+                                onClick={() => patch({ showing_mode: k })}
+                            >
+                                {label}
+                            </Button>
+                        ))}
+                    </div>
+                    <label className="grid gap-1 text-sm">
+                        Access instructions (sent only to approved showings;
+                        kept encrypted)
+                        <Textarea
+                            rows={2}
+                            value={access}
+                            onChange={(e) => setAccess(e.target.value)}
+                            onBlur={() =>
+                                access !== (sh.access ?? '') &&
+                                patch({ access })
+                            }
+                        />
+                    </label>
+                    <p className="text-sm">
+                        {sh.summary.shown} shown · {sh.summary.answered} with
+                        feedback
+                        {sh.summary.interest !== null &&
+                            ` · interest ${sh.summary.interest} of 5 · price: ${sh.summary.price.low} good value, ${sh.summary.price.right} about right, ${sh.summary.price.high} too high`}
+                    </p>
+                    {sh.list.length > 0 && (
+                        <ul className="grid gap-2 text-sm">
+                            {sh.list.map((s) => (
+                                <li
+                                    key={s.ulid}
+                                    className="flex flex-wrap items-center gap-2 rounded border p-2"
+                                >
+                                    <span className="min-w-0 flex-1">
+                                        <strong>{s.when}</strong> · {s.name}
+                                        {s.brokerage
+                                            ? ` (${s.brokerage})`
+                                            : ''}{' '}
+                                        · {s.status}
+                                        {s.feedback &&
+                                            ` · interest ${s.feedback.interest}/5, price ${s.feedback.price}${s.feedback.comments ? `: “${s.feedback.comments}”` : ''}`}
+                                    </span>
+                                    {s.status === 'requested' && s.upcoming && (
+                                        <>
+                                            <Button
+                                                size="sm"
+                                                onClick={() =>
+                                                    router.post(
+                                                        `${base}/showings/${s.ulid}`,
+                                                        { approve: true },
+                                                        opts,
+                                                    )
+                                                }
+                                            >
+                                                Approve
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() =>
+                                                    router.post(
+                                                        `${base}/showings/${s.ulid}`,
+                                                        { approve: false },
+                                                        opts,
+                                                    )
+                                                }
+                                            >
+                                                Decline
+                                            </Button>
+                                        </>
+                                    )}
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                    <label className="grid gap-1 text-sm">
+                        Your note to the seller
+                        {sh.portal
+                            ? ' (shown in their deal portal)'
+                            : ' (shown once the listing deal has a portal)'}
+                        <Textarea
+                            rows={3}
+                            value={note}
+                            onChange={(e) => setNote(e.target.value)}
+                            onBlur={() =>
+                                note !== (sh.seller_note ?? '') &&
+                                patch({ seller_note: note })
+                            }
+                        />
+                    </label>
+                </section>
 
                 <section
                     className="grid gap-3 rounded-lg border p-4"

@@ -44,6 +44,20 @@ type Props = {
     agent: { name: string; email: string | null; phone: string | null };
     questions: Question[];
     checkin: boolean;
+    listing: {
+        upcoming: string[];
+        shown: number;
+        answered: number;
+        interest: number | null;
+        price: { low: number; right: number; high: number };
+        comments: string[];
+        views: number;
+        scans: number;
+        visitors: number;
+        note: string | null;
+        note_at: string | null;
+        advice: string | null;
+    } | null;
     offers: {
         text: string;
         offers: {
@@ -145,6 +159,116 @@ function UploadButton({
 }
 
 /** The deal portal: progress, what's next, dates, uploads, documents and the concierge (specs/ai/02, DQ3). */
+/** How the listing is doing, for the seller (SH1). */
+function ListingSection({
+    l,
+    es,
+}: {
+    l: NonNullable<Props['listing']>;
+    es: boolean;
+}) {
+    const w = es
+        ? {
+              title: 'Cómo va su casa',
+              upcoming: 'Próximas visitas',
+              shown: 'visitas',
+              answered: 'opiniones',
+              views: 'visitas a la página',
+              scans: 'escaneos de códigos QR',
+              visitors: 'visitantes en casas abiertas',
+              interest: 'Interés promedio',
+              of5: 'de 5',
+              price: 'Sobre el precio',
+              low: 'buen valor',
+              right: 'justo',
+              high: 'alto',
+              comments: 'Lo que dijeron',
+              note: 'Nota de su agente',
+          }
+        : {
+              title: 'How your home is doing',
+              upcoming: 'Coming up',
+              shown: 'showings',
+              answered: 'with feedback',
+              views: 'page views',
+              scans: 'QR code scans',
+              visitors: 'open-house visitors',
+              interest: 'Average interest',
+              of5: 'out of 5',
+              price: 'On the price',
+              low: 'good value',
+              right: 'about right',
+              high: 'too high',
+              comments: 'What they said',
+              note: 'From your agent',
+          };
+
+    return (
+        <section
+            aria-labelledby="listing"
+            className="grid gap-3 rounded-lg border p-4"
+        >
+            <h2 id="listing" className="font-semibold">
+                {w.title}
+            </h2>
+            {l.advice && (
+                <p className="rounded bg-amber-50 p-3 text-sm dark:bg-amber-950/30">
+                    {l.advice}
+                </p>
+            )}
+            {l.note && (
+                <div className="rounded border p-3 text-sm">
+                    <strong>{w.note}</strong>{' '}
+                    {l.note_at && (
+                        <span className="text-muted-foreground">
+                            ({l.note_at})
+                        </span>
+                    )}
+                    <p className="whitespace-pre-line">{l.note}</p>
+                </div>
+            )}
+            <ul className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-5">
+                {(
+                    [
+                        [l.shown, w.shown],
+                        [l.answered, w.answered],
+                        [l.views, w.views],
+                        [l.scans, w.scans],
+                        [l.visitors, w.visitors],
+                    ] as const
+                ).map(([n, label]) => (
+                    <li key={label} className="rounded border p-2">
+                        <strong className="block text-lg">{n}</strong>
+                        {label}
+                    </li>
+                ))}
+            </ul>
+            {l.upcoming.length > 0 && (
+                <p className="text-sm">
+                    <strong>{w.upcoming}:</strong> {l.upcoming.join(' · ')}
+                </p>
+            )}
+            {l.answered > 0 && (
+                <p className="text-sm">
+                    {w.interest}: <strong>{l.interest}</strong> {w.of5} ·{' '}
+                    {w.price}: {l.price.low} {w.low}, {l.price.right} {w.right},{' '}
+                    {l.price.high} {w.high}
+                </p>
+            )}
+            {l.comments.length > 0 && (
+                <div className="text-sm">
+                    <strong>{w.comments}</strong>
+                    <ul className="list-disc pl-5">
+                        {l.comments.map((c, i) => (
+                            <li key={i}>{c}</li>
+                        ))}
+                    </ul>
+                </div>
+            )}
+        </section>
+    );
+}
+
 export default function MyDealShow(p: Props) {
     const { t, access } = p;
     const base = `/my-deal/${access.ulid}`;
@@ -316,6 +440,9 @@ export default function MyDealShow(p: Props) {
                             </li>
                         ))}
                     </ul>
+                )}
+                {p.listing && (
+                    <ListingSection l={p.listing} es={access.locale === 'es'} />
                 )}
                 {p.offers && (
                     <section aria-labelledby="offers" className="grid gap-2">
