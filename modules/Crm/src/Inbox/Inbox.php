@@ -19,6 +19,7 @@ use Modules\Core\Tenancy\TenantContext;
 use Modules\Crm\Actions\Timeline;
 use Modules\Crm\Consent;
 use Modules\Crm\Events\ActivityLogged;
+use Modules\Crm\Events\SmsKeywordReceived;
 use Modules\Crm\FairHousing;
 use Modules\Crm\Leads\AiResponder;
 use Modules\Crm\Leads\LeadAlert;
@@ -181,6 +182,9 @@ final class Inbox
         }
         $keyword = strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', $body));
         $contact = Contact::query()->where('primary_phone', $from)->orderBy('id')->first();
+        if (in_array($keyword, self::STOP, true) || in_array($keyword, self::START, true)) {
+            event(new SmsKeywordReceived($from, $keyword, in_array($keyword, self::STOP, true)));
+        }
 
         if ($contact !== null) {
             // A bridge (the Movewise relay) answers its own keywords: PAUSE, CHANGE. It also hears STOP, then STOP runs as usual.

@@ -117,6 +117,7 @@ final class AgentDatabase
             // Agents with nothing in two years drop out, unless someone is recruiting them.
             MlsAgent::query()->where('mls_source_id', $source)->where('refreshed_at', '<', $now)
                 ->whereNotIn('id', Recruit::query()->whereNotNull('mls_agent_id')->select('mls_agent_id'))->delete();
+            app(MoveScore::class)->scoreAll($source, $today);
         }
 
         return $count;
@@ -130,13 +131,13 @@ final class AgentDatabase
     /**
      * Agents outside the brokerage, for the database page.
      *
-     * @param  array<string, mixed>  $f  q, min_sides, moved (days), sort (sides|volume|trend|moved)
+     * @param  array<string, mixed>  $f  q, min_sides, moved (days), sort (sides|volume|trend|moved|likely)
      * @return LengthAwarePaginator<int, MlsAgent>
      */
     public function search(array $f): LengthAwarePaginator
     {
         $q = trim((string) ($f['q'] ?? ''));
-        $sort = in_array($f['sort'] ?? '', ['sides', 'volume', 'trend', 'moved'], true) ? $f['sort'] : 'sides';
+        $sort = in_array($f['sort'] ?? '', ['sides', 'volume', 'trend', 'moved', 'likely'], true) ? $f['sort'] : 'sides';
         $moved = (int) ($f['moved'] ?? 0);
 
         return MlsAgent::query()->where('ours', false)->whereIn('mls_source_id', $this->sources() ?: [0])
@@ -146,6 +147,7 @@ final class AgentDatabase
             ->when($sort === 'sides', fn ($w) => $w->orderByDesc('sides')->orderByDesc('volume_cents'))
             ->when($sort === 'volume', fn ($w) => $w->orderByDesc('volume_cents'))
             ->when($sort === 'trend', fn ($w) => $w->orderByRaw('(cast(sides as signed) - cast(sides_before as signed)) desc')->orderByDesc('sides'))
+            ->when($sort === 'likely', fn ($w) => $w->where('move_score', '>', 0)->orderByDesc('move_score')->orderByDesc('sides'))
             ->when($sort === 'moved', fn ($w) => $w->whereNotNull('office_changed_on')->orderByDesc('office_changed_on'))
             ->orderBy('id')->paginate(50)->withQueryString();
     }

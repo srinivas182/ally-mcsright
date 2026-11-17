@@ -14,6 +14,8 @@ use Modules\Compensation\Models\Plan;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Recruiting\AgentDatabase;
 use Modules\Recruiting\EarnHere;
+use Modules\Recruiting\Models\Campaign;
+use Modules\Recruiting\Models\Enrollment;
 use Modules\Recruiting\Models\MlsAgent;
 use Modules\Recruiting\Models\Recruit;
 use Modules\Recruiting\Pipeline;
@@ -57,7 +59,7 @@ final class RecruitingController
             'agents' => $page->through(fn (MlsAgent $a): array => ['id' => $a->id, 'name' => $a->displayName(), 'mls_id' => $a->agent_mls_id, 'office' => $a->office_name,
                 'sides' => $a->sides, 'list_sides' => $a->list_sides, 'buyer_sides' => $a->buyer_sides, 'volume_cents' => $a->volume_cents, 'trend' => $a->trend(),
                 'sides_before' => $a->sides_before, 'active_listings' => $a->active_listings, 'moved_on' => $a->office_changed_on?->toDateString(),
-                'previous_office' => $a->previous_office_name, 'recruit' => $recruited->get($a->id)]),
+                'previous_office' => $a->previous_office_name, 'recruit' => $recruited->get($a->id), 'move_score' => $a->move_score, 'move_reasons' => $a->move_reasons ?? []]),
             'settings' => $owner ? $db->settings() + ['plans' => Plan::query()->where('type', PlanType::Commission)->orderBy('name')->get(['id', 'name'])
                 ->map(fn (Plan $p): array => ['id' => $p->id, 'name' => $p->name])->all()] : null,
         ]);
@@ -94,7 +96,14 @@ final class RecruitingController
                 'current_fee' => $recruit->current_fee_cents !== null ? intdiv($recruit->current_fee_cents, 100) : null, 'not_now_reason' => $recruit->not_now_reason],
             'production' => $a !== null ? ['sides' => $a->sides, 'list_sides' => $a->list_sides, 'buyer_sides' => $a->buyer_sides, 'volume_cents' => $a->volume_cents,
                 'sides_before' => $a->sides_before, 'trend' => $a->trend(), 'active_listings' => $a->active_listings, 'office' => $a->office_name,
-                'last_closed_on' => $a->last_closed_on?->toDateString(), 'moved_on' => $a->office_changed_on?->toDateString(), 'previous_office' => $a->previous_office_name] : null,
+                'last_closed_on' => $a->last_closed_on?->toDateString(), 'moved_on' => $a->office_changed_on?->toDateString(), 'previous_office' => $a->previous_office_name,
+                'move_score' => $a->move_score, 'move_reasons' => $a->move_reasons ?? []] : null,
+            'reach' => ['email_opt_out_on' => $recruit->email_opt_out_at?->toDateString(), 'text_consent_on' => $recruit->text_consent_at?->toDateString(),
+                'text_opt_out_on' => $recruit->text_opt_out_at?->toDateString(), 'application' => $recruit->application],
+            'campaigns' => Campaign::query()->where('status', 'active')->orderBy('name')->get(['ulid', 'name'])->map(fn (Campaign $c): array => ['ulid' => $c->ulid, 'name' => $c->name])->all(),
+            'enrollments' => Enrollment::query()->with('campaign')->where('recruit_id', $recruit->id)->orderByDesc('id')->get()->map(fn (Enrollment $e): array => [
+                'campaign' => $e->campaign->ulid, 'name' => $e->campaign->name, 'status' => $e->status, 'step' => min($e->next_step + 1, count($e->campaign->steps)),
+                'steps' => count($e->campaign->steps), 'next_at' => $e->next_at?->toDateString(), 'reason' => $e->stopped_reason])->all(),
             'notes' => $recruit->notes()->orderByDesc('occurred_at')->orderByDesc('id')->limit(100)->get()->map(fn ($n): array => ['kind' => $n->kind, 'body' => $n->body,
                 'at' => $n->occurred_at->toDateTimeString(), 'by' => $n->user_id !== null ? $users->get($n->user_id)?->name : 'RightAlly'])->all(),
             'stages' => collect(Recruit::STAGES)->map(fn (string $label, string $key): array => ['key' => $key, 'label' => $label])->values()->all(),
@@ -146,7 +155,7 @@ final class RecruitingController
 
         return ['ulid' => $r->ulid, 'name' => $r->name, 'brokerage' => $r->brokerage, 'stage' => $r->stage, 'source' => $r->source, 'owner' => $owner,
             'next_step' => $r->next_step, 'next_step_on' => $r->next_step_on?->toDateString(), 'overdue' => $r->next_step_on !== null && $r->next_step_on->isBefore(today()),
-            'sides' => $a?->sides, 'volume_cents' => $a?->volume_cents, 'trend' => $a?->trend()];
+            'sides' => $a?->sides, 'volume_cents' => $a?->volume_cents, 'trend' => $a?->trend(), 'move_score' => $a?->move_score];
     }
 
     private static function user(Request $request): User

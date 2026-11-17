@@ -31,6 +31,8 @@ use Modules\Core\Tenancy\Concerns\BelongsToTenant;
  * @property int $active_listings
  * @property CarbonImmutable|null $last_closed_on
  * @property bool $ours
+ * @property int $move_score
+ * @property list<string>|null $move_reasons
  * @property CarbonImmutable $refreshed_at
  */
 final class MlsAgent extends Model
@@ -65,6 +67,6 @@ final class MlsAgent extends Model
     {
         return ['office_changed_on' => 'immutable_date', 'last_closed_on' => 'immutable_date', 'refreshed_at' => 'immutable_datetime', 'ours' => 'boolean',
             'sides' => 'integer', 'list_sides' => 'integer', 'buyer_sides' => 'integer', 'volume_cents' => 'integer', 'sides_before' => 'integer',
-            'volume_before_cents' => 'integer', 'active_listings' => 'integer'];
+            'volume_before_cents' => 'integer', 'active_listings' => 'integer', 'move_score' => 'integer', 'move_reasons' => 'array'];
     }
 }
