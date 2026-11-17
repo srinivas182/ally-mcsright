@@ -23,6 +23,7 @@ use Modules\Listings\Models\MlsSource;
 use Modules\Listings\Models\RulesProfile;
 use Modules\Listings\Search\ListingSearch;
 use Modules\Listings\Search\MarketStats;
+use Modules\Listings\Search\PlainSearch;
 use Modules\Listings\Sync\ListingSync;
 use Modules\Sites\Maps;
 use Modules\Sites\SiteSetup;
@@ -226,7 +227,7 @@ it('offers ten website designs, each with its own styles', function (): void {
 
     $this->actingAs($this->owner)->patch('/settings/website', ['template' => 'estate', 'ai_crawlers' => true, 'brand' => ['primary' => '#1f3a33', 'accent' => '#b08d57']])->assertSessionHasNoErrors();
     $html = (string) $this->get($this->web.'/homes')->assertOk()->getContent();
-    expect($html)->toContain('class="theme-estate"')->toContain('Playfair+Display')->toContain('site.css?v=6');
+    expect($html)->toContain('class="theme-estate"')->toContain('Playfair+Display')->toContain('site.css?v=7');
 });
 
 it('tells visitors and brokerage owners when the MLS feed runs late', function (): void {
@@ -243,4 +244,44 @@ it('tells visitors and brokerage owners when the MLS feed runs late', function (
     // Once every six hours at most.
     $this->artisan('listings:reconcile', ['--freshness-only' => true])->assertSuccessful();
     Notification::assertSentToTimes($this->owner, FeedDelayedNotice::class, 1);
+});
+
+/* IX2: designs 11–15, plain-words search in English and Spanish, MLS provider presets (specs/websites/17). */
+
+it('offers fifteen designs', function (): void {
+    expect(array_keys(config('sites.templates')))->toContain('villa', 'loft', 'meadow', 'mesa', 'ember')->and(count(config('sites.templates')))->toBeGreaterThanOrEqual(15);
+});
+
+it('reads plain-words searches into filters, in English and Spanish', function (): void {
+    $p = PlainSearch::parse('3 bed homes under 500k in Austin with a pool');
+    expect($p['filters'])->toBe(['max_price' => '500000', 'beds' => '3', 'q' => 'Austin'])->and($p['not_filtered'])->toBe(['pool'])->and($p['language'])->toBe('en');
+
+    $es = PlainSearch::parse('casa de 3 recámaras y 2 baños hasta 400 mil en San Antonio');
+    expect($es['filters'])->toBe(['max_price' => '400000', 'beds' => '3', 'baths' => '2', 'q' => 'San Antonio'])->and($es['language'])->toBe('es')
+        ->and(PlainSearch::say($es['understood'], 'es'))->toBe(['hasta $400k', '3+ recámaras', '2+ baños', 'en San Antonio']);
+
+    expect(PlainSearch::parse('2br for rent under 2500 in Dallas')['filters'])->toMatchArray(['max_price' => '2500', 'types' => 'Residential Lease']);
+    expect(PlainSearch::parse('homes between $300k and $1.2m in 78704')['filters'])->toBe(['min_price' => '300000', 'max_price' => '1200000', 'q' => '78704']);
+    expect(PlainSearch::looksPlain('Round Rock'))->toBeFalse()->and(PlainSearch::looksPlain('three bedrooms in Austin'))->toBeTrue();
+});
+
+it('turns a plain-words search into the same crawlable filter page', function (): void {
+    $r = $this->get($this->web.'/homes?q='.rawurlencode('3 bed homes under 500k in Austin with a pool'));
+    $r->assertRedirect();
+    $to = (string) $r->headers->get('Location');
+    expect($to)->toContain('beds=3')->toContain('max_price=500000')->toContain('q=Austin')->toContain('heard=');
+
+    $html = (string) $this->get($this->web.'/homes?'.parse_url($to, PHP_URL_QUERY))->assertOk()->getContent();
+    expect($html)->toContain('We searched for')->toContain('under $500k · 3+ bedrooms · in Austin')->toContain('filter by pool')
+        ->toContain('content="noindex'); // a filtered page is not a canonical page
+
+    $es = (string) $this->followingRedirects()->get($this->web.'/homes?q='.rawurlencode('casa de 3 recámaras hasta 400 mil en Austin'))->assertOk()->getContent();
+    expect($es)->toContain('Buscamos')->toContain('hasta $400k')->toContain('lang="es"');
+
+    // A place name is still just a place.
+    $this->get($this->web.'/homes?q=Austin')->assertOk();
+});
+
+it('fills in the MLS Grid and Trestle addresses for HQ', function (): void {
+    expect(MlsSource::PRESETS['trestle']['token_url'])->toStartWith('https://')->and(MlsSource::PRESETS['mls_grid']['base_url'])->toBe('https://api.mlsgrid.com/v2');
 });

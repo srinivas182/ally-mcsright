@@ -105,6 +105,15 @@
             setParam(k, v);
         });
         params.delete('page');
+        // Plain words ("3 bed homes under 500k in Austin"): the server reads them and redirects to the filters.
+        if (
+            /(\d\s*(k|m|mil)\b|\$|\b(under|below|over|above|between|bed|beds|bedrooms?|baths?|menos|hasta|entre|rec[aá]maras?|ba[nñ]os?|habitaciones)\b)/i.test(
+                form.q.value,
+            )
+        ) {
+            location.href = '/homes?q=' + encodeURIComponent(form.q.value);
+            return;
+        }
         if (form.q.value !== '') {
             params.delete('bounds');
             params.delete('poly');

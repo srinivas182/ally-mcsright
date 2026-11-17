@@ -43,6 +43,17 @@ return [
             'theme' => '#f4f6f2', 'css' => 'family=Outfit:wght@400;500;700', 'brand' => ['primary' => '#2f5d3a', 'accent' => '#1d2a22']],
         'atrium' => ['name' => 'Atrium', 'description' => 'Architectural and bright: frosted glass, big photography and crisp lines; suits new construction and urban teams.', 'fonts' => 'Plus Jakarta Sans',
             'theme' => '#f7f9fb', 'css' => 'family=Plus+Jakarta+Sans:wght@400;500;700;800', 'brand' => ['primary' => '#0f766e', 'accent' => '#0b1f2a']],
+        // IX2: designs 11–15 (specs/websites/17).
+        'villa' => ['name' => 'Villa', 'description' => 'Warm Mediterranean: terracotta, cream and a graceful serif; suits Spanish-style homes and bilingual teams.', 'fonts' => 'Cormorant Garamond + Source Sans 3',
+            'theme' => '#fbf6ef', 'css' => 'family=Cormorant+Garamond:wght@500;600;700&family=Source+Sans+3:wght@400;600', 'brand' => ['primary' => '#b4532a', 'accent' => '#3d2b1f']],
+        'loft' => ['name' => 'Loft', 'description' => 'Industrial and urban: concrete greys, a strong grotesque and sharp edges; suits lofts, condos and downtown teams.', 'fonts' => 'Space Grotesk + Inter',
+            'theme' => '#f1f1ef', 'css' => 'family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600', 'brand' => ['primary' => '#f97316', 'accent' => '#1c1c1c']],
+        'meadow' => ['name' => 'Meadow', 'description' => 'Friendly and soft: rounded shapes, sage green and easy reading; suits suburbs and first-time buyers.', 'fonts' => 'Nunito',
+            'theme' => '#f6f8f3', 'css' => 'family=Nunito:wght@400;600;800', 'brand' => ['primary' => '#4d7c57', 'accent' => '#2a3b2e']],
+        'mesa' => ['name' => 'Mesa', 'description' => 'Southwest sun: sand, clay and turquoise with a confident slab serif; suits desert and ranch markets.', 'fonts' => 'Zilla Slab + Work Sans',
+            'theme' => '#faf5ee', 'css' => 'family=Zilla+Slab:wght@500;700&family=Work+Sans:wght@400;500;600', 'brand' => ['primary' => '#0e7c7b', 'accent' => '#a0522d']],
+        'ember' => ['name' => 'Ember', 'description' => 'Dark and dramatic: charcoal with a warm gold glow and big photos; suits luxury and evening-photo listings.', 'fonts' => 'Bodoni Moda + Inter',
+            'theme' => '#121110', 'css' => 'family=Bodoni+Moda:wght@500;700&family=Inter:wght@400;500;600', 'brand' => ['primary' => '#d4a24c', 'accent' => '#121110']],
     ],
     // Crawlers that read sites for AI answers; allowed unless the brokerage opts out.
     'ai_crawlers' => ['GPTBot', 'OAI-SearchBot', 'ChatGPT-User', 'PerplexityBot', 'Perplexity-User', 'ClaudeBot', 'Claude-User', 'Claude-SearchBot', 'Google-Extended', 'Applebot-Extended', 'CCBot', 'Bytespider', 'Meta-ExternalAgent'],

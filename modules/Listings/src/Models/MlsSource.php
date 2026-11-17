@@ -43,6 +43,23 @@ final class MlsSource extends Model
 
     public const PROVIDERS = ['mls_grid', 'trestle', 'bridge', 'direct_reso'];
 
+    /**
+     * Ready-made settings per provider (specs/websites/17): HQ only pastes the keys the MLS issued. A blank base URL
+     * or token URL falls back to these; Bridge needs the dataset name at the end of its URL, so it has no default.
+     *
+     * @var array<string, array{base_url: string|null, token_url: string|null, auth: string, help: string}>
+     */
+    public const PRESETS = [
+        'mls_grid' => ['base_url' => 'https://api.mlsgrid.com/v2', 'token_url' => null, 'auth' => 'token',
+            'help' => 'Paste the access token from your MLS Grid account. Add the originating system name (for example "actris") so only that MLS is read.'],
+        'trestle' => ['base_url' => 'https://api-trestle.corelogic.com/trestle/odata', 'token_url' => 'https://api-trestle.corelogic.com/trestle/oidc/connect/token', 'auth' => 'oauth',
+            'help' => 'Paste the client ID and client secret from Trestle. The token address is filled in for you.'],
+        'bridge' => ['base_url' => null, 'token_url' => null, 'auth' => 'token',
+            'help' => 'Use the dataset address Bridge gave you (it ends with the dataset name) and the server token.'],
+        'direct_reso' => ['base_url' => null, 'token_url' => null, 'auth' => 'token',
+            'help' => 'Use the RESO Web API address and the token or client details from the MLS.'],
+    ];
+
     protected $table = 'mls_sources';
 
     protected $fillable = ['key', 'name', 'states', 'provider', 'base_url', 'originating_system', 'credentials', 'status', 'sync_interval_minutes', 'rate_limit_per_hour',

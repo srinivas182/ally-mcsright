@@ -52,6 +52,7 @@ final class HqMlsController
                     'broker_mls_id' => $a->broker_mls_id, 'office_mls_ids' => $a->office_mls_ids ?? [], 'scopes' => $a->scopes, 'status' => $a->status,
                     'expires_on' => $a->expires_on?->toDateString(), 'agreement_ref' => $a->agreement_ref, 'requested' => $a->created_at?->toIso8601String()]),
             'providers' => MlsSource::PROVIDERS,
+            'presets' => MlsSource::PRESETS,
             'scopes' => MlsAuthorization::SCOPES,
         ]);
     }
@@ -61,10 +62,14 @@ final class HqMlsController
         $data = $request->validate([
             'key' => ['required', 'string', 'max:40', 'regex:/^[a-z0-9-]+$/', Rule::unique(Connections::listings().'.mls_sources', 'key')],
             'name' => ['required', 'string', 'max:120'], 'provider' => ['required', Rule::in(MlsSource::PROVIDERS)],
-            'base_url' => ['required', 'url:https', 'max:300'], 'states' => ['required', 'array', 'min:1'], 'states.*' => ['string', 'size:2'],
+            'base_url' => ['nullable', 'url:https', 'max:300'], 'states' => ['required', 'array', 'min:1'], 'states.*' => ['string', 'size:2'],
             'originating_system' => ['nullable', 'string', 'max:60'], 'timezone' => ['required', 'timezone'],
             'sync_interval_minutes' => ['required', 'integer', 'min:1', 'max:1440'], 'rate_limit_per_hour' => ['required', 'integer', 'min:1', 'max:100000'],
         ]);
+        $data['base_url'] = ($data['base_url'] ?? '') !== '' ? $data['base_url'] : MlsSource::PRESETS[$data['provider']]['base_url'];
+        if ($data['base_url'] === null) {
+            return back()->withErrors(['base_url' => 'Enter the address the MLS gave you for this feed.']);
+        }
         $source = MlsSource::query()->create([...$data, 'states' => array_map('strtoupper', $data['states'])]);
         app(AuditLogger::class)->record('listings.mls.source_added', metadata: ['key' => $source->key], severity: 'notice');
 
@@ -88,6 +93,9 @@ final class HqMlsController
     {
         $data = $request->validate(['token' => ['nullable', 'string', 'max:2000'], 'client_id' => ['nullable', 'string', 'max:200'], 'client_secret' => ['nullable', 'string', 'max:500'],
             'token_url' => ['nullable', 'url:https', 'max:300'], 'scope' => ['nullable', 'string', 'max:100']]);
+        if (($data['token_url'] ?? '') === '' && ($data['client_id'] ?? '') !== '') {
+            $data['token_url'] = MlsSource::PRESETS[$source->provider]['token_url'] ?? null;
+        }
         $creds = ($data['token'] ?? '') !== '' ? ['token' => (string) $data['token']]
             : (($data['client_id'] ?? '') !== '' && ($data['token_url'] ?? '') !== '' ? array_filter(['client_id' => $data['client_id'], 'client_secret' => $data['client_secret'] ?? '',
                 'token_url' => $data['token_url'], 'scope' => $data['scope'] ?? 'api']) : null);

@@ -16,6 +16,7 @@ use Modules\Core\Tenancy\TenantContext;
 use Modules\Core\Usage\WebsiteMaps;
 use Modules\Listings\Search\ListingSearch;
 use Modules\Listings\Search\MarketStats;
+use Modules\Listings\Search\PlainSearch;
 use Modules\Sites\Maps;
 use Modules\Sites\Models\Site;
 use Modules\Sites\Rendering\Chrome;
@@ -32,17 +33,26 @@ final class IdxController
     private const PER_PAGE = 24;
 
     /** Query keys a search page keeps in its web address. */
-    private const KEYS = ['q', 'min_price', 'max_price', 'beds', 'baths', 'min_sqft', 'types', 'statuses', 'bounds', 'poly', 'sort', 'page'];
+    private const KEYS = ['heard', 'q', 'min_price', 'max_price', 'beds', 'baths', 'min_sqft', 'types', 'statuses', 'bounds', 'poly', 'sort', 'page'];
 
     public function __construct(private readonly TenantContext $tenants, private readonly ListingSearch $search) {}
 
-    public function search(Request $request): Response
+    public function search(Request $request): Response|RedirectResponse
     {
         $site = $this->site();
         if (! $site instanceof Site) {
             return $site;
         }
         $query = self::query($request);
+        // Plain words ("3 bed homes under 500k in Austin", or in Spanish) become the normal filters in the address,
+        // so the result is the same crawlable page the form makes (specs/websites/17).
+        if (isset($query['q']) && PlainSearch::looksPlain($query['q'])) {
+            $parsed = PlainSearch::parse($query['q']);
+            if ($parsed['understood'] !== [] || $parsed['not_filtered'] !== []) {
+                return redirect($request->getSchemeAndHttpHost().'/homes?'.http_build_query(['heard' => $query['q']] + $parsed['filters'] + Arr::except($query, ['q', 'page', 'heard'])), 302);
+            }
+        }
+        $heard = isset($query['heard']) ? PlainSearch::parse($query['heard']) : null;
         $found = $this->search->search($this->tenants->id(), $query + ['per_page' => self::PER_PAGE]);
         $base = $request->getSchemeAndHttpHost();
         $where = $found['filters']['q'] !== '' ? ' in '.$found['filters']['q'] : '';
@@ -53,6 +63,8 @@ final class IdxController
         return response()->view('sites::idx.search', [
             'site' => $site, 'current' => '/homes', 'found' => $found, 'query' => $query, 'heading' => self::heading($found['total'], $found['filters']['q']),
             'stale' => in_array(true, array_column($found['results'], 'stale'), true),
+            'heard' => $heard === null ? null : ['words' => $query['heard'], 'understood' => PlainSearch::say($heard['understood'], $heard['language']),
+                'not_filtered' => PlainSearch::say($heard['not_filtered'], $heard['language']), 'language' => $heard['language']],
             'pages' => self::pagination($found['total'], $found['page'], $query),
             'seo' => Seo::build($site, $base, '/homes'.($plain && $found['page'] > 1 ? '?page='.$found['page'] : ''), $title, $description, null,
                 $plain && $found['total'] > 0, [['Homes for sale', '/homes']]),

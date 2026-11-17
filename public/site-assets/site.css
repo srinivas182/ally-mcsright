@@ -1,4 +1,4 @@
-/* RightAlly websites — shared markup, ten templates (Aurum, Modern, Hearth, Coastal, Metro; IX1: Estate, Nordic, Heritage, Summit, Atrium). Brand colours come from --brand and --accent. */
+/* RightAlly websites — shared markup, fifteen templates (Aurum, Modern, Hearth, Coastal, Metro; IX1: Estate, Nordic, Heritage, Summit, Atrium; IX2: Villa, Loft, Meadow, Mesa, Ember). Brand colours come from --brand and --accent. */
 :root {
     --bg: #ffffff;
     --surface: #f6f7f9;
@@ -267,6 +267,151 @@
         --text: #e6f0f4;
         --muted: #9db3bf;
         --line: #1c2f39;
+    }
+}
+/* Villa: warm Mediterranean (IX2). */
+.theme-villa {
+    --bg: #fbf6ef;
+    --surface: #f3e9dc;
+    --text: #2f2219;
+    --muted: #6e5a4a;
+    --line: #e6d6c3;
+    --font-head: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+    --font-body:
+        'Source Sans 3', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --radius: 18px;
+    --radius-sm: 10px;
+    --shadow:
+        0 1px 2px rgb(47 34 25 / 0.08), 0 18px 40px -22px rgb(47 34 25 / 0.35);
+    --head-weight: 600;
+    --head-tracking: 0;
+}
+.theme-villa .hero h1 {
+    font-size: clamp(2.6rem, 6vw, 4.8rem);
+}
+.theme-villa .btn {
+    border-radius: 999px;
+}
+/* Loft: industrial and urban (IX2). */
+.theme-loft {
+    --bg: #f1f1ef;
+    --surface: #e4e4e1;
+    --text: #1c1c1c;
+    --muted: #5c5c58;
+    --line: #cfcfcb;
+    --font-head:
+        'Space Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --radius: 0;
+    --radius-sm: 0;
+    --shadow: 6px 6px 0 rgb(28 28 28 / 0.9);
+    --head-weight: 700;
+    --head-tracking: -0.03em;
+}
+.theme-loft .btn {
+    border-radius: 0;
+    border: 2px solid var(--text);
+}
+.theme-loft .card {
+    border: 2px solid var(--text);
+}
+/* Meadow: friendly and soft (IX2). */
+.theme-meadow {
+    --bg: #f6f8f3;
+    --surface: #e9efe4;
+    --text: #22301f;
+    --muted: #5a6a57;
+    --line: #d6e0cf;
+    --font-head: 'Nunito', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-body: 'Nunito', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --radius: 24px;
+    --radius-sm: 14px;
+    --shadow:
+        0 2px 4px rgb(34 48 31 / 0.06), 0 16px 32px -18px rgb(34 48 31 / 0.3);
+    --head-weight: 800;
+    --head-tracking: -0.01em;
+}
+.theme-meadow .btn {
+    border-radius: 999px;
+    padding-inline: 1.6rem;
+}
+/* Mesa: southwest sun (IX2). */
+.theme-mesa {
+    --bg: #faf5ee;
+    --surface: #f1e6d6;
+    --text: #2e2117;
+    --muted: #6d5a48;
+    --line: #e5d5bf;
+    --font-head: 'Zilla Slab', Georgia, 'Times New Roman', serif;
+    --font-body: 'Work Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --radius: 8px;
+    --radius-sm: 6px;
+    --shadow:
+        0 1px 2px rgb(46 33 23 / 0.08), 0 14px 30px -18px rgb(46 33 23 / 0.35);
+    --head-weight: 700;
+    --head-tracking: -0.01em;
+}
+.theme-mesa .site-header {
+    border-bottom: 3px solid var(--accent);
+}
+/* Ember: dark and dramatic, dark in both modes (IX2). */
+.theme-ember {
+    --bg: #121110;
+    --surface: #1c1a18;
+    --text: #f3ede4;
+    --muted: #b9ad9c;
+    --line: #2f2b27;
+    --font-head: 'Bodoni Moda', Georgia, 'Times New Roman', serif;
+    --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --radius: 4px;
+    --radius-sm: 3px;
+    --shadow: 0 24px 60px -30px rgb(0 0 0 / 0.8);
+    --head-weight: 500;
+    --head-tracking: 0;
+    color-scheme: dark;
+}
+.theme-ember .btn-primary {
+    color: #121110;
+}
+.theme-ember .brand,
+.theme-ember .nav a {
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+}
+@media (prefers-color-scheme: dark) {
+    .theme-villa {
+        --bg: #17110d;
+        --surface: #211912;
+        --text: #f5ebe0;
+        --muted: #c2ad98;
+        --line: #36291f;
+    }
+    .theme-loft {
+        --bg: #121212;
+        --surface: #1b1b1b;
+        --text: #f1f1ef;
+        --muted: #a8a8a3;
+        --line: #2e2e2c;
+        --shadow: 6px 6px 0 rgb(241 241 239 / 0.85);
+    }
+    .theme-loft .btn,
+    .theme-loft .card {
+        border-color: var(--text);
+    }
+    .theme-meadow {
+        --bg: #111610;
+        --surface: #182017;
+        --text: #e9f0e6;
+        --muted: #a5b5a1;
+        --line: #263224;
+    }
+    .theme-mesa {
+        --bg: #16110c;
+        --surface: #201811;
+        --text: #f4e9dc;
+        --muted: #bfa98f;
+        --line: #352a1f;
     }
 }
 @media (prefers-color-scheme: dark) {
@@ -2239,4 +2384,15 @@ h3 {
     color: var(--text);
     font-size: 1rem;
     line-height: 1.5;
+}
+
+/* IX2: "we searched for" line under plain-words searches (specs/websites/17). */
+.heard {
+    margin: 0 0 1rem;
+    font-size: 1.05rem;
+    line-height: 1.55;
+    color: var(--muted);
+}
+.heard strong {
+    color: var(--text);
 }
