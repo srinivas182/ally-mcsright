@@ -24,6 +24,7 @@ Schedule::command('ai:cost-watch')->dailyAt('06:10')->onOneServer();
 Schedule::command('billing:affiliates-settle')->dailyAt('06:20')->onOneServer();
 Schedule::command('network:expire')->hourlyAt(17)->onOneServer(); // AR1
 Schedule::command('network:trust')->dailyAt('05:40')->onOneServer(); // AR2
+Schedule::command('cells:watch')->everyTenMinutes()->onOneServer(); // PS1
 // Collect finished AI batches and purge stored results after 7 days (specs/ai/01).
 Schedule::command('ai:batches:collect')->everyTenMinutes()->onOneServer();
 // Cap periods reconcile with their entries (specs/compensation/01).

@@ -27,7 +27,7 @@ final class SafeguardsDaily extends Command
     {
         $this->info($moves->cleanUp().' old cop(ies) removed.');
         $main = DB::connection(Connections::cell());
-        foreach (Cell::query()->where('dedicated', true)->get() as $cell) {
+        foreach (Cell::query()->where(fn ($q) => $q->where('dedicated', true)->orWhereNotNull('credentials'))->get() as $cell) { // PS1: shared cells added from HQ too
             try {
                 $r = Structure::sync($main, DB::connection(DatabaseMoves::name($cell)), BrokerageExport::tables());
                 $this->info("{$cell->name}: {$r['tables']} table(s), {$r['columns']} column(s) added.");

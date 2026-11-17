@@ -8,6 +8,7 @@ use Modules\Core\Http\Controllers\Hq\TenantController;
 use Modules\Core\Http\Middleware\EnsureHqConsole;
 use Modules\Core\Identity\Http\Controllers\ImpersonationController;
 use Modules\Core\Safeguards\Http\HqDataController;
+use Modules\Core\Scale\Http\CellsController;
 
 /*
 | HQ console (served only on the HQ host; see EnsureHqConsole).
@@ -16,6 +17,12 @@ Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.tenants.manage
     ->prefix('hq')
     ->name('hq.')
     ->group(function (): void {
+        // PS1 (specs/core/14): cells, how full they are, and adding one.
+        Route::get('cells', [CellsController::class, 'index'])->name('cells');
+        Route::post('cells', [CellsController::class, 'store'])->middleware('password.confirm')->name('cells.store');
+        Route::post('cells/{cell:ulid}/prepare', [CellsController::class, 'prepare'])->name('cells.prepare');
+        Route::post('cells/{cell:ulid}/status', [CellsController::class, 'status'])->middleware('password.confirm')->name('cells.status');
+        Route::post('cells/{cell:ulid}/capacity', [CellsController::class, 'capacity'])->name('cells.capacity');
         Route::get('tenants', [TenantController::class, 'index'])->name('tenants.index');
         Route::get('tenants/create', [TenantController::class, 'create'])->name('tenants.create');
         Route::post('tenants', [TenantController::class, 'store'])->name('tenants.store');

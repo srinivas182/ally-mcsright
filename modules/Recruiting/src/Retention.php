@@ -41,12 +41,14 @@ final class Retention
         $db = DB::connection(Connections::cell());
         $checkins = $db->table('rec_checkins')->where('tenant_id', $this->tenants->id())->groupBy('user_id')->selectRaw('user_id, max(created_at) as last')->pluck('last', 'user_id');
         $out = [];
-        foreach (User::query()->where('kind', UserKind::Agent)->where('status', 'active')->where('created_at', '<=', $today->subDays(90))->orderBy('first_name')->get() as $agent) {
+        $agents = User::query()->where('kind', UserKind::Agent)->where('status', 'active')->where('created_at', '<=', $today->subDays(90))->orderBy('first_name')->get();
+        $facts = $this->facts(array_values($agents->pluck('id')->map(fn ($id): int => (int) $id)->all()), $today); // PS1: three queries for everyone
+        foreach ($agents as $agent) {
             $last = $checkins->get($agent->id);
             if ($last !== null && CarbonImmutable::parse((string) $last)->gt($today->subDays(self::QUIET_DAYS))) {
                 continue;
             }
-            [$score, $reasons] = $this->score($agent, $today);
+            [$score, $reasons] = $this->score($agent, $today, $facts[$agent->id]);
             if ($score < self::SHOW_FROM) {
                 continue;
             }
@@ -60,14 +62,13 @@ final class Retention
     }
 
     /**
+     * @param  array{now: int, before: int, opened: bool}|null  $facts  the deal counts, when already fetched for many agents
      * @return array{0: int, 1: list<string>}
      */
-    public function score(User $agent, CarbonImmutable $today): array
+    public function score(User $agent, CarbonImmutable $today, ?array $facts = null): array
     {
-        $closed = fn (CarbonImmutable $from, CarbonImmutable $to): int => Deal::query()->where('agent_user_id', $agent->id)->where('status', 'closed')
-            ->whereBetween('closed_on', [$from->toDateString(), $to->toDateString()])->count();
-        $now = $closed($today->subYear()->addDay(), $today);
-        $before = $closed($today->subYears(2)->addDay(), $today->subYear());
+        $facts ??= $this->facts([$agent->id], $today)[$agent->id];
+        ['now' => $now, 'before' => $before, 'opened' => $opened] = $facts;
         $score = 0;
         $reasons = [];
         if ($before >= 3 && $now * 10 <= $before * 7) {
@@ -89,13 +90,34 @@ final class Retention
             $score += 15;
             $reasons[] = "{$years} year".($years === 1 ? '' : 's').' here on '.$anniversary->toFormattedDateString().': a natural time to talk about their plan.';
         }
-        $opened = Deal::query()->where('agent_user_id', $agent->id)->where('created_at', '>=', $today->subDays(90))->exists();
         if (! $opened && $before + $now > 0) {
             $score += 20;
             $reasons[] = 'No new deal in the last 90 days.';
         }
 
         return [min(100, $score), $reasons];
+    }
+
+    /**
+     * The deal counts behind the score, for many agents in three queries (PS1).
+     *
+     * @param  list<int>  $agentIds
+     * @return array<int, array{now: int, before: int, opened: bool}>
+     */
+    public function facts(array $agentIds, CarbonImmutable $today): array
+    {
+        $closed = fn (CarbonImmutable $from, CarbonImmutable $to): array => Deal::query()->whereIn('agent_user_id', $agentIds)->where('status', 'closed')
+            ->whereBetween('closed_on', [$from->toDateString(), $to->toDateString()])->groupBy('agent_user_id')->selectRaw('agent_user_id as k, count(*) as n')->pluck('n', 'k')->all();
+        $now = $closed($today->subYear()->addDay(), $today);
+        $before = $closed($today->subYears(2)->addDay(), $today->subYear());
+        $opened = array_flip(Deal::query()->whereIn('agent_user_id', $agentIds)->where('created_at', '>=', $today->subDays(90))->distinct()->pluck('agent_user_id')
+            ->map(fn ($id): int => (int) $id)->all());
+        $out = [];
+        foreach ($agentIds as $id) {
+            $out[$id] = ['now' => (int) ($now[$id] ?? 0), 'before' => (int) ($before[$id] ?? 0), 'opened' => isset($opened[$id])];
+        }
+
+        return $out;
     }
 
     public function checkIn(User $agent, User $by, ?string $note): void

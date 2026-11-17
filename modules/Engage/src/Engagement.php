@@ -31,15 +31,22 @@ final class Engagement
     {
         $today ??= CarbonImmutable::today();
         $out = [];
-        foreach (User::query()->where('kind', UserKind::Agent->value)->where('status', UserStatus::Active->value)->orderBy('first_name')->get() as $a) {
-            [$risk, $reasons] = $this->retention->score($a, $today);
+        $agents = User::query()->where('kind', UserKind::Agent->value)->where('status', UserStatus::Active->value)->orderBy('first_name')->get();
+        $ids = array_values($agents->pluck('id')->map(fn ($id): int => (int) $id)->all());
+        // PS1: one grouped count per measure instead of five queries per agent.
+        $count = static fn ($q, string $col): array => $q->whereIn($col, $ids)->groupBy($col)->selectRaw("{$col} as k, count(*) as n")->pluck('n', 'k')->all();
+        $outreach = $count(Activity::query()->where('direction', 'out')->where('occurred_at', '>=', $today->subDays(7)), 'user_id');
+        $tasks = $count(Task::query()->where('completed_at', '>=', $today->subDays(7)), 'completed_by');
+        $deals = $count(Deal::query()->where('created_at', '>=', $today->subDays(30)), 'agent_user_id');
+        $courses = $count(Enrolment::query()->where('completed_at', '>=', $today->subDays(90)), 'user_id');
+        $practice = $count(RolePlaySession::query()->whereNotNull('finished_at')->where('finished_at', '>=', $today->subDays(30)), 'user_id');
+        $facts = $this->retention->facts($ids, $today);
+        foreach ($agents as $a) {
+            [$risk, $reasons] = $this->retention->score($a, $today, $facts[$a->id]);
             $active = $a->last_active_at ?? $a->last_login_at;
             $out[] = ['id' => $a->id, 'name' => (string) $a->name, 'last_active' => $active !== null ? CarbonImmutable::parse((string) $active)->toDateString() : null,
-                'outreach_7d' => Activity::query()->where('user_id', $a->id)->where('direction', 'out')->where('occurred_at', '>=', $today->subDays(7))->count(),
-                'tasks_7d' => Task::query()->where('completed_by', $a->id)->where('completed_at', '>=', $today->subDays(7))->count(),
-                'deals_30d' => Deal::query()->where('agent_user_id', $a->id)->where('created_at', '>=', $today->subDays(30))->count(),
-                'courses_90d' => Enrolment::query()->where('user_id', $a->id)->where('completed_at', '>=', $today->subDays(90))->count(),
-                'practice_30d' => RolePlaySession::query()->where('user_id', $a->id)->whereNotNull('finished_at')->where('finished_at', '>=', $today->subDays(30))->count(),
+                'outreach_7d' => (int) ($outreach[$a->id] ?? 0), 'tasks_7d' => (int) ($tasks[$a->id] ?? 0), 'deals_30d' => (int) ($deals[$a->id] ?? 0),
+                'courses_90d' => (int) ($courses[$a->id] ?? 0), 'practice_30d' => (int) ($practice[$a->id] ?? 0),
                 'risk' => $risk, 'reasons' => $reasons];
         }
         usort($out, fn (array $x, array $y): int => [$y['risk'], $x['name']] <=> [$x['risk'], $y['name']]);

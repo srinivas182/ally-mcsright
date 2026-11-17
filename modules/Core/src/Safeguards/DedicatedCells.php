@@ -44,10 +44,13 @@ final class DedicatedCells
         return $cell;
     }
 
-    /** Registers the cell's connection (once per process) and returns its name, or null for a shared cell. */
+    /**
+     * Registers the cell's connection (once per process) and returns its name, or null for a cell configured in the
+     * app's own config. Shared cells added from HQ (PS1) carry their own details too.
+     */
     public static function register(Cell $cell): ?string
     {
-        if (! (bool) $cell->getAttribute('dedicated') || ! is_string($cell->getAttribute('credentials'))) {
+        if (! is_string($cell->getAttribute('credentials'))) {
             return null;
         }
         $name = 'cell_'.$cell->id;

@@ -113,7 +113,14 @@ final class Recognitions
         $today ??= CarbonImmutable::today();
         $sent = Recognition::query()->where('created_at', '>=', $today->subDays(60))->get()->map(fn (Recognition $r): string => $r->to_user_id.':'.$r->occasion)->all();
         $out = [];
-        foreach (User::query()->where('kind', UserKind::Agent->value)->where('status', UserStatus::Active->value)->get() as $a) {
+        $agents = User::query()->where('kind', UserKind::Agent->value)->where('status', UserStatus::Active->value)->get();
+        // PS1: closings for every agent in two queries instead of two per agent.
+        $closedThisYear = Deal::query()->whereIn('agent_user_id', $agents->pluck('id')->all())->where('status', 'closed')->whereYear('closed_on', $today->year)
+            ->orderBy('closed_on')->get(['agent_user_id', 'closed_on'])->groupBy('agent_user_id');
+        $everClosed = Deal::query()->whereIn('agent_user_id', $agents->pluck('id')->all())->where('status', 'closed')->groupBy('agent_user_id')
+            ->selectRaw('agent_user_id as k, count(*) as n')->pluck('n', 'k');
+        $launches = Launch::query()->whereIn('user_id', $agents->pluck('id')->all())->whereNotNull('finished_at')->get()->keyBy('user_id');
+        foreach ($agents as $a) {
             $add = function (string $occasion, CarbonImmutable $when, string $suggestion) use (&$out, $a, $sent): void {
                 if (! in_array($a->id.':'.$occasion, $sent, true)) {
                     $out[] = ['user_id' => $a->id, 'name' => (string) $a->name, 'occasion' => $occasion, 'label' => self::OCCASIONS[$occasion], 'when' => $when->toDateString(),
@@ -126,8 +133,8 @@ final class Recognitions
             if ($years >= 1 && abs($today->diffInDays($anniversary, false)) <= 14) {
                 $add('anniversary', $anniversary, "Happy {$years}-year anniversary, {$a->first_name}! Thank you for everything you bring to our office.");
             }
-            $closed = Deal::query()->where('agent_user_id', $a->id)->where('status', 'closed')->whereYear('closed_on', $today->year)->orderBy('closed_on')->pluck('closed_on')->values();
-            $ever = Deal::query()->where('agent_user_id', $a->id)->where('status', 'closed')->count();
+            $closed = ($closedThisYear[$a->id] ?? collect())->pluck('closed_on')->values();
+            $ever = (int) ($everClosed[$a->id] ?? 0);
             foreach ([1 => 'first_closing', 5 => 'closings_5', 10 => 'closings_10', 25 => 'closings_25'] as $n => $occasion) {
                 $on = $closed->get($n - 1);
                 if ($on === null || ($n === 1 && $ever > 1)) {
@@ -139,7 +146,7 @@ final class Recognitions
                         : "{$n} closings this year, {$a->first_name}! That is real work and it shows. Thank you.");
                 }
             }
-            $launch = Launch::query()->where('user_id', $a->id)->whereNotNull('finished_at')->first();
+            $launch = $launches->get($a->id);
             if ($launch !== null && $launch->finished_at !== null && $launch->finished_at->gte($today->subDays(14))) {
                 $add('launch', $launch->finished_at, "You finished your first 30 days, {$a->first_name}. Well done, and welcome properly to the team.");
             }
