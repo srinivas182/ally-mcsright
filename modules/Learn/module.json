@@ -1,0 +1,9 @@
+{
+    "id": "learn",
+    "name": "Learn",
+    "version": "0.1.0",
+    "provider": "Modules\\Learn\\LearnServiceProvider",
+    "depends": ["core", "ai", "team"],
+    "entitlement": null,
+    "description": "Training and the brokerage knowledge base (LN1), Learn-IQ courses (LN2) and the AI role-play academy (LN3), specs/learn."
+}

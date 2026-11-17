@@ -12,6 +12,7 @@ use Modules\Core\CoreServiceProvider;
 use Modules\Crm\CrmServiceProvider;
 use Modules\Forms\FormsServiceProvider;
 use Modules\Insights\InsightsServiceProvider;
+use Modules\Learn\LearnServiceProvider;
 use Modules\Ledger\LedgerServiceProvider;
 use Modules\Listings\ListingsServiceProvider;
 use Modules\ListIq\ListIqServiceProvider;
@@ -50,4 +51,5 @@ return [
     ListIqServiceProvider::class,
     InsightsServiceProvider::class,
     TeamServiceProvider::class,
+    LearnServiceProvider::class,
 ];

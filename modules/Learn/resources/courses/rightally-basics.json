@@ -1,0 +1,60 @@
+{
+    "title": "RightAlly in 20 minutes",
+    "summary": "The everyday screens: your day, your leads, your deals and your money.",
+    "minutes": 20,
+    "pass_mark": 80,
+    "lessons": [
+        {
+            "title": "Your day starts on Today",
+            "kind": "text",
+            "body": "**Today** lists your calls, tasks and deadlines, most urgent first. Open it every morning.\n\n- Press a task to do it, then mark it done.\n- **Today's 10** picks ten people worth a call today, and says why.\n- Red items are due today or late."
+        },
+        {
+            "title": "Leads: call within five minutes",
+            "kind": "text",
+            "body": "New leads land in **Leads**, from your website, Zillow, Realtor.com, Homes.com and Facebook.\n\nPress **Call** to be connected straight away. Leads called within five minutes talk to you far more often. After the call, choose what happened, and RightAlly sets the next step."
+        },
+        {
+            "title": "Deals and documents",
+            "kind": "text",
+            "body": "Open a deal and press **Upload a whole file**. DocIQ reads it, scans too, files each document into the checklist, and finds the key dates.\n\nUnder each document you can **explain it in plain English or Spanish**, see **what changed** from the last version, or make a **safe link** for a lender."
+        },
+        {
+            "title": "Getting paid",
+            "kind": "text",
+            "body": "**My money** shows each deal's commission, your split and fees, and what you will be paid. Keep your W-9 up to date there so your brokerage can send your 1099."
+        },
+        {
+            "title": "Check what you learned",
+            "kind": "quiz",
+            "questions": [
+                {
+                    "q": "Where do you see the calls and tasks for your day?",
+                    "options": ["Today", "Reports", "Apps"],
+                    "answer": 0,
+                    "why": "Today lists your calls, tasks and deadlines, most urgent first."
+                },
+                {
+                    "q": "How fast should you call a new lead?",
+                    "options": [
+                        "Within five minutes",
+                        "Within a day",
+                        "Within a week"
+                    ],
+                    "answer": 0,
+                    "why": "Leads called within five minutes are far more likely to talk to you."
+                },
+                {
+                    "q": "How do you share a contract with a lender without Social Security numbers showing?",
+                    "options": [
+                        "Email the PDF",
+                        "Make a safe link",
+                        "Print it"
+                    ],
+                    "answer": 1,
+                    "why": "A safe link opens a copy with sensitive numbers blacked out, and it stops working after the days you choose."
+                }
+            ]
+        }
+    ]
+}
