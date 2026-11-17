@@ -52,6 +52,8 @@ import {
     Megaphone,
     Filter,
     Mail,
+    MessageCircle,
+    LifeBuoy,
 } from 'lucide-react';
 
 /** Icons the server may name for menu items. Unknown names fall back to a dot. */
@@ -107,6 +109,8 @@ const icons: Record<string, LucideIcon> = {
     megaphone: Megaphone,
     filter: Filter,
     mail: Mail,
+    'message-circle': MessageCircle,
+    'life-buoy': LifeBuoy,
 };
 
 export function NavIcon({
