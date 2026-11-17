@@ -12,13 +12,16 @@ use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Tenancy\Attributes\CrossTenantAccess;
 use Modules\Core\Tenancy\CrossTenant;
 use Modules\Listings\Access\MlsAccess;
+use Modules\Listings\FeedDelayedNotice;
+use Modules\Listings\Models\MlsAuthorization;
 use Modules\Listings\Models\MlsSource;
 use Modules\Listings\StaleFeedAlert;
 use Modules\Listings\Sync\ListingSync;
 
 /**
  * Daily removal checks for each MLS, expired licences, and (every run) an alert to HQ when a feed is more than 30
- * minutes behind (at most once an hour per MLS).
+ * minutes behind (at most once an hour per MLS). When a feed is more than an hour behind, the owners of each brokerage
+ * licensed on it get a plain-words note too (at most once every six hours; specs/websites/16).
  */
 #[CrossTenantAccess('Emails RightAlly HQ staff when an MLS feed falls behind')]
 final class ReconcileListings extends Command
@@ -47,8 +50,23 @@ final class ReconcileListings extends Command
             if (($behind === null || $behind > 30) && Cache::add('mls-stale-alert:'.$source->id, 1, 3600) && $hq->isNotEmpty()) {
                 Notification::send($hq, new StaleFeedAlert($source->name, $behind, $source->last_error));
             }
+            if (($behind === null || $behind > 60) && Cache::add('mls-stale-owners:'.$source->id, 1, 6 * 3600)) {
+                $this->tellOwners($source, $behind);
+            }
         }
 
         return self::SUCCESS;
+    }
+
+    private function tellOwners(MlsSource $source, ?int $behind): void
+    {
+        $tenants = MlsAuthorization::query()->where('mls_source_id', $source->id)->where('status', 'active')->pluck('tenant_id')->unique()->all();
+        if ($tenants === []) {
+            return;
+        }
+        $owners = CrossTenant::query(User::class, $this)->whereIn('tenant_id', $tenants)->where('kind', UserKind::Owner)->where('status', 'active')->get();
+        if ($owners->isNotEmpty()) {
+            Notification::send($owners, new FeedDelayedNotice($source->name, $behind));
+        }
     }
 }

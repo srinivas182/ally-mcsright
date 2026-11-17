@@ -16,6 +16,7 @@ use Modules\Crm\Models\Lead;
 use Modules\Listings\Access\MlsAccess;
 use Modules\Listings\Feed\FakeResoFeed;
 use Modules\Listings\Feed\ResoFeed;
+use Modules\Listings\FeedDelayedNotice;
 use Modules\Listings\Models\Listing;
 use Modules\Listings\Models\MlsAuthorization;
 use Modules\Listings\Models\MlsSource;
@@ -210,4 +211,36 @@ it('shows maps once HQ adds a Mapbox public token, and refuses secret tokens', f
     expect(fn () => app(Maps::class)->save('not-a-token', $admin))->toThrow(ValidationException::class);
     app(Maps::class)->save('', $admin);
     expect(app(Maps::class)->token())->toBeNull();
+});
+
+/* IX1: designs 6–10 and feed freshness (specs/websites/16). */
+
+it('offers ten website designs, each with its own styles', function (): void {
+    $templates = config('sites.templates');
+    expect(array_keys($templates))->toContain('estate', 'nordic', 'heritage', 'summit', 'atrium')->and(count($templates))->toBeGreaterThanOrEqual(10);
+    $css = (string) file_get_contents(public_path('site-assets/site.css'));
+    foreach (array_keys($templates) as $key) {
+        expect($css)->toContain('.theme-'.$key.' {');
+        expect($templates[$key]['brand']['primary'])->toMatch('/^#[0-9a-f]{6}$/i');
+    }
+
+    $this->actingAs($this->owner)->patch('/settings/website', ['template' => 'estate', 'ai_crawlers' => true, 'brand' => ['primary' => '#1f3a33', 'accent' => '#b08d57']])->assertSessionHasNoErrors();
+    $html = (string) $this->get($this->web.'/homes')->assertOk()->getContent();
+    expect($html)->toContain('class="theme-estate"')->toContain('Playfair+Display')->toContain('site.css?v=6');
+});
+
+it('tells visitors and brokerage owners when the MLS feed runs late', function (): void {
+    expect((string) $this->get($this->web.'/homes')->getContent())->not->toContain('data-stale');
+
+    $this->travel(13)->hours();
+    expect((string) $this->get($this->web.'/homes')->assertOk()->getContent())->toContain('data-stale')->toContain('Listing updates are running a little late');
+
+    $this->artisan('listings:reconcile', ['--freshness-only' => true])->assertSuccessful();
+    Notification::assertSentTo($this->owner, FeedDelayedNotice::class, fn ($n): bool => $n->mls === 'ACTRIS' && $n->minutes >= 60);
+    $mail = (new FeedDelayedNotice('ACTRIS', 780))->toMail($this->owner);
+    expect($mail->subject)->toBe('Your ACTRIS listings are running late')->and(implode(' ', $mail->introLines))->toContain('13 hours');
+
+    // Once every six hours at most.
+    $this->artisan('listings:reconcile', ['--freshness-only' => true])->assertSuccessful();
+    Notification::assertSentToTimes($this->owner, FeedDelayedNotice::class, 1);
 });
