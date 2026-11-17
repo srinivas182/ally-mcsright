@@ -9,7 +9,7 @@ use Modules\AI\Data\AiTask;
 use Modules\Crm\Actions\ManageContacts;
 
 /**
- * Reads a forwarded lead email (specs/grow/04). Zillow, Realtor.com and Homes.com are recognised by sender
+ * Reads a forwarded lead email (specs/grow/04). Zillow, Realtor.com (and Opcity), Homes.com (and Homesnap) and Facebook lead ads are recognised by sender
  * and read with labelled-field parsing; anything else (or a portal email the parser can't fully read) goes
  * to AI. Whatever the reader, a name, email or phone number is only kept if it appears in the email itself.
  */
@@ -17,10 +17,11 @@ final class PortalEmail
 {
     public const FEATURE = 'crm.lead_email';
 
-    private const PORTALS = ['zillow.com' => 'zillow', 'trulia.com' => 'zillow', 'realtor.com' => 'realtor_com', 'move.com' => 'realtor_com', 'homes.com' => 'homes_com'];
+    private const PORTALS = ['zillow.com' => 'zillow', 'trulia.com' => 'zillow', 'realtor.com' => 'realtor_com', 'move.com' => 'realtor_com', 'opcity.com' => 'realtor_com', 'homes.com' => 'homes_com',
+        'homesnap.com' => 'homes_com', 'facebookmail.com' => 'facebook'];
 
     /** Addresses that belong to the portal or to us, never the lead's. */
-    private const NOT_LEAD = '/(noreply|no-reply|donotreply|do-not-reply|notifications?|leads?|alerts?|support|info|premieragent|mailer)@|@(zillow|trulia|realtor|move|homes|rightally)\./i';
+    private const NOT_LEAD = '/(noreply|no-reply|donotreply|do-not-reply|notifications?|leads?|alerts?|support|info|premieragent|mailer)@|@(zillow|trulia|realtor|move|opcity|homes|homesnap|facebookmail|rightally)\./i';
 
     public function __construct(private readonly AiGateway $gateway) {}
 

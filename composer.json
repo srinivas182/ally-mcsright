@@ -62,6 +62,7 @@
             "Modules\\Movewise\\": "modules/Movewise/src/",
             "Modules\\Appointments\\": "modules/Appointments/src/",
             "Modules\\Outreach\\": "modules/Outreach/src/",
+            "Modules\\Team\\": "modules/Team/src/",
             "Modules\\Recruiting\\": "modules/Recruiting/src/",
             "Modules\\Pricing\\": "modules/Pricing/src/",
             "Modules\\ListIq\\": "modules/ListIq/src/",

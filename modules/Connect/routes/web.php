@@ -12,6 +12,7 @@ use Modules\Connect\Http\HqAppsController;
 use Modules\Connect\Http\McpConsentController;
 use Modules\Connect\Http\OAuthController;
 use Modules\Connect\Http\WebhookInController;
+use Modules\Connect\Http\ZapierController;
 use Modules\Connect\Mcp\RightAllyServer;
 use Modules\Core\Http\Middleware\EnsureHqConsole;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
@@ -88,3 +89,11 @@ Route::domain((string) config('core.sso_host'))->middleware('throttle:1200,1')->
 // The one address the sign-in services send people back to, for every brokerage (specs/connect/02).
 Route::domain((string) config('core.sso_host'))->middleware(['web', 'throttle:30,1'])
     ->get('connect/oauth/callback', [OAuthController::class, 'callback'])->name('connect.oauth.callback');
+
+// Zapier and Make, ready to use (CH1, specs/connect/22): key check, instant-trigger subscriptions and sample data.
+Route::middleware(['tenant', EnsureTenantWorkspace::class, 'throttle:120,1,zapier'])->prefix('api/zapier')->name('connect.zapier.')->group(function (): void {
+    Route::get('me', [ZapierController::class, 'me'])->name('me');
+    Route::post('hooks', [ZapierController::class, 'subscribe'])->name('subscribe');
+    Route::delete('hooks/{hook}', [ZapierController::class, 'unsubscribe'])->where('hook', '[0-9A-HJKMNP-TV-Z]{26}')->name('unsubscribe');
+    Route::get('samples/{event}', [ZapierController::class, 'sample'])->where('event', '[a-z._]{3,40}')->name('sample');
+});

@@ -1,0 +1,9 @@
+{
+    "id": "team",
+    "name": "Team",
+    "version": "0.1.0",
+    "provider": "Modules\\Team\\TeamServiceProvider",
+    "depends": ["core"],
+    "entitlement": null,
+    "description": "Team chat, the help centre and support requests (CH1, specs/team/01)."
+}

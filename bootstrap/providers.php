@@ -22,6 +22,7 @@ use Modules\Pricing\PricingServiceProvider;
 use Modules\Recruiting\RecruitingServiceProvider;
 use Modules\Roster\RosterServiceProvider;
 use Modules\Sites\SitesServiceProvider;
+use Modules\Team\TeamServiceProvider;
 use Modules\Transactions\TransactionsServiceProvider;
 
 return [
@@ -48,4 +49,5 @@ return [
     PricingServiceProvider::class,
     ListIqServiceProvider::class,
     InsightsServiceProvider::class,
+    TeamServiceProvider::class,
 ];
