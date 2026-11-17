@@ -631,6 +631,13 @@ final class Catalog
                     'Read ElevenLabs\' terms for voice cloning: RightAlly collects each agent\'s written and spoken consent before their voice is made, and deletes it when they withdraw.',
                     'Copy the API key here and switch AI voice-overs on. Enter the real cost per narration under HQ → Costs (studio.voice).'],
                 'partner' => 'ElevenLabs bills RightAlly per character spoken and per plan.', 'docs' => 'https://elevenlabs.io/docs/api-reference']));
+        $catalog->add(new App('listing_staging', 'Virtual staging', 'marketing', 'Furnishes empty rooms in listing photos, always labelled "Virtually staged", with the original kept.',
+            scope: 'both', auth: 'link', syncs: ['Staged copies of listing photos in List-IQ, labelled'], link: '/list-iq', vendorCost: 'Credits per staged photo',
+            setup: ['needs' => 'keys', 'fields' => [['key' => 'api_token', 'label' => 'Replicate API token', 'secret' => true],
+                ['key' => 'model_version', 'label' => 'Interior staging model version id']],
+                'steps' => ['Open a Replicate account for RightAlly and add billing.', 'Test an interior-design model that keeps walls, windows and floors as they are; copy its version id.',
+                    'Switch Virtual staging on; set the credit price under HQ → Credits (listiq.staging).'],
+                'partner' => 'Replicate bills RightAlly per second of compute.', 'docs' => 'https://replicate.com/docs']));
         $catalog->add(new App('studio_upscale', 'Photo upscaling', 'marketing', 'Doubles the size of enhanced photos with AI, so posts and Stories stay razor sharp.',
             scope: 'both', auth: 'link', syncs: ['Enhanced photos at twice the size'], link: '/studio/photos', vendorCost: 'Included with Ally Studio packages',
             setup: ['needs' => 'keys', 'fields' => [['key' => 'api_token', 'label' => 'Replicate API token', 'secret' => true],

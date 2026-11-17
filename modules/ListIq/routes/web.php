@@ -1,0 +1,23 @@
+<?php
+
+declare(strict_types=1);
+
+use Illuminate\Support\Facades\Route;
+use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
+use Modules\ListIq\Http\ListIqController;
+
+// List-IQ (specs/listings/02).
+Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('list-iq')->name('listiq.')->group(function (): void {
+    Route::get('/', [ListIqController::class, 'index'])->name('index');
+    Route::post('/', [ListIqController::class, 'store'])->name('store');
+    Route::get('{prep}', [ListIqController::class, 'show'])->name('show');
+    Route::patch('{prep}', [ListIqController::class, 'update'])->name('update');
+    Route::post('{prep}/photos', [ListIqController::class, 'upload'])->middleware('throttle:30,1')->name('photos.upload');
+    Route::post('{prep}/photos/order', [ListIqController::class, 'reorder'])->name('photos.order');
+    Route::patch('{prep}/photos/{photo}', [ListIqController::class, 'photo'])->name('photos.update');
+    Route::post('{prep}/photos/{photo}/enhance', [ListIqController::class, 'enhance'])->middleware('throttle:30,1')->name('photos.enhance');
+    Route::post('{prep}/photos/{photo}/stage', [ListIqController::class, 'stage'])->middleware('throttle:20,1')->name('photos.stage');
+    Route::post('{prep}/describe', [ListIqController::class, 'write'])->middleware(['throttle:10,1', 'feature:crm.ai'])->name('describe');
+    Route::post('{prep}/translate', [ListIqController::class, 'translate'])->middleware(['throttle:10,1', 'feature:crm.ai'])->name('translate');
+    Route::get('{prep}/package', [ListIqController::class, 'package'])->middleware('throttle:10,1')->name('package');
+});

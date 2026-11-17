@@ -83,6 +83,7 @@ it('sends every brokerage page the data its component needs', function (string $
     'recruiting: results' => ['owner', '/recruiting/results', 'recruiting/results'],
     'pricing' => ['agent', '/pricing', 'pricing/index'],
     'pricing: buyer estimate' => ['agent', '/pricing/buyer', 'pricing/buyer'],
+    'list-iq' => ['agent', '/list-iq', 'listiq/index'],
     'apps (agent)' => ['agent', '/apps', 'apps/index'],
     'an app: webhooks' => ['owner', '/apps/webhooks', 'apps/show'],
     'an app: lead forwarding email' => ['owner', '/apps/lead_email', 'apps/show'],
