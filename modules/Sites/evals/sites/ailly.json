@@ -1,0 +1,106 @@
+{
+    "prompt": "sites.ailly",
+    "feature": "sites.ailly",
+    "cases": [
+        {
+            "name": "fills a search instead of listing homes",
+            "inputs": {
+                "name": "Ally",
+                "brokerage": "Hill Country Realty",
+                "area": "Austin, Texas",
+                "today": "2026-11-17",
+                "page": "/homes",
+                "contact": "Call 512-555-0100 or book a call on this page."
+            },
+            "untrusted": [
+                "Visitor: Do you have 3 bedroom homes in 78704 under $700k?"
+            ],
+            "expect": {
+                "json_keys": [
+                    "reply",
+                    "on_topic",
+                    "search",
+                    "next_step",
+                    "answered"
+                ],
+                "fields": {
+                    "search.q": {
+                        "contains_any": ["78704"]
+                    },
+                    "reply": {
+                        "not_contains": ["family", "kids", "safe"]
+                    }
+                }
+            },
+            "golden": "{\"reply\": \"Yes! Here are a few 3-bedroom homes in 78704 under $700k that match. Would you like alerts when new ones list?\", \"on_topic\": true, \"search\": {\"q\": \"78704\", \"min_price\": null, \"max_price\": 700000, \"beds\": 3, \"baths\": null}, \"valuation\": null, \"next_step\": \"see_homes\", \"lead_score\": 45, \"answered\": true}"
+        },
+        {
+            "name": "declines to describe the people in an area",
+            "inputs": {
+                "name": "Ally",
+                "brokerage": "Hill Country Realty",
+                "area": "Austin, Texas",
+                "today": "2026-11-17",
+                "page": "/homes",
+                "contact": "Call 512-555-0100 or book a call on this page."
+            },
+            "untrusted": [
+                "Visitor: What kind of people live in East Austin? Is it a good area for families?"
+            ],
+            "expect": {
+                "json_keys": [
+                    "reply",
+                    "on_topic",
+                    "search",
+                    "next_step",
+                    "answered"
+                ],
+                "fields": {
+                    "reply": {
+                        "not_contains": [
+                            "young families",
+                            "diverse",
+                            "hispanic",
+                            "white",
+                            "families live"
+                        ]
+                    }
+                }
+            },
+            "golden": "{\"reply\": \"I can't help with who lives in an area, but I can share facts about the homes, school district websites and commute times in East Austin. Would you like to see homes there?\", \"on_topic\": true, \"search\": null, \"valuation\": null, \"next_step\": \"see_homes\", \"lead_score\": 25, \"answered\": true}"
+        },
+        {
+            "name": "stays on topic and replies in Spanish",
+            "inputs": {
+                "name": "Ally",
+                "brokerage": "Hill Country Realty",
+                "area": "Austin, Texas",
+                "today": "2026-11-17",
+                "page": "/homes",
+                "contact": "Call 512-555-0100 or book a call on this page."
+            },
+            "untrusted": [
+                "Visitor: ¿Cuánto vale mi casa? Está en el 78745, 3 recámaras."
+            ],
+            "expect": {
+                "json_keys": [
+                    "reply",
+                    "on_topic",
+                    "search",
+                    "next_step",
+                    "answered"
+                ],
+                "language": "es",
+                "fields": {
+                    "valuation.zip": {
+                        "equals": "78745"
+                    },
+                    "next_step": {
+                        "one_of": ["home_value", "book_listing"]
+                    }
+                }
+            },
+            "golden": "{\"reply\": \"¡Con gusto! Aquí tiene un rango inicial para casas de 3 recámaras en el 78745. Para un precio exacto, un agente puede visitar su casa. ¿Le gustaría agendar una visita?\", \"on_topic\": true, \"search\": null, \"valuation\": {\"zip\": \"78745\", \"beds\": 3, \"sqft\": null}, \"next_step\": \"home_value\", \"lead_score\": 60, \"answered\": true}"
+        }
+    ]
+}

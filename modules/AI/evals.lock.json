@@ -1,0 +1,50 @@
+{
+    "ads.compliance_rewrite": {
+        "version": "1",
+        "sha256": "452e0cb131e71f99728cad46f9b5b257f728efdd06d86dd312b98d3ed23b36a8"
+    },
+    "ads.listing_copy": {
+        "version": "1",
+        "sha256": "39066441e11ebd341ceb2954018f29c2deaaa982d10da7c7476d2f33a225eba9"
+    },
+    "crm.ai_responder": {
+        "version": "2",
+        "sha256": "54e5b4ace0f6500eb2e79c529cf8aaa16438b340f93e051f30a67cc56d1f2378"
+    },
+    "crm.lead_email": {
+        "version": "1",
+        "sha256": "58e71fd8d2028d01cfc499884d4534991e691e1f5598f007072b63a920c77cf5"
+    },
+    "crm.nurture": {
+        "version": "1",
+        "sha256": "37906d64eb6bb3de252a88d17cbe723d290aa30e6fa14a9a57d4d8e2d3694fbb"
+    },
+    "crm.reply_draft": {
+        "version": "1",
+        "sha256": "9635252b1ec6ac1ed1c451c19f9ac82e7b094dc7ec0634b43cfb14285b16955e"
+    },
+    "docs.policy_answer": {
+        "version": "1",
+        "sha256": "003617402a92c5d5b0cf50c75dcbd046dfa40ca4bffb4c84f7e88d110782adab"
+    },
+    "listiq.description": {
+        "version": "1",
+        "sha256": "447f6e8a6c6d8bb900c4ec06ef848f4a1ce9f938bab08d3d65fcce10e29075fc"
+    },
+    "pricing.cma_summary": {
+        "version": "1",
+        "sha256": "9b6e51463146065e3badf5f7de7f9083d1694edf07645d44f6551178a2af08d8"
+    },
+    "recruiting.outreach": {
+        "version": "1",
+        "sha256": "4618955942f470718d3fb9c9626deded441497603c0928a8419bc97eac4c60a1"
+    },
+    "sites.ailly": {
+        "version": "3",
+        "sha256": "3aff8a244b8da3febef1dbf4d3ee7bd33ea42e6a07e48a137a003bae2942750d"
+    },
+    "transactions.portal_concierge": {
+        "version": "1",
+        "sha256": "ecd9a551835d15212cd3da9e7dd477d6875c39d3b75e4b411af65b824a791f53"
+    }
+}

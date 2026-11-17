@@ -1,0 +1,73 @@
+{
+    "prompt": "ads.compliance_rewrite",
+    "feature": "ads.compliance_rewrite",
+    "cases": [
+        {
+            "name": "removes steering and keeps every fact",
+            "inputs": {
+                "kind": "social post",
+                "problems": "- Fair Housing: says \"perfect for families\".",
+                "brokerage": "Hill Country Realty"
+            },
+            "untrusted": [
+                "Just listed! 3 bed, 2 bath at 1402 Alameda Dr for $629,000. Perfect for families! Call Dana."
+            ],
+            "expect": {
+                "json_keys": ["text"],
+                "fields": {
+                    "text": {
+                        "contains_all": [
+                            "$629,000",
+                            "1402 Alameda Dr",
+                            "Hill Country Realty"
+                        ],
+                        "not_contains": ["families"]
+                    }
+                }
+            },
+            "golden": "{\"text\": \"Just listed! 3 bed, 2 bath at 1402 Alameda Dr for $629,000, with Hill Country Realty. Call Dana.\"}"
+        },
+        {
+            "name": "uses the MLS price when the problem says so",
+            "inputs": {
+                "kind": "flyer",
+                "problems": "- The price is $599,000 in the MLS, not $629,000.",
+                "brokerage": "Hill Country Realty"
+            },
+            "untrusted": [
+                "Open house Sunday 1-3pm. 1402 Alameda Dr, $629,000. Hill Country Realty."
+            ],
+            "expect": {
+                "json_keys": ["text"],
+                "fields": {
+                    "text": {
+                        "contains_all": ["$599,000", "Sunday"],
+                        "not_contains": ["$629,000"]
+                    }
+                }
+            },
+            "golden": "{\"text\": \"Open house Sunday 1-3pm. 1402 Alameda Dr, $599,000. Hill Country Realty.\"}"
+        },
+        {
+            "name": "drops guarantees and unsupported \"best\"",
+            "inputs": {
+                "kind": "email",
+                "problems": "- Makes a guarantee.\n- Says \"#1 agent\" without a source.",
+                "brokerage": "Hill Country Realty"
+            },
+            "untrusted": [
+                "I'm the #1 agent in Austin and I guarantee your home will sell in 30 days."
+            ],
+            "expect": {
+                "json_keys": ["text"],
+                "fields": {
+                    "text": {
+                        "not_contains": ["guarantee", "#1"],
+                        "contains_all": ["Hill Country Realty"]
+                    }
+                }
+            },
+            "golden": "{\"text\": \"I'd love to help you sell your Austin home. Let's talk about a plan to get it on the market. Hill Country Realty.\"}"
+        }
+    ]
+}

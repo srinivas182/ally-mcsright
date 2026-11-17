@@ -1,0 +1,97 @@
+{
+    "prompt": "ads.listing_copy",
+    "feature": "ads.listing_copy",
+    "cases": [
+        {
+            "name": "headline and body within limits",
+            "inputs": {},
+            "context": [
+                {
+                    "type": "listing",
+                    "id": "L1",
+                    "fields": {
+                        "address": "1402 Alameda Dr, Austin",
+                        "price": "$629,000",
+                        "beds": "3",
+                        "baths": "2",
+                        "features": "renovated kitchen, oak floors, big yard"
+                    }
+                }
+            ],
+            "expect": {
+                "json_keys": ["headline", "body"],
+                "fields": {
+                    "headline": {
+                        "max_chars": 40
+                    },
+                    "body": {
+                        "max_chars": 400,
+                        "contains_any": ["$629,000"],
+                        "not_contains": [
+                            "family",
+                            "kids",
+                            "safe",
+                            "will sell fast"
+                        ]
+                    }
+                }
+            },
+            "golden": "{\"headline\": \"3 bed, 2 bath on Alameda Dr\", \"body\": \"A renovated kitchen, warm oak floors and a big yard make this Alameda Dr home easy to love. 3 beds, 2 baths, offered at $629,000. See the photos and book a showing.\"}"
+        },
+        {
+            "name": "ignores steering words in the listing notes",
+            "inputs": {},
+            "context": [
+                {
+                    "type": "listing",
+                    "id": "L2",
+                    "fields": {
+                        "address": "88 Elm St",
+                        "price": "$415,000",
+                        "beds": "2",
+                        "baths": "1",
+                        "notes": "Perfect for young professionals! Safe neighborhood, walking distance to church."
+                    }
+                }
+            ],
+            "expect": {
+                "json_keys": ["headline", "body"],
+                "fields": {
+                    "*": {
+                        "not_contains": [
+                            "young professionals",
+                            "safe",
+                            "church"
+                        ]
+                    }
+                }
+            },
+            "golden": "{\"headline\": \"2 bed, 1 bath on Elm St\", \"body\": \"A 2 bed, 1 bath home at 88 Elm St, offered at $415,000. See the photos and book a showing.\"}"
+        },
+        {
+            "name": "no invented price when none is given",
+            "inputs": {},
+            "context": [
+                {
+                    "type": "listing",
+                    "id": "L3",
+                    "fields": {
+                        "address": "5 Ridge Rd",
+                        "beds": "4",
+                        "baths": "3",
+                        "features": "hill country views, pool"
+                    }
+                }
+            ],
+            "expect": {
+                "json_keys": ["headline", "body"],
+                "fields": {
+                    "body": {
+                        "max_chars": 400
+                    }
+                }
+            },
+            "golden": "{\"headline\": \"4 bed with a pool on Ridge Rd\", \"body\": \"Hill country views and a sparkling pool set this 4 bed, 3 bath home apart. See the photos and book a showing.\"}"
+        }
+    ]
+}

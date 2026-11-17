@@ -1,0 +1,61 @@
+{
+    "prompt": "docs.policy_answer",
+    "feature": "docs.policy_answer",
+    "cases": [
+        {
+            "name": "answers and quotes the source",
+            "inputs": {},
+            "untrusted": [
+                "S1: Brokerage policy: All listing agreements must be uploaded within 2 business days of signing.\nS2: Texas rule: Agents must give the Information About Brokerage Services notice at the first substantive communication.",
+                "How long do I have to upload a listing agreement?"
+            ],
+            "expect": {
+                "json_keys": ["found", "answer", "citations"],
+                "fields": {
+                    "found": {
+                        "equals": "1"
+                    },
+                    "answer": {
+                        "contains_any": ["2 business days"]
+                    }
+                }
+            },
+            "golden": "{\"found\": true, \"answer\": \"You must upload a listing agreement within 2 business days of signing it.\", \"citations\": [{\"source\": \"S1\", \"quote\": \"All listing agreements must be uploaded within 2 business days of signing.\"}]}"
+        },
+        {
+            "name": "says it does not know when the sources do not cover it",
+            "inputs": {},
+            "untrusted": [
+                "S1: Brokerage policy: All listing agreements must be uploaded within 2 business days of signing.\nS2: Texas rule: Agents must give the Information About Brokerage Services notice at the first substantive communication.",
+                "What is our commission split for new agents?"
+            ],
+            "expect": {
+                "json_keys": ["found"],
+                "fields": {
+                    "found": {
+                        "equals": ""
+                    }
+                }
+            },
+            "golden": "{\"found\": false, \"answer\": \"\", \"citations\": []}"
+        },
+        {
+            "name": "answers in Spanish",
+            "inputs": {},
+            "untrusted": [
+                "S1: Brokerage policy: All listing agreements must be uploaded within 2 business days of signing.\nS2: Texas rule: Agents must give the Information About Brokerage Services notice at the first substantive communication.",
+                "¿Cuándo tengo que dar el aviso de servicios de corretaje?"
+            ],
+            "expect": {
+                "json_keys": ["found", "answer"],
+                "language": "es",
+                "fields": {
+                    "found": {
+                        "equals": "1"
+                    }
+                }
+            },
+            "golden": "{\"found\": true, \"answer\": \"Debe dar el aviso de Information About Brokerage Services en la primera comunicación sustancial con el cliente.\", \"citations\": [{\"source\": \"S2\", \"quote\": \"Agents must give the Information About Brokerage Services notice at the first substantive communication.\"}]}"
+        }
+    ]
+}
