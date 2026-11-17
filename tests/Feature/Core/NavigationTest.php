@@ -37,7 +37,7 @@ it('shows HQ staff the HQ console and people', function (): void {
     $hq = Tenant::query()->where('type', 'hq')->sole();
     $staff = app(TenantContext::class)->runAs($hq, fn () => User::factory()->hqStaff()->create());
 
-    expect(menuFor($staff))->toBe(['People', 'Tenants', 'Health checks', 'Support', 'Go-live', 'Texts and calls', 'Websites', 'App demand', 'MLS connections', 'Connect setup', 'AI gateway', 'Pricing', 'RightAlly credits', 'Ally Studio', 'Movewise', 'Movewise agents', 'Movewise launch', 'Movewise money', 'Payments', 'Payout rails']);
+    expect(menuFor($staff))->toBe(['People', 'Tenants', 'Health checks', 'Support', 'Go-live', 'Texts and calls', 'Websites', 'App demand', 'MLS connections', 'Connect setup', 'AI gateway', 'Partner apps', 'Pricing', 'RightAlly credits', 'Ally Studio', 'Movewise', 'Movewise agents', 'Movewise launch', 'Movewise money', 'Payments', 'Payout rails']);
 });
 
 it('lets modules add items, grouped and ordered', function (): void {

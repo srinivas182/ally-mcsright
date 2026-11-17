@@ -4,6 +4,7 @@ use App\Providers\AppServiceProvider;
 use App\Providers\FortifyServiceProvider;
 use Modules\Ads\AdsServiceProvider;
 use Modules\AI\AiServiceProvider;
+use Modules\Api\ApiServiceProvider;
 use Modules\Appointments\AppointmentsServiceProvider;
 use Modules\Billing\BillingServiceProvider;
 use Modules\Compensation\CompensationServiceProvider;
@@ -54,4 +55,5 @@ return [
     TeamServiceProvider::class,
     LearnServiceProvider::class,
     EngageServiceProvider::class,
+    ApiServiceProvider::class,
 ];

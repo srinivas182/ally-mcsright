@@ -33,17 +33,28 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
     const { auth } = usePage<{ auth: { user: { kind?: string } | null } }>()
         .props;
     // DS1: the owner can download everything the brokerage has in RightAlly.
-    const items: NavItem[] =
-        auth.user?.kind === 'owner'
+    const kind = auth.user?.kind;
+    const items: NavItem[] = [
+        ...sidebarNavItems,
+        ...(kind === 'owner' || kind === 'staff' || kind === 'agent'
             ? [
-                  ...sidebarNavItems,
+                  {
+                      title: 'API and partner apps',
+                      href: '/settings/api',
+                      icon: null,
+                  },
+              ]
+            : []),
+        ...(kind === 'owner'
+            ? [
                   {
                       title: 'Your data',
                       href: '/settings/data-export',
                       icon: null,
                   },
               ]
-            : sidebarNavItems;
+            : []),
+    ];
 
     return (
         <div className="px-4 py-6">
