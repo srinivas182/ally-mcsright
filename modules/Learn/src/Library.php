@@ -31,7 +31,7 @@ final class Library
     }
 
     /**
-     * @param  array{title?: string, summary?: string|null, pass_mark?: int|string|null, minutes?: int|string|null}  $in
+     * @param  array{title?: string, summary?: string|null, pass_mark?: int|string|null, minutes?: int|string|null, skill?: string|null}  $in
      */
     public function save(?Course $course, array $in, User $by, string $source = 'brokerage'): Course
     {
@@ -41,7 +41,8 @@ final class Library
             throw ValidationException::withMessages(['title' => 'Name the course.']);
         }
         $data = ['title' => mb_substr($title, 0, 160), 'summary' => isset($in['summary']) ? mb_substr(trim(strip_tags((string) $in['summary'])), 0, 500) : null,
-            'pass_mark' => max(50, min(100, (int) ($in['pass_mark'] ?? 80))), 'minutes' => max(1, min(600, (int) ($in['minutes'] ?? 10)))];
+            'pass_mark' => max(50, min(100, (int) ($in['pass_mark'] ?? 80))), 'minutes' => max(1, min(600, (int) ($in['minutes'] ?? 10))),
+            'skill' => isset(Scorecard::SKILLS[(string) ($in['skill'] ?? '')]) ? (string) ($in['skill'] ?? '') : null];
         if ($course === null) {
             $course = Course::query()->create($data + ['source' => $source, 'status' => 'draft', 'created_by' => $by->id]);
             app(AuditLogger::class)->record('learn.course.created', metadata: ['course' => $course->ulid, 'source' => $source]);
@@ -112,7 +113,7 @@ final class Library
             return $existing;
         }
         $course = $this->save(null, ['title' => (string) $c['title'], 'summary' => (string) ($c['summary'] ?? ''), 'pass_mark' => (int) ($c['pass_mark'] ?? 80),
-            'minutes' => (int) ($c['minutes'] ?? 10)], $by, 'rightally');
+            'minutes' => (int) ($c['minutes'] ?? 10), 'skill' => (string) ($c['skill'] ?? '')], $by, 'rightally');
         $course->update(['starter_key' => $key]);
         $this->saveLessons($course, array_values((array) $c['lessons']), $by);
         $this->publish($course, true, $by);

@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Modules\Core\Audit\AuditLogger;
+use Modules\Core\Learning\TrainingGate;
 use Modules\Crm\Actions\Timeline;
 use Modules\Crm\Enums\Lifecycle;
 use Modules\Crm\Models\Contact;
@@ -213,6 +214,10 @@ final class FollowUpPlans
     {
         if (! $this->visibility->canSee($by, $contact)) {
             throw ValidationException::withMessages(['contact' => 'Contact not found.']);
+        }
+        $training = app(TrainingGate::class)->missing($by, 'follow_up_plans'); // LN2
+        if ($training !== null) {
+            throw ValidationException::withMessages(['plan' => $training]);
         }
         $hold = app(Inbox\Bridges::class)->hold($contact);
         if ($hold !== null) {

@@ -80,6 +80,7 @@ final class CoreServiceProvider extends ServiceProvider
         $this->app->bindIf(DealOutcomes::class, NoDealOutcomes::class);
         $this->app->bindIf(ListingActivity::class, NoListingActivity::class);
         $this->app->bindIf(Deals\BuyerAgreementGuard::class, Deals\NoBuyerAgreementGuard::class); // AP1
+        $this->app->bindIf(Learning\TrainingGate::class, Learning\NoTrainingGate::class); // LN2
         $this->app->bindIf(EmailSignature::class, PlainEmailSignature::class);
         $this->app->bindIf(VisitorJourneys::class, NoVisitorJourneys::class);
         $this->app->bindIf(AgentCredentials::class, NoAgentCredentials::class);

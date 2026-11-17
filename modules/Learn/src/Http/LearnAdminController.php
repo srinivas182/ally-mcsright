@@ -20,6 +20,7 @@ use Modules\Learn\Models\Course;
 use Modules\Learn\Models\Enrolment;
 use Modules\Learn\Models\Lesson;
 use Modules\Learn\Progress;
+use Modules\Learn\Scorecard;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /** Learn › Manage (LN1): write courses and knowledge base pages, add starter courses, assign, and see who finished. */
@@ -47,7 +48,7 @@ final class LearnAdminController
     {
         self::user($request);
 
-        return Inertia::render('learn/edit-course', ['course' => $course !== null ? ['ulid' => $course->ulid, 'title' => $course->title, 'summary' => $course->summary,
+        return Inertia::render('learn/edit-course', ['skills' => Scorecard::SKILLS, 'course' => $course !== null ? ['ulid' => $course->ulid, 'title' => $course->title, 'summary' => $course->summary, 'skill' => $course->skill, 'source' => $course->source,
             'pass_mark' => $course->pass_mark, 'minutes' => $course->minutes, 'status' => $course->status] : null,
             'lessons' => $course !== null ? Lesson::query()->where('course_id', $course->id)->orderBy('sort')->get(['title', 'kind', 'body', 'video_url', 'questions']) : []]);
     }
@@ -55,7 +56,7 @@ final class LearnAdminController
     public function save(Request $request, Library $library, ?Course $course = null): RedirectResponse
     {
         $user = self::user($request);
-        $data = $request->validate(['title' => ['required', 'string', 'max:160'], 'summary' => ['nullable', 'string', 'max:500'], 'pass_mark' => ['nullable', 'integer'],
+        $data = $request->validate(['title' => ['required', 'string', 'max:160'], 'summary' => ['nullable', 'string', 'max:500'], 'skill' => ['nullable', 'string', 'max:30'], 'pass_mark' => ['nullable', 'integer'],
             'minutes' => ['nullable', 'integer'], 'lessons' => ['present', 'array', 'max:60'], 'publish' => ['sometimes', 'boolean']]);
         // All or nothing: a lesson that does not pass the checks leaves no half-made course behind.
         $course = DB::connection(Connections::cell())->transaction(function () use ($library, $course, $data, $user): Course {

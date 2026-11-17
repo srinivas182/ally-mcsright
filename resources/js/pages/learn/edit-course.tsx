@@ -24,11 +24,15 @@ const blankQuestion: Question = {
 export default function EditCourse({
     course,
     lessons: initial,
+    skills,
 }: {
+    skills: Record<string, string>;
     course: {
         ulid: string;
         title: string;
         summary: string | null;
+        skill: string | null;
+        source: string;
         pass_mark: number;
         minutes: number;
         status: string;
@@ -38,6 +42,7 @@ export default function EditCourse({
     const form = useForm<{
         title: string;
         summary: string;
+        skill: string;
         pass_mark: number;
         minutes: number;
         lessons: Lesson[];
@@ -45,6 +50,7 @@ export default function EditCourse({
     }>({
         title: course?.title ?? '',
         summary: course?.summary ?? '',
+        skill: course?.skill ?? '',
         pass_mark: course?.pass_mark ?? 80,
         minutes: course?.minutes ?? 10,
         lessons: initial,
@@ -103,7 +109,33 @@ export default function EditCourse({
                         }
                     />
                 </label>
+                {course?.source === 'ai' && course.status !== 'published' && (
+                    <p
+                        role="status"
+                        className="rounded border border-amber-300 bg-amber-50 p-3 text-amber-900"
+                    >
+                        AI wrote this draft. Read every lesson, fix anything
+                        that is not how your office works, then publish.
+                    </p>
+                )}
                 <span className="flex flex-wrap gap-4">
+                    <label className="flex items-center gap-2">
+                        Skill
+                        <select
+                            className="rounded border px-2 py-1"
+                            value={form.data.skill}
+                            onChange={(e) =>
+                                form.setData('skill', e.target.value)
+                            }
+                        >
+                            <option value="">None</option>
+                            {Object.entries(skills).map(([k, v]) => (
+                                <option key={k} value={k}>
+                                    {v}
+                                </option>
+                            ))}
+                        </select>
+                    </label>
                     <label className="flex items-center gap-2">
                         Minutes
                         <Input
