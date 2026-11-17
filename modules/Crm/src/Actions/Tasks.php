@@ -8,6 +8,7 @@ use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Validation\ValidationException;
+use Modules\Core\Deals\BuyerAgreementGuard;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Crm\ContactVisibility;
 use Modules\Crm\CrmAccess;
@@ -28,7 +29,7 @@ final class Tasks
     ) {}
 
     /**
-     * @param  array{title: string, type?: string|null, due?: string|null, due_at?: string|null, remind?: bool|null, notes?: string|null, priority?: string|null, assigned_to?: int|null}  $data
+     * @param  array{title: string, type?: string|null, due?: string|null, due_at?: string|null, remind?: bool|null, notes?: string|null, priority?: string|null, assigned_to?: int|null, agreement_ok?: bool}  $data
      */
     public function create(?Contact $contact, array $data, User $by): Task
     {
@@ -37,6 +38,13 @@ final class Tasks
             throw ValidationException::withMessages(['title' => 'What needs doing?']);
         }
 
+        // AP1: a written buyer agreement before touring a home with a buyer (NAR settlement).
+        if (($data['type'] ?? null) === 'showing' && $contact !== null && ($data['agreement_ok'] ?? false) !== true) {
+            $missing = app(BuyerAgreementGuard::class)->missing($contact->id);
+            if ($missing !== null) {
+                throw ValidationException::withMessages(['agreement' => $missing]);
+            }
+        }
         $due = $this->dueAt($data['due'] ?? null, $data['due_at'] ?? null, $by);
         $assignee = $data['assigned_to'] ?? null;
         if ($assignee === null || ! CrmAccess::manager($by)) {
