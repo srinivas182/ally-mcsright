@@ -83,7 +83,7 @@ final class RecruitingController
 
     public function show(Request $request, Recruit $recruit, Pipeline $pipeline, EarnHere $earn): Response
     {
-        self::user($request);
+        $viewer = self::user($request);
         $pipeline->seen($recruit);
         $manual = $request->validate(['deals' => ['nullable', 'integer', 'min:1', 'max:100'], 'price' => ['nullable', 'numeric', 'min:1000', 'max:100000000']]);
         $a = $recruit->mlsAgent;
@@ -98,6 +98,9 @@ final class RecruitingController
                 'sides_before' => $a->sides_before, 'trend' => $a->trend(), 'active_listings' => $a->active_listings, 'office' => $a->office_name,
                 'last_closed_on' => $a->last_closed_on?->toDateString(), 'moved_on' => $a->office_changed_on?->toDateString(), 'previous_office' => $a->previous_office_name,
                 'move_score' => $a->move_score, 'move_reasons' => $a->move_reasons ?? []] : null,
+            'joining' => ['can_invite' => $viewer->can('core.users.invite') && $recruit->email !== null && $recruit->user_id === null && in_array($recruit->stage, ['meeting', 'offer', 'joined'], true),
+                'invited_on' => $recruit->invited_at?->toDateString(), 'joined_on' => $recruit->joined_on?->toDateString(),
+                'sponsor' => $recruit->sponsor_user_id !== null ? User::query()->find($recruit->sponsor_user_id)?->name : null],
             'reach' => ['email_opt_out_on' => $recruit->email_opt_out_at?->toDateString(), 'text_consent_on' => $recruit->text_consent_at?->toDateString(),
                 'text_opt_out_on' => $recruit->text_opt_out_at?->toDateString(), 'application' => $recruit->application],
             'campaigns' => Campaign::query()->where('status', 'active')->orderBy('name')->get(['ulid', 'name'])->map(fn (Campaign $c): array => ['ulid' => $c->ulid, 'name' => $c->name])->all(),

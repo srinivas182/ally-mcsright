@@ -7,8 +7,12 @@ namespace Modules\Recruiting;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
+use Modules\AI\FeatureCatalog;
+use Modules\AI\Support\PromptRegistry;
 use Modules\Core\Access\PermissionRegistry;
 use Modules\Core\Brief\DailyBriefs;
+use Modules\Core\Identity\Enums\UserKind;
+use Modules\Core\Identity\Events\UserActivated;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
 use Modules\Crm\Events\SmsKeywordReceived;
@@ -23,6 +27,9 @@ final class RecruitingServiceProvider extends ServiceProvider
         $this->app->scoped(Pipeline::class);
         $this->app->scoped(Campaigns::class);
         $this->app->scoped(Careers::class);
+        $this->app->scoped(Referrals::class);
+        $this->app->scoped(Retention::class);
+        $this->app->scoped(Results::class);
     }
 
     public function boot(): void
@@ -34,6 +41,9 @@ final class RecruitingServiceProvider extends ServiceProvider
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'recruiting');
+        Event::listen(UserActivated::class, fn (UserActivated $e) => app(Joining::class)->activated($e));
+        $this->app->make(PromptRegistry::class)->addPath(__DIR__.'/../prompts');
+        $this->app->make(FeatureCatalog::class)->declare(Referrals::FEATURE, 'ai.recruit_note', 'Personal recruiting note draft for an agent to send');
         Event::listen(SmsKeywordReceived::class, fn (SmsKeywordReceived $e) => app(Campaigns::class)->keyword($e));
         // The careers page on the brokerage's website (RC2).
         $site = $this->app->make(SiteExtensions::class);
@@ -49,5 +59,7 @@ final class RecruitingServiceProvider extends ServiceProvider
         $nav = $this->app->make(NavigationRegistry::class);
         $nav->add(new NavItem('People', 'Recruiting', '/recruiting', 'user-plus', 13, ability: 'recruiting.manage'));
         $nav->add(new NavItem('People', 'Agent database', '/recruiting/agents', 'user-search', 14, ability: 'recruiting.manage'));
+        $nav->add(new NavItem('People', 'Keeping agents', '/recruiting/retention', 'heart-handshake', 15, ability: 'recruiting.manage'));
+        $nav->add(new NavItem('Grow', 'Refer an agent', '/recruiting/refer', 'user-plus', 36, kinds: [UserKind::Agent]));
     }
 }

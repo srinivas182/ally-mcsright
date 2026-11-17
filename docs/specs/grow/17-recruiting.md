@@ -1,6 +1,6 @@
-# Grow 17 — Recruiting (RC1, RC2)
+# Grow 17 — Recruiting (RC1–RC3)
 
-Plan items E14 (recruiting suite, RC1), E16 and E17 (attraction engine and careers page, RC2). RC3 adds the AI recruiting assistant and retention (E15).
+Plan items E14 (recruiting suite: RC1, RC3), E16 and E17 (attraction engine and careers page: RC2) and E15 (AI recruiting assistant for revenue-share sponsors: RC3).
 
 ## Leader review
 
@@ -57,7 +57,7 @@ Opening the recruit marks their alerts as seen. The daily brief also shows "N re
 
 ## Tests
 
-`tests/Feature/Recruiting/RecruitingTest.php`, `tests/Feature/Recruiting/AttractionTest.php`.
+`tests/Feature/Recruiting/RecruitingTest.php`, `tests/Feature/Recruiting/AttractionTest.php`, `tests/Feature/Recruiting/GrowthTest.php`.
 
 ## RC2: likely to move (`Modules\Recruiting\MoveScore`)
 
@@ -91,7 +91,36 @@ The agent database sorts by "Most likely to move"; recruit cards show "Likely to
 - **Talk to us**: name, email, phone, licence, deals a year, brokerage, message, and an unticked text-consent box. Honeypot, a 3-second minimum, and 5 an hour per address. Creates (or updates, by email) a recruit with source "Careers page", an "applied" alert, and starts "After they apply".
 - SEO and AEO: one H1, canonical, breadcrumbs, `JobPosting` (contractor, direct apply, the office address), `FAQPage` with three plain answers, in sitemap.xml and llms.txt.
 
+## RC3: agents refer recruits (`Modules\Recruiting\Referrals`)
+
+`/recruiting/refer` (nav: Grow → Refer an agent, for agents; the owner can open it too):
+
+- **Someone you know**: name, brokerage, email, phone, a note. Becomes a recruit with source Referral, the agent as **sponsor** (so revenue share is right once they join), no recruiter yet, and a "referred" alert for the recruiters. Someone the brokerage already knows (same email or MLS agent) is refused politely.
+- **Agents you might know** (only when the owner turns it on): up to 20 producing agents (3+ closings) outside the brokerage, from the agent database, without scores or reasons about moving. "I know them: refer" refers them.
+- **Help me write a note**: an AI first draft of a personal note from the agent (`recruiting.outreach`, credit action `ai.recruit_note`). The other agent's name goes in as untrusted data. The draft never includes links or money: links are removed, and a draft mentioning dollars or percentages is replaced by a safe default. **The agent edits and sends it themselves; RightAlly never sends it and never in bulk.**
+- **People you've referred**: each with its stage only; the recruiters' notes stay private.
+
+## RC3: joining (`Modules\Recruiting\Joining`)
+
+From a recruit at Meeting set, Offer made or Joined, with an email, someone who can invite users presses **Invite them to RightAlly**: a normal agent invitation, with the sponsor, and the recruit moves to Offer made. When anyone accepts an invitation (`UserActivated`), a recruit with that email is linked to the new account and marked Joined.
+
+## RC3: keeping agents (`Modules\Recruiting\Retention`)
+
+`/recruiting/retention` (nav: People → Keeping agents, recruiting.manage): the brokerage's own active agents (here 90+ days) who may be thinking of leaving, from its own records:
+
+| Reason                                                          | Points |
+| --------------------------------------------------------------- | ------ |
+| Closings down 30% or more on the year before (3+ before)        | 35     |
+| Not signed in for 30 days or more                               | 25     |
+| No new deal in the last 90 days (while they closed some before) | 20     |
+| Their anniversary here in the next 45 days                      | 15     |
+
+Shown from 30, highest first, each with a suggested no-agenda call. "I checked in" (with an optional private note) hides them for 60 days. The owner's daily brief shows "N agents worth a check-in" (worked out at most hourly). Agents never see any of this.
+
+## RC3: results (`Modules\Recruiting\Results`)
+
+`/recruiting/results`: for the year, by source (MLS, Referral, Met them, Careers page): recruits added, met (meeting or later), joined, helped by a campaign, commission the people who joined have closed since joining, the spend the broker enters, and cost per hire. Money columns need `finance.amounts.view` or the owner.
+
 ## Not yet
 
-- AI outreach drafts for revenue-share sponsors, retention risk for the brokerage's own agents, source attribution and recruiting ROI (RC3).
-- Inviting a joined recruit straight into the roster (today: invite from People as usual).
+- Mapping the brokerage's own agents to their MLS IDs, so retention can also use MLS signals (colleagues leaving their office).

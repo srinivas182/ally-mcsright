@@ -32,6 +32,7 @@ final class RateCard
         'ai.crm_nurture' => [1, true, 'AI long follow-up message'],
         'ai.assistant' => [1, false, 'Your AI Assistant step'],
         'ai.forms_summary' => [3, false, 'Forms packet summary'],
+        'ai.recruit_note' => [1, false, 'Personal recruiting note draft'],
         'ai.site_journey' => [1, true, 'Visitor journey summary'],
         'ai.site_post' => [20, false, 'AI blog post draft'],
         'ai.site_page' => [15, false, 'AI page draft'],
@@ -71,6 +72,7 @@ final class RateCard
      */
     public const DEFAULT_ESTIMATES = [
         'ai.ads_copy' => [1500, 300, 0],
+        'ai.recruit_note' => [1200, 300, 0],
         'ai.crm_brief' => [3000, 500, 0],
         'ai.crm_ask' => [2000, 300, 0],
         'ai.voice' => [0, 0, 30],
