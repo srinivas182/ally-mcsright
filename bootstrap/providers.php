@@ -15,6 +15,7 @@ use Modules\Ledger\LedgerServiceProvider;
 use Modules\Listings\ListingsServiceProvider;
 use Modules\ListIq\ListIqServiceProvider;
 use Modules\Movewise\MovewiseServiceProvider;
+use Modules\Outreach\OutreachServiceProvider;
 use Modules\Payouts\PayoutsServiceProvider;
 use Modules\Pricing\PricingServiceProvider;
 use Modules\Recruiting\RecruitingServiceProvider;
@@ -41,6 +42,7 @@ return [
     AdsServiceProvider::class,
     MovewiseServiceProvider::class,
     RecruitingServiceProvider::class,
+    OutreachServiceProvider::class,
     PricingServiceProvider::class,
     ListIqServiceProvider::class,
     InsightsServiceProvider::class,
