@@ -1,0 +1,9 @@
+{
+    "id": "setup",
+    "name": "Setup",
+    "version": "0.1.0",
+    "provider": "Modules\\Setup\\SetupServiceProvider",
+    "depends": ["core", "ai", "crm", "transactions", "compensation", "billing"],
+    "entitlement": null,
+    "description": "SU1-SU3 (specs/setup): the AI setup assistant: bring everything from the old system's export files, a guided setup, and the ready-made library."
+}

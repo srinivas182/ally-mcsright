@@ -146,14 +146,16 @@ final class Checks
     /** @param  array<mixed>  $data */
     private static function get(array $data, string $path): mixed
     {
-        foreach (explode('.', $path) as $p) {
-            if (! is_array($data) || ! array_key_exists($p, $data)) {
-                return null;
-            }
-            $data = $data[$p];
+        if (array_key_exists($path, $data)) {
+            return $data[$path]; // a key that itself contains a dot, e.g. "Prop. Addr"
         }
+        $dot = strpos($path, '.');
+        if ($dot === false) {
+            return null;
+        }
+        $head = substr($path, 0, $dot);
 
-        return $data;
+        return isset($data[$head]) && is_array($data[$head]) ? self::get($data[$head], substr($path, $dot + 1)) : null;
     }
 
     /** @return list<string> */

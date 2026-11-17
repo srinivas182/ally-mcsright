@@ -24,6 +24,7 @@ use Modules\Payouts\PayoutsServiceProvider;
 use Modules\Pricing\PricingServiceProvider;
 use Modules\Recruiting\RecruitingServiceProvider;
 use Modules\Roster\RosterServiceProvider;
+use Modules\Setup\SetupServiceProvider;
 use Modules\Sites\SitesServiceProvider;
 use Modules\Team\TeamServiceProvider;
 use Modules\Transactions\TransactionsServiceProvider;
@@ -55,5 +56,6 @@ return [
     TeamServiceProvider::class,
     LearnServiceProvider::class,
     EngageServiceProvider::class,
+    SetupServiceProvider::class,
     ApiServiceProvider::class,
 ];
