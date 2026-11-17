@@ -10,8 +10,9 @@
         "ads",
         "ai",
         "billing",
-        "connect"
+        "connect",
+        "sites"
     ],
     "entitlement": null,
-    "description": "List-IQ (specs/listings/02): getting a listing ready — readiness checklist, guided photo shoot, AI descriptions checked for Fair Housing, labelled virtual staging, photo enhancement, and the MLS-ready package."
+    "description": "List-IQ (specs/listings/02): getting a listing ready \u2014 readiness checklist, guided photo shoot, AI descriptions checked for Fair Housing, labelled virtual staging, photo enhancement, and the MLS-ready package."
 }

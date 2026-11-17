@@ -11,7 +11,11 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Ads\Studio\Enhance\PhotoEnhancer;
 use Modules\Core\Identity\Enums\UserKind;
+use Modules\Core\Tenancy\TenantContext;
+use Modules\Crm\Consent;
 use Modules\ListIq\Descriptions;
+use Modules\ListIq\Marketing;
+use Modules\ListIq\Models\OpenHouse;
 use Modules\ListIq\Models\Photo;
 use Modules\ListIq\Models\Prep;
 use Modules\ListIq\Photos;
@@ -21,6 +25,7 @@ use Modules\ListIq\Staging\ReplicateStager;
 use Modules\ListIq\Staging\VirtualStager;
 use Modules\Transactions\Models\Deal;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 /** List-IQ (LI1, specs/listings/02): get a listing ready. */
 final class ListIqController
@@ -67,7 +72,90 @@ final class ListIqController
                 'use' => $p->use, 'status' => $p->status, 'error' => $p->error, 'url' => Photos::url($p->path), 'style' => $p->style])->all(),
             'styles' => array_keys(ReplicateStager::STYLES),
             'can' => ['stage' => app(VirtualStager::class)->ready(), 'enhance' => app(PhotoEnhancer::class)->ready()],
+            'marketing' => ['in_mls' => $prep->in_mls, 'page_url' => app(Marketing::class)->pageUrl($prep), 'codes' => app(Marketing::class)->codes($prep),
+                'kinds' => Marketing::KINDS, 'activity' => app(Marketing::class)->activity($prep), 'floor_plan' => Photos::url($prep->floor_plan_path),
+                'open_houses' => OpenHouse::query()->where('listing_id', $prep->id)->orderByDesc('starts_at')->get()->map(fn (OpenHouse $o): array => ['ulid' => $o->ulid,
+                    'starts' => $o->starts_at->setTimezone(app(TenantContext::class)->current()->timezone ?: 'America/Chicago')->format('D M j, g:i A'),
+                    'ended' => $o->ended_at !== null, 'visitors' => count((array) $o->visitors)])->all()],
         ]);
+    }
+
+    public function mls(Request $request, Prep $prep): RedirectResponse
+    {
+        abort_unless(Preps::canSee(self::user($request), $prep), 403);
+        $prep->in_mls = $request->boolean('on');
+        $prep->save();
+
+        return back();
+    }
+
+    public function addCode(Request $request, Prep $prep, Marketing $marketing): RedirectResponse
+    {
+        abort_unless(Preps::canSee(self::user($request), $prep), 403);
+        $marketing->addCode($prep, (string) $request->input('kind'), $request->input('label') !== null ? (string) $request->input('label') : null);
+
+        return back();
+    }
+
+    public function qr(Request $request, Prep $prep, string $code, Marketing $marketing): HttpResponse
+    {
+        abort_unless(Preps::canSee(self::user($request), $prep), 403);
+        $row = collect($marketing->codes($prep))->firstWhere('code', $code);
+        abort_if($row === null || $row['url'] === null, 404);
+
+        return response($marketing->qrPng((string) $row['url']), 200, ['Content-Type' => 'image/png', 'Content-Disposition' => 'attachment; filename="qr-'.$code.'.png"']);
+    }
+
+    public function floorPlan(Request $request, Prep $prep, Marketing $marketing): RedirectResponse
+    {
+        abort_unless(Preps::canSee(self::user($request), $prep), 403);
+        $request->validate(['floor_plan' => ['required', 'file', 'max:20480']]);
+        $marketing->floorPlan($prep, $request->file('floor_plan'));
+
+        return back();
+    }
+
+    public function flyer(Request $request, Prep $prep, Marketing $marketing): HttpResponse
+    {
+        abort_unless(Preps::canSee(self::user($request), $prep), 403);
+
+        return response($marketing->flyer($prep), 200, ['Content-Type' => 'application/pdf', 'Content-Disposition' => 'attachment; filename="flyer-'.str($prep->street)->slug().'.pdf"']);
+    }
+
+    public function openHouse(Request $request, Prep $prep, Marketing $marketing): RedirectResponse
+    {
+        abort_unless(Preps::canSee(self::user($request), $prep), 403);
+        $d = $request->validate(['date' => ['required', 'date'], 'from' => ['required', 'date_format:H:i'], 'to' => ['required', 'date_format:H:i']]);
+        $marketing->openHouse($prep, $d['date'].' '.$d['from'], $d['date'].' '.$d['to']);
+
+        return back();
+    }
+
+    public function kiosk(Request $request, Prep $prep, string $openHouse): Response
+    {
+        abort_unless(Preps::canSee(self::user($request), $prep), 403);
+        $oh = OpenHouse::query()->where('listing_id', $prep->id)->where('ulid', $openHouse)->firstOrFail();
+
+        return Inertia::render('listiq/kiosk', ['listing' => ['ulid' => $prep->ulid, 'street' => $prep->street], 'openHouse' => ['ulid' => $oh->ulid, 'ended' => $oh->ended_at !== null,
+            'visitors' => count((array) $oh->visitors)], 'consent' => Consent::DEFAULT_SMS_WORDING]);
+    }
+
+    public function signIn(Request $request, Prep $prep, string $openHouse, Marketing $marketing): RedirectResponse
+    {
+        abort_unless(Preps::canSee(self::user($request), $prep), 403);
+        $oh = OpenHouse::query()->where('listing_id', $prep->id)->where('ulid', $openHouse)->firstOrFail();
+        $marketing->signIn($oh, $prep, $request->only(['name', 'email', 'phone', 'agent', 'sms_consent']));
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Thank you for visiting!']);
+
+        return back();
+    }
+
+    public function endOpenHouse(Request $request, Prep $prep, string $openHouse, Marketing $marketing): RedirectResponse
+    {
+        abort_unless(Preps::canSee(self::user($request), $prep), 403);
+        $marketing->end(OpenHouse::query()->where('listing_id', $prep->id)->where('ulid', $openHouse)->firstOrFail(), $prep);
+
+        return to_route('listiq.show', $prep);
     }
 
     public function update(Request $request, Prep $prep, Preps $preps): RedirectResponse
