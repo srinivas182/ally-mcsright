@@ -1,4 +1,4 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
@@ -48,6 +48,7 @@ export default function LearnManage({
     const [assigning, setAssigning] = useState<string | null>(null);
     const [picked, setPicked] = useState<number[]>([]);
     const [due, setDue] = useState('');
+    const build = useForm({ topic: '', notes: '', skill: '' });
 
     return (
         <>
@@ -58,6 +59,11 @@ export default function LearnManage({
                     description="Write courses and office pages, assign them, and see who has finished."
                     actions={
                         <div className="flex flex-wrap gap-2">
+                            <Button asChild variant="outline">
+                                <a href="/learn/launch">
+                                    New agents and mentors
+                                </a>
+                            </Button>
                             <Button asChild variant="outline">
                                 <a href="/learn/manage/report.csv">
                                     Download report
@@ -207,6 +213,59 @@ export default function LearnManage({
                             )}
                         </div>
                     ))}
+                </section>
+                <section className="grid gap-2 rounded-lg border p-4">
+                    <h2 className="text-lg font-semibold">
+                        Build a course with AI
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                        Name the topic and, if you like, paste your own notes (a
+                        policy, a script, a checklist). AI writes a short draft
+                        with a quiz. Nothing reaches agents until you publish
+                        it. Uses 5 RightAlly credits.
+                    </p>
+                    <form
+                        className="grid gap-2"
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            build.post('/learn/manage/build');
+                        }}
+                    >
+                        <input
+                            aria-label="Course topic"
+                            className="rounded border px-3 py-2"
+                            placeholder="e.g. Running a great open house"
+                            value={build.data.topic}
+                            onChange={(e) =>
+                                build.setData('topic', e.target.value)
+                            }
+                        />
+                        <textarea
+                            aria-label="Your notes (optional)"
+                            rows={4}
+                            className="rounded border px-3 py-2 text-sm"
+                            placeholder="Optional: paste your office's notes. The course will stick to them."
+                            value={build.data.notes}
+                            onChange={(e) =>
+                                build.setData('notes', e.target.value)
+                            }
+                        />
+                        {build.errors.topic && (
+                            <p role="alert" className="text-red-700">
+                                {build.errors.topic}
+                            </p>
+                        )}
+                        <Button
+                            className="justify-self-start"
+                            disabled={
+                                build.processing || build.data.topic.length < 4
+                            }
+                        >
+                            {build.processing
+                                ? 'Writing the draft…'
+                                : 'Write a draft course'}
+                        </Button>
+                    </form>
                 </section>
                 <section className="grid gap-2">
                     <h2 className="text-lg font-semibold">

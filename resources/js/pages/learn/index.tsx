@@ -95,11 +95,18 @@ export default function LearnIndex({
                     title="Learn"
                     description="Short courses and your office's how-to pages."
                     actions={
-                        manages ? (
+                        <div className="flex flex-wrap gap-2">
                             <Button asChild variant="outline">
-                                <a href="/learn/manage">Manage training</a>
+                                <a href="/learn/launch">
+                                    Launch, mentors and scorecard
+                                </a>
                             </Button>
-                        ) : undefined
+                            {manages && (
+                                <Button asChild variant="outline">
+                                    <a href="/learn/manage">Manage training</a>
+                                </Button>
+                            )}
+                        </div>
                     }
                 />
                 {outstanding > 0 && (

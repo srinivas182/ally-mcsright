@@ -11,6 +11,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Identity\Enums\UserKind;
+use Modules\Core\Learning\TrainingGate;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Crm\Actions\Tags;
@@ -194,6 +195,10 @@ final class Prospector
      */
     public function toContact(string $ulid, User $by): Contact
     {
+        $training = app(TrainingGate::class)->missing($by, 'prospector'); // LN2
+        if ($training !== null) {
+            throw ValidationException::withMessages(['prospect' => $training]);
+        }
         $p = $this->mine($ulid, $by);
         if ($p->contact_id !== null && ($existing = Contact::query()->find((int) $p->contact_id)) !== null) {
             return $existing;

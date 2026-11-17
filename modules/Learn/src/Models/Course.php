@@ -16,6 +16,7 @@ use Modules\Core\Tenancy\Concerns\HasPublicUlid;
  * @property string $ulid
  * @property string $title
  * @property string|null $summary
+ * @property string|null $skill
  * @property string $source
  * @property string|null $starter_key
  * @property string $status
@@ -30,7 +31,7 @@ final class Course extends Model
 
     protected $table = 'learn_courses';
 
-    protected $fillable = ['title', 'summary', 'source', 'starter_key', 'status', 'pass_mark', 'minutes', 'created_by'];
+    protected $fillable = ['title', 'summary', 'skill', 'source', 'starter_key', 'status', 'pass_mark', 'minutes', 'created_by'];
 
     public function getConnectionName(): ?string
     {
