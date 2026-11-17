@@ -67,6 +67,7 @@ final class SiteRouter
         $r->get('agents/{slug}/{path?}', [AgentSiteController::class, 'show'])->where(['slug' => '[a-z0-9-]{1,80}', 'path' => '[a-z0-9/\-]{0,130}']);
         $r->get('market', [IdxController::class, 'markets']);
         $r->get('market/{place}', [IdxController::class, 'market'])->where('place', '[a-z0-9-]{2,80}');
+        app(SiteExtensions::class)->apply($r); // other modules' pages, e.g. /careers
         $r->get('{path?}', [SiteController::class, 'page'])->where('path', '[A-Za-z0-9/_\-]*');
     }
 

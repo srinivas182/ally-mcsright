@@ -1,6 +1,6 @@
-# Grow 17 — Recruiting pipeline and MLS agent database (RC1)
+# Grow 17 — Recruiting (RC1, RC2)
 
-Plan item E14 (recruiting suite), first part. RC2 adds the attraction engine and career sites (E16, E17); RC3 adds the AI recruiting assistant and retention (E15).
+Plan items E14 (recruiting suite, RC1), E16 and E17 (attraction engine and careers page, RC2). RC3 adds the AI recruiting assistant and retention (E15).
 
 ## Leader review
 
@@ -57,10 +57,41 @@ Opening the recruit marks their alerts as seen. The daily brief also shows "N re
 
 ## Tests
 
-`tests/Feature/Recruiting/RecruitingTest.php`.
+`tests/Feature/Recruiting/RecruitingTest.php`, `tests/Feature/Recruiting/AttractionTest.php`.
 
-## Not in RC1
+## RC2: likely to move (`Modules\Recruiting\MoveScore`)
 
-- Likely-to-move score, campaigns, career site and social proof (RC2).
+Scored daily after the refresh, 0–100, always with the reasons shown next to it:
+
+| Reason                                                               | Points      |
+| -------------------------------------------------------------------- | ----------- |
+| Closed sides down 30% or more on the year before (3+ before)         | 35          |
+| 2 or more agents left their office in the last 90 days               | 25 (4+: 35) |
+| About a year at their office (11–13 months since they moved)         | 20          |
+| Growing fast (the production-jump rule): may be outgrowing the split | 20          |
+
+The agent database sorts by "Most likely to move"; recruit cards show "Likely to move" at 40 or more.
+
+## RC2: campaigns (`Modules\Recruiting\Campaigns`)
+
+- A campaign is up to 8 steps, each on a day (0–120, in order), by email or text, with `{first_name}`, `{brokerage}`, `{recruiter}` and `{careers}`. Two ready-made: "Introduce us" (3 emails over two weeks) and "After they apply" (thank-you email, then a text the next day).
+- The recruiter starts a campaign for one recruit at a time (never in bulk); "After they apply" starts by itself for new careers-page applicants. Each campaign runs once per recruit.
+- **Email**: from the recruiter's name, replies to the recruiter, the brokerage's postal address and a signed one-click unsubscribe (`List-Unsubscribe` and `List-Unsubscribe-Post`) in every message (CAN-SPAM). Unsubscribed recruits get no more recruiting emails.
+- **Text**: only to recruits who agreed in writing (the careers page asks, with its own wording about working there), only 8am–9pm in the brokerage's time zone (otherwise the step waits), always ending "Reply STOP to opt out." STOP and START replies are honoured through the CRM's new `SmsKeywordReceived` event, even though recruits aren't contacts.
+- A campaign stops when the recruit is no longer open (joined, not now), or when the recruiter stops it. Steps a recruit can't receive are skipped. Paused campaigns resume where they were.
+- `recruiting:campaigns` runs every 15 minutes.
+
+## RC2: careers page (`Modules\Recruiting\Careers`)
+
+`/careers` on the brokerage's website, through the website's new `SiteExtensions` (routes before the page catch-all, and live pages in sitemap.xml and llms.txt). Off until the owner turns it on, and only while the website is live.
+
+- Headline, introduction and reasons (owner edits them).
+- **What would you keep here?** Deals a year, average price, today's split and cap: run through the recruiting plan with `EarnHere`, shown with its assumptions and "an estimate, not an offer". Calculator results are `noindex` and not cached.
+- **In our agents' words**: only agents can add their own words (`/recruiting/my-story`), with an explicit consent box, optionally with their closings in the last 12 months; they can take them down any time. Only active users are shown.
+- **Talk to us**: name, email, phone, licence, deals a year, brokerage, message, and an unticked text-consent box. Honeypot, a 3-second minimum, and 5 an hour per address. Creates (or updates, by email) a recruit with source "Careers page", an "applied" alert, and starts "After they apply".
+- SEO and AEO: one H1, canonical, breadcrumbs, `JobPosting` (contractor, direct apply, the office address), `FAQPage` with three plain answers, in sitemap.xml and llms.txt.
+
+## Not yet
+
 - AI outreach drafts for revenue-share sponsors, retention risk for the brokerage's own agents, source attribution and recruiting ROI (RC3).
 - Inviting a joined recruit straight into the roster (today: invite from People as usual).

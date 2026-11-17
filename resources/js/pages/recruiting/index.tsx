@@ -21,6 +21,7 @@ type Card = {
     sides: number | null;
     volume_cents: number | null;
     trend: number | null;
+    move_score: number | null;
 };
 type Alert = {
     id: number;
@@ -70,6 +71,16 @@ function RecruitCard({ r }: { r: Card }) {
                             </span>
                         )}
                     </span>
+                )}
+                {(r.move_score ?? 0) >= 40 && (
+                    <Badge variant="outline" className="justify-self-start">
+                        Likely to move
+                    </Badge>
+                )}
+                {r.source === 'career_site' && (
+                    <Badge variant="outline" className="justify-self-start">
+                        Applied
+                    </Badge>
                 )}
                 {r.next_step && (
                     <span
@@ -126,6 +137,16 @@ export default function Recruiting({
                             <Button variant="outline" asChild>
                                 <Link href="/recruiting/agents">
                                     Find agents in the MLS
+                                </Link>
+                            </Button>
+                            <Button variant="outline" asChild>
+                                <Link href="/recruiting/campaigns">
+                                    Campaigns
+                                </Link>
+                            </Button>
+                            <Button variant="outline" asChild>
+                                <Link href="/recruiting/careers">
+                                    Careers page
                                 </Link>
                             </Button>
                             <Button onClick={() => setAdding(!adding)}>
@@ -232,7 +253,9 @@ export default function Recruiting({
                                     <Badge variant="outline">
                                         {a.kind === 'moved'
                                             ? 'Changed brokerage'
-                                            : 'Production up'}
+                                            : a.kind === 'applied'
+                                              ? 'Applied'
+                                              : 'Production up'}
                                     </Badge>
                                     <Link
                                         className="underline"

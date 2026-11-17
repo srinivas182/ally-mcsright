@@ -15,6 +15,7 @@ use Modules\Crm\Consent;
 use Modules\Listings\Search\ListingSearch;
 use Modules\Listings\Search\MarketStats;
 use Modules\Sites\AgentSites;
+use Modules\Sites\Http\SiteExtensions;
 use Modules\Sites\Models\Site;
 use Modules\Sites\Models\SitePage;
 use Modules\Sites\Models\SitePost;
@@ -97,6 +98,9 @@ final class SiteController
             $places = app(MarketStats::class)->places($tenantId);
             $urls[] = '<url><loc>'.e($base.'/homes').'</loc></url>';
             $urls[] = '<url><loc>'.e($base.'/privacy').'</loc></url>';
+            foreach (app(SiteExtensions::class)->livePages() as $extra) {
+                $urls[] = '<url><loc>'.e($base.$extra['path']).'</loc></url>';
+            }
             $agents = app(AgentSiteController::class)->live();
             if ($agents !== []) {
                 $urls[] = '<url><loc>'.e($base.'/agents').'</loc></url>';
@@ -163,6 +167,9 @@ final class SiteController
             $out[] = '- ['.$p->title.']('.$base.$p->path.')'.($p->meta_description ? ': '.$p->meta_description : '');
         }
         $out[] = '- [Homes for sale]('.$base.'/homes): every home for sale from the MLS, searchable by map, price and size';
+        foreach (app(SiteExtensions::class)->livePages() as $extra) {
+            $out[] = '- ['.$extra['title'].']('.$base.$extra['path'].'): '.$extra['description'];
+        }
         $agents = app(AgentSiteController::class)->live();
         if ($agents !== []) {
             $out[] = '';

@@ -1,4 +1,4 @@
-import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -36,6 +36,28 @@ type Production = {
     last_closed_on: string | null;
     moved_on: string | null;
     previous_office: string | null;
+    move_score: number;
+    move_reasons: string[];
+};
+type Reach = {
+    email_opt_out_on: string | null;
+    text_consent_on: string | null;
+    text_opt_out_on: string | null;
+    application: {
+        licence?: string;
+        deals_a_year?: number;
+        message?: string;
+        applied_on?: string;
+    } | null;
+};
+type Enrollment = {
+    campaign: string;
+    name: string;
+    status: string;
+    step: number;
+    steps: number;
+    next_at: string | null;
+    reason: string | null;
 };
 type Earn = {
     plan: string | null;
@@ -80,6 +102,9 @@ export default function RecruitPage({
     recruiters,
     earn,
     manual,
+    reach,
+    campaigns,
+    enrollments,
 }: {
     recruit: Recruit;
     production: Production | null;
@@ -88,8 +113,12 @@ export default function RecruitPage({
     recruiters: { id: number; name: string }[];
     earn: Earn;
     manual: { deals: number | null; price: number | null };
+    reach: Reach;
+    campaigns: { ulid: string; name: string }[];
+    enrollments: Enrollment[];
 }) {
     const opts = { preserveScroll: true };
+    const errors = usePage().props.errors as Record<string, string>;
     const [reason, setReason] = useState('');
     const log = useForm({
         kind: 'call',
@@ -277,8 +306,142 @@ export default function RecruitPage({
                             {production.moved_on &&
                                 ` · moved ${production.moved_on}${production.previous_office ? ` from ${production.previous_office}` : ''}`}
                         </p>
+                        {production.move_score > 0 && (
+                            <div className="rounded bg-muted/50 p-3 text-sm">
+                                <strong>
+                                    Likely to move: {production.move_score} out
+                                    of 100
+                                </strong>
+                                <ul className="list-disc pl-5">
+                                    {production.move_reasons.map((r) => (
+                                        <li key={r}>{r}</li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
                     </section>
                 )}
+
+                {reach.application && (
+                    <section
+                        className="grid gap-1 rounded-lg border p-4 text-sm"
+                        aria-labelledby="application"
+                    >
+                        <h2
+                            id="application"
+                            className="text-base font-semibold"
+                        >
+                            Their application ({reach.application.applied_on})
+                        </h2>
+                        {reach.application.licence && (
+                            <p>Licence: {reach.application.licence}</p>
+                        )}
+                        {reach.application.deals_a_year !== undefined && (
+                            <p>
+                                Deals a year: {reach.application.deals_a_year}
+                            </p>
+                        )}
+                        {reach.application.message && (
+                            <p className="whitespace-pre-line">
+                                {reach.application.message}
+                            </p>
+                        )}
+                    </section>
+                )}
+
+                <section
+                    className="grid gap-3 rounded-lg border p-4"
+                    aria-labelledby="campaigns"
+                >
+                    <h2 id="campaigns" className="font-semibold">
+                        Campaigns
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                        {recruit.email
+                            ? reach.email_opt_out_on
+                                ? `Emails: they unsubscribed on ${reach.email_opt_out_on}.`
+                                : 'Emails: yes, with an unsubscribe link in each.'
+                            : 'Emails: add their email first.'}{' '}
+                        {reach.text_opt_out_on
+                            ? `Texts: they replied STOP on ${reach.text_opt_out_on}.`
+                            : reach.text_consent_on
+                              ? `Texts: they agreed in writing on ${reach.text_consent_on} (8am to 9pm only).`
+                              : 'Texts: only once they agree in writing (the careers page asks).'}
+                    </p>
+                    {enrollments.length > 0 && (
+                        <ul className="grid gap-2 text-sm">
+                            {enrollments.map((e) => (
+                                <li
+                                    key={e.campaign}
+                                    className="flex flex-wrap items-center gap-2 rounded border p-2"
+                                >
+                                    <strong>{e.name}</strong>
+                                    <span className="text-muted-foreground">
+                                        {e.status === 'active'
+                                            ? `step ${e.step} of ${e.steps}${e.next_at ? `, next on ${e.next_at}` : ''}`
+                                            : e.status === 'finished'
+                                              ? 'finished'
+                                              : `stopped${e.reason ? `: ${e.reason}` : ''}`}
+                                    </span>
+                                    {e.status === 'active' && (
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() =>
+                                                router.post(
+                                                    `/recruiting/${recruit.ulid}/campaign/${e.campaign}/stop`,
+                                                    {},
+                                                    opts,
+                                                )
+                                            }
+                                        >
+                                            Stop
+                                        </Button>
+                                    )}
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                    {open && campaigns.length > 0 && (
+                        <form
+                            className="flex flex-wrap items-end gap-2"
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                const data = new FormData(e.currentTarget);
+                                router.post(
+                                    `/recruiting/${recruit.ulid}/campaign`,
+                                    {
+                                        campaign:
+                                            (data.get('campaign') as
+                                                | string
+                                                | null) ?? '',
+                                    },
+                                    opts,
+                                );
+                            }}
+                        >
+                            <label className="grid gap-1 text-sm">
+                                Start a campaign
+                                <select
+                                    name="campaign"
+                                    className="h-10 rounded-md border bg-background px-3"
+                                >
+                                    {campaigns.map((c) => (
+                                        <option key={c.ulid} value={c.ulid}>
+                                            {c.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+                            <Button variant="outline">Start</Button>
+                        </form>
+                    )}
+                    {errors.campaign && (
+                        <p role="alert" className="text-sm text-red-700">
+                            {errors.campaign}
+                        </p>
+                    )}
+                </section>
 
                 <section
                     className="grid gap-3 rounded-lg border p-4"

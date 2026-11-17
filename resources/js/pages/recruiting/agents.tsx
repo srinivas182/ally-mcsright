@@ -23,6 +23,8 @@ type Agent = {
     moved_on: string | null;
     previous_office: string | null;
     recruit: string | null;
+    move_score: number;
+    move_reasons: string[];
 };
 type Filters = {
     q?: string;
@@ -174,6 +176,9 @@ export default function Agents({
                                     <option value="moved">
                                         Changed brokerage recently
                                     </option>
+                                    <option value="likely">
+                                        Most likely to move
+                                    </option>
                                 </select>
                             </label>
                             <Button>Show</Button>
@@ -222,6 +227,32 @@ export default function Agents({
                                                         {a.office ??
                                                             'Office not known'}
                                                     </div>
+                                                    {a.move_score > 0 && (
+                                                        <div className="mt-1 grid gap-0.5">
+                                                            <Badge
+                                                                variant={
+                                                                    a.move_score >=
+                                                                    40
+                                                                        ? 'default'
+                                                                        : 'outline'
+                                                                }
+                                                                className="justify-self-start"
+                                                            >
+                                                                Likely to move:{' '}
+                                                                {a.move_score}
+                                                            </Badge>
+                                                            {a.move_reasons.map(
+                                                                (r) => (
+                                                                    <span
+                                                                        key={r}
+                                                                        className="text-xs text-muted-foreground"
+                                                                    >
+                                                                        {r}
+                                                                    </span>
+                                                                ),
+                                                            )}
+                                                        </div>
+                                                    )}
                                                     {a.moved_on && (
                                                         <Badge
                                                             variant="outline"

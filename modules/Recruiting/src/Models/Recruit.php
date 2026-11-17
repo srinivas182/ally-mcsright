@@ -33,6 +33,11 @@ use Modules\Core\Tenancy\Concerns\HasPublicUlid;
  * @property int|null $current_cap_cents
  * @property int|null $current_fee_cents
  * @property int|null $compare_plan_id
+ * @property CarbonImmutable|null $email_opt_out_at
+ * @property CarbonImmutable|null $text_consent_at
+ * @property string|null $text_consent_wording
+ * @property CarbonImmutable|null $text_opt_out_at
+ * @property array<string, mixed>|null $application
  * @property CarbonImmutable $created_at
  * @property-read MlsAgent|null $mlsAgent
  */
@@ -42,6 +47,9 @@ final class Recruit extends Model
     use HasPublicUlid;
 
     /** Pipeline stages, in order, with the words agents and brokers see. */
+    /** Where recruits come from. */
+    public const SOURCES = ['mls' => 'MLS', 'referral' => 'Referral', 'manual' => 'Met them', 'career_site' => 'Careers page'];
+
     public const STAGES = ['prospect' => 'To reach', 'talking' => 'Talking', 'meeting' => 'Meeting set', 'offer' => 'Offer made', 'joined' => 'Joined', 'not_now' => 'Not now'];
 
     public const OPEN = ['prospect', 'talking', 'meeting', 'offer'];
@@ -49,7 +57,8 @@ final class Recruit extends Model
     protected $table = 'rec_recruits';
 
     protected $fillable = ['mls_agent_id', 'name', 'email', 'phone', 'brokerage', 'stage', 'source', 'owner_user_id', 'next_step', 'next_step_on', 'not_now_reason',
-        'stage_changed_on', 'current_split', 'current_cap_cents', 'current_fee_cents', 'compare_plan_id'];
+        'stage_changed_on', 'current_split', 'current_cap_cents', 'current_fee_cents', 'compare_plan_id', 'email_opt_out_at', 'text_consent_at', 'text_consent_wording',
+        'text_opt_out_at', 'application'];
 
     public function getConnectionName(): ?string
     {
@@ -68,12 +77,24 @@ final class Recruit extends Model
         return $this->hasMany(RecruitNote::class);
     }
 
+    public function firstName(): string
+    {
+        return explode(' ', trim($this->name))[0] ?: $this->name;
+    }
+
+    /** Texts may go: they agreed and haven't replied STOP. */
+    public function textable(): bool
+    {
+        return $this->phone !== null && $this->text_consent_at !== null && $this->text_opt_out_at === null;
+    }
+
     /**
      * @return array<string, string>
      */
     protected function casts(): array
     {
         return ['next_step_on' => 'immutable_date', 'stage_changed_on' => 'immutable_date', 'created_at' => 'immutable_datetime',
-            'current_cap_cents' => 'integer', 'current_fee_cents' => 'integer'];
+            'current_cap_cents' => 'integer', 'current_fee_cents' => 'integer',
+            'email_opt_out_at' => 'immutable_datetime', 'text_consent_at' => 'immutable_datetime', 'text_opt_out_at' => 'immutable_datetime', 'application' => 'array'];
     }
 }

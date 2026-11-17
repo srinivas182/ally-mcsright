@@ -42,6 +42,7 @@ final class SitesServiceProvider extends ServiceProvider
             return $host !== null ? 'https://'.$host.Rendering\Urls::listing($ulid, $label) : null;
         });
         $this->app->scoped(Http\SiteRouter::class);
+        $this->app->singleton(Http\SiteExtensions::class);
     }
 
     public function boot(): void
