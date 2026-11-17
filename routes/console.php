@@ -16,6 +16,8 @@ Schedule::command('ledger:close-check')->dailyAt('04:15')->onOneServer();
 Schedule::command('ledger:expire-audit-packs')->dailyAt('03:55')->onOneServer();
 // Weekly red-team run against real models (specs/ai/01); exits non-zero on any leak.
 Schedule::command('ai:red-team')->weeklyOn(1, '05:00')->onOneServer();
+// Weekly AI test sets against real models within a budget (specs/ai/08).
+Schedule::command('ai:eval')->weeklyOn(1, '05:30')->onOneServer();
 // Collect finished AI batches and purge stored results after 7 days (specs/ai/01).
 Schedule::command('ai:batches:collect')->everyTenMinutes()->onOneServer();
 // Cap periods reconcile with their entries (specs/compensation/01).

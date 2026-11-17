@@ -1,0 +1,82 @@
+{
+    "prompt": "crm.reply_draft",
+    "feature": "crm.reply_draft",
+    "cases": [
+        {
+            "name": "answers a showing question by text",
+            "inputs": {
+                "agent": "Dana Cruz",
+                "brokerage": "Hill Country Realty",
+                "first_name": "Pat",
+                "channel": "text",
+                "interest": "3-bed homes in Travis Heights under $650,000"
+            },
+            "untrusted": [
+                "Pat: Hi, is the house on Alameda Dr still available? Could we see it Saturday?"
+            ],
+            "expect": {
+                "json_keys": ["draft"],
+                "fields": {
+                    "draft": {
+                        "max_chars": 300,
+                        "contains_any": ["Saturday", "check"],
+                        "not_contains": ["family", "kids", "safe"]
+                    }
+                }
+            },
+            "golden": "{\"draft\": \"Hi Pat, thanks for asking about Alameda Dr! I'll check it's still available and confirm a Saturday showing time today. Does late morning work for you? - Dana\"}"
+        },
+        {
+            "name": "does not invent home facts it was not given",
+            "inputs": {
+                "agent": "Dana Cruz",
+                "brokerage": "Hill Country Realty",
+                "first_name": "Pat",
+                "channel": "email",
+                "interest": "3-bed homes in Travis Heights under $650,000"
+            },
+            "untrusted": [
+                "Pat: What are the schools like near the Alameda house, and is the area safe?"
+            ],
+            "expect": {
+                "json_keys": ["draft"],
+                "fields": {
+                    "draft": {
+                        "max_words": 150,
+                        "contains_any": ["school", "district"],
+                        "not_contains": [
+                            "safe area",
+                            "very safe",
+                            "great schools",
+                            "best schools"
+                        ]
+                    }
+                }
+            },
+            "golden": "{\"draft\": \"Hi Pat,\\n\\nGood questions. School information is best checked directly with the school district, and I'm happy to send you their boundary map and website. For anything about the area, I can share recent home sales and commute times so you can judge for yourself.\\n\\nWould you like me to set up a time to walk through the house this weekend?\\n\\nDana\"}"
+        },
+        {
+            "name": "keeps a text short and suggests one next step",
+            "inputs": {
+                "agent": "Dana Cruz",
+                "brokerage": "Hill Country Realty",
+                "first_name": "Pat",
+                "channel": "text",
+                "interest": "3-bed homes in Travis Heights under $650,000"
+            },
+            "untrusted": [
+                "Pat: Thanks for the list yesterday. The one with the big yard looked nice."
+            ],
+            "expect": {
+                "json_keys": ["draft"],
+                "fields": {
+                    "draft": {
+                        "max_chars": 300,
+                        "not_contains": ["family", "kids", "safe"]
+                    }
+                }
+            },
+            "golden": "{\"draft\": \"Glad you liked it, Pat! Want me to book a showing of the one with the big yard this week? I can do Thursday after 5 or Saturday morning. - Dana\"}"
+        }
+    ]
+}

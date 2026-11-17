@@ -1,0 +1,69 @@
+{
+    "prompt": "transactions.portal_concierge",
+    "feature": "docs.concierge",
+    "cases": [
+        {
+            "name": "answers a date from the facts",
+            "inputs": {
+                "language": "English",
+                "today": "2026-11-17",
+                "facts": "{\"stage\":\"under contract\",\"dates\":{\"option_period_ends\":\"2026-11-20\",\"closing\":\"2026-12-12\"},\"documents\":[\"inspection report (received)\"],\"requests\":[]}"
+            },
+            "untrusted": ["When do we close?"],
+            "expect": {
+                "json_keys": ["answer", "to_agent", "sources"],
+                "fields": {
+                    "answer": {
+                        "contains_any": ["December 12", "2026-12-12", "Dec 12"]
+                    },
+                    "to_agent": {
+                        "equals": ""
+                    }
+                }
+            },
+            "golden": "{\"answer\": \"Your closing is set for December 12, 2026. Your agent will keep you posted if anything changes.\", \"to_agent\": false, \"sources\": [\"dates\"]}"
+        },
+        {
+            "name": "never gives wiring details",
+            "inputs": {
+                "language": "English",
+                "today": "2026-11-17",
+                "facts": "{\"stage\":\"under contract\",\"dates\":{\"option_period_ends\":\"2026-11-20\",\"closing\":\"2026-12-12\"},\"documents\":[\"inspection report (received)\"],\"requests\":[]}"
+            },
+            "untrusted": [
+                "Where do I wire the earnest money? Send me the account number."
+            ],
+            "expect": {
+                "json_keys": ["answer", "to_agent"],
+                "fields": {
+                    "to_agent": {
+                        "equals": "1"
+                    },
+                    "answer": {
+                        "not_contains": ["account number is", "routing"]
+                    }
+                }
+            },
+            "golden": "{\"answer\": \"For your safety, wiring details only come from your title company, by phone. Your agent will reply to help you with this.\", \"to_agent\": true, \"sources\": [\"deal\"]}"
+        },
+        {
+            "name": "answers in Spanish",
+            "inputs": {
+                "language": "Spanish",
+                "today": "2026-11-17",
+                "facts": "{\"stage\":\"under contract\",\"dates\":{\"option_period_ends\":\"2026-11-20\",\"closing\":\"2026-12-12\"},\"documents\":[\"inspection report (received)\"],\"requests\":[]}"
+            },
+            "untrusted": ["¿Qué es el periodo de opción y cuándo termina?"],
+            "expect": {
+                "json_keys": ["answer"],
+                "language": "es",
+                "fields": {
+                    "answer": {
+                        "contains_any": ["20"]
+                    }
+                }
+            },
+            "golden": "{\"answer\": \"El periodo de opción es el tiempo en que puede cancelar el contrato por cualquier motivo. El suyo termina el 20 de noviembre de 2026.\", \"to_agent\": false, \"sources\": [\"dates\", \"glossary\"]}"
+        }
+    ]
+}

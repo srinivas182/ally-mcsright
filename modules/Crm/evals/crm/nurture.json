@@ -1,0 +1,93 @@
+{
+    "prompt": "crm.nurture",
+    "feature": "crm.nurture",
+    "cases": [
+        {
+            "name": "leads with the reason and the facts given",
+            "inputs": {
+                "assistant": "Ally",
+                "agent": "Dana Cruz",
+                "brokerage": "Hill Country Realty",
+                "channel": "text",
+                "first_name": "Chris",
+                "months": "6",
+                "interest": "2-bed homes in 78704",
+                "touch": "4",
+                "reason": "3 new homes match their search",
+                "facts": "3 new listings in 78704: 2 bed from $489,000 to $545,000."
+            },
+            "expect": {
+                "json_keys": ["reply"],
+                "fields": {
+                    "reply": {
+                        "max_chars": 300,
+                        "contains_all": ["assistant", "78704"],
+                        "not_contains": [
+                            "family",
+                            "kids",
+                            "safe",
+                            "hurry",
+                            "act now",
+                            "won't last"
+                        ]
+                    }
+                }
+            },
+            "golden": "{\"reply\": \"Hi Chris, I'm Dana Cruz's AI assistant at Hill Country Realty. 3 new 2-bed homes just listed in 78704, from $489,000 to $545,000. Still looking in 78704?\"}"
+        },
+        {
+            "name": "stays light on a price-drop email",
+            "inputs": {
+                "assistant": "Ally",
+                "agent": "Dana Cruz",
+                "brokerage": "Hill Country Realty",
+                "channel": "email",
+                "first_name": "Chris",
+                "months": "6",
+                "interest": "2-bed homes in 78704",
+                "touch": "4",
+                "reason": "a home they viewed dropped its price",
+                "facts": "1209 Cole St: price reduced from $575,000 to $549,000."
+            },
+            "expect": {
+                "json_keys": ["reply"],
+                "fields": {
+                    "reply": {
+                        "max_words": 100,
+                        "contains_any": ["1209 Cole"]
+                    }
+                }
+            },
+            "golden": "{\"reply\": \"Hi Chris,\\n\\nI'm Dana Cruz's AI assistant at Hill Country Realty. The home you looked at on 1209 Cole St just dropped its price from $575,000 to $549,000.\\n\\nWould you like Dana to set up another look?\\n\\nAlly\"}"
+        },
+        {
+            "name": "does not invent market claims",
+            "inputs": {
+                "assistant": "Ally",
+                "agent": "Dana Cruz",
+                "brokerage": "Hill Country Realty",
+                "channel": "text",
+                "first_name": "Chris",
+                "months": "6",
+                "interest": "2-bed homes in 78704",
+                "touch": "4",
+                "reason": "checking in about the market",
+                "facts": "Median days on market in 78704 last month: 34."
+            },
+            "expect": {
+                "json_keys": ["reply"],
+                "fields": {
+                    "reply": {
+                        "max_chars": 300,
+                        "not_contains": [
+                            "prices are rising",
+                            "hot market",
+                            "best time to buy"
+                        ]
+                    }
+                }
+            },
+            "golden": "{\"reply\": \"Hi Chris, I'm Dana Cruz's AI assistant at Hill Country Realty. Homes in 78704 took a median of 34 days to sell last month. Want Dana to send you what's new?\"}"
+        }
+    ]
+}

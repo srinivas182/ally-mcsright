@@ -1,0 +1,80 @@
+{
+    "prompt": "pricing.cma_summary",
+    "feature": "pricing.cma_summary",
+    "cases": [
+        {
+            "name": "states the range and most likely price exactly",
+            "inputs": {
+                "language": "English",
+                "home": "1402 Alameda Dr, 3 bed, 2 bath, 1,850 sq ft",
+                "range": "$605,000 to $640,000",
+                "likely": "$625,000",
+                "confidence": "good",
+                "facts": "Comps: 1500 Alameda Dr sold $630,000 (1,900 sq ft); 1388 Cole St sold $610,000 (1,800 sq ft, older kitchen, +$15,000). Days on market 34. Sale-to-list 98%."
+            },
+            "expect": {
+                "json_keys": ["summary"],
+                "fields": {
+                    "summary": {
+                        "contains_all": ["$605,000", "$640,000", "$625,000"],
+                        "max_words": 150,
+                        "not_contains": [
+                            "appraisal",
+                            "guarantee",
+                            "will sell for"
+                        ]
+                    }
+                }
+            },
+            "golden": "{\"summary\": \"Based on similar homes that sold nearby, we suggest pricing your home between $605,000 and $640,000, with $625,000 the most likely price. The closest match, 1500 Alameda Dr, sold for $630,000 and is a little larger. 1388 Cole St sold for $610,000; we added $15,000 because its kitchen is older than yours. Homes are taking about 34 days to sell and selling for 98% of their asking price, so pricing it right from the start matters. Your agent will walk you through these homes and talk about the best list price for you.\"}"
+        },
+        {
+            "name": "does not describe the neighbourhood or its people",
+            "inputs": {
+                "language": "English",
+                "home": "1402 Alameda Dr, 3 bed, 2 bath, 1,850 sq ft",
+                "range": "$605,000 to $640,000",
+                "likely": "$625,000",
+                "confidence": "good",
+                "facts": "Comps: 1500 Alameda Dr sold $630,000 (1,900 sq ft); 1388 Cole St sold $610,000 (1,800 sq ft, older kitchen, +$15,000). Days on market 34. Sale-to-list 98%."
+            },
+            "expect": {
+                "json_keys": ["summary"],
+                "fields": {
+                    "summary": {
+                        "not_contains": [
+                            "family",
+                            "kids",
+                            "safe",
+                            "schools",
+                            "neighbors",
+                            "community"
+                        ]
+                    }
+                }
+            },
+            "golden": "{\"summary\": \"Similar homes nearby point to a price between $605,000 and $640,000, most likely $625,000. 1500 Alameda Dr sold for $630,000, and 1388 Cole St sold for $610,000 before adjusting $15,000 for its older kitchen. Homes are selling in about 34 days at 98% of asking. Your agent will go through each comparable home with you and help you choose the list price.\"}"
+        },
+        {
+            "name": "writes in Spanish",
+            "inputs": {
+                "language": "Spanish",
+                "home": "1402 Alameda Dr, 3 bed, 2 bath, 1,850 sq ft",
+                "range": "$605,000 to $640,000",
+                "likely": "$625,000",
+                "confidence": "good",
+                "facts": "Comps: 1500 Alameda Dr sold $630,000 (1,900 sq ft); 1388 Cole St sold $610,000 (1,800 sq ft, older kitchen, +$15,000). Days on market 34. Sale-to-list 98%."
+            },
+            "expect": {
+                "json_keys": ["summary"],
+                "language": "es",
+                "fields": {
+                    "summary": {
+                        "contains_all": ["$625,000"]
+                    }
+                }
+            },
+            "golden": "{\"summary\": \"Según casas similares vendidas cerca, sugerimos un precio entre $605,000 y $640,000, y lo más probable es $625,000. La casa en 1500 Alameda Dr se vendió en $630,000 y es un poco más grande. La de 1388 Cole St se vendió en $610,000 y le sumamos $15,000 porque su cocina es más antigua. Las casas tardan unos 34 días en venderse y se venden al 98% del precio pedido. Su agente le explicará cada casa y le ayudará a elegir el precio.\"}"
+        }
+    ]
+}

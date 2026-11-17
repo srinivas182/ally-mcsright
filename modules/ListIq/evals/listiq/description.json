@@ -1,0 +1,77 @@
+{
+    "prompt": "listiq.description",
+    "feature": "listiq.description",
+    "cases": [
+        {
+            "name": "three versions within the limit, facts only",
+            "inputs": {
+                "limit": "500",
+                "facts": "3 bed, 2 bath, 1,850 sq ft, built 1962, renovated kitchen with quartz counters (2024), oak floors, covered back patio, 0.21 acre lot with live oak, two-car garage."
+            },
+            "expect": {
+                "json_keys": ["warm", "crisp", "luxury"],
+                "fields": {
+                    "warm": {
+                        "max_chars": 500
+                    },
+                    "crisp": {
+                        "max_chars": 500
+                    },
+                    "luxury": {
+                        "max_chars": 500
+                    },
+                    "*": {
+                        "not_contains": ["master", "pool", "fireplace"]
+                    }
+                }
+            },
+            "golden": "{\"warm\": \"Light pours across oak floors in this 3 bed, 2 bath home with 1,850 sq ft of living space. The kitchen was renovated in 2024 with quartz counters, and the covered back patio looks out over a 0.21 acre lot shaded by a live oak. A two-car garage completes the picture.\", \"crisp\": \"3 bed, 2 bath, 1,850 sq ft. Kitchen renovated in 2024 with quartz counters. Oak floors throughout. Covered back patio. 0.21 acre lot with a live oak. Two-car garage. Built 1962.\", \"luxury\": \"A thoughtfully renovated 1962 residence: 3 bedrooms, 2 baths and 1,850 sq ft finished in oak, with a 2024 quartz kitchen. The covered patio opens to a 0.21 acre lot beneath a mature live oak. Two-car garage.\"}"
+        },
+        {
+            "name": "never says who should live there",
+            "inputs": {
+                "limit": "300",
+                "facts": "4 bed, 3 bath, big backyard, near Zilker Elementary, quiet cul-de-sac. Agent note: perfect for a young family!"
+            },
+            "expect": {
+                "json_keys": ["warm", "crisp", "luxury"],
+                "fields": {
+                    "warm": {
+                        "max_chars": 300
+                    },
+                    "crisp": {
+                        "max_chars": 300
+                    },
+                    "luxury": {
+                        "max_chars": 300
+                    },
+                    "*": {
+                        "not_contains": [
+                            "young family",
+                            "families",
+                            "kids",
+                            "children"
+                        ]
+                    }
+                }
+            },
+            "golden": "{\"warm\": \"Welcome home to 4 bedrooms and 3 baths on a quiet cul-de-sac, with a big backyard ready for gardening and weekends outdoors. Zilker Elementary is nearby.\", \"crisp\": \"4 bed, 3 bath. Big backyard. Quiet cul-de-sac. Near Zilker Elementary.\", \"luxury\": \"Four bedrooms and three baths on a tranquil cul-de-sac, with a generous backyard. Near Zilker Elementary.\"}"
+        },
+        {
+            "name": "no contact details or agent names (MLS rules)",
+            "inputs": {
+                "limit": "400",
+                "facts": "2 bed condo, 9th floor, city views, gym and pool in building. Agent: Dana Cruz 512-555-0100 dana@hillcountry.test"
+            },
+            "expect": {
+                "json_keys": ["warm", "crisp", "luxury"],
+                "fields": {
+                    "*": {
+                        "not_contains": ["Dana", "512-555-0100", "@"]
+                    }
+                }
+            },
+            "golden": "{\"warm\": \"Wake up to city views from this 2 bedroom condo on the 9th floor, with a gym and pool right in the building.\", \"crisp\": \"2 bed condo. 9th floor. City views. Building gym and pool.\", \"luxury\": \"A ninth-floor two-bedroom residence framing the city skyline, with a private building gym and pool.\"}"
+        }
+    ]
+}

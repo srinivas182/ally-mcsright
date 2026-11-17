@@ -1,0 +1,98 @@
+{
+    "prompt": "crm.ai_responder",
+    "feature": "crm.ai_responder",
+    "cases": [
+        {
+            "name": "introduces itself and asks one question",
+            "inputs": {
+                "assistant": "Ally",
+                "agent": "Dana Cruz",
+                "brokerage": "Hill Country Realty",
+                "first_name": "Maria",
+                "interest": "buying a condo downtown",
+                "channel": "text",
+                "tone": "friendly",
+                "first_message": "yes",
+                "continuing": "no",
+                "known": "{}",
+                "facts": "Office hours 9am-6pm. Showings 7 days a week."
+            },
+            "untrusted": [
+                "Maria: Hi, I saw a condo on Congress Ave online. Is it still for sale?"
+            ],
+            "expect": {
+                "json_keys": ["reply", "handoff", "qualification", "summary"],
+                "fields": {
+                    "reply": {
+                        "max_chars": 300,
+                        "contains_all": ["assistant"],
+                        "not_contains": ["family", "kids", "safe"]
+                    }
+                }
+            },
+            "golden": "{\"reply\": \"Hi Maria, I'm Dana Cruz's AI assistant at Hill Country Realty. Dana will confirm the Congress Ave condo is still available. Are you hoping to buy in the next few months?\", \"handoff\": false, \"handoff_reason\": \"other\", \"qualification\": {\"intent\": \"buy\", \"timeline\": \"\", \"area\": \"downtown\", \"budget\": \"\", \"preapproved\": \"\", \"has_agent\": \"\", \"showing\": \"\"}, \"summary\": \"Maria is interested in a condo on Congress Ave downtown. Timeline and budget not known yet.\", \"agent_next_message\": \"Hi Maria, it's Dana. The Congress Ave condo: want to see it this week?\"}"
+        },
+        {
+            "name": "hands off when asked for a person",
+            "inputs": {
+                "assistant": "Ally",
+                "agent": "Dana Cruz",
+                "brokerage": "Hill Country Realty",
+                "first_name": "Maria",
+                "interest": "buying a condo downtown",
+                "channel": "text",
+                "tone": "friendly",
+                "first_message": "no",
+                "continuing": "no",
+                "known": "{}",
+                "facts": "Office hours 9am-6pm. Showings 7 days a week."
+            },
+            "untrusted": [
+                "Ally: Hi Maria, are you looking to buy soon?",
+                "Maria: Yes, within 2 months. Can I just talk to Dana please?"
+            ],
+            "expect": {
+                "json_keys": ["reply", "handoff"],
+                "fields": {
+                    "handoff": {
+                        "equals": "1"
+                    },
+                    "reply": {
+                        "max_chars": 300,
+                        "contains_any": ["Dana"]
+                    }
+                }
+            },
+            "golden": "{\"reply\": \"Of course, Maria. Dana will be in touch shortly to talk about the condo and your 2-month timeline.\", \"handoff\": true, \"handoff_reason\": \"asked_for_person\", \"qualification\": {\"intent\": \"buy\", \"timeline\": \"within 2 months\", \"area\": \"downtown\", \"budget\": \"\", \"preapproved\": \"\", \"has_agent\": \"\", \"showing\": \"\"}, \"summary\": \"Maria wants to buy a downtown condo within 2 months and asked to talk to Dana.\", \"agent_next_message\": \"Hi Maria, it's Dana. Happy to help with the condo. Is now a good time to call?\"}"
+        },
+        {
+            "name": "replies in Spanish when the lead writes in Spanish",
+            "inputs": {
+                "assistant": "Ally",
+                "agent": "Dana Cruz",
+                "brokerage": "Hill Country Realty",
+                "first_name": "Maria",
+                "interest": "buying a condo downtown",
+                "channel": "text",
+                "tone": "friendly",
+                "first_message": "yes",
+                "continuing": "no",
+                "known": "{}",
+                "facts": "Office hours 9am-6pm. Showings 7 days a week."
+            },
+            "untrusted": [
+                "Maria: Hola, me interesa el condominio en Congress Ave. ¿Todavía está disponible?"
+            ],
+            "expect": {
+                "json_keys": ["reply"],
+                "language": "es",
+                "fields": {
+                    "reply": {
+                        "max_chars": 300
+                    }
+                }
+            },
+            "golden": "{\"reply\": \"Hola Maria, soy la asistente de IA de Dana Cruz en Hill Country Realty. Dana confirmará si el condominio en Congress Ave sigue disponible. ¿Piensa comprar en los próximos meses?\", \"handoff\": false, \"handoff_reason\": \"other\", \"qualification\": {\"intent\": \"buy\", \"timeline\": \"\", \"area\": \"downtown\", \"budget\": \"\", \"preapproved\": \"\", \"has_agent\": \"\", \"showing\": \"\"}, \"summary\": \"Maria wants a condo on Congress Ave. Writes in Spanish.\", \"agent_next_message\": \"Hola Maria, soy Dana. ¿Quiere ver el condominio esta semana?\"}"
+        }
+    ]
+}

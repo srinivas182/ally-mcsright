@@ -1,0 +1,101 @@
+{
+    "prompt": "recruiting.outreach",
+    "feature": "recruiting.outreach",
+    "cases": [
+        {
+            "name": "warm, short, no money promises",
+            "inputs": {
+                "writer": "Dana Cruz",
+                "brokerage": "Hill Country Realty",
+                "reasons": "Great training, a friendly team, and agents keep more of what they earn."
+            },
+            "context": [
+                {
+                    "type": "agent",
+                    "id": "A1",
+                    "fields": {
+                        "name": "Sam Lee",
+                        "closed_last_year": "14"
+                    }
+                }
+            ],
+            "expect": {
+                "json_keys": ["message"],
+                "fields": {
+                    "message": {
+                        "max_words": 110,
+                        "not_contains": [
+                            "split",
+                            "%",
+                            "cap",
+                            "earn more",
+                            "income",
+                            "likely to move",
+                            "MLS"
+                        ]
+                    }
+                }
+            },
+            "golden": "{\"message\": \"Hi Sam, it's Dana Cruz. I've really enjoyed working deals with you this year. I'm at Hill Country Realty now and love the training and the friendly team here. If you're ever curious, I'd be happy to show you what you'd keep, with your own numbers, no pressure at all. Coffee sometime next week?\"}"
+        },
+        {
+            "name": "never criticises the other brokerage",
+            "inputs": {
+                "writer": "Dana Cruz",
+                "brokerage": "Hill Country Realty",
+                "reasons": "Great training, a friendly team, and agents keep more of what they earn."
+            },
+            "context": [
+                {
+                    "type": "agent",
+                    "id": "A2",
+                    "fields": {
+                        "name": "Pat Gomez",
+                        "brokerage": "Big Box Realty"
+                    }
+                }
+            ],
+            "expect": {
+                "json_keys": ["message"],
+                "fields": {
+                    "message": {
+                        "not_contains": [
+                            "Big Box Realty is",
+                            "worse",
+                            "bad",
+                            "unhappy",
+                            "leave"
+                        ]
+                    }
+                }
+            },
+            "golden": "{\"message\": \"Hi Pat, Dana Cruz here. I always enjoy seeing you at closings. I've been at Hill Country Realty for a while and the training and team have been great for me. If you'd ever like to compare notes, I'd be glad to buy you a coffee. Would a quick call next week work?\"}"
+        },
+        {
+            "name": "no invented numbers or awards",
+            "inputs": {
+                "writer": "Dana Cruz",
+                "brokerage": "Hill Country Realty",
+                "reasons": "Friendly team."
+            },
+            "context": [
+                {
+                    "type": "agent",
+                    "id": "A3",
+                    "fields": {
+                        "name": "Lee Park"
+                    }
+                }
+            ],
+            "expect": {
+                "json_keys": ["message"],
+                "fields": {
+                    "message": {
+                        "not_contains": ["award", "#1", "top producer", "$"]
+                    }
+                }
+            },
+            "golden": "{\"message\": \"Hi Lee, it's Dana Cruz. I hope your fall has been going well. I'm at Hill Country Realty and really like our friendly team. If you'd ever like to hear more about it, I'd be happy to chat, no pressure. Coffee sometime?\"}"
+        }
+    ]
+}

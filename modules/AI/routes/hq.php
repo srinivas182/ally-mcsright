@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use Modules\AI\Http\Controllers\Hq\AiConsoleController;
+use Modules\AI\Http\Controllers\Hq\AiQualityController;
 use Modules\Core\Http\Middleware\EnsureHqConsole;
 
 Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.ai.manage'])
@@ -17,4 +18,7 @@ Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.ai.manage'])
         Route::put('providers/{provider}', [AiConsoleController::class, 'updateProvider'])->name('providers.update');
         Route::put('routes/{route}', [AiConsoleController::class, 'updateRoute'])->name('routes.update');
         Route::post('routes/{route}/lock', [AiConsoleController::class, 'toggleLock'])->name('routes.lock');
+        // AQ1 (specs/ai/08): AI test sets and scores.
+        Route::get('quality', [AiQualityController::class, 'index'])->name('quality');
+        Route::post('quality/run', [AiQualityController::class, 'run'])->middleware('throttle:3,10')->name('quality.run');
     });
