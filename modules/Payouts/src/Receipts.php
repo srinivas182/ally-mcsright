@@ -146,22 +146,7 @@ final class Receipts
             return;
         }
         $accounts = $this->accounts();
-        $payables = [];
-        foreach ((array) ($calc->result['agents'] ?? []) as $row) {
-            $payables[(int) $row['user_id']] = ($payables[(int) $row['user_id']] ?? 0) + (int) $row['agent_net_cents'];
-            if ((int) ($row['team_split_cents'] ?? 0) > 0 && isset($row['team_leader_user_id'])) {
-                $payables[(int) $row['team_leader_user_id']] = ($payables[(int) $row['team_leader_user_id']] ?? 0) + (int) $row['team_split_cents'];
-            }
-        }
-        // Agents title paid directly (CDA option) have no payable here; they are recorded for 1099s.
-        $cda = DB::connection(Connections::cell())->table('tx_cdas')->where('deal_id', $deal->id)->whereIn('status', ['approved', 'sent', 'acknowledged'])->orderByDesc('version')->value('payload');
-        $paidByTitle = array_map('intval', (array) (json_decode((string) ($cda ?? '{}'), true)['agents_paid_by_title'] ?? []));
-        foreach (array_keys($paidByTitle) as $userId) {
-            unset($payables[(int) $userId]);
-        }
-        if ($deal->agent_paid_outside) {
-            $payables = []; // a deal from another app whose agents were paid outside RightAlly (specs/connect/12)
-        }
+        [$payables, $paidByTitle] = $this->payablesFor($deal, $calc);
         $basis = $received ?? $expected;
         // Referral fees the brokerage pays itself become referral payables (paid in a payout run).
         $referrals = array_filter(app(Referrals::class)->amounts($deal, (int) ($calc->result['outside_referral_cents'] ?? 0)), fn ($r) => $r['paid_by'] === 'brokerage');
@@ -182,6 +167,35 @@ final class Receipts
         $journal = app(LedgerService::class)->post($draft)->id;
         DB::connection(Connections::cell())->table('pay_recognitions')->insert(['tenant_id' => $deal->tenant_id, 'deal_id' => $deal->id, 'journal_id' => $journal,
             'payables' => json_encode($payables), 'paid_by_title' => $paidByTitle !== [] ? json_encode($paidByTitle) : null, 'created_at' => now()]);
+    }
+
+    /**
+     * What each agent (and team lead) is owed on a deal from its calculation: net commission, less agents
+     * title paid directly (recorded for 1099s instead), and nothing when agents were paid outside RightAlly.
+     * Also used by the month-end splits check (FH1).
+     *
+     * @return array{0: array<int, int>, 1: array<int, int>} payables and title-paid, by user id
+     */
+    public function payablesFor(Deal $deal, Calculation $calc): array
+    {
+        $payables = [];
+        foreach ((array) ($calc->result['agents'] ?? []) as $row) {
+            $payables[(int) $row['user_id']] = ($payables[(int) $row['user_id']] ?? 0) + (int) $row['agent_net_cents'];
+            if ((int) ($row['team_split_cents'] ?? 0) > 0 && isset($row['team_leader_user_id'])) {
+                $payables[(int) $row['team_leader_user_id']] = ($payables[(int) $row['team_leader_user_id']] ?? 0) + (int) $row['team_split_cents'];
+            }
+        }
+        // Agents title paid directly (CDA option) have no payable here; they are recorded for 1099s.
+        $cda = DB::connection(Connections::cell())->table('tx_cdas')->where('deal_id', $deal->id)->whereIn('status', ['approved', 'sent', 'acknowledged'])->orderByDesc('version')->value('payload');
+        $paidByTitle = array_map('intval', (array) (json_decode((string) ($cda ?? '{}'), true)['agents_paid_by_title'] ?? []));
+        foreach (array_keys($paidByTitle) as $userId) {
+            unset($payables[(int) $userId]);
+        }
+        if ($deal->agent_paid_outside) {
+            $payables = []; // a deal from another app whose agents were paid outside RightAlly (specs/connect/12)
+        }
+
+        return [$payables, $paidByTitle];
     }
 
     private function accounts(): ChartOfAccounts

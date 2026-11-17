@@ -73,7 +73,8 @@ export default function CreateAdjustment({ accounts, today }: Props) {
                     </h1>
                     <p className="text-sm text-muted-foreground">
                         Flagged as manual in every report. Debits must equal
-                        credits.
+                        credits. A second person approves it before the books
+                        change.
                     </p>
                 </header>
 
@@ -270,7 +271,7 @@ export default function CreateAdjustment({ accounts, today }: Props) {
                             type="submit"
                             disabled={!balanced || form.processing}
                         >
-                            Post adjustment
+                            Save for approval
                         </Button>
                     </div>
                 </form>

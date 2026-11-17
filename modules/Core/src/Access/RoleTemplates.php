@@ -56,7 +56,7 @@ final class RoleTemplates
                 'crm.contacts.view' => 'own',
             ]],
             'accountant' => ['name' => 'Accountant', 'description' => 'Keeps the books: records money received, bills agents, posts adjustments and closes periods. Cannot change bank details.', 'permissions' => [
-                'finance.ledger.view' => null, 'finance.ledger.export' => null, 'finance.ledger.adjust' => null, 'finance.periods.close' => null,
+                'finance.ledger.view' => null, 'finance.ledger.export' => null, 'finance.ledger.adjust' => null, 'finance.ledger.approve' => null, 'finance.periods.close' => null,
                 'finance.amounts.view' => null, 'finance.receipts.record' => null, 'finance.billing.manage' => null, 'compensation.plans.view' => null,
             ]],
             'bookkeeper' => ['name' => 'Bookkeeper (read-only)', 'description' => 'Reads the books and exports them. Cannot post, close periods or change payouts.', 'permissions' => [

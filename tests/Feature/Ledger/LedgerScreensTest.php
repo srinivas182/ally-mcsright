@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Testing\AssertableInertia as Assert;
 use Modules\Core\Tenancy\Models\Tenant;
@@ -17,7 +18,7 @@ use Modules\Ledger\Models\LedgerJournal;
 use Modules\Ledger\Models\LedgerPeriod;
 use Modules\Ledger\Money\Money;
 
-const FINANCE_ABILITIES = ['finance.ledger.view', 'finance.ledger.adjust', 'finance.ledger.export', 'finance.periods.close'];
+const FINANCE_ABILITIES = ['finance.ledger.view', 'finance.ledger.adjust', 'finance.ledger.approve', 'finance.ledger.export', 'finance.periods.close'];
 
 function grantFinance(): void
 {
@@ -140,8 +141,12 @@ it('posts a balanced manual adjustment once per form submission', function (): v
     $this->actingAs($this->user)->post($this->host.'/finance/adjustments', $payload)->assertRedirect();
     $this->actingAs($this->user)->post($this->host.'/finance/adjustments', $payload)->assertRedirect();
 
-    $count = app(TenantContext::class)->runAs($this->tenant, fn () => LedgerJournal::query()->where('journal_type', 'manual.adjustment')->count());
-    expect($count)->toBe(1);
+    // FH1: saved once, waiting for a second person; the books don't change yet.
+    [$requests, $count] = app(TenantContext::class)->runAs($this->tenant, fn () => [
+        DB::table('ledger_adjustment_requests')->where('status', 'waiting')->count(),
+        LedgerJournal::query()->where('journal_type', 'manual.adjustment')->count(),
+    ]);
+    expect($requests)->toBe(1)->and($count)->toBe(0);
 });
 
 it('rejects unbalanced adjustments and adjustments in closed months', function (): void {

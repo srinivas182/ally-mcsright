@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Ledger\Http\Controllers;
 
+use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -130,18 +131,14 @@ final class JournalController
 
         /** @var list<array{account: string, side: string, amount: string, memo?: string|null}> $lines */
         $lines = array_values($data['lines']);
+        $user = $request->user();
+        abort_unless($user instanceof User, 403);
 
-        $journal = $post->handle(
-            $data['description'],
-            CarbonImmutable::parse($data['effective_date']),
-            $lines,
-            $data['idempotency_key'],
-            self::userId($request),
-        );
+        // FH1 (specs/finance/22): a second person approves before the books change.
+        $post->request($data['description'], CarbonImmutable::parse($data['effective_date']), $lines, $data['idempotency_key'], $user);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Adjustment saved. It changes the books once a second person approves it.']);
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Adjustment posted.']);
-
-        return to_route('finance.journals.show', $journal);
+        return to_route('finance.adjustments.index');
     }
 
     private static function userId(Request $request): ?int

@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
 use Modules\Ledger\Http\Controllers\AccountController;
 use Modules\Ledger\Http\Controllers\AccountingController;
+use Modules\Ledger\Http\Controllers\AdjustmentController;
 use Modules\Ledger\Http\Controllers\BooksController;
 use Modules\Ledger\Http\Controllers\JournalController;
 use Modules\Ledger\Http\Controllers\PeriodController;
@@ -54,4 +55,9 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])
 
         Route::get('periods', [PeriodController::class, 'index'])->name('periods.index');
         Route::post('periods/{period}/close', [PeriodController::class, 'close'])->name('periods.close');
+        // FH1 (specs/finance/22): month-end checklist, statements as closed, and adjustments approved by a second person.
+        Route::post('periods/{period}/check', [PeriodController::class, 'check'])->middleware('throttle:20,1')->name('periods.check');
+        Route::get('periods/{period}/statements.pdf', [PeriodController::class, 'statements'])->middleware('throttle:20,1')->name('periods.statements');
+        Route::get('adjustments', [AdjustmentController::class, 'index'])->name('adjustments.index');
+        Route::post('adjustments/{adjustment}/decide', [AdjustmentController::class, 'decide'])->where('adjustment', '[0-9A-HJKMNP-TV-Z]{26}')->middleware('throttle:30,1')->name('adjustments.decide');
     });
