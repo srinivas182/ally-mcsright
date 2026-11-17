@@ -26,7 +26,7 @@ final class Structure
         }
         $made = 0;
         $added = 0;
-        $have = array_map(fn (array $t): string => (string) $t['name'], $to->getSchemaBuilder()->getTables());
+        $have = self::tableNames($to);
         foreach ($tables as $table) {
             if (! in_array($table, $have, true)) {
                 foreach (self::createStatements($from, $table) as $sql) {
@@ -44,6 +44,18 @@ final class Structure
         }
 
         return ['tables' => $made, 'columns' => $added];
+    }
+
+    /**
+     * Table names in the connection's own database (MySQL can see other databases on the same server).
+     *
+     * @return list<string>
+     */
+    public static function tableNames(Connection $conn): array
+    {
+        $schema = $conn->getDriverName() === 'sqlite' ? null : $conn->getDatabaseName();
+
+        return array_map(fn (array $t): string => (string) $t['name'], $conn->getSchemaBuilder()->getTables($schema));
     }
 
     /**

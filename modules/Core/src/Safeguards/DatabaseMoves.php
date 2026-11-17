@@ -278,7 +278,7 @@ final class DatabaseMoves
     /** @param list<string> $tables */
     private function wipe(Connection $conn, array $tables, int $tenantId): void
     {
-        $have = array_map(fn (array $t): string => (string) $t['name'], $conn->getSchemaBuilder()->getTables());
+        $have = Structure::tableNames($conn);
         self::relaxLinks($conn);
         try {
             foreach ($tables as $t) {

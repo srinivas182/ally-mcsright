@@ -81,9 +81,9 @@ final class DedicatedCells
             $supported = $driver === 'sqlite' || version_compare((string) preg_replace('/[^0-9.].*$/', '', $version), '8.0', '>=') || str_contains(strtolower($version), 'mariadb');
             $checks[] = ['label' => 'Supported version', 'ok' => $supported, 'detail' => $driver.' '.$version];
             $holding = 0;
-            foreach ($conn->getSchemaBuilder()->getTables() as $t) {
-                if ($conn->getSchemaBuilder()->hasColumn((string) $t['name'], 'tenant_id')) {
-                    $holding += $conn->table((string) $t['name'])->where('tenant_id', $tenant->id)->count();
+            foreach (Structure::tableNames($conn) as $t) {
+                if ($conn->getSchemaBuilder()->hasColumn($t, 'tenant_id')) {
+                    $holding += $conn->table($t)->where('tenant_id', $tenant->id)->count();
                 }
             }
             $checks[] = ['label' => 'Empty for this brokerage', 'ok' => $holding === 0, 'detail' => $holding === 0 ? 'Nothing of this brokerage there yet.' : "{$holding} rows already there."];

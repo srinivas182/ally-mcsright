@@ -25,6 +25,8 @@ beforeEach(function (): void {
     $this->travelTo(CarbonImmutable::parse('2026-06-01 09:00'));
     Storage::fake('local');
     Notification::fake();
+    // A dedicated database here is a SQLite file, so moves are tested where the main database is SQLite too.
+    $this->sqlite = DB::connection()->getDriverName() === 'sqlite';
     $this->tenant = $this->onTenantHost('acme');
     $this->owner = User::factory()->owner()->create(['first_name' => 'Olive']);
     $this->agent = User::factory()->create();
@@ -46,6 +48,9 @@ function hqPair(): array
 }
 
 it('moves a brokerage to its own database with two people, verifies it, switches, and can switch back', function (): void {
+    if (! $this->sqlite) {
+        $this->markTestSkipped('Needs SQLite as the main database.');
+    }
     app(ManageContacts::class)->create(['first_name' => 'Sam', 'email' => 'sam@x.test'], $this->agent);
     $other = Tenant::factory()->create(['slug' => 'other', 'cell_id' => $this->tenant->cell_id]);
     app(TenantContext::class)->runAs($other, fn () => Contact::query()->create(['first_name' => 'Pat', 'last_name' => 'Other', 'origin' => 'company', 'source' => 'manual',
@@ -87,6 +92,9 @@ it('moves a brokerage to its own database with two people, verifies it, switches
 });
 
 it('runs a drill: copies, checks and removes the copy without switching', function (): void {
+    if (! $this->sqlite) {
+        $this->markTestSkipped('Needs SQLite as the main database.');
+    }
     app(ManageContacts::class)->create(['first_name' => 'Sam', 'email' => 'sam@x.test'], $this->agent);
     [$hq1, $hq2] = hqPair();
     $url = "http://app.rightally.io/hq/tenants/{$this->tenant->ulid}/data";

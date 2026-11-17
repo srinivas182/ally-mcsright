@@ -92,8 +92,7 @@ final class BrokerageExport
     {
         $schema = Schema::connection(Connections::cell());
         $out = [];
-        foreach ($schema->getTables() as $t) {
-            $name = (string) $t['name'];
+        foreach (Structure::tableNames(DB::connection(Connections::cell())) as $name) {
             if (! in_array($name, self::SKIP, true) && ! in_array($name, ControlTables::ALL, true) && ! str_starts_with($name, 'sqlite_') && $schema->hasColumn($name, 'tenant_id')) {
                 $out[] = $name;
             }
