@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Transactions\Http;
 
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
@@ -15,7 +16,10 @@ use Modules\Core\Access\Can;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Support\Connections;
 use Modules\Transactions\Deadlines\Deadlines;
+use Modules\Transactions\Risk\AuditPack;
+use Modules\Transactions\Risk\DealRisk;
 use Modules\Transactions\Risk\RiskRegister;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /** Deadline alerts (agents' choices, calendar feed, the brokerage ladder) and the broker risk dashboard. */
 final class DeadlinesController
@@ -63,7 +67,7 @@ final class DeadlinesController
         abort_unless(self::reviewer(self::user($request)), 403);
         $risks = RiskRegister::all();
 
-        return Inertia::render('deals/risk', ['risks' => $risks, 'trend' => RiskRegister::trend(),
+        return Inertia::render('deals/risk', ['risks' => $risks, 'trend' => RiskRegister::trend(), 'agents' => DealRisk::byAgent(),
             'counts' => ['high' => count(array_filter($risks, fn (array $r): bool => $r['level'] === 'high')), 'medium' => count(array_filter($risks, fn (array $r): bool => $r['level'] === 'medium'))]]);
     }
 
@@ -74,6 +78,17 @@ final class DeadlinesController
 
         return response(RiskRegister::csv(), 200, ['Content-Type' => 'text/csv; charset=utf-8',
             'Content-Disposition' => 'attachment; filename="risk-register-'.now()->format('Y-m-d').'.csv"']);
+    }
+
+    /** RD1: the audit pack for a period (state audit, E&O insurer), as one ZIP. */
+    public function auditPack(Request $request, AuditPack $pack): BinaryFileResponse
+    {
+        $user = self::user($request);
+        abort_unless(self::reviewer($user), 403);
+        $data = $request->validate(['from' => ['required', 'date'], 'to' => ['required', 'date', 'after_or_equal:from']]);
+        $path = $pack->build(CarbonImmutable::parse($data['from']), CarbonImmutable::parse($data['to']), $user);
+
+        return response()->download($path, 'audit-pack-'.$data['from'].'-to-'.$data['to'].'.zip', ['Content-Type' => 'application/zip', 'Cache-Control' => 'no-store'])->deleteFileAfterSend();
     }
 
     private static function reviewer(User $user): bool

@@ -94,6 +94,7 @@ type Props = {
     compliance: Compliance;
     reviewer: boolean;
     reasons: string[];
+    risk: { score: number; level: string; reasons: string[] };
     customFields: CustomFieldValue[];
     dealIq: DealIqProps;
     portal: PortalProps;
@@ -295,6 +296,7 @@ export default function ShowDeal({
     compliance,
     reviewer,
     reasons,
+    risk,
     deposits,
     referrals,
     cdas,
@@ -329,6 +331,15 @@ export default function ShowDeal({
                     title={deal.street}
                     description={`${[deal.city, deal.state_code, deal.postal_code].filter(Boolean).join(', ')} · ${deal.agent ?? ''}${deal.locked ? ' · Closed and locked' : ''}${deal.imported_from ? ` · Brought over from ${deal.imported_from}` : ''}`}
                 />
+                {risk.level !== 'low' && (
+                    <p
+                        role="status"
+                        className={`rounded-lg border p-3 ${risk.level === 'high' ? 'border-destructive text-destructive' : ''}`}
+                    >
+                        <strong>Risk {risk.score} of 100</strong> ({risk.level}
+                        ): {risk.reasons.join(', ')}. Fix these and it drops.
+                    </p>
+                )}
                 <WhyCanISee url={`/deals/${deal.ulid}/why`} />
                 <DealIqPanel
                     dealUlid={deal.ulid}
