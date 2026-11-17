@@ -22,6 +22,7 @@ final class LedgerServiceProvider extends ServiceProvider
     {
         $this->app->scoped(LedgerService::class);
         $this->app->scoped(ChartOfAccounts::class);
+        $this->app->singleton(Close\CloseChecks::class);
     }
 
     public function boot(): void
@@ -31,10 +32,17 @@ final class LedgerServiceProvider extends ServiceProvider
 
         Event::listen(TenantProvisioned::class, SeedChartOfAccounts::class);
 
+        // FH1 (specs/finance/22): the month-end checklist. Other modules add their own checks.
+        $checks = $this->app->make(Close\CloseChecks::class);
+        foreach ([Close\Checks\BooksBalance::class, Close\Checks\WaitingAdjustments::class, Close\Checks\BankReconciled::class] as $check) {
+            $checks->register($check);
+        }
+
         $nav = $this->app->make(NavigationRegistry::class);
         $nav->add(new NavItem('Finance', 'Chart of accounts', '/finance/accounts', 'landmark', 10, ability: 'finance.ledger.view', mobile: true));
         $nav->add(new NavItem('Finance', 'Journals', '/finance/journals', 'book-open', 20, ability: 'finance.ledger.view'));
-        $nav->add(new NavItem('Finance', 'Periods', '/finance/periods', 'calendar-check', 30, ability: 'finance.ledger.view'));
+        $nav->add(new NavItem('Finance', 'Adjustments', '/finance/adjustments', 'scale', 25, ability: 'finance.ledger.view')); // FH1
+        $nav->add(new NavItem('Finance', 'Month-end close', '/finance/periods', 'calendar-check', 30, ability: 'finance.ledger.view'));
         $nav->add(new NavItem('Finance', 'Books (QuickBooks, Xero)', '/finance/books', 'book-open', 35, ability: 'finance.ledger.view'));
         $nav->add(new NavItem('Finance', 'Bills', '/finance/bills', 'receipt', 36, ability: 'finance.ledger.view')); // AC1
         $nav->add(new NavItem('Finance', 'Invoices', '/finance/invoices', 'file-text', 37, ability: 'finance.ledger.view'));
@@ -52,6 +60,7 @@ final class LedgerServiceProvider extends ServiceProvider
             'finance.ledger.adjust' => ['Post adjustments to the books'],
             'finance.ledger.export' => ['Export the books'],
             'finance.periods.close' => ['Close and reopen accounting periods'],
+            'finance.ledger.approve' => ['Approve adjustments to the books entered by someone else'],
             'finance.amounts.view' => ['See commission amounts and earnings', false, true],
             'finance.bank_details.manage' => ['Change payout and bank details', false, true],
             'finance.payouts.approve' => ['Approve payouts'],
@@ -60,7 +69,7 @@ final class LedgerServiceProvider extends ServiceProvider
             'One person cannot both change bank details and approve payouts (separation of duties).');
 
         if ($this->app->runningInConsole()) {
-            $this->commands([ReconcileBalances::class]);
+            $this->commands([ReconcileBalances::class, Console\CloseCheck::class]);
         }
     }
 }

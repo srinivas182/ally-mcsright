@@ -13,6 +13,7 @@ use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
 use Modules\Core\Safeguards\BrokerageKeys;
+use Modules\Ledger\Close\CloseChecks;
 use Modules\Transactions\Events\PayoutHoldCleared;
 use Modules\Transactions\Models\Deal;
 
@@ -38,6 +39,11 @@ final class PayoutsServiceProvider extends ServiceProvider
             $keys->register($table, $column, $key);
         }
         Brief\MoneyBriefItems::register($this->app->make(DailyBriefs::class));
+        // FH1 (specs/finance/22): month-end checks for trust, commission splits and payout runs.
+        $close = $this->app->make(CloseChecks::class);
+        foreach ([Close\TrustReconciled::class, Close\SplitsMatch::class, Close\PayoutRunsMatch::class] as $check) {
+            $close->register($check);
+        }
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
 

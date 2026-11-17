@@ -29,5 +29,14 @@
         <tr class="t"><td>Total {{ strtolower($label) }}</td><td class="n">{{ $m($balance[$k.'_cents']) }}</td></tr>
     @endforeach
 </table>
+@isset($closed)
+<h2>Trial balance as of {{ $balance['as_of'] }}</h2>
+<table>
+    <tr><th>Account</th><th class="n">Debit</th><th class="n">Credit</th></tr>
+    @foreach ($closed['trial_balance'] as $r)<tr><td>{{ $r['code'] }} {{ $r['name'] }}</td><td class="n">{{ $r['debit_cents'] ? $m($r['debit_cents']) : '' }}</td><td class="n">{{ $r['credit_cents'] ? $m($r['credit_cents']) : '' }}</td></tr>@endforeach
+    <tr class="t"><td>Totals</td><td class="n">{{ $m(array_sum(array_column($closed['trial_balance'], 'debit_cents'))) }}</td><td class="n">{{ $m(array_sum(array_column($closed['trial_balance'], 'credit_cents'))) }}</td></tr>
+</table>
+<p class="muted">As closed on {{ $closed['at'] }}. Fingerprint (SHA-256): {{ $closed['sha256'] }} — {{ $closed['intact'] ? 'unchanged since the close' : 'DOES NOT MATCH: contact RightAlly support' }}.</p>
+@endisset
 <p class="muted">Prepared from RightAlly's books. Unaudited.</p>
 </body></html>

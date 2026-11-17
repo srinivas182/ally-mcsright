@@ -18,12 +18,14 @@ use Modules\Ledger\Enums\PeriodStatus;
  * @property CarbonImmutable $starts_on
  * @property CarbonImmutable $ends_on
  * @property PeriodStatus $status
+ * @property CarbonImmutable|null $checked_at
+ * @property array{note: string, items: list<array{title: string, detail: string}>}|null $close_notes
  */
 final class LedgerPeriod extends Model
 {
     use BelongsToTenant;
 
-    protected $fillable = ['starts_on', 'ends_on', 'status', 'closed_by', 'closed_at'];
+    protected $fillable = ['starts_on', 'ends_on', 'status', 'closed_by', 'closed_at', 'close_notes', 'checked_at'];
 
     public function getConnectionName(): ?string
     {
@@ -40,6 +42,8 @@ final class LedgerPeriod extends Model
             'ends_on' => 'immutable_date',
             'status' => PeriodStatus::class,
             'closed_at' => 'immutable_datetime',
+            'checked_at' => 'immutable_datetime',
+            'close_notes' => 'array',
         ];
     }
 
