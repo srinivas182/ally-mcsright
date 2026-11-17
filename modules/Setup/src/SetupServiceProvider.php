@@ -19,6 +19,7 @@ final class SetupServiceProvider extends ServiceProvider
         $this->app->scoped(Imports\FileImports::class);
         $this->app->scoped(Imports\Detector::class);
         $this->app->scoped(Guide\Guide::class);
+        $this->app->scoped(Library\Library::class);
     }
 
     public function boot(): void
@@ -31,5 +32,6 @@ final class SetupServiceProvider extends ServiceProvider
         $nav = $this->app->make(NavigationRegistry::class);
         $nav->add(new NavItem('Settings', 'Guided setup', '/setup/guide', 'list-checks', 66, kinds: [UserKind::Owner])); // SU2
         $nav->add(new NavItem('Settings', 'Bring your old files', '/setup/import', 'list-plus', 67, kinds: [UserKind::Owner]));
+        $nav->add(new NavItem('Settings', 'Ready-made library', '/setup/library', 'book-open', 68, kinds: [UserKind::Owner, UserKind::Staff])); // SU3
     }
 }
