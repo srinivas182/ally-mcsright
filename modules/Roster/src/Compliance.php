@@ -28,9 +28,15 @@ final class Compliance
         $eoRequired = app(Roster::class)->settings()['eo_required'];
         $counts = ['expired' => 0, 'within_30' => 0, 'within_60' => 0, 'within_90' => 0, 'missing' => 0, 'unverified' => 0];
         $agents = [];
-        foreach (User::query()->where('kind', UserKind::Agent)->where('status', UserStatus::Active)->orderBy('first_name')->get() as $agent) {
-            $creds = $db->table('roster_credentials')->where('user_id', $agent->id)->where('status', 'current')->get();
-            $docs = $db->table('roster_documents')->where('user_id', $agent->id)->pluck('kind')->all();
+        $list = User::query()->where('kind', UserKind::Agent)->where('status', UserStatus::Active)->orderBy('first_name')->get();
+        $ids = $list->pluck('id')->all();
+        // PS2: three queries for the whole roster instead of three per agent.
+        $allCreds = $db->table('roster_credentials')->whereIn('user_id', $ids)->where('status', 'current')->orderBy('id')->get()->groupBy('user_id');
+        $allDocs = $db->table('roster_documents')->whereIn('user_id', $ids)->get(['user_id', 'kind'])->groupBy('user_id');
+        $w9s = array_flip($db->table('pay_w9s')->whereIn('user_id', $ids)->where('status', 'current')->distinct()->pluck('user_id')->map(fn ($id): int => (int) $id)->all());
+        foreach ($list as $agent) {
+            $creds = $allCreds->get($agent->id, collect());
+            $docs = $allDocs->get($agent->id, collect())->pluck('kind')->all();
             $issues = [];
             foreach ($creds as $c) {
                 if ($c->expires_on === null) {
@@ -61,7 +67,7 @@ final class Compliance
             if (! in_array('agreement', $docs, true)) {
                 $missing[] = 'contractor agreement';
             }
-            if (! in_array('w9', $docs, true) && ! $db->table('pay_w9s')->where('user_id', $agent->id)->where('status', 'current')->exists()) {
+            if (! in_array('w9', $docs, true) && ! isset($w9s[$agent->id])) {
                 $missing[] = 'W-9';
             }
             if ($missing !== []) {

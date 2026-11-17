@@ -50,7 +50,12 @@ final class ChartOfAccounts
      */
     public function seed(): void
     {
+        // PS2: one query when the chart is already complete (the usual case) instead of one per standard account.
+        $have = LedgerAccount::query()->whereIn('code', array_map('strval', array_keys(self::SYSTEM)))->pluck('code')->map(fn ($c): string => (string) $c)->all();
         foreach (self::SYSTEM as $code => [$name, $type]) {
+            if (in_array((string) $code, $have, true)) {
+                continue;
+            }
             LedgerAccount::query()->firstOrCreate(['code' => (string) $code], [
                 'name' => $name,
                 'type' => $type,

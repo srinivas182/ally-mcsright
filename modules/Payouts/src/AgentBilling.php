@@ -126,6 +126,24 @@ final class AgentBilling
             ->selectRaw('coalesce(sum(total_cents - paid_cents), 0) as owed')->value('owed');
     }
 
+    /**
+     * What each agent owes on open invoices, in one query (PS2).
+     *
+     * @param  list<int>  $userIds
+     * @return array<int, int>
+     */
+    public function owedBy(array $userIds): array
+    {
+        $rows = DB::connection(Connections::cell())->table('bill_invoices')->whereIn('user_id', $userIds)->where('status', 'open')->groupBy('user_id')
+            ->selectRaw('user_id, coalesce(sum(total_cents - paid_cents), 0) as owed')->pluck('owed', 'user_id');
+        $out = [];
+        foreach ($userIds as $id) {
+            $out[$id] = (int) ($rows[$id] ?? 0);
+        }
+
+        return $out;
+    }
+
     /** Applies money to the agent's open invoices, oldest first; returns what was applied. */
     public function settle(int $userId, int $cents, string $method, ?int $runLineId = null, ?string $reference = null): int
     {
