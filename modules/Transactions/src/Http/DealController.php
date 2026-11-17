@@ -156,6 +156,9 @@ final class DealController
             'emailIn' => app(DealInbox::class)->address($deal),
             'facts' => DocIq::dealFacts($deal),
             'docAnswer' => $request->session()->get('docAnswer'),
+            'docCompare' => $request->session()->get('docCompare'),
+            'docExplain' => $request->session()->get('docExplain'),
+            'docShare' => $request->session()->get('docShare'),
             'compliance' => $deal->getAttribute('compliance_scanned_at') === null ? (function () use ($deal): array {
                 app(ComplianceScan::class)->run($deal);
 

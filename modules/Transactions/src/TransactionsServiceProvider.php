@@ -76,6 +76,7 @@ final class TransactionsServiceProvider extends ServiceProvider
         $notices->register(Policies\PolicyQuestionMail::class, 'Policy questions for the broker', 'Deals');
         $notices->register(Policies\PolicyReplyMail::class, 'Answers to your policy questions', 'Deals');
         $features->declare(Reading\DocIq::ASK, 'ai.doc_ask', 'DocIQ: questions answered from one document');
+        $features->declare(Reading\Explainer::FEATURE, 'ai.doc_explain', 'DocIQ: a document explained in plain English or Spanish');
         $features->declare(Compliance\Rules::FEATURE, 'ai.compliance_rule', 'Deal-IQ: a brokerage rule written in plain English, read into a check');
         if ($this->app->runningInConsole()) {
             $this->commands([Console\SendDateReminders::class, Console\EscalateDeadlines::class, Console\ScanOpenDeals::class, Console\SendPortalUpdates::class, Console\RunPlaybooks::class]);
