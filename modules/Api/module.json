@@ -1,0 +1,9 @@
+{
+    "id": "api",
+    "name": "Public API",
+    "version": "1.0.0",
+    "provider": "Modules\\Api\\ApiServiceProvider",
+    "depends": ["core", "crm", "transactions", "connect"],
+    "entitlement": null,
+    "description": "Public API v1 (API1, specs/api/01): API keys, partner OAuth apps, contacts, tasks, deals and webhooks."
+}
