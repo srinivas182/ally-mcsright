@@ -42,7 +42,7 @@ final class AnthropicAdapter implements BatchProviderAdapter, ProviderAdapter, S
                     'model' => $request->modelId,
                     'max_tokens' => $request->maxOutputTokens,
                     'temperature' => (float) $request->temperature,
-                    'system' => $request->system,
+                    'system' => self::system($request->system),
                     'messages' => [['role' => 'user', 'content' => $request->userMessage]],
                 ]);
         } catch (ConnectionException $e) {
@@ -60,7 +60,7 @@ final class AnthropicAdapter implements BatchProviderAdapter, ProviderAdapter, S
 
         return new ProviderResponse(
             $text,
-            (int) $response->json('usage.input_tokens', 0),
+            (int) $response->json('usage.input_tokens', 0) + self::cacheWrite((int) $response->json('usage.cache_creation_input_tokens', 0)),
             (int) $response->json('usage.output_tokens', 0),
             (int) $response->json('usage.cache_read_input_tokens', 0),
         );
@@ -78,7 +78,7 @@ final class AnthropicAdapter implements BatchProviderAdapter, ProviderAdapter, S
                     'model' => $request->modelId,
                     'max_tokens' => $request->maxOutputTokens,
                     'temperature' => (float) $request->temperature,
-                    'system' => $request->system,
+                    'system' => self::system($request->system),
                     'messages' => [['role' => 'user', 'content' => $request->userMessage]],
                     'stream' => true,
                 ]);
@@ -98,7 +98,7 @@ final class AnthropicAdapter implements BatchProviderAdapter, ProviderAdapter, S
 
             switch ($data['type'] ?? null) {
                 case 'message_start':
-                    $in = (int) ($data['message']['usage']['input_tokens'] ?? 0);
+                    $in = (int) ($data['message']['usage']['input_tokens'] ?? 0) + self::cacheWrite((int) ($data['message']['usage']['cache_creation_input_tokens'] ?? 0));
                     $cached = (int) ($data['message']['usage']['cache_read_input_tokens'] ?? 0);
                     break;
                 case 'content_block_delta':
@@ -127,7 +127,7 @@ final class AnthropicAdapter implements BatchProviderAdapter, ProviderAdapter, S
                 'model' => $request->modelId,
                 'max_tokens' => $request->maxOutputTokens,
                 'temperature' => (float) $request->temperature,
-                'system' => $request->system,
+                'system' => self::system($request->system),
                 'messages' => [['role' => 'user', 'content' => $request->userMessage]],
             ]];
         }
@@ -178,7 +178,7 @@ final class AnthropicAdapter implements BatchProviderAdapter, ProviderAdapter, S
                 }
             }
             $usage = (array) ($message['usage'] ?? []);
-            $out[(string) $row['custom_id']] = new ProviderResponse($text, (int) ($usage['input_tokens'] ?? 0), (int) ($usage['output_tokens'] ?? 0), (int) ($usage['cache_read_input_tokens'] ?? 0));
+            $out[(string) $row['custom_id']] = new ProviderResponse($text, (int) ($usage['input_tokens'] ?? 0) + self::cacheWrite((int) ($usage['cache_creation_input_tokens'] ?? 0)), (int) ($usage['output_tokens'] ?? 0), (int) ($usage['cache_read_input_tokens'] ?? 0));
         }
 
         return $out;
@@ -203,5 +203,20 @@ final class AnthropicAdapter implements BatchProviderAdapter, ProviderAdapter, S
         if ($response->failed()) {
             throw new ProviderRejected("Anthropic rejected the request (HTTP {$status}).");
         }
+    }
+
+    /** Instructions long enough to cache (about 1,000 tokens) are marked for Anthropic's prompt cache (AQ2). */
+    public const CACHE_FROM_CHARS = 4000;
+
+    /** @return string|list<array{type: string, text: string, cache_control: array{type: string}}> */
+    public static function system(string $system): string|array
+    {
+        return mb_strlen($system) >= self::CACHE_FROM_CHARS ? [['type' => 'text', 'text' => $system, 'cache_control' => ['type' => 'ephemeral']]] : $system;
+    }
+
+    /** Writing to the cache costs 1.25 times normal input; counted as input tokens. */
+    private static function cacheWrite(int $tokens): int
+    {
+        return (int) ceil($tokens * 1.25);
     }
 }

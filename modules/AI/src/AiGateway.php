@@ -6,6 +6,8 @@ namespace Modules\AI;
 
 use Carbon\CarbonImmutable;
 use Closure;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Crypt;
 use Modules\AI\Contracts\BatchProviderAdapter;
 use Modules\AI\Contracts\CreditMeter;
 use Modules\AI\Contracts\StreamingProviderAdapter;
@@ -79,7 +81,21 @@ final class AiGateway
         $sourceIds = array_map(fn ($record) => $record->type.':'.$record->id, $task->context);
         $attempt = 0;
 
-        foreach ($route->modelChain() as $model) {
+        // AQ2 (specs/ai/08): an identical request within the feature's reuse window gets the same answer, free.
+        $cacheKey = (int) $route->getAttribute('cache_minutes') > 0
+            ? 'ai-answer:'.$tenantId.':'.hash('sha256', implode("\0", [$task->featureKey, $template->key, $template->version, $prompt['system'], $prompt['user'], json_encode($task->outputSchema)]))
+            : null;
+        if ($cacheKey !== null && ($hit = $this->cachedAnswer($cacheKey)) !== null) {
+            $first = $route->modelChain()[0] ?? null;
+            if ($first !== null) {
+                $log = $this->log($task, $template, $first, 1, 'cached', null, $sourceIds, policy: 'passed');
+                $this->credits->refund($task->idempotencyKey, 'reused answer');
+
+                return new AiResult($hit['text'], $hit['json'], $log->ulid, $hit['provider'], $hit['model'], 0, 0, 0, 0, $sourceIds);
+            }
+        }
+
+        foreach ($route->modelChainFor(mb_strlen($prompt['system']) + mb_strlen($prompt['user'])) as $model) {
             $provider = $model->provider;
 
             if (! $provider->isUsable()) {
@@ -134,6 +150,10 @@ final class AiGateway
 
             $log = $this->log($task, $template, $model, ++$attempt, 'ok', null, $sourceIds, $response, $cost, $latency, 'passed');
             AiRequestCompleted::dispatch($tenantId, $log->ulid, $task->featureKey, $sourceIds);
+            if ($cacheKey !== null) {
+                Cache::put($cacheKey, Crypt::encryptString((string) json_encode(['text' => $response->text, 'json' => $json, 'provider' => $provider->key, 'model' => $model->model_id])),
+                    now()->addMinutes((int) $route->getAttribute('cache_minutes')));
+            }
 
             return new AiResult(
                 $response->text,
@@ -607,6 +627,27 @@ final class AiGateway
         $json = is_array($data) ? $data : null;
 
         return [$errors === [] ? $json : null, $errors];
+    }
+
+    /**
+     * A reused answer (AQ2): stored encrypted, only for this brokerage, for the feature's reuse window.
+     *
+     * @return array{text: string, json: array<mixed>|null, provider: string, model: string}|null
+     */
+    private function cachedAnswer(string $key): ?array
+    {
+        $raw = Cache::get($key);
+        if (! is_string($raw)) {
+            return null;
+        }
+        try {
+            $data = json_decode(Crypt::decryptString($raw), true);
+        } catch (Throwable) {
+            return null;
+        }
+
+        return is_array($data) && is_string($data['text'] ?? null) ? ['text' => $data['text'], 'json' => is_array($data['json'] ?? null) ? $data['json'] : null,
+            'provider' => (string) ($data['provider'] ?? ''), 'model' => (string) ($data['model'] ?? '')] : null;
     }
 
     /**

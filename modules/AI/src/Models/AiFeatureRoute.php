@@ -25,7 +25,7 @@ final class AiFeatureRoute extends Model
 {
     protected $fillable = [
         'feature_key', 'primary_model_id', 'fallback_model_ids', 'temperature', 'max_output_tokens',
-        'timeout_seconds', 'locked', 'credit_action_key',
+        'timeout_seconds', 'locked', 'credit_action_key', 'light_model_id', 'light_max_chars', 'cache_minutes',
     ];
 
     public function getConnectionName(): ?string
@@ -43,6 +43,9 @@ final class AiFeatureRoute extends Model
             'locked' => 'boolean',
             'max_output_tokens' => 'integer',
             'timeout_seconds' => 'integer',
+            'light_model_id' => 'integer',
+            'light_max_chars' => 'integer',
+            'cache_minutes' => 'integer',
         ];
     }
 
@@ -52,6 +55,24 @@ final class AiFeatureRoute extends Model
     public function primaryModel(): BelongsTo
     {
         return $this->belongsTo(AiModel::class, 'primary_model_id');
+    }
+
+    /**
+     * The model chain for a request of this size (AQ2): short requests go to the lighter model first when HQ has
+     * set one, falling back to the usual chain.
+     *
+     * @return list<AiModel>
+     */
+    public function modelChainFor(int $promptChars): array
+    {
+        $chain = $this->modelChain();
+        $lightId = $this->getAttribute('light_model_id');
+        if ($lightId === null || (int) $this->getAttribute('light_max_chars') <= 0 || $promptChars > (int) $this->getAttribute('light_max_chars')) {
+            return $chain;
+        }
+        $light = AiModel::query()->with('provider')->find((int) $lightId);
+
+        return $light instanceof AiModel ? [$light, ...array_values(array_filter($chain, fn (AiModel $m): bool => $m->id !== $light->id))] : $chain;
     }
 
     /**
