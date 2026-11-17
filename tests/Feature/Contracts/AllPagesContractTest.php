@@ -73,6 +73,8 @@ it('sends every brokerage page the data its component needs', function (string $
     'switch to RightAlly' => ['owner', '/switch', 'switch/index'],
     'prospector' => ['owner', '/prospector', 'crm/prospector'],
     'database' => ['owner', '/insights/database', 'insights/database'],
+    'recruiting' => ['owner', '/recruiting', 'recruiting/index'],
+    'recruiting: agent database' => ['owner', '/recruiting/agents', 'recruiting/agents'],
     'apps (agent)' => ['agent', '/apps', 'apps/index'],
     'an app: webhooks' => ['owner', '/apps/webhooks', 'apps/show'],
     'an app: lead forwarding email' => ['owner', '/apps/lead_email', 'apps/show'],
