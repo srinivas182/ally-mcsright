@@ -1,6 +1,7 @@
 import { Head, Link, usePage } from '@inertiajs/react';
 import {
     BriefcaseIcon,
+    CalculatorIcon,
     CircleHelpIcon,
     FilePlusIcon,
     ListChecksIcon,
@@ -34,6 +35,7 @@ export default function SimpleHome({
         { href: '/deals#start', label: w.start_deal, icon: FilePlusIcon },
         { href: '/today', label: w.call_today, icon: PhoneIcon },
         { href: '/deals', label: w.my_deals, icon: BriefcaseIcon },
+        { href: '/pricing', label: w.price_home, icon: CalculatorIcon },
         { href: '/tasks', label: w['/tasks'], icon: ListChecksIcon },
         { href: '/policies', label: w.ask, icon: CircleHelpIcon },
     ];

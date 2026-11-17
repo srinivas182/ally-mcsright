@@ -140,5 +140,5 @@ it('links people as a household and relationships, only among visible contacts',
 });
 
 it('appears in the menu for brokerage users but not HQ staff', function (): void {
-    $this->actingAs($this->agentA)->get('/agent')->assertInertia(fn (Assert $page) => $page->where('navigation.0.items.1.title', "Today's 10")->where('navigation.0.items.2.title', 'Tasks')->where('navigation.1.items.0.title', 'Leads')->where('navigation.1.items.1.title', 'Inbox')->where('navigation.1.items.2.title', 'Listings')->where('navigation.1.items.3.title', 'Buyer demand')->where('navigation.1.items.4.title', 'Contacts'));
+    $this->actingAs($this->agentA)->get('/agent')->assertInertia(fn (Assert $page) => $page->where('navigation.0.items.1.title', "Today's 10")->where('navigation.0.items.2.title', 'Tasks')->where('navigation.1.items.0.title', 'Leads')->where('navigation.1.items.1.title', 'Inbox')->where('navigation.1.items.2.title', 'Listings')->where('navigation.1.items.3.title', 'Buyer demand')->where('navigation.1.items.4.title', 'CMA and estimates')->where('navigation.1.items.5.title', 'Contacts'));
 });

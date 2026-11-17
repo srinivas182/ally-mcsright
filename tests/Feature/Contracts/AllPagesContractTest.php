@@ -81,6 +81,8 @@ it('sends every brokerage page the data its component needs', function (string $
     'recruiting: refer an agent' => ['agent', '/recruiting/refer', 'recruiting/refer'],
     'recruiting: keeping agents' => ['owner', '/recruiting/retention', 'recruiting/retention'],
     'recruiting: results' => ['owner', '/recruiting/results', 'recruiting/results'],
+    'pricing' => ['agent', '/pricing', 'pricing/index'],
+    'pricing: buyer estimate' => ['agent', '/pricing/buyer', 'pricing/buyer'],
     'apps (agent)' => ['agent', '/apps', 'apps/index'],
     'an app: webhooks' => ['owner', '/apps/webhooks', 'apps/show'],
     'an app: lead forwarding email' => ['owner', '/apps/lead_email', 'apps/show'],

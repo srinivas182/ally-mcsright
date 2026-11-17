@@ -1,0 +1,9 @@
+{
+    "id": "pricing",
+    "name": "Pricing",
+    "version": "0.1.0",
+    "provider": "Modules\\Pricing\\PricingServiceProvider",
+    "depends": ["core", "listings", "crm", "transactions", "ads", "ai"],
+    "entitlement": null,
+    "description": "Pricing (specs/listings/01): CMA from licensed sold comps with adjustments, a branded seller report with a share link, the seller net sheet and the buyer cost estimate."
+}
