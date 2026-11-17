@@ -1,0 +1,107 @@
+# End-to-end journeys every night, in a real browser, against a real server on MySQL (E2E1, specs/core/15).
+#
+# Why nightly rather than on every pull request: a full browser run with a production build takes several
+# minutes; the pull-request checks already cover each feature. A failed night opens the run's report as an
+# artifact (screenshots and traces), and anyone can start a run by hand.
+name: Nightly end-to-end journeys
+
+on:
+  schedule:
+    - cron: '17 9 * * *' # 09:17 UTC (3:17 am in Texas)
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-nightly
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  journeys:
+    name: Journeys on MySQL 8.4
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_DATABASE: rightally_e2e
+          MYSQL_USER: rightally
+          MYSQL_PASSWORD: secret
+          MYSQL_ROOT_PASSWORD: root
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+        ports:
+          - 3306:3306
+
+    env:
+      APP_ENV: e2e
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: rightally_e2e
+      DB_USERNAME: rightally
+      DB_PASSWORD: secret
+      MAIL_MAILER: log
+      QUEUE_CONNECTION: sync
+      E2E_PASSWORD: e2e-nightly-password
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: gd
+          tools: composer:v2
+          coverage: none
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: composer install --no-interaction --no-progress --prefer-dist
+      - run: npm ci
+
+      - name: Allow trigger creation with binary logging (RDS parameter equivalent)
+        run: mysql -h 127.0.0.1 -uroot -proot -e "SET PERSIST log_bin_trust_function_creators = 1;"
+
+      - name: Prepare the application and the e2e brokerage
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+          php artisan migrate --force
+          php artisan tenants:bootstrap-hq
+          php artisan e2e:seed --password="$E2E_PASSWORD"
+
+      - name: Production build
+        run: npm run build
+
+      - name: Browser
+        run: npx playwright install --with-deps chromium
+
+      # Port 80, as in production, so the app's own links need no port. The PHP server needs root for it.
+      - name: Start the app
+        run: sudo -E php artisan serve --host=127.0.0.1 --port=80 > storage/logs/serve.log 2>&1 &
+
+      - name: Journeys
+        run: E2E_NO_SERVER=1 npx playwright test
+
+      - name: Report (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v5
+        with:
+          name: e2e-report
+          path: |
+            playwright-report/
+            test-results/
+            storage/logs/
+          retention-days: 14

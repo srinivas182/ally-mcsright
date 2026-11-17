@@ -11,6 +11,8 @@ import { defineConfig, lazyPlugins } from 'vite-plus';
 // Vitest sets VITEST. Component tests need only React: the Laravel, Wayfinder and font
 // plugins start PHP, fetch fonts, and refuse to run when CI=true.
 const isVitest = process.env.VITEST !== undefined;
+// Offline builds (no access to the font service): NO_REMOTE_FONTS=1 falls back to the system font stack.
+const remoteFonts = process.env.NO_REMOTE_FONTS === undefined;
 
 export default defineConfig({
     resolve: {
@@ -25,11 +27,13 @@ export default defineConfig({
                   laravel({
                       input: ['resources/css/app.css', 'resources/js/app.tsx'],
                       refresh: true,
-                      fonts: [
-                          bunny('Instrument Sans', {
-                              weights: [400, 500, 600],
-                          }),
-                      ],
+                      fonts: remoteFonts
+                          ? [
+                                bunny('Instrument Sans', {
+                                    weights: [400, 500, 600],
+                                }),
+                            ]
+                          : [],
                   }),
                   inertia(),
                   react(),
