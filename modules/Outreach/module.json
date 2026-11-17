@@ -1,0 +1,9 @@
+{
+    "id": "outreach",
+    "name": "Outreach",
+    "version": "0.1.0",
+    "provider": "Modules\\Outreach\\OutreachServiceProvider",
+    "depends": ["core", "crm", "sites"],
+    "entitlement": null,
+    "description": "Outreach (specs/crm/20): booking links, video messages, the call queue with Do Not Call and calling hours, and guided A2P 10DLC texting registration."
+}
