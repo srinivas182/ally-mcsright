@@ -9,6 +9,10 @@ import { ImpersonationBanner } from '@/components/impersonation-banner';
 import { MobileNav } from '@/components/mobile-nav';
 import { PaymentsTestBanner } from '@/components/payments-test-banner';
 import { PasskeyPrompt } from '@/components/passkey-prompt';
+import {
+    SkipLink,
+    useEasierReading,
+} from '@/components/reading/easier-reading';
 import { ChooseView, TalkButton } from '@/components/simple/view-switch';
 import type { AppLayoutProps } from '@/types';
 import { usePage } from '@inertiajs/react';
@@ -18,15 +22,23 @@ export default function AppSidebarLayout({
     children,
     breadcrumbs = [],
 }: AppLayoutProps) {
-    const simple = usePage().props.simple?.mode === 'simple';
+    const { simple: simpleProps, reading } = usePage().props;
+    const simple = simpleProps?.mode === 'simple';
     useEffect(() => {
         document.documentElement.classList.toggle('simple', simple);
     }, [simple]);
+    useEasierReading(reading);
 
     return (
         <AppShell variant="sidebar">
+            <SkipLink />
             <AppSidebar />
-            <AppContent variant="sidebar" className="min-w-0 overflow-x-clip">
+            <AppContent
+                variant="sidebar"
+                id="main-content"
+                tabIndex={-1}
+                className="min-w-0 overflow-x-clip focus:outline-none"
+            >
                 <PaymentsTestBanner />
                 <ImpersonationBanner />
                 <CreditsBanner />

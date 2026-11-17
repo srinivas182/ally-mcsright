@@ -106,6 +106,7 @@ class User extends Authenticatable implements MustVerifyEmail, OAuthenticatable,
             'pending_email_expires_at' => 'datetime',
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
+            'ui_reading' => 'array',
         ];
     }
 

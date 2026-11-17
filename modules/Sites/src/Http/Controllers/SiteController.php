@@ -98,6 +98,7 @@ final class SiteController
             $places = app(MarketStats::class)->places($tenantId);
             $urls[] = '<url><loc>'.e($base.'/homes').'</loc></url>';
             $urls[] = '<url><loc>'.e($base.'/privacy').'</loc></url>';
+            $urls[] = '<url><loc>'.e($base.'/accessibility').'</loc></url>';
             foreach (app(SiteExtensions::class)->livePages() as $extra) {
                 $urls[] = '<url><loc>'.e($base.$extra['path']).'</loc></url>';
             }

@@ -32,6 +32,20 @@ final class SimpleController
         return ($d['mode'] ?? null) === 'simple' ? redirect('/simple') : (($d['mode'] ?? null) === 'full' ? redirect($user->isKind(UserKind::Agent) || $user->isKind(UserKind::Assistant) ? '/agent' : '/dashboard') : back());
     }
 
+    /** AX1: easier reading (text size, contrast, motion, underlined links). */
+    public function reading(Request $request, EasierReading $reading): RedirectResponse
+    {
+        $d = $request->validate(['text' => ['nullable', 'in:standard,large,largest'], 'contrast' => ['nullable', 'boolean'], 'motion' => ['nullable', 'boolean'], 'links' => ['nullable', 'boolean']]);
+        $reading->set(self::user($request), [
+            'text' => $d['text'] ?? null,
+            'contrast' => isset($d['contrast']) ? (bool) $d['contrast'] : null,
+            'motion' => isset($d['motion']) ? (bool) $d['motion'] : null,
+            'links' => isset($d['links']) ? (bool) $d['links'] : null,
+        ]);
+
+        return back();
+    }
+
     private static function user(Request $request): User
     {
         $user = $request->user();

@@ -107,6 +107,77 @@ html.simple {
     font-size: 112.5%;
 }
 
+/* Easier reading (AX1, specs/core/13): chosen per person, set on <html> before the page draws.
+   Text sizes win over simple mode's size because they come later. */
+html[data-text='large'] {
+    font-size: 118.75%;
+}
+
+html[data-text='largest'] {
+    font-size: 137.5%;
+}
+
+html[data-contrast='high'] {
+    --muted-foreground: var(--neutral-800);
+    --border: var(--neutral-500);
+    --input: var(--neutral-500);
+}
+
+html[data-contrast='high'].dark {
+    --muted-foreground: var(--neutral-100);
+    --border: var(--neutral-300);
+    --input: var(--neutral-300);
+}
+
+html[data-links='underline'] a,
+html[data-contrast='high'] a {
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+}
+
+html[data-motion='reduce'] *,
+html[data-motion='reduce'] *::before,
+html[data-motion='reduce'] *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* A clear keyboard focus everywhere (WCAG 2.2 focus visible). */
+:focus-visible {
+    outline: 3px solid var(--ring);
+    outline-offset: 2px;
+}
+
+/* "Skip to main content": hidden until a keyboard user tabs to it. */
+.skip-link {
+    position: absolute;
+    left: 0.5rem;
+    top: -4rem;
+    z-index: 9999;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    background: var(--background);
+    color: var(--foreground);
+    font-weight: 600;
+}
+
+.skip-link:focus {
+    top: 0.5rem;
+}
+
 /* "Show me how" (SM1): the part of the page being explained. */
 [data-tour-active='true'] {
     outline: 3px solid var(--color-primary, currentColor);

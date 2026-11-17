@@ -9,6 +9,7 @@ use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Router;
 use Modules\Sites\Content\Redirects;
+use Modules\Sites\Http\Controllers\AccessibilityController;
 use Modules\Sites\Http\Controllers\AgentSiteController;
 use Modules\Sites\Http\Controllers\AillyController;
 use Modules\Sites\Http\Controllers\BlogController;
@@ -43,6 +44,7 @@ final class SiteRouter
         $r->get('homes/compare', [IdxController::class, 'compare']);
         $r->get('home-value', [ValuationController::class, 'show']);
         $r->get('privacy', [PrivacyController::class, 'show']);
+        $r->get('accessibility', [AccessibilityController::class, 'show']); // AX1
         $r->post('_valuation', [ValuationController::class, 'submit']);
         $r->get('go/{slug}', [FunnelController::class, 'show'])->where('slug', '[a-z0-9-]{1,80}');
         $r->post('_funnel/{slug}', [FunnelController::class, 'submit'])->where('slug', '[a-z0-9-]{1,80}');
