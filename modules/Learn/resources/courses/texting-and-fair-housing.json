@@ -1,0 +1,54 @@
+{
+    "title": "Texting rules and fair housing basics",
+    "summary": "The rules that keep you and your clients safe. This is general training, not legal advice.",
+    "minutes": 15,
+    "pass_mark": 80,
+    "lessons": [
+        {
+            "title": "Texting and calling rules (TCPA)",
+            "kind": "text",
+            "body": "US law protects people from unwanted texts and automatic calls.\n\n- Text only people who **agreed** to texts. RightAlly saves their agreement and the words they saw.\n- Texts and automatic calls go out only between **8 am and 9 pm** in the person's own time zone.\n- When someone replies **STOP**, never text them again.\n- Skip numbers on the **Do Not Call** list.\n\nWhen in doubt, call the person yourself or send an email."
+        },
+        {
+            "title": "Fair housing in everyday words",
+            "kind": "text",
+            "body": "Treat every client the same, whatever their race, colour, religion, sex, disability, family status or national origin. Many states and cities protect more groups.\n\n- Describe **the home**, not the people you think should live there. Say \"three bedrooms near a park\", not \"perfect for a young family\".\n- Never steer people toward or away from a neighbourhood.\n- Answer questions about schools or crime by pointing to public sources.\n\nRightAlly's **Marketing check** flags risky wording before you post."
+        },
+        {
+            "title": "Check what you learned",
+            "kind": "quiz",
+            "questions": [
+                {
+                    "q": "A lead filled in your form but did not tick the box agreeing to texts. What do you do?",
+                    "options": [
+                        "Text them anyway",
+                        "Call or email instead",
+                        "Add them to a text campaign"
+                    ],
+                    "answer": 1,
+                    "why": "Texts need the person's agreement. Call or email instead."
+                },
+                {
+                    "q": "What time may automatic texts go out?",
+                    "options": [
+                        "Any time",
+                        "8 am to 9 pm their time",
+                        "8 am to 9 pm your time"
+                    ],
+                    "answer": 1,
+                    "why": "The quiet hours follow the person's own time zone."
+                },
+                {
+                    "q": "Which listing wording is safer?",
+                    "options": [
+                        "Perfect for a young family",
+                        "Three bedrooms near a park",
+                        "Ideal for empty nesters"
+                    ],
+                    "answer": 1,
+                    "why": "Describe the home, not the people you think should live there."
+                }
+            ]
+        }
+    ]
+}
