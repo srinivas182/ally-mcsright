@@ -37,6 +37,16 @@ abstract class TestCase extends BaseTestCase
         return $tenant;
     }
 
+    /** Switches requests and factories to another brokerage made earlier in the test (cross-brokerage features). */
+    public function useTenantHost(Tenant $tenant): void
+    {
+        $root = 'http://'.$tenant->slug.'.rightally.app';
+        config(['app.url' => $root]);
+        URL::forceRootUrl($root);
+        app(TenantContext::class)->set($tenant);
+        $this->hostTenant = $tenant;
+    }
+
     /**
      * The tenancy middleware clears the tenant after each request (so long-running workers never
      * leak a tenant). Tests that live on a tenant host get it back for their next factory call.

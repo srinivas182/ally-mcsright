@@ -18,6 +18,6 @@ final class ControlTables
         'identity_directory', 'mcp_central_clients', 'mcp_central_links', 'mls_authorizations', 'movewise_ad_settings', 'movewise_ad_spend', 'movewise_agents', 'movewise_chats',
         'movewise_connections', 'movewise_invoices', 'movewise_package_agents', 'movewise_packages', 'movewise_partners', 'movewise_people', 'movewise_phone_codes',
         'movewise_relay_numbers', 'movewise_saved_homes', 'movewise_saved_searches', 'movewise_seat_requests', 'movewise_sessions', 'movewise_settlements', 'movewise_shows',
-        'movewise_sign_ins', 'movewise_states', 'movewise_status_events', 'outreach_texting_registrations', 'pay_instant_limits', 'pay_rail_platform', 'pay_rail_refs', 'signups',
+        'movewise_sign_ins', 'network_brokerages', 'network_profiles', 'network_referrals', 'movewise_states', 'movewise_status_events', 'outreach_texting_registrations', 'pay_instant_limits', 'pay_rail_platform', 'pay_rail_refs', 'signups',
         'sms_threads', 'studio_music', 'studio_packages', 'support_tickets', 'usage_calls', 'usage_tenant_policies'];
 }

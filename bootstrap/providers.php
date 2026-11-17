@@ -19,6 +19,7 @@ use Modules\Ledger\LedgerServiceProvider;
 use Modules\Listings\ListingsServiceProvider;
 use Modules\ListIq\ListIqServiceProvider;
 use Modules\Movewise\MovewiseServiceProvider;
+use Modules\Network\NetworkServiceProvider;
 use Modules\Outreach\OutreachServiceProvider;
 use Modules\Payouts\PayoutsServiceProvider;
 use Modules\Pricing\PricingServiceProvider;
@@ -57,5 +58,6 @@ return [
     LearnServiceProvider::class,
     EngageServiceProvider::class,
     SetupServiceProvider::class,
+    NetworkServiceProvider::class,
     ApiServiceProvider::class,
 ];
