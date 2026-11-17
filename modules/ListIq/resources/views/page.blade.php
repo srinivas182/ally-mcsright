@@ -24,6 +24,33 @@
             @endif
         </div>
     </section>
+    <section class="section" id="showing">
+        <div class="wrap narrow">
+            <h2 class="section-title">Book a showing (buyers' agents)</h2>
+            @if ($booked === '2')<p class="form-ok" role="status">Your showing is confirmed. Check your email for the details.</p>
+            @elseif ($booked === '1')<p class="form-ok" role="status">Thank you. The listing agent will confirm by email.</p>
+            @else
+                @if ($showingError)<p class="form-error" role="alert">{{ $showingError }}</p>@endif
+                <form method="post" action="/_showing/{{ $prep->ulid }}" class="form-card">
+                    <div class="form-row">
+                        <label>Your name <input name="name" required autocomplete="name"></label>
+                        <label>Brokerage <input name="brokerage" autocomplete="organization"></label>
+                    </div>
+                    <div class="form-row">
+                        <label>Email <input type="email" name="email" required autocomplete="email"></label>
+                        <label>Mobile phone <input type="tel" name="phone" autocomplete="tel"></label>
+                    </div>
+                    <div class="form-row">
+                        <label>Date <input type="date" name="date" required></label>
+                        <label>Time <input type="time" name="time" required step="900"></label>
+                    </div>
+                    <p class="lead-muted">Showings are 30 minutes, starting between 8am and 8pm. Access details come by email once confirmed.</p>
+                    <div class="hp" aria-hidden="true"><label>Leave empty <input name="website" tabindex="-1" autocomplete="off"></label></div>
+                    <button class="btn btn-primary" type="submit">Request this time</button>
+                </form>
+            @endif
+        </div>
+    </section>
     <section class="section section-alt">
         <div class="wrap contact-grid" id="ask">
             <div>

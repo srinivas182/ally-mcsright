@@ -34,6 +34,11 @@ use Modules\Core\Tenancy\Concerns\HasPublicUlid;
  * @property string|null $floor_plan_path
  * @property bool $in_mls
  * @property int $page_views
+ * @property string $showing_mode
+ * @property string|null $access
+ * @property string|null $seller_note
+ * @property CarbonImmutable|null $seller_note_at
+ * @property CarbonImmutable $created_at
  * @property CarbonImmutable $updated_at
  */
 final class Prep extends Model
@@ -44,7 +49,7 @@ final class Prep extends Model
     protected $table = 'listiq_listings';
 
     protected $fillable = ['owner_user_id', 'deal_id', 'street', 'city', 'state', 'zip', 'facts', 'notes', 'showing', 'manual', 'descriptions', 'description', 'description_es',
-        'remarks_limit', 'status', 'floor_plan_path', 'in_mls'];
+        'remarks_limit', 'status', 'floor_plan_path', 'in_mls', 'showing_mode', 'access', 'seller_note', 'seller_note_at'];
 
     public function getConnectionName(): ?string
     {
@@ -62,6 +67,7 @@ final class Prep extends Model
      */
     protected function casts(): array
     {
-        return ['facts' => 'array', 'manual' => 'array', 'descriptions' => 'array', 'updated_at' => 'immutable_datetime', 'remarks_limit' => 'integer', 'in_mls' => 'boolean', 'page_views' => 'integer'];
+        return ['facts' => 'array', 'manual' => 'array', 'descriptions' => 'array', 'updated_at' => 'immutable_datetime', 'remarks_limit' => 'integer', 'in_mls' => 'boolean', 'page_views' => 'integer', 'access' => 'encrypted',
+            'seller_note_at' => 'immutable_datetime', 'created_at' => 'immutable_datetime'];
     }
 }

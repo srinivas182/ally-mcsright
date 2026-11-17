@@ -18,9 +18,11 @@ use Modules\ListIq\Marketing;
 use Modules\ListIq\Models\OpenHouse;
 use Modules\ListIq\Models\Photo;
 use Modules\ListIq\Models\Prep;
+use Modules\ListIq\Models\Showing;
 use Modules\ListIq\Photos;
 use Modules\ListIq\Preps;
 use Modules\ListIq\Shoot;
+use Modules\ListIq\Showings;
 use Modules\ListIq\Staging\ReplicateStager;
 use Modules\ListIq\Staging\VirtualStager;
 use Modules\Transactions\Models\Deal;
@@ -77,7 +79,22 @@ final class ListIqController
                 'open_houses' => OpenHouse::query()->where('listing_id', $prep->id)->orderByDesc('starts_at')->get()->map(fn (OpenHouse $o): array => ['ulid' => $o->ulid,
                     'starts' => $o->starts_at->setTimezone(app(TenantContext::class)->current()->timezone ?: 'America/Chicago')->format('D M j, g:i A'),
                     'ended' => $o->ended_at !== null, 'visitors' => count((array) $o->visitors)])->all()],
+            'showings' => ['mode' => $prep->showing_mode, 'access' => $prep->access, 'seller_note' => $prep->seller_note, 'summary' => app(Showings::class)->summary($prep),
+                'list' => Showing::query()->where('listing_id', $prep->id)->orderByDesc('starts_at')->limit(30)->get()->map(fn (Showing $s): array => ['ulid' => $s->ulid,
+                    'when' => app(Showings::class)->when($s), 'name' => $s->name, 'brokerage' => $s->brokerage, 'status' => $s->status, 'feedback' => $s->feedback,
+                    'upcoming' => $s->starts_at->isFuture()])->all(),
+                'portal' => $prep->deal_id !== null],
         ]);
+    }
+
+    public function decide(Request $request, Prep $prep, string $showing, Showings $showings): RedirectResponse
+    {
+        $user = self::user($request);
+        abort_unless(Preps::canSee($user, $prep), 403);
+        $s = Showing::query()->where('listing_id', $prep->id)->where('ulid', $showing)->firstOrFail();
+        $request->boolean('approve') ? $showings->approve($s, $user) : $showings->decline($s, $user, $request->input('reason') !== null ? (string) $request->input('reason') : null);
+
+        return back();
     }
 
     public function mls(Request $request, Prep $prep): RedirectResponse
@@ -161,7 +178,7 @@ final class ListIqController
     public function update(Request $request, Prep $prep, Preps $preps): RedirectResponse
     {
         abort_unless(Preps::canSee(self::user($request), $prep), 403);
-        $preps->update($prep, $request->only(['facts', 'notes', 'showing', 'manual', 'remarks_limit', 'description', 'description_es']));
+        $preps->update($prep, $request->only(['facts', 'notes', 'showing', 'manual', 'remarks_limit', 'description', 'description_es', 'showing_mode', 'access', 'seller_note']));
 
         return back();
     }

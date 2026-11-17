@@ -8,6 +8,7 @@ use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Modules\Core\Deals\ListingActivity;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Transactions\Closing\Appointments;
@@ -193,6 +194,7 @@ final class PortalView
                     'sources' => array_values(array_map(fn ($s): string => Copy::t($locale, 'source.'.$s), (array) json_decode((string) ($q->sources ?? '[]'), true)))])->all()) : [],
             'checkin' => $client && $deal->status === 'closed' && ! $db->table('tx_portal_feedback')->where('access_id', $access->id)->exists(),
             'offers' => $role === 'seller' ? self::offers($deal, $locale) : null,
+            'listing' => $role === 'seller' ? app(ListingActivity::class)->forSeller($deal->id, $locale) : null,
             'moving' => MovingChecklist::for($deal, $access),
             'closingDay' => ClosingDay::soon($deal) ? ClosingDay::plan($deal, $access) : [],
             'appointments' => $client ? array_map(fn (array $a): array => ['title' => $a['title'], 'when' => Copy::date($locale, substr($a['starts_at'], 0, 10)).', '
