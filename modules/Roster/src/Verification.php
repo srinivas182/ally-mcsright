@@ -43,6 +43,9 @@ final class Verification
         }
         $agent = User::query()->findOrFail((int) $c->user_id);
         $r = $this->verifier->lookup((string) $c->state_code, (string) $c->number, $agent->last_name ?? $agent->name);
+        if ($r['status'] === 'unknown') { // LN4: no records for that state; verify by hand
+            throw ValidationException::withMessages(['verify' => 'There are no state records for '.$c->state_code.' yet; verify this licence by hand.']);
+        }
         $result = match (true) {
             $r['status'] === 'not_found' => 'not_found',
             $r['status'] !== 'active' => 'inactive',
@@ -51,7 +54,7 @@ final class Verification
         };
         $update = ['last_checked_at' => now(), 'check_result' => $result, 'updated_at' => now()];
         if ($result === 'active') {
-            $update += ['verified_at' => now(), 'verified_by' => $by?->id, 'verification_method' => 'arello',
+            $update += ['verified_at' => now(), 'verified_by' => $by?->id, 'verification_method' => $this->verifier->method(),
                 'verification_note' => 'Active per state records'.($r['expires_on'] !== null ? ' until '.$r['expires_on'] : '').' (automatic check)'];
             if ($r['expires_on'] !== null && $r['expires_on'] !== $c->expires_on) {
                 $update['expires_on'] = $r['expires_on'];
@@ -80,8 +83,12 @@ final class Verification
         $checked = 0;
         foreach (DB::connection(Connections::cell())->table('roster_credentials')->where('kind', 'licence')->where('status', 'current')
             ->where(fn ($q) => $q->whereNull('last_checked_at')->orWhere('last_checked_at', '<', CarbonImmutable::now()->subDays(self::RECHECK_DAYS)))->pluck('ulid') as $ulid) {
-            $this->check((string) $ulid);
-            $checked++;
+            try {
+                $this->check((string) $ulid);
+                $checked++;
+            } catch (ValidationException) {
+                // no records for that state: left for a person to verify
+            }
         }
 
         return $checked;

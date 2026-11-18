@@ -106,6 +106,12 @@ export default function LearnIndex({
                                     Launch, mentors and scorecard
                                 </a>
                             </Button>
+                            <Button asChild variant="outline">
+                                <a href="/learn/market">Know your market</a>
+                            </Button>
+                            <Button asChild variant="outline">
+                                <a href="/learn/pods">Accountability pods</a>
+                            </Button>
                             {manages && (
                                 <Button asChild variant="outline">
                                     <a href="/learn/manage">Manage training</a>

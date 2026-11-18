@@ -51,7 +51,15 @@ Score = 100 × (1 − weighted share of contacts with each problem). The four ne
 
 `tests/Feature/Insights/DatabaseHealthTest.php`.
 
-## Not in DH1
+## LN4: Checks, fill-in and "moved" flags (rest of E24)
 
-- Email and phone validation, licensed fill-in of missing details, and "moved" flags from property data (rest of E24; needs a data partner).
+- **Email checks** use ZeroBounce (recommended), NeverBounce or Kickbox, chosen in Outside services (`Crm\Health\ContactChecks`). Each address is marked valid, invalid (bounces) or risky (catch-all or unknown). Bouncing emails become a database-health check, **Emails that bounce**, with the ready-made list `bad-email`. A note goes on the contact's timeline.
+- **Phone checks** use Twilio Lookup (recommended), Telnyx or Numverify. Each number is marked mobile, landline, internet phone or not working. A landline shows "texts won't arrive" on the contact. Numbers that don't work become a check, with the list `bad-phone`.
+- **Licensed fill-in.** When a contact has no name, the name the phone network has on file (caller ID) is kept as a suggestion. The agent sees "The phone network lists this number as …" and can press **Use this name**. Nothing changes without the agent.
+- **"May have moved."** A past-client or sphere contact is flagged when their home's address matches a home that sold on the brokerage's MLS in the last 12 months, after they bought it (`Sites\Funnels\MovedFlags`, using the cross-MLS address key). The flag shows on the contact, on the timeline and in database health (list `may-have-moved`), so the agent can congratulate them and ask for the new address.
+- **When checks run:** every morning at 04:50 (`crm:contact-health`). Each contact is checked at most every six months, up to 200 emails and 200 phones a day per brokerage, so costs stay predictable. **Review:** daily limits and the six-month re-check.
+
+## Not yet
+
 - Forecast rates learned from the brokerage's own conversion history (stated assumptions for now).
+- Change-of-address data from a USPS licensee. Moved flags come from MLS sales only.

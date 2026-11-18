@@ -12,6 +12,11 @@ use RuntimeException;
  */
 final class NotConfiguredVerifier implements LicenceVerifier
 {
+    public function method(): string
+    {
+        return 'manual';
+    }
+
     public function configured(): bool
     {
         return false;

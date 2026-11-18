@@ -174,6 +174,22 @@ final class ContactController
         return response()->json($explained);
     }
 
+    /** LN4: use the name the phone network has on file (the agent saw it and chose it). */
+    public function useCallerName(Request $request, Contact $contact, ManageContacts $contacts): RedirectResponse
+    {
+        $user = $request->user();
+        abort_unless($user instanceof User, 403);
+        $name = trim((string) $contact->caller_name);
+        if ($name === '') {
+            return back();
+        }
+        $parts = preg_split('/\s+/', $name) ?: [$name];
+        $contacts->update($contact, ['first_name' => (string) array_shift($parts), 'last_name' => implode(' ', $parts)], $user);
+        $contact->newQuery()->whereKey($contact->id)->update(['caller_name' => null]);
+
+        return back();
+    }
+
     public function show(Request $request, Contact $contact): Response
     {
         $user = self::user($request);
@@ -203,6 +219,8 @@ final class ContactController
                     'asked_at' => app(ConsentRequests::class)->lastSent($contact)?->toDateString(),
                 ],
             ],
+            // LN4 (E24): email and phone checks, the phone network's name for them, and "may have moved".
+            'checks' => ['email' => $contact->email_status, 'phone' => $contact->phone_type, 'caller_name' => $contact->caller_name, 'moved' => $contact->moved_note],
             // VO1: recorded calls with notes, and AI call conversations.
             'calls' => ['blocker' => app(RecordedCalls::class)->blocker($contact, $user), 'list' => app(RecordedCalls::class)->forContact($contact)],
             'households' => $contact->households()->with('members')->get()->map(fn ($h): array => [

@@ -44,6 +44,7 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoff
         Route::get('texting-consent', [ConsentRequestController::class, 'page'])->name('texting-consent');
         Route::post('texting-consent', [ConsentRequestController::class, 'askAll'])->middleware('throttle:5,60')->name('texting-consent.all');
         Route::post('{contact}/texting-consent', [ConsentRequestController::class, 'ask'])->middleware('throttle:30,1')->name('texting-consent.ask');
+        Route::post('{contact}/use-caller-name', [ContactController::class, 'useCallerName'])->name('use-caller-name'); // LN4
         // VO1 (specs/grow/14): recorded calls with automatic notes.
         Route::post('{contact}/recorded-call', [RecordedCallController::class, 'start'])->middleware('throttle:10,1')->name('recorded-call');
         Route::post('{contact}/recorded-call/{call}/retry', [RecordedCallController::class, 'retry'])->middleware('throttle:10,1')->where('call', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('recorded-call.retry');

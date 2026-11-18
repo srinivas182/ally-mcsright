@@ -48,7 +48,8 @@ it('scores the database, counts each problem, and links to the people behind it'
     $active->forceFill(['last_activity_at' => now(), 'next_task_at' => now()->addDay()])->saveQuietly();
 
     $h = app(DatabaseHealth::class)->for($this->ann);
-    expect(collect($h['checks'])->pluck('count', 'key')->all())->toEqual(['duplicates' => 1, 'unreachable' => 1, 'forgotten' => 3, 'no_next_step' => 1, 'missing_close_date' => 1])
+    expect(collect($h['checks'])->pluck('count', 'key')->all())->toEqual(['duplicates' => 1, 'unreachable' => 1, 'forgotten' => 3, 'no_next_step' => 1, 'missing_close_date' => 1,
+        'bad_email' => 0, 'bad_phone' => 0, 'moved' => 0])
         ->and($h['total'])->toBe(4)->and($h['to_fix'])->toBe(5)
         ->and($h['score'])->toBe(61); // 100 × (1 − (¼ + ¼ + 2·¾ + 2·¼ + ¼) ÷ 7)
     expect(app(DatabaseHealth::class)->for(null)['total'])->toBe(5);

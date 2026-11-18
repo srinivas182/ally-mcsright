@@ -12,6 +12,11 @@ final class FakeVerifier implements LicenceVerifier
      */
     public function __construct(public array $records = []) {}
 
+    public function method(): string
+    {
+        return 'arello';
+    }
+
     public function configured(): bool
     {
         return true;

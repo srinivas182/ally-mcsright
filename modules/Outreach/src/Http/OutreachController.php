@@ -14,6 +14,7 @@ use Modules\Crm\ContactVisibility;
 use Modules\Crm\Models\Contact;
 use Modules\Crm\SmartLists;
 use Modules\Outreach\BookingLinks;
+use Modules\Outreach\CallCards;
 use Modules\Outreach\CallQueue;
 use Modules\Outreach\TextingRegistration;
 use Modules\Outreach\Videos;
@@ -81,7 +82,7 @@ final class OutreachController
         $key = is_string($request->query('list')) ? $request->query('list') : null;
 
         return Inertia::render('outreach/calls', ['lists' => $lists->listsFor($user), 'list' => $key, 'queue' => $key !== null ? $queue->build($user, $key) : null,
-            'outcomes' => CallQueue::OUTCOMES]);
+            'outcomes' => CallQueue::OUTCOMES, 'cards' => CallCards::all()]); // LN4: live call cards
     }
 
     public function logCall(Request $request, CallQueue $queue, string $contact): RedirectResponse

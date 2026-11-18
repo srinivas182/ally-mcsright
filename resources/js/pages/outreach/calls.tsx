@@ -1,3 +1,4 @@
+import { CallCards, type CallCard } from '@/components/outreach/call-cards';
 import { Head, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 
@@ -28,10 +29,11 @@ type Props = {
         total: number;
     } | null;
     outcomes: Record<string, string>;
+    cards: CallCard[];
 };
 
 /** MK1: the call queue: one person at a time, tap to call from your own phone, one tap to log how it went. */
-export default function Calls({ lists, list, queue, outcomes }: Props) {
+export default function Calls({ lists, list, queue, outcomes, cards }: Props) {
     const [index, setIndex] = useState(0);
     const form = useForm({ outcome: '', note: '' });
     const person = queue?.ready[index] ?? null;
@@ -124,6 +126,7 @@ export default function Calls({ lists, list, queue, outcomes }: Props) {
                                 Call {person.phone}
                             </a>
                         </Button>
+                        <CallCards cards={cards} />
                         <label className="grid gap-1">
                             Note (optional)
                             <textarea
