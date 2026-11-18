@@ -11,6 +11,7 @@ use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Listings\MlsStatus;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
+use Modules\Core\Search\SearchRegistry;
 
 /** Listings: MLS ingestion, display rules and licence enforcement (specs/websites/02). */
 final class ListingsServiceProvider extends ServiceProvider
@@ -31,6 +32,32 @@ final class ListingsServiceProvider extends ServiceProvider
     {
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
+        // PW1 (specs/core/17): listings in universal search, by MLS number or street, from licensed MLSs only.
+        $this->app->make(SearchRegistry::class)->register('listings', ['en' => 'Listings', 'es' => 'Propiedades'], 30,
+            function (User $user, string $q, int $limit): array {
+                if (! in_array($user->kind, [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant], true)) {
+                    return [];
+                }
+                $words = preg_split('/\s+/', $q) ?: [];
+                $number = ctype_digit($words[0] ?? '') ? $words[0] : null;
+                $street = trim(implode(' ', $number !== null ? array_slice($words, 1) : $words));
+
+                return Models\Listing::query()->visibleTo((int) $user->tenant_id)
+                    ->where(function ($w) use ($q, $number, $street): void {
+                        $w->where('listing_id', $q);
+                        if ($street !== '') {
+                            $w->orWhere(function ($a) use ($number, $street): void {
+                                $a->where('street_name', 'like', str_replace(['%', '_'], ['\\%', '\\_'], $street).'%');
+                                if ($number !== null) {
+                                    $a->where('street_number', $number);
+                                }
+                            });
+                        }
+                    })
+                    ->limit($limit)->get()
+                    ->map(fn (Models\Listing $l): array => ['title' => $l->address(), 'subtitle' => trim(($l->city ?? '').' · '.($l->standard_status ?? ''), ' ·'),
+                        'href' => '/listings/'.$l->ulid])->values()->all();
+            });
         if ($this->app->runningInConsole()) {
             $this->commands([Console\SyncListings::class, Console\ReconcileListings::class]);
         }

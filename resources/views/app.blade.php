@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 @php($readingAttributes = \Modules\Core\Simple\EasierReading::htmlAttributes(auth()->user()))
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" @class(['dark' => ($appearance ?? 'system') == 'dark']) @foreach ($readingAttributes as $k => $v) {{ $k }}="{{ $v }}" @endforeach>
+<html lang="{{ \Modules\Core\Simple\SimpleMode::locale(auth()->user()) === 'es' ? 'es' : str_replace('_', '-', app()->getLocale()) }}" @class(['dark' => ($appearance ?? 'system') == 'dark']) @foreach ($readingAttributes as $k => $v) {{ $k }}="{{ $v }}" @endforeach>
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -40,6 +40,12 @@
         <link rel="icon" href="/favicon.ico" sizes="any">
         <link rel="icon" href="/favicon.svg" type="image/svg+xml">
         <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+        {{-- PW1: installable app (specs/core/17) --}}
+        <link rel="manifest" href="/manifest.webmanifest">
+        <meta name="theme-color" content="#0f172a">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="default">
 
         @fonts
 

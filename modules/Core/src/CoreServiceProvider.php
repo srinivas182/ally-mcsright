@@ -130,6 +130,7 @@ final class CoreServiceProvider extends ServiceProvider
         $this->app->singleton(NavigationRegistry::class);
         // FL1 (specs/core/16): areas, switches and seats; approval rules; outside services.
         $this->app->singleton(Switches\Areas::class);
+        $this->app->singleton(Search\SearchRegistry::class); // PW1: universal search
         $this->app->scoped(Switches\FeatureSwitches::class);
         $this->app->singleton(Approvals\ApprovalActions::class);
         $this->app->scoped(Approvals\Approvals::class);
@@ -159,6 +160,7 @@ final class CoreServiceProvider extends ServiceProvider
 
         $this->loadRoutesFrom(__DIR__.'/../routes/identity.php');
         $this->loadRoutesFrom(__DIR__.'/../routes/platform.php');
+        $this->loadRoutesFrom(__DIR__.'/../routes/shell.php'); // PW1: installable app and universal search
         $this->registerIdentity();
         $this->registerNavigation();
         $this->registerPlatform();
@@ -336,6 +338,19 @@ final class CoreServiceProvider extends ServiceProvider
      */
     private function registerPlatform(): void
     {
+        // PW1 (specs/core/17): people in universal search, for those who may see the brokerage's people.
+        $this->app->make(Search\SearchRegistry::class)->register('people', ['en' => 'People', 'es' => 'Personas'], 40,
+            function (User $user, string $q, int $limit): array {
+                if (! Gate::forUser($user)->allows('core.users.view')) {
+                    return [];
+                }
+                $like = Search\SearchController::like($q);
+
+                return User::query()->where(fn ($w) => $w->where('first_name', 'like', $like)->orWhere('last_name', 'like', $like)->orWhere('email', 'like', mb_strtolower($like)))
+                    ->whereNot('kind', UserKind::HqStaff)->orderBy('first_name')->limit($limit)->get()
+                    ->map(fn (User $u): array => ['title' => $u->name, 'subtitle' => $u->email, 'href' => '/users?search='.rawurlencode($u->email)])->values()->all();
+            });
+
         $areas = $this->app->make(Switches\Areas::class);
         foreach ([
             ['ads', 'Ads', 'Listing ads, Boost and Google ads', ['/ads'], true],

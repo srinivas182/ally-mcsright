@@ -21,6 +21,8 @@ use Modules\Core\Mcp\McpToolbox;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
 use Modules\Core\Notices\NoticeTypes;
+use Modules\Core\Search\SearchController;
+use Modules\Core\Search\SearchRegistry;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Core\Undo\Undo;
@@ -42,6 +44,13 @@ final class TransactionsServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // PW1 (specs/core/17): deals in universal search, only those this person may see.
+        $this->app->make(SearchRegistry::class)->register('deals', ['en' => 'Deals', 'es' => 'Operaciones'], 20,
+            fn (User $user, string $q, int $limit): array => DealAccess::query($user)
+                ->where(fn ($w) => $w->where('street', 'like', SearchController::like($q))->orWhere('city', 'like', SearchController::like($q)))
+                ->orderByDesc('updated_at')->limit($limit)->get()
+                ->map(fn (Models\Deal $d): array => ['title' => (string) $d->street, 'subtitle' => trim(($d->city ?? '').' · '.str_replace('_', ' ', (string) $d->status), ' ·'),
+                    'href' => '/deals/'.$d->ulid])->values()->all());
         Workflows\DealWorkflows::register($this->app->make(WorkflowRegistry::class)); // specs/core/06, W1
         // LM1: each deal's email-in address (specs/transactions/30).
         $this->app->make(InboundMailboxes::class)->register(DealInbox::PREFIX, fn (string $token, array $email): string => app(DealInbox::class)->receive($token, $email));

@@ -19,6 +19,8 @@ use Modules\Core\Identity\Events\UserDeactivated;
 use Modules\Core\Mcp\McpToolbox;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
+use Modules\Core\Search\SearchController;
+use Modules\Core\Search\SearchRegistry;
 use Modules\Core\Tenancy\Models\Tenant;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Core\Undo\Undo;
@@ -85,6 +87,23 @@ final class CrmServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // PW1 (specs/core/17): contacts in universal search, only those this person may see.
+        $this->app->make(SearchRegistry::class)->register('contacts', ['en' => 'Contacts', 'es' => 'Contactos'], 10,
+            function (User $user, string $q, int $limit): array {
+                $like = SearchController::like($q);
+                $digits = preg_replace('/\D+/', '', $q) ?? '';
+
+                return app(ContactVisibility::class)->query($user)
+                    ->where(function ($w) use ($like, $digits): void {
+                        $w->where('first_name', 'like', $like)->orWhere('last_name', 'like', $like)->orWhere('primary_email', 'like', $like);
+                        if (strlen($digits) >= 4) {
+                            $w->orWhere('primary_phone', 'like', '%'.$digits.'%');
+                        }
+                    })
+                    ->orderByDesc('updated_at')->limit($limit)->get()
+                    ->map(fn (Contact $c): array => ['title' => $c->name !== '' ? $c->name : (string) $c->primary_email, 'subtitle' => $c->primary_email ?? $c->primary_phone,
+                        'href' => '/contacts/'.$c->ulid])->values()->all();
+            });
         $this->app->make(Undo::class)->register('crm.task.complete', function (array $p, User $u): void { // SM1
             $task = Models\Task::query()->whereKey((int) ($p['task'] ?? 0))->first();
             abort_unless($task !== null && app(Tasks::class)->canSee($u, $task), 403);
