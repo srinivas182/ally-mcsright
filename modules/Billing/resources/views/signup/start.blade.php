@@ -74,7 +74,7 @@
             <fieldset><legend>3. Package</legend>
                 <div class="choices" role="radiogroup" aria-label="Package">
                     @foreach ($packages as $i => $p)
-                        <label><input type="radio" name="package" value="{{ $p->ulid }}" @checked(old('package', $packages->first()->ulid) === $p->ulid)> {{ $p->name }} — {{ $usd((int) $p->monthly_cents) }} a month or {{ $usd((int) $p->yearly_cents) }} a year</label>
+                        <label><input type="radio" name="package" value="{{ $p->ulid }}" @checked(old('package', $chosen ?? $packages->first()->ulid) === $p->ulid)> {{ $p->name }} — {{ $usd((int) $p->monthly_cents) }} a month or {{ $usd((int) $p->yearly_cents) }} a year</label>
                     @endforeach
                 </div>
                 <div class="choices" role="radiogroup" aria-label="How often to pay">

@@ -18,6 +18,7 @@ use Modules\Learn\LearnServiceProvider;
 use Modules\Ledger\LedgerServiceProvider;
 use Modules\Listings\ListingsServiceProvider;
 use Modules\ListIq\ListIqServiceProvider;
+use Modules\Marketing\MarketingServiceProvider;
 use Modules\Movewise\MovewiseServiceProvider;
 use Modules\Network\NetworkServiceProvider;
 use Modules\Outreach\OutreachServiceProvider;
@@ -59,5 +60,6 @@ return [
     EngageServiceProvider::class,
     SetupServiceProvider::class,
     NetworkServiceProvider::class,
+    MarketingServiceProvider::class,
     ApiServiceProvider::class,
 ];

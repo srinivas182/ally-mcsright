@@ -150,6 +150,9 @@ it('sends every HQ console page the data its component needs', function (string 
     'feature switches' => ['/hq/switches', 'hq/switches'],
     'feature switches: one brokerage' => ['/hq/switches?tenant={tenant}', 'hq/switches'],
     'outside services' => ['/hq/services', 'settings/services'],
+    'RightAlly website' => ['/hq/website', 'hq/website/index'],
+    'RightAlly website: new page' => ['/hq/website/pages/new', 'hq/website/page'],
+    'RightAlly website: new post' => ['/hq/website/posts/new', 'hq/website/post'],
 ]);
 
 it('sends the sign-in pages the data they need', function (string $url, string $component): void {
