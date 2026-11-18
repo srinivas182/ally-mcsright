@@ -209,3 +209,59 @@ The test itself is done by an outside security firm (to book). This sprint ran R
 - **Out of scope:** denial of service against shared infrastructure; real outside services (all set to Test); social engineering of staff.
 - **Before production:** fix every high and critical finding; record the rest in the risk register (SOC 2, Sprint 62).
 - **Follow-up:** a content security policy with nonces for the back office (website pages have inline scripts), measured in report-only mode first.
+
+## Sprint 62: SOC 2 readiness, data protection and AI leak-test sign-off
+
+### What RightAlly proves by itself (HQ → Security controls)
+
+There are now **14 controls**, each with live evidence (counts only) and a CSV download for the auditor. Sprint 62 added four:
+
+| Control                          | What it covers                                                                                                                                                                                                  | Status rule                                                                                                    |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| **CC6.1-2 Isolation**            | Every page checks its address; every record and every query is limited to the brokerage (TenantGuard); cross-brokerage reads are audited. Evidence includes the number of web addresses checked on each change. | Met                                                                                                            |
+| **CC6.8 Vulnerable packages**    | `composer audit` and `npm audit` (high and above) now run on every pull request, and Dependabot proposes updates.                                                                                               | Process: the auditor checks CI                                                                                 |
+| **CC7.1 Security configuration** | Security headers, rate limits on public forms, and public-address checks for webhooks and streams.                                                                                                              | Met                                                                                                            |
+| **C1.1 AI**                      | AI is given only the brokerage's own records and treats documents as data.                                                                                                                                      | Met only after a red-team run in the last 8 days with no critical attack followed; otherwise "needs attention" |
+
+### Data protection, checked
+
+- **Sealed with the brokerage's own key:** bank account and routing numbers, and tax IDs (SSN/EIN).
+- **Encrypted:** bank-feed tokens, outside-service keys and two-step secrets.
+- **Stored only as hashes:** API keys and password-reset tokens.
+- **Privacy:** requests, retention choices and export/delete were built in TR1.
+
+### AI leak tests, signed off
+
+- **Done here:**
+    - the 19 offline evaluation sets pass;
+    - the AI data-protection and retrieval tests pass, including that a record from another brokerage is refused before it reaches any AI;
+    - the AS1 attack tests pass.
+- **Still to do before launch:** the live red team (`ai:red-team`, 13 attacks against the real models) needs the production AI keys. It runs every Monday, and HQ → Security controls shows the result under C1.1.
+
+### What the company must provide (the auditor checks these outside the app)
+
+| Area (criteria)         | Needed                                                                                          | Status               |
+| ----------------------- | ----------------------------------------------------------------------------------------------- | -------------------- |
+| Governance (CC1, CC2)   | Information security policy, code of conduct, an owner for security, board or leadership review | To write             |
+| Risk (CC3, CC9.1)       | Yearly risk assessment and risk register (penetration-test findings go here)                    | To write             |
+| People (CC1.4, CC2.2)   | Background checks, security training at joining and yearly, offboarding checklist               | To set up            |
+| Access (CC6.2)          | Quarterly access reviews: reminders are built in; the review record is kept                     | Process              |
+| Change (CC8.1)          | Pull requests with automated checks; production changes reviewed                                | In place: CI history |
+| Incidents (CC7.3–7.5)   | Incident response plan: who is called, customer notice times, a yearly drill                    | To write             |
+| Continuity (A1.2, A1.3) | Backup and restore with two-person approval is built in; a yearly restore drill is recorded     | Drill to run         |
+| Vendors (CC9.2)         | Outside services list (built in), plus each vendor's SOC 2 report collected yearly              | Collect reports      |
+| Privacy (P1–P8)         | Privacy notice and subprocessor list on rightally.io                                            | To publish           |
+
+### Recommended route: Type I, then Type II
+
+1. Choose a compliance tool, which collects evidence and policy templates:
+    - **Vanta** (recommended: widest integrations and auditor network);
+    - **Drata**;
+    - **Secureframe**.
+2. Write the policies from the tool's templates.
+3. Run the penetration test (Sprint 61) and record its findings.
+4. **SOC 2 Type I** (the design of the controls, at one point in time).
+5. A 3- to 6-month observation window.
+6. **SOC 2 Type II**.
+
+The auditor and the tool both cost money and need your choice (defaults to review).

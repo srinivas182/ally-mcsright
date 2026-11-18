@@ -63,6 +63,12 @@ jobs:
           php artisan key:generate
           php artisan wayfinder:generate --with-form
 
+      # Sprint 62 (SOC 2 CC7.1): a known vulnerability in a PHP or JavaScript package the app ships fails the build.
+      - name: Known vulnerabilities in packages
+        run: |
+          composer audit --no-interaction --locked
+          npm audit --omit=dev --audit-level=high
+
       - name: PHP style (Pint)
         run: vendor/bin/pint --test --format=checkstyle | cs2pr
 

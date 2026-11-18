@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Modules\Core\Security;
 
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Identity\Enums\UserStatus;
 use Modules\Core\Services\Catalog;
@@ -41,6 +43,10 @@ final class Controls
         $restoreCount = (clone $restores)->count();
         $vendors = $control->table('outside_services')->where('tenant_id', 0)->where('mode', '!=', 'off')->get(['service', 'provider', 'mode']);
         $bot = $vendors->firstWhere('service', 'bot_protection');
+        // Sprint 62: the latest weekly AI red-team run (ai:red-team, Mondays).
+        $redTeam = $control->table('ai_red_team_runs')->whereNotNull('finished_at')->orderByDesc('finished_at')->first(['status', 'scenarios_run', 'critical_followed', 'finished_at']);
+        $redTeamFresh = $redTeam !== null && CarbonImmutable::parse((string) $redTeam->finished_at)->gt(now()->subDays(8));
+        $routes = count(Route::getRoutes()->getRoutes());
 
         return [
             ['id' => 'CC6.1', 'area' => 'Access', 'control' => 'HQ staff sign in with two steps (password and authenticator app).',
@@ -49,6 +55,16 @@ final class Controls
                 'evidence' => 'Expired access is removed every hour (core:expire-access); quarterly access review reminders; approval rules per brokerage.', 'status' => 'met'],
             ['id' => 'CC6.3', 'area' => 'Access', 'control' => 'RightAlly support views a brokerage only with a reason, for at most 60 minutes, and every visit is listed for the brokerage.',
                 'evidence' => "{$visits} support visits in 90 days; {$askFirst} brokerages ask support to get permission first.", 'status' => 'met'],
+            ['id' => 'CC6.1-2', 'area' => 'Isolation', 'control' => 'Each brokerage sees only its own data: every page checks its address, every record and every database query is limited to the signed-in brokerage, and the one way across brokerages is audited.',
+                'evidence' => "All {$routes} web addresses are checked on every change (public ones against a reviewed list); the database guard is on; cross-brokerage reads are written to the audit log.", 'status' => 'met'],
+            ['id' => 'CC6.8', 'area' => 'Protection', 'control' => 'A package with a known vulnerability stops a release; updates are proposed automatically.',
+                'evidence' => 'Every pull request runs composer audit and npm audit (high and above fail); Dependabot proposes updates.', 'status' => 'process'],
+            ['id' => 'CC7.1', 'area' => 'Protection', 'control' => 'Pages are served with browser security headers, public forms are rate-limited, and addresses RightAlly calls for customers are checked to be public.',
+                'evidence' => 'Security headers on every response (nosniff, same-site framing, referrer and permissions policies, HSTS); rate limits on every public form; webhook and stream addresses checked at every send.', 'status' => 'met'],
+            ['id' => 'C1.1', 'area' => 'AI', 'control' => 'AI is given only the signed-in brokerage\'s records, treats documents and messages as data, and is attacked every week to check it never follows hidden instructions.',
+                'evidence' => $redTeam === null ? 'No red-team run yet (ai:red-team runs every Monday once AI keys are set).'
+                    : 'Last red-team run '.CarbonImmutable::parse((string) $redTeam->finished_at)->toFormattedDateString().": {$redTeam->scenarios_run} attacks, {$redTeam->critical_followed} critical followed ({$redTeam->status}).",
+                'status' => $redTeamFresh && (int) $redTeam->critical_followed === 0 ? 'met' : 'attention'],
             ['id' => 'CC6.6', 'area' => 'Protection', 'control' => 'Public forms are protected from bots (honeypot, timing, rate limits, and a bot check).',
                 'evidence' => $bot !== null ? 'Bot check: '.$bot->provider.' ('.$bot->mode.').' : 'Honeypot, timing and rate limits on; the bot check service is off.',
                 'status' => $bot !== null && $bot->mode === 'live' ? 'met' : 'attention'],

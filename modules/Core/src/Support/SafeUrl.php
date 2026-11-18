@@ -15,12 +15,10 @@ use Illuminate\Validation\ValidationException;
 final class SafeUrl
 {
     /**
+     * @param  list<int>  $ports  allowed ports (Splunk's event collector listens on 8088)
      * @return array{url: string, host: string, port: int, ip: string}
      *
      * @throws ValidationException
-     */
-    /**
-     * @param  list<int>  $ports  allowed ports (Splunk's event collector listens on 8088)
      */
     public static function check(string $url, array $ports = [443, 8443]): array
     {
