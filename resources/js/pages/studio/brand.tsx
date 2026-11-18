@@ -70,6 +70,7 @@ export default function StudioBrand({
             email: kit.details.email ?? '',
             tagline: kit.details.tagline ?? '',
             instagram: kit.details.instagram ?? '',
+            video_bumpers: kit.details.video_bumpers ?? '',
         },
     });
     const firm = useForm({
@@ -251,6 +252,25 @@ export default function StudioBrand({
                                     })
                                 }
                             />
+                        </label>
+                        <label className="flex items-center gap-2 sm:col-span-2">
+                            <input
+                                type="checkbox"
+                                className="size-5"
+                                checked={
+                                    mine.data.details.video_bumpers === 'yes'
+                                }
+                                onChange={(e) =>
+                                    mine.setData('details', {
+                                        ...mine.data.details,
+                                        video_bumpers: e.target.checked
+                                            ? 'yes'
+                                            : '',
+                                    })
+                                }
+                            />
+                            Start and end my videos with my brand (logo, name,
+                            phone and licence line)
                         </label>
                     </div>
                     <fieldset className="flex gap-4">

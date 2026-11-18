@@ -47,8 +47,10 @@ final class HomeReports
         if ($existing !== null) {
             return $existing;
         }
+        $bought = SoldComps::purchase($contact->id, $address); // MK3: a past client's purchase with the brokerage
         $report = HomeReport::query()->create(['contact_id' => $contact->id, 'site_funnel_id' => $funnel?->id, 'user_id' => $agentId, 'address' => $address, 'zip' => $zip,
-            'beds' => $beds, 'sqft' => $sqft, 'last_mid' => $mid, 'next_on' => CarbonImmutable::today()->addMonthNoOverflow()->toDateString()]);
+            'beds' => $beds, 'sqft' => $sqft, 'last_mid' => $mid, 'next_on' => CarbonImmutable::today()->addMonthNoOverflow()->toDateString(),
+            'bought_price' => $bought['price'] ?? null, 'bought_on' => $bought['on'] ?? null]);
         $this->timeline->system($contact, 'Monthly home value report started for '.$address);
 
         return $report;
@@ -72,14 +74,17 @@ final class HomeReports
             }
             $estimate = $this->valuation->estimate($this->tenants->id(), $report->zip, $report->beds, $report->sqft);
             $nearby = $this->search->search($this->tenants->id(), ['q' => $report->zip, 'sort' => 'newest', 'per_page' => 3])['results'];
-            if ($estimate === null && $nearby === []) {
+            $sold = app(SoldComps::class)->near($this->tenants->id(), $report->zip, $report->beds, $report->sqft); // MK3
+            if ($estimate === null && $nearby === [] && $sold['homes'] === []) {
                 continue; // nothing worth sending this month
             }
             $change = $estimate !== null && $report->last_mid !== null && $report->last_mid > 0 ? round(($estimate['mid'] - $report->last_mid) * 100 / $report->last_mid, 1) : null;
             $agent = User::query()->find($report->user_id);
             Mail::to((string) $contact->primary_email, $contact->name)->send(new HomeReportMail($report->address, $contact->first_name, $estimate, $change, $nearby,
                 $this->tenants->current()->name, $agent?->name, $agent?->phone, $this->stopUrl($report), Inbox::replyAddress(app(Inbox::class)->conversationFor($contact)),
-                $this->dashboardUrl($report)));
+                $this->dashboardUrl($report), $sold['homes'], $sold['range'],
+                $report->bought_price !== null ? ['price' => $report->bought_price, 'year' => $report->bought_on?->format('Y'),
+                    'change' => SoldComps::sinceBought($report->bought_price, isset($estimate['mid']) ? (int) $estimate['mid'] : null)] : null));
             $history = $report->history ?? [];
             if ($estimate !== null) {
                 $history[] = ['on' => $local->toDateString(), 'mid' => (int) $estimate['mid']];

@@ -22,6 +22,7 @@ final class OutreachServiceProvider extends ServiceProvider
         $this->app->scoped(TextingRegistration::class);
         $this->app->scoped(ContentPack::class);
         $this->app->scoped(HandwrittenCards::class);
+        $this->app->scoped(MarketReports::class); // MK3
     }
 
     public function boot(): void
@@ -29,6 +30,9 @@ final class OutreachServiceProvider extends ServiceProvider
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'outreach');
+        if ($this->app->runningInConsole()) {
+            $this->commands([Console\SendMarketReports::class]); // MK3
+        }
         $this->app->make(SiteExtensions::class)->routes(function (Router $r): void {
             $r->get('meet/{slug}', [Http\PublicController::class, 'meet'])->where('slug', '[a-z0-9-]{1,60}');
             $r->post('_meet/{slug}', [Http\PublicController::class, 'book'])->where('slug', '[a-z0-9-]{1,60}');

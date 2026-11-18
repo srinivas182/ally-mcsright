@@ -7,6 +7,7 @@ namespace Modules\Outreach\Http;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response as HttpResponse;
 use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Core\Branding\EmailSignature;
@@ -16,6 +17,7 @@ use Modules\Crm\Models\Contact;
 use Modules\Crm\SmartLists;
 use Modules\Outreach\ContentPack;
 use Modules\Outreach\HandwrittenCards;
+use Modules\Outreach\MarketReports;
 use Modules\Sites\Funnels\HomeReports;
 use Modules\Sites\Models\HomeReport;
 
@@ -93,6 +95,37 @@ final class MarketingController
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Card on its way to the writer. It is usually mailed within 3 business days.']);
 
         return back();
+    }
+
+    /** MK3 (D09): monthly market report emails by area. */
+    public function marketReports(Request $request, MarketReports $reports, ContentPack $pack): Response
+    {
+        $user = self::user($request);
+
+        return Inertia::render('outreach/market-reports', ['places' => $pack->places(), 'audiences' => $reports->audiences($user),
+            'reports' => $reports->summary(self::manager($user) ? null : $user->id)]);
+    }
+
+    public function startMarketReports(Request $request, MarketReports $reports): RedirectResponse
+    {
+        $data = $request->validate(['place' => ['required', 'string', 'max:80'], 'audience' => ['required', 'string', 'max:40']]);
+        $n = $reports->start(self::user($request), (string) $data['audience'], (string) $data['place']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => $n === 0 ? 'Nobody new to add: everyone in that list already gets a market report or has no email.'
+            : "Started for {$n} ".($n === 1 ? 'person' : 'people').'. The first report goes out tomorrow morning.']);
+
+        return back();
+    }
+
+    /** The one-click stop from the email (GET shows a button; POST is what mail apps send for one-click). */
+    public function stopMarketReport(Request $request, MarketReports $reports, string $report): HttpResponse
+    {
+        abort_unless($request->hasValidSignature(false), 403);
+        if ($request->isMethod('post')) {
+            $reports->stop($report);
+        }
+
+        return response()->view('outreach::market-report-stop', ['action' => $request->getRequestUri(), 'done' => $request->isMethod('post')])
+            ->header('X-Robots-Tag', 'noindex, nofollow');
     }
 
     private static function manager(User $user): bool

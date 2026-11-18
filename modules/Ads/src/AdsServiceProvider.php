@@ -44,7 +44,9 @@ final class AdsServiceProvider extends ServiceProvider
         $this->app->bind(Studio\Voice\VoiceVendor::class, fn () => config('studio.voice') === 'fake' ? new Studio\Voice\FakeVoice : new Studio\Voice\ElevenLabs);
         $this->app->scoped(Studio\Voice\Narration::class);
         $this->app->scoped(Studio\Replies\StudioReplies::class);
-        $this->app->bind(Studio\Video\VideoMaker::class, fn () => config('studio.video') === 'fake' ? new Studio\Video\FakeVideoMaker : new Studio\Video\FfmpegVideoMaker);
+        // MK3: Shotstack or Creatomate when HQ chose one in Outside services; our own ffmpeg renderer otherwise.
+        $this->app->bind(Studio\Video\VideoMaker::class, fn () => config('studio.video') === 'fake' ? new Studio\Video\FakeVideoMaker
+            : new Studio\Video\ServiceVideoMaker(new Studio\Video\FfmpegVideoMaker));
     }
 
     public function boot(): void

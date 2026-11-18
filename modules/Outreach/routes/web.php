@@ -25,8 +25,14 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('outrea
     Route::post('homeowners', [MarketingController::class, 'startHomeowners'])->middleware('throttle:10,1')->name('homeowners.start');
     Route::get('cards', [MarketingController::class, 'cards'])->name('cards');
     Route::post('cards', [MarketingController::class, 'requestCard'])->middleware('throttle:30,1')->name('cards.request');
+    Route::get('market-reports', [MarketingController::class, 'marketReports'])->name('market-reports'); // MK3 (D09)
+    Route::post('market-reports', [MarketingController::class, 'startMarketReports'])->middleware('throttle:10,1')->name('market-reports.start');
     Route::post('calls/{contact}', [OutreachController::class, 'logCall'])->where('contact', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->middleware('throttle:120,1')->name('calls.log');
 });
+
+// MK3: the one-click stop link in market report emails (signed; no session).
+Route::middleware(['tenant', EnsureTenantWorkspace::class, 'throttle:30,1,market-report-stop'])->match(['get', 'post'], 'market-reports/{report}/stop', [MarketingController::class, 'stopMarketReport'])
+    ->where('report', '[0-9A-HJKMNP-TV-Z]{26}')->name('outreach.market-reports.stop');
 
 Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('settings/texting')->name('settings.texting.')->group(function (): void {
     Route::get('/', [OutreachController::class, 'texting'])->name('index');

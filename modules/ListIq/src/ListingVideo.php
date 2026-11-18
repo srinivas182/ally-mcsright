@@ -9,8 +9,10 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Modules\Ads\Studio\BrandKits;
 use Modules\Ads\Studio\MusicLibrary;
 use Modules\Ads\Studio\Render\StudioRenderer;
+use Modules\Ads\Studio\Video\Bumpers;
 use Modules\Ads\Studio\Video\VideoMaker;
 use Modules\AI\Exceptions\InsufficientCredits;
 use Modules\Billing\Credits\CreditLedger;
@@ -86,6 +88,12 @@ final class ListingVideo
             }
             $phone = (string) ($by->getAttribute('phone') ?? '');
             $shot(self::ending($by->name, $phone, $brokerage), 4.0, trim('Ask me about this home: '.$by->name.' '.$phone.', '.$brokerage));
+            // MK3: the agent's brand intro and outro, when they asked for them.
+            [$frames, $seconds, $bumped] = Bumpers::wrap(app(BrandKits::class)->forUser($by), $frames, $seconds, $dir, 1080, 1920);
+            if ($bumped) {
+                $kit = app(BrandKits::class)->forUser($by);
+                $words = [trim(($kit['details']['display_name'] ?? '').', '.$kit['brokerage']), ...$words, 'Ask me anything: '.trim(($kit['details']['display_name'] ?? '').' '.($kit['details']['phone'] ?? ''))];
+            }
             $track = app(MusicLibrary::class)->pick(null, 'cinematic', 0);
             $mp4 = app(VideoMaker::class)->make($frames, $seconds, $track['file'] ?? null, $dir.'/video.mp4');
             $base = 'listiq/'.$this->tenants->id().'/'.$prep->ulid.'/video-'.Str::random(10);

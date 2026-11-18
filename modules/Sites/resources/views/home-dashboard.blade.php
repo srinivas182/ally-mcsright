@@ -45,6 +45,9 @@
         @else
             <p>There aren't enough similar homes for sale near you this month to estimate online. Your agent can prepare a range from recent sales.</p>
         @endif
+        @if ($bought && $bought['change'] !== null)
+            <p>{{ $bought['change'] > 0 ? 'Up '.$bought['change'].'%' : ($bought['change'] < 0 ? 'Down '.abs($bought['change']).'%' : 'About the same') }} since you bought{{ $bought['year'] ? ' in '.$bought['year'] : '' }} for ${{ number_format((int) $bought['price']) }}.</p>
+        @endif
         @if ($points->count() >= 2)
             <svg viewBox="0 0 600 170" role="img" aria-label="Your home's estimated value by month: {{ $points->map(fn ($p) => substr($p['on'], 0, 7).' $'.number_format($p['mid']))->implode(', ') }}">
                 <polyline fill="none" stroke="currentColor" stroke-width="3" points="{{ $poly }}" style="color:var(--accent)"/>
@@ -81,6 +84,25 @@
         @endif
         @if ($agent && $agent->phone)<p>Or call {{ $agent->first_name }}: <a href="tel:{{ preg_replace('/[^\d+]/', '', (string) $agent->phone) }}">{{ $agent->phone }}</a></p>@endif
     </section>
+
+    @if ($sold['homes'] !== [] || $sold['range'])
+        <section class="card" aria-labelledby="sold">
+            <h2 id="sold" style="font-size:1.2rem;margin:0 0 8px">Homes like yours that sold</h2>
+            @if ($sold['range'])
+                <p>{{ (int) $sold['range']['count'] }} similar homes nearby sold in the last 6 months, most for <strong>${{ number_format((int) $sold['range']['low']) }} to ${{ number_format((int) $sold['range']['high']) }}</strong>.</p>
+            @endif
+            <ul class="homes">
+                @foreach ($sold['homes'] as $l)
+                    <li>
+                        <strong>Sold for ${{ number_format((int) $l['price']) }}</strong>@if (! empty($l['close_date'])) · {{ \Carbon\CarbonImmutable::parse($l['close_date'])->format('M j, Y') }}@endif · {{ $l['beds'] ?? '—' }} bd @if (! empty($l['sqft']))· {{ number_format((int) $l['sqft']) }} sq ft @endif<br>
+                        <span class="muted">{{ collect([$l['address'] ?? null, $l['city'] ?? null])->filter()->implode(', ') }}</span>
+                        <div class="fine">{{ $l['attribution'] ?? '' }}</div>
+                    </li>
+                @endforeach
+            </ul>
+            @foreach (collect($sold['homes'])->pluck('disclaimer')->filter()->unique() as $d)<p class="fine">{{ $d }}</p>@endforeach
+        </section>
+    @endif
 
     @if ($nearby !== [])
         <section class="card" aria-labelledby="nearby">

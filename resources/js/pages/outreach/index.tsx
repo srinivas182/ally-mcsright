@@ -43,6 +43,11 @@ export default function Outreach({ booking, videos, website, texting }: Props) {
             text: 'A monthly home-value email and private dashboard for past clients.',
         },
         {
+            href: '/outreach/market-reports',
+            title: 'Market reports',
+            text: "A monthly email with your area's real MLS numbers and new listings, to your past clients, sphere or any list.",
+        },
+        {
             href: '/outreach/cards',
             title: 'Handwritten cards',
             text: 'A real pen-written card for birthdays, home anniversaries and thank-yous.',

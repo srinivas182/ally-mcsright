@@ -30,6 +30,8 @@ use Modules\Core\Tenancy\Concerns\HasPublicUlid;
  * @property CarbonImmutable|null $unsubscribed_at
  * @property list<array{on: string, mid: int}>|null $history
  * @property CarbonImmutable|null $dashboard_viewed_at
+ * @property int|null $bought_price
+ * @property CarbonImmutable|null $bought_on
  */
 final class HomeReport extends Model
 {
@@ -38,7 +40,7 @@ final class HomeReport extends Model
 
     protected $table = 'site_home_reports';
 
-    protected $fillable = ['contact_id', 'site_funnel_id', 'user_id', 'address', 'zip', 'beds', 'sqft', 'last_mid', 'next_on'];
+    protected $fillable = ['contact_id', 'site_funnel_id', 'user_id', 'address', 'zip', 'beds', 'sqft', 'last_mid', 'next_on', 'bought_price', 'bought_on'];
 
     public function getConnectionName(): ?string
     {
@@ -48,6 +50,6 @@ final class HomeReport extends Model
     protected function casts(): array
     {
         return ['next_on' => 'immutable_date', 'last_sent_at' => 'immutable_datetime', 'unsubscribed_at' => 'immutable_datetime', 'beds' => 'integer', 'sqft' => 'integer',
-            'last_mid' => 'integer', 'sent_count' => 'integer', 'history' => 'array', 'dashboard_viewed_at' => 'immutable_datetime'];
+            'last_mid' => 'integer', 'sent_count' => 'integer', 'history' => 'array', 'dashboard_viewed_at' => 'immutable_datetime', 'bought_price' => 'integer', 'bought_on' => 'immutable_date'];
     }
 }

@@ -42,7 +42,7 @@ final class BrandKits
     public const DEFAULT_COLORS = ['primary' => '#111111', 'accent' => '#C9A227', 'ink' => '#111111', 'paper' => '#FFFFFF'];
 
     public const DETAILS = ['display_name' => 60, 'title' => 60, 'licence_line' => 120, 'phone' => 30, 'email' => 120, 'tagline' => 120, 'instagram' => 60, 'facebook' => 120,
-        'linkedin' => 120, 'disclaimer' => 300];
+        'linkedin' => 120, 'disclaimer' => 300, 'video_bumpers' => 3]; // MK3: "yes" = brand intro and outro on videos
 
     public function __construct(private readonly TenantContext $tenants) {}
 
