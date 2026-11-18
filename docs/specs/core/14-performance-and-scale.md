@@ -1,7 +1,6 @@
 # Performance and scale (PS1, PS2)
 
-**Status:** PS1 built (cell automation, query budgets). PS2 adds load scripts and a big test brokerage. The full
-100,000-user load test runs at launch (Sprint 59).
+**Status:** PS1 and PS2 built. The full 100,000-user load test runs at launch (Sprint 59).
 
 ## Cells that look after themselves (PS1)
 
@@ -39,7 +38,29 @@ much longer than one with 10. PS1 rewrote them to fetch everything in a fixed nu
 `tests/Feature/Scale/QueryBudgetTest.php` fails if any of these pages runs more than two extra queries when the
 brokerage grows from a handful of agents to fifteen with dozens of deals. New list pages should be added there.
 
-Still to do (PS2): the dashboard, database insights, credits, roster and agent billing pages.
+PS2 did the same for:
+
+- Credits (each agent's balance and use: 4 queries per agent before).
+- Roster compliance (credentials, documents and W-9s: 3 per agent before).
+- Agent billing (what each agent owes, invoice names; the chart of accounts check went from about 40 queries on
+  every view to 1).
+- Database insights: the per-agent table (about 15 queries per agent) is worked out at most every 10 minutes per
+  brokerage; the brokerage's own report on the same page is always live.
+
+Known remaining: agent billing still looks up each agent's commission-payable account (2 queries per agent), and
+the dashboard checks a brokerage setting several times per view. Both are constant or small and are left for
+after launch measurements.
+
+## Load tests (PS2)
+
+- `php artisan perf:seed loadtest-… --agents=200 --contacts=50000 --deals=5000 --password=…` fills a load-test
+  brokerage on staging with made-up data. It refuses production, any brokerage whose address doesn't start with
+  `loadtest`, and short passwords. Every email ends in `.invalid` and phones are 555-01xx fiction numbers, so
+  nothing can reach a real person.
+- `tests/load/app.js` (k6): 500 signed-in agents moving between their busiest pages, 1,000 website visitors, and 5
+  website enquiries a second, together for 15 minutes. Pass marks: p95 under 800 ms for pages (1.5 s for report
+  pages like the dashboard), under 1% errors, CDN bypassed. `tests/load/README.md` has the steps.
+- The 100,000-user run (Sprint 59) uses the same script scaled out over many load generators.
 
 ## For review
 

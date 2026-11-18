@@ -261,14 +261,17 @@ final class PayoutsController
         $accounts = app(ChartOfAccounts::class);
         $accounts->seed();
         $agents = User::query()->where('kind', UserKind::Agent)->orderBy('first_name')->get();
+        $owed = $billing->owedBy(array_values($agents->pluck('id')->map(fn ($id): int => (int) $id)->all())); // PS2: one query for everyone
+        $invoices = $db->table('bill_invoices')->orderByDesc('id')->limit(100)->get();
+        $names = User::query()->whereIn('id', $invoices->pluck('user_id')->unique()->all())->get()->keyBy('id');
 
         return Inertia::render('finance/agent-billing', [
             'settings' => $billing->settings(),
             'items' => $db->table('bill_items')->where('active', true)->orderBy('name')->get(['ulid', 'name', 'amount_cents', 'frequency', 'instalments']),
-            'agents' => $agents->map(fn (User $u): array => ['ulid' => $u->ulid, 'name' => $u->name, 'owed_cents' => $billing->owed($u->id),
+            'agents' => $agents->map(fn (User $u): array => ['ulid' => $u->ulid, 'name' => $u->name, 'owed_cents' => $owed[$u->id] ?? 0,
                 'owes_brokerage_cents' => max(0, -$ledger->balance($accounts->subAccount('2000', 'user', $u->id, 'Commission payable'))->cents)])->values(),
-            'invoices' => $db->table('bill_invoices')->orderByDesc('id')->limit(100)->get()->map(fn ($i): array => ['ulid' => $i->ulid, 'number' => $i->number,
-                'agent' => User::query()->find((int) $i->user_id)?->name, 'due_on' => $i->due_on, 'status' => $i->status, 'total_cents' => (int) $i->total_cents,
+            'invoices' => $invoices->map(fn ($i): array => ['ulid' => $i->ulid, 'number' => $i->number,
+                'agent' => $names->get((int) $i->user_id)?->name, 'due_on' => $i->due_on, 'status' => $i->status, 'total_cents' => (int) $i->total_cents,
                 'paid_cents' => (int) $i->paid_cents, 'plan' => $i->plan_id !== null])->values(),
         ]);
     }

@@ -285,6 +285,30 @@ final class CreditLedger
     }
 
     /**
+     * userSummary() for many people in four queries (PS2: the credits page did four queries per agent).
+     *
+     * @param  list<int>  $userIds
+     * @return array<int, array{available: int, used: int, from_pool: int, pool_open: bool, cap: int|null}>
+     */
+    public function userSummaries(array $userIds): array
+    {
+        $policy = $this->policy();
+        $accounts = CreditAccount::query()->whereIn('user_id', $userIds)->get()->keyBy('user_id');
+        $ledger = fn () => DB::connection(Connections::cell())->table('credit_ledger')->where('tenant_id', $this->tenants->id())->where('period', self::period())
+            ->whereIn('user_id', $userIds)->whereIn('entry_type', ['consume', 'refund'])->groupBy('user_id')->selectRaw('user_id, sum(amount) as total');
+        $used = $ledger()->pluck('total', 'user_id');
+        $pool = $this->account(null);
+        $fromPool = $pool !== null ? $ledger()->where('account_id', $pool->id)->pluck('total', 'user_id') : collect();
+        $out = [];
+        foreach ($userIds as $id) {
+            $out[$id] = ['available' => (int) ($accounts->get($id)->balance ?? 0), 'used' => -(int) ($used[$id] ?? 0), 'from_pool' => -(int) ($fromPool[$id] ?? 0),
+                'pool_open' => $policy['agents_use_pool'], 'cap' => $policy['agent_monthly_cap']];
+        }
+
+        return $out;
+    }
+
+    /**
      * This month's use by person, automation and feature.
      *
      * @return array{people: list<array{user_id: int, credits: int}>, automations: int, features: list<array{action: string, credits: int, uses: int, automation: bool}>}

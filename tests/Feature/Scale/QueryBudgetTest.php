@@ -35,7 +35,7 @@ function growBrokerage(int $agents, int $dealsEach): void
     }
 }
 
-it('keeps the deals list, directory, agent activity and AI assistants pages flat as a brokerage grows', function (string $url): void {
+it('keeps the busiest list pages flat as a brokerage grows', function (string $url): void {
     $this->onTenantHost('acme');
     $owner = User::factory()->owner()->create();
     growBrokerage(3, 2);
@@ -44,4 +44,4 @@ it('keeps the deals list, directory, agent activity and AI assistants pages flat
     $large = pageQueries($owner, $url);
 
     expect($large - $small)->toBeLessThanOrEqual(2, "{$url} ran {$small} queries for a small brokerage and {$large} for a bigger one.");
-})->with(['/deals', '/directory', '/engage/activity', '/apps']);
+})->with(['/deals', '/directory', '/engage/activity', '/apps', '/settings/credits', '/roster', '/insights/database']); // PS1, PS2

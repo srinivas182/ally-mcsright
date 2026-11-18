@@ -53,11 +53,13 @@ final class CreditsController
             $names = User::query()->whereIn('id', array_column($usage['people'], 'user_id'))->get()->keyBy('id');
             $people = User::query()->whereIn('kind', [UserKind::Agent, UserKind::Staff, UserKind::Owner, UserKind::Assistant])->orderBy('first_name')->limit(500)->get()
                 ->filter(fn (User $u): bool => $u->isActive());
+            $agentRows = $people->filter(fn (User $u): bool => $u->kind === UserKind::Agent)->values();
+            $summaries = $this->ledger->userSummaries(array_values($agentRows->pluck('id')->map(fn ($id): int => (int) $id)->all()));
             $props += [
                 'usage' => ['people' => array_map(fn (array $p): array => ['name' => $names->get($p['user_id'])->name ?? 'Former user', 'credits' => $p['credits']], $usage['people']),
                     'automations' => $usage['automations'],
                     'features' => array_map(fn (array $f): array => $f + ['label' => $label($f['action'])], $usage['features'])],
-                'agents' => $people->filter(fn (User $u): bool => $u->kind === UserKind::Agent)->map(fn (User $u): array => ['id' => $u->id, 'name' => $u->name] + $this->ledger->userSummary($u->id))->values()->all(),
+                'agents' => $agentRows->map(fn (User $u): array => ['id' => $u->id, 'name' => $u->name] + $summaries[$u->id])->all(),
                 'pool_history' => $entries(null),
             ];
         }
