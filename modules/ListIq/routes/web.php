@@ -26,6 +26,8 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('list-i
     Route::post('{prep}/codes', [ListIqController::class, 'addCode'])->middleware('throttle:30,1')->name('codes');
     Route::get('{prep}/codes/{code}', [ListIqController::class, 'qr'])->where('code', '[a-z0-9]{7}')->name('codes.qr');
     Route::post('{prep}/floor-plan', [ListIqController::class, 'floorPlan'])->middleware('throttle:10,1')->name('floor-plan');
+    Route::post('{prep}/tour', [ListIqController::class, 'tour'])->middleware('throttle:20,1')->name('tour'); // MD1
+    Route::post('{prep}/video', [ListIqController::class, 'video'])->middleware('throttle:5,1')->name('video'); // MD1
     Route::get('{prep}/flyer', [ListIqController::class, 'flyer'])->middleware('throttle:20,1')->name('flyer');
     Route::post('{prep}/open-houses', [ListIqController::class, 'openHouse'])->name('open-houses');
     Route::get('{prep}/open-houses/{openHouse}', [ListIqController::class, 'kiosk'])->name('kiosk');

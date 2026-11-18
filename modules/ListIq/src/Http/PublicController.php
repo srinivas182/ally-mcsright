@@ -14,11 +14,13 @@ use Illuminate\Validation\ValidationException;
 use Modules\Ads\Studio\BrandKits;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Crm\Enums\Source;
+use Modules\ListIq\ListingVideo;
 use Modules\ListIq\Marketing;
 use Modules\ListIq\Models\Photo;
 use Modules\ListIq\Models\Prep;
 use Modules\ListIq\Photos;
 use Modules\ListIq\Showings;
+use Modules\ListIq\Tours;
 use Modules\Sites\Http\Controllers\SiteController;
 use Modules\Sites\Models\Site;
 use Modules\Sites\Rendering\Chrome;
@@ -61,7 +63,12 @@ final class PublicController
 
         return response()->view('listiq::page', [
             'site' => $site, 'current' => '/listing/'.$prep->ulid, 'prep' => $prep, 'photos' => $photos, 'facts' => $f, 'agent' => $owner !== null ? app(BrandKits::class)->forUser($owner) : null,
-            'floorPlan' => Photos::url($prep->floor_plan_path), 'booked' => (string) $request->query('booked', ''),
+            'floorPlan' => Photos::url($prep->floor_plan_path),
+            // MD1: the 3D or 360-degree tour, and the listing video.
+            'tour' => $prep->tour_url !== null ? Tours::read($prep->tour_url) + ['name' => Tours::PROVIDERS[$prep->tour_provider ?? ''] ?? 'Tour'] : null,
+            'video' => $prep->video_status === 'ready' && $prep->video_path !== null ? ['url' => Photos::url($prep->video_path), 'poster' => Photos::url($prep->video_poster_path),
+                'captions' => Photos::url(ListingVideo::captionsPath($prep->video_path))] : null,
+            'booked' => (string) $request->query('booked', ''),
             'showingError' => is_string($request->query('showing_error')) ? mb_substr((string) $request->query('showing_error'), 0, 200) : null, 'src' => preg_match('/^[a-z0-9]{7}$/', (string) $request->query('src')) === 1 ? (string) $request->query('src') : '',
             'seo' => Seo::build($site, $root, '/listing/'.$prep->ulid, $title.' | '.$site->displayName(), $description, $photos[0]['url'] ?? null, true, [[$prep->street, '/listing/'.$prep->ulid]],
                 [], [$listingLd], $prep->updated_at->toIso8601String()),

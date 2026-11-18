@@ -42,7 +42,27 @@ Page views, QR scans, leads from codes, open houses and visitors, on the listing
 
 `tests/Feature/ListIq/MarketingTest.php`.
 
+## 3D and 360-degree tours (MD1, C13)
+
+- The agent pastes the tour link. Only these sites are accepted (https only):
+
+    | Site           | How the tour appears                              |
+    | -------------- | ------------------------------------------------- |
+    | Matterport     | Played on the listing page, unbranded (`brand=0`) |
+    | iGUIDE         | Played on the page; the unbranded link is kept    |
+    | CubiCasa       | Opens in a new tab                                |
+    | Kuula          | Played on the page                                |
+    | Zillow 3D Home | Played on the page                                |
+    | YouTube        | Played on the page from youtube-nocookie          |
+    | Vimeo          | Played on the page                                |
+
+- **Matterport connected** (Outside services → Floor plans and tours, Matterport token): the agent picks one of their spaces from a list instead of pasting.
+- **Floor plans:** CubiCasa and iGUIDE plans are uploaded as before; their tour links are pasted. Neither has a public API for ordering yet.
+- **Where the tour goes:**
+    - it plays on the List-IQ page and on the public listing page (lazy-loaded, fullscreen allowed);
+    - the unbranded link goes in the MLS package (`virtual-tour.txt`).
+
 ## Not in LI2
 
-- A floor-plan partner connection (no partner with a public API is chosen yet; agents upload).
+- Ordering a CubiCasa or iGUIDE scan from inside RightAlly (no public ordering API; agents upload the plan and paste the tour link).
 - One-tap "just listed" email to the sphere and social posts: Ally Studio and postcards already do these from the MLS listing.

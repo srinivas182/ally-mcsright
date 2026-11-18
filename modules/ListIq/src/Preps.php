@@ -149,6 +149,10 @@ final class Preps
             $zip->addFromString('description-es.txt', $prep->description_es);
         }
         $zip->addFromString('staging-disclosure.txt', $staged === [] ? "No photos are virtually staged.\n" : implode("\n", $staged)."\n");
+        if ($prep->tour_url !== null) {
+            // MD1: for the MLS "virtual tour (unbranded)" field.
+            $zip->addFromString('virtual-tour.txt', $prep->tour_url."\n");
+        }
         $zip->close();
 
         return $file;

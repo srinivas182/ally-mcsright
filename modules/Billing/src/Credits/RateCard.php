@@ -40,6 +40,7 @@ final class RateCard
         'ai.ad_compliance' => [1, false, 'Marketing check AI rewrite'],
         'ai.plan_reader' => [3, false, 'Commission plan set up from a document'],
         'listiq.staging' => [10, false, 'Virtual staging, per photo'],
+        'listiq.video' => [5, false, 'Listing video from List-IQ photos'],
         'ai.site_journey' => [1, true, 'Visitor journey summary'],
         'ai.site_post' => [20, false, 'AI blog post draft'],
         'ai.site_page' => [15, false, 'AI page draft'],

@@ -26,7 +26,8 @@ final class ListIqServiceProvider extends ServiceProvider
         $this->app->scoped(Marketing::class);
         $this->app->scoped(Showings::class);
         $this->app->bind(ListingActivity::class, Showings::class);
-        $this->app->bindIf(Staging\VirtualStager::class, Staging\ReplicateStager::class);
+        // MD1: the provider chosen in Outside services, falling back to the Replicate app (LI1).
+        $this->app->bindIf(Staging\VirtualStager::class, fn (): Staging\VirtualStager => new Staging\ServiceStager(new Staging\ReplicateStager));
     }
 
     public function boot(): void

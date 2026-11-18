@@ -38,6 +38,13 @@ use Modules\Core\Tenancy\Concerns\HasPublicUlid;
  * @property string|null $access
  * @property string|null $seller_note
  * @property CarbonImmutable|null $seller_note_at
+ * @property string|null $tour_url
+ * @property string|null $tour_provider
+ * @property string|null $video_status
+ * @property string|null $video_path
+ * @property string|null $video_poster_path
+ * @property string|null $video_error
+ * @property string|null $video_charge_ref
  * @property CarbonImmutable $created_at
  * @property CarbonImmutable $updated_at
  */

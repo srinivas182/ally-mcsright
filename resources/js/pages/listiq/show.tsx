@@ -3,6 +3,10 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
+import {
+    TourAndVideoPanel,
+    type TourAndVideo,
+} from '@/components/listiq/tour-and-video';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/ui/page-header';
@@ -57,6 +61,9 @@ type Marketing = {
         visitors: number;
     };
     floor_plan: string | null;
+    tour: TourAndVideo['tour'];
+    matterport: TourAndVideo['matterport'];
+    video: TourAndVideo['video'];
     open_houses: {
         ulid: string;
         starts: string;
@@ -767,6 +774,7 @@ export default function ListIqShow({
                             {errors.floor_plan}
                         </p>
                     )}
+                    <TourAndVideoPanel base={base} m={m} errors={errors} />
                 </section>
 
                 <section

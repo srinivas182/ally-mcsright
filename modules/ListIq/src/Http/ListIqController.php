@@ -14,6 +14,7 @@ use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Crm\Consent;
 use Modules\ListIq\Descriptions;
+use Modules\ListIq\ListingVideo;
 use Modules\ListIq\Marketing;
 use Modules\ListIq\Models\OpenHouse;
 use Modules\ListIq\Models\Photo;
@@ -25,6 +26,7 @@ use Modules\ListIq\Shoot;
 use Modules\ListIq\Showings;
 use Modules\ListIq\Staging\ReplicateStager;
 use Modules\ListIq\Staging\VirtualStager;
+use Modules\ListIq\Tours;
 use Modules\Transactions\Models\Deal;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Response as HttpResponse;
@@ -76,6 +78,13 @@ final class ListIqController
             'can' => ['stage' => app(VirtualStager::class)->ready(), 'enhance' => app(PhotoEnhancer::class)->ready()],
             'marketing' => ['in_mls' => $prep->in_mls, 'page_url' => app(Marketing::class)->pageUrl($prep), 'codes' => app(Marketing::class)->codes($prep),
                 'kinds' => Marketing::KINDS, 'activity' => app(Marketing::class)->activity($prep), 'floor_plan' => Photos::url($prep->floor_plan_path),
+                // MD1: the tour and the listing video.
+                'tour' => $prep->tour_url !== null ? ['url' => $prep->tour_url, 'provider' => Tours::PROVIDERS[$prep->tour_provider ?? ''] ?? $prep->tour_provider,
+                    'embed' => Tours::read($prep->tour_url)['embed'] ?? null] : null,
+                'matterport' => app(Tours::class)->matterport(),
+                'video' => ['status' => $prep->video_status, 'url' => Photos::url($prep->video_path), 'poster' => Photos::url($prep->video_poster_path), 'error' => $prep->video_error,
+                    'captions' => $prep->video_path !== null ? Photos::url(ListingVideo::captionsPath($prep->video_path)) : null,
+                    'photos' => count(ListingVideo::photos($prep)), 'needs' => ListingVideo::MIN_PHOTOS],
                 'open_houses' => OpenHouse::query()->where('listing_id', $prep->id)->orderByDesc('starts_at')->get()->map(fn (OpenHouse $o): array => ['ulid' => $o->ulid,
                     'starts' => $o->starts_at->setTimezone(app(TenantContext::class)->current()->timezone ?: 'America/Chicago')->format('D M j, g:i A'),
                     'ended' => $o->ended_at !== null, 'visitors' => count((array) $o->visitors)])->all()],
@@ -128,6 +137,26 @@ final class ListIqController
         abort_unless(Preps::canSee(self::user($request), $prep), 403);
         $request->validate(['floor_plan' => ['required', 'file', 'max:20480']]);
         $marketing->floorPlan($prep, $request->file('floor_plan'));
+
+        return back();
+    }
+
+    /** MD1: the 3D or 360-degree tour (a pasted link, or a Matterport space picked from the connected account). */
+    public function tour(Request $request, Prep $prep, Tours $tours): RedirectResponse
+    {
+        abort_unless(Preps::canSee(self::user($request), $prep), 403);
+        $d = $request->validate(['url' => ['nullable', 'string', 'max:500'], 'matterport' => ['nullable', 'string', 'regex:/^[A-Za-z0-9]{8,20}$/']]);
+        $tours->set($prep, isset($d['matterport']) ? 'https://my.matterport.com/show/?m='.$d['matterport'] : ($d['url'] ?? null));
+
+        return back();
+    }
+
+    /** MD1: a listing video from the photos. */
+    public function video(Request $request, Prep $prep, ListingVideo $video): RedirectResponse
+    {
+        abort_unless(Preps::canSee(self::user($request), $prep), 403);
+        $video->start($prep, self::user($request));
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Making your video. It takes a minute or two.']);
 
         return back();
     }

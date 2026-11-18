@@ -80,4 +80,12 @@ it('adds a floor plan and makes a branded flyer with a QR code', function (): vo
     $this->actingAs($this->ann)->get("/list-iq/{$this->prep->ulid}/flyer")->assertOk()->assertHeader('content-type', 'application/pdf');
     expect(app(Marketing::class)->codes($this->prep)[0]['kind'])->toBe('flyer');
     $this->actingAs($this->ann)->get("/list-iq/{$this->prep->ulid}")->assertInertia(fn (Assert $p) => $p->where('marketing.in_mls', false)->has('marketing.codes', 1));
+
+    // MD1: the tour and the listing video play on the public page.
+    $this->actingAs($this->ann)->post("/list-iq/{$this->prep->ulid}/tour", ['url' => 'https://kuula.co/share/7abcD']);
+    $this->prep->forceFill(['video_status' => 'ready', 'video_path' => 'listiq/v.mp4', 'video_poster_path' => 'listiq/v.jpg'])->save();
+    $this->actingAs($this->ann)->post("/list-iq/{$this->prep->ulid}/mls", ['on' => true]);
+    $html = (string) $this->get($this->web.'/listing/'.$this->prep->ulid)->assertOk()->getContent();
+    expect($html)->toContain('src="https://kuula.co/share/7abcD?fs=1&amp;vr=0&amp;thumbs=1&amp;info=0&amp;logo=-1"')->toContain('Kuula tour of 12 Oak St')
+        ->toContain('listiq/v.mp4')->toContain('listiq/v.vtt');
 });

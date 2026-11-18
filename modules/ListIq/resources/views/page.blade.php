@@ -57,6 +57,17 @@
                 <h2 class="section-title">About this home</h2>
                 @if ($prep->description)<p>{{ $prep->description }}</p>@endif
                 @if ($floorPlan)<p><a class="btn" href="{{ $floorPlan }}" target="_blank" rel="noopener">See the floor plan</a></p>@endif
+                @if ($tour)
+                    <h3>Walk through it ({{ $tour['name'] }})</h3>
+                    @if ($tour['embed'])
+                        <div style="position:relative;padding-top:56.25%;margin:12px 0"><iframe src="{{ $tour['embed'] }}" title="{{ $tour['name'] }} tour of {{ $prep->street }}" style="position:absolute;inset:0;width:100%;height:100%;border:0" loading="lazy" allow="fullscreen; xr-spatial-tracking" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>
+                    @else
+                        <p><a class="btn" href="{{ $tour['link'] }}" target="_blank" rel="noopener">Open the tour</a></p>
+                    @endif
+                @endif
+                @if ($video)
+                    <video controls playsinline preload="none" poster="{{ $video['poster'] }}" style="width:100%;max-width:360px;border-radius:12px;margin:12px 0" aria-label="Video of {{ $prep->street }}"><source src="{{ $video['url'] }}" type="video/mp4"><track kind="captions" src="{{ $video['captions'] }}" srclang="en" label="English" default></video>
+                @endif
                 @if ($agent)
                     <p class="lead-muted">Listed by {{ $agent['details']['display_name'] ?? '' }}, {{ $agent['brokerage'] ?? '' }}@if (! empty($agent['details']['phone'])) · {{ $agent['details']['phone'] }}@endif</p>
                 @endif
