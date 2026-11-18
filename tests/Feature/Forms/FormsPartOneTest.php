@@ -152,7 +152,7 @@ it('sends the forms pages the data they need, and keeps a deal\'s forms to its a
     assertPageContract($this->actingAs($this->owner)->get('/forms/templates'), 'forms/templates');
     assertPageContract($this->actingAs($this->agent)->get("/forms/deals/{$deal->ulid}"), 'forms/deal');
     assertPageContract($this->actingAs($this->agent)->get("/forms/packets/{$packet}"), 'forms/packet');
-    $this->actingAs($this->other)->get("/forms/deals/{$deal->ulid}")->assertForbidden();
+    $this->actingAs($this->other)->get("/forms/deals/{$deal->ulid}")->assertNotFound();
     $this->actingAs($this->agent)->get('/forms/templates')->assertForbidden();
 });
 

@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Modules\Crm\Models;
 
+use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -12,7 +14,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Modules\Core\Audit\Auditable;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\Concerns\BelongsToTenant;
+use Modules\Core\Tenancy\Concerns\BindsForViewer;
 use Modules\Core\Tenancy\Concerns\HasPublicUlid;
+use Modules\Crm\ContactVisibility;
 use Modules\Crm\Enums\Lifecycle;
 use Modules\Crm\Enums\Origin;
 use Modules\Crm\Enums\Source;
@@ -80,6 +84,7 @@ final class Contact extends Model
 {
     use Auditable;
     use BelongsToTenant;
+    use BindsForViewer;
     use HasPublicUlid;
     use SoftDeletes;
 
@@ -166,5 +171,11 @@ final class Contact extends Model
     public function households(): BelongsToMany
     {
         return $this->belongsToMany(Household::class, 'crm_household_members', 'contact_id', 'household_id')->withPivot('role');
+    }
+
+    /** SX1: as ContactVisibility (an agent's own; owners and staff the company's; personal stays personal). */
+    public static function viewable(Builder $query, User $user): Builder
+    {
+        return app(ContactVisibility::class)->apply($query, $user);
     }
 }

@@ -281,9 +281,9 @@ it('turns an inspection report into a repair request the agent edits, drafts and
 
 it('keeps offers and repairs to people who can see the deal', function (): void {
     $other = User::factory()->create();
-    $this->actingAs($other)->get("/deals/{$this->deal->ulid}/offers")->assertForbidden();
-    $this->actingAs($other)->post("/deals/{$this->deal->ulid}/offers/link")->assertForbidden();
-    $this->actingAs($other)->get("/deals/{$this->deal->ulid}/repairs")->assertForbidden();
+    $this->actingAs($other)->get("/deals/{$this->deal->ulid}/offers")->assertNotFound();
+    $this->actingAs($other)->post("/deals/{$this->deal->ulid}/offers/link")->assertNotFound();
+    $this->actingAs($other)->get("/deals/{$this->deal->ulid}/repairs")->assertNotFound();
     $this->deal->update(['type' => 'buyer']);
     $this->actingAs($this->agent)->get("/deals/{$this->deal->ulid}/offers")->assertNotFound();
     $this->actingAs($this->agent)->get("/deals/{$this->deal->ulid}")->assertInertia(fn (Assert $page) => $page->where('dealIq.offers', null));

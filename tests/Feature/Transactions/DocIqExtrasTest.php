@@ -89,7 +89,7 @@ it('shows what changed from the last version: facts and lines added or taken out
 
         return true;
     });
-    $this->actingAs(User::factory()->create())->post("/deals/documents/{$v2->ulid}/compare")->assertForbidden();
+    $this->actingAs(User::factory()->create())->post("/deals/documents/{$v2->ulid}/compare")->assertNotFound();
 });
 
 it('explains a document in plain English or Spanish, keeping only points that are really in it', function (): void {

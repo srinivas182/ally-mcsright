@@ -35,7 +35,7 @@ it('makes a win card for a closed deal only after the client agreed, without the
     $this->actingAs($this->ann)->get("/deals/{$this->deal->ulid}")->assertInertia(fn (Assert $page) => $page->where('winCard.website', true)->where('winCard.card', null));
     $this->actingAs($this->ann)->post("/deals/{$this->deal->ulid}/win-card", ['message' => 'Sold!'])->assertSessionHasErrors('client_agreed');
     $this->actingAs($this->ann)->post("/deals/{$this->deal->ulid}/win-card", ['client_agreed' => true, 'message' => 'Sold! Perfect for families.'])->assertSessionHasErrors('message');
-    $this->actingAs($this->other)->post("/deals/{$this->deal->ulid}/win-card", ['client_agreed' => true])->assertForbidden();
+    $this->actingAs($this->other)->post("/deals/{$this->deal->ulid}/win-card", ['client_agreed' => true])->assertNotFound();
 
     $this->actingAs($this->ann)->post("/deals/{$this->deal->ulid}/win-card", ['client_agreed' => true, 'show_price' => true])->assertRedirect();
     $card = DB::connection(Connections::cell())->table('tx_win_cards')->sole();

@@ -197,3 +197,18 @@ MW7 uses the review connectors from C8.
 | MW6    | E with B | Status flow-back, scorecard and tiers, per-appointment and share-at-close, referral agreements, partner settlements, HQ console |
 | MW7    | C with E | Verified and imported reviews; city, zip and neighbourhood pages, market reports, ads top-up with stop-loss                     |
 | MW8    | All      | Launch hardening and state legal sign-off; Texas first, then Louisiana, Mississippi and Alabama                                 |
+
+## Security and ease-of-use sprints (SX1 to SX8)
+
+These sprints were approved on 2026-11-17, after version 1.0 and before the outside pen test. They run in order.
+
+| Sprint | Delivers                                                                                                        | Status     |
+| ------ | --------------------------------------------------------------------------------------------------------------- | ---------- |
+| SX1    | Agent privacy: viewer-checked record addresses, sweep test of every route, no client details in logs            | Done       |
+| SX2    | Guard coverage for raw SQL and queued jobs; content security policy (report-only, then enforced)                | Next       |
+| SX3    | Easy, safe sign-in: passkeys first, two-step required for agents (14-day grace), broker-assisted phone recovery | Planned    |
+| SX4    | One simple home: "Today's 10" with big Call and Text buttons; a microphone button on every page                 | Planned    |
+| SX5    | Help everywhere: "Help me" (callback, 60-second videos, printable cheat sheets); practice mode                  | Planned    |
+| SX6    | Work without logging in: morning email or text with reply actions (text opt-in only); concierge setup           | Planned    |
+| SX7    | Plain words and pre-test check: CI checks, 50+ usability-test kit, privacy drafts for the attorney, re-check    | Planned    |
+| SX8    | Pen-test fixes from the outside firm's findings                                                                 | After test |

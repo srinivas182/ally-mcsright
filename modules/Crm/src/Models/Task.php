@@ -4,13 +4,17 @@ declare(strict_types=1);
 
 namespace Modules\Crm\Models;
 
+use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Modules\Core\Audit\Auditable;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\Concerns\BelongsToTenant;
+use Modules\Core\Tenancy\Concerns\BindsForViewer;
 use Modules\Core\Tenancy\Concerns\HasPublicUlid;
+use Modules\Crm\Actions\Tasks;
 
 /**
  * A to-do, usually about a contact. Visible to its assignee and to whoever can see the contact.
@@ -38,6 +42,7 @@ final class Task extends Model
 {
     use Auditable;
     use BelongsToTenant;
+    use BindsForViewer;
     use HasPublicUlid;
 
     public const TYPES = ['call', 'text', 'email', 'follow_up', 'showing', 'other'];
@@ -78,5 +83,11 @@ final class Task extends Model
     public function isOverdue(): bool
     {
         return $this->completed_at === null && $this->due_at->isPast();
+    }
+
+    /** SX1: as Tasks::visibleTo (assigned to them, or about a contact they may see). */
+    public static function viewable(Builder $query, User $user): Builder
+    {
+        return $query->whereIn($query->getModel()->qualifyColumn('id'), app(Tasks::class)->visibleTo($user)->select('id'));
     }
 }
