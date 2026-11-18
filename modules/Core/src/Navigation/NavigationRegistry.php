@@ -7,6 +7,7 @@ namespace Modules\Core\Navigation;
 use App\Models\User;
 use Illuminate\Support\Facades\Gate;
 use Modules\Core\Simple\SimpleMode;
+use Modules\Core\Switches\FeatureSwitches;
 
 /**
  * Modules register their menu items here (an extension point: plugins can add items without
@@ -35,8 +36,10 @@ final class NavigationRegistry
             return [];
         }
 
+        $switches = app(FeatureSwitches::class);
         $visible = array_filter($this->items, fn (NavItem $item): bool => ($item->kinds === [] || in_array($user->kind, $item->kinds, true))
-            && ($item->ability === null || Gate::forUser($user)->allows($item->ability)));
+            && ($item->ability === null || Gate::forUser($user)->allows($item->ability))
+            && $switches->allowsPath($user, $item->href)); // FL1: switched-off areas and seats
 
         usort($visible, fn (NavItem $a, NavItem $b): int => [$this->groupIndex($a->group), $a->order, $a->title] <=> [$this->groupIndex($b->group), $b->order, $b->title]);
 

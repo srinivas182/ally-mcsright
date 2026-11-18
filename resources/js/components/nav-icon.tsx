@@ -55,6 +55,9 @@ import {
     Mail,
     MessageCircle,
     LifeBuoy,
+    ToggleRight,
+    Plug,
+    CheckCheck,
 } from 'lucide-react';
 
 /** Icons the server may name for menu items. Unknown names fall back to a dot. */
@@ -113,6 +116,9 @@ const icons: Record<string, LucideIcon> = {
     mail: Mail,
     'message-circle': MessageCircle,
     'life-buoy': LifeBuoy,
+    'toggle-right': ToggleRight,
+    plug: Plug,
+    'check-check': CheckCheck,
 };
 
 export function NavIcon({

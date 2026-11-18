@@ -64,6 +64,14 @@ final class Impersonation
             throw ValidationException::withMessages(['email' => 'No active user with that email in this brokerage.']);
         }
 
+        // FL1: a brokerage that asks first must allow support before anyone can view it.
+        $access = app(SupportAccess::class);
+        if (! $access->mayEnter($tenant->id)) {
+            $access->request($hqStaff, $tenant, $reason);
+            throw ValidationException::withMessages(['email' => 'This brokerage asks support to get permission first. We emailed the owner your request; you can view the account once they allow it.']);
+        }
+        $access->recordVisit($tenant, $hqStaff, $target, $reason);
+
         $ticket = Str::random(48);
         Cache::put('impersonate:'.hash('sha256', $ticket), [
             'tenant' => $tenant->id, 'target' => $target->id, 'by_id' => $hqStaff->id, 'by_name' => $hqStaff->name.' (RightAlly support)', 'reason' => $reason,

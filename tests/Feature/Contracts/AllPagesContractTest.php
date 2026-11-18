@@ -101,6 +101,10 @@ it('sends every brokerage page the data its component needs', function (string $
     'AI assistants (agent)' => ['agent', '/apps/ai_assistants', 'apps/show'],
     'AI assistant tile: Claude' => ['agent', '/apps/ai_claude', 'apps/show'],
     'AI assistant tile: Copilot' => ['owner', '/apps/ai_copilot', 'apps/show'],
+    'settings: features and seats' => ['owner', '/settings/features', 'settings/features'],
+    'settings: outside services' => ['owner', '/settings/services', 'settings/services'],
+    'settings: approvals' => ['owner', '/settings/approvals', 'settings/approvals'],
+    'settings: support access' => ['owner', '/settings/support-access', 'settings/support-access'],
 ]);
 
 it('sends record pages (a deal, a contact, a journal, an account statement) the data they need', function (): void {
@@ -143,6 +147,9 @@ it('sends every HQ console page the data its component needs', function (string 
     'texts and calls' => ['/hq/messaging', 'hq/messaging'],
     'app demand' => ['/hq/apps', 'hq/apps'],
     'connect setup' => ['/hq/connect', 'hq/connect'],
+    'feature switches' => ['/hq/switches', 'hq/switches'],
+    'feature switches: one brokerage' => ['/hq/switches?tenant={tenant}', 'hq/switches'],
+    'outside services' => ['/hq/services', 'settings/services'],
 ]);
 
 it('sends the sign-in pages the data they need', function (string $url, string $component): void {
