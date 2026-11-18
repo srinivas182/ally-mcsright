@@ -16,6 +16,7 @@ use Modules\Core\Tenancy\Concerns\HasPublicUlid;
 use Modules\Crm\Enums\Lifecycle;
 use Modules\Crm\Enums\Origin;
 use Modules\Crm\Enums\Source;
+use Modules\Crm\Support\ContactCounts;
 
 /**
  * A person or company the brokerage or an agent works with. Always queried through
@@ -122,6 +123,11 @@ final class Contact extends Model
             $contact->birthday_md = $contact->birthday !== null ? $contact->birthday->month * 100 + $contact->birthday->day : null;
             $contact->closed_md = $contact->closed_on !== null ? $contact->closed_on->month * 100 + $contact->closed_on->day : null;
         });
+        // Sprint 60: kept counts (smart lists, database health) start fresh the moment a contact changes.
+        $changed = fn () => app(ContactCounts::class)->changed();
+        self::saved($changed);
+        self::deleted($changed);
+        self::restored($changed);
     }
 
     /**

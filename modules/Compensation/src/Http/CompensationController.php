@@ -54,8 +54,7 @@ final class CompensationController
                     'rules' => $v->rules, 'note' => $v->change_note, 'published_at' => $v->published_at?->toIso8601String(),
                 ])->values(),
             ]),
-            'agents' => User::query()->whereIn('kind', [UserKind::Agent, UserKind::Owner])->where('status', 'active')->orderBy('first_name')->get()
-                ->map(fn (User $u): array => ['ulid' => $u->ulid, 'name' => $u->name, 'plan' => $this->currentPlanName($u->id)]),
+            'agents' => $this->agentsWithPlans(),
             'fees' => DB::connection(Connections::cell())->table('comp_fees')->orderBy('name')->get(['code', 'name']),
             'canManage' => $user->can('compensation.plans.manage'),
             'reading' => $request->session()->get('planReading'),
@@ -256,11 +255,23 @@ final class CompensationController
         return Inertia::render('compensation/my-plan', ['me' => $insights->myPlan($user)]);
     }
 
-    private function currentPlanName(int $userId): ?string
+    /**
+     * Every active agent with the name of their current plan (S60: two queries in all, not two per agent).
+     *
+     * @return list<array{ulid: string, name: string, plan: string|null}>
+     */
+    private function agentsWithPlans(): array
     {
-        $planId = PlanAssignment::query()->where('agent_user_id', $userId)->whereNull('effective_to')->orderByDesc('effective_from')->value('plan_id');
+        $agents = User::query()->whereIn('kind', [UserKind::Agent, UserKind::Owner])->where('status', 'active')->orderBy('first_name')->get();
+        $current = [];
+        foreach (PlanAssignment::query()->whereIn('agent_user_id', $agents->pluck('id')->all())->whereNull('effective_to')->orderBy('effective_from')
+            ->get(['agent_user_id', 'plan_id']) as $a) {
+            $current[(int) $a->agent_user_id] = (int) $a->plan_id; // the latest start wins, as before
+        }
+        $names = Plan::query()->whereKey(array_values(array_unique($current)))->pluck('name', 'id');
 
-        return $planId !== null ? Plan::query()->whereKey($planId)->value('name') : null;
+        return array_values($agents->map(fn (User $u): array => ['ulid' => $u->ulid, 'name' => $u->name,
+            'plan' => isset($current[$u->id]) ? ($names[$current[$u->id]] ?? null) : null])->all());
     }
 
     private function attempt(callable $action, string $message): RedirectResponse

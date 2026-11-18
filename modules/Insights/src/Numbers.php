@@ -27,6 +27,9 @@ final class Numbers
     /** @var array<int, int> calculation id => company dollar cents */
     private array $company = [];
 
+    /** The deal columns the dashboard adds up (Sprint 60: not whole deals). */
+    private const COLUMNS = ['id', 'tenant_id', 'agent_user_id', 'status', 'price_cents', 'gci_cents', 'calculation_id', 'closed_on', 'closing_date'];
+
     /**
      * Whose numbers this person may see: null for everyone, a list of agent ids, or false for none.
      *
@@ -53,30 +56,47 @@ final class Numbers
     public function dashboard(User $viewer, ?array $people, CarbonImmutable $from, CarbonImmutable $to): array
     {
         $money = Fields::visible($viewer, 'commission');
-        $now = $this->totals($this->closed($people, $from, $to)->get());
-        $before = $this->totals($this->closed($people, $from->subYear(), $to->subYear())->get());
+        // Sprint 60 (load test): every closed deal the page needs, once, with only the columns it adds up (it was
+        // fifteen full loads), and each deal's company share from one look-up of the calculations.
+        $first = min($from->subYear(), $to->startOfMonth()->subMonths(11), $to->startOfYear());
+        $closedDeals = $this->closed($people, $first, $to)->get(self::COLUMNS);
+        $pendingDeals = Deal::query()->where('status', 'under_contract')->when($people !== null, fn (Builder $q) => $q->whereIn('agent_user_id', $people))->get(self::COLUMNS);
+        $this->preloadCompany($closedDeals->concat($pendingDeals));
+        // Plain rows, made once: reading a date off a deal makes a new date object every time (thousands per page).
+        $closed = $this->rows($closedDeals);
+        $pending = $this->rows($pendingDeals);
+        $between = fn (CarbonImmutable $a, CarbonImmutable $b): array => self::within($closed, 'on', $a->toDateString(), $b->toDateString());
+        $now = self::sum($between($from, $to));
+        $before = self::sum($between($from->subYear(), $to->subYear()));
         $goal = $people === null ? Goals::for(null, (int) $to->format('Y')) : null;
-        $ytd = $people === null ? $this->totals($this->closed(null, $to->startOfYear(), $to)->get()) : null;
+        $ytd = $people === null ? self::sum($between($to->startOfYear(), $to)) : null;
 
         $months = [];
         for ($m = $to->startOfMonth()->subMonths(11); $m->lte($to); $m = $m->addMonth()) {
-            $t = $this->totals($this->closed($people, $m, $m->endOfMonth())->get());
+            $t = self::sum($between($m, $m->endOfMonth()));
             $months[] = ['month' => $m->format('Y-m'), 'label' => $m->format('M'), 'sides' => $t['sides'], 'volume_cents' => $t['volume_cents'],
                 'gci_cents' => $money ? $t['gci_cents'] : null, 'company_cents' => $money ? $t['company_cents'] : null];
         }
 
-        $pending = Deal::query()->where('status', 'under_contract')->when($people !== null, fn (Builder $q) => $q->whereIn('agent_user_id', $people))->get();
         $buckets = [];
         foreach ([30, 60, 90] as $days) {
-            $in = $pending->filter(fn (Deal $d): bool => $d->closing_date !== null && $d->closing_date->lte($to->addDays($days)) && $d->closing_date->gte($to->startOfDay()));
-            $buckets[] = ['days' => $days, 'deals' => $in->count(), 'volume_cents' => (int) $in->sum('price_cents'),
-                'gci_cents' => $money ? (int) $in->sum('gci_cents') : null, 'company_cents' => $money ? $in->sum(fn (Deal $d): int => $this->companyCents($d)) : null];
+            $t = self::sum(self::within($pending, 'due', $to->toDateString(), $to->addDays($days)->toDateString()));
+            $buckets[] = ['days' => $days, 'deals' => $t['sides'], 'volume_cents' => $t['volume_cents'],
+                'gci_cents' => $money ? $t['gci_cents'] : null, 'company_cents' => $money ? $t['company_cents'] : null];
         }
 
-        $agents = $this->closed($people, $from, $to)->get()->groupBy('agent_user_id')->map(fn (Collection $deals, int|string $id): array => [
-            'ulid' => (string) User::query()->whereKey((int) $id)->value('ulid'), 'name' => (string) (User::query()->find((int) $id)->name ?? 'Agent'),
-            'sides' => $deals->count(), 'volume_cents' => (int) $deals->sum('price_cents'), 'gci_cents' => $money ? (int) $deals->sum('gci_cents') : null,
-        ])->sortByDesc(fn (array $a): int => $a['gci_cents'] ?? $a['volume_cents'])->take(10)->values()->all();
+        $byAgent = [];
+        foreach ($between($from, $to) as $r) {
+            $byAgent[$r['agent']][] = $r;
+        }
+        $names = User::query()->whereIn('id', array_keys($byAgent))->get()->keyBy('id'); // one look-up, not two per agent
+        $agents = collect($byAgent)->map(function (array $rows, int $id) use ($names, $money): array {
+            $t = self::sum($rows);
+
+            return ['ulid' => (string) ($names->get($id)->ulid ?? ''), 'name' => (string) ($names->get($id)->name ?? 'Agent'),
+                'sides' => $t['sides'], 'volume_cents' => $t['volume_cents'], 'gci_cents' => $money ? $t['gci_cents'] : null];
+        })->sortByDesc(fn (array $a): int => $a['gci_cents'] ?? $a['volume_cents'])->take(10)->values()->all();
+        $pendingTotals = self::sum($pending);
 
         $agentQuery = fn () => User::query()->where('kind', UserKind::Agent)->when($people !== null, fn ($q) => $q->whereIn('id', $people));
 
@@ -89,7 +109,7 @@ final class Numbers
             'goal' => $goal !== null && $ytd !== null ? ['year' => (int) $to->format('Y'), 'gci_cents' => $money ? $goal['gci_cents'] : null, 'sides' => $goal['sides'],
                 'volume_cents' => $goal['volume_cents'], 'ytd' => self::mask($ytd, $money), 'year_share' => round($to->dayOfYear / ($to->isLeapYear() ? 366 : 365), 3)] : null,
             'months' => $months,
-            'pending' => ['deals' => $pending->count(), 'volume_cents' => (int) $pending->sum('price_cents'), 'buckets' => $buckets],
+            'pending' => ['deals' => $pendingTotals['sides'], 'volume_cents' => $pendingTotals['volume_cents'], 'buckets' => $buckets],
             'agents' => $agents,
             'people' => ['active' => $agentQuery()->where('status', UserStatus::Active)->count(),
                 'joined' => $agentQuery()->whereBetween('created_at', [$from->startOfDay(), $to->endOfDay()])->count(),
@@ -140,6 +160,56 @@ final class Numbers
     }
 
     /** The brokerage's share of a deal: company dollar plus post-cap fees, from its commission calculation. */
+    /**
+     * @param  Collection<int, Deal>  $deals
+     * @return list<array{on: string|null, due: string|null, agent: int, price: int, gci: int, company: int}>
+     */
+    private function rows(Collection $deals): array
+    {
+        return array_values($deals->map(fn (Deal $d): array => ['on' => $d->closed_on?->toDateString(), 'due' => $d->closing_date?->toDateString(),
+            'agent' => (int) $d->agent_user_id, 'price' => (int) $d->price_cents, 'gci' => (int) $d->gci_cents, 'company' => $this->companyCents($d)])->all());
+    }
+
+    /**
+     * Rows whose date (closed "on" or "due" to close) falls between two days, both included.
+     *
+     * @param  list<array{on: string|null, due: string|null, agent: int, price: int, gci: int, company: int}>  $rows
+     * @return list<array{on: string|null, due: string|null, agent: int, price: int, gci: int, company: int}>
+     */
+    private static function within(array $rows, string $date, string $from, string $to): array
+    {
+        return array_values(array_filter($rows, fn (array $r): bool => $r[$date] !== null && $r[$date] >= $from && $r[$date] <= $to));
+    }
+
+    /**
+     * @param  list<array{on: string|null, due: string|null, agent: int, price: int, gci: int, company: int}>  $rows
+     * @return array{sides: int, volume_cents: int, gci_cents: int, company_cents: int}
+     */
+    private static function sum(array $rows): array
+    {
+        return ['sides' => count($rows), 'volume_cents' => (int) array_sum(array_column($rows, 'price')), 'gci_cents' => (int) array_sum(array_column($rows, 'gci')),
+            'company_cents' => (int) array_sum(array_column($rows, 'company'))];
+    }
+
+    /**
+     * Looks up the company share of every deal's calculation in one query per thousand, ahead of companyCents().
+     *
+     * @param  Collection<int, Deal>  $deals
+     */
+    private function preloadCompany(Collection $deals): void
+    {
+        $ids = $deals->pluck('calculation_id')->filter()->unique()->reject(fn ($id): bool => isset($this->company[(int) $id]))->values();
+        foreach ($ids->chunk(1000) as $chunk) {
+            foreach (Calculation::query()->whereIn('id', $chunk->all())->get(['id', 'result']) as $calc) {
+                $sum = 0;
+                foreach ((array) ($calc->result['agents'] ?? []) as $row) {
+                    $sum += (int) ($row['company_cents'] ?? 0) + (int) ($row['post_cap_fee_cents'] ?? 0);
+                }
+                $this->company[(int) $calc->id] = $sum;
+            }
+        }
+    }
+
     public function companyCents(Deal $deal): int
     {
         if ($deal->calculation_id === null) {

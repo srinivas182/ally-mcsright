@@ -10,6 +10,7 @@ use Modules\Core\Identity\Enums\UserKind;
 use Modules\Crm\Health\DatabaseHealth;
 use Modules\Crm\Models\Contact;
 use Modules\Crm\Models\ContactScore;
+use Modules\Crm\Support\ContactCounts;
 use Modules\Transactions\Models\Deal;
 
 /**
@@ -54,8 +55,12 @@ final class DatabaseValue
         $pending = Deal::query()->where('status', 'under_contract')->when($agent !== null, fn ($q) => $q->where('agent_user_id', $agent?->id))
             ->where('closing_date', '>=', $today->toDateString())->get(['gci_cents', 'closing_date']);
         $contacts = fn () => Contact::query()->when($agent !== null, fn ($q) => $q->where('owner_user_id', $agent?->id));
-        $active = $contacts()->where('lifecycle', 'active')->count();
-        $likely = ContactScore::query()->where('seller', '>=', 70)->whereIn('contact_id', $contacts()->whereIn('lifecycle', ['lead', 'past_client', 'sphere'])->select('id'))->count();
+        // Sprint 60: counts over the whole database; in a big brokerage kept for a few minutes (ContactCounts).
+        $counts = app(ContactCounts::class);
+        $who = $agent->id ?? 'all';
+        $active = (int) $counts->remember("forecast.active:{$who}", fn (): int => $contacts()->where('lifecycle', 'active')->count());
+        $likely = (int) $counts->remember("forecast.likely:{$who}", fn (): int => ContactScore::query()->where('seller', '>=', 70)
+            ->whereIn('contact_id', $contacts()->whereIn('lifecycle', ['lead', 'past_client', 'sphere'])->select('id'))->count());
 
         $buckets = [];
         foreach ([30, 60, 90] as $days) {
@@ -86,7 +91,8 @@ final class DatabaseValue
     public function value(?User $agent, ?CarbonImmutable $today = null): array
     {
         $today ??= CarbonImmutable::today();
-        $people = Contact::query()->whereIn('lifecycle', ['past_client', 'sphere'])->when($agent !== null, fn ($q) => $q->where('owner_user_id', $agent?->id))->count();
+        $people = (int) app(ContactCounts::class)->remember('value.people:'.($agent->id ?? 'all'),
+            fn (): int => Contact::query()->whereIn('lifecycle', ['past_client', 'sphere'])->when($agent !== null, fn ($q) => $q->where('owner_user_id', $agent?->id))->count());
         $repeat = Deal::query()->where('status', 'closed')->where('closed_on', '>=', $today->subYears(2)->toDateString())->when($agent !== null, fn ($q) => $q->where('agent_user_id', $agent?->id))
             ->whereIn('contact_id', Contact::query()->where(fn ($q) => $q->whereIn('source', ['sphere', 'referral'])->orWhereIn('lifecycle', ['past_client', 'sphere']))->select('id'))->count();
         $fromHistory = $repeat >= 3 && $people > 0;

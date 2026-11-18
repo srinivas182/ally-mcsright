@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Crm\Models\Contact;
+use Modules\Crm\Support\ContactCounts;
 
 /**
  * Database health (DH1, specs/grow/16): how usable a database is, as one score, with each problem counted and one click
@@ -44,6 +45,15 @@ final class DatabaseHealth
      * @return array{score: int, total: int, checks: list<array{key: string, label: string, count: int, fix: string, href: string}>, to_fix: int}
      */
     public function for(?User $agent): array
+    {
+        // Sprint 60: about twelve counts over the whole database; in a big brokerage kept for a few minutes.
+        return app(ContactCounts::class)->remember('health:'.($agent->id ?? 'all'), fn (): array => $this->measure($agent));
+    }
+
+    /**
+     * @return array{score: int, total: int, checks: list<array{key: string, label: string, count: int, fix: string, href: string}>, to_fix: int}
+     */
+    private function measure(?User $agent): array
     {
         $base = fn (): Builder => Contact::query()->where('lifecycle', '!=', 'archived')->when($agent !== null, fn ($q) => $q->where('owner_user_id', $agent?->id));
         $total = $base()->count();

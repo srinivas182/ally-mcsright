@@ -22,34 +22,49 @@ const APP = __ENV.APP || 'https://loadtest-big.rightally.app';
 const SITE = __ENV.SITE || 'https://loadtest-big.rightally.site';
 const PASSWORD = __ENV.PASSWORD || '';
 const AGENTS = parseInt(__ENV.AGENTS || '200', 10);
+// S59/S60: SCALE sizes every group (0.02 = a laptop check, 1 = one load generator, run N generators for N times
+// the load); MINUTES is how long the steady part lasts; LOCAL=127.0.0.1:8000 points both hosts at a local server.
+const SCALE = parseFloat(__ENV.SCALE || '1');
+const MINUTES = parseInt(__ENV.MINUTES || '15', 10);
+const RAMP = MINUTES >= 10 ? '3m' : '30s';
+const at = (n) => Math.max(1, Math.round(n * SCALE));
+const hostOf = (u) => u.replace(/^https?:\/\//, '').split('/')[0]; // k6 has no URL()
 
 export const options = {
+    ...(__ENV.LOCAL
+        ? {
+              hosts: {
+                  [hostOf(APP)]: __ENV.LOCAL,
+                  [hostOf(SITE)]: __ENV.LOCAL,
+              },
+          }
+        : {}),
     scenarios: {
         agents: {
             executor: 'ramping-vus',
             exec: 'agents',
             stages: [
-                { duration: '3m', target: 500 },
-                { duration: '15m', target: 500 },
-                { duration: '1m', target: 0 },
+                { duration: RAMP, target: at(500) },
+                { duration: `${MINUTES}m`, target: at(500) },
+                { duration: '30s', target: 0 },
             ],
         },
         website: {
             executor: 'ramping-vus',
             exec: 'website',
             stages: [
-                { duration: '3m', target: 1000 },
-                { duration: '15m', target: 1000 },
-                { duration: '1m', target: 0 },
+                { duration: RAMP, target: at(1000) },
+                { duration: `${MINUTES}m`, target: at(1000) },
+                { duration: '30s', target: 0 },
             ],
         },
         leads: {
             executor: 'constant-arrival-rate',
             exec: 'leads',
-            rate: 5,
-            timeUnit: '1s',
-            duration: '18m',
-            preAllocatedVUs: 50,
+            rate: at(5 * 60),
+            timeUnit: '1m',
+            duration: `${MINUTES + 3}m`,
+            preAllocatedVUs: at(50),
         },
     },
     thresholds: {
@@ -79,10 +94,15 @@ const SITE_PAGES = [
     '/sitemap.xml',
 ];
 
+// The app's asset version, read from the sign-in page. Sent with every page request: without it (S60 finding) the
+// server answers 409 "reload" instantly and the page itself is never built or measured.
+let VERSION = '';
+
 /** Signs in once per virtual user (the login form, with the XSRF-TOKEN cookie sent back as a header). */
 function signIn(n) {
     const jar = http.cookieJar();
-    http.get(`${APP}/login`, { tags: { kind: 'page' } });
+    const page = http.get(`${APP}/login`, { tags: { kind: 'page' } });
+    VERSION = ((page.body || '').match(/"version":"([^"]+)"/) || [])[1] || '';
     const xsrf = decodeURIComponent(
         (jar.cookiesForURL(`${APP}/login`)['XSRF-TOKEN'] || [''])[0],
     );
@@ -117,12 +137,10 @@ export function agents() {
     group('agent', () => {
         for (const [path, kind] of AGENT_PAGES) {
             const r = http.get(`${APP}${path}`, {
-                headers: { 'X-Inertia': 'true', 'X-Inertia-Version': '' },
+                headers: { 'X-Inertia': 'true', 'X-Inertia-Version': VERSION },
                 tags: { kind },
             });
-            check(r, {
-                'page ok': (x) => x.status === 200 || x.status === 409,
-            });
+            check(r, { 'page ok': (x) => x.status === 200 });
             sleep(2 + Math.random() * 4);
         }
     });

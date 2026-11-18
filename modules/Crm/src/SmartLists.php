@@ -16,6 +16,7 @@ use Modules\Crm\Health\DatabaseHealth;
 use Modules\Crm\Models\Contact;
 use Modules\Crm\Models\SmartList;
 use Modules\Crm\Models\Stage;
+use Modules\Crm\Support\ContactCounts;
 
 /**
  * Saved filters that stay current, plus ready-made daily lists. Filters always run on top of
@@ -181,13 +182,17 @@ final class SmartLists
     public function listsFor(User $user): array
     {
         $out = [];
+        // Sprint 60: in a big brokerage the counts are kept for a few minutes per person (ContactCounts).
+        $counts = app(ContactCounts::class);
         foreach (self::READY_MADE as $key => [$name, $filters]) {
-            $out[] = ['key' => $key, 'name' => $name, 'count' => $this->apply($this->visibility->query($user), $filters)->count(), 'ready_made' => true, 'shared' => false, 'mine' => false];
+            $out[] = ['key' => $key, 'name' => $name, 'count' => (int) $counts->remember("list:{$key}:user:{$user->id}", fn (): int => $this->apply($this->visibility->query($user), $filters)->count()),
+                'ready_made' => true, 'shared' => false, 'mine' => false];
         }
 
         $saved = SmartList::query()->where(fn ($q) => $q->where('owner_user_id', $user->id)->orWhere('shared', true))->orderBy('sort')->orderBy('name')->get();
         foreach ($saved as $list) {
-            $out[] = ['key' => $list->ulid, 'name' => $list->name, 'count' => $this->apply($this->visibility->query($user), $list->filters)->count(),
+            $out[] = ['key' => $list->ulid, 'name' => $list->name,
+                'count' => (int) $counts->remember('list:'.$list->ulid.':'.md5((string) json_encode($list->filters)).":user:{$user->id}", fn (): int => $this->apply($this->visibility->query($user), $list->filters)->count()),
                 'ready_made' => false, 'shared' => $list->shared, 'mine' => $list->owner_user_id === $user->id];
         }
 
