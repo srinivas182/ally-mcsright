@@ -49,6 +49,10 @@ export function YourAiAssistant() {
     const [text, setText] = useState('');
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [people, setPeople] = useState<
+        { key: string; label: string }[] | null
+    >(null);
+    const [handedOff, setHandedOff] = useState<string | null>(null);
     const loaded = useRef(false);
     const end = useRef<HTMLDivElement | null>(null);
 
@@ -115,6 +119,30 @@ export function YourAiAssistant() {
         },
         [busy, conversation, page.url],
     );
+
+    // AS1: hand the conversation to a person (the broker, or RightAlly support).
+    const showPeople = () =>
+        getJson<{ targets: { key: string; label: string }[] }>(
+            '/assistant/handoffs',
+        )
+            .then((r) => setPeople(r.targets))
+            .catch(() => setPeople([]));
+    const handOff = (target: string) => {
+        if (!conversation) {
+            return;
+        }
+        setBusy(true);
+        postJson<{ message: string }>('/assistant/handoff', {
+            target,
+            conversation,
+        })
+            .then((r) => {
+                setHandedOff(r.message);
+                setPeople(null);
+            })
+            .catch((e: Error) => setError(e.message))
+            .finally(() => setBusy(false));
+    };
 
     const doIt = (t: Turn) => {
         setBusy(true);
@@ -249,6 +277,57 @@ export function YourAiAssistant() {
                         )}
                     </div>
                 ))}
+                {conversation &&
+                    turns.length > 0 &&
+                    people === null &&
+                    !handedOff && (
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            className="justify-self-start"
+                            onClick={showPeople}
+                        >
+                            Talk to a person instead
+                        </Button>
+                    )}
+                {people !== null && (
+                    <div
+                        className="grid gap-2 rounded-md border p-2"
+                        role="group"
+                        aria-label="Who to ask"
+                    >
+                        <p>Who should I pass this conversation to?</p>
+                        {people.length === 0 && (
+                            <p className="text-muted-foreground">
+                                There is nobody to pass it to here.
+                            </p>
+                        )}
+                        <div className="flex flex-wrap gap-2">
+                            {people.map((p) => (
+                                <Button
+                                    key={p.key}
+                                    size="sm"
+                                    disabled={busy}
+                                    onClick={() => handOff(p.key)}
+                                >
+                                    {p.label}
+                                </Button>
+                            ))}
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setPeople(null)}
+                            >
+                                Not now
+                            </Button>
+                        </div>
+                    </div>
+                )}
+                {handedOff && (
+                    <p role="status" className="rounded-md bg-muted/50 p-2">
+                        {handedOff}
+                    </p>
+                )}
                 {busy && <p className="text-muted-foreground">Thinking…</p>}
                 {error && <p className="text-destructive">{error}</p>}
                 <div ref={end} />

@@ -70,6 +70,16 @@ final class PromptBuilder
 
     private function escape(string $text): string
     {
-        return str_replace(['<', '>'], ['&lt;', '&gt;'], $text);
+        return str_replace(['<', '>'], ['&lt;', '&gt;'], self::visible($text));
+    }
+
+    /**
+     * AS1: removes characters people cannot see but models can read, a common way to hide instructions in
+     * documents, emails and web pages: zero-width spaces and joiners, direction marks, the byte-order mark,
+     * invisible operators, and Unicode "tag" characters (ASCII smuggling).
+     */
+    public static function visible(string $text): string
+    {
+        return (string) preg_replace('/[\x{200B}-\x{200F}\x{202A}-\x{202E}\x{2060}-\x{2064}\x{2066}-\x{2069}\x{FEFF}\x{E0000}-\x{E007F}]/u', '', $text);
     }
 }
