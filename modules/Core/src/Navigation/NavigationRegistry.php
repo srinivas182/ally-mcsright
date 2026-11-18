@@ -54,7 +54,8 @@ final class NavigationRegistry
         }
 
         // Simple mode (SM1): a short menu of the pages used most, from the pages this person can open.
-        return SimpleMode::on($user) ? SimpleMode::menu($out, SimpleMode::locale($user)) : $out;
+        // Otherwise the full menu, in Spanish for people who chose it (PW1).
+        return SimpleMode::on($user) ? SimpleMode::menu($out, SimpleMode::locale($user)) : NavWords::translate($out, SimpleMode::locale($user));
     }
 
     private function groupIndex(string $group): int

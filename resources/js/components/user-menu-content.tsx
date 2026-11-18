@@ -6,6 +6,7 @@ import {
     DropdownMenuLabel,
     DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import { InstallApp } from '@/components/install-app';
 import { UserInfo } from '@/components/user-info';
 import { useMobileNavigation } from '@/hooks/use-mobile-navigation';
 import { logout } from '@/routes';
@@ -45,6 +46,9 @@ export function UserMenuContent({ user }: Props) {
                     </Link>
                 </DropdownMenuItem>
             </DropdownMenuGroup>
+            <div className="px-1 py-1">
+                <InstallApp />
+            </div>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
                 <Link

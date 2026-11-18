@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>No connection · RightAlly</title>
+        <meta name="robots" content="noindex" />
+        <style>
+            :root {
+                color-scheme: light dark;
+                --bg: #ffffff;
+                --fg: #0f172a;
+                --muted: #475569;
+                --btn: #0f172a;
+                --btn-fg: #ffffff;
+            }
+            @media (prefers-color-scheme: dark) {
+                :root {
+                    --bg: #0f172a;
+                    --fg: #f8fafc;
+                    --muted: #cbd5e1;
+                    --btn: #f8fafc;
+                    --btn-fg: #0f172a;
+                }
+            }
+            body {
+                margin: 0;
+                background: var(--bg);
+                color: var(--fg);
+                font:
+                    20px/1.5 system-ui,
+                    -apple-system,
+                    'Segoe UI',
+                    sans-serif;
+            }
+            main {
+                max-width: 32rem;
+                margin: 0 auto;
+                padding: 3rem 1rem;
+            }
+            h1 {
+                font-size: 1.6rem;
+                margin: 0 0 0.5rem;
+            }
+            p {
+                color: var(--muted);
+                margin: 0 0 1.25rem;
+            }
+            button {
+                font: inherit;
+                padding: 0.75rem 1.5rem;
+                border-radius: 0.5rem;
+                border: 0;
+                background: var(--btn);
+                color: var(--btn-fg);
+                cursor: pointer;
+            }
+            hr {
+                border: 0;
+                border-top: 1px solid #cbd5e1;
+                margin: 2rem 0;
+            }
+        </style>
+    </head>
+    <body>
+        <main>
+            <h1>You are offline</h1>
+            <p>
+                Your phone or computer has lost its internet connection. Nothing
+                you did is lost. When the connection is back, tap the button.
+            </p>
+            <button type="button" onclick="location.reload()">Try again</button>
+            <hr />
+            <h1 lang="es">Sin conexión</h1>
+            <p lang="es">
+                Su teléfono o computadora perdió la conexión a internet. No se
+                perdió nada. Cuando vuelva la conexión, toque el botón.
+            </p>
+            <button type="button" lang="es" onclick="location.reload()">
+                Intentar de nuevo
+            </button>
+        </main>
+    </body>
+</html>

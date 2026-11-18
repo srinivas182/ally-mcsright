@@ -1,0 +1,58 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\Core\Navigation;
+
+/**
+ * The menu in Spanish (PW1, specs/core/17): every brokerage menu group and item, so people who chose Spanish see the
+ * whole menu, the phone bar and search in Spanish, not only the simple view. A test keeps this list complete. The HQ
+ * console stays in English.
+ */
+final class NavWords
+{
+    public const GROUPS = [
+        'Overview' => 'Inicio', 'Grow' => 'Crecer', 'Run' => 'Operar', 'Finance' => 'Finanzas', 'Protect' => 'Proteger', 'Know' => 'Aprender',
+        'Brokerage' => 'Correduría', 'People' => 'Personas', 'Compensation' => 'Compensación', 'Settings' => 'Ajustes',
+    ];
+
+    public const ES = [
+        "Today's 10" => 'Los 10 de hoy', 'AIlly assistant' => 'Asistente AIlly', 'Access review' => 'Revisión de accesos', 'Adjustments' => 'Ajustes contables',
+        'Ads' => 'Anuncios', 'Agent activity' => 'Actividad de agentes', 'Agent billing' => 'Cobros a agentes', 'Agent database' => 'Base de agentes',
+        'Agent plans' => 'Planes para agentes', 'Ally Studio' => 'Ally Studio', 'Appointments' => 'Citas', 'Approvals' => 'Aprobaciones', 'Apps' => 'Aplicaciones',
+        'Audit log' => 'Registro de auditoría', 'Audit pack' => 'Paquete de auditoría', 'Automations' => 'Automatizaciones', 'Bank reconciliation' => 'Conciliación bancaria',
+        'Billing' => 'Facturación', 'Bills' => 'Facturas por pagar', 'Books (QuickBooks, Xero)' => 'Contabilidad (QuickBooks, Xero)', 'Bring your old files' => 'Traiga sus archivos',
+        'Business planner' => 'Plan de negocio', 'Buyer demand' => 'Demanda de compradores', 'CMA and estimates' => 'CMA y estimaciones', 'Chart of accounts' => 'Plan de cuentas',
+        'Contacts' => 'Contactos', 'Credits' => 'Créditos', 'Custom fields' => 'Campos personalizados', 'Dashboard' => 'Panel', 'Database' => 'Base de datos', 'Deals' => 'Operaciones',
+        'Directory' => 'Directorio', 'Fair Housing' => 'Vivienda justa', 'Features and seats' => 'Funciones y licencias', 'Fees' => 'Cargos', 'Forms' => 'Formularios',
+        'Funnels' => 'Embudos', 'Game plan' => 'Plan de juego', 'Guided setup' => 'Configuración guiada', 'Help' => 'Ayuda', 'Inbox' => 'Bandeja de entrada',
+        'Invoices' => 'Facturas', 'Journals' => 'Asientos', 'Keeping agents' => 'Retener agentes', 'Leads' => 'Prospectos', 'Learn' => 'Aprender', 'List-IQ' => 'List-IQ',
+        'Listings' => 'Propiedades', 'MLS' => 'MLS', 'Marketing check' => 'Revisión de marketing', 'Money received' => 'Dinero recibido', 'Month-end close' => 'Cierre de mes',
+        'Movewise' => 'Movewise', 'My availability' => 'Mi disponibilidad', 'My licences and onboarding' => 'Mis licencias e incorporación', 'My money' => 'Mi dinero',
+        'My numbers' => 'Mis números', 'My plan' => 'Mi plan', 'My website' => 'Mi sitio web', 'Numbers' => 'Números', 'Offices and teams' => 'Oficinas y equipos',
+        'Outreach' => 'Contacto masivo', 'Outside services' => 'Servicios externos', 'Partner earnings' => 'Ganancias de socio', 'Payouts' => 'Pagos', 'People' => 'Personas',
+        'Plans' => 'Planes', 'Policies' => 'Políticas', 'Postcards' => 'Postales', 'Profit and loss' => 'Pérdidas y ganancias', 'Profitability' => 'Rentabilidad',
+        'Prospector' => 'Buscador de vendedores', 'Ready-made library' => 'Biblioteca lista', 'Recruiting' => 'Reclutamiento', 'Refer a brokerage' => 'Recomendar una correduría',
+        'Refer an agent' => 'Recomendar un agente', 'Referral network' => 'Red de referidos', 'Reports' => 'Informes', 'Revenue share' => 'Participación de ingresos',
+        'Review queue' => 'Cola de revisión', 'Reviews' => 'Reseñas', 'RightAlly credits' => 'Créditos RightAlly', 'Risk' => 'Riesgo', 'Roles' => 'Funciones',
+        'Roster and compliance' => 'Plantilla y cumplimiento', 'Simulator' => 'Simulador', 'Social posts' => 'Redes sociales', 'Support access' => 'Acceso de soporte',
+        'Switch to RightAlly' => 'Cambiar a RightAlly', 'Tasks' => 'Tareas', 'Tax (1099)' => 'Impuestos (1099)', 'Team chat' => 'Chat del equipo', 'Today' => 'Hoy',
+        'Transactions' => 'Transacciones', 'Trust reconciliation' => 'Conciliación de fideicomiso', 'Website' => 'Sitio web',
+    ];
+
+    /**
+     * The menu in the person's language (English stays as it is).
+     *
+     * @param  list<array{label: string, items: list<array{title: string, href: string, icon: string, mobile: bool}>}>  $menu
+     * @return list<array{label: string, items: list<array{title: string, href: string, icon: string, mobile: bool}>}>
+     */
+    public static function translate(array $menu, string $locale): array
+    {
+        if ($locale !== 'es') {
+            return $menu;
+        }
+
+        return array_map(fn (array $group): array => ['label' => self::GROUPS[$group['label']] ?? $group['label'],
+            'items' => array_map(fn (array $i): array => ['title' => self::ES[$i['title']] ?? $i['title']] + $i, $group['items'])], $menu);
+    }
+}
