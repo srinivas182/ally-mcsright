@@ -32,6 +32,11 @@ export default function Appointments({ mine, contact, recent }: Props) {
                     title="Appointments"
                     description="A guided listing appointment or buyer consultation, step by step, on a laptop or tablet beside your client. It ends with the listing created or the buyer agreement recorded, and a summary emailed to them."
                 />
+                <p>
+                    <Link href="/appointments/coaching" className="underline">
+                        My coaching from recorded appointments
+                    </Link>
+                </p>
                 <form
                     className="grid gap-3 rounded-lg border p-4 sm:grid-cols-3"
                     onSubmit={(e) => {

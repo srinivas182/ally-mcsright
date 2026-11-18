@@ -3,7 +3,7 @@
     "name": "Appointments",
     "version": "0.1.0",
     "provider": "Modules\\Appointments\\AppointmentsServiceProvider",
-    "depends": ["core", "crm", "pricing", "transactions", "listiq"],
+    "depends": ["core", "ai", "crm", "pricing", "transactions", "listiq"],
     "entitlement": null,
     "description": "Guided listing appointments and buyer consultations, the written buyer agreement, and the 'agreement needed' guard before tours (specs/listings/05)."
 }

@@ -1,6 +1,10 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 
+import {
+    AppointmentRecorder,
+    type RecordingProps,
+} from '@/components/appointments/recorder';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,7 +43,13 @@ type C = {
 };
 
 /** AP1: the guided appointment, one plain step at a time. Every step saves as you go. */
-export default function Consultation({ c }: { c: C }) {
+export default function Consultation({
+    c,
+    recording,
+}: {
+    c: C;
+    recording: RecordingProps;
+}) {
     const keys = Object.keys(c.steps);
     const [step, setStep] = useState(keys[0]);
     const i = keys.indexOf(step);
@@ -76,6 +86,10 @@ export default function Consultation({ c }: { c: C }) {
                     <h2 className="text-xl font-semibold">{c.steps[step]}</h2>
                     <Step c={c} step={step} />
                 </section>
+                <AppointmentRecorder
+                    consultation={c.ulid}
+                    recording={recording}
+                />
                 <div className="flex justify-between">
                     <Button
                         variant="outline"

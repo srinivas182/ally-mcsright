@@ -40,9 +40,27 @@ Status: Done. Tracker: B27 Partly (consented recording of the appointment is lef
 - Buyer agreements must state a specific amount or rate, and a term (NAR settlement, effective August 17, 2024). This is a guardrail, not legal advice; use your state's approved form.
 - Signed copies are private to the agent and their managers. Timeline entries record each step.
 
-## Not in this sprint (honest)
+## Recorded appointments, notes and coaching (VO2, B27)
 
-- Consented audio recording and AI notes of the appointment (B27). These need two-party consent handling by state.
+An optional **Record this appointment** panel sits under the steps.
+
+1. **Consent first, from everyone.** The agent reads a short script aloud ("…I'd like to record our conversation so I can keep accurate notes and get coaching… Is that all right with everyone? If not, I won't record."), types the names of everyone present who agreed, and ticks "I read it aloud and everyone here agreed". The wording, names, time and IP address are kept as proof (`appt_recordings`), and a timeline entry is added. This meets all-party-consent states, because every person present is asked. Only the agent running the appointment can record it.
+2. **Recording in the browser.** On a phone, tablet or laptop, the audio is sent in 30-second pieces while recording, so a dropped connection loses seconds, not the meeting. Pieces must arrive in order; a retried piece is accepted once. The limits are 3 hours and 10 MB per piece.
+3. **Notes and coaching.** On **Stop**, the audio is written down by the transcripts provider in Outside services (Deepgram recommended, AssemblyAI or ElevenLabs). The AI (`appointments.coaching`) then writes two things:
+    - **notes for the file:** a summary, what the client wants, concerns raised with how well they were answered, and the follow-ups the agent promised;
+    - **private coaching:** up to three strengths, three suggestions for next time, the share of the time the agent talked (counted from the transcript's words, not guessed), and any **Fair Housing reminder** with the quoted remark.
+      The transcript is untrusted data, so spoken instructions are ignored. The audio pieces are deleted as soon as it is written down; the transcript and notes are kept encrypted. The agent gets an email when the notes are ready.
+4. **Who sees what.** The agent sees everything. A manager who can open the appointment sees the notes, but not the coaching, talk share or transcript until the agent chooses **Share coaching with my broker**; the agent can stop sharing at any time. The agent can delete a recording and its notes. A privacy erase of the contact removes them too.
+5. **My coaching** (`/appointments/coaching`) shows, over the agent's last ten recorded appointments, how much they talk on average, the concerns that come up most, and what to work on. Only the agent sees it.
+6. If writing down fails, the audio is kept until the agent chooses **Try again** or deletes it.
+
+Market check: Gong and Chorus-style conversation intelligence is common in sales but rare in real estate. Most real estate tools record only phone calls, keep the audio, and give coaching only to managers. RightAlly records in-person appointments too, gets consent from everyone, deletes the audio, keeps coaching private by default, and adds Fair Housing reminders.
+
+### Defaults to review
+
+- The consent script wording (attorney review recommended).
+- Coaching is private to the agent by default.
+- Two AI credits per recorded appointment (`ai.appointments_coaching`).
 
 ## Settings and review
 
