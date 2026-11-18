@@ -170,7 +170,7 @@ it('puts chosen deadlines on the deal key dates, and reminds the agent before th
     $this->travel(2)->days();
     $this->artisan('transactions:date-reminders');
     Notification::assertSentTo($this->agent, DateReminder::class, fn (DateReminder $n): bool => $n->lines === ['Inspection period ends — Tue 2 Jun (missed yesterday)']);
-    $this->actingAs(User::factory()->create())->post("/deals/{$this->deal->ulid}/dates", ['label' => 'X', 'due_on' => '2026-06-09'])->assertForbidden();
+    $this->actingAs(User::factory()->create())->post("/deals/{$this->deal->ulid}/dates", ['label' => 'X', 'due_on' => '2026-06-09'])->assertNotFound();
     $this->actingAs($this->agent)->delete("/deals/{$this->deal->ulid}/dates/{$id}")->assertSessionHasNoErrors();
     expect(DB::table('tx_dates')->count())->toBe(2);
 });

@@ -134,3 +134,46 @@ brokerage's operating account.
 
 **Registration.** Modules register the columns they seal (`BrokerageKeys::register`). The HQ page shows how many
 values are sealed with the current key and how many are waiting.
+
+## What RightAlly does (SX1: agent privacy)
+
+SX1 closes the gap between "one brokerage cannot see another" (Sprint 58's database guard) and "one agent cannot see
+another agent's private work inside the same brokerage".
+
+**Opening a record by its address checks who is asking.** Contacts, deals, deal documents, checklist items and tasks
+are looked up through the signed-in person's own view (`Tenancy\Concerns\BindsForViewer`):
+
+- contacts follow the brokerage's contact-sharing setting, so an agent's personal sphere stays theirs, and the
+  owner sees it only if the brokerage allows it;
+- deals, their documents and checklist items follow deal access (the agent, their team lead or assistant, and
+  reviewers);
+- tasks follow the task list's own rules.
+
+Someone else's record answers **"not found" (404)**, not "forbidden" (403), so the address does not even confirm that
+the record exists. HQ staff are not limited, because their own console checks apply. Two routes deliberately look up
+any contact in the brokerage, and check permission themselves:
+
+- claiming from the lead pond (the pond decides);
+- a manager's proof-of-consent report.
+
+**A sweep test proves it for every route.** `AgentPrivacySweepTest` lists every signed-in back-office address that
+takes a contact, deal, document, item or task (more than 60) and tries each as a second agent:
+
+- reading must answer 403 or 404;
+- every change must be refused or rejected, and a fingerprint of the first agent's records must be unchanged.
+
+A new route is covered automatically. The sweep found one real gap, now fixed: "use the caller's name" (LN4) let
+another agent rename a contact.
+
+**No client details in logs or error reports.** Every log channel runs `Privacy\Logging\RedactPersonalData`; an
+architecture test fails if a channel forgets it.
+
+- Emails, phone numbers, Social Security numbers and card-like numbers become `[email]`, `[phone]`, `[ssn]` and
+  `[number]`, in the message and in the context.
+- Values under keys that name a secret or a personal detail (password, token, email, phone, account or routing
+  number, date of birth and similar) are removed, however deep they sit.
+- Exceptions are written as their class, their redacted message and their stack, so a database error that quotes a
+  client's email loses it.
+- Objects such as models are written only as their class name.
+
+Ids, dates, times, prices and addresses are kept, so support can still find the record.

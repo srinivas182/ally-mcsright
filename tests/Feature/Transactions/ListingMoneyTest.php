@@ -90,7 +90,7 @@ it('shows a listings board from getting ready to sold, with agreements about to 
         ->where('board.columns.active.0.warning', 'Listing agreement ends in 14 days')->where('board.columns.under_contract.0.street', '3 Pending Pl')
         ->where('board.expiring', 1)->where('board.totals.getting_ready.count', 1)->where('mine', true));
     $this->actingAs($this->owner)->get('/deals/listings')->assertInertia(fn (Assert $p) => $p->where('board.totals.getting_ready.count', 2)->where('mine', false));
-    $this->actingAs($this->agent)->post("/deals/{$theirs->ulid}/listing", ['listing_expires_on' => '2026-07-01'])->assertForbidden();
+    $this->actingAs($this->agent)->post("/deals/{$theirs->ulid}/listing", ['listing_expires_on' => '2026-07-01'])->assertNotFound();
 
     DB::table('tx_deals')->where('id', $pending->id)->update(['status' => 'closed', 'closed_on' => '2026-05-25']);
     $this->actingAs($this->agent)->get('/deals/listings')->assertInertia(fn (Assert $p) => $p->where('board.columns.sold.0.street', '3 Pending Pl'));

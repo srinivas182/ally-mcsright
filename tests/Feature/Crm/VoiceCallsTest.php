@@ -184,7 +184,7 @@ it('lets the agent try again or delete the recording when writing down fails', f
     expect(DB::connection(Connections::cell())->table('crm_recorded_calls')->value('status'))->toBe('failed')->and($this->calls->deleted)->toBe([]);
 
     $other = User::factory()->create();
-    $this->actingAs($other)->post('/contacts/'.$sam->ulid.'/recorded-call/'.$ulid.'/delete')->assertSessionHasErrors();
+    $this->actingAs($other)->post('/contacts/'.$sam->ulid.'/recorded-call/'.$ulid.'/delete')->assertNotFound(); // SX1: another agent's contact is not found
     $this->actingAs($this->ann)->post('/contacts/'.$sam->ulid.'/recorded-call/'.$ulid.'/delete')->assertSessionHasNoErrors();
     expect(DB::connection(Connections::cell())->table('crm_recorded_calls')->value('status'))->toBe('deleted')->and($this->calls->deleted)->toBe(['RE9']);
 });

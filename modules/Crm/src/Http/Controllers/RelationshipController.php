@@ -75,9 +75,11 @@ final class RelationshipController
         ]);
     }
 
-    public function claim(Request $request, Contact $contact, LeadPond $pond): RedirectResponse
+    public function claim(Request $request, string $contact, LeadPond $pond): RedirectResponse
     {
         $user = self::user($request);
+        // SX1: a pond lead is not yet anyone's, so it is found here; LeadPond::claim checks it is really in the pond.
+        $contact = Contact::query()->where('ulid', $contact)->firstOrFail();
         $pond->claim($contact, $user);
         Inertia::flash('toast', ['type' => 'success', 'message' => "{$contact->name} is yours. Call them now!"]);
 

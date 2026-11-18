@@ -158,7 +158,7 @@ it('warns about sensitive numbers and wiring instructions, and makes a safe copy
     expect($safe->headers->get('Content-Type'))->toBe('application/pdf')->and(pdfText((string) $safe->getContent()))->not->toContain('123-45-6789')->not->toContain('021000021');
     $contract = Document::query()->where('filename', 'like', 'Purchase agreement%')->sole();
     expect(pdfText((string) $this->actingAs($this->agent)->get("/deals/documents/{$contract->ulid}/safe")->getContent()))->toContain('RESIDENTIAL PURCHASE AGREEMENT');
-    $this->actingAs(User::factory()->create())->get("/deals/documents/{$disclosure->ulid}/safe")->assertForbidden();
+    $this->actingAs(User::factory()->create())->get("/deals/documents/{$disclosure->ulid}/safe")->assertNotFound();
 });
 
 it('reads scanned pages by OCR on our own servers and files them', function (): void {
@@ -187,7 +187,7 @@ it('answers questions only from the document, with quotes that are really there'
     $this->ai->respond(json_encode(['found' => true, 'answer' => 'The seller pays all closing costs.', 'citations' => [['page' => 1, 'quote' => 'Seller pays all closing costs']]]));
     $this->actingAs($this->agent)->post("/deals/documents/{$contract->ulid}/ask", ['question' => 'Who pays closing costs?'])
         ->assertSessionHas('docAnswer', fn (array $a): bool => $a['found'] === false && $a['answer'] === 'I could not find that in this document.' && $a['citations'] === []);
-    $this->actingAs(User::factory()->create())->post("/deals/documents/{$contract->ulid}/ask", ['question' => 'When is closing?'])->assertForbidden();
+    $this->actingAs(User::factory()->create())->post("/deals/documents/{$contract->ulid}/ask", ['question' => 'When is closing?'])->assertNotFound();
 });
 
 it('recognises documents and splits pages predictably', function (): void {

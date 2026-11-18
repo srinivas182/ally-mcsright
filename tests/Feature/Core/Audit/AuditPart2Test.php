@@ -109,7 +109,7 @@ it('gives owners an evidence pack PDF with the integrity check, and records the 
     expect($response->headers->get('content-type'))->toContain('application/pdf')
         ->and(DB::table('audit_events')->where('action', 'crm.contact.evidence_pack')->exists())->toBeTrue();
 
-    $this->actingAs($this->agent)->get("/contacts/{$sam->ulid}/evidence-pack")->assertForbidden();
+    $this->actingAs($this->agent)->get("/contacts/{$sam->ulid}/evidence-pack")->assertNotFound();
     $hidden = app(TenantContext::class)->runAs($this->tenant, fn () => $this->contacts->create(['first_name' => 'Hid', 'email' => 'h@x.test'], $this->agent));
     $this->actingAs($this->owner)->get("/contacts/{$hidden->ulid}/evidence-pack")->assertNotFound();
 });

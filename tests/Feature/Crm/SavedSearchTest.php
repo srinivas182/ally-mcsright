@@ -117,7 +117,7 @@ it('checks what a saved search needs and who may set it up', function (): void {
     $noEmail = app(ManageContacts::class)->create(['first_name' => 'Sam', 'phone' => '5125550100'], $this->ann);
     $this->actingAs($this->ann)->post("/contacts/{$noEmail->ulid}/searches", ['q' => 'Austin', 'frequency' => 'daily'])->assertSessionHasErrors('frequency');
     $this->actingAs($this->ann)->post("/contacts/{$noEmail->ulid}/searches", ['q' => 'Austin', 'frequency' => 'off'])->assertSessionHasNoErrors();
-    $this->actingAs(User::factory()->create())->post("/contacts/{$this->jane->ulid}/searches", ['q' => 'Austin', 'frequency' => 'daily'])->assertSessionHasErrors('search');
+    $this->actingAs(User::factory()->create())->post("/contacts/{$this->jane->ulid}/searches", ['q' => 'Austin', 'frequency' => 'daily'])->assertNotFound(); // SX1: another agent's contact is not found
 
     $this->actingAs($this->ann)->get("/contacts/{$this->jane->ulid}")->assertInertia(fn (Assert $page) => $page->has('savedSearches', 0));
     $s = SavedSearch::query()->sole();

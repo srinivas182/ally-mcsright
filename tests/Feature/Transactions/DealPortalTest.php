@@ -292,7 +292,7 @@ it('asks clients how it went a week after closing and tells the agent', function
 
 it('keeps the portal to the deal\'s agent and the brokerage', function (): void {
     $other = User::factory()->create();
-    $this->actingAs($other)->post("/deals/{$this->deal->ulid}/portal", ['role' => 'buyer', 'name' => 'X', 'email' => 'x@example.test', 'locale' => 'en'])->assertForbidden();
+    $this->actingAs($other)->post("/deals/{$this->deal->ulid}/portal", ['role' => 'buyer', 'name' => 'X', 'email' => 'x@example.test', 'locale' => 'en'])->assertNotFound();
     $this->actingAs($this->agent)->post("/deals/{$this->deal->ulid}/portal", ['role' => 'buyer', 'name' => 'X', 'email' => 'not-an-email', 'locale' => 'en'])->assertSessionHasErrors('email');
     $this->actingAs($this->agent)->post("/deals/{$this->deal->ulid}/portal", ['role' => 'buyer', 'name' => 'X', 'email' => 'x@example.test', 'locale' => 'fr'])->assertSessionHasErrors('locale');
     auth()->logout();

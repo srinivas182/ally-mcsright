@@ -178,10 +178,13 @@ final class DataController
      * The consent report for one contact (specs/grow/11): every consent and opt-out with where it came from, the exact
      * wording, IP and device, and the evidence fingerprint. Owners and staff; printable, or as CSV for a regulator.
      */
-    public function consentReport(Request $request, Contact $contact, Consent $consent): \Symfony\Component\HttpFoundation\Response
+    public function consentReport(Request $request, string $contact, Consent $consent): \Symfony\Component\HttpFoundation\Response
     {
         $user = self::user($request);
         abort_unless(CrmAccess::manager($user), 403);
+        // SX1: the brokerage must be able to prove texting consent for any of its contacts, personal ones included;
+        // only managers get here, and every report is written to the audit log below.
+        $contact = Contact::query()->where('ulid', $contact)->firstOrFail();
         $events = ConsentEvent::query()->where('contact_id', $contact->id)->orderBy('occurred_at')->orderBy('id')->get();
         app(AuditLogger::class)->record('crm.consent.report', $contact, metadata: ['events' => $events->count(), 'format' => $request->query('format') === 'csv' ? 'csv' : 'html'], severity: 'notice');
         if ($request->query('format') === 'csv') {

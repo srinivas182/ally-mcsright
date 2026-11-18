@@ -58,7 +58,7 @@ it('creates a deal from a contact with its checklist and the client as a party, 
         ->and(Item::query()->where('deal_id', $deal->id)->pluck('label')->all())->toContain('Buyer representation agreement', 'Purchase contract', 'Commission disbursement authorisation (CDA)')
         ->and(DB::table('tx_parties')->where('deal_id', $deal->id)->value('name'))->toBe('Jordan Buyer');
 
-    $this->actingAs($this->other)->get("/deals/{$deal->ulid}")->assertForbidden();
+    $this->actingAs($this->other)->get("/deals/{$deal->ulid}")->assertNotFound();
     $this->actingAs(User::factory()->assistantOf($this->agent)->create())->get("/deals/{$deal->ulid}")->assertOk();
     $this->actingAs($this->other)->get('/deals')->assertInertia(fn (Assert $p) => $p->has('deals', 0));
     $this->actingAs($this->owner)->get('/deals')->assertInertia(fn (Assert $p) => $p->where('deals.0.street', '12 Oak St')->where('deals.0.missing', 5));
@@ -87,7 +87,7 @@ it('keeps every version of an upload and refuses unsupported files', function ()
     expect($docs->pluck('version')->all())->toBe([1, 2])->and($docs[1]->via)->toBe('photo')->and($item->fresh()?->status)->toBe('submitted');
     Storage::disk('local')->assertExists($docs[0]->path);
     $this->actingAs($this->agent)->get("/deals/documents/{$docs[0]->ulid}")->assertOk();
-    $this->actingAs($this->other)->get("/deals/documents/{$docs[0]->ulid}")->assertForbidden();
+    $this->actingAs($this->other)->get("/deals/documents/{$docs[0]->ulid}")->assertNotFound();
 });
 
 it('lets the brokerage approve, request fixes from a learning library, and waive — not the agent', function (): void {

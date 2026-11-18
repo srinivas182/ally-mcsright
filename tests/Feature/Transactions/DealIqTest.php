@@ -242,8 +242,8 @@ it('drafts a form through the forms module and links to the draft', function ():
 it('keeps Deal-IQ to people who can see the deal, and dismisses proposals', function (): void {
     $other = User::factory()->create();
     $this->ai->respond(json_encode(['answer' => 'ok', 'actions' => [['type' => 'add_checklist_item', 'params' => ['label' => 'Survey']]]]));
-    $this->actingAs($other)->postJson("/deals/{$this->deal->ulid}/assistant", ['text' => 'hi'])->assertForbidden();
-    $this->actingAs($other)->post("/deals/{$this->deal->ulid}/upload-requests", ['what' => 'x', 'role' => 'lender', 'name' => 'x', 'email' => 'x@x.test'])->assertForbidden();
+    $this->actingAs($other)->postJson("/deals/{$this->deal->ulid}/assistant", ['text' => 'hi'])->assertNotFound();
+    $this->actingAs($other)->post("/deals/{$this->deal->ulid}/upload-requests", ['what' => 'x', 'role' => 'lender', 'name' => 'x', 'email' => 'x@x.test'])->assertNotFound();
     $turn = $this->actingAs($this->agent)->postJson("/deals/{$this->deal->ulid}/assistant", ['text' => 'add a survey'])->json();
     $this->actingAs($this->agent)->postJson("/deals/{$this->deal->ulid}/assistant/{$turn['ulid']}/dismiss")->assertOk();
     $this->actingAs($this->agent)->postJson("/deals/{$this->deal->ulid}/assistant/{$turn['ulid']}", ['chosen' => [0]])->assertUnprocessable();
