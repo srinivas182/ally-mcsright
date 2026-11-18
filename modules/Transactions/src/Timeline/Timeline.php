@@ -42,8 +42,10 @@ final class Timeline
             $contract = CarbonImmutable::parse($d);
         }
         if ($contract !== null && $pack['earnest_money_days'] !== null) {
-            $due = StatePacks::roll($contract->addDays($pack['earnest_money_days']), $state);
-            $out[] = ['label' => 'Earnest money due', 'due_on' => $due->toDateString(), 'why' => "{$pack['earnest_money_days']} days after the contract date ({$pack['source']})"];
+            $business = $pack['earnest_money_business'] ?? false;
+            $due = $business ? StatePacks::addBusinessDays($contract, $pack['earnest_money_days'], $state) : StatePacks::roll($contract->addDays($pack['earnest_money_days']), $state);
+            $out[] = ['label' => 'Earnest money due', 'due_on' => $due->toDateString(),
+                'why' => "{$pack['earnest_money_days']} ".($business ? 'business ' : '')."days after the contract date ({$pack['source']})"];
         }
         if ($contract !== null && $pack['attorney_review_business_days'] !== null) {
             $out[] = ['label' => 'Attorney review ends', 'due_on' => StatePacks::addBusinessDays($contract, $pack['attorney_review_business_days'], $state)->toDateString(),
@@ -57,6 +59,16 @@ final class Timeline
                 $rolled = StatePacks::roll($raw, $state);
                 $out[] = ['label' => $label, 'due_on' => $rolled->toDateString(),
                     'why' => 'From the contract (page '.$f['page'].')'.($rolled->notEqualTo($raw) ? ', moved from '.$raw->toFormattedDateString().' because it falls on a weekend or holiday' : '')];
+            }
+        }
+        // DQ4: the state form's standard windows, only where the contract gave no date of its own.
+        if ($contract !== null) {
+            foreach ($pack['periods'] ?? [] as [$label, $days, $business]) {
+                if (in_array($label, array_column($out, 'label'), true)) {
+                    continue;
+                }
+                $due = $business ? StatePacks::addBusinessDays($contract, $days, $state) : StatePacks::roll($contract->addDays($days), $state);
+                $out[] = ['label' => $label, 'due_on' => $due->toDateString(), 'why' => "{$days} ".($business ? 'business ' : '')."days after the contract date, the {$pack['name']} standard form's default. Check the contract ({$pack['source']})"];
             }
         }
         // The option period from the accepted offer, when the contract itself has not been read.

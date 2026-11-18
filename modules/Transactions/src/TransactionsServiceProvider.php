@@ -65,6 +65,8 @@ final class TransactionsServiceProvider extends ServiceProvider
         Workflows\DealWorkflows::register($this->app->make(WorkflowRegistry::class)); // specs/core/06, W1
         // LM1: each deal's email-in address (specs/transactions/30).
         $this->app->make(InboundMailboxes::class)->register(DealInbox::PREFIX, fn (string $token, array $email): string => app(DealInbox::class)->receive($token, $email));
+        // DQ4: each agent's Deal-IQ address starts a new deal from a forwarded contract.
+        $this->app->make(InboundMailboxes::class)->register(DealIq\EmailIntake::PREFIX, fn (string $token, array $email): string => app(DealIq\EmailIntake::class)->receive($token, $email));
         self::undos($this->app->make(Undo::class)); // SM1: actions that can be put back
         Event::listen(Events\DealStatusChanged::class, [Workflows\DealWorkflows::class, 'statusChanged']);
         Event::listen(Events\DealStatusChanged::class, [Mls\MlsGuard::class, 'statusChanged']); // the MLS update clock (specs/ai/02, §20)
