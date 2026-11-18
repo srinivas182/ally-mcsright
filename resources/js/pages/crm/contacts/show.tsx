@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AuditEventRow, type AuditRow } from '@/components/audit-row';
 import { AiBrief, type Brief } from '@/components/crm/ai-brief';
+import { CallNotesPanel, type Calls } from '@/components/crm/call-notes';
 import { ContactPicker } from '@/components/crm/contact-picker';
 import { QuickUpdate } from '@/components/crm/quick-update';
 import { AddTask, TaskList, type TaskRow } from '@/components/crm/task-list';
@@ -124,6 +125,7 @@ type Props = {
     lifecycles: string[];
     savedSearches: SavedSearchRow[];
     relations: string[];
+    calls: Calls;
 };
 
 const label = (v: string) => v.replace(/_/g, ' ');
@@ -607,6 +609,7 @@ export default function ContactShow({
     agents,
     lifecycles,
     savedSearches,
+    calls,
 }: Props) {
     const base = `/contacts/${contact.ulid}`;
     const form = useForm({
@@ -1068,6 +1071,7 @@ export default function ContactShow({
                             </details>
                         )}
                         <ConsentPanel base={base} consent={contact.consent} />
+                        <CallNotesPanel base={base} calls={calls} />
                         <div className="grid gap-2 rounded-lg border p-4">
                             <p className="text-sm font-medium">
                                 Household and relationships

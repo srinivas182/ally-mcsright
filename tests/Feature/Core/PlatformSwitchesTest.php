@@ -131,13 +131,13 @@ it('keeps keys encrypted and write-only, checks the connection, and unlocks Live
 it('reaches only the listed test contacts in Test mode, and prefers the brokerage\'s own account', function (): void {
     Http::fake(['api.retellai.com/*' => Http::response([])]);
     $services = app(OutsideServices::class);
-    $services->save(0, 'voice_calls', 'retell', ['api_key' => 'hq-test-key-1234567890'], [], null, $this->staff);
+    $services->save(0, 'voice_calls', 'retell', ['api_key' => 'hq-test-key-1234567890', 'agent_id' => 'agent_1', 'from_number' => '+15125550100'], [], null, $this->staff);
     $services->check(0, 'voice_calls', 'test', $this->staff);
     $services->setMode(0, 'voice_calls', 'test', $this->staff);
     expect($services->active('voice_calls', $this->tenant->id)['level'])->toBe('hq');
 
     $this->actingAs($this->owner)->withSession($this->confirmed)->post('/settings/services/voice_calls', [
-        'provider' => 'retell', 'test' => ['api_key' => 'own-test-key-1234567890'], 'test_contacts' => '+1 (512) 555-0100, me@acme.test',
+        'provider' => 'retell', 'test' => ['api_key' => 'own-test-key-1234567890', 'agent_id' => 'agent_1', 'from_number' => '+15125550100'], 'test_contacts' => '+1 (512) 555-0100, me@acme.test',
     ])->assertSessionHasNoErrors();
     $this->actingAs($this->owner)->post('/settings/services/voice_calls/check', ['mode' => 'test'])->assertSessionHasNoErrors();
     $this->actingAs($this->owner)->withSession($this->confirmed)->post('/settings/services/voice_calls/mode', ['mode' => 'test'])->assertSessionHasNoErrors();
@@ -163,7 +163,7 @@ it('waits for approval before a brokerage service goes Live when the owner asks 
 
     $this->actingAs($this->owner)->withSession($this->confirmed)->post('/settings/approvals/rules', ['action' => 'services.go_live', 'needed' => 1])->assertSessionHasNoErrors();
     $services = app(OutsideServices::class);
-    $services->save($this->tenant->id, 'voice_calls', 'retell', ['api_key' => 'own-test-key-1234567890'], ['api_key' => 'own-live-key-1234567890'], null, $admin);
+    $services->save($this->tenant->id, 'voice_calls', 'retell', ['api_key' => 'own-test-key-1234567890', 'agent_id' => 'agent_1', 'from_number' => '+15125550100'], ['api_key' => 'own-live-key-1234567890', 'agent_id' => 'agent_1', 'from_number' => '+15125550100'], null, $admin);
     $services->check($this->tenant->id, 'voice_calls', 'test', $admin);
 
     $this->actingAs($admin)->withSession($this->confirmed)->post('/settings/services/voice_calls/mode', ['mode' => 'live'])->assertSessionHasNoErrors();

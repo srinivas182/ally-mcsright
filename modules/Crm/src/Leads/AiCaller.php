@@ -6,6 +6,7 @@ namespace Modules\Crm\Leads;
 
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\URL;
@@ -14,6 +15,7 @@ use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Messaging\MessagingSettings;
 use Modules\Core\Messaging\SmsSender;
 use Modules\Core\Messaging\VoiceCaller;
+use Modules\Core\Services\OutsideServices;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Crm\Actions\Timeline;
@@ -21,7 +23,11 @@ use Modules\Crm\Consent;
 use Modules\Crm\Inbox\SendGuard;
 use Modules\Crm\Models\Contact;
 use Modules\Crm\Models\Lead;
+use Modules\Crm\Voice\CallNotes;
+use Modules\Crm\Voice\PollVoiceCall;
+use Modules\Crm\Voice\VoiceAgents;
 use stdClass;
+use Throwable;
 
 /**
  * Lead-IQ calls (LQ1, specs/grow/14). Within a minute of a new lead, the brokerage's assistant calls them in the
@@ -32,6 +38,11 @@ use stdClass;
  * The FCC treats AI voices as artificial voices under the TCPA, so calls go only to people who gave written consent to
  * automated calls (Consent::canAutoCall), never on Do Not Call, only 8am–9pm where they are, and never past the
  * brokerage's monthly limit. Every call that is not made says why, on the lead.
+ *
+ * VO1: when HQ (or the brokerage) has connected a voice provider in Outside services (Retell, Vapi or Bland), the call
+ * is a spoken conversation instead of the keypad menu: the AI agent set up in the provider's account answers
+ * questions, transfers to the agent or sends the booking link. RightAlly then reads how it ended and the transcript,
+ * writes the agent's hand-off note, and emails it to them. In Test mode only the listed test numbers are called.
  */
 final class AiCaller
 {
@@ -101,12 +112,111 @@ final class AiCaller
             return false;
         }
         $s = app(AiResponder::class)->settings();
+        $voice = app(OutsideServices::class)->active('voice_calls', $this->tenants->id());
+        if ($voice !== null) {
+            $this->converse($call, $lead, $contact, $voice, $s);
+
+            return true;
+        }
         $lang = (string) $call->lang;
         $sid = app(VoiceCaller::class)->connect((string) $contact->primary_phone, $this->script($lead, $contact, $lang, $s), $this->url($call, 'menu'), $this->voice($lang));
         $this->update($call, ['status' => 'calling', 'call_sid' => $sid !== '' ? $sid : null]);
         $this->timeline->system($contact, 'AI assistant ('.$s['assistant_name'].') called '.($lang === 'es' ? 'in Spanish' : 'in English').' within a minute of the lead.');
         app(AuditLogger::class)->asAutomation('lead_iq_call', $lead->assigned_user_id, 'Lead-IQ call', fn () => app(AuditLogger::class)
             ->record('crm.ai_call.placed', metadata: ['lead' => $lead->ulid, 'lang' => $lang], severity: 'info'));
+
+        return true;
+    }
+
+    /**
+     * VO1: a spoken AI conversation through the voice provider. Only the facts the AI agent needs are sent.
+     *
+     * @param  array{provider: string, mode: string, keys: array<string, string>, test_contacts: list<string>, level: string}  $voice
+     * @param  array<string, mixed>  $s
+     */
+    private function converse(stdClass $call, Lead $lead, Contact $contact, array $voice, array $s): void
+    {
+        if (! app(OutsideServices::class)->mayReach('voice_calls', (string) $contact->primary_phone, $this->tenants->id())) {
+            $this->update($call, ['status' => 'skipped', 'reason' => 'AI voice calls are in Test mode: only the test numbers are called.']);
+            $this->timeline->system($contact, 'AI assistant did not call: AI voice calls are in Test mode (only test numbers are called).');
+
+            return;
+        }
+        $lang = (string) $call->lang;
+        $agent = $lead->assigned_user_id !== null ? User::query()->find($lead->assigned_user_id) : null;
+        $facts = ['first_name' => $contact->first_name, 'brokerage' => (string) $s['brand_name'], 'assistant_name' => (string) $s['assistant_name'],
+            'language' => $lang === 'es' ? 'Spanish' : 'English', 'interest' => $lead->property ?? match ($lead->intent) {
+                'sell' => 'selling their home', 'rent' => 'renting', default => 'finding a home'
+            }, 'agent_first_name' => $agent !== null ? $agent->first_name : '', 'transfer_to' => $agent !== null ? (string) $agent->phone : '',
+            'booking_link' => app(SpeedToLead::class)->link(URL::temporarySignedRoute('crm.leads.book', CarbonImmutable::now()->addDays(7), ['call' => $call->ulid], false))];
+        try {
+            $id = app(VoiceAgents::class)->start($voice['provider'], $voice['keys'], (string) $contact->primary_phone, $facts, (string) $call->ulid);
+        } catch (Throwable $e) {
+            report($e);
+            $this->update($call, ['status' => 'failed', 'provider' => $voice['provider'], 'reason' => 'The voice provider did not start the call. HQ can check the connection in Outside services.']);
+            $this->timeline->system($contact, 'AI assistant could not call: the voice provider did not start the call.');
+
+            return;
+        }
+        $this->update($call, ['status' => 'calling', 'provider' => $voice['provider'], 'provider_call_id' => $id]);
+        $this->timeline->system($contact, 'AI assistant ('.$s['assistant_name'].') called for a conversation '.($lang === 'es' ? 'in Spanish' : 'in English').' within a minute of the lead.');
+        app(AuditLogger::class)->asAutomation('lead_iq_call', $lead->assigned_user_id, 'Lead-IQ call', fn () => app(AuditLogger::class)
+            ->record('crm.ai_call.placed', metadata: ['lead' => $lead->ulid, 'lang' => $lang, 'provider' => $voice['provider']], severity: 'info'));
+        PollVoiceCall::dispatch((string) $call->ulid)->delay(CarbonImmutable::now()->addMinutes(2));
+    }
+
+    /**
+     * VO1: reads how a conversation ended and hands it to the agent. Returns false while the call is still going.
+     */
+    public function collect(string $ulid): bool
+    {
+        $call = $this->find($ulid);
+        if ($call === null || $call->status !== 'calling' || $call->provider === null || $call->provider_call_id === null) {
+            return true;
+        }
+        $voice = app(OutsideServices::class)->active('voice_calls', $this->tenants->id());
+        if ($voice === null) {
+            $this->update($call, ['status' => 'failed', 'reason' => 'AI voice calls were switched off before the result came back.']);
+
+            return true;
+        }
+        try {
+            $result = app(VoiceAgents::class)->result((string) $call->provider, $voice['keys'], (string) $call->provider_call_id);
+        } catch (Throwable $e) {
+            report($e);
+            $result = null;
+        }
+        if ($result === null) {
+            $this->update($call, ['polls' => (int) $call->polls + 1]);
+            if ((int) $call->polls + 1 >= 30) {
+                $this->update($call, ['status' => 'failed', 'reason' => 'The voice provider never said how the call ended.']);
+
+                return true;
+            }
+
+            return false;
+        }
+        $contact = Contact::query()->find((int) $call->contact_id);
+        $lead = Lead::query()->find((int) $call->lead_id);
+        $status = match ($result['outcome']) {
+            'transferred' => 'transferred', 'no_answer' => 'no_answer', default => 'talked'
+        };
+        $notes = ['summary' => $result['summary'], 'next_step' => '', 'follow_up' => 'none', 'wants_agent' => false, 'stop_calls' => false];
+        if ($contact !== null && trim($result['transcript']) !== '') {
+            try {
+                $notes = app(CallNotes::class)->write($contact, $result['transcript'], 'ai_call', $lead?->assigned_user_id);
+            } catch (Throwable $e) {
+                report($e); // the provider's own summary is used
+            }
+        }
+        $this->update($call, ['status' => $status, 'transcript' => $result['transcript'] !== '' ? Crypt::encryptString($result['transcript']) : null,
+            'summary' => $notes['summary'] !== '' ? Crypt::encryptString($notes['summary']) : null]);
+        if ($contact !== null && $status !== 'no_answer' && $notes['summary'] !== '') {
+            $agent = $lead?->assigned_user_id !== null ? User::query()->find($lead->assigned_user_id) : null;
+            app(CallNotes::class)->deliver($contact, $notes, $agent, $status === 'transferred' ? 'AI call, passed to you' : 'AI call notes');
+        } elseif ($contact !== null && $status === 'no_answer') {
+            $this->timeline->system($contact, 'AI assistant called; nobody answered.');
+        }
 
         return true;
     }
@@ -203,7 +313,7 @@ final class AiCaller
             } else {
                 return false;
             }
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             report($e);
 
             return false;

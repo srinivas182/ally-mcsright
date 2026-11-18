@@ -26,4 +26,27 @@ final class FakeVoiceCaller implements VoiceCaller
 
         return 'CA'.str_pad((string) (count($this->calls) + count($this->connects)), 32, '0', STR_PAD_LEFT);
     }
+
+    /** @var list<array{to: string, on_answer: string}> */
+    public array $bridges = [];
+
+    /** @var list<string> */
+    public array $deleted = [];
+
+    public function bridge(string $agentPhone, string $onAnswer): string
+    {
+        $this->bridges[] = ['to' => $agentPhone, 'on_answer' => $onAnswer];
+
+        return 'CA'.str_pad('9'.count($this->bridges), 32, '0', STR_PAD_LEFT);
+    }
+
+    public function recording(string $recordingSid): string
+    {
+        return 'RIFF-fake-audio-'.$recordingSid;
+    }
+
+    public function deleteRecording(string $recordingSid): void
+    {
+        $this->deleted[] = $recordingSid;
+    }
 }

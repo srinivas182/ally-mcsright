@@ -21,13 +21,16 @@ final class Catalog
     public static function all(): array
     {
         $key = ['api_key' => ['label' => 'API key', 'kind' => 'secret']];
+        // VO1: the voice agent set up in the provider's account, and the calling number registered there.
+        $voice = ['api_key' => ['label' => 'API key', 'kind' => 'secret'], 'agent_id' => ['label' => 'AI agent ID (from your provider account)', 'kind' => 'text'],
+            'from_number' => ['label' => 'Calling number (+1…), or Vapi phone number ID', 'kind' => 'text']];
 
         return [
             'voice_calls' => ['label' => 'AI voice calls', 'about' => 'An AI voice calls new leads who opted in, within a minute, 8am to 9pm their time, and hands warm leads to the agent.',
                 'level' => 'both', 'sprint' => 'VO1', 'contacts' => true, 'providers' => [
-                    'retell' => ['label' => 'Retell AI (recommended)', 'fields' => $key, 'note' => 'SOC 2 Type 1 and 2, HIPAA; outbound campaigns built in. Calls go out through our Twilio.'],
-                    'vapi' => ['label' => 'Vapi', 'fields' => $key],
-                    'bland' => ['label' => 'Bland AI', 'fields' => $key],
+                    'retell' => ['label' => 'Retell AI (recommended)', 'fields' => $voice, 'note' => 'SOC 2 Type 1 and 2, HIPAA; outbound campaigns built in. Calls go out through our Twilio.'],
+                    'vapi' => ['label' => 'Vapi', 'fields' => $voice],
+                    'bland' => ['label' => 'Bland AI', 'fields' => $voice],
                 ]],
             'transcripts' => ['label' => 'Call and appointment transcripts', 'about' => 'Turns recorded calls and appointments (with everyone\'s consent) into text and notes, in English and Spanish.',
                 'level' => 'hq', 'sprint' => 'VO1, VO2', 'contacts' => false, 'providers' => [

@@ -34,6 +34,25 @@ final class MeteredVoiceCaller implements VoiceCaller
         return $sid;
     }
 
+    /** A recorded call is counted at 5 minutes when placed; Twilio's real length settles it. */
+    public function bridge(string $agentPhone, string $onAnswer): string
+    {
+        $sid = $this->inner->bridge($agentPhone, $onAnswer);
+        $this->count($sid, 5);
+
+        return $sid;
+    }
+
+    public function recording(string $recordingSid): string
+    {
+        return $this->inner->recording($recordingSid);
+    }
+
+    public function deleteRecording(string $recordingSid): void
+    {
+        $this->inner->deleteRecording($recordingSid);
+    }
+
     /** Minutes to read a message aloud a number of times, at about 150 words a minute, rounded up (Twilio bills whole minutes). */
     public static function spokenMinutes(string $message, int $times): int
     {

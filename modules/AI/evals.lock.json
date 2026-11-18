@@ -15,6 +15,10 @@
         "version": "2",
         "sha256": "54e5b4ace0f6500eb2e79c529cf8aaa16438b340f93e051f30a67cc56d1f2378"
     },
+    "crm.call_summary": {
+        "version": "1",
+        "sha256": "301cb11769e10e5dbd973847638297b60ebb66f1aa5db3d39502ecd28c5e9797"
+    },
     "crm.lead_email": {
         "version": "1",
         "sha256": "58e71fd8d2028d01cfc499884d4534991e691e1f5598f007072b63a920c77cf5"
