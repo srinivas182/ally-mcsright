@@ -33,6 +33,8 @@ final class SignupController
             'prefill' => $check === null ? [] : ['brokerage' => (string) $check->brokerage, 'owner_name' => (string) $check->contact_name, 'owner_email' => (string) $check->email,
                 'state' => (string) ($check->state ?? ''), 'agents' => (string) $check->agents, 'slug' => Signups::suggest((string) $check->brokerage), 'check' => (string) $request->query('check')],
             'canonical' => 'https://'.config('core.hq_host').'/start',
+            // SG1: a package chosen on the RightAlly website's price page arrives already selected.
+            'chosen' => is_string($request->query('package')) && preg_match('/^[0-9A-HJKMNP-TV-Z]{26}$/', $request->query('package')) === 1 ? $request->query('package') : null,
         ]);
     }
 

@@ -1,0 +1,9 @@
+{
+    "id": "marketing",
+    "name": "Marketing",
+    "version": "0.1.0",
+    "provider": "Modules\\Marketing\\MarketingServiceProvider",
+    "depends": ["core", "billing", "sites"],
+    "entitlement": null,
+    "description": "SG1 (specs/marketing/01): RightAlly's own website (rightally.io) — pages and blog edited from the HQ console, English and Spanish, server-rendered and built to the SEO and AEO standard, with live prices and the online signup."
+}
