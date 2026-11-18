@@ -265,3 +265,63 @@ There are now **14 controls**, each with live evidence (counts only) and a CSV d
 6. **SOC 2 Type II**.
 
 The auditor and the tool both cost money and need your choice (defaults to review).
+
+## Sprint 63: launch readiness and version 1.0
+
+### Found and fixed
+
+**The app did not trust the load balancer.** Behind a balancer every request arrives from the balancer's address, which caused two problems:
+
+- **Shared rate limits.** Every per-address limit (sign-in, password reset, website enquiries) would have been shared by all visitors. One busy minute could have blocked everyone's sign-in.
+- **No https.** The app could not see that requests were https, so secure cookies, HSTS and https links would not have worked.
+
+The app now trusts proxies on the private network by default (`TRUSTED_PROXIES` to change it, or `*`). Forwarded addresses from anywhere else are not believed.
+
+### `php artisan launch:check`
+
+Run it on every production server before launch and after each change to its settings. It checks, in plain words with the fix for each:
+
+- production mode and debug off;
+- the encryption key and the https address;
+- secure, shared sessions; a shared cache; a real queue and real email;
+- files on S3;
+- a separate brokerage database, and every database answering and up to date;
+- HQ two-step for everyone;
+- the scheduler running (it now writes a heartbeat every minute).
+
+It fails (exit code 1) when anything is not ready, so it can gate a deployment.
+
+### Launch runbook
+
+**Before (company):**
+
+1. Sign off the defaults to review in each sprint's notes. Money and legal items need the attorney: consent wording, state deadline windows, recording announcements, Google Places' terms, placement fees.
+2. Make the repository private, revoke the tokens pasted earlier, and delete the `tooling/vendor-bundle` branch.
+3. Book the penetration test (Sprint 61 brief) and fix every high and critical finding.
+4. Choose the SOC 2 tool and auditor (Sprint 62).
+5. Publish the privacy notice, the subprocessor list and the terms on rightally.io.
+
+**Before (platform):**
+
+1. Set up production:
+    - load balancer → app servers (OPcache, Octane), separate queue workers and one scheduler;
+    - MySQL control and cell databases with backups, Redis, S3 and the CDN;
+    - email with SPF, DKIM and DMARC.
+2. Size it from the Sprint 60 sizing, and run the full-size load test on staging.
+3. Switch outside services from Test to Live one at a time, checking each on its HQ page.
+4. `launch:check` passes on every server, and the nightly browser journeys pass against staging.
+5. Run a restore drill (two-person approval), and record it for SOC 2.
+
+**Go-live:**
+
+1. Tag `v1.0.0` and deploy (database changes run first; pages keep working during deploys).
+2. `launch:check` on each server.
+3. Smoke test: sign in as an owner and as an agent; send an enquiry from a website; run a test payment in Stripe's test mode on staging.
+4. Watch HQ → Cells, the AI cost, and the error rate for the first day.
+
+**Rollback:** redeploy the previous tag. Database changes are additive (new columns, tables and indexes), so the previous version keeps working. Restoring a brokerage from backup needs two people.
+
+**After:**
+
+- weekly: red team (C1.1), access reviews every quarter, dependency updates;
+- the SOC 2 observation window starts on launch day.

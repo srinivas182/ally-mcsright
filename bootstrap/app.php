@@ -7,12 +7,14 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
+use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
 use Modules\Billing\Http\BrokerageReadOnly;
 use Modules\Billing\Http\EnsureNotBlocked;
 use Modules\Core\Http\Middleware\EnsureHqConsole;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
 use Modules\Core\Http\Middleware\SecurityHeaders;
+use Modules\Core\Http\Middleware\TrustLoadBalancer;
 use Modules\Core\Identity\Http\Middleware\EnsureSecondFactor;
 use Modules\Core\Identity\Http\Middleware\EnsureTenantHost;
 use Modules\Core\Identity\Http\Middleware\EnsureValidSignedInUser;
@@ -30,6 +32,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Sprint 63 (launch readiness): trust the load balancer (TrustLoadBalancer: private networks by default).
+        $middleware->replace(TrustProxies::class, TrustLoadBalancer::class);
+
         $middleware->validateCsrfTokens(except: ['billing/webhook', 'billing/twilio/*', 'payout-rails/*']);
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 

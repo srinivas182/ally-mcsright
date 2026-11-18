@@ -203,7 +203,7 @@ final class CoreServiceProvider extends ServiceProvider
         }
 
         if ($this->app->runningInConsole()) {
-            $this->commands([CompileDesignTokens::class, RunTenantLifecycle::class, BootstrapHq::class, Console\FlushAudit::class, Console\VerifyAudit::class, Console\AuditMaintenance::class, Console\ExpireAccess::class, Console\AccessReviewReminder::class, Console\SendNoticeDigests::class, Console\RunWorkflows::class, Console\RebuildDirectory::class, Console\SendDailyBriefs::class, Safeguards\Console\ExpireExports::class, Safeguards\Console\SafeguardsDaily::class, Safeguards\Console\Rekey::class, Scale\Console\WatchCells::class, Scale\Console\SeedLoadTest::class, Scale\Console\SeedEndToEnd::class, Console\ExpireApprovals::class, Console\PrivacyDaily::class]);
+            $this->commands([CompileDesignTokens::class, RunTenantLifecycle::class, BootstrapHq::class, Console\FlushAudit::class, Console\VerifyAudit::class, Console\AuditMaintenance::class, Console\ExpireAccess::class, Console\AccessReviewReminder::class, Console\SendNoticeDigests::class, Console\RunWorkflows::class, Console\RebuildDirectory::class, Console\SendDailyBriefs::class, Safeguards\Console\ExpireExports::class, Safeguards\Console\SafeguardsDaily::class, Safeguards\Console\Rekey::class, Scale\Console\WatchCells::class, Scale\Console\SeedLoadTest::class, Scale\Console\SeedEndToEnd::class, Console\ExpireApprovals::class, Console\PrivacyDaily::class, Launch\LaunchCheck::class]);
         }
     }
 

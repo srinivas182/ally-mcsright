@@ -23,6 +23,10 @@ return [
     | Logical database connections. Null means "use the default connection".
     | Production sets these to the control-plane and cell connections.
     */
+    // Sprint 63: load balancers to trust for the visitor's address and https (comma-separated, or "*"); empty means
+    // the private network ranges (Http\Middleware\TrustLoadBalancer).
+    'trusted_proxies' => env('TRUSTED_PROXIES', ''),
+
     'connections' => [
         'control' => env('CORE_CONTROL_CONNECTION'),
         'cell' => env('CORE_CELL_CONNECTION'),
