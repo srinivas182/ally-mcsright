@@ -17,6 +17,7 @@ type Ticket = {
     name: string;
     email: string;
     page: string | null;
+    file: string | null;
 };
 
 /** HQ → Support: every brokerage's help requests, oldest open first, answered by email. */
@@ -69,6 +70,14 @@ export default function HqSupport({
                             {t.page ? ` · from ${t.page}` : ''}
                         </p>
                         <p className="whitespace-pre-wrap">{t.body}</p>
+                        {t.file && (
+                            <a
+                                className="text-sm underline"
+                                href={`/hq/support/${t.ulid}/file`}
+                            >
+                                Download {t.file} (kept 30 days)
+                            </a>
+                        )}
                         {t.reply && (
                             <p className="rounded bg-muted/40 p-2 whitespace-pre-wrap">
                                 {t.reply}

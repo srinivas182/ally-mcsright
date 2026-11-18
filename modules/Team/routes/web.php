@@ -27,6 +27,7 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('help')
     Route::post('ask', [HelpController::class, 'ask'])->middleware('throttle:10,1')->name('ask');
     Route::get('page', [HelpController::class, 'page'])->name('page'); // SX5: "Help me"
     Route::post('callback', [HelpController::class, 'callback'])->middleware('throttle:3,60')->name('callback');
+    Route::post('concierge', [HelpController::class, 'concierge'])->middleware('throttle:5,60')->name('concierge'); // SX6
     Route::get('{slug}/print', [HelpController::class, 'print'])->where('slug', '[a-z0-9-]{2,80}')->name('print');
     Route::post('requests/{ticket}/close', [HelpController::class, 'close'])->where('ticket', '[0-9A-HJKMNP-TV-Z]{26}')->name('close');
     Route::get('{slug}', [HelpController::class, 'article'])->where('slug', '[a-z0-9-]{2,80}')->name('article');
@@ -37,5 +38,6 @@ Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.tenants.manage
     Route::get('/', [HqSupportController::class, 'index'])->name('index');
     Route::get('videos', [HqSupportController::class, 'videos'])->name('videos'); // SX5: 60-second video per page
     Route::post('videos', [HqSupportController::class, 'setVideo'])->name('videos.set');
+    Route::get('{ticket}/file', [HqSupportController::class, 'file'])->where('ticket', '[0-9A-HJKMNP-TV-Z]{26}')->middleware('throttle:30,1')->name('file'); // SX6
     Route::post('{ticket}', [HqSupportController::class, 'reply'])->where('ticket', '[0-9A-HJKMNP-TV-Z]{26}')->name('reply');
 });

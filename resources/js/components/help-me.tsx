@@ -4,6 +4,7 @@ import {
     PhoneCallIcon,
     PlayCircleIcon,
     PrinterIcon,
+    UploadIcon,
     UsersIcon,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -37,11 +38,15 @@ export function HelpMe() {
     const [calling, setCalling] = useState(false);
     const [phone, setPhone] = useState('');
     const [when, setWhen] = useState('any');
+    const [sending, setSending] = useState(false);
+    const [file, setFile] = useState<File | null>(null);
+    const [what, setWhat] = useState('contacts');
 
     const show = () => {
         setOpen(true);
         setWatching(false);
         setCalling(false);
+        setSending(false);
         getJson<PageHelp>(
             `/help/page?path=${encodeURIComponent(page.url.split('?')[0] ?? '/')}`,
         )
@@ -116,6 +121,77 @@ export function HelpMe() {
                                 Back
                             </Button>
                         </div>
+                    ) : sending ? (
+                        <form
+                            className="grid gap-3 text-base"
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                if (!file) {
+                                    return;
+                                }
+                                router.post(
+                                    '/help/concierge',
+                                    { file, what },
+                                    {
+                                        forceFormData: true,
+                                        preserveScroll: true,
+                                        onSuccess: () => setOpen(false),
+                                    },
+                                );
+                            }}
+                        >
+                            <p>
+                                Send us your list as it is (a spreadsheet or CSV
+                                file). We will set it up for you and email you
+                                when it is done.
+                            </p>
+                            <label className="grid gap-1">
+                                What is in it?
+                                <select
+                                    className="h-12 rounded-md border bg-background px-3 text-lg"
+                                    value={what}
+                                    onChange={(e) => setWhat(e.target.value)}
+                                >
+                                    <option value="contacts">
+                                        My contacts and past clients
+                                    </option>
+                                    <option value="listings">
+                                        My listings
+                                    </option>
+                                    <option value="other">
+                                        Something else
+                                    </option>
+                                </select>
+                            </label>
+                            <label className="grid gap-1">
+                                Your file
+                                <input
+                                    type="file"
+                                    accept=".csv,.xlsx,.xls,.txt"
+                                    className="text-base"
+                                    onChange={(e) =>
+                                        setFile(e.target.files?.[0] ?? null)
+                                    }
+                                    required
+                                />
+                            </label>
+                            <Button
+                                type="submit"
+                                size="lg"
+                                className="h-14 text-lg"
+                                disabled={!file}
+                            >
+                                Send it to RightAlly
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="lg"
+                                onClick={() => setSending(false)}
+                            >
+                                Back
+                            </Button>
+                        </form>
                     ) : calling ? (
                         <form
                             className="grid gap-3 text-base"
@@ -225,6 +301,17 @@ export function HelpMe() {
                                     aria-hidden="true"
                                 />
                                 Call me back
+                            </Button>
+                            <Button
+                                variant="outline"
+                                className={big}
+                                onClick={() => setSending(true)}
+                            >
+                                <UploadIcon
+                                    className="size-7"
+                                    aria-hidden="true"
+                                />
+                                Send us your spreadsheet
                             </Button>
                             <Button
                                 variant="outline"

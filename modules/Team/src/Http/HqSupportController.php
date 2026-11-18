@@ -9,8 +9,10 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Modules\Team\Help\Concierge;
 use Modules\Team\Help\PageHelp;
 use Modules\Team\Help\SupportTickets;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /** HQ → Support: every brokerage's help requests in one queue, answered by email (CH1). */
 final class HqSupportController
@@ -36,6 +38,15 @@ final class HqSupportController
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Saved.']);
 
         return back();
+    }
+
+    /** SX6: the spreadsheet sent with a concierge setup request (audited). */
+    public function file(Request $request, string $ticket): StreamedResponse
+    {
+        $user = $request->user();
+        abort_unless($user instanceof User, 403);
+
+        return Concierge::download($ticket, $user);
     }
 
     public function reply(Request $request, string $ticket): RedirectResponse

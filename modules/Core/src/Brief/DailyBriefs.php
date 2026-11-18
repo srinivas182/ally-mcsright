@@ -8,6 +8,7 @@ use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Modules\Core\Identity\Enums\UserKind;
+use Modules\Core\Simple\HomePeople;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
 
@@ -93,11 +94,20 @@ final class DailyBriefs
                 continue;
             }
             $items = $this->for($user, 10);
+            // SX6: today's people to call, and a link to work from the list without signing in.
+            $people = [];
+            $link = null;
+            if (app()->bound(HomePeople::class)) {
+                $home = app(HomePeople::class);
+                $people = array_slice($home->for($user), 0, 5);
+                $link = $people !== [] ? $home->listLink($user) : null;
+            }
             (clone $db)->updateOrInsert(['tenant_id' => $tenants->id(), 'user_id' => $user->id], ['last_sent_on' => $local->toDateString(), 'updated_at' => now(), 'created_at' => $row->created_at ?? now()]);
-            if ($items === []) {
+            if ($items === [] && $people === []) {
                 continue; // nothing needs them: no email
             }
-            $user->notify(new DailyBriefMail($items, $user->first_name, (string) $tenants->current()->name, self::manager($user) ? '/dashboard' : '/agent'));
+            $user->notify(new DailyBriefMail($items, $user->first_name, (string) $tenants->current()->name, self::manager($user) ? '/dashboard' : '/agent',
+                $people, $link));
             $sent++;
         }
 

@@ -48,3 +48,37 @@ fails is left out; the brief always shows.
   urgency then commission at stake, each linking to its page.
 - An owner also sees slow agents, payout runs to approve and low credits.
 - The 7am weekday email goes once a day and can be turned off; a failing source never breaks the brief.
+
+## SX6: work without signing in
+
+**The morning email** (7am on weekdays, as before) now starts with **Call today**: up to five people from Today's 10,
+each with the reason and their number as a tap-to-call link. One button, **Open today's list (no sign-in needed)**,
+opens a page that:
+
+- works without signing in until midnight that day, through a signed link for that agent alone. A changed or expired
+  link is refused;
+- shows only today's list: names, reasons and Call buttons, with no notes and no other pages;
+- logs each call with **We talked**, **Left a message** or **No answer**. These are buttons (a POST), never the link
+  itself, so email security scanners that open links change nothing. A link can only log on that agent's own people.
+
+**The morning text** goes only to agents who turn it on themselves ("Text me my list at 8am on weekdays", on their
+brief). That choice is their consent, kept with the time and audited.
+
+- It is sent after 8am on weekdays, and only between 8am and 9pm where their phone is.
+- It goes only when HQ allows texts for the brokerage, and at most once a day. It is skipped when there is no one to
+  call.
+- It says how many people there are, gives the same link, and ends "Reply STOP to stop these texts"
+  (`crm:morning-texts`, every 15 minutes).
+
+**Concierge setup ("send us your spreadsheet").** Under Help, people can send their list as it is (CSV or Excel,
+up to 10 MB) and say what it is: contacts and past clients, listings, or something else.
+
+- It goes to HQ's Support queue as "Set it up for me". The file is stored encrypted, only HQ can download it, and
+  every download is audited.
+- RightAlly support sets it up through the brokerage's support access, so the brokerage's "ask first" rule still
+  applies.
+- The file is deleted 30 days after it was sent, or when the request is closed (`team:concierge-cleanup`, daily).
+
+**For the pen test and the attorney:** the no-sign-in list page is a bearer link to today's client names and
+numbers. It is limited to one agent, one day, today's list and logging calls, but the outside testers should look at
+it.

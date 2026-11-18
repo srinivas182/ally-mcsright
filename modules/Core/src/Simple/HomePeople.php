@@ -16,4 +16,7 @@ interface HomePeople
      * @return list<array{ulid: string, name: string, reason: string, phone: string|null, call: bool, text: bool, text_wait: string|null}>
      */
     public function for(User $user): array;
+
+    /** SX6: a link to today's list that works without signing in (morning email and text); null when there is none. */
+    public function listLink(User $user): ?string;
 }

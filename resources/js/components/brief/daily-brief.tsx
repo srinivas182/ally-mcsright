@@ -35,9 +35,12 @@ const when: Record<number, string> = {
 export function DailyBrief({
     items,
     email,
+    morningText = null,
 }: {
     items: BriefItem[];
     email: boolean;
+    /** SX6: the morning text with today's list (the agent's own opt-in); null where it is not offered. */
+    morningText?: boolean | null;
 }) {
     return (
         <section className="grid gap-3" aria-labelledby="brief-title">
@@ -60,6 +63,23 @@ export function DailyBrief({
                     />
                     Email it to me at 7am on weekdays
                 </label>
+                {morningText !== null && (
+                    <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <input
+                            type="checkbox"
+                            className="size-4"
+                            checked={morningText}
+                            onChange={(e) =>
+                                router.post(
+                                    '/brief/morning-text',
+                                    { on: e.target.checked },
+                                    { preserveScroll: true },
+                                )
+                            }
+                        />
+                        Text me my list at 8am on weekdays (reply STOP to stop)
+                    </label>
+                )}
             </div>
             {items.length === 0 ? (
                 <EmptyState

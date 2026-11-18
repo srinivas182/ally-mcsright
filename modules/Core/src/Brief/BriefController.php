@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Core\Simple\SimpleMode;
+use Modules\Crm\Brief\MorningList;
 
 /**
  * The daily brief on the home pages (specs/core/09): Dashboard for owners and staff, Today for agents and their
@@ -36,7 +37,9 @@ final class BriefController
         $for = $user->assistedAgent ?? $user;
 
         return Inertia::render('agent/home', ['firstName' => $user->first_name, 'assisting' => $user->assistedAgent?->name, 'brief' => $briefs->for($for),
-            'briefEmail' => self::emailOn($briefs, $user)]);
+            'briefEmail' => self::emailOn($briefs, $user),
+            // SX6: the morning text with today's list (the CRM's; the agent's own opt-in).
+            'morningText' => class_exists(MorningList::class) && $user->assistedAgent === null ? app(MorningList::class)->textOn($user) : null]);
     }
 
     public function email(Request $request, DailyBriefs $briefs): RedirectResponse
