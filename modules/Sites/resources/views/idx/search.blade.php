@@ -27,6 +27,14 @@
             <option value="">Baths</option>
             @foreach ([1, 2, 3, 4] as $v)<option value="{{ $v }}" @selected(($query['baths'] ?? '') == $v)>{{ $v }}+ ba</option>@endforeach
         </select>
+        @php($featureChoices = \Modules\Listings\Media\PhotoTags::searchable())
+        @if ($featureChoices !== [])
+            <label class="sr-only" for="f-has">Has</label>
+            <select id="f-has" name="features">
+                <option value="">Has…</option>
+                @foreach ($featureChoices as $k => $label)<option value="{{ $k }}" @selected(($query['features'] ?? '') === $k)>{{ $label }}</option>@endforeach
+            </select>
+        @endif
         <label class="sr-only" for="f-sort">Sort</label>
         <select id="f-sort" name="sort">
             @foreach (['newest' => 'Newest', 'price_asc' => 'Price: low to high', 'price_desc' => 'Price: high to low', 'sqft_desc' => 'Largest', 'reduced' => 'Recently reduced'] as $k => $label)

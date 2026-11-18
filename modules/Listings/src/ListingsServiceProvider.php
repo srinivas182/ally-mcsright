@@ -62,7 +62,7 @@ final class ListingsServiceProvider extends ServiceProvider
                         'href' => '/listings/'.$l->ulid])->all());
             });
         if ($this->app->runningInConsole()) {
-            $this->commands([Console\SyncListings::class, Console\ReconcileListings::class, Console\RebuildSearch::class]);
+            $this->commands([Console\SyncListings::class, Console\ReconcileListings::class, Console\RebuildSearch::class, Console\TagPhotosAndPlaces::class]);
         }
 
         Gate::define('hq.mls.manage', fn (User $user): bool => $user->kind === UserKind::HqStaff);

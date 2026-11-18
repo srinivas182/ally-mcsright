@@ -81,6 +81,10 @@ final class ConnectionCheck
             'own', 'state_data', 'manual' => ['ok' => true, 'message' => 'Built in. Nothing to connect.'],
             'teller' => $this->format(str_contains($k['certificate'], 'BEGIN CERTIFICATE') && str_contains($k['certificate'], 'PRIVATE KEY'),
                 'Paste the certificate and its private key together, as Teller gave them.'),
+            // C03: a one-node Overpass question; a Geoapify place look-up; Azure's endpoint must be https.
+            'osm' => $this->status($this->http()->asForm()->post($this->host($k['host']), ['data' => '[out:json][timeout:5];node(1);out ids;'])),
+            'geoapify' => $this->status($this->http()->get('https://api.geoapify.com/v1/geocode/search', ['text' => 'Austin, TX', 'limit' => 1, 'apiKey' => $k['api_key']])),
+            'azure_vision' => $this->format(str_starts_with(trim($k['endpoint']), 'https://') && mb_strlen(trim($k['api_key'])) >= 16, 'Use the https endpoint and the whole key from the Azure portal.'),
             default => $this->format(mb_strlen(trim((string) ($k['api_key'] ?? ''))) >= 16, 'That key looks too short. Copy the whole key.'),
         };
     }

@@ -220,6 +220,45 @@ MLS ingestion.
 - The index follows every sync. HQ can **Rebuild the index** (queued), or run `php artisan listings:search-rebuild`.
 - A drawn area (polygon) is always answered by the database.
 
-**Still open (C03).** AI photo tagging (item 3) needs an image-reading AI route. Precomputed distances to schools, transit, groceries and coffee (item 4) need a points-of-interest data source. Both are left for a later sprint.
-
 Tests: `tests/Feature/Listings/FastSearchTest.php`.
+
+## Photo tagging and nearby places (C03 items 3 and 4)
+
+Both are outside services, set up by HQ in **Outside services** with Off, Test and Live, and checked on **HQ → MLS → Photo tags and nearby places**. That page shows the latest results and has a **Check 10 more now** button. Both run every day at 11:20 UTC, after the night's MLS sync (`php artisan listings:photos-and-places`). Listing data is shared by every brokerage, so HQ pays and brokerages use no credits.
+
+**Photo tagging.** The providers are **Restb.ai (recommended, made for real estate)**, Azure AI Vision and Google Cloud Vision (`Media\PhotoTags`).
+
+- Each stored photo of a for-sale listing (the first 25, in MLS order) gets:
+    - a room: kitchen, living room, dining room, bedroom, bathroom, home office, laundry room, garage, front of the home, backyard or view;
+    - the home features seen in it, from a fixed list of 14: pool, hot tub, fireplace, kitchen island, stainless appliances, stone countertops, hardwood floors, high ceilings, walk-in closet, deck or patio, fenced yard, water view, solar panels, garage;
+    - plain-words alt text, such as "Kitchen with kitchen island and stainless appliances".
+- **Only the home is described.** Anything outside the list (people, pets, cars, brands) is dropped, and a "pool table" is not a pool. Answers below 60% confidence are ignored.
+- **Alt text:** an MLS caption always wins. Otherwise the tagged description is used on the website and back-office photo galleries. This helps screen-reader users and image search.
+- **Features:** a listing's features are gathered once every photo is tagged, and kept one per row (`listing_features`). They are used in four places:
+    - "Seen in the photos" on the listing page, with "confirm features with us";
+    - the listing's structured data (`amenityFeature`);
+    - a **Has…** filter in website and back-office search, which the database answers;
+    - AIlly's facts on a listing page.
+- **Test mode** tags up to 50 photos a day, which only HQ sees. **Live** tags up to 2,000 a day. Switching to Live reuses photos already tagged in Test, so they are not paid for twice.
+- A changed or removed photo is tagged again and the features are gathered again.
+
+**Nearby schools, transit, groceries and coffee.** The providers are **OpenStreetMap through an Overpass server (recommended, free)**, Geoapify Places and Google Places (`Places\NearbyPlaces`).
+
+| Kept per listing         | Within  |
+| ------------------------ | ------- |
+| 5 nearest schools        | 2 miles |
+| Nearest bus stop         | 1 mile  |
+| 2 nearest rail stations  | 3 miles |
+| 2 nearest grocery stores | 2 miles |
+| 2 nearest coffee shops   | 1 mile  |
+
+- Rail stations include train, subway, and light rail or tram stops.
+- Places are measured in a straight line and de-duplicated by name (a bus stop on each side of the road is one stop). Schools are named elementary, middle or high when the name or the map data says so.
+- Only listings whose address the MLS lets us show are looked up. Each is looked up again every 30 days, which is also Google's limit on keeping results.
+- **Fair housing:** schools get a name and a distance only, never a rating or a rank. Pages say: "Straight-line distances. School attendance depends on the school district; check with the district before you decide."
+- The listing page has a "What's nearby" section. It starts with an answer-first sentence ("The nearest school is …, 0.3 miles away."), which suits AI answers, then lists each kind with its distance. The provider's credit is shown, as OpenStreetMap and Google require.
+- AIlly uses the same list on a listing page, so "how far is the school?" needs no look-up.
+- **Test mode** looks up 20 listings a day, which only HQ sees. **Live** looks up up to 1,000 a day.
+- Mapbox was not chosen: its terms let search results be used only for a short time, not kept.
+
+Tests: `tests/Feature/Listings/PhotosAndPlacesTest.php`.

@@ -184,7 +184,7 @@ final class Assistant
 
         $transcript = $this->transcript((int) $c->id);
         $facts = $this->studio->facts($site, null);
-        $info = $this->siteFacts($site);
+        $info = [...$this->siteFacts($site), ...$this->homeFacts((string) $c->page)];
         try {
             $result = $this->gateway->run(new AiTask(self::FEATURE, 'sites.ailly', 'ailly:'.$conversation.':'.((int) $c->visitor_messages + 1),
                 inputs: ['name' => AillySettings::persona($site, self::brokerageSite())['name'], 'brokerage' => $site->displayName(), 'area' => (string) ($site->info['area'] ?? $site->info['areas'] ?? 'the area'),
@@ -464,6 +464,33 @@ final class Assistant
             'beds' => isset($h['beds']) ? (int) $h['beds'] : null, 'baths' => isset($h['baths_full']) ? (int) $h['baths_full'] : null,
             'photo' => is_string($h['photo'] ?? null) ? $h['photo'] : null, 'url' => ListingSearch::publicUrl((string) $h['ulid'], ListingSearch::label($h)),
             'attribution' => (string) ($h['attribution'] ?? '')], $found['results']);
+    }
+
+    /**
+     * C03: on a listing page, what AIlly may say about that home without looking anything up: the features seen in
+     * its photos and the nearby schools and transit (straight-line, never rated). Empty elsewhere.
+     *
+     * @return list<string>
+     */
+    private function homeFacts(string $page): array
+    {
+        if (preg_match('#/homes/([0-9A-HJKMNP-TV-Z]{26})#', $page, $m) !== 1) {
+            return [];
+        }
+        $home = $this->search->find($this->tenants->id(), $m[1]);
+        if ($home === null) {
+            return [];
+        }
+        $lines = ['The visitor is looking at '.ListingSearch::label($home).'.'];
+        if (($home['features'] ?? []) !== []) {
+            $lines[] = 'Seen in its photos (confirm with an agent before promising): '.implode(', ', $home['features']).'.';
+        }
+        if (($home['nearby'] ?? null) !== null) {
+            $near = array_map(fn (array $p): string => $p['name'].' ('.mb_strtolower($p['type']).', '.$p['miles'].')', [...$home['nearby']['schools'], ...$home['nearby']['transit'], ...($home['nearby']['shops'] ?? [])]);
+            $lines[] = 'Nearby, straight-line: '.implode('; ', $near).'. Never rate or rank schools; attendance depends on the school district.';
+        }
+
+        return $lines;
     }
 
     /** @return list<string> */

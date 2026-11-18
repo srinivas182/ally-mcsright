@@ -11,7 +11,9 @@ use Modules\Core\Support\Connections;
 use Modules\Listings\Access\MlsAccess;
 use Modules\Listings\Display\ListingPresenter;
 use Modules\Listings\Media\Photos;
+use Modules\Listings\Media\PhotoTags;
 use Modules\Listings\Models\Listing;
+use Modules\Listings\Places\NearbyPlaces;
 use Throwable;
 
 /**
@@ -37,7 +39,8 @@ final class ListingSearch
     {
         $filters = self::clean($f);
         $index = app(SearchIndex::class);
-        $server = $filters['polygon'] === null ? $index->engine() : null; // a drawn area is answered by the database
+        // A drawn area, or features seen in photos (C03), are answered by the database.
+        $server = $filters['polygon'] === null && $filters['features'] === [] ? $index->engine() : null;
         $started = microtime(true);
         $rows = null;
         $total = 0;
@@ -240,7 +243,9 @@ final class ListingSearch
 
         // The presenter's "photos" is a count; the detail page needs the photos themselves.
         return [...$shown, 'photo_count' => $shown['photos'], 'photos' => Photos::forListing($l), 'price_history' => $history, 'listed' => $l->on_market_date?->toDateString(),
-            'photo' => Photos::url($l->cover_path), 'updated_at' => $l->modification_timestamp?->toIso8601String()];
+            'photo' => Photos::url($l->cover_path), 'updated_at' => $l->modification_timestamp?->toIso8601String(),
+            // C03: features seen in the photos, and nearby schools and transit (both Live only).
+            'features' => PhotoTags::labelsFor($l), 'nearby' => $shown['address'] !== null ? NearbyPlaces::forListing($l) : null];
     }
 
     /**
@@ -254,6 +259,10 @@ final class ListingSearch
             ->whereIn('standard_status', $filters['statuses'])
             // SR1: a copy of a home listed on another licensed MLS is shown once.
             ->where(fn (Builder $w) => $w->whereNull('duplicate_of_source_id')->orWhereNotIn('duplicate_of_source_id', $licensed ?: [0]));
+        // C03: "Has a pool, a fireplace…": features seen in the listing's photos (Live tagging only).
+        foreach ($filters['features'] as $feature) {
+            $q->whereExists(fn ($e) => $e->from('listing_features')->whereColumn('listing_features.listing_id', 'listings.id')->where('feature', $feature));
+        }
 
         if ($filters['q'] !== '') {
             $term = $filters['q'];
@@ -326,7 +335,7 @@ final class ListingSearch
 
     /**
      * @param  array<string, mixed>  $f
-     * @return array{q: string, min_price: int|null, max_price: int|null, beds: int|null, baths: int|null, min_sqft: int|null, types: list<string>, statuses: list<string>, bounds: list<float>|null, polygon: list<array{0: float, 1: float}>|null, near: array{0: float, 1: float, 2: float}|null, agent_mls_id: string|null, since: string|null, states: list<string>, sort: string, page: int, per_page: int}
+     * @return array{q: string, min_price: int|null, max_price: int|null, beds: int|null, baths: int|null, min_sqft: int|null, types: list<string>, statuses: list<string>, bounds: list<float>|null, polygon: list<array{0: float, 1: float}>|null, near: array{0: float, 1: float, 2: float}|null, agent_mls_id: string|null, since: string|null, features: list<string>, states: list<string>, sort: string, page: int, per_page: int}
      */
     public static function clean(array $f): array
     {
@@ -373,6 +382,7 @@ final class ListingSearch
             'beds' => $int('beds', 20), 'baths' => $int('baths', 20), 'min_sqft' => $int('min_sqft', 1_000_000), 'types' => $list('types'),
             'statuses' => $statuses !== [] ? $statuses : ['Active', 'Coming Soon'], 'bounds' => $bounds, 'polygon' => $polygon, 'near' => $near,
             'agent_mls_id' => is_string($f['agent_mls_id'] ?? null) && $f['agent_mls_id'] !== '' ? mb_substr($f['agent_mls_id'], 0, 30) : null, 'since' => $since,
+            'features' => array_values(array_intersect(array_keys(PhotoTags::FEATURES), $list('features'))),
             'states' => array_values(array_filter(array_map(fn ($s): string => strtoupper((string) $s), (array) ($f['states'] ?? [])), fn (string $s): bool => preg_match('/^[A-Z]{2}$/', $s) === 1)),
             'sort' => in_array($f['sort'] ?? null, self::SORTS, true) && ($f['sort'] !== 'distance' || $near !== null) ? (string) $f['sort'] : 'newest',
             'page' => max(1, min(500, (int) (is_numeric($f['page'] ?? null) ? $f['page'] : 1))), 'per_page' => max(1, min(48, (int) (is_numeric($f['per_page'] ?? null) ? $f['per_page'] : 24)))];

@@ -45,14 +45,20 @@ final class Photos
             $row->fill(['position' => is_numeric($m['Order'] ?? null) ? (int) $m['Order'] : $i, 'source_url' => mb_substr((string) $m['MediaURL'], 0, 1000),
                 'caption' => is_string($m['ShortDescription'] ?? null) ? mb_substr($m['ShortDescription'], 0, 300) : null, 'modification_timestamp' => $modified]);
             if ($changed) {
-                $row->fill(['status' => 'pending', 'attempts' => 0, 'first_attempt_at' => null, 'error' => null]);
+                // C03: a changed photo is tagged again, and the listing's features gathered again.
+                $row->fill(['status' => 'pending', 'attempts' => 0, 'first_attempt_at' => null, 'error' => null, 'room' => null, 'tags' => null, 'alt_text' => null, 'tagged_at' => null]);
                 $pending = true;
             }
             $row->save();
         }
+        $removed = false;
         foreach (ListingMedia::query()->where('listing_id', $listing->id)->whereNotIn('media_key', $keep)->get() as $gone) {
             $this->deleteFiles($gone);
             $gone->delete();
+            $removed = true;
+        }
+        if (($pending || $removed) && $listing->getAttribute('photos_tagged_at') !== null) {
+            $listing->forceFill(['photos_tagged_at' => null])->saveQuietly();
         }
         $this->refreshCover($listing);
 
@@ -113,13 +119,15 @@ final class Photos
     }
 
     /**
-     * @return list<array{url: string|null, hero: string|null, thumb: string|null, caption: string|null}>
+     * Each photo's alt text is the MLS caption, else the tagged description (C03, Live only), else null.
+     *
+     * @return list<array{url: string|null, hero: string|null, thumb: string|null, caption: string|null, alt: string|null, room: string|null}>
      */
     public static function forListing(Listing $listing): array
     {
         return array_values(ListingMedia::query()->where('listing_id', $listing->id)->where('status', 'stored')->orderBy('position')->get()
             ->map(fn (ListingMedia $m): array => ['url' => self::url($m->storage_path), 'hero' => self::url($m->storage_path, 'hero'), 'thumb' => self::url($m->storage_path, 'thumb'),
-                'caption' => $m->caption])->all());
+                'caption' => $m->caption, 'alt' => $m->caption ?? ($listing->photos_tagged_at !== null ? $m->alt_text : null), 'room' => $listing->photos_tagged_at !== null ? $m->room : null])->all());
     }
 
     private function refreshCover(Listing $listing): void

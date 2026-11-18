@@ -18,7 +18,7 @@
         @else
             @foreach (array_slice($photos, 0, 5) as $i => $ph)
                 <button type="button" class="{{ $i === 0 ? 'gallery-main' : 'gallery-thumb' }}" data-open="{{ $i }}" aria-label="Open photo {{ $i + 1 }} of {{ count($photos) }}">
-                    <img src="{{ $i === 0 ? $ph['hero'] : $ph['url'] }}" alt="{{ $ph['caption'] ?: $name.' photo '.($i + 1) }}" @if ($i === 0) fetchpriority="high" @else loading="lazy" @endif decoding="async" width="{{ $i === 0 ? 1600 : 800 }}" height="{{ $i === 0 ? 1200 : 600 }}">
+                    <img src="{{ $i === 0 ? $ph['hero'] : $ph['url'] }}" alt="{{ ($ph['alt'] ?? null) ?: $name.' photo '.($i + 1) }}" @if ($i === 0) fetchpriority="high" @else loading="lazy" @endif decoding="async" width="{{ $i === 0 ? 1600 : 800 }}" height="{{ $i === 0 ? 1200 : 600 }}">
                 </button>
             @endforeach
             @if (count($photos) > 5)<button type="button" class="btn btn-ghost gallery-all" data-open="0">All {{ count($photos) }} photos</button>@endif
@@ -28,7 +28,7 @@
                 <img data-lb-img alt="">
                 <button type="button" class="lb-next" data-next aria-label="Next photo">›</button>
                 <p class="lb-count" data-lb-count></p>
-                <script type="application/json" data-lb-photos>{!! json_encode(array_map(fn ($p) => ['src' => $p['hero'], 'alt' => $p['caption'] ?: $name], $photos), JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_SLASHES) !!}</script>
+                <script type="application/json" data-lb-photos>{!! json_encode(array_map(fn ($p) => ['src' => $p['hero'], 'alt' => ($p['alt'] ?? null) ?: $name], $photos), JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_SLASHES) !!}</script>
             </dialog>
         @endif
     </section>
@@ -61,6 +61,14 @@
                     <h2>About this home</h2>
                     <p class="remarks">{{ $home['remarks'] }}</p>
                     @if ($home['virtual_tour'])<p><a class="btn btn-ghost" href="{{ $home['virtual_tour'] }}" target="_blank" rel="noopener nofollow">Virtual tour</a></p>@endif
+                </section>
+            @endif
+
+            @if (($home['features'] ?? []) !== [])
+                <section class="block">
+                    <h2>Seen in the photos</h2>
+                    <ul class="feature-list">@foreach ($home['features'] as $f)<li>{{ $f }}</li>@endforeach</ul>
+                    <p class="fine">Spotted in the listing photos; confirm features with us.</p>
                 </section>
             @endif
 
@@ -110,6 +118,23 @@
                     <h2>Location</h2>
                     <img class="static-map" src="{{ $map }}" alt="Map showing {{ $name }}" loading="lazy" width="720" height="360">
                     <p><a href="/market/{{ \Modules\Listings\Search\MarketStats::citySlug((string) $home['city'], (string) $home['state']) }}">{{ $home['city'] }} market report</a>@if ($home['postal_code']) · <a href="/market/{{ $home['postal_code'] }}">{{ $home['postal_code'] }} market report</a>@endif</p>
+                </section>
+            @endif
+
+            @if ($home['nearby'] ?? null)
+                <section class="block nearby">
+                    <h2>What's nearby</h2>
+                    <p>{{ $home['nearby']['summary'] }}</p>
+                    @foreach (['Schools' => $home['nearby']['schools'], 'Transit' => $home['nearby']['transit'], 'Groceries and coffee' => $home['nearby']['shops'] ?? []] as $heading => $places)
+                        @if ($places !== [])
+                            <h3>{{ $heading }}</h3>
+                            <table class="history">
+                                <thead><tr><th scope="col">Name</th><th scope="col">Type</th><th scope="col">Distance</th></tr></thead>
+                                <tbody>@foreach ($places as $pl)<tr><td>{{ $pl['name'] }}</td><td>{{ $pl['type'] }}</td><td>{{ $pl['miles'] }}</td></tr>@endforeach</tbody>
+                            </table>
+                        @endif
+                    @endforeach
+                    <p class="fine">Straight-line distances. School attendance depends on the school district; check with the district before you decide. {{ $home['nearby']['credit'] }}</p>
                 </section>
             @endif
 

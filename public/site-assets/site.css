@@ -1417,6 +1417,25 @@ h3 {
     color: var(--muted);
     font-size: 1.05rem;
 }
+/* C03: features seen in the listing photos, and nearby schools and transit. */
+.feature-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+.feature-list li {
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 0.35rem 0.9rem;
+    font-size: 1rem;
+}
+.nearby h3 {
+    font-size: 1.1rem;
+    margin: 1.25rem 0 0.5rem;
+}
 .details {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));

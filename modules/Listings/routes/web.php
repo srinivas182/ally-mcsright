@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 use Modules\Core\Http\Middleware\EnsureHqConsole;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
 use Modules\Listings\Http\Controllers\HqMlsController;
+use Modules\Listings\Http\Controllers\HqPhotosPlacesController;
 use Modules\Listings\Http\Controllers\HqSearchController;
 use Modules\Listings\Http\Controllers\ListingsController;
 use Modules\Listings\Http\Controllers\MlsSettingsController;
@@ -27,6 +28,9 @@ Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.mls.manage'])
         // SR1: the fast search server.
         Route::get('search', [HqSearchController::class, 'index'])->name('search');
         Route::post('search/rebuild', [HqSearchController::class, 'rebuild'])->middleware('throttle:3,10')->name('search.rebuild');
+        // C03: photo tags and nearby schools and transit.
+        Route::get('photos-places', [HqPhotosPlacesController::class, 'index'])->name('photos-places');
+        Route::post('photos-places/run', [HqPhotosPlacesController::class, 'run'])->middleware('throttle:3,10')->name('photos-places.run');
     });
 
 // Settings → MLS (brokerage owners).

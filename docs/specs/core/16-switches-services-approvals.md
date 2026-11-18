@@ -54,21 +54,23 @@ Tables: `feature_switches` (control; tenant 0 = everyone), `tenant_seats` (contr
 `Modules\Core\Services\Catalog` lists 13 services with three providers each (the recommended provider first) and
 where the keys live:
 
-| Service                                | Providers (recommended first)                    | Keys                          |
-| -------------------------------------- | ------------------------------------------------ | ----------------------------- |
-| AI voice calls                         | Retell AI, Vapi, Bland AI                        | HQ, brokerage may use its own |
-| Call and appointment transcripts       | Deepgram, AssemblyAI, ElevenLabs Scribe          | HQ                            |
-| Live bank feed (read-only)             | Plaid, MX, Teller                                | HQ                            |
-| Fast listing search                    | Typesense, Meilisearch, Amazon OpenSearch        | HQ                            |
-| Virtual staging and room visualization | Collov AI, REimagineHome, Virtual Staging AI     | HQ                            |
-| Floor plans and 360-degree tours       | CubiCasa, Matterport, iGUIDE                     | HQ, brokerage may use its own |
-| Email checks                           | ZeroBounce, NeverBounce, Kickbox                 | HQ                            |
-| Phone checks                           | Twilio Lookup, Telnyx, Numverify                 | HQ                            |
-| Sign-up payments                       | Stripe, Paddle, Chargebee                        | HQ                            |
-| Bot protection                         | Cloudflare Turnstile, hCaptcha, Google reCAPTCHA | HQ, brokerage may use its own |
-| Forward-paperwork email address        | Postmark, SendGrid, Mailgun                      | HQ                            |
-| Video intros, outros and reels         | own renderer, Shotstack, Creatomate              | HQ                            |
-| Agent licence look-up                  | state public data, ARELLO, typed by hand         | HQ                            |
+| Service                                | Providers (recommended first)                     | Keys                          |
+| -------------------------------------- | ------------------------------------------------- | ----------------------------- |
+| AI voice calls                         | Retell AI, Vapi, Bland AI                         | HQ, brokerage may use its own |
+| Call and appointment transcripts       | Deepgram, AssemblyAI, ElevenLabs Scribe           | HQ                            |
+| Live bank feed (read-only)             | Plaid, MX, Teller                                 | HQ                            |
+| Fast listing search                    | Typesense, Meilisearch, Amazon OpenSearch         | HQ                            |
+| Virtual staging and room visualization | Collov AI, REimagineHome, Virtual Staging AI      | HQ                            |
+| Floor plans and 360-degree tours       | CubiCasa, Matterport, iGUIDE                      | HQ, brokerage may use its own |
+| Email checks                           | ZeroBounce, NeverBounce, Kickbox                  | HQ                            |
+| Phone checks                           | Twilio Lookup, Telnyx, Numverify                  | HQ                            |
+| Sign-up payments                       | Stripe, Paddle, Chargebee                         | HQ                            |
+| Bot protection                         | Cloudflare Turnstile, hCaptcha, Google reCAPTCHA  | HQ, brokerage may use its own |
+| Forward-paperwork email address        | Postmark, SendGrid, Mailgun                       | HQ                            |
+| Video intros, outros and reels         | own renderer, Shotstack, Creatomate               | HQ                            |
+| Agent licence look-up                  | state public data, ARELLO, typed by hand          | HQ                            |
+| Photo tagging                          | Restb.ai, Azure AI Vision, Google Cloud Vision    | HQ                            |
+| Nearby schools and transit             | OpenStreetMap (Overpass), Geoapify, Google Places | HQ                            |
 
 Rules:
 
@@ -126,3 +128,13 @@ sensitive changes). Owners have both.
 - Approval requests close after 7 days; at most 3 approvers per rule; "Switch to Live" needs no approval until the
   owner sets one.
 - Roll-out buckets are fixed per brokerage and area.
+- C03 photo tagging:
+    - 50 photos a day in Test and 2,000 in Live, with the first 25 photos of each listing tagged.
+    - Answers below 60% confidence are ignored.
+    - Restb.ai is priced per photo; confirm the price before Live.
+- C03 nearby places:
+    - 20 listings a day in Test and 1,000 in Live, each looked up again every 30 days.
+    - Search distances: schools 2 miles, bus 1 mile, rail 3 miles, groceries 2 miles, coffee 1 mile.
+    - Schools are never rated.
+    - Google Places' limits on keeping results need a legal check before Live.
+    - The public Overpass server is for light use; use a paid or own server for many listings.
