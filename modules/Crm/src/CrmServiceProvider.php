@@ -22,6 +22,7 @@ use Modules\Core\Navigation\NavItem;
 use Modules\Core\Privacy\PrivacyRegistry;
 use Modules\Core\Search\SearchController;
 use Modules\Core\Search\SearchRegistry;
+use Modules\Core\Simple\HomePeople;
 use Modules\Core\Tenancy\Models\Tenant;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Core\Undo\Undo;
@@ -51,6 +52,7 @@ final class CrmServiceProvider extends ServiceProvider
         $this->app->singleton(Inbox\InboundMailboxes::class);
         $this->app->scoped(Booking\Availability::class);
         $this->app->scoped(ContactVisibility::class);
+        $this->app->bind(HomePeople::class, Simple\TodaysTenHome::class); // SX4: Today's 10 on the simple home
         $this->app->scoped(ManageContacts::class);
         $this->app->scoped(Timeline::class);
         $this->app->scoped(Tasks::class);

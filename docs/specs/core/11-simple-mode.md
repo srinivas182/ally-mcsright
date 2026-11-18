@@ -57,3 +57,28 @@ Deletes of records, money movements and messages already sent are never offered 
 ## Left for MB1
 
 Mobile web app shell, universal search, Spanish across the whole back office.
+
+## SX4: one simple home and a microphone on every page
+
+**Today's 10 comes first on the simple home.** Under the "Talk to RightAlly" button, the people to call today are
+listed, each with the reason in plain words and two big buttons. The list comes from the CRM's Today's 10 through
+`Core\Simple\HomePeople` (`Crm\Simple\TodaysTenHome`), and needs the plan that includes Today's 10.
+
+- **Call** shows when the person has a phone number and is not on the do-not-call list. It opens the phone. Back on
+  the page, three big buttons ask how it went: **We talked**, **Left a message** or **No answer**. The answer is
+  logged on the person's timeline, and they drop off today's list.
+- **Text** shows only when the person agreed to texts (TCPA: opt-in only), and only between 8am and 9pm where they
+  are (by area code; unknown numbers must suit both coasts). Otherwise the button's place says why, such as "It is
+  10:30 pm where they are. Texts go between 8am and 9pm their time."
+- "What do you want to do?" and the three most urgent "Needs you today" items follow.
+
+All the words are in English and Spanish. The texting-hours sentence is English for now.
+
+**A microphone on every page.**
+
+- In full view, a round microphone button sits at the bottom left; in simple view, it is the big "Talk" button.
+- Either one opens Your AI Assistant and starts listening straight away. Recording stops by itself after a minute.
+- The words are written down by the AI provider that already writes down voice notes (`/voice/transcribe`). The
+  recording is not kept.
+- The browser's own speech recognition is not used, because on some browsers it sends the audio to the browser maker,
+  which is not a listed subprocessor.

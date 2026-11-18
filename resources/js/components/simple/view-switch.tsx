@@ -1,4 +1,5 @@
 import { router, usePage } from '@inertiajs/react';
+import { MicIcon } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 
@@ -95,20 +96,36 @@ export function ChooseView() {
     );
 }
 
-/** In simple view, a big "Talk" button on every page. */
+/**
+ * A microphone button on every page (SX4): tap it and say what you need; Your AI Assistant opens and listens. In
+ * simple view it is the big "Talk" button; in full view a round button with the same job.
+ */
 export function TalkButton() {
     const simple = usePage().props.simple;
+    const listen = () => window.dispatchEvent(new Event('assistant:listen'));
+
     if (simple?.mode !== 'simple') {
-        return null;
+        return (
+            <Button
+                size="icon"
+                aria-label="Speak to Your AI Assistant"
+                title="Speak to Your AI Assistant"
+                className="fixed bottom-24 left-4 z-40 size-14 rounded-full shadow-lg md:bottom-6"
+                onClick={listen}
+            >
+                <MicIcon className="size-6" aria-hidden="true" />
+            </Button>
+        );
     }
 
     return (
         <Button
             size="lg"
             className="fixed bottom-24 left-4 z-40 h-14 rounded-full px-6 text-base shadow-lg md:bottom-6"
-            onClick={() => window.dispatchEvent(new Event('assistant:open'))}
+            onClick={listen}
         >
-            🎙 {simple.words.talk}
+            <MicIcon className="size-6" aria-hidden="true" />{' '}
+            {simple.words.talk}
         </Button>
     );
 }

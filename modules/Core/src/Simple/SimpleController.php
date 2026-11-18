@@ -20,7 +20,10 @@ final class SimpleController
         $user = self::user($request);
         $for = $user->assistedAgent ?? $user;
 
-        return Inertia::render('simple/home', ['firstName' => $user->first_name, 'today' => array_slice($briefs->for($for), 0, 5)]);
+        // SX4: Today's 10 first (big Call and Text buttons), then what else needs them.
+        $people = app()->bound(HomePeople::class) ? app(HomePeople::class)->for($for) : [];
+
+        return Inertia::render('simple/home', ['firstName' => $user->first_name, 'people' => $people, 'today' => array_slice($briefs->for($for), 0, 3)]);
     }
 
     public function set(Request $request, SimpleMode $simple): RedirectResponse

@@ -31,6 +31,9 @@ final class SimpleMode
         'show_me' => 'Show me how', 'next' => 'Next', 'done' => 'Done', 'simple' => 'Simple view', 'full' => 'Full view', 'language' => 'Language',
         'choose_title' => 'Would you like RightAlly simpler?', 'choose_intro' => 'Simple view shows only what you use most, with bigger buttons and text. You can switch any time.',
         'choose_simple' => 'Yes, keep it simple', 'choose_full' => 'No, show me everything', 'undo' => 'Undo',
+        // SX4: Today's 10 on the home.
+        'call' => 'Call', 'text' => 'Text', 'how_went' => 'How did it go?', 'talked' => 'We talked', 'left_message' => 'Left a message', 'no_answer' => 'No answer',
+        'no_call' => 'No phone number we may call.', 'no_text' => 'Texts only after they say yes to texts.',
     ];
 
     private const ES = [
@@ -42,6 +45,8 @@ final class SimpleMode
         'show_me' => 'Muéstrame cómo', 'next' => 'Siguiente', 'done' => 'Listo', 'simple' => 'Vista sencilla', 'full' => 'Vista completa', 'language' => 'Idioma',
         'choose_title' => '¿Quiere RightAlly más sencillo?', 'choose_intro' => 'La vista sencilla muestra solo lo que más usa, con botones y letra más grandes. Puede cambiar cuando quiera.',
         'choose_simple' => 'Sí, más sencillo', 'choose_full' => 'No, mostrar todo', 'undo' => 'Deshacer',
+        'call' => 'Llamar', 'text' => 'Mensaje', 'how_went' => '¿Cómo le fue?', 'talked' => 'Hablamos', 'left_message' => 'Dejé un mensaje', 'no_answer' => 'No contestó',
+        'no_call' => 'No hay un número al que podamos llamar.', 'no_text' => 'Mensajes solo después de que acepten recibirlos.',
     ];
 
     public static function on(?User $user): bool
