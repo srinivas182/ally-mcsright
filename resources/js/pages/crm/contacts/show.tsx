@@ -64,6 +64,8 @@ type Contact = {
         status: 'yes' | 'verbal' | 'no' | 'unknown';
         report: string | null;
         default_wording: string;
+        ask_blocker: string | null;
+        asked_at: string | null;
         history: {
             channel: string;
             action: string;
@@ -481,6 +483,13 @@ function ConsentPanel({
                         ? 'opted out'
                         : 'unknown (never given here)'}
             </p>
+            {!consent.sms &&
+                consent.ask_blocker !== null &&
+                consent.status !== 'yes' && (
+                    <p className="text-muted-foreground">
+                        One-tap consent request: {consent.ask_blocker}
+                    </p>
+                )}
             {consent.report && (
                 <a
                     href={consent.report}
@@ -527,6 +536,20 @@ function ConsentPanel({
                             Agreed verbally
                         </Button>
                     </>
+                )}
+                {!consent.sms && consent.ask_blocker === null && (
+                    <Button
+                        size="sm"
+                        onClick={() =>
+                            router.post(
+                                `${base}/texting-consent`,
+                                {},
+                                { preserveScroll: true },
+                            )
+                        }
+                    >
+                        Email a one-tap consent request
+                    </Button>
                 )}
                 <Button
                     size="sm"
