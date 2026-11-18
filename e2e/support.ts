@@ -45,7 +45,7 @@ export async function signIn(
         // wait for the next one and try again.
         for (
             let attempt = 0;
-            attempt < 3 && /two-factor-challenge/.test(page.url());
+            attempt < 5 && /two-factor-challenge/.test(page.url());
             attempt++
         ) {
             while (Date.now() % 30_000 > 25_000) {

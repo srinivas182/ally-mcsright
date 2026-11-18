@@ -43,6 +43,8 @@ final class SeedEndToEnd extends Command
             return self::FAILURE;
         }
         $tenant = $provision->handle(new ProvisionTenantData(TenantType::Brokerage, 'E2E Realty', 'e2e', 'e2e-owner@example.test', 'Erin Owner', 'e2e-seed', 'TX'));
+        // E2E2: the brokerage pays for everything, so every journey can open every page (no agent plan needed).
+        $tenant->forceFill(['billing_exception' => true])->save();
         $tenants->runAs($tenant, function () use ($password): void {
             $hash = Hash::make($password);
             $owner = User::query()->updateOrCreate(['email' => 'e2e-owner@example.test'], ['kind' => UserKind::Owner, 'status' => UserStatus::Active, 'first_name' => 'Erin',
