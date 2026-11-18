@@ -19,6 +19,7 @@ use Modules\Core\Identity\Actions\ManageUserStatus;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Identity\Enums\UserStatus;
 use Modules\Core\Identity\Models\Invitation;
+use Modules\Core\Identity\Security\SignInHelp;
 use Modules\Core\Identity\Security\SignInSecurity;
 use Modules\Core\Tenancy\TenantContext;
 
@@ -73,6 +74,7 @@ final class UserController
         return Inertia::render('users/index', [
             'users' => $users,
             'invitations' => $invitations,
+            'signInHelp' => Gate::allows('core.users.manage') ? app(SignInHelp::class)->waiting() : [], // SX3
             'filters' => ['search' => $search, 'kind' => $kind, 'status' => $status],
             'kinds' => array_values(array_map(
                 fn (UserKind $k): array => ['value' => $k->value, 'label' => $k->label()],

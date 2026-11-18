@@ -47,8 +47,8 @@ export default function ManagePasskeys(props: Props) {
         <div className="space-y-6">
             <Heading
                 variant="small"
-                title="Passkeys"
-                description="Manage your passkeys for passwordless sign-in"
+                title="Sign in with your fingerprint or face (recommended)"
+                description="A passkey uses the fingerprint, face or PIN you already use on this phone or computer. Nothing to remember or type, and a fake website cannot steal it."
             />
 
             <div className="overflow-hidden rounded-lg border border-border">

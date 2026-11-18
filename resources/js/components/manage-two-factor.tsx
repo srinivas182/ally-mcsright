@@ -48,8 +48,8 @@ export default function ManageTwoFactor(props: Props) {
         <div className="space-y-6">
             <Heading
                 variant="small"
-                title="Two-factor authentication"
-                description="Manage your two-factor authentication settings"
+                title="Or use an authenticator app"
+                description="An app on your phone (such as Google Authenticator or Microsoft Authenticator) shows a 6-digit code to type when you sign in."
             />
             {twoFactorEnabled ? (
                 <div className="flex flex-col items-start justify-start space-y-4">

@@ -179,3 +179,33 @@ Rules:
 API tokens (Sprint 23–24), client portal users (Team C), agent self-signup flow (spec 06 template
 
 - Sprint 16–17).
+
+## SX3: easy, safe sign-in
+
+**Everyone adds a second step, passkeys first.**
+
+- HQ staff, owners and anyone with finance access must have a second step right away, as before. So does everyone in
+  a brokerage that turns on "require two-step sign-in now".
+- Everyone else (agents, staff and assistants) gets **14 days** (`TwoFactorPolicy::GRACE_DAYS`, a default flagged for
+  review). The 14 days start the first time they sign in after this release.
+    - Until then, every page shows a short reminder with the days left and a "Set it up (1 minute)" link.
+    - After that, they are sent to set it up before anything else.
+- The security page leads with **"Sign in with your fingerprint or face (recommended)"**: a passkey, using the
+  fingerprint, face or PIN they already use on their phone or computer. An authenticator app is the second choice. No
+  text-message codes are offered, because they can be stolen by swapping the SIM card.
+
+**"Lost your phone?" is confirmed by the broker, never by email alone.**
+
+1. On the two-step page (so the password was already typed), the person chooses "Ask my broker for help".
+2. Everyone in the brokerage who manages users gets an email. It tells them to check it is really the person, by
+   calling the number they already have or in person, and not by replying to the email.
+3. On People, a "Asked for help signing in" box lists the request. The broker ticks "I spoke with them and it is really
+   them", then chooses **Reset sign-in** or **Not them**.
+4. Reset removes the person's passkeys and authenticator, signs them out everywhere, and emails them a password reset
+   link.
+5. Requests expire after a day, and repeated asks within the day do not send more emails. Every step is in the audit
+   log: `core.auth.sign_in_help.asked`, `.reset` and `.declined`.
+6. An owner with no one else to ask is told to contact RightAlly support.
+
+Test accounts are made with an authenticator by default (as owners always were); `withoutTwoFactor()` makes someone
+who has not set one up.

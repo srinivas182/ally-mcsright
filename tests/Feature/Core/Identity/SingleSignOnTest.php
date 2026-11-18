@@ -19,7 +19,7 @@ use Modules\Core\Tenancy\Models\Tenant;
 beforeEach(function (): void {
     config(['services.google.client_id' => 'gid', 'services.google.client_secret' => 'gs', 'services.microsoft.client_id' => 'mid', 'services.microsoft.client_secret' => 'ms']);
     $this->tenant = $this->onTenantHost('acme');
-    $this->agent = User::factory()->create(['email' => 'pat@acme.test']);
+    $this->agent = User::factory()->withoutTwoFactor()->create(['email' => 'pat@acme.test']);
     Notification::fake();
 });
 
@@ -144,7 +144,7 @@ it('changes the sign-in email only after the new address is confirmed, telling t
     expect($this->agent->fresh()?->email)->toBe('pat.new@acme.test');
     Notification::assertSentOnDemand(EmailChanged::class, fn ($n, $c, object $notifiable): bool => $notifiable->routes['mail'] === 'pat@acme.test');
 
-    User::factory()->create(['email' => 'taken@acme.test']);
+    User::factory()->withoutTwoFactor()->create(['email' => 'taken@acme.test']);
     $this->actingAs($this->agent->fresh())->patch('/settings/profile', ['first_name' => 'Pat', 'last_name' => 'Lee', 'email' => 'taken@acme.test'])->assertSessionHasErrors('email');
     $this->actingAs($this->agent->fresh())->get(URL::temporarySignedRoute('email-change.confirm', now()->addHour(), ['token' => 'wrong']))->assertSessionHasErrors('email');
 });

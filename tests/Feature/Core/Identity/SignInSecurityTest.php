@@ -47,9 +47,18 @@ it('sends owners without a second factor to set one up', function (): void {
     $this->actingAs($owner->fresh())->get('/users')->assertOk();
 });
 
-it('lets agents choose, unless the brokerage requires it for everyone', function (): void {
-    $agent = User::factory()->create();
-    $this->actingAs($agent)->get('/agent')->assertOk();
+it('gives agents 14 days to add a second step, unless the brokerage requires it now (SX3)', function (): void {
+    $agent = User::factory()->withoutTwoFactor()->create();
+    $this->actingAs($agent)->get('/agent')->assertOk()->assertInertia(fn (Assert $page) => $page->where('security.secondFactorDaysLeft', 14)
+        ->where('security.secondFactorMissing', false));
+    $this->travel(13)->days();
+    $this->actingAs($agent)->get('/agent')->assertOk()->assertInertia(fn (Assert $page) => $page->where('security.secondFactorDaysLeft', 1));
+    $this->travel(1)->days();
+    $this->actingAs($agent)->get('/agent')->assertRedirect('/settings/security');
+    withTwoFactor($agent);
+    $this->actingAs($agent->fresh())->get('/agent')->assertOk()->assertInertia(fn (Assert $page) => $page->where('security.secondFactorDaysLeft', null));
+
+    $agent = User::factory()->withoutTwoFactor()->create();
 
     $this->tenant->forceFill(['require_two_factor' => true])->save();
     $this->actingAs($agent)->get('/agent')->assertRedirect('/settings/security');
@@ -77,7 +86,7 @@ it('trusts a device for 30 days after a successful 2FA check', function (): void
 });
 
 it('emails an alert for a sign-in from a new device, with a link to secure the account', function (): void {
-    $agent = User::factory()->create(['email' => 'agent@acme.test']);
+    $agent = User::factory()->withoutTwoFactor()->create(['email' => 'agent@acme.test']);
 
     $this->withHeader('User-Agent', CHROME_WIN)->post('/login', ['email' => 'agent@acme.test', 'password' => 'password']);
     auth()->logout();
@@ -106,7 +115,7 @@ it('emails an alert for a sign-in from a new device, with a link to secure the a
 
 it('lists sessions and signs out other devices with the password', function (): void {
     config(['session.driver' => 'database']); // as in production
-    $agent = User::factory()->create();
+    $agent = User::factory()->withoutTwoFactor()->create();
     addSession($agent, 'phone-session', SAFARI_IPHONE);
 
     $this->actingAs($agent)->withSession(['auth.password_confirmed_at' => time()])->get('/settings/security')->assertInertia(fn (Assert $page) => $page
@@ -118,7 +127,7 @@ it('lists sessions and signs out other devices with the password', function (): 
 });
 
 it('signs out other devices when the password changes', function (): void {
-    $agent = User::factory()->create();
+    $agent = User::factory()->withoutTwoFactor()->create();
     addSession($agent, 'old-laptop');
 
     $this->actingAs($agent)->put('/settings/password', [
@@ -131,7 +140,7 @@ it('signs out other devices when the password changes', function (): void {
 it('lets an owner reset a locked-out user\'s sign-in security, but not their own', function (): void {
     $owner = User::factory()->owner()->create();
     withTwoFactor($owner);
-    $agent = User::factory()->create();
+    $agent = User::factory()->withoutTwoFactor()->create();
     withTwoFactor($agent);
     addSession($agent, 'agent-session');
 
@@ -150,7 +159,7 @@ it('lets an owner reset a locked-out user\'s sign-in security, but not their own
 it('lets an owner sign a user out everywhere', function (): void {
     $owner = User::factory()->owner()->create();
     withTwoFactor($owner);
-    $agent = User::factory()->create();
+    $agent = User::factory()->withoutTwoFactor()->create();
     addSession($agent, 'lost-phone', SAFARI_IPHONE);
     TrustedDevice::query()->create(['user_id' => $agent->id, 'token_hash' => str_repeat('a', 64), 'label' => 'x', 'expires_at' => now()->addDays(5)]);
 

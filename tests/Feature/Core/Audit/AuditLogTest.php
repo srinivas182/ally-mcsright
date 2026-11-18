@@ -17,7 +17,7 @@ use Modules\Crm\LeadPond;
 beforeEach(function (): void {
     $this->tenant = $this->onTenantHost('acme');
     $this->owner = User::factory()->owner()->create(['first_name' => 'Maria']);
-    $this->agent = User::factory()->create(['first_name' => 'Pat']);
+    $this->agent = User::factory()->withoutTwoFactor()->create(['first_name' => 'Pat']);
 });
 
 function events(): Collection

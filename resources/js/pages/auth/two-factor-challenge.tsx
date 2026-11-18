@@ -1,4 +1,4 @@
-import { Form, Head, setLayoutProps } from '@inertiajs/react';
+import { Form, Head, router, setLayoutProps } from '@inertiajs/react';
 import { REGEXP_ONLY_DIGITS } from 'input-otp';
 import { useMemo, useState } from 'react';
 import InputError from '@/components/input-error';
@@ -12,7 +12,21 @@ import {
 import { OTP_MAX_LENGTH } from '@/hooks/use-two-factor-auth';
 import { store } from '@/routes/two-factor/login';
 
-export default function TwoFactorChallenge() {
+const HELP_MESSAGES: Record<string, string> = {
+    'sign-in-help-asked':
+        'We asked your broker to help. They will call you to check it is really you, then you will get an email to set up your sign-in again.',
+    'sign-in-help-support':
+        'There is no one else in your brokerage who can reset your sign-in. Please contact RightAlly support and we will help you.',
+};
+
+export default function TwoFactorChallenge({
+    status,
+}: {
+    status?: string | null;
+}) {
+    const [asking, setAsking] = useState(false);
+    const helpMessage = status ? HELP_MESSAGES[status] : undefined;
+
     const [showRecoveryInput, setShowRecoveryInput] = useState<boolean>(false);
     const [code, setCode] = useState<string>('');
 
@@ -135,6 +149,37 @@ export default function TwoFactorChallenge() {
                         </>
                     )}
                 </Form>
+
+                {/* SX3: lost the phone or key — the broker confirms it is really them, never email alone. */}
+                <section className="grid gap-2 rounded-lg border p-4 text-base">
+                    <h2 className="font-medium">Lost your phone?</h2>
+                    {helpMessage ? (
+                        <p role="status">{helpMessage}</p>
+                    ) : (
+                        <>
+                            <p className="text-muted-foreground">
+                                Ask your broker to reset your sign-in. They will
+                                call you first to make sure it is you.
+                            </p>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="lg"
+                                disabled={asking}
+                                onClick={() => {
+                                    setAsking(true);
+                                    router.post(
+                                        '/two-factor-challenge/help',
+                                        {},
+                                        { onFinish: () => setAsking(false) },
+                                    );
+                                }}
+                            >
+                                Ask my broker for help
+                            </Button>
+                        </>
+                    )}
+                </section>
             </div>
         </>
     );

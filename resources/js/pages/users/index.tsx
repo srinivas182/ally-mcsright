@@ -64,6 +64,12 @@ type Props = {
         total: number;
     };
     invitations: InvitationRow[];
+    signInHelp?: {
+        ulid: string;
+        name: string;
+        email: string;
+        asked_at: string;
+    }[];
     filters: { search: string; kind: string; status: string };
     kinds: { value: string; label: string }[];
     agents: { id: number; name: string }[];
@@ -148,6 +154,10 @@ export default function UsersIndex(props: Props) {
                         </Button>
                     )}
                 </header>
+
+                {(props.signInHelp ?? []).length > 0 && (
+                    <SignInHelpRequests requests={props.signInHelp ?? []} />
+                )}
 
                 {invitations.length > 0 && (
                     <section className="grid gap-2 rounded-lg border p-4">
@@ -574,3 +584,77 @@ export default function UsersIndex(props: Props) {
 UsersIndex.layout = {
     breadcrumbs: [{ title: 'People', href: '/users' }],
 };
+
+/**
+ * SX3: people who lost the phone they sign in with. The broker checks it is really them (by calling the number they
+ * already have, or in person) before resetting their sign-in.
+ */
+function SignInHelpRequests({
+    requests,
+}: {
+    requests: NonNullable<Props['signInHelp']>;
+}) {
+    const [checked, setChecked] = useState<Record<string, boolean>>({});
+
+    return (
+        <section
+            aria-labelledby="sign-in-help"
+            className="grid gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-base text-amber-950 dark:bg-amber-950 dark:text-amber-100"
+        >
+            <h2 id="sign-in-help" className="font-medium">
+                Asked for help signing in ({requests.length})
+            </h2>
+            {requests.map((r) => (
+                <div key={r.ulid} className="grid gap-2">
+                    <p>
+                        <strong>{r.name}</strong> ({r.email}) lost the phone
+                        they sign in with. Call them on the number you already
+                        have for them first.
+                    </p>
+                    <label className="flex items-center gap-2">
+                        <input
+                            type="checkbox"
+                            className="size-5"
+                            checked={checked[r.ulid] ?? false}
+                            onChange={(e) =>
+                                setChecked({
+                                    ...checked,
+                                    [r.ulid]: e.target.checked,
+                                })
+                            }
+                        />
+                        I spoke with them and it is really them
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                        <Button
+                            size="lg"
+                            disabled={!checked[r.ulid]}
+                            onClick={() =>
+                                router.post(
+                                    `/users/sign-in-help/${r.ulid}/reset`,
+                                    { confirmed: true },
+                                    { preserveScroll: true },
+                                )
+                            }
+                        >
+                            Reset sign-in
+                        </Button>
+                        <Button
+                            size="lg"
+                            variant="outline"
+                            onClick={() =>
+                                router.post(
+                                    `/users/sign-in-help/${r.ulid}/decline`,
+                                    {},
+                                    { preserveScroll: true },
+                                )
+                            }
+                        >
+                            Not them
+                        </Button>
+                    </div>
+                </div>
+            ))}
+        </section>
+    );
+}

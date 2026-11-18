@@ -5,6 +5,7 @@ import { AppSidebar } from '@/components/app-sidebar';
 import { AppSidebarHeader } from '@/components/app-sidebar-header';
 import { CreditConsentHost } from '@/components/credit-consent';
 import { CreditsBanner } from '@/components/credits-banner';
+import { SecondFactorReminder } from '@/components/second-factor-reminder';
 import { ImpersonationBanner } from '@/components/impersonation-banner';
 import { MobileNav } from '@/components/mobile-nav';
 import { PaymentsTestBanner } from '@/components/payments-test-banner';
@@ -42,6 +43,7 @@ export default function AppSidebarLayout({
                 <PaymentsTestBanner />
                 <ImpersonationBanner />
                 <CreditsBanner />
+                <SecondFactorReminder />
                 <AppSidebarHeader breadcrumbs={breadcrumbs} />
                 <ChooseView />
                 <div className="pb-20 md:pb-0">{children}</div>

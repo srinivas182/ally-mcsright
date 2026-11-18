@@ -57,7 +57,7 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
-     * @return array{secondFactorMissing: bool, passkeyPrompt: bool}|null
+     * @return array{secondFactorMissing: bool, secondFactorDaysLeft: int|null, passkeyPrompt: bool}|null
      */
     private function security(Request $request): ?array
     {
@@ -71,7 +71,8 @@ class HandleInertiaRequests extends Middleware
         $dismissed = $user->passkey_prompt_dismissed_at;
 
         return [
-            'secondFactorMissing' => $policy->requires($user) && ! $policy->satisfied($user),
+            'secondFactorMissing' => $policy->mustSetUpNow($user),
+            'secondFactorDaysLeft' => $policy->daysLeft($user), // SX3: the reminder during the grace period
             'passkeyPrompt' => Features::canManagePasskeys() && ! $hasPasskey && ($dismissed === null || $dismissed->lt(now()->subDays(30))),
         ];
     }
