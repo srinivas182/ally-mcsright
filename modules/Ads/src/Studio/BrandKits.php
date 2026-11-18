@@ -168,12 +168,6 @@ final class BrandKits
     }
 
     /**
-     * Saves the person's style choices without touching the rest of their kit: their style and finish (unless the
-     * brokerage locks the brand to styles that exclude it) and the favourites Autopilot rotates through.
-     *
-     * @param  list<string>  $favorites
-     */
-    /**
      * BV1 (specs/core/08): the owner approved the brand guide and asked to use its colours and fonts. The brokerage
      * kit takes the first two colours (primary, accent), fonts from the curated list only, and the disclaimer.
      */
@@ -206,6 +200,12 @@ final class BrandKits
         app(AuditLogger::class)->record('ads.brand_kit.from_guide', metadata: ['colors' => count($e->colors), 'fonts' => count($known)]);
     }
 
+    /**
+     * Saves the person's style choices without touching the rest of their kit: their style and finish (unless the
+     * brokerage locks the brand to styles that exclude it) and the favourites Autopilot rotates through.
+     *
+     * @param  list<string>  $favorites
+     */
     public function saveStyle(User $user, string $style, ?string $finish, array $favorites): void
     {
         $kit = $this->forUser($user);

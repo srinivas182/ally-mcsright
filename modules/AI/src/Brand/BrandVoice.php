@@ -69,7 +69,7 @@ final class BrandVoice
             array_slice($words ?? [], 0, 40)))));
         DB::connection(Connections::cell())->table('ai_brand_voice')->updateOrInsert(['tenant_id' => $this->tenants->id()], [
             'tone' => $in['tone'], 'use_words' => json_encode($clean($in['use_words'] ?? [])), 'avoid_words' => json_encode($clean($in['avoid_words'] ?? [])),
-            'emojis' => (bool) ($in['emojis'] ?? false), 'sign_off' => trim((string) ($in['sign_off'] ?? '')) !== '' ? mb_substr(trim(strip_tags((string) $in['sign_off'])), 0, 120) : null,
+            'emojis' => (bool) ($in['emojis'] ?? false), 'sign_off' => ($signOff = trim(strip_tags((string) ($in['sign_off'] ?? '')))) !== '' ? mb_substr($signOff, 0, 120) : null,
             'spanish' => ($in['spanish'] ?? 'usted') === 'tu' ? 'tu' : 'usted', 'name_brokerage' => (bool) ($in['name_brokerage'] ?? true), 'guide' => null,
             'approved_by' => $by->id, 'approved_at' => now(), 'updated_at' => now(), 'created_at' => now()]);
         unset($this->memo[$this->tenants->id()]);
@@ -139,10 +139,11 @@ final class BrandVoice
         return $v !== null && ! (bool) $v->emojis ? trim((string) preg_replace('/[\x{1F000}-\x{1FAFF}\x{2600}-\x{27BF}\x{FE0F}]/u', '', $text)) : $text;
     }
 
+    /** @param list<string> $issues */
     public function record(string $feature, array $issues): void
     {
         DB::connection(Connections::cell())->table('ai_brand_checks')->insert(['tenant_id' => $this->tenants->id(), 'feature' => mb_substr($feature, 0, 60),
-            'passed' => $issues === [], 'issues' => $issues !== [] ? json_encode(array_values($issues)) : null, 'created_at' => now()]);
+            'passed' => $issues === [], 'issues' => $issues !== [] ? json_encode($issues) : null, 'created_at' => now()]);
     }
 
     /**
@@ -168,7 +169,7 @@ final class BrandVoice
         $on = $rows->where('passed', true)->count();
 
         return ['checked' => $rows->count(), 'on_brand' => $on, 'percent' => $rows->count() > 0 ? (int) round(100 * $on / $rows->count()) : null,
-            'issues' => array_values(array_map(fn (string $k, int $c): array => ['issue' => $k, 'count' => $c], array_keys(array_slice($issues, 0, 10, true)), array_slice($issues, 0, 10, true))),
+            'issues' => array_map(fn (string $k, int $c): array => ['issue' => $k, 'count' => $c], array_keys(array_slice($issues, 0, 10, true)), array_slice($issues, 0, 10, true)),
             'features' => array_values($features)];
     }
 
