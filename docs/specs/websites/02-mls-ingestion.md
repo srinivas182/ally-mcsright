@@ -194,3 +194,32 @@ MLS ingestion.
 3. **AI photo tagging** (kitchen island, pool, single level) for AIlly and search.
 4. **Precomputed distances** to schools, transit, groceries and coffee per listing (faster, cheaper AIlly).
 5. **Cross-MLS de-duplication** of the same property listed in overlapping MLSs.
+
+## Fast search and one home per listing (SR1: C05, part of C03)
+
+**Cross-MLS de-duplication (C03 item 5).**
+
+- Each listing has an address key: the street number, the street name with common words shortened (Street → st, North → n …), the unit and the 5-digit ZIP (`Sync\Duplicates`).
+- When on-market copies with the same key exist in two or more MLSs, one copy is shown: the one with the most photos, then the latest update. The others point to it (`duplicate_of_id`, `duplicate_of_source_id`).
+- A copy is hidden only from brokerages also licensed for the MLS of the shown copy. A brokerage licensed for just one MLS still sees that MLS's copy.
+- When the shown copy leaves the market, the next copy takes its place.
+- Links are refreshed after every sync (`RefreshListingSearch`). For a full pass, run `php artisan listings:search-rebuild --duplicates`.
+
+**Near a point.**
+
+- Searches take `near=lat,lng,miles` (0.1 to 100 miles). Results can be sorted closest first, and each result shows how many miles away it is.
+- On the back-office Listings page, **Near me: 1, 3 or 10 miles** uses the browser's location after the browser asks the agent.
+- Only listings whose address may be shown are included.
+
+**Fast search server (C05).** HQ connects it in Outside services → Fast listing search. The options are **Typesense (recommended, on our servers)**, Meilisearch and Amazon OpenSearch.
+
+- **Off:** the database answers, as before.
+- **Test:** the database still answers. After the page is sent, the server answers the same first-page question, and the two are compared: how many results match, how many each found, and how fast each was. HQ sees this under HQ → MLS → Fast search.
+- **Live:** the server answers with typo tolerance ("Ostin" finds Austin), map box, radius and every filter. If it fails, the database answers.
+- The server holds only on-market listings that may be shown on the internet, and returns ids only. Listings are then loaded through the MLS licence and display rules, so nothing those rules hide can appear.
+- The index follows every sync. HQ can **Rebuild the index** (queued), or run `php artisan listings:search-rebuild`.
+- A drawn area (polygon) is always answered by the database.
+
+**Still open (C03).** AI photo tagging (item 3) needs an image-reading AI route. Precomputed distances to schools, transit, groceries and coffee (item 4) need a points-of-interest data source. Both are left for a later sprint.
+
+Tests: `tests/Feature/Listings/FastSearchTest.php`.

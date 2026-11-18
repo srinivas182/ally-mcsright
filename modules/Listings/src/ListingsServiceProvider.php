@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Listings;
 
 use App\Models\User;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Modules\Core\Identity\Enums\UserKind;
@@ -32,6 +33,8 @@ final class ListingsServiceProvider extends ServiceProvider
     {
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
+        // SR1: cross-MLS duplicates and the fast search server follow every sync.
+        Event::listen(Events\ListingsChanged::class, fn (Events\ListingsChanged $e) => $e->listingIds !== [] ? Jobs\RefreshListingSearch::dispatch($e->listingIds) : null);
         // PW1 (specs/core/17): listings in universal search, by MLS number or street, from licensed MLSs only.
         $this->app->make(SearchRegistry::class)->register('listings', ['en' => 'Listings', 'es' => 'Propiedades'], 30,
             function (User $user, string $q, int $limit): array {
@@ -59,7 +62,7 @@ final class ListingsServiceProvider extends ServiceProvider
                         'href' => '/listings/'.$l->ulid])->all());
             });
         if ($this->app->runningInConsole()) {
-            $this->commands([Console\SyncListings::class, Console\ReconcileListings::class]);
+            $this->commands([Console\SyncListings::class, Console\ReconcileListings::class, Console\RebuildSearch::class]);
         }
 
         Gate::define('hq.mls.manage', fn (User $user): bool => $user->kind === UserKind::HqStaff);

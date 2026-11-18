@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 use Modules\Core\Http\Middleware\EnsureHqConsole;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
 use Modules\Listings\Http\Controllers\HqMlsController;
+use Modules\Listings\Http\Controllers\HqSearchController;
 use Modules\Listings\Http\Controllers\ListingsController;
 use Modules\Listings\Http\Controllers\MlsSettingsController;
 
@@ -23,6 +24,9 @@ Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.mls.manage'])
         Route::post('profiles', [HqMlsController::class, 'saveProfile'])->name('profiles.save');
         Route::post('licences/{licence}/approve', [HqMlsController::class, 'approve'])->name('licences.approve');
         Route::post('licences/{licence}/revoke', [HqMlsController::class, 'revoke'])->name('licences.revoke');
+        // SR1: the fast search server.
+        Route::get('search', [HqSearchController::class, 'index'])->name('search');
+        Route::post('search/rebuild', [HqSearchController::class, 'rebuild'])->middleware('throttle:3,10')->name('search.rebuild');
     });
 
 // Settings → MLS (brokerage owners).

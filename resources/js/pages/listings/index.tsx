@@ -22,6 +22,7 @@ export type ListingCard = {
     postal_code: string | null;
     photo: string | null;
     reduced: boolean;
+    miles?: number | null;
     attribution: string;
     logo: string | null;
     stale: boolean;
@@ -35,6 +36,7 @@ type Filters = {
     min_sqft: number | null;
     statuses: string[];
     sort: string;
+    near: [number, number, number] | null;
     page: number;
     per_page: number;
 };
@@ -55,6 +57,7 @@ const sortLabels: Record<string, string> = {
     price_desc: 'Price: high to low',
     sqft_desc: 'Largest',
     reduced: 'Price reduced',
+    distance: 'Closest first',
 };
 export const money = (n: number | null) =>
     n === null
@@ -84,13 +87,31 @@ export default function Listings({
         baths: filters.baths ?? '',
         statuses: filters.statuses,
         sort: filters.sort,
+        near: filters.near ? filters.near.join(',') : '',
     });
+    const [locating, setLocating] = useState(false);
     const go = (extra: Record<string, unknown> = {}) =>
         router.get(
             '/listings',
             { ...f, statuses: f.statuses.join(','), ...extra },
             { preserveState: true, preserveScroll: true },
         );
+    // SR1: homes near where the agent is standing (the browser asks first).
+    const nearMe = (miles: number) => {
+        if (!navigator.geolocation) {
+            return;
+        }
+        setLocating(true);
+        navigator.geolocation.getCurrentPosition(
+            (p) => {
+                setLocating(false);
+                const near = `${p.coords.latitude.toFixed(5)},${p.coords.longitude.toFixed(5)},${miles}`;
+                setF({ ...f, near, sort: 'distance' });
+                go({ near, sort: 'distance', page: 1 });
+            },
+            () => setLocating(false),
+        );
+    };
     const pages = Math.max(1, Math.ceil(total / per_page));
 
     return (
@@ -205,14 +226,53 @@ export default function Listings({
                                     setF({ ...f, sort: e.target.value })
                                 }
                             >
-                                {sorts.map((s) => (
-                                    <option key={s} value={s}>
-                                        {sortLabels[s] ?? s}
-                                    </option>
-                                ))}
+                                {sorts
+                                    .filter(
+                                        (s) =>
+                                            s !== 'distance' || f.near !== '',
+                                    )
+                                    .map((s) => (
+                                        <option key={s} value={s}>
+                                            {sortLabels[s] ?? s}
+                                        </option>
+                                    ))}
                             </select>
                             <Button>Search</Button>
                         </form>
+                        <div className="flex flex-wrap items-center gap-2 text-sm">
+                            <span>Near me:</span>
+                            {[1, 3, 10].map((m) => (
+                                <Button
+                                    key={m}
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={locating}
+                                    onClick={() => nearMe(m)}
+                                >
+                                    {m} {m === 1 ? 'mile' : 'miles'}
+                                </Button>
+                            ))}
+                            {f.near !== '' && (
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => {
+                                        setF({
+                                            ...f,
+                                            near: '',
+                                            sort: 'newest',
+                                        });
+                                        go({
+                                            near: '',
+                                            sort: 'newest',
+                                            page: 1,
+                                        });
+                                    }}
+                                >
+                                    Anywhere
+                                </Button>
+                            )}
+                        </div>
                         <p className="text-sm text-muted-foreground">
                             {total.toLocaleString()} homes
                         </p>
@@ -281,6 +341,11 @@ export default function Listings({
                                                         .filter(Boolean)
                                                         .join(', ')}
                                                 </span>
+                                                {l.miles != null && (
+                                                    <span>
+                                                        {l.miles} miles away
+                                                    </span>
+                                                )}
                                                 <span className="text-xs text-muted-foreground">
                                                     {l.attribution}
                                                 </span>

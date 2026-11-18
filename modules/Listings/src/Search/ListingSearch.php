@@ -8,18 +8,24 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Modules\Core\Support\Connections;
+use Modules\Listings\Access\MlsAccess;
 use Modules\Listings\Display\ListingPresenter;
 use Modules\Listings\Media\Photos;
 use Modules\Listings\Models\Listing;
+use Throwable;
 
 /**
  * Listing search for the back office and the public websites (specs/websites/02): only MLSs the brokerage is
  * licensed for, only what the MLS rules allow (every result passes ListingPresenter), with filters, a map area,
- * sorting and paging. Indexed columns only; a search engine can replace the query later behind this class.
+ * sorting and paging. Indexed columns only.
+ *
+ * SR1: a home on two MLSs is shown once (Sync\Duplicates); "near" finds homes within a distance of a point and
+ * shows how far each is; and when HQ connects a fast search server (SearchIndex), it answers in Live mode and is
+ * compared with the database in Test mode.
  */
 final class ListingSearch
 {
-    public const SORTS = ['newest', 'price_asc', 'price_desc', 'sqft_desc', 'reduced'];
+    public const SORTS = ['newest', 'price_asc', 'price_desc', 'sqft_desc', 'reduced', 'distance'];
 
     public const STATUSES = ['Active', 'Coming Soon', 'Active Under Contract', 'Pending'];
 
@@ -30,12 +36,47 @@ final class ListingSearch
     public function search(int $tenantId, array $f, string $scope = 'idx'): array
     {
         $filters = self::clean($f);
-        $query = $this->query($tenantId, $filters, $scope);
-        if ($filters['polygon'] !== null) {
-            $query->whereKey($this->insidePolygon(clone $query, $filters['polygon']));
+        $index = app(SearchIndex::class);
+        $server = $filters['polygon'] === null ? $index->engine() : null; // a drawn area is answered by the database
+        $started = microtime(true);
+        $rows = null;
+        $total = 0;
+        if ($server !== null && $server['mode'] === 'live') {
+            try {
+                $found = $server['engine']->search($this->serverQuery($tenantId, $filters, $scope));
+                // The server chose and ordered them; the MLS licence and display rules are checked again here.
+                $byId = Listing::query()->visibleTo($tenantId, $scope)->where('internet_display_allowed', true)->whereNull('off_market_at')
+                    ->whereKey($found['ids'] ?: [0])->with('source.rulesProfile')->get()->keyBy('id');
+                $rows = collect($found['ids'])->map(fn (int $id) => $byId->get($id))->filter()->values();
+                $total = $found['total'];
+            } catch (Throwable $e) {
+                report($e); // the database answers instead
+                $rows = null;
+            }
         }
-        $total = (clone $query)->count();
-        $rows = $query->with('source.rulesProfile')->forPage($filters['page'], $filters['per_page'])->get();
+        if ($rows === null) {
+            $query = $this->query($tenantId, $filters, $scope);
+            if ($filters['polygon'] !== null) {
+                $query->whereKey($this->insidePolygon(clone $query, $filters['polygon']));
+            }
+            if ($filters['near'] !== null) {
+                $query->whereKey($this->withinDistance(clone $query, $filters['near']));
+            }
+            $total = (clone $query)->count();
+            $rows = $query->with('source.rulesProfile')->forPage($filters['page'], $filters['per_page'])->get();
+            if ($server !== null && $server['mode'] === 'test' && $filters['page'] === 1) {
+                $ids = array_values($rows->pluck('id')->map(fn ($v): int => (int) $v)->all());
+                $ms = (microtime(true) - $started) * 1000;
+                $ask = fn (): array => $server['engine']->search($this->serverQuery($tenantId, $filters, $scope));
+                $done = false; // once per search, after the page is sent
+                app()->terminating(function () use (&$done, $index, $ids, $total, $ms, $ask): void {
+                    if (! $done) {
+                        $done = true;
+                        $index->compare($ids, $total, $ms, $ask);
+                    }
+                });
+            }
+        }
 
         $results = [];
         foreach ($rows as $l) {
@@ -44,11 +85,60 @@ final class ListingSearch
                 $results[] = $shown + ['photo' => Photos::url($l->cover_path), 'reduced' => $l->original_list_price_cents !== null && $l->list_price_cents !== null
                     && $l->list_price_cents < $l->original_list_price_cents, 'listed' => $l->on_market_date?->toDateString(),
                     'added_at' => $l->created_at?->toIso8601String(), 'price_changed_at' => $l->price_changed_at?->toIso8601String(),
-                    'url' => self::publicUrl($l->ulid, self::label($shown))];
+                    'url' => self::publicUrl($l->ulid, self::label($shown)),
+                    'miles' => $filters['near'] !== null && $l->latitude !== null && $l->longitude !== null
+                        ? round(self::miles($filters['near'][0], $filters['near'][1], (float) $l->latitude, (float) $l->longitude), 1) : null];
             }
         }
 
         return ['results' => $results, 'total' => $total, 'page' => $filters['page'], 'per_page' => $filters['per_page'], 'filters' => $filters];
+    }
+
+    /**
+     * The same question for the search server: the licensed MLSs, prices in cents, and the change date as a time.
+     *
+     * @param  array<string, mixed>  $filters  already cleaned
+     * @return array<string, mixed>
+     */
+    private function serverQuery(int $tenantId, array $filters, string $scope): array
+    {
+        return ['q' => $filters['q'], 'sources' => app(MlsAccess::class)->licensedSources($tenantId, $scope) ?: [0], 'statuses' => $filters['statuses'], 'types' => $filters['types'],
+            'min_price' => $filters['min_price'] !== null ? $filters['min_price'] * 100 : null, 'max_price' => $filters['max_price'] !== null ? $filters['max_price'] * 100 : null,
+            'beds' => $filters['beds'], 'baths' => $filters['baths'], 'min_sqft' => $filters['min_sqft'], 'bounds' => $filters['bounds'], 'near' => $filters['near'],
+            'agent' => $filters['agent_mls_id'], 'states' => $filters['states'], 'since' => $filters['since'] !== null ? CarbonImmutable::parse($filters['since'])->getTimestamp() : null,
+            'sort' => $filters['sort'], 'page' => $filters['page'], 'per_page' => $filters['per_page']];
+    }
+
+    /**
+     * Ids of listings within a distance of a point: a box narrows the query, then each is measured. Capped at 5,000.
+     *
+     * @param  Builder<Listing>  $query
+     * @param  array{0: float, 1: float, 2: float}  $near
+     * @return list<int>
+     */
+    private function withinDistance(Builder $query, array $near): array
+    {
+        [$lat, $lng, $miles] = $near;
+        $dLat = $miles / 69.0;
+        $dLng = $miles / max(1.0, 69.0 * cos(deg2rad($lat)));
+        $rows = $query->reorder()->whereBetween('latitude', [$lat - $dLat, $lat + $dLat])->whereBetween('longitude', [$lng - $dLng, $lng + $dLng])
+            ->where('address_display_allowed', true)->limit(5000)->get(['id', 'latitude', 'longitude']);
+        $ids = [];
+        foreach ($rows as $r) {
+            if (self::miles($lat, $lng, (float) $r->latitude, (float) $r->longitude) <= $miles) {
+                $ids[] = (int) $r->id;
+            }
+        }
+
+        return $ids;
+    }
+
+    /** Straight-line distance in miles (haversine). */
+    public static function miles(float $lat1, float $lng1, float $lat2, float $lng2): float
+    {
+        $a = sin(deg2rad($lat2 - $lat1) / 2) ** 2 + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin(deg2rad($lng2 - $lng1) / 2) ** 2;
+
+        return 3958.8 * 2 * atan2(sqrt($a), sqrt(1 - $a));
     }
 
     /**
@@ -64,6 +154,9 @@ final class ListingSearch
         $query = $this->query($tenantId, $filters, $scope)->where('address_display_allowed', true)->whereNotNull('latitude')->whereNotNull('longitude');
         if ($filters['polygon'] !== null) {
             $query->whereKey($this->insidePolygon(clone $query, $filters['polygon']));
+        }
+        if ($filters['near'] !== null) {
+            $query->whereKey($this->withinDistance(clone $query, $filters['near']));
         }
         $rows = $query->limit($limit + 1)->get(['id', 'ulid', 'latitude', 'longitude', 'list_price_cents', 'beds_total']);
         $pins = [];
@@ -156,8 +249,11 @@ final class ListingSearch
      */
     public function query(int $tenantId, array $filters, string $scope = 'idx'): Builder
     {
+        $licensed = app(MlsAccess::class)->licensedSources($tenantId, $scope);
         $q = Listing::query()->visibleTo($tenantId, $scope)->where('internet_display_allowed', true)->whereNull('off_market_at')
-            ->whereIn('standard_status', $filters['statuses']);
+            ->whereIn('standard_status', $filters['statuses'])
+            // SR1: a copy of a home listed on another licensed MLS is shown once.
+            ->where(fn (Builder $w) => $w->whereNull('duplicate_of_source_id')->orWhereNotIn('duplicate_of_source_id', $licensed ?: [0]));
 
         if ($filters['q'] !== '') {
             $term = $filters['q'];
@@ -208,6 +304,10 @@ final class ListingSearch
             'price_desc' => $q->orderByDesc('list_price_cents')->orderBy('id'),
             'sqft_desc' => $q->orderByDesc('living_area_sqft')->orderBy('id'),
             'reduced' => $q->whereNotNull('price_changed_at')->orderByDesc('price_changed_at')->orderBy('id'),
+            'distance' => $filters['near'] !== null
+                ? $q->orderByRaw('((latitude - ?) * (latitude - ?)) + (((longitude - ?) * ?) * ((longitude - ?) * ?))', [$filters['near'][0], $filters['near'][0],
+                    $filters['near'][1], cos(deg2rad($filters['near'][0])), $filters['near'][1], cos(deg2rad($filters['near'][0]))])->orderBy('id')
+                : $q->orderByDesc('on_market_date')->orderByDesc('id'),
             default => $q->orderByDesc('on_market_date')->orderByDesc('id'),
         };
     }
@@ -226,7 +326,7 @@ final class ListingSearch
 
     /**
      * @param  array<string, mixed>  $f
-     * @return array{q: string, min_price: int|null, max_price: int|null, beds: int|null, baths: int|null, min_sqft: int|null, types: list<string>, statuses: list<string>, bounds: list<float>|null, polygon: list<array{0: float, 1: float}>|null, agent_mls_id: string|null, since: string|null, states: list<string>, sort: string, page: int, per_page: int}
+     * @return array{q: string, min_price: int|null, max_price: int|null, beds: int|null, baths: int|null, min_sqft: int|null, types: list<string>, statuses: list<string>, bounds: list<float>|null, polygon: list<array{0: float, 1: float}>|null, near: array{0: float, 1: float, 2: float}|null, agent_mls_id: string|null, since: string|null, states: list<string>, sort: string, page: int, per_page: int}
      */
     public static function clean(array $f): array
     {
@@ -252,21 +352,29 @@ final class ListingSearch
             }
             $polygon = count($points) >= 3 ? $points : null;
         }
+        // Near a point: "lat,lng,miles" (a tenth of a mile to 100 miles).
+        $near = null;
+        if (is_string($f['near'] ?? null) && preg_match('/^-?\d+(\.\d+)?,-?\d+(\.\d+)?,\d+(\.\d+)?$/', $f['near']) === 1) {
+            [$lat, $lng, $miles] = array_map('floatval', explode(',', $f['near']));
+            if (abs($lat) <= 90 && abs($lng) <= 180 && $miles >= 0.1 && $miles <= 100) {
+                $near = [$lat, $lng, $miles];
+            }
+        }
         $since = null;
         if (is_string($f['since'] ?? null)) {
             try {
                 $since = CarbonImmutable::parse($f['since'])->format('Y-m-d H:i:s');
-            } catch (\Throwable) {
+            } catch (Throwable) {
                 $since = null;
             }
         }
 
         return ['q' => mb_substr(trim((string) (is_scalar($f['q'] ?? null) ? $f['q'] : '')), 0, 80), 'min_price' => $int('min_price', 1_000_000_000), 'max_price' => $int('max_price', 1_000_000_000),
             'beds' => $int('beds', 20), 'baths' => $int('baths', 20), 'min_sqft' => $int('min_sqft', 1_000_000), 'types' => $list('types'),
-            'statuses' => $statuses !== [] ? $statuses : ['Active', 'Coming Soon'], 'bounds' => $bounds, 'polygon' => $polygon,
+            'statuses' => $statuses !== [] ? $statuses : ['Active', 'Coming Soon'], 'bounds' => $bounds, 'polygon' => $polygon, 'near' => $near,
             'agent_mls_id' => is_string($f['agent_mls_id'] ?? null) && $f['agent_mls_id'] !== '' ? mb_substr($f['agent_mls_id'], 0, 30) : null, 'since' => $since,
             'states' => array_values(array_filter(array_map(fn ($s): string => strtoupper((string) $s), (array) ($f['states'] ?? [])), fn (string $s): bool => preg_match('/^[A-Z]{2}$/', $s) === 1)),
-            'sort' => in_array($f['sort'] ?? null, self::SORTS, true) ? (string) $f['sort'] : 'newest',
+            'sort' => in_array($f['sort'] ?? null, self::SORTS, true) && ($f['sort'] !== 'distance' || $near !== null) ? (string) $f['sort'] : 'newest',
             'page' => max(1, min(500, (int) (is_numeric($f['page'] ?? null) ? $f['page'] : 1))), 'per_page' => max(1, min(48, (int) (is_numeric($f['per_page'] ?? null) ? $f['per_page'] : 24)))];
     }
 }
