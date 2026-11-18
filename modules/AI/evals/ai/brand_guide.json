@@ -1,0 +1,95 @@
+{
+    "prompt": "ai.brand_guide",
+    "feature": "ai.brand_guide",
+    "cases": [
+        {
+            "name": "reads tone, words, colours and fonts from a short guide",
+            "inputs": {},
+            "untrusted": [
+                "Hill Country Realty brand guide. Our voice is warm, neighbourly and plain. Say 'home', 'neighbours' and 'local'. Never say 'deal of a lifetime', 'cheap' or 'luxury'. No emojis. Sign off with 'Your neighbours at Hill Country Realty'. Colours: forest green #1F4D3A and sand #E8DCC4. Fonts: Playfair Display for headings, Inter for text. Tagline: Rooted here. Equal Housing Opportunity must appear on every ad."
+            ],
+            "expect": {
+                "json_keys": [
+                    "tone",
+                    "use_words",
+                    "avoid_words",
+                    "emojis",
+                    "sign_off",
+                    "colors",
+                    "fonts",
+                    "taglines",
+                    "disclaimer"
+                ],
+                "fields": {
+                    "tone": {
+                        "contains_any": ["warm", "plain"]
+                    },
+                    "avoid_words": {
+                        "contains_all": ["cheap"]
+                    },
+                    "colors": {
+                        "contains_all": ["#1F4D3A"]
+                    },
+                    "sign_off": {
+                        "contains_all": ["neighbours"]
+                    }
+                }
+            },
+            "golden": "{\"tone\": \"warm\", \"use_words\": [\"home\", \"neighbours\", \"local\"], \"avoid_words\": [\"deal of a lifetime\", \"cheap\", \"luxury\"], \"emojis\": false, \"sign_off\": \"Your neighbours at Hill Country Realty\", \"colors\": [\"#1F4D3A\", \"#E8DCC4\"], \"fonts\": [\"Playfair Display\", \"Inter\"], \"taglines\": [\"Rooted here\"], \"disclaimer\": \"Equal Housing Opportunity\"}"
+        },
+        {
+            "name": "leaves out what the guide does not say",
+            "inputs": {},
+            "untrusted": [
+                "Acme Realty logo usage: keep clear space around the logo. Use the navy logo on light backgrounds."
+            ],
+            "expect": {
+                "json_keys": [
+                    "tone",
+                    "use_words",
+                    "avoid_words",
+                    "emojis",
+                    "colors"
+                ],
+                "fields": {
+                    "avoid_words": {
+                        "max_words": 0
+                    },
+                    "use_words": {
+                        "max_words": 0
+                    }
+                }
+            },
+            "golden": "{\"tone\": \"warm\", \"use_words\": [], \"avoid_words\": [], \"emojis\": false, \"sign_off\": \"\", \"colors\": [], \"fonts\": [], \"taglines\": [], \"disclaimer\": \"\"}"
+        },
+        {
+            "name": "a Spanish guide: formal tone, words to avoid",
+            "inputs": {},
+            "untrusted": [
+                "Guía de marca de Casa Sol Realty. Nuestro tono es formal y profesional. Nunca use las palabras 'barato' ni 'ganga'. Sin emojis. Color principal #0B3D91. Fuente: Montserrat."
+            ],
+            "expect": {
+                "json_keys": [
+                    "tone",
+                    "use_words",
+                    "avoid_words",
+                    "emojis",
+                    "colors",
+                    "fonts"
+                ],
+                "fields": {
+                    "tone": {
+                        "contains_any": ["formal"]
+                    },
+                    "avoid_words": {
+                        "contains_all": ["barato"]
+                    },
+                    "colors": {
+                        "contains_all": ["#0B3D91"]
+                    }
+                }
+            },
+            "golden": "{\"tone\": \"formal\", \"use_words\": [], \"avoid_words\": [\"barato\", \"ganga\"], \"emojis\": false, \"sign_off\": \"\", \"colors\": [\"#0B3D91\"], \"fonts\": [\"Montserrat\"], \"taglines\": [], \"disclaimer\": \"\"}"
+        }
+    ]
+}

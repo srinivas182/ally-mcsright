@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\AI\Security;
 
+use Modules\AI\Brand\BrandVoice;
 use Modules\AI\Data\AiTask;
 use Modules\AI\Support\PromptTemplate;
 
@@ -60,8 +61,11 @@ final class PromptBuilder
 
         $user = $redactor->redact(implode("\n\n", $parts));
 
+        // BV1 (specs/core/08): people-facing writing follows the brokerage's Brand Voice.
+        $voice = $template->voice ? app(BrandVoice::class)->instructions() : null;
+
         return [
-            'system' => self::PREAMBLE."\n\n".$template->body,
+            'system' => self::PREAMBLE."\n\n".$template->body.($voice !== null ? "\n\n".$voice : ''),
             'user' => $user,
             // What the answer may legitimately refer back to (before redaction placeholders matter).
             'permitted' => $user,

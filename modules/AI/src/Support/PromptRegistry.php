@@ -54,6 +54,7 @@ final class PromptRegistry
 
         preg_match('/^version:\s*(\S+)\s*$/m', $m[1], $version);
 
-        return new PromptTemplate($key, $version[1] ?? throw new RuntimeException("Prompt [{$key}] has no version."), trim($m[2]));
+        return new PromptTemplate($key, $version[1] ?? throw new RuntimeException("Prompt [{$key}] has no version."), trim($m[2]),
+            preg_match('/^voice:\s*true\s*$/m', $m[1]) === 1);
     }
 }

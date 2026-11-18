@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Modules\Ads;
 
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Modules\AI\FeatureCatalog;
 use Modules\AI\Support\PromptRegistry;
 use Modules\Core\Access\PermissionRegistry;
+use Modules\Core\Branding\BrandGuideApproved;
 use Modules\Core\Branding\EmailSignature;
 use Modules\Core\Brief\DailyBriefs;
 use Modules\Core\Identity\Enums\UserKind;
@@ -47,6 +49,9 @@ final class AdsServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // BV1: an approved brand guide's colours and fonts go into the brokerage's Studio brand kit.
+        Event::listen(BrandGuideApproved::class,
+            fn (BrandGuideApproved $e) => $this->app->make(Studio\BrandKits::class)->fromBrandGuide($e));
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'ads');

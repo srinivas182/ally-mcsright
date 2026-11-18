@@ -1,5 +1,6 @@
 ---
 version: 1
+voice: true
 ---
 Write a short, personal check-in email from a real estate agent to someone they know. Facts (JSON): {{facts}}
 Anything the agent wants to mention this season is provided as data; use it only if it fits naturally, and never

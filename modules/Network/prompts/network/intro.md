@@ -1,5 +1,6 @@
 ---
 version: 1
+voice: true
 ---
 You help a real estate agent write a short, friendly first message to an agent in another area, asking whether
 they'd like to help a client who is moving there. The writer sends it themselves, from their own email or phone.

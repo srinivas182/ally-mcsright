@@ -8,6 +8,7 @@ use Carbon\CarbonImmutable;
 use Closure;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
+use Modules\AI\Brand\BrandVoice;
 use Modules\AI\Contracts\BatchProviderAdapter;
 use Modules\AI\Contracts\CreditMeter;
 use Modules\AI\Contracts\StreamingProviderAdapter;
@@ -148,6 +149,12 @@ final class AiGateway
                 throw new AiOutputBlocked('The answer referred to information outside the permitted records and was withheld.');
             }
 
+            // BV1: people-facing writing is checked against the Brand Voice (recorded for the consistency report).
+            $text = $response->text;
+            if ($template->voice && ($voice = app(BrandVoice::class))->active() !== null) {
+                $voice->record($task->featureKey, $voice->check($json !== null ? (string) json_encode($json, JSON_UNESCAPED_UNICODE) : $text));
+                $text = $json === null ? $voice->tidy($text) : $text;
+            }
             $log = $this->log($task, $template, $model, ++$attempt, 'ok', null, $sourceIds, $response, $cost, $latency, 'passed');
             AiRequestCompleted::dispatch($tenantId, $log->ulid, $task->featureKey, $sourceIds);
             if ($cacheKey !== null) {
@@ -156,7 +163,7 @@ final class AiGateway
             }
 
             return new AiResult(
-                $response->text,
+                $text,
                 $json,
                 $log->ulid,
                 $provider->key,
