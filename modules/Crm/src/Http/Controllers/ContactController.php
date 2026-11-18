@@ -21,6 +21,7 @@ use Modules\Core\Identity\Enums\UserStatus;
 use Modules\Crm\Actions\ManageContacts;
 use Modules\Crm\Actions\Pipelines;
 use Modules\Crm\Consent;
+use Modules\Crm\Consent\ConsentRequests;
 use Modules\Crm\ContactVisibility;
 use Modules\Crm\CrmAccess;
 use Modules\Crm\Enums\Lifecycle;
@@ -196,6 +197,9 @@ final class ContactController
                     'sms_method' => $contact->sms_consent_method, 'auto_text_allowed' => app(Consent::class)->canAutoText($contact),
                     'status' => app(Consent::class)->status($contact), 'report' => CrmAccess::manager($user) ? '/contacts/'.$contact->ulid.'/consent-report' : null,
                     'default_wording' => Consent::DEFAULT_SMS_WORDING, 'history' => DataController::consentHistory($contact),
+                    // CN1: one-tap consent by email.
+                    'ask_blocker' => app(ConsentRequests::class)->blocker($contact),
+                    'asked_at' => app(ConsentRequests::class)->lastSent($contact)?->toDateString(),
                 ],
             ],
             'households' => $contact->households()->with('members')->get()->map(fn ($h): array => [

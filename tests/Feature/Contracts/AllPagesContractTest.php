@@ -106,6 +106,7 @@ it('sends every brokerage page the data its component needs', function (string $
     'settings: approvals' => ['owner', '/settings/approvals', 'settings/approvals'],
     'settings: support access' => ['owner', '/settings/support-access', 'settings/support-access'],
     'settings: privacy requests' => ['owner', '/settings/privacy', 'settings/privacy'],
+    'texting consent' => ['agent', '/contacts/texting-consent', 'crm/texting-consent'],
 ]);
 
 it('sends record pages (a deal, a contact, a journal, an account statement) the data they need', function (): void {

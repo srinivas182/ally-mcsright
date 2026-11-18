@@ -33,7 +33,7 @@ final class Consent
     private const METHODS = ['web_form', 'signed', 'verbal', 'sms_keyword'];
 
     /** Where consent can come from (specs/grow/11). */
-    public const SOURCES = ['web_form', 'chat', 'import', 'connected_app', 'agent', 'sms_keyword'];
+    public const SOURCES = ['web_form', 'chat', 'import', 'connected_app', 'agent', 'sms_keyword', 'email_link'];
 
     /**
      * @param  array{source?: string, ref?: string|null, evidence?: array<string, mixed>|null}|null  $proof  where it came from and what the person saw and sent

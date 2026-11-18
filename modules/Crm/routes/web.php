@@ -8,6 +8,7 @@ use Modules\Crm\Http\Controllers\ActivityController;
 use Modules\Crm\Http\Controllers\AskController;
 use Modules\Crm\Http\Controllers\AvailabilityController;
 use Modules\Crm\Http\Controllers\BriefController;
+use Modules\Crm\Http\Controllers\ConsentRequestController;
 use Modules\Crm\Http\Controllers\ContactController;
 use Modules\Crm\Http\Controllers\DataController;
 use Modules\Crm\Http\Controllers\EmailMarketingController;
@@ -38,6 +39,10 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoff
     ->name('crm.contacts.')
     ->group(function (): void {
         Route::get('/', [ContactController::class, 'index'])->name('index');
+        // CN1 (specs/grow/18): one-tap texting consent by email.
+        Route::get('texting-consent', [ConsentRequestController::class, 'page'])->name('texting-consent');
+        Route::post('texting-consent', [ConsentRequestController::class, 'askAll'])->middleware('throttle:5,60')->name('texting-consent.all');
+        Route::post('{contact}/texting-consent', [ConsentRequestController::class, 'ask'])->middleware('throttle:30,1')->name('texting-consent.ask');
         Route::get('board', [PipelineController::class, 'board'])->name('board');
         Route::get('duplicates', [DataController::class, 'duplicates'])->name('duplicates');
         Route::get('pond', [RelationshipController::class, 'pond'])->name('pond');
@@ -77,6 +82,8 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoff
 
 // The portability guarantee (specs/grow/03): an agent who left takes their own people with a private emailed link.
 Route::middleware(['web', EnsureTenantWorkspace::class, 'throttle:20,1'])->group(function (): void {
+    Route::get('consent/{token}', [ConsentRequestController::class, 'show'])->where('token', '[A-Za-z0-9]{48}')->name('crm.consent.show'); // CN1
+    Route::post('consent/{token}', [ConsentRequestController::class, 'answer'])->where('token', '[A-Za-z0-9]{48}')->name('crm.consent.answer');
     Route::get('take-my-people/{token}', [PortabilityController::class, 'show'])->where('token', '[A-Za-z0-9]{40}')->name('crm.portability.show');
     Route::post('take-my-people/{token}', [PortabilityController::class, 'take'])->where('token', '[A-Za-z0-9]{40}')->name('crm.portability.take');
 });
