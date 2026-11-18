@@ -111,6 +111,7 @@ final class NetworkReferrals
         } catch (Throwable) {
             // already a contact, or the details need a fix: the agent still sees them on the referral
         }
+        $this->trust($r);
         app(AuditLogger::class)->record('network.referral.accepted', metadata: ['referral' => $ulid, 'fee' => (string) $r->fee_percent], severity: 'notice');
         if ($from !== null) {
             $this->tell($from, new NetworkMail('answered', "{$mine->name} accepted your referral", ["{$mine->name} of {$mine->brokerage} accepted your referral for {$client['first_name']} in {$r->area}.",
@@ -129,6 +130,7 @@ final class NetworkReferrals
         DB::connection(Connections::control())->table('network_referrals')->where('id', $r->id)->update(['status' => 'declined', 'responded_at' => now(), 'client' => null,
             'reason' => self::short($reason, 200), 'updated_at' => now()]);
         app(AuditLogger::class)->record('network.referral.declined', metadata: ['referral' => $ulid]);
+        $this->trust($r);
         if (($from = $this->profiles->find((int) $r->from_profile_id)) !== null) {
             $this->tell($from, new NetworkMail('answered', "{$mine->name} can't take your referral", ["{$mine->name} declined your referral in {$r->area}."
                 .($reason !== null && trim($reason) !== '' ? ' Their reason: '.trim($reason) : ''), 'Find another agent in the referral network.'], $this->url($from, '/network?tab=find')));
@@ -161,6 +163,7 @@ final class NetworkReferrals
         }
         DB::connection(Connections::control())->table('network_referrals')->where('id', $r->id)->update($row);
         app(AuditLogger::class)->record('network.referral.updated', metadata: ['referral' => $ulid, 'status' => $in['status']]);
+        $this->trust($r);
         if ($in['status'] !== $r->status && ($from = $this->profiles->find((int) $r->from_profile_id)) !== null) {
             $line = match ($in['status']) {
                 'under_contract' => 'Your referral is under contract.',
@@ -188,6 +191,7 @@ final class NetworkReferrals
             throw ValidationException::withMessages(['fee' => 'That step isn\'t yours to confirm, or it\'s already done.']);
         }
         app(AuditLogger::class)->record('network.referral.fee', metadata: ['referral' => $ulid, 'step' => $step], severity: 'notice');
+        $this->trust($r);
     }
 
     /**
@@ -199,6 +203,7 @@ final class NetworkReferrals
         $late = $db->clone()->where('status', 'sent')->where('created_at', '<=', now()->subHours(self::ANSWER_HOURS))->get();
         foreach ($late as $r) {
             $db->clone()->where('id', $r->id)->update(['status' => 'expired', 'client' => null, 'updated_at' => now()]);
+            $this->trust($r);
             if (($from = $this->profiles->find((int) $r->from_profile_id)) !== null) {
                 $this->tell($from, new NetworkMail('answered', 'Your referral wasn\'t answered in time', ["Your referral in {$r->area} wasn't answered within ".self::ANSWER_HOURS.' hours, so it was withdrawn and the client\'s details removed.',
                     'Send it to another agent in the referral network.'], $this->url($from, '/network?tab=find')));
@@ -233,10 +238,73 @@ final class NetworkReferrals
                 'client' => $showClient && $r->client !== null ? self::client($r) : null, 'agreement' => $r->agreement, 'reason' => $r->reason, 'deal' => $r->deal_ulid,
                 'fee_due_cents' => $r->fee_due_cents !== null ? (int) $r->fee_due_cents : null, 'closed_on' => $r->closed_on, 'fee_sent' => $r->fee_sent_at !== null, 'fee_paid' => $r->fee_paid_at !== null,
                 'answer_by' => $r->status === 'sent' ? CarbonImmutable::parse((string) $r->created_at)->addHours(self::ANSWER_HOURS)->toIso8601String() : null,
-                'sent_at' => substr((string) $r->created_at, 0, 10)];
+                'sent_at' => substr((string) $r->created_at, 0, 10), 'rating' => $r->rating !== null ? (int) $r->rating : null,
+                'disputed' => $r->disputed_at !== null && $r->dispute_closed_at === null, 'dispute_note' => $r->dispute_note, 'dispute_reply' => $r->dispute_reply,
+                'can_dispute' => ! $received && $r->status === 'closed' && $r->fee_paid_at === null && $r->disputed_at === null && $r->closed_on !== null
+                    && CarbonImmutable::parse((string) $r->closed_on)->addDays(TrustScore::PAY_DAYS)->isPast()];
         }
 
         return $out;
+    }
+
+    /** The referring agent rates how it went (closed or didn't work out). */
+    public function rate(User $by, string $ulid, int $stars, ?string $note): void
+    {
+        $r = $this->forSender($by, $ulid);
+        if (! in_array($r->status, ['closed', 'fell_through'], true) || $stars < 1 || $stars > 5) {
+            throw ValidationException::withMessages(['rating' => 'Rate from 1 to 5 stars once the referral has finished.']);
+        }
+        DB::connection(Connections::control())->table('network_referrals')->where('id', $r->id)->update(['rating' => $stars, 'rating_note' => self::short($note, 300), 'rated_at' => now(), 'updated_at' => now()]);
+        $this->trust($r);
+    }
+
+    /** The referring side says the fee never arrived, 45 days after closing. HQ sees it; the other agent can reply. */
+    public function dispute(User $by, string $ulid, string $note): void
+    {
+        $r = $this->forSender($by, $ulid);
+        $late = $r->closed_on !== null && CarbonImmutable::parse((string) $r->closed_on)->addDays(TrustScore::PAY_DAYS)->isPast();
+        if ($r->status !== 'closed' || $r->fee_paid_at !== null || $r->disputed_at !== null || ! $late) {
+            throw ValidationException::withMessages(['dispute' => 'You can report an unpaid fee '.TrustScore::PAY_DAYS.' days after closing, if it hasn\'t arrived.']);
+        }
+        DB::connection(Connections::control())->table('network_referrals')->where('id', $r->id)->update(['disputed_at' => now(), 'dispute_note' => mb_substr(trim($note), 0, 300), 'updated_at' => now()]);
+        app(AuditLogger::class)->record('network.referral.disputed', metadata: ['referral' => $ulid], severity: 'warning');
+        if (($to = $this->profiles->find((int) $r->to_profile_id)) !== null) {
+            $this->tell($to, new NetworkMail('update', 'A referral fee is reported as not received', ["The referring agent says the referral fee for {$r->area} hasn't reached their brokerage.",
+                'If it was paid, reply in RightAlly with the date and how it was sent.'], $this->url($to, '/network?tab=received')));
+        }
+        $this->trust($r);
+    }
+
+    public function replyDispute(User $by, string $ulid, string $note): void
+    {
+        [$r] = $this->forReceiver($by, $ulid);
+        abort_if($r->disputed_at === null, 404);
+        DB::connection(Connections::control())->table('network_referrals')->where('id', $r->id)->update(['dispute_reply' => mb_substr(trim($note), 0, 300), 'updated_at' => now()]);
+        app(AuditLogger::class)->record('network.referral.dispute_reply', metadata: ['referral' => $ulid]);
+    }
+
+    /** HQ closes a dispute once both sides agree it's settled. */
+    public function closeDispute(int $id): void
+    {
+        $r = DB::connection(Connections::control())->table('network_referrals')->where('id', $id)->whereNotNull('disputed_at')->whereNull('dispute_closed_at')->first();
+        abort_if($r === null, 404);
+        DB::connection(Connections::control())->table('network_referrals')->where('id', $id)->update(['dispute_closed_at' => now(), 'fee_paid_at' => $r->fee_paid_at ?? now(), 'updated_at' => now()]);
+        app(AuditLogger::class)->record('network.referral.dispute_closed', metadata: ['referral' => $r->ulid], severity: 'notice');
+        $this->trust($r);
+    }
+
+    private function forSender(User $by, string $ulid): stdClass
+    {
+        $mine = $this->profiles->mine($by);
+        $r = DB::connection(Connections::control())->table('network_referrals')->where('ulid', $ulid)->first();
+        abort_if($mine === null || $r === null || (int) $r->from_profile_id !== (int) $mine->id, 404);
+
+        return $r;
+    }
+
+    private function trust(stdClass $r): void
+    {
+        app(TrustScore::class)->refresh((int) $r->to_profile_id);
     }
 
     /** @return array{0: stdClass, 1: stdClass} */

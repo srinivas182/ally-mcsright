@@ -15,6 +15,7 @@ use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Network\NetworkReferrals;
 use Modules\Network\Profiles;
+use Modules\Network\TrustScore;
 use Modules\Transactions\DealAccess;
 
 /** The referral network pages (AR1, specs/network/01). */
@@ -32,7 +33,8 @@ final class NetworkController
             'tab' => in_array($request->query('tab'), ['received', 'sent', 'find', 'profile'], true) ? (string) $request->query('tab') : 'received',
             'brokerage' => $profiles->brokerage(),
             'profile' => $mine !== null ? Profiles::card($mine) + ['licence' => $mine->licence, 'phone_raw' => $mine->phone, 'share_phone' => (bool) $mine->share_phone,
-                'status' => (string) $mine->status, 'sides_key' => (string) $mine->sides, 'public_url' => 'https://'.config('core.hq_host').'/agents/'.$mine->code] : null,
+                'status' => (string) $mine->status, 'sides_key' => (string) $mine->sides, 'public_url' => 'https://'.config('core.hq_host').'/agents/'.$mine->code,
+                'tips' => TrustScore::tips((array) json_decode((string) ($mine->trust_parts ?? '{}'), true), (int) $mine->trust_count)] : null,
             'referrals' => $referrals->forUser($user),
             'search' => ['area' => $area, 'side' => $side, 'language' => $language],
             'results' => $area !== '' ? array_values(array_map(fn ($p): array => Profiles::card($p),
@@ -107,6 +109,30 @@ final class NetworkController
     public function fee(Request $request, string $referral, NetworkReferrals $referrals): RedirectResponse
     {
         $referrals->fee(self::user($request), $referral, (string) $request->validate(['step' => ['required', 'in:sent,paid']])['step']);
+
+        return back();
+    }
+
+    public function rate(Request $request, string $referral, NetworkReferrals $referrals): RedirectResponse
+    {
+        $data = $request->validate(['rating' => ['required', 'integer', 'between:1,5'], 'note' => ['nullable', 'string', 'max:300']]);
+        $referrals->rate(self::user($request), $referral, (int) $data['rating'], isset($data['note']) ? (string) $data['note'] : null);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Thanks for the rating.']);
+
+        return back();
+    }
+
+    public function dispute(Request $request, string $referral, NetworkReferrals $referrals): RedirectResponse
+    {
+        $referrals->dispute(self::user($request), $referral, (string) $request->validate(['note' => ['required', 'string', 'min:5', 'max:300']])['note']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Reported. The other agent and RightAlly have been told.']);
+
+        return back();
+    }
+
+    public function disputeReply(Request $request, string $referral, NetworkReferrals $referrals): RedirectResponse
+    {
+        $referrals->replyDispute(self::user($request), $referral, (string) $request->validate(['note' => ['required', 'string', 'min:5', 'max:300']])['note']);
 
         return back();
     }

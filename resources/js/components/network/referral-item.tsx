@@ -27,6 +27,8 @@ export function ReferralItem({
         closed_on: '',
     });
     const [declining, setDeclining] = useState(false);
+    const [stars, setStars] = useState(r.rating ?? 0);
+    const [note, setNote] = useState('');
     const [reason, setReason] = useState('');
     const base = `/network/referrals/${r.ulid}`;
     const who = r.other ? `${r.other.name} (${r.other.brokerage})` : '';
@@ -300,6 +302,89 @@ export function ReferralItem({
                         }
                     >
                         Our brokerage received the fee
+                    </Button>
+                </div>
+            )}
+            {!received && ['closed', 'fell_through'].includes(r.status) && (
+                <fieldset className="flex flex-wrap items-center gap-2">
+                    <legend className="mb-1">
+                        {r.rating
+                            ? `You rated this ${r.rating} of 5`
+                            : `How was working with ${r.other?.name}?`}
+                    </legend>
+                    {[1, 2, 3, 4, 5].map((n) => (
+                        <Button
+                            key={n}
+                            type="button"
+                            size="lg"
+                            variant={stars >= n ? 'default' : 'outline'}
+                            aria-label={`${n} star${n === 1 ? '' : 's'}`}
+                            aria-pressed={stars === n}
+                            onClick={() => {
+                                setStars(n);
+                                router.post(
+                                    `${base}/rate`,
+                                    { rating: n },
+                                    { preserveScroll: true },
+                                );
+                            }}
+                        >
+                            {'★'.repeat(n)}
+                        </Button>
+                    ))}
+                </fieldset>
+            )}
+            {r.disputed && (
+                <div className="rounded-md border border-destructive/50 p-2 text-sm">
+                    <p>Reported as not received: {r.dispute_note}</p>
+                    {r.dispute_reply && <p>Reply: {r.dispute_reply}</p>}
+                </div>
+            )}
+            {!received && r.can_dispute && (
+                <div className="flex flex-wrap items-end gap-2">
+                    <label className="grid flex-1 gap-1 text-sm">
+                        The fee still hasn't arrived? Tell us what happened
+                        <Input
+                            value={note}
+                            onChange={(e) => setNote(e.target.value)}
+                        />
+                    </label>
+                    <Button
+                        variant="outline"
+                        disabled={note.trim().length < 5}
+                        onClick={() =>
+                            router.post(
+                                `${base}/dispute`,
+                                { note },
+                                { preserveScroll: true },
+                            )
+                        }
+                    >
+                        Report fee not received
+                    </Button>
+                </div>
+            )}
+            {received && r.disputed && !r.dispute_reply && (
+                <div className="flex flex-wrap items-end gap-2">
+                    <label className="grid flex-1 gap-1 text-sm">
+                        Your reply (when and how the fee was sent)
+                        <Input
+                            value={note}
+                            onChange={(e) => setNote(e.target.value)}
+                        />
+                    </label>
+                    <Button
+                        variant="outline"
+                        disabled={note.trim().length < 5}
+                        onClick={() =>
+                            router.post(
+                                `${base}/dispute-reply`,
+                                { note },
+                                { preserveScroll: true },
+                            )
+                        }
+                    >
+                        Send reply
                     </Button>
                 </div>
             )}
