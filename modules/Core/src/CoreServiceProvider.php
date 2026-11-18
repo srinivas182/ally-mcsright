@@ -132,6 +132,7 @@ final class CoreServiceProvider extends ServiceProvider
         $this->app->singleton(Switches\Areas::class);
         $this->app->singleton(Search\SearchRegistry::class); // PW1: universal search
         $this->app->singleton(Privacy\PrivacyRegistry::class); // TR1: where personal data lives
+        $this->app->singleton(Assistant\Handoffs::class); // AS1: the assistant hands a conversation to a person
         $this->app->scoped(Privacy\PrivacyRequests::class);
         $this->app->scoped(Privacy\Retention::class);
         $this->app->scoped(Switches\FeatureSwitches::class);

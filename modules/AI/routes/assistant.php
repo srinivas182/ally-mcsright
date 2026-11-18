@@ -10,6 +10,8 @@ use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
 Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('assistant')->name('assistant.')->group(function (): void {
     Route::get('/', [AssistantController::class, 'latest'])->name('latest');
     Route::post('ask', [AssistantController::class, 'ask'])->middleware('throttle:20,1,assistant')->name('ask');
+    Route::get('handoffs', [AssistantController::class, 'targets'])->name('handoffs'); // AS1
+    Route::post('handoff', [AssistantController::class, 'handoff'])->middleware('throttle:10,60,assistant-handoff')->name('handoff');
     Route::post('turns/{turn}/do', [AssistantController::class, 'doIt'])->where('turn', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->middleware('throttle:20,1,assistant-do')->name('do');
     Route::post('turns/{turn}/cancel', [AssistantController::class, 'cancel'])->where('turn', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('cancel');
 });
