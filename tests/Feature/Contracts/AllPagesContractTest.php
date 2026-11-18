@@ -108,6 +108,7 @@ it('sends every brokerage page the data its component needs', function (string $
     'settings: privacy requests' => ['owner', '/settings/privacy', 'settings/privacy'],
     'texting consent' => ['agent', '/contacts/texting-consent', 'crm/texting-consent'],
     'settings: brand voice' => ['owner', '/settings/brand-voice', 'settings/brand-voice'],
+    'my assistants' => ['agent', '/my-assistants', 'settings/my-assistants'],
 ]);
 
 it('sends record pages (a deal, a contact, a journal, an account statement) the data they need', function (): void {

@@ -28,7 +28,7 @@ final class NavWords
         'Funnels' => 'Embudos', 'Game plan' => 'Plan de juego', 'Guided setup' => 'Configuración guiada', 'Help' => 'Ayuda', 'Inbox' => 'Bandeja de entrada',
         'Invoices' => 'Facturas', 'Journals' => 'Asientos', 'Keeping agents' => 'Retener agentes', 'Leads' => 'Prospectos', 'Learn' => 'Aprender', 'List-IQ' => 'List-IQ',
         'Listings' => 'Propiedades', 'MLS' => 'MLS', 'Marketing check' => 'Revisión de marketing', 'Money received' => 'Dinero recibido', 'Month-end close' => 'Cierre de mes',
-        'Movewise' => 'Movewise', 'My availability' => 'Mi disponibilidad', 'My licences and onboarding' => 'Mis licencias e incorporación', 'My money' => 'Mi dinero',
+        'Movewise' => 'Movewise', 'My assistants' => 'Mis asistentes', 'My availability' => 'Mi disponibilidad', 'My licences and onboarding' => 'Mis licencias e incorporación', 'My money' => 'Mi dinero',
         'My numbers' => 'Mis números', 'My plan' => 'Mi plan', 'My website' => 'Mi sitio web', 'Numbers' => 'Números', 'Offices and teams' => 'Oficinas y equipos',
         'Outreach' => 'Contacto masivo', 'Outside services' => 'Servicios externos', 'Partner earnings' => 'Ganancias de socio', 'Payouts' => 'Pagos', 'People' => 'Personas',
         'Plans' => 'Planes', 'Policies' => 'Políticas', 'Privacy requests' => 'Solicitudes de privacidad', 'Postcards' => 'Postales', 'Profit and loss' => 'Pérdidas y ganancias', 'Profitability' => 'Rentabilidad',

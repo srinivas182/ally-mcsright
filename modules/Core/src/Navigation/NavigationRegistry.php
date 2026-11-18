@@ -6,6 +6,7 @@ namespace Modules\Core\Navigation;
 
 use App\Models\User;
 use Illuminate\Support\Facades\Gate;
+use Modules\Core\Identity\AgentAssistants;
 use Modules\Core\Simple\SimpleMode;
 use Modules\Core\Switches\FeatureSwitches;
 
@@ -37,9 +38,11 @@ final class NavigationRegistry
         }
 
         $switches = app(FeatureSwitches::class);
+        $assistants = app(AgentAssistants::class);
         $visible = array_filter($this->items, fn (NavItem $item): bool => ($item->kinds === [] || in_array($user->kind, $item->kinds, true))
             && ($item->ability === null || Gate::forUser($user)->allows($item->ability))
-            && $switches->allowsPath($user, $item->href)); // FL1: switched-off areas and seats
+            && $switches->allowsPath($user, $item->href) // FL1: switched-off areas and seats
+            && $assistants->allowsPath($user, $item->href)); // AG1: an assistant's preset
 
         usort($visible, fn (NavItem $a, NavItem $b): int => [$this->groupIndex($a->group), $a->order, $a->title] <=> [$this->groupIndex($b->group), $b->order, $b->title]);
 
