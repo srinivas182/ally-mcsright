@@ -15,6 +15,7 @@ use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Leads\VisitorJourneys;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
+use Modules\Core\Privacy\PrivacyRegistry;
 use Modules\Core\Tenancy\TenantContext;
 
 /** Websites: site engine, templates, SEO and AEO (specs/websites/05). */
@@ -48,6 +49,7 @@ final class SitesServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Brief\ChatBriefItems::register($this->app->make(DailyBriefs::class));
+        Privacy\WebsitePrivacy::register($this->app->make(PrivacyRegistry::class)); // TR1
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'sites');

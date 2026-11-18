@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Modules\Core\Security\BotProtection;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Listings\Search\ListingSearch;
 use Modules\Listings\Search\MarketStats;
@@ -80,7 +81,7 @@ final class FunnelController
         $site = Site::query()->where('kind', 'brokerage')->where('status', 'live')->first();
         $back = $request->getSchemeAndHttpHost().'/go/'.$slug;
         $funnel = $site !== null ? SiteFunnel::query()->where('site_id', $site->id)->where('slug', $slug)->where('status', 'live')->first() : null;
-        if ($site === null || $funnel === null || trim((string) $request->input('website', '')) !== '') {
+        if ($site === null || $funnel === null || trim((string) $request->input('website', '')) !== '' || ! app(BotProtection::class)->passes($request, $this->tenants->id())) {
             return redirect($back.'?sent=1', 303); // honeypot, or gone
         }
         try {

@@ -19,6 +19,7 @@ use Modules\Billing\HealthCheck\HealthScore;
 use Modules\Billing\HealthCheck\PreviewSamples;
 use Modules\Billing\HealthCheck\Tools;
 use Modules\Core\Audit\AuditLogger;
+use Modules\Core\Security\BotProtection;
 use Modules\Core\Simple\SimpleMode;
 use Modules\Core\Support\Connections;
 use stdClass;
@@ -47,6 +48,9 @@ final class HealthCheckController
     {
         // A field people never see: bots fill it in.
         abort_if(filled($request->input('fax')), 422);
+        if (! app(BotProtection::class)->passes($request)) { // TR1
+            throw ValidationException::withMessages(['bot' => 'Please complete the check that shows you are not a robot, then try again.']);
+        }
         $data = $request->validate([
             'brokerage' => ['required', 'string', 'max:160'], 'contact_name' => ['required', 'string', 'max:120'], 'email' => ['required', 'email:rfc', 'max:190'],
             'state' => ['nullable', 'string', 'size:2', 'alpha'], 'agents' => ['required', 'integer', 'min:1', 'max:20000'],

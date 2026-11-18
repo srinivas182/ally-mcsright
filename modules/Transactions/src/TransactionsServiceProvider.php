@@ -21,6 +21,7 @@ use Modules\Core\Mcp\McpToolbox;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
 use Modules\Core\Notices\NoticeTypes;
+use Modules\Core\Privacy\PrivacyRegistry;
 use Modules\Core\Search\SearchController;
 use Modules\Core\Search\SearchRegistry;
 use Modules\Core\Support\Connections;
@@ -44,6 +45,16 @@ final class TransactionsServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // TR1 (specs/core/18): a contact in a deal is part of the transaction file the brokerage must keep by law.
+        $this->app->make(PrivacyRegistry::class)->hold(function (string $source, int $id): ?string {
+            if ($source !== 'contacts') {
+                return null;
+            }
+            $db = DB::connection(Connections::cell());
+
+            return $db->table('tx_deals')->where('contact_id', $id)->exists() || $db->table('tx_parties')->where('contact_id', $id)->exists()
+                ? 'part of a transaction file the brokerage must keep' : null;
+        });
         // PW1 (specs/core/17): deals in universal search, only those this person may see.
         $this->app->make(SearchRegistry::class)->register('deals', ['en' => 'Deals', 'es' => 'Operaciones'], 20,
             fn (User $user, string $q, int $limit): array => array_values(DealAccess::query($user)

@@ -20,6 +20,7 @@
             <div class="hp" aria-hidden="true"><label>Leave empty <input name="website" tabindex="-1" autocomplete="off"></label></div>
             <input type="hidden" name="first_referrer"><input type="hidden" name="landing_url"><input type="hidden" name="vid" data-vid>@if (! empty($chrome['agent']))<input type="hidden" name="agent" value="{{ $chrome['agent']['ulid'] }}">@endif
             <input type="hidden" name="return" value="{{ $return }}"><input type="hidden" name="t" value="{{ $t }}">
+            @include('core::bot-check', ['bot' => $bot ?? app(\Modules\Core\Security\BotProtection::class)->widget(app(\Modules\Core\Tenancy\TenantContext::class)->idOrNull())])
             <button class="btn btn-primary" type="submit">{{ $button ?? 'Send' }}</button>
         </form>
     @endif

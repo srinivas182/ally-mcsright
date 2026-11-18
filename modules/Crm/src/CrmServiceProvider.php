@@ -19,6 +19,7 @@ use Modules\Core\Identity\Events\UserDeactivated;
 use Modules\Core\Mcp\McpToolbox;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
+use Modules\Core\Privacy\PrivacyRegistry;
 use Modules\Core\Search\SearchController;
 use Modules\Core\Search\SearchRegistry;
 use Modules\Core\Tenancy\Models\Tenant;
@@ -87,6 +88,7 @@ final class CrmServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        Privacy\ContactPrivacy::register($this->app->make(PrivacyRegistry::class)); // TR1
         // PW1 (specs/core/17): contacts in universal search, only those this person may see.
         $this->app->make(SearchRegistry::class)->register('contacts', ['en' => 'Contacts', 'es' => 'Contactos'], 10,
             function (User $user, string $q, int $limit): array {

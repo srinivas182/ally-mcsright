@@ -131,6 +131,9 @@ final class CoreServiceProvider extends ServiceProvider
         // FL1 (specs/core/16): areas, switches and seats; approval rules; outside services.
         $this->app->singleton(Switches\Areas::class);
         $this->app->singleton(Search\SearchRegistry::class); // PW1: universal search
+        $this->app->singleton(Privacy\PrivacyRegistry::class); // TR1: where personal data lives
+        $this->app->scoped(Privacy\PrivacyRequests::class);
+        $this->app->scoped(Privacy\Retention::class);
         $this->app->scoped(Switches\FeatureSwitches::class);
         $this->app->singleton(Approvals\ApprovalActions::class);
         $this->app->scoped(Approvals\Approvals::class);
@@ -176,6 +179,8 @@ final class CoreServiceProvider extends ServiceProvider
         $types->register(Brief\DailyBriefMail::class, 'Your daily brief', 'General');
         $types->register(Workflows\WorkflowAlertMail::class, 'Alerts from automations', 'Automations');
         $types->register(Workflows\WorkflowApprovalMail::class, 'Approvals automations are waiting for', 'Automations', urgent: true);
+        $types->register(Privacy\PrivacyRequestMail::class, 'Privacy requests from the public', 'Security', urgent: true); // TR1
+        $types->register(Privacy\PrivacyDueMail::class, 'Privacy requests due soon', 'Security', urgent: true); // TR1
         $types->register(Approvals\ApprovalNeededMail::class, 'Sensitive changes waiting for your approval', 'Security', urgent: true); // FL1
         $types->register(Identity\Notifications\SupportAccessRequested::class, 'RightAlly support asking to view your account', 'Security', urgent: true); // FL1
 
@@ -188,7 +193,7 @@ final class CoreServiceProvider extends ServiceProvider
         }
 
         if ($this->app->runningInConsole()) {
-            $this->commands([CompileDesignTokens::class, RunTenantLifecycle::class, BootstrapHq::class, Console\FlushAudit::class, Console\VerifyAudit::class, Console\AuditMaintenance::class, Console\ExpireAccess::class, Console\AccessReviewReminder::class, Console\SendNoticeDigests::class, Console\RunWorkflows::class, Console\RebuildDirectory::class, Console\SendDailyBriefs::class, Safeguards\Console\ExpireExports::class, Safeguards\Console\SafeguardsDaily::class, Safeguards\Console\Rekey::class, Scale\Console\WatchCells::class, Scale\Console\SeedLoadTest::class, Scale\Console\SeedEndToEnd::class, Console\ExpireApprovals::class]);
+            $this->commands([CompileDesignTokens::class, RunTenantLifecycle::class, BootstrapHq::class, Console\FlushAudit::class, Console\VerifyAudit::class, Console\AuditMaintenance::class, Console\ExpireAccess::class, Console\AccessReviewReminder::class, Console\SendNoticeDigests::class, Console\RunWorkflows::class, Console\RebuildDirectory::class, Console\SendDailyBriefs::class, Safeguards\Console\ExpireExports::class, Safeguards\Console\SafeguardsDaily::class, Safeguards\Console\Rekey::class, Scale\Console\WatchCells::class, Scale\Console\SeedLoadTest::class, Scale\Console\SeedEndToEnd::class, Console\ExpireApprovals::class, Console\PrivacyDaily::class]);
         }
     }
 
@@ -240,6 +245,7 @@ final class CoreServiceProvider extends ServiceProvider
             'core.workflows.manage' => ['Create and switch on automations'],
             'core.platform.manage' => ['Switch areas on or off, give seats and connect outside services (keys, Test and Live)'],
             'core.approvals.give' => ['Approve sensitive changes other people ask for'],
+            'core.privacy.manage' => ['Answer privacy requests (see, delete, correct, stop sharing)', false, true],
         ]);
         // Areas whose screens live in several modules (specs/core/03, R1).
         $registry->register('Marketing', [
@@ -405,10 +411,12 @@ final class CoreServiceProvider extends ServiceProvider
         $nav->add(new NavItem('HQ', 'Cells', '/hq/cells', 'database', 16, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff])); // PS1
         $nav->add(new NavItem('HQ', 'Feature switches', '/hq/switches', 'toggle-right', 17, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff])); // FL1
         $nav->add(new NavItem('HQ', 'Outside services', '/hq/services', 'plug', 18, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff])); // FL1
+        $nav->add(new NavItem('HQ', 'Security controls', '/hq/controls', 'shield-check', 18, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff])); // TR1
         $nav->add(new NavItem('Settings', 'Features and seats', '/settings/features', 'toggle-right', 82, ability: 'core.platform.manage')); // FL1
         $nav->add(new NavItem('Settings', 'Outside services', '/settings/services', 'plug', 83, ability: 'core.platform.manage')); // FL1
         $nav->add(new NavItem('Settings', 'Approvals', '/settings/approvals', 'check-check', 84, kinds: [UserKind::Owner, UserKind::Staff])); // FL1
         $nav->add(new NavItem('Settings', 'Support access', '/settings/support-access', 'life-buoy', 86, kinds: [UserKind::Owner])); // FL1
+        $nav->add(new NavItem('Settings', 'Privacy requests', '/settings/privacy', 'shield-check', 87, ability: 'core.privacy.manage', kinds: [UserKind::Owner, UserKind::Staff])); // TR1
     }
 
     private function registerTenantAwareQueues(): void

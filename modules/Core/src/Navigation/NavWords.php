@@ -31,7 +31,7 @@ final class NavWords
         'Movewise' => 'Movewise', 'My availability' => 'Mi disponibilidad', 'My licences and onboarding' => 'Mis licencias e incorporación', 'My money' => 'Mi dinero',
         'My numbers' => 'Mis números', 'My plan' => 'Mi plan', 'My website' => 'Mi sitio web', 'Numbers' => 'Números', 'Offices and teams' => 'Oficinas y equipos',
         'Outreach' => 'Contacto masivo', 'Outside services' => 'Servicios externos', 'Partner earnings' => 'Ganancias de socio', 'Payouts' => 'Pagos', 'People' => 'Personas',
-        'Plans' => 'Planes', 'Policies' => 'Políticas', 'Postcards' => 'Postales', 'Profit and loss' => 'Pérdidas y ganancias', 'Profitability' => 'Rentabilidad',
+        'Plans' => 'Planes', 'Policies' => 'Políticas', 'Privacy requests' => 'Solicitudes de privacidad', 'Postcards' => 'Postales', 'Profit and loss' => 'Pérdidas y ganancias', 'Profitability' => 'Rentabilidad',
         'Prospector' => 'Buscador de vendedores', 'Ready-made library' => 'Biblioteca lista', 'Recruiting' => 'Reclutamiento', 'Refer a brokerage' => 'Recomendar una correduría',
         'Refer an agent' => 'Recomendar un agente', 'Referral network' => 'Red de referidos', 'Reports' => 'Informes', 'Revenue share' => 'Participación de ingresos',
         'Review queue' => 'Cola de revisión', 'Reviews' => 'Reseñas', 'RightAlly credits' => 'Créditos RightAlly', 'Risk' => 'Riesgo', 'Roles' => 'Funciones',

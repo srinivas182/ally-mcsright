@@ -10,6 +10,7 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
+use Modules\Core\Security\BotProtection;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Crm\Consent;
 use Modules\Listings\Search\ListingSearch;
@@ -222,7 +223,7 @@ final class SiteController
         } catch (\Throwable) {
             $shown = PHP_INT_MAX; // missing or forged: treat as a bot
         }
-        if (time() - $shown < 3 || ! RateLimiter::attempt('site-lead:'.$request->ip(), 10, fn (): bool => true)) {
+        if (time() - $shown < 3 || ! RateLimiter::attempt('site-lead:'.$request->ip(), 10, fn (): bool => true) || ! app(BotProtection::class)->passes($request, $this->tenants->id())) {
             return redirect($back.'?sent=1', 303); // too fast for a person, or too many
         }
         // A landing page's leads are reported under that landing page.
@@ -278,7 +279,8 @@ final class SiteController
     public static function form(Request $request): array
     {
         return ['sent' => $request->query('sent') === '1', 'formError' => is_string($request->query('error')) ? mb_substr((string) $request->query('error'), 0, 200) : null,
-            't' => Crypt::encryptString((string) time()), 'consent' => Consent::DEFAULT_SMS_WORDING];
+            't' => Crypt::encryptString((string) time()), 'consent' => Consent::DEFAULT_SMS_WORDING,
+            'bot' => app(BotProtection::class)->widget(app(TenantContext::class)->idOrNull())]; // TR1
     }
 
     private function site(): ?Site

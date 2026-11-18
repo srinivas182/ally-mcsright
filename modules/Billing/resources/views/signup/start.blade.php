@@ -82,6 +82,7 @@
                     <label><input type="radio" name="interval" value="year" @checked(old('interval') === 'year')> Pay yearly</label>
                 </div>
                 <label class="check"><input type="checkbox" name="terms" value="1" @checked(old('terms'))> I can sign up this brokerage, and I agree to pay the price shown each month or year until I cancel.</label>
+                @include('core::bot-check', ['bot' => app(\Modules\Core\Security\BotProtection::class)->widget()])
                 <button class="btn" type="submit">Continue to payment</button>
                 <p class="muted small">You pay on our payment provider's secure page. Your RightAlly is created when the payment goes through.</p>
             </fieldset>

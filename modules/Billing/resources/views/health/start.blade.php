@@ -87,6 +87,7 @@
         <fieldset><legend>{{ $t('s5') }}</legend>
             <label class="check"><input type="checkbox" name="contact_ok" value="1" @checked($old('contact_ok'))> {{ $t('contact_ok') }}</label>
             <p class="muted small">{{ $t('contact_help') }}</p>
+            @include('core::bot-check', ['bot' => app(\Modules\Core\Security\BotProtection::class)->widget()])
             <button class="btn" type="submit">{{ $t('submit') }}</button>
         </fieldset>
     </form>

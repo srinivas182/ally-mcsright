@@ -8,11 +8,13 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
+use Illuminate\Validation\ValidationException;
 use Modules\Billing\Affiliates\Affiliates;
 use Modules\Billing\HealthCheck\HealthChecks;
 use Modules\Billing\Models\Package;
 use Modules\Billing\ProductFeatures;
 use Modules\Billing\Signup\Signups;
+use Modules\Core\Security\BotProtection;
 use Modules\Core\Tenancy\Host;
 
 /**
@@ -41,6 +43,9 @@ final class SignupController
     public function store(Request $request, Signups $signups): RedirectResponse
     {
         abort_if(filled($request->input('fax')), 422);
+        if (! app(BotProtection::class)->passes($request)) { // TR1
+            throw ValidationException::withMessages(['bot' => 'Please complete the check that shows you are not a robot, then try again.']);
+        }
         $data = $request->validate([
             'brokerage' => ['required', 'string', 'max:150'], 'slug' => ['required', 'string', 'max:40'], 'owner_name' => ['required', 'string', 'max:120'],
             'owner_email' => ['required', 'email:rfc', 'max:190'], 'state' => ['nullable', 'string', 'size:2', 'alpha'], 'agents' => ['nullable', 'integer', 'min:1', 'max:20000'],
