@@ -47,6 +47,10 @@ final class Controls
         $redTeam = $control->table('ai_red_team_runs')->whereNotNull('finished_at')->orderByDesc('finished_at')->first(['status', 'scenarios_run', 'critical_followed', 'finished_at']);
         $redTeamFresh = $redTeam !== null && CarbonImmutable::parse((string) $redTeam->finished_at)->gt(now()->subDays(8));
         $routes = count(Route::getRoutes()->getRoutes());
+        // SX2: what browsers reported the content security policy blocked in the last 14 days (origins only).
+        $csp = $control->table('csp_reports')->where('last_seen_at', '>', now()->subDays(14))->selectRaw('surface, directive, blocked, sum(count) as n')
+            ->groupBy('surface', 'directive', 'blocked')->orderByDesc('n')->limit(5)->get();
+        $cspMode = ContentSecurityPolicy::mode();
 
         return [
             ['id' => 'CC6.1', 'area' => 'Access', 'control' => 'HQ staff sign in with two steps (password and authenticator app).',
@@ -61,6 +65,10 @@ final class Controls
                 'evidence' => 'Every pull request runs composer audit and npm audit (high and above fail); Dependabot proposes updates.', 'status' => 'process'],
             ['id' => 'CC7.1', 'area' => 'Protection', 'control' => 'Pages are served with browser security headers, public forms are rate-limited, and addresses RightAlly calls for customers are checked to be public.',
                 'evidence' => 'Security headers on every response (nosniff, same-site framing, referrer and permissions policies, HSTS); rate limits on every public form; webhook and stream addresses checked at every send.', 'status' => 'met'],
+            ['id' => 'CC7.1-CSP', 'area' => 'Protection', 'control' => 'Pages may run only RightAlly\'s own scripts and a short list of outside ones (content security policy), so a script slipped into a page cannot run or send data away.',
+                'evidence' => 'Policy '.($cspMode === 'enforce' ? 'enforced' : ($cspMode === 'report' ? 'in report-only mode' : 'off')).'. '
+                    .($csp->isEmpty() ? 'No blocked items reported in 14 days.' : 'Most reported in 14 days: '.$csp->map(fn (object $r): string => "{$r->blocked} ({$r->directive}, {$r->surface}, {$r->n}×)")->implode('; ').'.'),
+                'status' => $cspMode === 'enforce' ? 'met' : 'attention'],
             ['id' => 'C1.1', 'area' => 'AI', 'control' => 'AI is given only the signed-in brokerage\'s records, treats documents and messages as data, and is attacked every week to check it never follows hidden instructions.',
                 'evidence' => $redTeam === null ? 'No red-team run yet (ai:red-team runs every Monday once AI keys are set).'
                     : 'Last red-team run '.CarbonImmutable::parse((string) $redTeam->finished_at)->toFormattedDateString().": {$redTeam->scenarios_run} attacks, {$redTeam->critical_followed} critical followed ({$redTeam->status}).",

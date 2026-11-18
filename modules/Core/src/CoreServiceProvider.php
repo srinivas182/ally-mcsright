@@ -16,8 +16,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Notifications\Events\NotificationSending;
-use Illuminate\Queue\Events\JobFailed;
-use Illuminate\Queue\Events\JobProcessed;
+use Illuminate\Queue\Events\JobAttempted;
 use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -60,6 +59,7 @@ use Modules\Core\Safeguards\BrokerageKeys;
 use Modules\Core\Safeguards\DedicatedCells;
 use Modules\Core\Tenancy\CellRouting;
 use Modules\Core\Tenancy\DomainResolver;
+use Modules\Core\Tenancy\Exceptions\MissingTenantContext;
 use Modules\Core\Tenancy\Models\Cell;
 use Modules\Core\Tenancy\Models\Tenant;
 use Modules\Core\Tenancy\TenantCache;
@@ -441,17 +441,21 @@ final class CoreServiceProvider extends ServiceProvider
             return $context->check() ? ['tenant_id' => $context->id()] : [];
         });
 
+        // SX2: every attempt pushes exactly once (before the job) and pops exactly once (JobAttempted, fired after
+        // every attempt: done, failed, released for a retry or failed by the job itself). Popping on JobProcessed and
+        // JobFailed as before could pop twice (a job that calls fail()) and, on the sync queue, drop the request's
+        // own brokerage, or never pop (a job released for a retry).
         Event::listen(JobProcessing::class, function (JobProcessing $event): void {
             $tenantId = $this->tenantIdFrom($event->job);
-
-            $this->app->make(TenantContext::class)->push(
-                $tenantId !== null ? Tenant::query()->findOrFail($tenantId) : null,
-            );
+            $tenant = $tenantId !== null ? Tenant::query()->find($tenantId) : null;
+            $this->app->make(TenantContext::class)->push($tenant);
+            if ($tenantId !== null && $tenant === null) {
+                // The brokerage is gone: never run its job without a brokerage (that would be unguarded).
+                throw MissingTenantContext::forJob($event->job->resolveName(), $tenantId);
+            }
         });
 
-        $restore = fn () => $this->app->make(TenantContext::class)->pop();
-        Event::listen(JobProcessed::class, $restore);
-        Event::listen(JobFailed::class, $restore);
+        Event::listen(JobAttempted::class, fn () => $this->app->make(TenantContext::class)->pop());
     }
 
     private function tenantIdFrom(Job $job): ?int

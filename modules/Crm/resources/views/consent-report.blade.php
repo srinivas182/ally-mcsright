@@ -18,7 +18,7 @@
     <p>{{ $contact->primary_phone }} {{ $contact->primary_email ? '· '.$contact->primary_email : '' }}</p>
     <p><strong>Texting consent:</strong> {{ ['yes' => 'Yes, written, with proof', 'verbal' => 'Verbal only (manual texts only)', 'no' => 'No (opted out)', 'unknown' => 'Unknown (never given here)'][$status] }}.
         Automated texts {{ $auto ? 'allowed' : 'not allowed' }}. Email: {{ $contact->email_opt_in ? 'yes' : 'not given or opted out' }}. Calls: {{ $contact->do_not_call ? 'do not call' : 'allowed' }}.</p>
-    <p class="actions"><button type="button" onclick="window.print()">Print or save as PDF</button><a href="?format=csv">Download CSV</a></p>
+    <p class="actions"><button type="button" data-print>Print or save as PDF</button><a href="?format=csv">Download CSV</a></p>
     <table>
         <tr><th>When</th><th>What</th><th>Where it came from</th><th>Wording and evidence</th></tr>
         @forelse ($events as $e)
@@ -35,5 +35,6 @@
     </table>
     <p><small>Consent history is append-only: entries can't be changed or deleted. Each entry's evidence fingerprint lets you show it hasn't changed since it was recorded.</small></p>
 </main>
+<script nonce="{{ Vite::cspNonce() }}">document.addEventListener('click',function(e){var t=e.target;if(t.closest('[data-print]'))window.print();if(t.matches('[data-select]'))t.select();});</script>
 </body>
 </html>

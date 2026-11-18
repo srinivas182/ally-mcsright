@@ -63,7 +63,7 @@
             <label>Mortgage balance ($) <input inputmode="numeric" data-balance placeholder="250,000"></label>
             <p class="big" data-equity aria-live="polite"></p>
         </section>
-        <script>
+        <script nonce="{{ Vite::cspNonce() }}">
             (function () {
                 var mid = {{ (int) $estimate['mid'] }}, input = document.querySelector('[data-balance]'), out = document.querySelector('[data-equity]');
                 input.addEventListener('input', function () {

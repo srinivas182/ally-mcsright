@@ -27,6 +27,11 @@ return [
     // the private network ranges (Http\Middleware\TrustLoadBalancer).
     'trusted_proxies' => env('TRUSTED_PROXIES', ''),
 
+    // SX2: the content security policy (Security\ContentSecurityPolicy). "report" sends it report-only, so browsers
+    // report what it would block (HQ → Controls) and nothing breaks; "enforce" blocks; "off" sends none. Switch to
+    // "enforce" once two weeks of reports show only expected items (docs/specs/core/12).
+    'csp' => env('CSP_MODE', 'report'),
+
     'connections' => [
         'control' => env('CORE_CONTROL_CONNECTION'),
         'cell' => env('CORE_CELL_CONNECTION'),

@@ -6,6 +6,7 @@ namespace Modules\Core\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Modules\Core\Security\ContentSecurityPolicy;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -17,6 +18,7 @@ use Symfony\Component\HttpFoundation\Response;
  * - The referrer is sent only to the same site in full; other sites get the origin.
  * - Browser features: only the microphone (consented recordings), location ("near me") and payments, on this site.
  * - HSTS for a year on https. Not for sub-domains: a brokerage's own domain may have other sites under it.
+ * - SX2: the content security policy (Security\ContentSecurityPolicy), report-only until reviewed, and its reports.
  */
 final class SecurityHeaders
 {
@@ -24,7 +26,12 @@ final class SecurityHeaders
 
     public function handle(Request $request, Closure $next): Response
     {
+        if (ContentSecurityPolicy::isReport($request)) { // SX2: browsers' policy reports, on every host
+            return ContentSecurityPolicy::receive($request);
+        }
+        ContentSecurityPolicy::prepare();
         $response = $next($request);
+        ContentSecurityPolicy::apply($request, $response);
         $h = $response->headers;
         foreach ([
             'X-Content-Type-Options' => 'nosniff',

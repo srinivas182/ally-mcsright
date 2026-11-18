@@ -40,6 +40,17 @@ class TenantGuardedBuilder extends Builder
         return $this;
     }
 
+    /** SX2: a joined brokerage table is limited to the brokerage in its "on" clause. */
+    public function join($table, $first, $operator = null, $second = null, $type = 'inner', $where = false)
+    {
+        parent::join($table, $first, $operator, $second, $type, $where);
+        if (! $this->tenantGuardOff) {
+            TenantGuard::applyToJoin($this);
+        }
+
+        return $this;
+    }
+
     /** A nested "where (… or …)" group built from scratch: the outer query already carries the condition. */
     public function forNestedWhere()
     {

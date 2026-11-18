@@ -21,7 +21,7 @@
     <p class="muted">{{ $brokerage }}</p>
     <h1>{{ $t['title'] }}</h1>
     <p>{{ $t['for'] }} <strong>{{ $r->address }}, {{ $r->zip }}</strong> · ${{ number_format((int) $r->inputs['price']) }}</p>
-    <p class="muted">{{ $t['prepared'] }} {{ $agent?->name }} {{ $t['on'] }} {{ $r->created_at->format('m/d/Y') }} · <button type="button" onclick="window.print()">{{ $t['print'] }}</button></p>
+    <p class="muted">{{ $t['prepared'] }} {{ $agent?->name }} {{ $t['on'] }} {{ $r->created_at->format('m/d/Y') }} · <button type="button" data-print>{{ $t['print'] }}</button></p>
 
     <p class="big">{{ number_format((int) $r->result['buyers']) }}</p>
     <p><strong>{{ $t['buyers'] }}</strong></p>
@@ -54,5 +54,6 @@
 
     <p><small>{{ $t['privacy'] }} {{ $t['asof'] }} {{ \Carbon\CarbonImmutable::parse($r->result['as_of'])->format('m/d/Y') }}. {{ $t['equal'] }}</small></p>
 </main>
+<script nonce="{{ Vite::cspNonce() }}">document.addEventListener('click',function(e){var t=e.target;if(t.closest('[data-print]'))window.print();if(t.matches('[data-select]'))t.select();});</script>
 </body>
 </html>
