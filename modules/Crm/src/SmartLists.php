@@ -36,6 +36,10 @@ final class SmartLists
         'not-contacted-6m' => ['Not contacted in 6 months', ['lifecycle' => ['lead', 'active', 'past_client', 'sphere'], 'no_contact_days' => 180]],
         'no-next-step' => ['Leads with no next step', ['health' => 'no_next_step']],
         'past-no-date' => ['Past clients with no closing date', ['health' => 'missing_close_date']],
+        // LN4 (E24).
+        'bad-email' => ['Emails that bounce', ['health' => 'bad_email']],
+        'bad-phone' => ['Phone numbers that don\'t work', ['health' => 'bad_phone']],
+        'may-have-moved' => ['May have moved', ['health' => 'moved']],
     ];
 
     /** Keep-in-touch cadence in days by A/B/C/D ranking. */
@@ -43,7 +47,7 @@ final class SmartLists
 
     private const KEYS = ['lifecycle', 'origin', 'source', 'stage', 'tags', 'no_contact_days', 'overdue_task', 'created_within_days', 'cities', 'pipeline', 'keywords', 'rhythm', 'rhythm_due', 'birthday_within_days', 'anniversary_within_days', 'referral_moment', 'custom', 'health'];
 
-    public const HEALTH = ['unreachable', 'no_next_step', 'missing_close_date'];
+    public const HEALTH = ['unreachable', 'no_next_step', 'missing_close_date', 'bad_email', 'bad_phone', 'moved'];
 
     public function __construct(private readonly ContactVisibility $visibility) {}
 

@@ -9,8 +9,11 @@ interface LicenceVerifier
 {
     public function configured(): bool;
 
+    /** How the check was made, for the credential's record ("arello", "state_data"). */
+    public function method(): string;
+
     /**
-     * @return array{status: string, expires_on: string|null, last_name: string|null} status: active, expired, suspended, inactive, not_found
+     * @return array{status: string, expires_on: string|null, last_name: string|null} status: active, expired, suspended, inactive, not_found, unknown (no records for that state)
      */
     public function lookup(string $state, string $number, string $lastName): array;
 }

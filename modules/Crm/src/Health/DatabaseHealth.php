@@ -19,6 +19,9 @@ use Modules\Crm\Models\Contact;
  * Checks (weight): duplicates (1), no email or phone (1), not contacted in 6 months (2), leads with no next step (2),
  * past clients with no closing date, so no home anniversary (1). The score is 100 minus the weighted share of contacts
  * with each problem.
+ *
+ * LN4 (E24): emails that bounce and phones that don't work (from the email and phone checks), and contacts who may
+ * have moved because their home sold on the MLS (1 each).
  */
 final class DatabaseHealth
 {
@@ -29,6 +32,10 @@ final class DatabaseHealth
         'forgotten' => ['Not contacted in 6 months', 2, 'Check in with them', '/contacts?list=not-contacted-6m'],
         'no_next_step' => ['Leads with no next step', 2, 'Add a task or start a plan', '/contacts?list=no-next-step'],
         'missing_close_date' => ['Past clients with no closing date', 1, 'Add the date for anniversary reminders', '/contacts?list=past-no-date'],
+        // LN4 (E24).
+        'bad_email' => ['Emails that bounce', 1, 'Ask for a new email', '/contacts?list=bad-email'],
+        'bad_phone' => ['Phone numbers that don\'t work', 1, 'Ask for a new number', '/contacts?list=bad-phone'],
+        'moved' => ['May have moved (their home sold)', 1, 'Congratulate them and ask for the new address', '/contacts?list=may-have-moved'],
     ];
 
     public function __construct(private readonly TenantContext $tenants) {}
@@ -47,13 +54,22 @@ final class DatabaseHealth
                 ->where(fn ($q) => $q->whereNull('last_activity_at')->orWhere('last_activity_at', '<', CarbonImmutable::now()->subDays(180)))->count(),
             'no_next_step' => self::filter($base(), 'no_next_step')->count(),
             'missing_close_date' => self::filter($base(), 'missing_close_date')->count(),
+            'bad_email' => self::filter($base(), 'bad_email')->count(),
+            'bad_phone' => self::filter($base(), 'bad_phone')->count(),
+            'moved' => self::filter($base(), 'moved')->count(),
         ];
+        // LN4: the email, phone and moved checks count toward the score only once there is something to go on (checks
+        // made, or a contact flagged), so turning them on never changes a score by itself.
+        $applies = ['bad_email' => $counts['bad_email'] > 0 || $base()->whereNotNull('email_checked_at')->exists(),
+            'bad_phone' => $counts['bad_phone'] > 0 || $base()->whereNotNull('phone_checked_at')->exists(), 'moved' => $counts['moved'] > 0];
         $weights = 0;
         $weighted = 0.0;
         $checks = [];
         foreach (self::CHECKS as $key => [$label, $weight, $fix, $href]) {
-            $weights += $weight;
-            $weighted += $weight * ($total === 0 ? 0 : min(1, $counts[$key] / $total));
+            if ($applies[$key] ?? true) {
+                $weights += $weight;
+                $weighted += $weight * ($total === 0 ? 0 : min(1, $counts[$key] / $total));
+            }
             $checks[] = ['key' => $key, 'label' => $label, 'count' => $counts[$key], 'fix' => $fix, 'href' => $href];
         }
 
@@ -74,6 +90,9 @@ final class DatabaseHealth
             'no_next_step' => $query->whereIn('lifecycle', ['lead', 'active'])->whereNull('next_task_at')
                 ->whereNotExists(fn ($e) => $e->selectRaw('1')->from('crm_plan_enrollments')->whereColumn('crm_plan_enrollments.contact_id', 'crm_contacts.id')->where('crm_plan_enrollments.status', 'active')),
             'missing_close_date' => $query->where('lifecycle', 'past_client')->whereNull('closed_on'),
+            'bad_email' => $query->whereNotNull('primary_email')->where('email_status', 'invalid'),
+            'bad_phone' => $query->whereNotNull('primary_phone')->where('phone_type', 'invalid'),
+            'moved' => $query->whereNotNull('moved_on'),
             default => $query,
         };
     }

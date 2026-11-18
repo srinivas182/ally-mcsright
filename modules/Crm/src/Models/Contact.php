@@ -62,6 +62,11 @@ use Modules\Crm\Enums\Source;
  * @property int|null $import_id
  * @property string|null $rhythm
  * @property CarbonImmutable|null $closed_on
+ * @property string|null $email_status
+ * @property string|null $phone_type
+ * @property string|null $caller_name
+ * @property CarbonImmutable|null $moved_on
+ * @property string|null $moved_note
  * @property int|null $birthday_md
  * @property int|null $closed_md
  * @property CarbonImmutable|null $owner_assigned_at
@@ -129,6 +134,7 @@ final class Contact extends Model
             'origin' => Origin::class, 'source' => Source::class, 'lifecycle' => Lifecycle::class,
             'last_activity_at' => 'immutable_datetime', 'email_opt_in' => 'boolean', 'sms_opt_in' => 'boolean',
             'do_not_call' => 'boolean', 'created_at' => 'immutable_datetime', 'stage_changed_at' => 'immutable_datetime', 'sms_opt_in_at' => 'immutable_datetime', 'sms_opt_out_at' => 'immutable_datetime', 'email_opt_in_at' => 'immutable_datetime', 'closed_on' => 'immutable_date', 'owner_assigned_at' => 'immutable_datetime', 'in_pond_since' => 'immutable_datetime',
+            'moved_on' => 'immutable_date', // LN4
         ];
     }
 

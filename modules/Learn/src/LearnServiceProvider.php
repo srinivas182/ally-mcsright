@@ -18,6 +18,8 @@ final class LearnServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->app->scoped(MarketQuiz::class); // LN4
+        $this->app->scoped(Pods::class);
         $this->app->scoped(Library::class);
         $this->app->scoped(Progress::class);
         $this->app->scoped(Knowledge::class);

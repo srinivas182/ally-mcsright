@@ -80,3 +80,29 @@ The broker can require a published course before these tools:
 - **Ticking steps.** Only the agent, their mentor or the broker can tick, and the check-in only the last two.
 - **AI input.** Pasted notes go to AI as untrusted content.
 - **Audit log.** Gates, launches and course creation are recorded.
+
+## LN4: Market mastery, accountability pods, live call cards (rest of E20)
+
+- **Know your market** (`/learn/market`, `Learn\MarketQuiz`). Five questions a day on the agent's own area, from today's real MLS numbers:
+    - typical asking price;
+    - homes for sale;
+    - price per square foot;
+    - days on market;
+    - new listings in the last 30 days.
+
+    Each question has four choices; the wrong ones are 15–40% away. The same area gives the same quiz all day. Answers are checked on the server and never sent to the page. The score and a days-in-a-row streak are kept.
+
+- **Accountability pods** (`/learn/pods`, `Learn\Pods`). Two to six agents (or owners) who each set one goal a week, then add what they did and where they need help.
+    - The pod page shows everyone's check-in next to the week's numbers RightAlly already has: calls logged, appointments and new deals.
+    - Only members, and the brokerage's managers, can open a pod. Anyone can leave.
+- **Live call cards** (`Outreach\CallCards`). On the call queue, "If they say…" chips cover eight common moments, from "I'm busy" to "Please don't call me again". Tapping one shows a short, honest reply and a tip.
+    - The cards contain no pressure tactics and are Fair Housing safe.
+    - "Commissions are negotiable and not set by law."
+
+**Agent licence look-up** (Outside services → Agent licence look-up, `Roster\Verification\ServiceVerifier`):
+
+- **State public licence data** (recommended, free): HQ loads a state's published licence list with `php artisan roster:licence-data TX file.csv`. Licences in that state are then checked automatically (monthly, and on demand), and the result is recorded as `state_data`. A state without a loaded list is left for a person to verify; it is never flagged.
+- **ARELLO:** waits for ARELLO's data agreement and API specification.
+- **Typed in by hand:** staff verify, as before.
+
+Tests: `tests/Feature/Crm/DatabaseChecksTest.php`.

@@ -26,7 +26,8 @@ final class RosterServiceProvider extends ServiceProvider
         }
         $this->app->tag([LicenceGuard::class], 'transactions.deal_guards');
         // Automatic verification is off until the ARELLO adapter is bound (with the data agreement).
-        $this->app->bindIf(Verification\LicenceVerifier::class, Verification\NotConfiguredVerifier::class);
+        // LN4: the provider chosen in Outside services → Agent licence look-up.
+        $this->app->bindIf(Verification\LicenceVerifier::class, Verification\ServiceVerifier::class);
     }
 
     public function boot(): void
@@ -42,7 +43,7 @@ final class RosterServiceProvider extends ServiceProvider
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
         if ($this->app->runningInConsole()) {
-            $this->commands([Console\RosterReminders::class, Console\RosterVerify::class]);
+            $this->commands([Console\RosterReminders::class, Console\RosterVerify::class, Console\LoadLicenceData::class]);
         }
 
         $this->app->make(PermissionRegistry::class)->register('People', [

@@ -7,6 +7,7 @@ use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
 use Modules\Learn\Http\LearnAdminController;
 use Modules\Learn\Http\LearnController;
 use Modules\Learn\Http\LearnIqController;
+use Modules\Learn\Http\MasteryController;
 use Modules\Learn\Http\PracticeController;
 
 // Learn (LN1, specs/learn/01).
@@ -29,6 +30,14 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('learn'
     Route::post('manage/build', [LearnIqController::class, 'build'])->middleware('throttle:10,1')->name('build');
 
     // The role-play academy (LN3, specs/learn/03).
+    // LN4 (E20): local market quizzes and accountability pods.
+    Route::get('market', [MasteryController::class, 'market'])->name('market');
+    Route::post('market', [MasteryController::class, 'answer'])->middleware('throttle:20,1')->name('market.answer');
+    Route::get('pods', [MasteryController::class, 'pods'])->name('pods');
+    Route::post('pods', [MasteryController::class, 'createPod'])->middleware('throttle:10,1')->name('pods.create');
+    Route::get('pods/{pod}', [MasteryController::class, 'pod'])->where('pod', '[0-9A-HJKMNP-TV-Z]{26}')->name('pods.show');
+    Route::post('pods/{pod}/check-in', [MasteryController::class, 'checkIn'])->where('pod', '[0-9A-HJKMNP-TV-Z]{26}')->name('pods.check-in');
+    Route::post('pods/{pod}/leave', [MasteryController::class, 'leave'])->where('pod', '[0-9A-HJKMNP-TV-Z]{26}')->name('pods.leave');
     Route::get('practice', [PracticeController::class, 'index'])->name('practice');
     Route::post('practice', [PracticeController::class, 'start'])->middleware('throttle:30,1')->name('practice.start');
     Route::post('practice/coach', [PracticeController::class, 'coach'])->middleware('throttle:10,1')->name('practice.coach');

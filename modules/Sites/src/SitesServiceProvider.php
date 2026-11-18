@@ -54,7 +54,7 @@ final class SitesServiceProvider extends ServiceProvider
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'sites');
         if ($this->app->runningInConsole()) {
-            $this->commands([Console\WriteMarketUpdates::class, Console\AillyWeekly::class, Console\SendHomeReports::class]);
+            $this->commands([Console\WriteMarketUpdates::class, Console\AillyWeekly::class, Console\SendHomeReports::class, Console\ContactHealth::class]);
         }
         $this->app->make(PromptRegistry::class)->addPath(__DIR__.'/../prompts');
         // AW1: the calculators in the sitemap and llms.txt (specs/websites/18).
