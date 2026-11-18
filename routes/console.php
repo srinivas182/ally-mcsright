@@ -22,6 +22,7 @@ Schedule::command('ai:eval')->weeklyOn(1, '05:30')->onOneServer();
 Schedule::command('ai:cost-watch')->dailyAt('06:10')->onOneServer();
 // Referral rewards past the 30-day hold (specs/billing/08).
 Schedule::command('billing:affiliates-settle')->dailyAt('06:20')->onOneServer();
+Schedule::command('network:expire')->hourlyAt(17)->onOneServer(); // AR1
 // Collect finished AI batches and purge stored results after 7 days (specs/ai/01).
 Schedule::command('ai:batches:collect')->everyTenMinutes()->onOneServer();
 // Cap periods reconcile with their entries (specs/compensation/01).

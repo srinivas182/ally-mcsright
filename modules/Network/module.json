@@ -1,0 +1,9 @@
+{
+    "id": "network",
+    "name": "Network",
+    "version": "0.1.0",
+    "provider": "Modules\\Network\\NetworkServiceProvider",
+    "depends": ["core", "crm", "transactions", "billing"],
+    "entitlement": null,
+    "description": "AR1-AR3 (specs/network): the agent referral network between RightAlly brokerages, the Referral Trust Score and the AI networking assistant. RightAlly takes no share of referral fees."
+}
