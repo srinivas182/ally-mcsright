@@ -21,6 +21,7 @@ use Modules\Core\Support\Connections;
 use Modules\Core\Switches\Areas;
 use Modules\Core\Switches\FeatureSwitches;
 use Modules\Core\Tenancy\TenantContext;
+use stdClass;
 
 /**
  * Brokerage settings for FL1 (specs/core/16): areas and seats, outside services, approval rules, support access.
@@ -43,7 +44,7 @@ final class PlatformController
 
         return Inertia::render('settings/features', [
             'areas' => array_map(fn (array $a): array => $a + ['holders' => ($holders->get($a['key']) ?? collect())
-                ->map(fn (object $h): ?array => ($u = $byId->get($h->user_id)) !== null ? ['ulid' => $u->ulid, 'name' => $u->name] : null)->filter()->values()->all()], $summary),
+                ->map(fn (stdClass $h): ?array => ($u = $byId->get($h->user_id)) !== null ? ['ulid' => $u->ulid, 'name' => $u->name] : null)->filter()->values()->all()], $summary),
             'people' => $people->map(fn (User $u): array => ['ulid' => $u->ulid, 'name' => $u->name])->values(),
         ]);
     }

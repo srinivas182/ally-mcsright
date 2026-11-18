@@ -17,6 +17,7 @@ use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Identity\Enums\UserStatus;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
+use stdClass;
 use Throwable;
 
 /**
@@ -167,14 +168,14 @@ final class Approvals
         $rows = $db->table('approval_requests')->where('tenant_id', $tenant)->orderByDesc('id')->limit(60)->get();
         $votes = $db->table('approval_votes')->whereIn('request_id', $rows->pluck('id'))->get()->groupBy('request_id');
         $names = User::query()->whereIn('id', $rows->pluck('requested_by')->merge($votes->flatten()->pluck('user_id'))->unique())->get(['id', 'first_name', 'last_name'])->mapWithKeys(fn (User $u): array => [$u->id => $u->name]);
-        $shape = fn (object $r): array => ['ulid' => $r->ulid, 'about' => $r->about, 'action' => $this->registry->actions[(string) $r->action]['label'] ?? $r->action,
+        $shape = fn (stdClass $r): array => ['ulid' => $r->ulid, 'about' => $r->about, 'action' => $this->registry->actions[(string) $r->action]['label'] ?? $r->action,
             'needed' => (int) $r->needed, 'status' => $r->status, 'result' => $r->result, 'asked_by' => $names[$r->requested_by] ?? 'Someone',
             'asked_at' => (string) $r->created_at, 'mine' => (int) $r->requested_by === $viewer->id,
-            'votes' => ($votes->get($r->id) ?? collect())->map(fn (object $v): array => ['name' => $names[$v->user_id] ?? 'Someone', 'decision' => $v->decision])->values()->all()];
+            'votes' => ($votes->get($r->id) ?? collect())->map(fn (stdClass $v): array => ['name' => $names[$v->user_id] ?? 'Someone', 'decision' => $v->decision])->values()->all()];
 
         return ['rules' => $rules,
-            'waiting' => $rows->where('status', 'waiting')->filter(fn (object $r): bool => CarbonImmutable::parse((string) $r->expires_at)->isFuture())->map($shape)->values()->all(),
-            'closed' => $rows->reject(fn (object $r): bool => $r->status === 'waiting' && CarbonImmutable::parse((string) $r->expires_at)->isFuture())->take(30)->map($shape)->values()->all()];
+            'waiting' => array_values($rows->where('status', 'waiting')->filter(fn (stdClass $r): bool => CarbonImmutable::parse((string) $r->expires_at)->isFuture())->map($shape)->all()),
+            'closed' => array_values($rows->reject(fn (stdClass $r): bool => $r->status === 'waiting' && CarbonImmutable::parse((string) $r->expires_at)->isFuture())->take(30)->map($shape)->all())];
     }
 
     /**

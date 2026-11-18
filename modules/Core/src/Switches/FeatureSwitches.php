@@ -12,6 +12,7 @@ use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
+use stdClass;
 
 /**
  * Feature switches and seats (FL1, specs/core/16).
@@ -29,7 +30,7 @@ final class FeatureSwitches
 {
     private const TTL = 300;
 
-    /** @var array<int, array{rows: array<string, object>, everyone: array<string, object>, seats: array<string, int>}> */
+    /** @var array<int, array{rows: array<string, stdClass>, everyone: array<string, stdClass>, seats: array<string, int>}> */
     private array $memo = [];
 
     /** @var array<string, list<string>> tenant:user => areas held */
@@ -110,8 +111,10 @@ final class FeatureSwitches
     public function holdsSeat(User $user, string $area): bool
     {
         $key = $user->tenant_id.':'.$user->id;
-        $this->held[$key] ??= DB::connection(Connections::cell())->table('seat_holders')->where('tenant_id', $user->tenant_id)->where('user_id', $user->id)
-            ->pluck('area')->map(fn (mixed $a): string => (string) $a)->values()->all();
+        if (! isset($this->held[$key])) {
+            $areas = DB::connection(Connections::cell())->table('seat_holders')->where('tenant_id', $user->tenant_id)->where('user_id', $user->id)->pluck('area')->all();
+            $this->held[$key] = array_values(array_map(fn (mixed $a): string => (string) $a, $areas));
+        }
 
         return in_array($area, $this->held[$key], true);
     }
@@ -267,7 +270,7 @@ final class FeatureSwitches
     }
 
     /**
-     * @return array{rows: array<string, object>, everyone: array<string, object>, seats: array<string, int>}
+     * @return array{rows: array<string, stdClass>, everyone: array<string, stdClass>, seats: array<string, int>}
      */
     private function load(int $tenantId): array
     {
@@ -286,7 +289,7 @@ final class FeatureSwitches
             return $rows;
         });
 
-        return $this->memo[$tenantId] = ['rows' => array_map(fn (array $r): object => (object) $r, $raw['rows']),
-            'everyone' => array_map(fn (array $r): object => (object) $r, $raw['everyone']), 'seats' => $raw['seats']];
+        return $this->memo[$tenantId] = ['rows' => array_map(fn (array $r): stdClass => (object) $r, $raw['rows']),
+            'everyone' => array_map(fn (array $r): stdClass => (object) $r, $raw['everyone']), 'seats' => $raw['seats']];
     }
 }

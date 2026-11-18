@@ -17,6 +17,7 @@ use Modules\Core\Identity\Notifications\SupportAccessRequested;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\Models\Tenant;
 use Modules\Core\Tenancy\TenantContext;
+use stdClass;
 
 /**
  * Support access (FL1, specs/core/02 and 16): the brokerage decides whether RightAlly support may view its account
@@ -36,7 +37,7 @@ final class SupportAccess
     {
         $row = DB::connection(Connections::control())->table('support_access')->where('tenant_id', $tenantId)->first();
 
-        return ['policy' => (string) ($row->policy ?? 'open'), 'open_until' => $row->open_until ?? null];
+        return ['policy' => (string) ($row->policy ?? 'open'), 'open_until' => isset($row->open_until) ? (string) $row->open_until : null];
     }
 
     public function mayEnter(int $tenantId): bool
@@ -111,10 +112,10 @@ final class SupportAccess
         $p = $this->policy($id);
 
         return $p + [
-            'waiting' => $control->table('support_access_requests')->where('tenant_id', $id)->where('status', 'waiting')->orderByDesc('id')->limit(10)->get()
-                ->map(fn (object $r): array => ['ulid' => (string) $r->ulid, 'by' => (string) $r->by_name, 'reason' => (string) $r->reason, 'at' => (string) $r->created_at])->values()->all(),
-            'visits' => $control->table('support_visits')->where('tenant_id', $id)->orderByDesc('id')->limit(50)->get()
-                ->map(fn (object $v): array => ['by' => (string) $v->by_name, 'viewed' => (string) $v->viewed_name, 'reason' => (string) $v->reason, 'at' => (string) $v->created_at])->values()->all(),
+            'waiting' => array_values($control->table('support_access_requests')->where('tenant_id', $id)->where('status', 'waiting')->orderByDesc('id')->limit(10)->get()
+                ->map(fn (stdClass $r): array => ['ulid' => (string) $r->ulid, 'by' => (string) $r->by_name, 'reason' => (string) $r->reason, 'at' => (string) $r->created_at])->all()),
+            'visits' => array_values($control->table('support_visits')->where('tenant_id', $id)->orderByDesc('id')->limit(50)->get()
+                ->map(fn (stdClass $v): array => ['by' => (string) $v->by_name, 'viewed' => (string) $v->viewed_name, 'reason' => (string) $v->reason, 'at' => (string) $v->created_at])->all()),
         ];
     }
 }
