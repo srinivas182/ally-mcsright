@@ -31,6 +31,7 @@ use Modules\Transactions\Deadlines\Deadlines;
 use Modules\Transactions\DealAccess;
 use Modules\Transactions\DealInbox;
 use Modules\Transactions\DealIq;
+use Modules\Transactions\DealIq\EmailIntake;
 use Modules\Transactions\Deals;
 use Modules\Transactions\Documents;
 use Modules\Transactions\EarnestMoney;
@@ -77,6 +78,8 @@ final class DealController
             ]),
             'forecast' => self::reviewer($user) && Fields::visible($user, 'commission') ? app(Forecast::class)->pending() : null,
             'canBringOverFiles' => self::reviewer($user),
+            // DQ4: forward a signed contract to start a deal.
+            'dealIqEmail' => in_array($user->kind, [UserKind::Agent, UserKind::Owner], true) ? app(EmailIntake::class)->address($user) : null,
             'atRisk' => self::atRisk(self::actingFor($user)),
             'alerts' => app(Deadlines::class)->prefs($user),
             'canCreateFor' => self::reviewer($user) ? User::query()->where('kind', UserKind::Agent)->where('status', 'active')->orderBy('first_name')->get()

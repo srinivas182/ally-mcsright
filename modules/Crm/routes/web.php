@@ -176,6 +176,9 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'throttle:30,1,ai-book']
     Route::post('book/{call}', [AiCallController::class, 'confirm'])->where('call', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('crm.leads.book.confirm');
 });
 Route::middleware('throttle:600,1,inbound-email')->post('webhooks/inbound/lead-email', InboundEmailController::class)->name('crm.leads.inbound');
+// DQ4: the same inbound email from SendGrid Inbound Parse or Mailgun Routes.
+Route::middleware('throttle:600,1,inbound-email')->post('webhooks/inbound/sendgrid/{secret}', [InboundEmailController::class, 'sendgrid'])->where('secret', '[A-Za-z0-9_\-]{16,128}')->name('crm.inbound.sendgrid');
+Route::middleware('throttle:600,1,inbound-email')->post('webhooks/inbound/mailgun', [InboundEmailController::class, 'mailgun'])->name('crm.inbound.mailgun');
 
 // Unified inbox (specs/grow/05, Sprint 16A-2).
 Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoffice.basic'])

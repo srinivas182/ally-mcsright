@@ -542,3 +542,49 @@ texting and voice, credits, compliance rule library (state rule packs).
 
 Sold with DocIQ as the **RightAlly AI Transaction Suite** (product/ux-principles.md). Agents see one
 assistant per deal: "Ask anything or tell me what to do".
+
+## DQ4: Intake by email, inbound providers, more state packs (D13, D14)
+
+**Deal-IQ by email.**
+
+- Every agent (and owner) has their own address, `dealiq-…@inbound…`. The Deals page shows it next to "Start a deal the fast way", with a Copy button.
+- Forwarding the signed contract there starts a new deal exactly like an upload (`DealIq\EmailIntake`). Deal-IQ reads the contract, and the agent gets an email with **Check and confirm**.
+- Only what is forwarded is read; RightAlly never reads a mailbox.
+- **Who may send:** only email from the agent's own sign-in address, or from one of their own assistants, is accepted. Anything else is ignored, the agent is told, and an audit entry records only the sender's domain.
+- **Which attachment:** the first PDF is used, or else the first photo. With no attachment, nothing is created and the agent is told.
+- **Limit:** at most 20 new deals a day per agent by email.
+
+**Inbound email providers.** The single inbound webhook now accepts all three providers HQ can choose in Outside services → Forward-paperwork email address (`Crm\Inbox\InboundPayload`):
+
+| Provider               | Address                               | How it is checked                                                 |
+| ---------------------- | ------------------------------------- | ----------------------------------------------------------------- |
+| Postmark (recommended) | `/webhooks/inbound/lead-email`        | Basic-auth secret                                                 |
+| SendGrid Inbound Parse | `/webhooks/inbound/sendgrid/<secret>` | Secret in the address; only while SendGrid is the chosen provider |
+| Mailgun Routes         | `/webhooks/inbound/mailgun`           | HMAC with the webhook signing key, at most 15 minutes old         |
+
+- Only PDFs and images are kept: at most 20 per email, each up to 25 MB.
+- Lead emails, deal addresses, replies and Deal-IQ addresses all work the same way through each provider.
+
+**State packs (D14).** Nine states join TX, LA, MS, AL and NJ:
+
+| State          | Earnest money   | Standard windows (used only when the contract gives no date) |
+| -------------- | --------------- | ------------------------------------------------------------ |
+| Florida        | 3 days          | Inspection 15 days, financing 30 days                        |
+| California     | 3 business days | Disclosures 7 days; inspection, appraisal and loan 17 days   |
+| Georgia        | 3 banking days  | —                                                            |
+| North Carolina | 5 days          | —                                                            |
+| Illinois       | —               | Attorney review and inspection 5 business days               |
+| Arizona        | —               | Inspection 10 days                                           |
+| Colorado       | —               | Dates come from the contract                                 |
+| Washington     | 2 days          | Inspection 10 days                                           |
+| New York       | —               | Dates come from the attorney-drafted contract                |
+
+- A date DocIQ read from the contract always wins.
+- Each default says where it comes from, followed by "Check the contract".
+- Weekend and holiday deadlines move to the next business day.
+
+**Synced platforms.** dotloop and DocuSign already bring their files over (C5a), and SkySlope and Lone Wolf send theirs through a file export. Together with email intake, this covers paperwork without reading any inbox.
+
+**Defaults to review (law):** every state window above. Broker or attorney review is recommended before relying on them.
+
+Tests: `tests/Feature/Transactions/DealIqEmailTest.php`.

@@ -44,6 +44,7 @@ type Props = {
     atRisk: AtRiskItem[];
     alerts: AlertPrefs;
     canBringOverFiles?: boolean;
+    dealIqEmail?: string | null;
 };
 
 const columns: [string, string][] = [
@@ -69,6 +70,7 @@ export default function Deals({
     atRisk,
     alerts,
     canBringOverFiles = false,
+    dealIqEmail = null,
 }: Props) {
     const params = new URLSearchParams(
         typeof window !== 'undefined' ? window.location.search : '',
@@ -180,6 +182,25 @@ export default function Deals({
                     {(intake.errors.file || describe.errors.text) && (
                         <p role="alert" className="text-destructive">
                             {intake.errors.file ?? describe.errors.text}
+                        </p>
+                    )}
+                    {dealIqEmail && (
+                        <p className="text-sm">
+                            Or forward the signed contract by email to{' '}
+                            <strong className="break-all">{dealIqEmail}</strong>{' '}
+                            <button
+                                type="button"
+                                className="underline"
+                                onClick={() =>
+                                    void navigator.clipboard?.writeText(
+                                        dealIqEmail,
+                                    )
+                                }
+                            >
+                                Copy
+                            </button>
+                            . Only emails you send from your RightAlly email
+                            address are read.
                         </p>
                     )}
                 </section>

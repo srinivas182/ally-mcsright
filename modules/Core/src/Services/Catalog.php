@@ -93,9 +93,12 @@ final class Catalog
                 ]],
             'inbound_email' => ['label' => 'Forward-paperwork email address', 'about' => 'Receives paperwork agents forward to their Deal-IQ address. Only what is forwarded is read, never a mailbox.',
                 'level' => 'hq', 'sprint' => 'DQ4', 'contacts' => false, 'providers' => [
-                    'postmark' => ['label' => 'Postmark inbound (recommended)', 'fields' => ['server_token' => ['label' => 'Server API token', 'kind' => 'secret']]],
-                    'sendgrid' => ['label' => 'SendGrid Inbound Parse', 'fields' => $key],
-                    'mailgun' => ['label' => 'Mailgun Routes', 'fields' => ['api_key' => ['label' => 'API key', 'kind' => 'secret'], 'domain' => ['label' => 'Receiving domain', 'kind' => 'text']]],
+                    'postmark' => ['label' => 'Postmark inbound (recommended)', 'fields' => ['server_token' => ['label' => 'Server API token', 'kind' => 'secret']],
+                        'note' => 'Inbound webhook: https://<HQ address>/webhooks/inbound/lead-email, with the inbound secret as the basic-auth password.'],
+                    'sendgrid' => ['label' => 'SendGrid Inbound Parse', 'fields' => $key, 'note' => 'Parse URL: https://<HQ address>/webhooks/inbound/sendgrid/<inbound secret>. Tick "POST the raw, full MIME message" off.'],
+                    'mailgun' => ['label' => 'Mailgun Routes', 'fields' => ['api_key' => ['label' => 'API key', 'kind' => 'secret'], 'domain' => ['label' => 'Receiving domain', 'kind' => 'text'],
+                        'signing_key' => ['label' => 'HTTP webhook signing key', 'kind' => 'secret']],
+                        'note' => 'Route action: forward("https://<HQ address>/webhooks/inbound/mailgun"). Each post is checked with the webhook signing key.'],
                 ]],
             'video' => ['label' => 'Video intros, outros and reels', 'about' => 'Makes branded videos and listing reels.',
                 'level' => 'hq', 'sprint' => 'MK3, MD1', 'contacts' => false, 'providers' => [
