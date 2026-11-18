@@ -128,6 +128,11 @@ final class CoreServiceProvider extends ServiceProvider
         $this->app->scoped(Roles::class);
         $this->app->scoped(AuditLogger::class);
         $this->app->singleton(NavigationRegistry::class);
+        // FL1 (specs/core/16): areas, switches and seats; approval rules; outside services.
+        $this->app->singleton(Switches\Areas::class);
+        $this->app->scoped(Switches\FeatureSwitches::class);
+        $this->app->singleton(Approvals\ApprovalActions::class);
+        $this->app->scoped(Approvals\Approvals::class);
         $this->app->singleton(Notices\NoticeTypes::class);
         $this->app->scoped(CustomFields\CustomFields::class);
         $this->app->singleton(Workflows\WorkflowRegistry::class);
@@ -153,8 +158,10 @@ final class CoreServiceProvider extends ServiceProvider
         $this->loadRoutesFrom(__DIR__.'/../routes/hq.php');
 
         $this->loadRoutesFrom(__DIR__.'/../routes/identity.php');
+        $this->loadRoutesFrom(__DIR__.'/../routes/platform.php');
         $this->registerIdentity();
         $this->registerNavigation();
+        $this->registerPlatform();
 
         $this->registerTenantAwareQueues();
         $this->registerMigrationMacros();
@@ -167,6 +174,8 @@ final class CoreServiceProvider extends ServiceProvider
         $types->register(Brief\DailyBriefMail::class, 'Your daily brief', 'General');
         $types->register(Workflows\WorkflowAlertMail::class, 'Alerts from automations', 'Automations');
         $types->register(Workflows\WorkflowApprovalMail::class, 'Approvals automations are waiting for', 'Automations', urgent: true);
+        $types->register(Approvals\ApprovalNeededMail::class, 'Sensitive changes waiting for your approval', 'Security', urgent: true); // FL1
+        $types->register(Identity\Notifications\SupportAccessRequested::class, 'RightAlly support asking to view your account', 'Security', urgent: true); // FL1
 
         // The workflow engine (specs/core/06, W1): Core's own steps and triggers; modules add theirs.
         $workflows = $this->app->make(Workflows\WorkflowRegistry::class);
@@ -177,7 +186,7 @@ final class CoreServiceProvider extends ServiceProvider
         }
 
         if ($this->app->runningInConsole()) {
-            $this->commands([CompileDesignTokens::class, RunTenantLifecycle::class, BootstrapHq::class, Console\FlushAudit::class, Console\VerifyAudit::class, Console\AuditMaintenance::class, Console\ExpireAccess::class, Console\AccessReviewReminder::class, Console\SendNoticeDigests::class, Console\RunWorkflows::class, Console\RebuildDirectory::class, Console\SendDailyBriefs::class, Safeguards\Console\ExpireExports::class, Safeguards\Console\SafeguardsDaily::class, Safeguards\Console\Rekey::class, Scale\Console\WatchCells::class, Scale\Console\SeedLoadTest::class, Scale\Console\SeedEndToEnd::class]);
+            $this->commands([CompileDesignTokens::class, RunTenantLifecycle::class, BootstrapHq::class, Console\FlushAudit::class, Console\VerifyAudit::class, Console\AuditMaintenance::class, Console\ExpireAccess::class, Console\AccessReviewReminder::class, Console\SendNoticeDigests::class, Console\RunWorkflows::class, Console\RebuildDirectory::class, Console\SendDailyBriefs::class, Safeguards\Console\ExpireExports::class, Safeguards\Console\SafeguardsDaily::class, Safeguards\Console\Rekey::class, Scale\Console\WatchCells::class, Scale\Console\SeedLoadTest::class, Scale\Console\SeedEndToEnd::class, Console\ExpireApprovals::class]);
         }
     }
 
@@ -227,6 +236,8 @@ final class CoreServiceProvider extends ServiceProvider
             'core.access.review' => ['Run the quarterly access review and export who can do what', false, true],
             'core.fields.manage' => ['Add and change custom fields on contacts, deals and agents'],
             'core.workflows.manage' => ['Create and switch on automations'],
+            'core.platform.manage' => ['Switch areas on or off, give seats and connect outside services (keys, Test and Live)'],
+            'core.approvals.give' => ['Approve sensitive changes other people ask for'],
         ]);
         // Areas whose screens live in several modules (specs/core/03, R1).
         $registry->register('Marketing', [
@@ -319,6 +330,46 @@ final class CoreServiceProvider extends ServiceProvider
         });
     }
 
+    /**
+     * FL1 (specs/core/16): the areas a brokerage (or HQ) can switch on or off, which can be sold by the seat, and the
+     * settings changes that can need approval. Modules may add their own areas and approval actions the same way.
+     */
+    private function registerPlatform(): void
+    {
+        $areas = $this->app->make(Switches\Areas::class);
+        foreach ([
+            ['ads', 'Ads', 'Listing ads, Boost and Google ads', ['/ads'], true],
+            ['studio', 'Ally Studio', 'Branded videos, posts and flyers made with AI', ['/studio'], true],
+            ['appointments', 'Appointments', 'Guided listing appointments and buyer consultations', ['/appointments'], false],
+            ['movewise', 'Movewise', 'Leads from Movewise Homes, RightAlly\'s home-search site', ['/movewise'], false],
+            ['network', 'Referral network', 'Referrals with agents at other RightAlly brokerages', ['/network', '/settings/network'], false],
+            ['recruiting', 'Recruiting', 'Find, invite and keep agents', ['/recruiting'], false],
+            ['learn', 'Learn', 'Training, Learn-IQ coach and role-play', ['/learn'], true],
+            ['prospector', 'Prospector', 'Finds likely sellers and lists to call', ['/prospector'], true],
+            ['postcards', 'Postcards', 'Printed postcards and handwritten cards', ['/postcards'], false],
+            ['social', 'Social posts', 'Scheduled posts to Facebook, Instagram and LinkedIn', ['/social'], false],
+            ['reviews', 'Reviews', 'Asking clients for reviews and showing them', ['/reviews'], false],
+            ['funnels', 'Funnels', 'Landing pages that capture leads', ['/funnels'], false],
+            ['list_iq', 'List-IQ', 'Listing marketing: photos, staging, videos and the listing draft', ['/list-iq'], true],
+            ['outreach', 'Outreach', 'Texting and calling campaigns with consent checks', ['/outreach'], false],
+            ['engage', 'Game plan', 'Agent goals, activity and recognition', ['/engage'], false],
+            ['chat', 'Team chat', 'Chat and help between agents and staff', ['/chat'], false],
+            ['revenue_share', 'Revenue share', 'Revenue share for agents who bring in agents', ['/revenue-share', '/compensation/revenue-share'], false],
+            ['buyer_demand', 'Buyer demand', 'Buyers waiting for homes before a listing goes live', ['/listings/demand'], false],
+            ['pricing', 'CMA and estimates', 'Comparable sales and price estimates', ['/pricing'], false],
+        ] as [$key, $label, $about, $paths, $seats]) {
+            $areas->register($key, $label, $about, $paths, $seats);
+        }
+
+        $this->app->make(Approvals\Approvals::class)->register('services.go_live', 'Switch an outside service to Live (real people and real accounts)',
+            function (array $payload, User $by): string {
+                $service = (string) ($payload['service'] ?? '');
+                $this->app->make(Services\OutsideServices::class)->setMode($this->app->make(TenantContext::class)->id(), $service, 'live', $by);
+
+                return (Services\Catalog::get($service)['label'] ?? $service).' is now Live.';
+            }, default: 0);
+    }
+
     private function registerNavigation(): void
     {
         $nav = $this->app->make(NavigationRegistry::class);
@@ -337,6 +388,12 @@ final class CoreServiceProvider extends ServiceProvider
         $nav->add(new NavItem('HQ', 'Tenants', '/hq/tenants', 'building-2', 10, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff], mobile: true));
         $nav->add(new NavItem('HQ', 'Texts and calls', '/hq/messaging', 'phone', 15, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff]));
         $nav->add(new NavItem('HQ', 'Cells', '/hq/cells', 'database', 16, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff])); // PS1
+        $nav->add(new NavItem('HQ', 'Feature switches', '/hq/switches', 'toggle-right', 17, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff])); // FL1
+        $nav->add(new NavItem('HQ', 'Outside services', '/hq/services', 'plug', 18, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff])); // FL1
+        $nav->add(new NavItem('Settings', 'Features and seats', '/settings/features', 'toggle-right', 82, ability: 'core.platform.manage')); // FL1
+        $nav->add(new NavItem('Settings', 'Outside services', '/settings/services', 'plug', 83, ability: 'core.platform.manage')); // FL1
+        $nav->add(new NavItem('Settings', 'Approvals', '/settings/approvals', 'check-check', 84, kinds: [UserKind::Owner, UserKind::Staff])); // FL1
+        $nav->add(new NavItem('Settings', 'Support access', '/settings/support-access', 'life-buoy', 86, kinds: [UserKind::Owner])); // FL1
     }
 
     private function registerTenantAwareQueues(): void

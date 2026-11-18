@@ -101,6 +101,8 @@ Schedule::command('audit:maintain weekly-digest')->weeklyOn(1, '13:00')->onOneSe
 Schedule::command('audit:maintain stream')->everyMinute()->withoutOverlapping()->onOneServer();
 // Temporary access: remove expired grants (specs/core/03).
 Schedule::command('core:expire-access')->hourly()->onOneServer();
+// Approval requests nobody answered within 7 days (specs/core/16, FL1).
+Schedule::command('core:expire-approvals')->dailyAt('02:35')->onOneServer();
 // The quarterly access review reminder (specs/core/03, R1): Mondays, from two weeks into each quarter.
 // Alerts held for quiet hours and the daily digest (specs/core/10, N1).
 // Automations whose wait is over carry on (specs/core/06, W1).

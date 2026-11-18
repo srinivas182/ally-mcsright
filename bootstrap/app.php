@@ -17,6 +17,7 @@ use Modules\Core\Identity\Http\Middleware\EnsureTenantHost;
 use Modules\Core\Identity\Http\Middleware\EnsureValidSignedInUser;
 use Modules\Core\Identity\Http\Middleware\ImpersonationGuard;
 use Modules\Core\Safeguards\Http\BrokerageMoving;
+use Modules\Core\Switches\Http\EnsureAreaOn;
 use Modules\Core\Tenancy\Http\Middleware\ResolveTenant;
 use Modules\Movewise\Http\Middleware\ServeMovewise;
 use Modules\Sites\Http\Middleware\ServeWebsite;
@@ -44,6 +45,7 @@ return Application::configure(basePath: dirname(__DIR__))
             EnsureSecondFactor::class,
             ImpersonationGuard::class,
             EnsureNotBlocked::class,
+            EnsureAreaOn::class, // FL1: switched-off areas and seats (specs/core/16)
             BrokerageMoving::class,
             BrokerageReadOnly::class,
             HandleAppearance::class,

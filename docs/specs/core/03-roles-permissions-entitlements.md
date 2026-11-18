@@ -10,8 +10,8 @@ teams page; role assignment on the People screen; all changes audited.
 
 **Part 2 delivered (Sprint R1, 2026-11-16)**: see "R1: roles that cover every area" below.
 
-**Still to come**: module registry with entitlements and seats per module (with billing, spec 07), approval rules
-with several approvers, HQ roles.
+**Part 3 delivered (Sprint FL1, 2026-11-18)**: the area registry with switches and seats, and approval rules with up to
+three approvers; see spec 16.
 
 ## Purpose
 
