@@ -281,3 +281,22 @@ designed posts are used it waits for the renewal, unless the person turns on "Us
   (`studio.enhance`, `studio.upscale`) and set each package's enhancement allowance under HQ → Ally Studio.
 - Music library licences (add each track under HQ → Ally Studio with its licence); ffmpeg on the render workers
   (`STUDIO_FFMPEG`); YouTube API audit; Meta review for engagement permissions (SA5); voice vendor (SA5).
+
+## Branded intros and outros, and video renderers (MK3, C22)
+
+**Intros and outros.** In the brand kit, **Start and end my videos with my brand** adds two frames to every video: Reels, YouTube tours, and List-IQ listing videos (`Video\Bumpers`).
+
+- The intro (2.5 seconds) shows the logo, the agent's name, the brokerage and the tagline, on the brand colour.
+- The outro (3.5 seconds) shows "Ask me anything", the name, phone, email, brokerage, licence line and disclaimer.
+- Both are drawn at the video's own size. YouTube chapters move to stay in step.
+- The setting is off until the agent turns it on.
+
+**Renderers.** Outside services → Video intros, outros and reels chooses how videos are made (`Video\ServiceVideoMaker`):
+
+- **RightAlly's own renderer** (recommended; ffmpeg on our workers, no extra fee).
+- **Shotstack:** Test mode uses its free, watermarked "stage" environment.
+- **Creatomate.**
+
+With either provider, the frames, music and voice-over sit on our public storage only while the render runs and are deleted afterwards. If the provider fails or takes more than 5 minutes, our own renderer makes the video, so nothing is lost.
+
+Tests: `tests/Feature/Outreach/MarketingAutomationTest.php`.

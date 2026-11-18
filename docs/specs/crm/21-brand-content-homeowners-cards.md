@@ -51,3 +51,40 @@ All of these are under Grow → Outreach.
 ## Settings and review
 
 - Post templates, the 320-character card limit, and the 36-month value history are defaults to **review**.
+
+## MK3 additions (C22, C23, D09)
+
+### Market report emails (D09)
+
+Outreach → **Market reports**. The agent picks an area (a city or ZIP with enough listings) and who gets the report: past clients and sphere, or any smart list.
+
+- **Sending:** at most 2,000 people per start, and one area per person. The first email goes out the next morning; after that, monthly at 8am brokerage time (`outreach:market-reports`, hourly).
+- **What it shows:** the area's real MLS numbers, each with its source and date:
+    - homes for sale;
+    - typical asking price;
+    - new listings and price reductions in the last 30 days;
+    - typical days on market;
+    - the price range and price per square foot;
+    - three new listings, with each MLS's attribution and disclaimer.
+- **From the agent.** Replies go to the shared inbox.
+- **Opting out:** people who unsubscribed from email are never added or sent to. The one-click stop link is signed and includes the `List-Unsubscribe` headers; it changes nothing else.
+- **No AI cost.** Fair Housing: the email describes homes and prices only.
+
+### "Homes like yours that sold" and "since you bought" (C23)
+
+The monthly home report email and the homeowner's dashboard add:
+
+- **Recent sales like theirs:** same ZIP, beds ±1, size ±25%, closed in the last 6 months.
+    - A sale is shown only where its MLS allows sold data, after any waiting period (`ListingPresenter`).
+    - The typical sold range (the 25th to 75th percentile) uses only sales the MLS allows for valuations.
+- **Since you bought:** for past clients whose purchase closed through the brokerage, what they paid, when, and how much today's estimate has moved since then.
+
+The equity estimate on the dashboard is unchanged. The homeowner types their balance in their own browser, and it is never sent or kept.
+
+### Branded video intros and outros (C22)
+
+See `specs/grow/13`. Defaults to **review**:
+
+- monthly cadence and the 8am send time;
+- 2,000 people per start;
+- the 6-month sold window and ±25% size match.

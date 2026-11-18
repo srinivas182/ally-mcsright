@@ -16,6 +16,7 @@ use Modules\Crm\Actions\Timeline;
 use Modules\Crm\Models\Contact;
 use Modules\Crm\Models\Task;
 use Modules\Listings\Search\ListingSearch;
+use Modules\Sites\Funnels\SoldComps;
 use Modules\Sites\Models\HomeReport;
 use Modules\Sites\Models\Site;
 use Modules\Sites\Visitors\Valuation;
@@ -51,7 +52,12 @@ final class HomeDashboardController
         $site = Site::query()->where('kind', 'brokerage')->first();
         $nearby = $search->search($tenants->id(), ['q' => $row->zip, 'sort' => 'newest', 'per_page' => 4])['results'];
 
-        return response()->view('sites::home-dashboard', ['report' => $row, 'estimate' => $estimate, 'history' => $row->history ?? [], 'nearby' => $nearby,
+        // MK3: homes like theirs that sold, and how the value moved since they bought.
+        $sold = app(SoldComps::class)->near($tenants->id(), $row->zip, $row->beds, $row->sqft, 5);
+        $bought = $row->bought_price !== null ? ['price' => $row->bought_price, 'year' => $row->bought_on?->format('Y'),
+            'change' => SoldComps::sinceBought($row->bought_price, isset($estimate['mid']) ? (int) $estimate['mid'] : null)] : null;
+
+        return response()->view('sites::home-dashboard', ['report' => $row, 'estimate' => $estimate, 'history' => $row->history ?? [], 'nearby' => $nearby, 'sold' => $sold, 'bought' => $bought,
             'agent' => $agent, 'brokerage' => $tenants->current()->name, 'logo' => $site?->brand['logo_url'] ?? null, 'asked' => $request->query('asked') === '1',
             'action' => $request->getRequestUri()])->withHeaders(self::PRIVATE);
     }

@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Modules\Ads\Jobs\RenderReel;
 use Modules\Ads\Studio\Render\StudioRenderer;
+use Modules\Ads\Studio\Video\Bumpers;
 use Modules\Ads\Studio\Video\VideoMaker;
 use Modules\Ads\Studio\Voice\Narration;
 use Modules\Core\Audit\AuditLogger;
@@ -119,6 +120,7 @@ final class Reels
                 file_put_contents($frames[] = $dir.'/'.sprintf('%02d', $i + 1).'.png', $png);
                 $seconds[] = $s;
             }
+            [$frames, $seconds] = Bumpers::wrap($kit, $frames, $seconds, $dir, $w, $h); // MK3: brand intro and outro
             $track = $video->music_ulid !== null ? $this->music->pick($video->music_ulid, 'luxury', 0) : null;
             $voice = app(Narration::class)->audioFor($video, $dir);
             $mp4 = app(VideoMaker::class)->make($frames, $seconds, $track['file'] ?? null, $dir.'/reel.mp4', voice: $voice);
@@ -171,6 +173,11 @@ final class Reels
                 $seconds[] = $s;
                 $chapters[] = ['at' => (int) floor($at), 'title' => $title];
                 $at += $s - 0.6;
+            }
+            [$frames, $seconds, $bumped] = Bumpers::wrap($kit, $frames, $seconds, $dir, 1920, 1080); // MK3: brand intro and outro
+            if ($bumped) {
+                $chapters = array_map(fn (array $c): array => ['at' => $c['at'] === 0 ? 0 : (int) floor($c['at'] + Bumpers::INTRO - 0.6), 'title' => $c['title']], $chapters);
+                $at += Bumpers::INTRO + Bumpers::OUTRO - 1.2;
             }
             $track = $video->music_ulid !== null ? $this->music->pick($video->music_ulid, 'cinematic', 0) : null;
             $voice = app(Narration::class)->audioFor($video, $dir);

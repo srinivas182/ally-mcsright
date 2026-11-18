@@ -16,6 +16,9 @@
                     @if ($change !== null)
                         <p style="margin:0;color:#475569;">{{ $change > 0 ? 'Up '.$change.'%' : ($change < 0 ? 'Down '.abs($change).'%' : 'About the same') }} since last month.</p>
                     @endif
+                    @if ($bought && $bought['change'] !== null)
+                        <p style="margin:4px 0 0;color:#475569;">{{ $bought['change'] > 0 ? 'Up '.$bought['change'].'%' : ($bought['change'] < 0 ? 'Down '.abs($bought['change']).'%' : 'About the same') }} since you bought{{ $bought['year'] ? ' in '.$bought['year'] : '' }} for ${{ number_format((int) $bought['price']) }}.</p>
+                    @endif
                     <p style="margin:8px 0 0;font-size:12px;color:#64748b;">From {{ (int) $estimate['comps'] }} similar homes for sale near you. Asking prices can differ from what homes sell for; your agent can confirm it with recent sales and your home's condition.</p>
                     @if ($dashboardUrl)<p style="margin:12px 0 0;"><a href="{{ $dashboardUrl }}" style="display:inline-block;background:#0f172a;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;font-weight:600;">See your home dashboard</a></p>@endif
                 @else
@@ -24,6 +27,22 @@
             </td></tr>
         </table>
     </td></tr>
+    @if ($sold !== [] || $soldRange)
+        <tr><td style="padding:0 0 8px;font-weight:700;">Homes like yours that sold recently</td></tr>
+        @if ($soldRange)
+            <tr><td style="padding:0 0 8px;color:#475569;">{{ (int) $soldRange['count'] }} similar homes nearby sold in the last 6 months, most for ${{ number_format((int) $soldRange['low']) }} to ${{ number_format((int) $soldRange['high']) }}.</td></tr>
+        @endif
+        @foreach ($sold as $l)
+            <tr><td style="padding:0 0 12px;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;"><tr><td style="padding:12px;">
+                    <p style="margin:0;font-weight:700;">Sold for ${{ number_format((int) $l['price']) }}@if (! empty($l['close_date'])) on {{ \Carbon\CarbonImmutable::parse($l['close_date'])->format('M j, Y') }}@endif</p>
+                    <p style="margin:4px 0;">{{ $l['beds'] ?? '—' }} bd · {{ $l['baths_full'] ?? '—' }} ba @if (! empty($l['sqft']))· {{ number_format((int) $l['sqft']) }} sq ft @endif</p>
+                    <p style="margin:0;color:#475569;">{{ collect([$l['address'] ?? null, $l['city'] ?? null])->filter()->implode(', ') }}</p>
+                    <p style="margin:8px 0 0;font-size:11px;color:#64748b;">{{ $l['attribution'] ?? '' }}</p>
+                </td></tr></table>
+            </td></tr>
+        @endforeach
+    @endif
     @if ($nearby !== [])
         <tr><td style="padding:0 0 8px;font-weight:700;">For sale near you</td></tr>
         @foreach ($nearby as $l)
@@ -43,7 +62,7 @@
     </td></tr>
     <tr><td style="padding:16px 0;color:#64748b;font-size:12px;">
         You get this monthly because you asked {{ $brokerage }} what your home is worth. <a href="{{ $stopUrl }}" style="color:#64748b;">Stop these emails</a>.
-        @foreach (collect($nearby)->pluck('disclaimer')->filter()->unique() as $d)<br><br>{{ $d }}@endforeach
+        @foreach (collect($nearby)->merge($sold)->pluck('disclaimer')->filter()->unique() as $d)<br><br>{{ $d }}@endforeach
         <br><br>Equal Housing Opportunity.
     </td></tr>
 </table>
