@@ -164,7 +164,7 @@
 @endsection
 
 @push('scripts')
-<script>
+<script nonce="{{ Vite::cspNonce() }}">
 (function(){
 var g=document.querySelector('[data-gallery]'),d=g&&g.querySelector('[data-lightbox]');
 if(d){var ph=JSON.parse(d.querySelector('[data-lb-photos]').textContent),img=d.querySelector('[data-lb-img]'),c=d.querySelector('[data-lb-count]'),i=0;

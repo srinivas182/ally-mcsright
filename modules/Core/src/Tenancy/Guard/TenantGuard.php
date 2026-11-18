@@ -5,9 +5,13 @@ declare(strict_types=1);
 namespace Modules\Core\Tenancy\Guard;
 
 use Illuminate\Database\Connection;
+use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Query\Builder;
+use Illuminate\Database\Query\JoinClause;
+use Illuminate\Database\Schema\Builder as SchemaBuilder;
 use Modules\Core\Safeguards\ControlTables;
 use Modules\Core\Support\Connections;
+use Modules\Core\Tenancy\Exceptions\UnguardedTenantQuery;
 use Modules\Core\Tenancy\TenantContext;
 use Throwable;
 
@@ -37,31 +41,105 @@ final class TenantGuard
     /** While above zero, new queries are not limited (CrossTenant::query only). */
     private static int $off = 0;
 
+    /** Tables named after from, join, update, into (SX2 raw SQL check). */
+    private const RAW_TABLES = '/\b(?:from|join|update|into)\s+[`"\[]?(\w+)[`"\]]?/i';
+
+    /** True while checking raw SQL (the column lookup runs SQL of its own). */
+    private static bool $checking = false;
+
     /** Adds the brokerage condition when it applies. Returns whether it did. */
     public static function apply(Builder $query): bool
     {
         $from = $query->from;
-        if (self::$off > 0 || ! is_string($from) || $from === '') { // a raw expression or sub-select: left as written
+        if (! is_string($from) || $from === '') { // a raw expression or sub-select: left as written
             return false;
+        }
+        [$table, $alias] = self::split($from);
+        $id = self::tenantFor($query->getConnection(), $table);
+        if ($id === null) {
+            return false;
+        }
+        $query->where($alias.'.tenant_id', $id);
+
+        return true;
+    }
+
+    /**
+     * SX2: a joined brokerage table gets the condition in its "on" clause too, so a join from a table without a
+     * tenant_id (or a left join) never pulls in another brokerage's rows.
+     */
+    public static function applyToJoin(Builder $query): void
+    {
+        $join = $query->joins === null ? null : end($query->joins);
+        if (! $join instanceof JoinClause || ! is_string($join->table)) {
+            return;
+        }
+        [$table, $alias] = self::split($join->table);
+        $id = self::tenantFor($query->getConnection(), $table);
+        if ($id !== null) {
+            $join->wheres[] = ['type' => 'Basic', 'column' => $alias.'.tenant_id', 'operator' => '=', 'value' => $id, 'boolean' => 'and'];
+            $query->addBinding($id, 'join');
+        }
+    }
+
+    /**
+     * SX2: raw SQL (DB::select, statement, unprepared, cursor on a hand-written string) on a brokerage table must say
+     * which brokerage it is for. Query-builder SQL is guarded above (or deliberately not, by CrossTenant::query) and
+     * schema work is not about rows, so only SQL that reaches the connection without either is checked: if it names
+     * a brokerage table and never mentions tenant_id, it is refused before it runs.
+     *
+     * @throws UnguardedTenantQuery
+     */
+    public static function checkRaw(Connection $db, string $sql): void
+    {
+        if (self::$checking || stripos($sql, 'tenant_id') !== false || preg_match_all(self::RAW_TABLES, $sql, $m) < 1) {
+            return;
+        }
+        self::$checking = true;
+        try {
+            foreach (array_unique(array_map('strtolower', $m[1])) as $table) {
+                if (self::tenantFor($db, $table) !== null && ! self::fromBuilder()) {
+                    throw new UnguardedTenantQuery($table);
+                }
+            }
+        } finally {
+            self::$checking = false;
+        }
+    }
+
+    /** Whether the SQL being run was made by a query or schema builder (only checked when about to refuse). */
+    private static function fromBuilder(): bool
+    {
+        foreach (debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 16) as $frame) {
+            $class = $frame['class'] ?? '';
+            if ($class !== '' && (is_a($class, Builder::class, true) || is_a($class, SchemaBuilder::class, true) || is_a($class, EloquentBuilder::class, true))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** The current brokerage's id when its condition applies to this table on this connection; null when not. */
+    private static function tenantFor(mixed $db, string $table): ?int
+    {
+        if (self::$off > 0) {
+            return null;
         }
         $context = app(TenantContext::class);
         if (! $context->check() || $context->current()->isHq()) {
-            return false;
+            return null;
         }
-        $db = $query->getConnection();
         if (! $db instanceof Connection || $db->getName() !== (Connections::cell() ?? config('database.default'))) {
-            return false;
+            return null;
         }
-        $connection = (string) $db->getName();
-        [$table, $alias] = self::split($from);
         // The audit log keeps each brokerage's chain and HQ's side by side (an HQ action is written to both) and has
         // its own insert-and-select-only connection in production; it sets tenant ids itself.
-        if (in_array($table, ControlTables::ALL, true) || in_array($table, self::PLATFORM, true) || str_starts_with($table, 'audit_') || ! self::hasTenantColumn($db, $connection, $table)) {
-            return false;
+        if (in_array($table, ControlTables::ALL, true) || in_array($table, self::PLATFORM, true) || str_starts_with($table, 'audit_') || ! self::hasTenantColumn($db, (string) $db->getName(), $table)) {
+            return null;
         }
-        $query->where($alias.'.tenant_id', $context->id());
 
-        return true;
+        return (int) $context->id();
     }
 
     /**

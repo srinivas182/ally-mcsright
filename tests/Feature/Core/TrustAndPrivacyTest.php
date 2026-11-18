@@ -165,10 +165,12 @@ it('checks public forms for bots when bot protection is on, and lets forms throu
 
 it('shows HQ the SOC 2 controls with live evidence and a download', function (): void {
     $this->actingAs($this->staff)->get('http://app.rightally.io/hq/controls')->assertInertia(fn (Assert $p) => $p->component('hq/controls')
-        ->where('controls', fn ($c): bool => collect($c)->firstWhere('id', 'CC6.1')['status'] === 'met' && count($c) === 14
+        ->where('controls', fn ($c): bool => collect($c)->firstWhere('id', 'CC6.1')['status'] === 'met' && count($c) === 15
         // Sprint 62: isolation, vulnerable packages, security configuration and AI (no red-team run yet: attention).
         && collect($c)->firstWhere('id', 'CC6.1-2')['status'] === 'met' && collect($c)->firstWhere('id', 'CC6.8')['status'] === 'process'
-        && collect($c)->firstWhere('id', 'C1.1')['status'] === 'attention'));
+        && collect($c)->firstWhere('id', 'C1.1')['status'] === 'attention'
+        // SX2: the content security policy is report-only until reviewed.
+        && collect($c)->firstWhere('id', 'CC7.1-CSP')['status'] === 'attention'));
     app(TenantContext::class)->runAs(Tenant::query()->where('type', 'hq')->sole(), fn () => User::factory()->hqStaff()->create(['two_factor_confirmed_at' => null]));
     $this->actingAs($this->staff)->get('http://app.rightally.io/hq/controls')->assertInertia(fn (Assert $p) => $p
         ->where('controls', fn ($c): bool => collect($c)->firstWhere('id', 'CC6.1')['evidence'] === '1 of 2 active HQ staff have two-step sign-in.'

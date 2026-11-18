@@ -7,7 +7,7 @@
 <section class="hero"><div class="wrap">
     <h1>Hello, {{ $affiliate->name }}</h1>
     <p class="lead">Share your link. When a brokerage joins RightAlly through it, you earn {{ $share }}% of what it pays in its first year. Rewards are confirmed {{ $hold }} days after its first payment, then paid by our team.</p>
-    <p><label>Your link <input readonly value="{{ $link }}" onclick="this.select()" style="width:100%;max-width:32rem"></label></p>
+    <p><label>Your link <input readonly value="{{ $link }}" data-select style="width:100%;max-width:32rem"></label></p>
     <ul class="lead">
         <li>Visits in the last 30 days: <strong>{{ number_format($stats['clicks_30d']) }}</strong></li>
         <li>Brokerages that joined: <strong>{{ $stats['joined'] }}</strong></li>
@@ -15,4 +15,5 @@
     </ul>
     <p>Keep this page's address private: it is your own.</p>
 </div></section>
+<script nonce="{{ Vite::cspNonce() }}">document.addEventListener('click',function(e){var t=e.target;if(t.closest('[data-print]'))window.print();if(t.matches('[data-select]'))t.select();});</script>
 @endsection

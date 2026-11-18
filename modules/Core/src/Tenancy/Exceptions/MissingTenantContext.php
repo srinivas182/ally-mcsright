@@ -17,6 +17,12 @@ final class MissingTenantContext extends RuntimeException
         return new self("No tenant context while accessing tenant-owned model [{$model}].");
     }
 
+    /** SX2: a queued job's brokerage no longer exists. */
+    public static function forJob(string $job, int $tenantId): self
+    {
+        return new self("The brokerage [{$tenantId}] of queued job [{$job}] no longer exists; the job is not run without one.");
+    }
+
     public static function none(): self
     {
         return new self('No tenant context is set.');

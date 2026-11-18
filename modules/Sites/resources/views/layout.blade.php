@@ -110,7 +110,7 @@
     <p class="form-error" role="alert" data-auth-error hidden></p>
 </dialog>
 <div class="compare-tray" data-compare-tray hidden><span data-compare-count></span> <a class="btn btn-primary" data-compare-go href="/homes/compare">Compare</a> <button type="button" class="btn btn-ghost" data-compare-clear>Clear</button></div>
-<script>
+<script nonce="{{ Vite::cspNonce() }}">
 document.addEventListener('click',function(e){var b=e.target.closest('.video-play');if(!b)return;var v=b.parentNode,f=document.createElement('iframe');
 f.src=v.getAttribute('data-video');f.title=b.getAttribute('aria-label');f.allow='autoplay; encrypted-media; picture-in-picture; fullscreen';f.loading='lazy';v.replaceChildren(f);});
 (function(){var h=document.querySelector('[data-header]');function s(){h&&h.classList.toggle('scrolled',window.scrollY>24)}s();window.addEventListener('scroll',s,{passive:true});

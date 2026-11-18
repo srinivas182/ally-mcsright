@@ -177,3 +177,44 @@ architecture test fails if a channel forgets it.
 - Objects such as models are written only as their class name.
 
 Ids, dates, times, prices and addresses are kept, so support can still find the record.
+
+## What RightAlly does (SX2: guard coverage)
+
+**Hand-written SQL must say which brokerage it is for.** While a brokerage is the current tenant, the guarded
+connections check every statement that did not come from the query or schema builder. If it names a brokerage table
+(after `from`, `join`, `update` or `into`) and never mentions `tenant_id`, it is refused before it runs
+(`UnguardedTenantQuery`). Query-builder SQL already carries the brokerage condition; HQ, console work and
+`CrossTenant::query` are unchanged.
+
+**Joins are limited too.** A joined brokerage table gets "and its tenant_id is this brokerage" in its `on` clause. So a
+join from a table without a brokerage column, or a left join, never pulls in another brokerage's rows.
+
+**Queued jobs keep the right brokerage.**
+
+- A job runs as the brokerage that queued it, as before.
+- The brokerage is now set once before each attempt and restored once after it (`JobAttempted`). Before, a job that
+  failed itself restored twice, which on the sync queue dropped the request's own brokerage; and a job released for
+  a retry never restored at all.
+- A job whose brokerage no longer exists is refused, never run without a brokerage.
+
+**Content security policy, report-only first.** `Security\ContentSecurityPolicy` (setting `CSP_MODE`: `report`, the
+default; `enforce`; `off`) lists what pages may load:
+
+- scripts: RightAlly's own; inline scripts carrying the response's nonce; and the outside scripts RightAlly uses (bot
+  checks, bank linking, maps, card payments). No `eval`;
+- styles: inline is allowed; fonts come from Google Fonts;
+- images, video embeds and connections: any https address;
+- plugins: none;
+- forms: post to https only;
+- framing: the same site only.
+
+Inline `onclick` handlers were replaced with nonced listeners. A page that sets its own policy keeps it (Movewise,
+postcards, health checks).
+
+Browsers report what the policy would block to `/csp-report`, on every host, websites included. Reports are counted by
+surface (back office, HQ, public), rule, blocked origin and page path. Query strings and full addresses are dropped, so
+no personal details are kept. Each visitor can send at most 60 a minute, and at most 2,000 rows are kept. HQ →
+Controls shows the five most reported (control CC7.1-CSP), which stays "attention" until the policy is enforced.
+
+**To enforce:** after two weeks of reports showing only expected items, set `CSP_MODE=enforce` on staging, run the
+nightly journeys, then do the same in production.
