@@ -56,6 +56,7 @@ use Modules\Crm\Support\ContactCounts;
  * @property CarbonImmutable|null $stage_changed_at
  * @property CarbonImmutable|null $last_activity_at
  * @property bool $email_opt_in
+ * @property bool $practice
  * @property bool $sms_opt_in
  * @property bool $do_not_call
  * @property string|null $sms_consent_text
@@ -141,7 +142,7 @@ final class Contact extends Model
     protected function casts(): array
     {
         return [
-            'emails' => 'array', 'phones' => 'array', 'birthday' => 'immutable_date',
+            'emails' => 'array', 'phones' => 'array', 'birthday' => 'immutable_date', 'practice' => 'boolean',
             'origin' => Origin::class, 'source' => Source::class, 'lifecycle' => Lifecycle::class,
             'last_activity_at' => 'immutable_datetime', 'email_opt_in' => 'boolean', 'sms_opt_in' => 'boolean',
             'do_not_call' => 'boolean', 'created_at' => 'immutable_datetime', 'stage_changed_at' => 'immutable_datetime', 'sms_opt_in_at' => 'immutable_datetime', 'sms_opt_out_at' => 'immutable_datetime', 'email_opt_in_at' => 'immutable_datetime', 'closed_on' => 'immutable_date', 'owner_assigned_at' => 'immutable_datetime', 'in_pond_since' => 'immutable_datetime',

@@ -5,14 +5,18 @@ declare(strict_types=1);
 namespace Modules\Team\Http;
 
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Core\Support\Connections;
+use Modules\Crm\Practice\PracticeClients;
 use Modules\Team\Chat;
 use Modules\Team\Help\HelpCentre;
+use Modules\Team\Help\PageHelp;
 use Modules\Team\Help\SupportTickets;
 
 /** The help centre and support requests (CH1, specs/team/01). */
@@ -63,6 +67,41 @@ final class HelpController
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Thanks. We will answer by email, usually within one working day.']);
 
         return back();
+    }
+
+    /** SX5: what "Help me" shows for the page the person is on. */
+    public function page(Request $request, PageHelp $pages): JsonResponse
+    {
+        $user = self::user($request);
+        $data = $request->validate(['path' => ['required', 'string', 'max:300']]);
+
+        // Practice mode (SX5) lives in the CRM: whether this person has practice people to remove.
+        $practice = class_exists(PracticeClients::class) && app(PracticeClients::class)->has($user);
+
+        return response()->json($pages->for($data['path'], Chat::leads($user)) + ['phone' => $user->phone, 'practice' => $practice]);
+    }
+
+    /** SX5: "Call me back" — a request to RightAlly support with the number and the best time. */
+    public function callback(Request $request, SupportTickets $tickets): RedirectResponse
+    {
+        $user = self::user($request);
+        $data = $request->validate(['phone' => ['required', 'string', 'regex:/^[0-9 ()+.\-]{7,24}$/'], 'when' => ['required', 'in:morning,afternoon,evening,any'],
+            'note' => ['nullable', 'string', 'max:500'], 'page' => ['nullable', 'string', 'max:200']]);
+        $when = ['morning' => 'in the morning', 'afternoon' => 'in the afternoon', 'evening' => 'in the early evening', 'any' => 'any time'][$data['when']];
+        $tickets->open($user, 'callback', 'Please call me back '.$when, "Phone: {$data['phone']}\nBest time: {$when}\n".(trim((string) ($data['note'] ?? '')) !== '' ? "About: {$data['note']}" : 'About: help with this page'),
+            $data['page'] ?? null);
+        Inertia::flash('toast', ['type' => 'success', 'message' => "Thanks. Someone from RightAlly will call you {$when} on the next working day."]);
+
+        return back();
+    }
+
+    /** SX5: a printable, large-print cheat sheet of a how-to article. */
+    public function print(Request $request, string $slug, HelpCentre $help): HttpResponse
+    {
+        $a = $help->find($slug, Chat::leads(self::user($request)));
+        abort_if($a === null, 404);
+
+        return response()->view('team::cheat-sheet', ['title' => $a['title'], 'summary' => $a['summary'], 'html' => HelpCentre::html($a['body'])]);
     }
 
     public function close(Request $request, string $ticket, SupportTickets $tickets): RedirectResponse

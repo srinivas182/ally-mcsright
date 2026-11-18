@@ -268,7 +268,7 @@ final class CrmServiceProvider extends ServiceProvider
         $this->app->make(NavigationRegistry::class)->add(new NavItem('Settings', 'Fair Housing', '/settings/fair-housing', 'scale', 88, kinds: [UserKind::Owner]));
 
         if ($this->app->runningInConsole()) {
-            $this->commands([SendTaskReminders::class, Console\RefreshBriefs::class, Console\RunPlans::class, Console\RunIntelligence::class, Console\SweepPonds::class, Console\ReassignLeads::class, Console\SweepInbox::class, Console\ScoreLeads::class, Console\SendSearchAlerts::class, Console\RunNurture::class, Console\SendFairHousingPacks::class, Console\FindProspects::class]);
+            $this->commands([SendTaskReminders::class, Console\RefreshBriefs::class, Console\RunPlans::class, Console\RunIntelligence::class, Console\SweepPonds::class, Console\ReassignLeads::class, Console\SweepInbox::class, Console\ScoreLeads::class, Console\SendSearchAlerts::class, Console\RunNurture::class, Console\SendFairHousingPacks::class, Console\FindProspects::class, Console\CleanupPractice::class]);
         }
     }
 }

@@ -30,6 +30,19 @@ final class ContactVisibility
      */
     public function apply(Builder $query, User $user): Builder
     {
+        // SX5: made-up practice people are seen only by the person practising (or their assistant), never by
+        // owners, managers or teammates.
+        $mine = $user->kind === UserKind::Assistant && $user->assisted_user_id !== null ? $user->assisted_user_id : $user->id;
+
+        return $this->rules($query, $user)->where(fn (Builder $q) => $q->where($q->getModel()->qualifyColumn('practice'), false)->orWhere($q->getModel()->qualifyColumn('owner_user_id'), $mine));
+    }
+
+    /**
+     * @param  Builder<Contact>  $query
+     * @return Builder<Contact>
+     */
+    private function rules(Builder $query, User $user): Builder
+    {
         // Roles may widen access to COMPANY contacts by scope (team, office, everyone). An agent's
         // personal sphere is never widened (specs/crm/01 privacy rule; specs/core/03 scopes).
         $scope = $user->kind === UserKind::HqStaff ? null : app(Permissions::class)->scopeFor($user, 'crm.contacts.view');

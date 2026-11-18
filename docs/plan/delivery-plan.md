@@ -208,7 +208,7 @@ These sprints were approved on 2026-11-17, after version 1.0 and before the outs
 | SX2    | Guard coverage for raw SQL and queued jobs; content security policy (report-only, then enforced)                | Done       |
 | SX3    | Easy, safe sign-in: passkeys first, two-step required for agents (14-day grace), broker-assisted phone recovery | Done       |
 | SX4    | One simple home: "Today's 10" with big Call and Text buttons; a microphone button on every page                 | Done       |
-| SX5    | Help everywhere: "Help me" (callback, 60-second videos, printable cheat sheets); practice mode                  | Next       |
-| SX6    | Work without logging in: morning email or text with reply actions (text opt-in only); concierge setup           | Planned    |
+| SX5    | Help everywhere: "Help me" (callback, 60-second videos, printable cheat sheets); practice mode                  | Done       |
+| SX6    | Work without logging in: morning email or text with reply actions (text opt-in only); concierge setup           | Next       |
 | SX7    | Plain words and pre-test check: CI checks, 50+ usability-test kit, privacy drafts for the attorney, re-check    | Planned    |
 | SX8    | Pen-test fixes from the outside firm's findings                                                                 | After test |
