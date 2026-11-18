@@ -4,15 +4,17 @@ use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
 use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Support\Facades\Route;
+use Modules\Core\Identity\Http\Middleware\EnsureTenantHost;
 
-Route::middleware(['auth'])->group(function () {
+// Sprint 58: account pages exist only on a tenant's own address (a neutral 404 elsewhere), like every other sign-in page.
+Route::middleware([EnsureTenantHost::class, 'auth'])->group(function () {
     Route::redirect('settings', '/settings/profile');
 
     Route::get('settings/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');
 });
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware([EnsureTenantHost::class, 'auth', 'verified'])->group(function () {
     // No self-deletion: owners deactivate users instead (specs/core/02).
 
     Route::get('settings/security', [SecurityController::class, 'edit'])

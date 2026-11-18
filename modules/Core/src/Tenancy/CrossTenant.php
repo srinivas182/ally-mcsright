@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use LogicException;
 use Modules\Core\Tenancy\Attributes\CrossTenantAccess;
 use Modules\Core\Tenancy\Events\CrossTenantAccessed;
+use Modules\Core\Tenancy\Guard\TenantGuard;
 use Modules\Core\Tenancy\Scopes\TenantScope;
 use ReflectionClass;
 
@@ -34,6 +35,7 @@ final class CrossTenant
 
         CrossTenantAccessed::dispatch($caller::class, $model, $attributes[0]->newInstance()->reason);
 
-        return $model::query()->withoutGlobalScope(TenantScope::class);
+        // Sprint 58: the database-level guard (TenantGuard) steps aside for this sanctioned path too.
+        return TenantGuard::without(fn () => $model::query()->withoutGlobalScope(TenantScope::class));
     }
 }

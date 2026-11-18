@@ -8,6 +8,7 @@ use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
@@ -110,6 +111,22 @@ class FortifyServiceProvider extends ServiceProvider
             $throttleKey = Str::transliterate($request->getHost().'|'.Str::lower((string) $request->input(Fortify::username())).'|'.$request->ip());
 
             return Limit::perMinute(5)->by($throttleKey);
+        });
+
+        // Sprint 58 (pen-test prep): "forgot password" and "reset password" are public; cap them per address and
+        // host so nobody can flood a person with reset emails or guess reset tokens. The password broker also
+        // allows one email per minute per account (config/auth.php).
+        RateLimiter::for('password-reset', function (Request $request) {
+            return [Limit::perMinute(5)->by('pw|'.$request->getHost().'|'.$request->ip()),
+                Limit::perHour(10)->by('pw-email|'.$request->getHost().'|'.Str::lower((string) $request->input('email')))];
+        });
+        $this->app->booted(function (): void {
+            // By name, walking the routes: the name index is not refreshed yet at this point.
+            foreach (Route::getRoutes()->getRoutes() as $route) {
+                if (in_array($route->getName(), ['password.email', 'password.update'], true)) {
+                    $route->middleware('throttle:password-reset');
+                }
+            }
         });
 
         RateLimiter::for('passkeys', function (Request $request) {

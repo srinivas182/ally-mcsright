@@ -102,6 +102,12 @@ the design supports many from day one.
 - Route model binding resolves only within the current tenant, so `/users/{ulid}` from another
   tenant returns 404.
 
+## Database-level guard (Sprint 58)
+
+Raw queries (`DB::table()`) do not have the trait's scope. Since Sprint 58, every connection's query builder adds
+the same condition: on the cell, for a brokerage tenant, on every table with a `tenant_id` column (control tables and
+the audit log excepted). `CrossTenant::query` is the only path around it. See `19-release-readiness.md`.
+
 ## Provisioning
 
 Action `ProvisionTenant` (used by signup in Sprint 28–30, HQ console and tests):

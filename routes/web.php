@@ -2,10 +2,11 @@
 
 use Illuminate\Support\Facades\Route;
 use Modules\Core\Brief\BriefController;
+use Modules\Core\Identity\Http\Middleware\EnsureTenantHost;
 
 Route::inertia('/', 'welcome')->name('home');
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware([EnsureTenantHost::class, 'auth', 'verified'])->group(function () {
     Route::get('dashboard', [BriefController::class, 'dashboard'])->name('dashboard');
 });
 

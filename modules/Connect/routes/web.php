@@ -65,7 +65,9 @@ Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.apps.view'])->
 
 // AI assistants (MCP, specs/connect/03): the server, OAuth discovery and client registration, per brokerage address.
 Mcp::web('mcp', RightAllyServer::class)->middleware(['auth:api', 'throttle:120,1']);
-Mcp::oauthRoutes();
+// Pen-test prep (S58): OAuth discovery and app registration are public by design; cap them so nobody can flood the
+// client list (RightAlly's own sign-in flow calls the registration controller directly, not over HTTP).
+Route::middleware('throttle:20,1,mcp-oauth')->group(fn () => Mcp::oauthRoutes());
 Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function (): void {
     Route::post('apps/ai_assistants/settings', [McpConsentController::class, 'settings'])->name('connect.mcp.settings');
     Route::post('apps/ai_assistants/disconnect', [McpConsentController::class, 'disconnect'])->name('connect.mcp.disconnect');
