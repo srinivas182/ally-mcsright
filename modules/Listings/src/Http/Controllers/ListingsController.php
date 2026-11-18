@@ -11,6 +11,7 @@ use Inertia\Response;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Listings\Access\MlsAccess;
+use Modules\Listings\Media\PhotoTags;
 use Modules\Listings\Search\ListingSearch;
 
 /** Back office → Listings: search the brokerage's licensed MLSs with photos and price history. */
@@ -21,7 +22,8 @@ final class ListingsController
         self::user($request);
         $found = $search->search($tenants->id(), $request->query());
 
-        return Inertia::render('listings/index', $found + ['licensed' => $access->licensedSources($tenants->id()) !== [], 'sorts' => ListingSearch::SORTS, 'statuses' => ListingSearch::STATUSES]);
+        return Inertia::render('listings/index', $found + ['licensed' => $access->licensedSources($tenants->id()) !== [], 'sorts' => ListingSearch::SORTS, 'statuses' => ListingSearch::STATUSES,
+            'featureChoices' => PhotoTags::searchable()]);
     }
 
     public function show(Request $request, string $listing, ListingSearch $search, TenantContext $tenants): Response

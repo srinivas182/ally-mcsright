@@ -69,6 +69,7 @@ Schedule::command('credits:paused-maps')->dailyAt('14:05')->onOneServer();
 Schedule::command('sites:home-reports')->hourlyAt(7)->withoutOverlapping()->onOneServer();
 Schedule::command('crm:contact-health')->dailyAt('04:50')->withoutOverlapping()->onOneServer(); // LN4 (E24)
 Schedule::command('ledger:bank-feeds')->dailyAt('05:40')->withoutOverlapping()->onOneServer(); // BK1 (B15)
+Schedule::command('listings:photos-and-places')->dailyAt('11:20')->withoutOverlapping()->onOneServer(); // C03, after the night's MLS sync
 Schedule::command('outreach:market-reports')->hourlyAt(17)->withoutOverlapping()->onOneServer(); // MK3 (D09)
 Schedule::command('sites:market-updates')->monthlyOn(1, '11:20')->onOneServer();
 Schedule::command('ailly:weekly')->weeklyOn(1, '13:40')->onOneServer();

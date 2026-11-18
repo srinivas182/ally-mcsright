@@ -34,7 +34,7 @@ final class IdxController
     private const PER_PAGE = 24;
 
     /** Query keys a search page keeps in its web address. */
-    private const KEYS = ['heard', 'q', 'min_price', 'max_price', 'beds', 'baths', 'min_sqft', 'types', 'statuses', 'bounds', 'poly', 'sort', 'page'];
+    private const KEYS = ['heard', 'q', 'min_price', 'max_price', 'beds', 'baths', 'min_sqft', 'features', 'types', 'statuses', 'bounds', 'poly', 'sort', 'page'];
 
     public function __construct(private readonly TenantContext $tenants, private readonly ListingSearch $search) {}
 
@@ -334,6 +334,8 @@ final class IdxController
             'numberOfBedrooms' => $home['beds'], 'numberOfBathroomsTotal' => $baths, 'yearBuilt' => $home['year_built'] ?? null,
             'floorSize' => $home['sqft'] !== null ? ['@type' => 'QuantitativeValue', 'value' => $home['sqft'], 'unitCode' => 'FTK'] : null,
             'geo' => $home['latitude'] !== null ? ['@type' => 'GeoCoordinates', 'latitude' => $home['latitude'], 'longitude' => $home['longitude']] : null,
+            // C03: features seen in the photos.
+            'amenityFeature' => ($home['features'] ?? []) !== [] ? array_map(fn (string $f): array => ['@type' => 'LocationFeatureSpecification', 'name' => $f, 'value' => true], $home['features']) : null,
         ], fn ($v): bool => $v !== null);
 
         return array_filter([

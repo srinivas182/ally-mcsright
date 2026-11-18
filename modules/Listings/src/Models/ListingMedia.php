@@ -25,12 +25,16 @@ use Modules\Core\Support\Connections;
  * @property CarbonImmutable|null $first_attempt_at
  * @property string|null $error
  * @property CarbonImmutable|null $modification_timestamp
+ * @property string|null $room
+ * @property string|null $tags JSON list of PhotoTags::FEATURES keys
+ * @property string|null $alt_text
+ * @property CarbonImmutable|null $tagged_at
  */
 final class ListingMedia extends Model
 {
     protected $table = 'listing_media';
 
-    protected $fillable = ['listing_id', 'media_key', 'position', 'source_url', 'storage_path', 'width', 'height', 'caption', 'status', 'attempts', 'first_attempt_at', 'error', 'modification_timestamp'];
+    protected $fillable = ['listing_id', 'media_key', 'position', 'source_url', 'storage_path', 'width', 'height', 'caption', 'status', 'attempts', 'first_attempt_at', 'error', 'modification_timestamp', 'room', 'tags', 'alt_text', 'tagged_at'];
 
     public function getConnectionName(): ?string
     {
@@ -42,6 +46,6 @@ final class ListingMedia extends Model
      */
     protected function casts(): array
     {
-        return ['first_attempt_at' => 'immutable_datetime', 'modification_timestamp' => 'immutable_datetime'];
+        return ['first_attempt_at' => 'immutable_datetime', 'modification_timestamp' => 'immutable_datetime', 'tagged_at' => 'immutable_datetime'];
     }
 }

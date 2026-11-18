@@ -65,6 +65,23 @@ final class Catalog
                     'matterport' => ['label' => 'Matterport', 'fields' => ['token_id' => ['label' => 'API token ID', 'kind' => 'text'], 'token_secret' => ['label' => 'API token secret', 'kind' => 'secret']]],
                     'iguide' => ['label' => 'iGUIDE', 'fields' => $key],
                 ]],
+            'photo_tags' => ['label' => 'Photo tagging', 'about' => 'Names the room in each listing photo and spots features (pool, fireplace, kitchen island…), for photo alt text and "Has" search filters. Only the home is described, never people.',
+                'level' => 'hq', 'sprint' => 'C03', 'contacts' => false, 'providers' => [
+                    'restb' => ['label' => 'Restb.ai (recommended, made for real estate)', 'fields' => ['api_key' => ['label' => 'Client key', 'kind' => 'secret']],
+                        'note' => 'Room types and 100+ home features. Priced per photo; confirm the price with Restb.ai before Live.'],
+                    'azure_vision' => ['label' => 'Azure AI Vision', 'fields' => ['endpoint' => ['label' => 'Endpoint (https://<name>.cognitiveservices.azure.com)', 'kind' => 'text'], 'api_key' => ['label' => 'Key', 'kind' => 'secret']],
+                        'note' => 'General picture tags, matched to home features.'],
+                    'google_vision' => ['label' => 'Google Cloud Vision', 'fields' => $key, 'note' => 'General picture labels, matched to home features.'],
+                ]],
+            'nearby_places' => ['label' => 'Nearby schools and transit', 'about' => 'Finds the schools, bus stops, stations, grocery stores and coffee shops near each listing once, and shows straight-line distances on listing pages. No school ratings.',
+                'level' => 'hq', 'sprint' => 'C03', 'contacts' => false, 'providers' => [
+                    'osm' => ['label' => 'OpenStreetMap (recommended, free)', 'fields' => ['host' => ['label' => 'Overpass server address (https://…)', 'kind' => 'text',
+                        'hint' => 'https://overpass-api.de/api/interpreter is fine for testing; use your own or a paid Overpass server for many listings.']],
+                        'note' => 'Results may be kept, with the credit "© OpenStreetMap contributors" on the page.'],
+                    'geoapify' => ['label' => 'Geoapify Places', 'fields' => $key, 'note' => 'OpenStreetMap data on Geoapify\'s servers, with a daily free allowance. Results may be kept, with credit.'],
+                    'google_places' => ['label' => 'Google Places', 'fields' => $key,
+                        'note' => 'Google\'s terms limit how long results are kept: RightAlly looks them up again every 30 days. Have this checked before Live.'],
+                ]],
             'email_check' => ['label' => 'Email checks', 'about' => 'Checks that contacts\' email addresses can receive mail, before campaigns go out.',
                 'level' => 'hq', 'sprint' => 'LN4', 'contacts' => false, 'providers' => [
                     'zerobounce' => ['label' => 'ZeroBounce (recommended)', 'fields' => $key, 'note' => 'Has test addresses with known answers, used in Test mode.'],

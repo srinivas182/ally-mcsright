@@ -37,6 +37,7 @@ type Filters = {
     statuses: string[];
     sort: string;
     near: [number, number, number] | null;
+    features: string[];
     page: number;
     per_page: number;
 };
@@ -49,6 +50,8 @@ type Props = {
     licensed: boolean;
     sorts: string[];
     statuses: string[];
+    /** C03: features seen in photos people can search on (empty until photo tagging is Live). */
+    featureChoices: Record<string, string>;
 };
 
 const sortLabels: Record<string, string> = {
@@ -78,6 +81,7 @@ export default function Listings({
     licensed,
     sorts,
     statuses,
+    featureChoices,
 }: Props) {
     const [f, setF] = useState({
         q: filters.q,
@@ -88,6 +92,7 @@ export default function Listings({
         statuses: filters.statuses,
         sort: filters.sort,
         near: filters.near ? filters.near.join(',') : '',
+        features: filters.features[0] ?? '',
     });
     const [locating, setLocating] = useState(false);
     const go = (extra: Record<string, unknown> = {}) =>
@@ -193,6 +198,25 @@ export default function Listings({
                                     </option>
                                 ))}
                             </select>
+                            {Object.keys(featureChoices).length > 0 && (
+                                <select
+                                    aria-label="Has"
+                                    className="rounded border bg-background px-2 py-1.5"
+                                    value={f.features}
+                                    onChange={(e) =>
+                                        setF({ ...f, features: e.target.value })
+                                    }
+                                >
+                                    <option value="">Has anything</option>
+                                    {Object.entries(featureChoices).map(
+                                        ([k, label]) => (
+                                            <option key={k} value={k}>
+                                                Has: {label}
+                                            </option>
+                                        ),
+                                    )}
+                                </select>
+                            )}
                             <fieldset className="flex flex-wrap gap-3 sm:col-span-3 lg:col-span-4">
                                 {statuses.map((s) => (
                                     <label

@@ -119,6 +119,10 @@ export default function HqMls({
                         Fast listing search: server health and Test-mode
                         comparison
                     </Link>
+                    {' · '}
+                    <Link href="/hq/mls/photos-places" className="underline">
+                        Photo tags and nearby places: check the results
+                    </Link>
                 </p>
 
                 <section className="grid gap-3 text-sm">

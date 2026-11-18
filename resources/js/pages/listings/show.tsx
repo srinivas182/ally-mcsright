@@ -37,8 +37,20 @@ type Listing = {
         hero: string | null;
         thumb: string | null;
         caption: string | null;
+        alt?: string | null;
     }[];
     price_history: { date: string; from: number | null; to: number }[];
+    features: string[];
+    nearby: Nearby | null;
+};
+
+type Place = { name: string; type: string; miles: string };
+type Nearby = {
+    schools: Place[];
+    transit: Place[];
+    shops: Place[];
+    credit: string;
+    summary: string;
 };
 
 /** One listing with photos, facts, price history and the MLS's attribution and disclaimer. */
@@ -83,7 +95,12 @@ export default function ListingShow({ listing: l }: { listing: Listing }) {
                     <figure className="grid gap-2">
                         <img
                             src={photo.hero ?? photo.url ?? ''}
-                            alt={photo.caption ?? l.address ?? 'Home photo'}
+                            alt={
+                                photo.alt ??
+                                photo.caption ??
+                                l.address ??
+                                'Home photo'
+                            }
                             className="max-h-[32rem] w-full rounded-lg object-cover"
                         />
                         <div className="flex gap-2 overflow-x-auto" role="list">
@@ -156,6 +173,23 @@ export default function ListingShow({ listing: l }: { listing: Listing }) {
                         </a>
                     </Button>
                 )}
+                {l.features.length > 0 && (
+                    <section className="grid gap-2 text-sm">
+                        <h2 className="font-semibold">Seen in the photos</h2>
+                        <ul className="flex flex-wrap gap-2">
+                            {l.features.map((f) => (
+                                <li key={f}>
+                                    <Badge variant="outline">{f}</Badge>
+                                </li>
+                            ))}
+                        </ul>
+                        <p className="text-muted-foreground">
+                            Spotted in the listing photos by AI. Check before
+                            you promise a feature.
+                        </p>
+                    </section>
+                )}
+                {l.nearby && <NearbyPlaces nearby={l.nearby} />}
                 <SendToClient listing={l.ulid} />
                 {l.price_history.length > 0 && (
                     <section className="grid gap-1 text-sm">
@@ -182,6 +216,50 @@ export default function ListingShow({ listing: l }: { listing: Listing }) {
                 </footer>
             </div>
         </>
+    );
+}
+
+/** C03: nearby schools and transit, straight-line, never rated. */
+function NearbyPlaces({ nearby }: { nearby: Nearby }) {
+    return (
+        <section className="grid gap-2 text-sm">
+            <h2 className="font-semibold">What's nearby</h2>
+            <p>{nearby.summary}</p>
+            {(
+                [
+                    ['Schools', nearby.schools],
+                    ['Transit', nearby.transit],
+                    ['Groceries and coffee', nearby.shops],
+                ] as const
+            ).map(
+                ([heading, places]) =>
+                    places.length > 0 && (
+                        <div key={heading} className="grid gap-1">
+                            <h3 className="font-medium">{heading}</h3>
+                            <ul className="divide-y rounded-md border">
+                                {places.map((p) => (
+                                    <li
+                                        key={p.name}
+                                        className="flex flex-wrap justify-between gap-2 p-2"
+                                    >
+                                        <span>
+                                            {p.name}{' '}
+                                            <span className="text-muted-foreground">
+                                                ({p.type})
+                                            </span>
+                                        </span>
+                                        <span>{p.miles}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    ),
+            )}
+            <p className="text-muted-foreground">
+                Straight-line distances. School attendance depends on the school
+                district. {nearby.credit}
+            </p>
+        </section>
     );
 }
 
