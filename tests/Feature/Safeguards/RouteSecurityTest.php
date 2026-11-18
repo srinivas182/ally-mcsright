@@ -2,9 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Models\User;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Route as Router;
+use Modules\Core\Http\Middleware\SecurityHeaders;
+use Modules\Sites\SiteSetup;
 
 /*
 | Sprint 58 (integration and regression; pen-test preparation): every one of the ~1,300 routes is accounted for.
@@ -123,4 +126,18 @@ it('refuses a sixth password-reset request in a minute, and the account pages ex
     $this->post('/reset-password', ['token' => 'x', 'email' => 'a@example.test', 'password' => 'x', 'password_confirmation' => 'x'])->assertStatus(429);
 
     $this->get('http://rightally.site/settings/profile')->assertNotFound();
+});
+
+it('sends the browser security headers on the back office, websites and the API, and HSTS on https only', function (): void {
+    $this->onTenantHost('acme');
+    $owner = User::factory()->owner()->create();
+    $sites = app(SiteSetup::class);
+    $sites->publish($sites->create('modern', ['area' => 'Austin'], $owner), true, $owner);
+
+    foreach (['/login', 'http://acme.rightally.site/', '/api/v1/openapi.json'] as $url) {
+        $this->get($url)->assertHeader('X-Content-Type-Options', 'nosniff')->assertHeader('X-Frame-Options', 'SAMEORIGIN')
+            ->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin')->assertHeader('Permissions-Policy', SecurityHeaders::PERMISSIONS)
+            ->assertHeaderMissing('Strict-Transport-Security');
+    }
+    $this->get('https://acme.rightally.app/login')->assertHeader('Strict-Transport-Security', 'max-age=31536000');
 });

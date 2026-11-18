@@ -2,12 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Modules\Connect\Webhooks;
+namespace Modules\Core\Support;
 
 use Illuminate\Validation\ValidationException;
 
 /**
- * Webhook addresses must be public HTTPS (specs/connect/01): no internal or reserved IP addresses (server-side
+ * Addresses RightAlly sends to on a customer's behalf (webhooks, specs/connect/01; audit streams; website checks)
+ * must be public HTTPS (moved to Core in Sprint 61): no internal or reserved IP addresses (server-side
  * request forgery), no user:password in the URL, standard ports only. The host is resolved when saving and again
  * at every delivery, and the delivery connects to the checked IP (so DNS can't be switched to an internal address).
  */
@@ -18,7 +19,10 @@ final class SafeUrl
      *
      * @throws ValidationException
      */
-    public static function check(string $url): array
+    /**
+     * @param  list<int>  $ports  allowed ports (Splunk's event collector listens on 8088)
+     */
+    public static function check(string $url, array $ports = [443, 8443]): array
     {
         $fail = static fn (string $m) => ValidationException::withMessages(['url' => $m]);
         $p = parse_url(trim($url));
@@ -29,7 +33,7 @@ final class SafeUrl
             throw $fail('Remove the user name and password from the address.');
         }
         $port = (int) ($p['port'] ?? 443);
-        if (! in_array($port, [443, 8443], true)) {
+        if (! in_array($port, $ports, true)) {
             throw $fail('Use the standard HTTPS port.');
         }
         $host = strtolower($p['host']);

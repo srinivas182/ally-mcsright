@@ -9,7 +9,7 @@ use DOMElement;
 use DOMXPath;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
-use Modules\Connect\Webhooks\SafeUrl;
+use Modules\Core\Support\SafeUrl;
 use Throwable;
 
 /**

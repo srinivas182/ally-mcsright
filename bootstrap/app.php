@@ -12,6 +12,7 @@ use Modules\Billing\Http\BrokerageReadOnly;
 use Modules\Billing\Http\EnsureNotBlocked;
 use Modules\Core\Http\Middleware\EnsureHqConsole;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
+use Modules\Core\Http\Middleware\SecurityHeaders;
 use Modules\Core\Identity\Http\Middleware\EnsureSecondFactor;
 use Modules\Core\Identity\Http\Middleware\EnsureTenantHost;
 use Modules\Core\Identity\Http\Middleware\EnsureValidSignedInUser;
@@ -34,6 +35,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Website hosts are served by the site engine before any back-office routing (specs/websites/05). Appended to
         // the global stack, so proxy trust, size limits and input trimming still apply to website requests.
+        // Sprint 61: browser security headers on every response, websites included (so it wraps the two below).
+        $middleware->append(SecurityHeaders::class);
         $middleware->append(ServeMovewise::class); // Movewise Homes, HQ's consumer site (specs/movewise/01)
         $middleware->append(ServeWebsite::class);
 

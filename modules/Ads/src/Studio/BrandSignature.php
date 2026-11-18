@@ -44,7 +44,7 @@ final class BrandSignature implements EmailSignature
             .$line($k['brokerage'], 'font-weight:bold')
             .($phone !== '' ? '<div><a href="tel:'.e(preg_replace('/[^\d+]/', '', $phone) ?? '').'" style="color:#222;text-decoration:none">'.e($phone).'</a></div>' : '')
             .(($d['email'] ?? '') !== '' ? '<div><a href="mailto:'.e((string) $d['email']).'" style="color:'.$color.'">'.e((string) $d['email']).'</a></div>' : '')
-            .(($d['website'] ?? '') !== '' ? '<div><a href="'.e((string) $d['website']).'" style="color:'.$color.'">'.e(preg_replace('#^https?://#', '', (string) $d['website']) ?? '').'</a></div>' : '')
+            .(preg_match('#^https?://#i', (string) ($d['website'] ?? '')) === 1 ? '<div><a href="'.e((string) $d['website']).'" style="color:'.$color.'">'.e(preg_replace('#^https?://#', '', (string) $d['website']) ?? '').'</a></div>' : '')
             .$line($d['licence_line'] ?? null, 'font-size:12px;color:#666')
             .($k['logo'] !== null ? '<div style="margin-top:8px">'.$img($k['logo'], $k['brokerage'], 120, 'display:block;max-width:120px;height:auto').'</div>' : '')
             .'</td></tr></table>';

@@ -39,7 +39,7 @@ final class BrandVoiceController
     public function upload(Request $request, BrandGuide $guide): RedirectResponse
     {
         $user = $this->owner($request);
-        $request->validate(['guide' => ['required', 'file', 'max:'.(BrandGuide::MAX_MB * 1024)]]);
+        $request->validate(['guide' => ['required', 'file', 'mimetypes:application/pdf', 'max:'.(BrandGuide::MAX_MB * 1024)]]);
         $guide->read($request->file('guide'), $user);
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Read. Check what the AI found, change anything, then approve.']);
 

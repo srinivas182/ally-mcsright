@@ -151,3 +151,61 @@ Both build one row per agent for all 1,000 agents on one page, and are worth pag
 4. Pass marks: p95 under 800 ms for pages and under 1.5 s for reports, with errors under 1%.
 
 This run needs the staging environment and k6 machines. It cannot be run from this workspace.
+## Sprint 61: penetration test
+
+The test itself is done by an outside security firm (to book). This sprint ran RightAlly's own review first, so their time goes on deeper work, and prepared the brief they need.
+
+### Found and fixed in the internal review
+
+- **Audit-log streams could call internal addresses.** An owner's own webhook or Splunk address was checked only for `https://`. It now passes the same checks as webhooks (`Core\Support\SafeUrl`, moved from Connect):
+    - public addresses only, with no IP addresses, internal names or private networks;
+    - checked again at every send, connecting to the checked IP and never following redirects;
+    - standard ports only (8088 is also allowed for Splunk).
+
+    The Datadog "site" is now one of Datadog's own sites, not free text placed into the address.
+
+- **No browser security headers.** Every response now carries:
+    - no content-type guessing (`nosniff`);
+    - framing by the same site only, since RightAlly is never meant to be framed;
+    - a strict referrer policy;
+    - a permissions policy allowing only the microphone, location and payments, on this site;
+    - HSTS on https, for one year, without sub-domains, because brokerages' own domains host other sites.
+
+    Pages that set their own (Movewise's full content security policy, "no-referrer" downloads) keep them.
+
+- **Session cookies** are now https-only by default in production.
+- **PDF uploads** (brand guide, form templates, "verify a signed document") are now checked as PDFs when they arrive, not only by their file name.
+- **Email signature:** the website link is used only when it is an http(s) address.
+
+### Checked and found sound
+
+| Area                            | What was checked                                                                                                                                                             |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dependencies                    | `composer audit` and `npm audit`: no known advisories.                                                                                                                       |
+| Webhooks (API, Zapier, Connect) | Public https only, DNS pinned, no redirects.                                                                                                                                 |
+| Listing photos                  | Private addresses are refused.                                                                                                                                               |
+| Redirects                       | Website forms go back by path only. AI-app redirects must match the app's registered address. Single sign-on and the central MCP address return only to RightAlly addresses. |
+| HTML on pages                   | Blog and help text strip raw HTML and unsafe links. JSON-LD is encoded. Font names come from an approved list.                                                               |
+| Mass assignment                 | No request is passed whole into a model. The one open model is HQ-only Movewise settings.                                                                                    |
+| Passwords                       | Breached passwords are refused. Sign-in, two-step, password reset (Sprint 58) and AI-app registration are rate-limited.                                                      |
+| Brokerage isolation             | Host guards, TenantScope and the database-level TenantGuard (Sprint 58).                                                                                                     |
+
+### Brief for the testing firm
+
+- **Scope:**
+    - a brokerage back office and HQ console on staging;
+    - a brokerage website and Movewise;
+    - the public API (`/api/v1`) and the MCP address;
+    - webhooks in and out;
+    - the client portal (`/my-deal`), signing (`/sign`) and offer links.
+- **Accounts:** two brokerages (to test isolation between them). In each: an owner with two-step, a staff member, two agents and an assistant. Also an HQ staff account, and API keys for each brokerage.
+- **Priorities:**
+    1. one brokerage reaching another's data;
+    2. an agent reaching another agent's personal contacts or money;
+    3. money movements and bank details;
+    4. links sent to clients;
+    5. file uploads;
+    6. the AI assistants (prompt injection: AS1 has 13 attack cases to start from).
+- **Out of scope:** denial of service against shared infrastructure; real outside services (all set to Test); social engineering of staff.
+- **Before production:** fix every high and critical finding; record the rest in the risk register (SOC 2, Sprint 62).
+- **Follow-up:** a content security policy with nonces for the back office (website pages have inline scripts), measured in report-only mode first.

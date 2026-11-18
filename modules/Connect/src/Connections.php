@@ -10,7 +10,6 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Modules\Connect\Jobs\SyncConnection;
 use Modules\Connect\Models\Connection;
-use Modules\Connect\Webhooks\SafeUrl;
 use Modules\Connect\Webhooks\WebhookOutbox;
 use Modules\Core\Access\Can;
 use Modules\Core\Audit\AuditLogger;
@@ -21,6 +20,7 @@ use Modules\Core\Connect\Outbox;
 use Modules\Core\Connect\ReceivesWebhooks;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Support\Connections as Databases;
+use Modules\Core\Support\SafeUrl;
 use Modules\Core\Tenancy\TenantContext;
 
 /**
