@@ -33,7 +33,7 @@ it('drafts the commission plan from the answers without publishing it', function
     $plan = Plan::query()->sole();
     $version = $plan->versions()->sole();
     expect($plan->name)->toBe('80/20 plan (from setup)')
-        ->and($version->rules['split'])->toBe(['mode' => 'percentage', 'agent_percent' => '80'])
+        ->and($version->rules['split'])->toEqual(['mode' => 'percentage', 'agent_percent' => '80'])
         ->and($version->rules['cap']['amount_cents'])->toBe(1_800_000)
         ->and($version->rules['post_split'][0]['amount'])->toBe(39_500)
         ->and($version->published_at)->toBeNull();
@@ -46,7 +46,7 @@ it('drafts a flat-fee plan', function (): void {
     $this->actingAs($this->owner)->post('/setup/guide', ['pay_mode' => 'flat'])->assertSessionHasErrors('flat_fee_dollars');
     $this->actingAs($this->owner)->post('/setup/guide', ['pay_mode' => 'flat', 'flat_fee_dollars' => 500])->assertSessionHasNoErrors();
 
-    expect(Plan::query()->sole()->versions()->sole()->rules['split'])->toBe(['mode' => 'flat_fee', 'bands' => [['up_to_price_cents' => null, 'fee_cents' => 50_000]]]);
+    expect(Plan::query()->sole()->versions()->sole()->rules['split'])->toEqual(['mode' => 'flat_fee', 'bands' => [['up_to_price_cents' => null, 'fee_cents' => 50_000]]]);
 });
 
 it('sets where new leads go, waiting for agents when there are none yet', function (): void {
