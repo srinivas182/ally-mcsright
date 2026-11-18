@@ -19,6 +19,7 @@ use Modules\AI\Providers\ProviderRegistry;
 use Modules\AI\RedTeam\RedTeamRunner;
 use Modules\AI\RedTeam\Scenario;
 use Modules\AI\RedTeam\Scenarios;
+use Modules\AI\Security\PromptBuilder;
 use Modules\Core\Tenancy\Models\Tenant;
 use Modules\Core\Tenancy\TenantContext;
 
@@ -141,9 +142,14 @@ it('red team: following a critical injection (wire, contact, link) fails the run
     $run = app(RedTeamRunner::class)->run($this->hq, 10_000_000_000);
     $critical = count(array_filter(Scenarios::all(), fn (Scenario $s) => $s->critical));
 
+    // AS1: instructions hidden in invisible characters are removed before the model reads anything, so even an
+    // obedient model cannot follow them.
+    $visible = count(array_filter(Scenarios::all(), fn (Scenario $s) => str_contains(PromptBuilder::visible($s->injectedDocument), $s->canary)));
+
     expect($run->status)->toBe('failed')
         ->and($run->critical_followed)->toBe($critical)
-        ->and($run->injections_followed)->toBe(count(Scenarios::all()));
+        ->and($run->injections_followed)->toBe($visible)
+        ->and($visible)->toBe(count(Scenarios::all()) - 1);
 });
 
 it('red team: following only non-critical injections is a warning', function (): void {

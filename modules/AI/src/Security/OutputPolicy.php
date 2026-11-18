@@ -26,7 +26,7 @@ final class OutputPolicy
 
     private const URL = '/\bhttps?:\/\/([A-Za-z0-9.\-]+)/i';
 
-    private const ACCOUNT = '/\b\d(?:[\s\-]?\d){7,16}\b/';
+    private const ACCOUNT = '/(?<![\d\-\/.,])\d{8,17}(?![\d\-\/.,])/';
 
     /**
      * @return list<string> kinds of identifiers that were not permitted (never the values themselves)

@@ -22,7 +22,7 @@ adds what remained of D22: handing the conversation to a person).
     - mention record ids, emails or phone numbers that were not in what was sent (existing);
     - load an image from another site (`![](https://…)` or `<img>`: a way to carry data out in the address);
     - link to a site that was not in what was sent and is not RightAlly's own (phishing);
-    - contain an account-style number (8–17 digits, not a phone number) that was not in what was sent (wire fraud).
+    - contain an account-style number (8–17 digits in a row, not a phone number or date) that was not in what was sent (wire fraud).
 4. **Permission-scoped retrieval** (existing): a model cannot leak what it never sees; deterministic leak tests run
    on every pull request.
 
@@ -42,5 +42,5 @@ instruction, Unicode tag smuggling, "print your instructions".
 
 ## Defaults to review
 
-- Account-number check: 8–17 digits not sent to the model; phone-length numbers are left to the phone rule.
+- Account-number check: 8–17 digits in a row not sent to the model; phone-length numbers are left to the phone rule; dates and amounts are not affected.
 - Links to RightAlly's own hosts are always allowed.
