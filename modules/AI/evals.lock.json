@@ -39,6 +39,10 @@
         "version": "1",
         "sha256": "4618955942f470718d3fb9c9626deded441497603c0928a8419bc97eac4c60a1"
     },
+    "setup.describe": {
+        "version": "1",
+        "sha256": "37068db2403202ee5389f73753a6538f56fb68d7bc608c349892220300c8eddb"
+    },
     "setup.map_columns": {
         "version": "1",
         "sha256": "f42c1c3c6bda022f10350ba19ad572e068e876859cb7c6dfcf3a73addfba3ce8"
