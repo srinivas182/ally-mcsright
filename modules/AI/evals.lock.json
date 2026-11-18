@@ -31,6 +31,14 @@
         "version": "1",
         "sha256": "447f6e8a6c6d8bb900c4ec06ef848f4a1ce9f938bab08d3d65fcce10e29075fc"
     },
+    "network.intro": {
+        "version": "1",
+        "sha256": "52dd212caba58562854411842e287a245187da539240743a61942ff65f5ff6d5"
+    },
+    "network.match": {
+        "version": "1",
+        "sha256": "03add05da3ff7f550ee1ffa74caad50d697884c6effe632c35ab5bcb08538583"
+    },
     "pricing.cma_summary": {
         "version": "1",
         "sha256": "9b6e51463146065e3badf5f7de7f9083d1694edf07645d44f6551178a2af08d8"

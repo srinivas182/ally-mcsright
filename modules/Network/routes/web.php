@@ -12,6 +12,8 @@ use Modules\Network\Http\PublicProfileController;
 // AR1 (specs/network/01): the agent referral network.
 Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->name('network.')->group(function (): void {
     Route::get('network', [NetworkController::class, 'index'])->name('index');
+    Route::post('network/assistant', [NetworkController::class, 'assistant'])->middleware('throttle:20,1')->name('assistant'); // AR3
+    Route::post('network/assistant/intro', [NetworkController::class, 'intro'])->middleware('throttle:20,1')->name('assistant.intro');
     Route::post('network/profile', [NetworkController::class, 'saveProfile'])->middleware('throttle:20,1')->name('profile');
     Route::post('network/referrals', [NetworkController::class, 'send'])->middleware('throttle:20,1')->name('send');
     Route::post('network/referrals/{referral}/accept', [NetworkController::class, 'accept'])->where('referral', '[0-9A-HJKMNP-TV-Z]{26}')->name('accept');

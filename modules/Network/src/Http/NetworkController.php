@@ -13,6 +13,7 @@ use Inertia\Response;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
+use Modules\Network\Assistant;
 use Modules\Network\NetworkReferrals;
 use Modules\Network\Profiles;
 use Modules\Network\TrustScore;
@@ -30,7 +31,7 @@ final class NetworkController
         $language = trim((string) $request->query('language', ''));
 
         return Inertia::render('network/index', [
-            'tab' => in_array($request->query('tab'), ['received', 'sent', 'find', 'profile'], true) ? (string) $request->query('tab') : 'received',
+            'tab' => in_array($request->query('tab'), ['received', 'sent', 'find', 'profile', 'assistant'], true) ? (string) $request->query('tab') : 'received',
             'brokerage' => $profiles->brokerage(),
             'profile' => $mine !== null ? Profiles::card($mine) + ['licence' => $mine->licence, 'phone_raw' => $mine->phone, 'share_phone' => (bool) $mine->share_phone,
                 'status' => (string) $mine->status, 'sides_key' => (string) $mine->sides, 'public_url' => 'https://'.config('core.hq_host').'/agents/'.$mine->code,
@@ -43,7 +44,31 @@ final class NetworkController
                 ->map(fn ($d): array => ['ulid' => (string) $d->ulid, 'label' => $d->street.($d->status === 'pre_contract' ? '' : ' (under contract)')])->all(),
             'sides' => Profiles::SIDES,
             'isOwner' => $user->kind === UserKind::Owner,
+            'assistant' => $request->session()->get('network.assistant'),
         ]);
+    }
+
+    /** AR3: the networking assistant reads what the client needs and finds agents there. */
+    public function assistant(Request $request, Assistant $assistant): RedirectResponse
+    {
+        $user = self::user($request);
+        $criteria = $assistant->understand((string) $request->validate(['words' => ['required', 'string', 'max:2000']])['words'], $user);
+        $request->session()->put('network.assistant', ['criteria' => $criteria, 'found' => $assistant->find($criteria, $user), 'intros' => []]);
+
+        return redirect('/network?tab=assistant');
+    }
+
+    /** AR3: a first message to a local agent (the agent copies it and sends it themselves). */
+    public function intro(Request $request, Assistant $assistant): RedirectResponse
+    {
+        $data = $request->validate(['key' => ['required', 'string', 'max:60']]);
+        $state = (array) $request->session()->get('network.assistant', []);
+        $agent = collect((array) ($state['found']['local'] ?? []))->firstWhere('key', $data['key']);
+        abort_if($agent === null, 404);
+        $state['intros'][$data['key']] = $assistant->intro(self::user($request), (string) $agent['name'], $agent['office'] ?? null, (array) ($state['criteria'] ?? []));
+        $request->session()->put('network.assistant', $state);
+
+        return redirect('/network?tab=assistant');
     }
 
     public function saveProfile(Request $request, Profiles $profiles): RedirectResponse

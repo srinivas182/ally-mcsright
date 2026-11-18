@@ -2,6 +2,10 @@ import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 
 import { AgentCard, TrustDetails } from '@/components/network/agent-card';
+import {
+    AssistantPanel,
+    type AssistantState,
+} from '@/components/network/assistant-panel';
 import { ProfileForm, type MyProfile } from '@/components/network/profile-form';
 import { ReferralItem } from '@/components/network/referral-item';
 import { SendForm } from '@/components/network/send-form';
@@ -11,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/ui/page-header';
 
 type Props = {
-    tab: 'received' | 'sent' | 'find' | 'profile';
+    tab: 'received' | 'sent' | 'find' | 'profile' | 'assistant';
     brokerage: { enabled: boolean; default_fee_percent: string };
     profile: (NetworkCard & MyProfile) | null;
     referrals: { received: NetworkReferral[]; sent: NetworkReferral[] };
@@ -20,11 +24,13 @@ type Props = {
     deals: { ulid: string; label: string }[];
     sides: Record<string, string>;
     isOwner: boolean;
+    assistant: AssistantState;
 };
 
 const TABS = [
     ['received', 'Sent to me'],
     ['sent', 'I sent'],
+    ['assistant', 'Ask the assistant'],
     ['find', 'Find an agent'],
     ['profile', 'My profile'],
 ] as const;
@@ -40,6 +46,7 @@ export default function Network({
     deals,
     sides,
     isOwner,
+    assistant,
 }: Props) {
     const [area, setArea] = useState(search.area);
     const [side, setSide] = useState(search.side ?? '');
@@ -138,6 +145,19 @@ export default function Network({
                         )}
                         {tab === 'profile' && (
                             <ProfileForm profile={profile} sides={sides} />
+                        )}
+
+                        {tab === 'assistant' && (
+                            <AssistantPanel
+                                state={assistant}
+                                onSend={(a, sd) =>
+                                    router.get('/network', {
+                                        tab: 'find',
+                                        area: a,
+                                        side: sd ?? '',
+                                    })
+                                }
+                            />
                         )}
 
                         {(tab === 'received' || tab === 'sent') && (
