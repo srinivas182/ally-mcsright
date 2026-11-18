@@ -93,10 +93,14 @@ jobs:
       # kept so root runs the PHP set up above (sudo's own PATH finds the runner's system PHP, and every page fails).
       - name: Start the app
         run: |
+          echo "PHP for the server: $(sudo -E env "PATH=$PATH" php -r 'echo PHP_VERSION;')"
           sudo -E env "PATH=$PATH" php artisan serve --host=127.0.0.1 --port=80 > storage/logs/serve.log 2>&1 &
-          curl --silent --fail --retry 30 --retry-delay 1 --retry-connrefused http://127.0.0.1/up > /dev/null \
-            || (tail -50 storage/logs/serve.log storage/logs/laravel.log; exit 1)
-          php -v | head -1
+          if ! curl --silent --show-error --fail --retry 60 --retry-delay 1 --retry-all-errors http://127.0.0.1/up > /dev/null; then
+            echo '--- serve.log'; cat storage/logs/serve.log || true
+            echo '--- laravel.log'; tail -n 80 storage/logs/laravel.log || true
+            echo '--- /up'; curl --silent --show-error -i http://127.0.0.1/up | head -n 40 || true
+            exit 1
+          fi
 
       - name: Journeys
         run: E2E_NO_SERVER=1 npx playwright test
