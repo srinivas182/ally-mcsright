@@ -11,6 +11,7 @@ use Illuminate\Auth\Events\Login;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\Hashing\Hasher;
 use Illuminate\Contracts\Queue\Job;
+use Illuminate\Database\Connection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Client\Factory;
@@ -78,6 +79,13 @@ final class CoreServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        // Sprint 58: every database connection's query builder limits brokerage queries to the brokerage on its
+        // cell (Tenancy\Guard\TenantGuard), so a forgotten "where tenant_id" in a DB::table() query cannot leak.
+        Connection::resolverFor('sqlite', fn ($pdo, $db, $prefix, $config) => new Tenancy\Guard\GuardedSQLiteConnection($pdo, $db, $prefix, $config));
+        Connection::resolverFor('mysql', fn ($pdo, $db, $prefix, $config) => new Tenancy\Guard\GuardedMySqlConnection($pdo, $db, $prefix, $config));
+        Connection::resolverFor('mariadb', fn ($pdo, $db, $prefix, $config) => new Tenancy\Guard\GuardedMariaDbConnection($pdo, $db, $prefix, $config));
+        Connection::resolverFor('pgsql', fn ($pdo, $db, $prefix, $config) => new Tenancy\Guard\GuardedPostgresConnection($pdo, $db, $prefix, $config));
+
         // Texts and calls use the Twilio account HQ set up (falling back to the server's settings); scoped so a
         // change in HQ settings applies to the next request or job.
         $this->app->singleton(Messaging\MessagingSettings::class);
