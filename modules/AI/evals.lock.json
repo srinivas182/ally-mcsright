@@ -11,6 +11,10 @@
         "version": "1",
         "sha256": "e9d0ff1f4eb05c4388ad3fc649b3bba848372e720d904c9e2d36d237ae61bf5f"
     },
+    "appointments.coaching": {
+        "version": "1",
+        "sha256": "923df03d799c226aa98b80c737ea9a6bca74b76db6d0d3e4a6c7922f8e75b8c8"
+    },
     "crm.ai_responder": {
         "version": "2",
         "sha256": "54e5b4ace0f6500eb2e79c529cf8aaa16438b340f93e051f30a67cc56d1f2378"

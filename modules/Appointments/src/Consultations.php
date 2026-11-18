@@ -231,6 +231,12 @@ final class Consultations implements BuyerAgreementGuard
         }
     }
 
+    /** The appointment, when this user may open it (their own, or a manager who can see the contact); 404 otherwise. */
+    public function open(string $ulid, User $user): \stdClass
+    {
+        return $this->row($ulid, $user);
+    }
+
     private function row(string $ulid, User $user): \stdClass
     {
         $row = DB::connection(Connections::cell())->table('appt_consultations')->where('tenant_id', $this->tenants->id())->where('ulid', $ulid)->first();

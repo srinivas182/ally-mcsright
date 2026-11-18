@@ -83,6 +83,12 @@ final class ContactPrivacy
         }
         self::quietly(fn () => $db->table('crm_relationships')->where('contact_id', $id)->orWhere('related_contact_id', $id)->delete());
         $db->table('crm_consent_events')->where('contact_id', $id)->update(['phone' => null, 'ip' => null, 'user_agent' => null]);
+        // VO1: call transcripts and notes go too (the call rows stay, empty, for the call counts).
+        self::quietly(fn () => $db->table('crm_ai_calls')->where('contact_id', $id)->update(['transcript' => null, 'summary' => null]));
+        self::quietly(fn () => $db->table('crm_recorded_calls')->where('contact_id', $id)->update(['transcript' => null, 'summary' => null]));
+        // VO2: appointment recordings' transcripts and notes.
+        self::quietly(fn () => $db->table('appt_recordings')->whereIn('consultation_id', $db->table('appt_consultations')->where('contact_id', $id)->select('id'))
+            ->update(['transcript' => null, 'notes' => null, 'status' => 'deleted', 'reason' => 'Erased on a privacy request.']));
         $db->table('crm_contacts')->where('id', $id)->update(['first_name' => 'Deleted', 'last_name' => 'person', 'company_name' => null, 'emails' => '[]', 'phones' => '[]',
             'primary_email' => null, 'primary_phone' => null, 'search_name' => '', 'address_line1' => null, 'address_line2' => null, 'city' => null, 'zip' => null,
             'birthday' => null, 'source_detail' => null, 'email_opt_in' => false, 'sms_opt_in' => false, 'do_not_call' => true, 'deleted_at' => now(), 'updated_at' => now()]);

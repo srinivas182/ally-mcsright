@@ -21,7 +21,7 @@ final class Transcriber
      * @param  array<string, string>  $keys
      * @return array{text: string|null, job: string|null}
      */
-    public function start(string $provider, array $keys, string $audio): array
+    public function start(string $provider, array $keys, string $audio, string $mime = 'audio/wav'): array
     {
         if ($audio === '') {
             throw new RuntimeException('There was no recording to write down.');
@@ -29,14 +29,14 @@ final class Transcriber
 
         switch ($provider) {
             case 'deepgram':
-                $r = Http::timeout(120)->withHeaders(['Authorization' => 'Token '.$keys['api_key']])->withBody($audio, 'audio/wav')
+                $r = Http::timeout(120)->withHeaders(['Authorization' => 'Token '.$keys['api_key']])->withBody($audio, $mime)
                     ->post('https://api.deepgram.com/v1/listen?model=nova-3&smart_format=true&diarize=true&detect_language=true&utterances=true');
                 $this->ok($r->failed(), $r->status());
 
                 return ['text' => self::speakers((array) $r->json('results.utterances', []), 'speaker', 'transcript')
                     ?: (string) $r->json('results.channels.0.alternatives.0.transcript'), 'job' => null];
             case 'elevenlabs':
-                $r = Http::timeout(120)->withHeaders(['xi-api-key' => $keys['api_key']])->attach('file', $audio, 'call.wav')
+                $r = Http::timeout(120)->withHeaders(['xi-api-key' => $keys['api_key']])->attach('file', $audio, 'recording.'.(str_contains($mime, 'webm') ? 'webm' : (str_contains($mime, 'ogg') ? 'ogg' : (str_contains($mime, 'mp4') ? 'm4a' : 'wav'))))
                     ->post('https://api.elevenlabs.io/v1/speech-to-text', ['model_id' => 'scribe_v1', 'diarize' => 'true']);
                 $this->ok($r->failed(), $r->status());
 

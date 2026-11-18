@@ -57,6 +57,7 @@ it('sends every brokerage page the data its component needs', function (string $
     'my revenue share (new brokerage, no ledger yet)' => ['agent', '/revenue-share', 'compensation/revenue-share'],
     'contacts' => ['agent', '/contacts', 'crm/contacts/index'],
     'ask your database' => ['agent', '/contacts/ask', 'crm/contacts/ask'],
+    'my coaching (VO2)' => ['agent', '/appointments/coaching', 'appointments/coaching'],
     'pipeline board' => ['agent', '/contacts/board', 'crm/contacts/board'],
     'duplicates' => ['agent', '/contacts/duplicates', 'crm/contacts/duplicates'],
     'lead pond' => ['agent', '/contacts/pond', 'crm/contacts/pond'],

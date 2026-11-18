@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Appointments\Consultations;
+use Modules\Appointments\Recordings;
 use Modules\Crm\ContactVisibility;
 use Modules\Crm\Models\Contact;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -38,7 +39,12 @@ final class AppointmentsController
 
     public function show(Request $request, Consultations $consultations, string $consultation): Response
     {
-        return Inertia::render('appointments/show', ['c' => $consultations->show($consultation, self::user($request))]);
+        $user = self::user($request);
+        $recordings = app(Recordings::class);
+
+        return Inertia::render('appointments/show', ['c' => $consultations->show($consultation, $user),
+            // VO2: recorded appointments with notes and coaching.
+            'recording' => ['blocker' => $recordings->blocker(), 'wording' => Recordings::WORDING, 'list' => $recordings->forConsultation($consultations->open($consultation, $user), $user)]]);
     }
 
     public function save(Request $request, Consultations $consultations, string $consultation): RedirectResponse
