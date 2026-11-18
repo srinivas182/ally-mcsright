@@ -45,6 +45,7 @@ use Modules\Crm\Models\Tag;
 use Modules\Crm\Models\Task;
 use Modules\Crm\Referrals;
 use Modules\Crm\SmartLists;
+use Modules\Crm\Voice\RecordedCalls;
 
 /**
  * Contacts list, quick add and contact detail. Everything goes through ContactVisibility; a
@@ -202,6 +203,8 @@ final class ContactController
                     'asked_at' => app(ConsentRequests::class)->lastSent($contact)?->toDateString(),
                 ],
             ],
+            // VO1: recorded calls with notes, and AI call conversations.
+            'calls' => ['blocker' => app(RecordedCalls::class)->blocker($contact, $user), 'list' => app(RecordedCalls::class)->forContact($contact)],
             'households' => $contact->households()->with('members')->get()->map(fn ($h): array => [
                 'ulid' => $h->ulid, 'name' => $h->name,
                 'members' => $h->members->whereIn('id', $visibleIds)->map(fn (Contact $m): array => ['ulid' => $m->ulid, 'name' => $m->name])->values(),

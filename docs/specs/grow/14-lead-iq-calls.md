@@ -37,10 +37,39 @@ Assistant's name; the brokerage name as the assistant says it; female or male vo
 - Twilio's steps use signed 30-minute links; the booking page a signed 7-day link. Forged or expired links are refused.
 - Calls are recorded in `crm_ai_calls` with status and the reason in plain words; every step is on the contact's timeline and audited as an automation.
 
-## Not in LQ1
+## Spoken AI conversations (VO1, E10)
 
-A two-way spoken conversation (the assistant answering free questions by voice) needs a real-time voice provider; LQ1 uses a keypad menu, which works on every phone and is easy for every age. A broker's photo on the assistant and the broker's own cloned voice (rest of D22) come later.
+When HQ (or a brokerage, with its own account) connects **AI voice calls** in Outside services, the keypad menu is replaced by a real two-way conversation. Providers: **Retell AI (recommended)**, Vapi or Bland AI. The keypad call stays as the fallback whenever the service is Off.
+
+- **What the provider holds.** The AI agent's script, voice, transfer tool and calling number are set up once in the provider's account; Outside services keeps the API key (encrypted, write-only), the agent ID and the calling number.
+- **What RightAlly sends** (`Crm\Voice\VoiceAgents::start`): the lead's first name, what they asked about, the brokerage name, the assistant's name, the language, the agent's first name and work phone (for the live transfer) and the signed booking link. Nothing else: no email, notes, price history or other contacts.
+- **Same rules as the keypad call.** Written consent to automated calls, never Do Not Call, 8am–9pm where they are, the monthly limit, and the AI says it is an AI in the brokerage's name (configured in the provider's script).
+- **Test mode** calls only the listed test numbers; anyone else is skipped with "AI voice calls are in Test mode" on the lead. Live is allowed only after a passing Test connection check.
+- **After the call** a job (`PollVoiceCall`) asks the provider every two minutes how it ended (for up to an hour): talked, passed to the agent, or no answer. The transcript is turned into the **agent's hand-off note** by AI (`crm.call_summary`): a two-or-three-sentence summary, the next step, when to follow up, and whether they asked for a person or for no more calls. The transcript is untrusted data; spoken instructions are ignored.
+- **The note goes where the agent works:** on the contact's timeline, a follow-up task (today, tomorrow or next week) when one was agreed, Do Not Call when they asked for no more calls, and an email to the agent. Transcript and note are stored encrypted on the call (`crm_ai_calls.transcript`, `summary`) and shown under **Calls with notes** on the contact.
+
+## Recorded calls with automatic notes (VO1, D08)
+
+On any contact, **Call and take notes for me**: RightAlly rings the agent's own mobile first; when they answer, it calls the client from the brokerage number.
+
+1. **Everyone is told.** The agent hears "They will hear that the call is recorded for notes". Before the client is connected they hear, in English and Spanish: "This call is recorded so I can keep accurate notes. If you prefer, hang up and I will call you back without recording." This meets all-party-consent states (California, Florida, Pennsylvania, Washington and others), where everyone must be told.
+2. **Not allowed** when call notes are off (the transcripts service), calls are off for the brokerage, the agent has no mobile number, the client has no number, is on Do Not Call, or it is outside 8am–9pm where they are. The reason is shown in place of the button.
+3. **After the call** the recording is written down by the transcripts provider chosen in Outside services: **Deepgram (recommended)**, AssemblyAI or ElevenLabs Scribe; speakers are told apart and English or Spanish detected. The AI writes the notes (same `crm.call_summary` prompt), which are logged as a connected call with its length, plus a follow-up task and an email to the agent.
+4. **The audio is deleted** from the phone provider as soon as it is written down; only the transcript and notes are kept, encrypted. Calls under five seconds or unanswered are not written down, and their recordings are deleted.
+5. If writing down fails, the agent sees **Try again** or **Delete the recording** on the contact; nothing is kept without the agent's choice.
+6. Twilio's steps use signed 3-hour links (`/webhooks/calls/recorded/{call}/{agent|client|done}`); forged links are refused. Each start is audited.
+
+### Defaults to review (money or law)
+
+- Recording announcement wording, and announcing to everyone in every state (even one-party states): attorney review recommended.
+- AI voice calls follow the same written-consent rule as the keypad call (the FCC treats AI voices as artificial voices).
+- Transcription and AI notes are charged as one AI credit per call (`ai.crm_call_summary`); transcription minutes are paid from HQ's transcripts account.
+- A recorded call is counted as 5 call minutes when placed; Twilio's real length settles it.
+
+## Not yet
+
+A broker's photo on the assistant and the broker's own cloned voice (rest of D22, decided 2026-11-15: no broker branding on the back-office assistant). Recording in-person appointments with coaching comes in VO2.
 
 ## Tests
 
-`tests/Feature/Crm/LeadIqCallsTest.php`.
+`tests/Feature/Crm/LeadIqCallsTest.php`, `tests/Feature/Crm/VoiceCallsTest.php`.

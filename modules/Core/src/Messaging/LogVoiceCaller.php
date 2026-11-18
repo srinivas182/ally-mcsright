@@ -18,4 +18,16 @@ final class LogVoiceCaller implements VoiceCaller
     {
         return $this->call($to, $message);
     }
+
+    public function bridge(string $agentPhone, string $onAnswer): string
+    {
+        return $this->call($agentPhone, 'Recorded call (not placed: no provider configured).');
+    }
+
+    public function recording(string $recordingSid): string
+    {
+        return '';
+    }
+
+    public function deleteRecording(string $recordingSid): void {}
 }

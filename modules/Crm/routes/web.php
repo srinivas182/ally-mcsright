@@ -32,6 +32,7 @@ use Modules\Crm\Http\Controllers\RelationshipController;
 use Modules\Crm\Http\Controllers\SavedSearchController;
 use Modules\Crm\Http\Controllers\TaskController;
 use Modules\Crm\Http\Controllers\TodayController;
+use Modules\Crm\Http\Controllers\Voice\RecordedCallController;
 use Modules\Crm\Http\Controllers\WorkListController;
 
 Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoffice.basic'])
@@ -43,6 +44,10 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoff
         Route::get('texting-consent', [ConsentRequestController::class, 'page'])->name('texting-consent');
         Route::post('texting-consent', [ConsentRequestController::class, 'askAll'])->middleware('throttle:5,60')->name('texting-consent.all');
         Route::post('{contact}/texting-consent', [ConsentRequestController::class, 'ask'])->middleware('throttle:30,1')->name('texting-consent.ask');
+        // VO1 (specs/grow/14): recorded calls with automatic notes.
+        Route::post('{contact}/recorded-call', [RecordedCallController::class, 'start'])->middleware('throttle:10,1')->name('recorded-call');
+        Route::post('{contact}/recorded-call/{call}/retry', [RecordedCallController::class, 'retry'])->middleware('throttle:10,1')->where('call', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('recorded-call.retry');
+        Route::post('{contact}/recorded-call/{call}/delete', [RecordedCallController::class, 'discard'])->middleware('throttle:10,1')->where('call', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('recorded-call.delete');
         Route::get('board', [PipelineController::class, 'board'])->name('board');
         Route::get('duplicates', [DataController::class, 'duplicates'])->name('duplicates');
         Route::get('pond', [RelationshipController::class, 'pond'])->name('pond');
@@ -164,6 +169,8 @@ Route::middleware(['tenant', EnsureTenantWorkspace::class, 'throttle:60,1,lead-c
 // Lead-IQ calls (LQ1): Twilio's keypad steps, and the page to pick a time (signed links; no session).
 Route::middleware(['tenant', EnsureTenantWorkspace::class, 'throttle:120,1,ai-call'])->post('webhooks/leads/ai-call/{call}/{step}', [AiCallController::class, 'step'])
     ->where(['call' => '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}', 'step' => 'menu(-es)?|(whisper|accept|next)-[0-9](-es)?'])->name('crm.leads.ai-call');
+Route::middleware(['tenant', EnsureTenantWorkspace::class, 'throttle:120,1,recorded-call'])->post('webhooks/calls/recorded/{call}/{step}', [RecordedCallController::class, 'step'])
+    ->where(['call' => '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}', 'step' => 'agent|client|done'])->name('crm.recorded-call.step');
 Route::middleware(['web', EnsureTenantWorkspace::class, 'throttle:30,1,ai-book'])->group(function (): void {
     Route::get('book/{call}', [AiCallController::class, 'book'])->where('call', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('crm.leads.book');
     Route::post('book/{call}', [AiCallController::class, 'confirm'])->where('call', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('crm.leads.book.confirm');

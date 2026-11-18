@@ -242,6 +242,7 @@ final class CrmServiceProvider extends ServiceProvider
         $features->declare(VoiceUpdates::LOG, 'ai.crm_voice_log', 'Spoken or typed contact updates');
         $features->declare(VoiceUpdates::QUICK_ADD, 'ai.crm_quick_add', 'Spoken quick add');
         $features->declare(DatabaseIntelligence::FEATURE, 'ai.crm_intents', 'Reading plans and dates from notes');
+        $features->declare(Voice\CallNotes::FEATURE, 'ai.crm_call_summary', 'Call notes from AI calls and recorded calls');
         $features->declare(Leads\PortalEmail::FEATURE, 'ai.crm_lead_email', 'Reading forwarded lead emails from any sender');
         $features->declare(Inbox\Inbox::DRAFT, 'ai.crm_reply_draft', 'Suggested replies in the inbox');
         $features->declare(FieldSuggestions::FEATURE, 'ai.crm_field_fill', 'Fill custom fields from contact notes');

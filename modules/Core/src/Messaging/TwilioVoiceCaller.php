@@ -32,13 +32,32 @@ final class TwilioVoiceCaller implements VoiceCaller
         return $this->place($to, "<Response>{$gather}{$gather}<Say voice=\"{$v}\">{$bye}</Say></Response>");
     }
 
+    public function bridge(string $agentPhone, string $onAnswer): string
+    {
+        return $this->place($agentPhone, null, $onAnswer);
+    }
+
+    public function recording(string $recordingSid): string
+    {
+        $r = $this->http->withBasicAuth($this->sid, $this->token)->timeout(60)
+            ->get("https://api.twilio.com/2010-04-01/Accounts/{$this->sid}/Recordings/".rawurlencode($recordingSid).'.wav');
+
+        return $r->successful() ? $r->body() : '';
+    }
+
+    public function deleteRecording(string $recordingSid): void
+    {
+        $this->http->withBasicAuth($this->sid, $this->token)->timeout(15)
+            ->delete("https://api.twilio.com/2010-04-01/Accounts/{$this->sid}/Recordings/".rawurlencode($recordingSid).'.json');
+    }
+
     /** Places the call; Twilio reports its real length to the status callback (for call-minute allowances). */
-    private function place(string $to, string $twiml): string
+    private function place(string $to, ?string $twiml, ?string $url = null): string
     {
         $host = (string) config('core.hq_host', '');
         $callback = (string) (config('services.twilio.status_callback') ?: ($host !== '' ? 'https://'.$host.'/billing/twilio/call-status' : ''));
         $response = $this->http->asForm()->withBasicAuth($this->sid, $this->token)->timeout(15)
-            ->post("https://api.twilio.com/2010-04-01/Accounts/{$this->sid}/Calls.json", array_filter(['To' => $to, 'From' => $this->from, 'Twiml' => $twiml,
+            ->post("https://api.twilio.com/2010-04-01/Accounts/{$this->sid}/Calls.json", array_filter(['To' => $to, 'From' => $this->from, 'Twiml' => $twiml, 'Url' => $url,
                 'StatusCallback' => $callback !== '' ? $callback : null, 'StatusCallbackEvent' => $callback !== '' ? 'completed' : null]));
         if ($response->failed()) {
             throw new RuntimeException('The call could not be placed ('.$response->status().').');
