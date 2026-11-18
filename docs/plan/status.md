@@ -12,7 +12,7 @@ Checked 2026-11-16 (R1 to DQ6, SM1, HC1a, HC1b, SO1, SO2, LQ1, LQ2, DH1, RC1–R
 | D    | 27         | 27   | 0      | 0           | 57 / 0 / 0                          |
 | E    | 25         | 25   | 0      | 0           | 57 / 0 / 0                          |
 
-Sprints 58–63 (integration, load test, penetration test, SOC 2 readiness, launch): Sprint 58 done (route review, database-level brokerage guard, lead-to-payout journey); 59 done (query budgets on 43 pages); 60 done in the test lab (load test on 100,000 contacts: three slow pages fixed, load-script bug fixed, sizing for 1,000,000 agents), the full-size staging run still to do; 61–63 to follow. See `docs/specs/core/19-release-readiness.md`.
+Sprints 58–63 (integration, load test, penetration test, SOC 2 readiness, launch): Sprint 58 done (route review, database-level brokerage guard, lead-to-payout journey); 59 done (query budgets on 43 pages); 60 done in the test lab (load test on 100,000 contacts: three slow pages fixed, load-script bug fixed, sizing for 1,000,000 agents), the full-size staging run still to do; 61 done internally (outside firm's test to book); 62 done (14 SOC 2 controls with evidence; policies and auditor to provide); 63 done (launch:check, load-balancer fix, runbook; v1.0 tagged at go-live). See `docs/specs/core/19-release-readiness.md`.
 
 Outside the original grid and complete: Connect C1–C8 (except the Partner API, C8 showing apps and Homebot), MCP M1–M2, growth catch-up (LG1a to C7c), Ally Studio SA1–SA5, Movewise MW1–MW9.
 

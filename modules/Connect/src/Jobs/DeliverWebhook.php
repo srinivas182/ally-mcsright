@@ -14,8 +14,8 @@ use Illuminate\Validation\ValidationException;
 use Modules\Connect\Health;
 use Modules\Connect\Models\Connection;
 use Modules\Connect\Models\WebhookDelivery;
-use Modules\Connect\Webhooks\SafeUrl;
 use Modules\Connect\Webhooks\Signature;
+use Modules\Core\Support\SafeUrl;
 
 /**
  * Sends one webhook (specs/connect/01): signed JSON, 10 second timeout, no redirects, to the checked IP. A 2xx

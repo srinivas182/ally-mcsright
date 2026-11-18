@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Modules\Core\Audit\AuditStream;
 use Modules\Core\Audit\AuditStreamer;
 use Modules\Core\Audit\AuditStreamFailing;
@@ -20,6 +21,12 @@ beforeEach(function (): void {
     $this->tenant = $this->onTenantHost('acme');
     $this->owner = User::factory()->owner()->create();
     Notification::fake();
+    // Sprint 61: stream addresses are checked like webhooks (public addresses only); the test hosts resolve publicly.
+    app()->instance('connect.dns', fn (string $host): array => match ($host) {
+        'siem.test', 'splunk.test' => ['93.184.216.34'],
+        'internal.test' => ['10.0.0.5'],
+        default => [],
+    });
 });
 
 function addWebhook(User $owner): AuditStream
@@ -128,4 +135,15 @@ it('records HQ actions in the brokerage\'s own log and in HQ\'s', function (): v
     $mine = DB::table('audit_events')->where('tenant_id', $this->tenant->id)->where('action', 'core.tenant.suspended')->sole();
     expect($mine->actor_type)->toBe('hq_support')->and(json_decode((string) $mine->metadata, true)['reason'])->toBe('Unpaid invoice for March')
         ->and(DB::table('audit_events')->where('tenant_id', $hq->id)->where('action', 'core.tenant.suspended')->exists())->toBeTrue();
+});
+
+it('refuses stream addresses on private networks, internal names or IP addresses, and Datadog sites it does not know', function (): void {
+    $this->actingAs($this->owner)->withSession(['auth.password_confirmed_at' => time()]);
+    foreach (['https://internal.test/hook' => 'private network', 'https://10.0.0.5/hook' => 'not an IP address', 'https://localhost/hook' => 'internal name',
+        'http://siem.test/hook' => 'https://'] as $url => $why) {
+        expect(fn () => app(AuditStreamer::class)->add('webhook', 'SIEM', ['url' => $url, 'secret' => str_repeat('s', 32)], $this->owner))
+            ->toThrow(ValidationException::class);
+    }
+    expect(fn () => app(AuditStreamer::class)->add('datadog', 'DD', ['api_key' => 'k', 'site' => 'evil.example/x?'], $this->owner))
+        ->toThrow(ValidationException::class, 'Datadog');
 });

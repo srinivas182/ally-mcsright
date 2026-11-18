@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Inertia\Testing\AssertableInertia as Assert;
 use Modules\Core\Privacy\PrivacyAnswerMail;
@@ -15,6 +16,7 @@ use Modules\Core\Privacy\PrivacyCopyMail;
 use Modules\Core\Privacy\PrivacyRequestMail;
 use Modules\Core\Privacy\PrivacyRequests;
 use Modules\Core\Security\BotProtection;
+use Modules\Core\Security\Controls;
 use Modules\Core\Services\OutsideServices;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\Models\Tenant;
@@ -163,7 +165,10 @@ it('checks public forms for bots when bot protection is on, and lets forms throu
 
 it('shows HQ the SOC 2 controls with live evidence and a download', function (): void {
     $this->actingAs($this->staff)->get('http://app.rightally.io/hq/controls')->assertInertia(fn (Assert $p) => $p->component('hq/controls')
-        ->where('controls', fn ($c): bool => collect($c)->firstWhere('id', 'CC6.1')['status'] === 'met' && count($c) === 10));
+        ->where('controls', fn ($c): bool => collect($c)->firstWhere('id', 'CC6.1')['status'] === 'met' && count($c) === 14
+        // Sprint 62: isolation, vulnerable packages, security configuration and AI (no red-team run yet: attention).
+        && collect($c)->firstWhere('id', 'CC6.1-2')['status'] === 'met' && collect($c)->firstWhere('id', 'CC6.8')['status'] === 'process'
+        && collect($c)->firstWhere('id', 'C1.1')['status'] === 'attention'));
     app(TenantContext::class)->runAs(Tenant::query()->where('type', 'hq')->sole(), fn () => User::factory()->hqStaff()->create(['two_factor_confirmed_at' => null]));
     $this->actingAs($this->staff)->get('http://app.rightally.io/hq/controls')->assertInertia(fn (Assert $p) => $p
         ->where('controls', fn ($c): bool => collect($c)->firstWhere('id', 'CC6.1')['evidence'] === '1 of 2 active HQ staff have two-step sign-in.'
@@ -171,4 +176,18 @@ it('shows HQ the SOC 2 controls with live evidence and a download', function ():
     $csv = $this->actingAs($this->staff)->get('http://app.rightally.io/hq/controls/download')->assertOk()->streamedContent();
     expect($csv)->toContain('Control,Area')->toContain('CC6.7');
     $this->actingAs($this->owner)->get('/hq/controls')->assertNotFound();
+});
+
+it('signs off AI confidentiality only after a clean red-team run in the last week', function (): void {
+    $run = fn (int $critical, string $when) => DB::connection(Connections::control())->table('ai_red_team_runs')->insert(['ulid' => (string) Str::ulid(),
+        'status' => $critical === 0 ? 'passed' : 'failed', 'scenarios_run' => 13, 'injections_followed' => $critical, 'critical_followed' => $critical, 'blocked_by_policy' => 13 - $critical,
+        'errors' => 0, 'cost_microcents' => 0, 'budget_microcents' => 1, 'results' => '[]', 'started_at' => $when, 'finished_at' => $when, 'created_at' => $when, 'updated_at' => $when]);
+    $ai = fn (): array => collect(app(Controls::class)->all())->firstWhere('id', 'C1.1');
+
+    $run(0, now()->subDays(10)->toDateTimeString());
+    expect($ai()['status'])->toBe('attention'); // too old
+    $run(1, now()->subDay()->toDateTimeString());
+    expect($ai()['status'])->toBe('attention')->and($ai()['evidence'])->toContain('13 attacks, 1 critical followed');
+    $run(0, now()->toDateTimeString());
+    expect($ai()['status'])->toBe('met');
 });

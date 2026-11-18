@@ -2,7 +2,9 @@
 
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schedule;
+use Modules\Core\Launch\LaunchReadiness;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -25,6 +27,9 @@ Schedule::command('billing:affiliates-settle')->dailyAt('06:20')->onOneServer();
 Schedule::command('network:expire')->hourlyAt(17)->onOneServer(); // AR1
 Schedule::command('network:trust')->dailyAt('05:40')->onOneServer(); // AR2
 Schedule::command('cells:watch')->everyTenMinutes()->onOneServer(); // PS1
+// Sprint 63: proof the scheduler runs (launch:check reads it).
+Schedule::call(fn () => Cache::put(LaunchReadiness::HEARTBEAT, now()->toIso8601String(), 3600))
+    ->everyMinute()->name('scheduler-heartbeat')->onOneServer();
 // Collect finished AI batches and purge stored results after 7 days (specs/ai/01).
 Schedule::command('ai:batches:collect')->everyTenMinutes()->onOneServer();
 // Cap periods reconcile with their entries (specs/compensation/01).

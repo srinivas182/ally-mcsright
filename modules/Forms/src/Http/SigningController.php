@@ -145,7 +145,7 @@ final class SigningController
 
     public function verifyUpload(Request $request, Signing $signing): Response
     {
-        $request->validate(['file' => ['required', 'file', 'max:30720']]);
+        $request->validate(['file' => ['required', 'file', 'mimetypes:application/pdf', 'max:30720']]);
 
         return Inertia::render('public/verify-document', ['result' => $signing->verifyDocument((string) file_get_contents((string) $request->file('file')?->getRealPath()))]);
     }

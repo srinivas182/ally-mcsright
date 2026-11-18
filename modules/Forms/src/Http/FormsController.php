@@ -42,7 +42,7 @@ final class FormsController
 
     public function upload(Request $request, Templates $templates): RedirectResponse
     {
-        $data = $request->validate(['name' => ['required', 'string', 'max:160'], 'checklist_label' => ['nullable', 'string', 'max:160'], 'file' => ['required', 'file', 'max:20480']]);
+        $data = $request->validate(['name' => ['required', 'string', 'max:160'], 'checklist_label' => ['nullable', 'string', 'max:160'], 'file' => ['required', 'file', 'mimetypes:application/pdf', 'max:20480']]);
         $templates->upload($data['name'], $request->file('file'), $data['checklist_label'] ?? null, self::user($request));
 
         return back();

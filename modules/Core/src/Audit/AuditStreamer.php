@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Support\Connections;
+use Modules\Core\Support\SafeUrl;
 use Modules\Core\Tenancy\TenantContext;
 use RuntimeException;
 use Throwable;
@@ -127,14 +128,22 @@ final class AuditStreamer
             return;
         }
 
+        // Sprint 61 (pen-test prep): an owner's own address is checked again at every send and the connection made to
+        // the checked IP, without following redirects, so it can never reach RightAlly's internal network.
+        $ports = $stream->type === 'splunk' ? [443, 8443, 8088] : [443, 8443];
+        $pinned = function (string $url) use ($ports) {
+            $target = SafeUrl::check($url, $ports);
+
+            return $this->http->timeout(15)->withOptions(['allow_redirects' => false, 'curl' => [CURLOPT_RESOLVE => [$target['host'].':'.$target['port'].':'.$target['ip']]]]);
+        };
         $response = match ($stream->type) {
-            'webhook' => $this->http->timeout(15)->withHeaders(['X-RightAlly-Signature' => $this->sign($c['secret'], $body)])
+            'webhook' => $pinned($c['url'])->withHeaders(['X-RightAlly-Signature' => $this->sign($c['secret'], $body)])
                 ->withBody($body, 'application/json')->post($c['url']),
             'datadog' => $this->http->timeout(15)->withHeaders(['DD-API-KEY' => $c['api_key']])
-                ->post('https://http-intake.logs.'.($c['site'] ?? 'datadoghq.com').'/api/v2/logs', array_map(fn ($e) => [
+                ->post('https://http-intake.logs.'.self::datadogSite($c['site'] ?? null).'/api/v2/logs', array_map(fn ($e) => [
                     'ddsource' => 'rightally', 'service' => 'rightally-audit', 'hostname' => $e['brokerage'], 'message' => $e['action'], 'audit' => $e,
                 ], $events)),
-            'splunk' => $this->http->timeout(15)->withHeaders(['Authorization' => 'Splunk '.$c['token']])
+            'splunk' => $pinned(rtrim($c['url'], '/').'/services/collector/event')->withHeaders(['Authorization' => 'Splunk '.$c['token']])
                 ->withBody(implode('', array_map(fn ($e) => json_encode(['sourcetype' => 'rightally:audit', 'event' => $e]), $events)), 'application/json')
                 ->post(rtrim($c['url'], '/').'/services/collector/event'),
             default => throw new RuntimeException('Unknown destination.'),
@@ -188,6 +197,14 @@ final class AuditStreamer
         ];
     }
 
+    /** Datadog's own sites (the log address is built from it, so nothing else is accepted). */
+    private const DATADOG_SITES = ['datadoghq.com', 'us3.datadoghq.com', 'us5.datadoghq.com', 'datadoghq.eu', 'ap1.datadoghq.com', 'ddog-gov.com'];
+
+    private static function datadogSite(?string $site): string
+    {
+        return in_array($site, self::DATADOG_SITES, true) ? (string) $site : 'datadoghq.com';
+    }
+
     /**
      * @param  array<string, string>  $config
      * @return array<string, string>
@@ -200,10 +217,16 @@ final class AuditStreamer
                 throw ValidationException::withMessages(["config.{$field}" => 'This is required.']);
             }
         }
-        foreach (['url'] as $field) {
-            if (isset($config[$field]) && ! str_starts_with((string) $config[$field], 'https://')) {
-                throw ValidationException::withMessages(["config.{$field}" => 'Use an https:// address.']);
+        // Sprint 61: a public https address only (no internal names, IP addresses or private networks).
+        if (isset($config['url'])) {
+            try {
+                SafeUrl::check((string) $config['url'], $type === 'splunk' ? [443, 8443, 8088] : [443, 8443]);
+            } catch (ValidationException $e) {
+                throw ValidationException::withMessages(['config.url' => (string) collect($e->errors())->flatten()->first()]);
             }
+        }
+        if ($type === 'datadog' && isset($config['site']) && trim((string) $config['site']) !== '' && ! in_array(trim((string) $config['site']), self::DATADOG_SITES, true)) {
+            throw ValidationException::withMessages(['config.site' => 'Choose one of Datadog\'s sites: '.implode(', ', self::DATADOG_SITES).'.']);
         }
         if ($type === 'webhook' && mb_strlen((string) $config['secret']) < 24) {
             throw ValidationException::withMessages(['config.secret' => 'Use a signing secret of at least 24 characters.']);
