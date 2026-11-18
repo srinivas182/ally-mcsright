@@ -49,3 +49,31 @@ All three are under the Finance menu.
 ## Settings and review
 
 - The 5-day matching window and the default expense categories are defaults to **review** with the brokerage's accountant.
+
+## Live bank feed (BK1, B15)
+
+Finance → Bank reconciliation → **Live bank feed**. HQ chooses the provider in Outside services → Live bank feed:
+
+- **Plaid (recommended):** Test mode uses the Plaid Sandbox, Live uses Production.
+- **MX:** Test mode uses MX's integration environment.
+- **Teller:** every call is signed with HQ's certificate.
+
+**Read-only by design.** Only accounts, balances and transactions are requested. RightAlly asks for no payment, transfer or account-number product, and nothing can move money through the feed.
+
+1. **Connect.** The owner (permission `finance.ledger.adjust`, after confirming their password) signs in to the bank in the provider's own window: Plaid Link, the MX Connect widget or Teller Connect.
+    - RightAlly keeps only the provider's access token, encrypted.
+    - The brokerage is known to the provider by a non-identifying reference.
+2. **Choose the operating account.** Only checking and savings accounts are listed.
+3. **Transactions come in** every morning at 05:40 (`ledger:bank-feeds`), and whenever someone presses **Refresh now**.
+    - Plaid uses its sync cursor, so removed transactions are removed here too.
+    - MX re-reads the last week to catch transactions that post late.
+    - Amounts are stored as + money in and − money out. Pending transactions are kept but never used in a statement.
+4. **Fill a month from the feed** (once the month has ended). This replaces the downloaded statement:
+    - the month's posted transactions become the statement lines;
+    - the ending balance is today's balance less everything posted since the month ended, or the balance typed from the paper statement if one is given;
+    - matching, adding to the books and second-person approval work exactly as before.
+5. **Disconnect** (after password confirmation) removes the connection and its transactions.
+
+If the bank doesn't answer, the feed shows a plain message and tries again the next morning.
+
+Tests: `tests/Feature/Ledger/BankFeedTest.php`.
