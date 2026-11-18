@@ -15,7 +15,8 @@ export default defineConfig({
     workers: 1, // one PHP server
     retries: process.env.CI ? 1 : 0,
     timeout: 120_000, // an owner sign-in may wait for the next two-step code
-    reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
+    // On CI, "line" prints each failure as it happens (the run may be cut off before an end-of-run summary).
+    reporter: process.env.CI ? [['line'], ['html', { open: 'never' }]] : 'list',
     use: {
         trace: 'retain-on-failure',
         screenshot: 'only-on-failure',
