@@ -46,7 +46,7 @@ it('asks once, then switches to a short menu and a big-button home, in English o
     $this->actingAs($this->agent)->get('/simple')->assertInertia(fn (Assert $page) => $page->where('simple.words.what', '¿Qué quiere hacer?'));
 
     $this->actingAs($this->agent)->post('/settings/view', ['mode' => 'full'])->assertRedirect('/agent');
-    expect(simpleMenu($this->agent))->toContain('Business planner');
+    expect(simpleMenu($this->agent))->toContain('Plan de negocio'); // PW1: the full menu is in Spanish too
     $this->actingAs($this->agent)->post('/settings/view', ['mode' => 'fancy'])->assertSessionHasErrors('mode');
 });
 

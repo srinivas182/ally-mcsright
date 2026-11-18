@@ -346,9 +346,9 @@ final class CoreServiceProvider extends ServiceProvider
                 }
                 $like = Search\SearchController::like($q);
 
-                return User::query()->where(fn ($w) => $w->where('first_name', 'like', $like)->orWhere('last_name', 'like', $like)->orWhere('email', 'like', mb_strtolower($like)))
+                return array_values(User::query()->where(fn ($w) => $w->where('first_name', 'like', $like)->orWhere('last_name', 'like', $like)->orWhere('email', 'like', mb_strtolower($like)))
                     ->whereNot('kind', UserKind::HqStaff)->orderBy('first_name')->limit($limit)->get()
-                    ->map(fn (User $u): array => ['title' => $u->name, 'subtitle' => $u->email, 'href' => '/users?search='.rawurlencode($u->email)])->values()->all();
+                    ->map(fn (User $u): array => ['title' => $u->name, 'subtitle' => $u->email, 'href' => '/users?search='.rawurlencode($u->email)])->all());
             });
 
         $areas = $this->app->make(Switches\Areas::class);

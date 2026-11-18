@@ -93,7 +93,7 @@ final class CrmServiceProvider extends ServiceProvider
                 $like = SearchController::like($q);
                 $digits = preg_replace('/\D+/', '', $q) ?? '';
 
-                return app(ContactVisibility::class)->query($user)
+                return array_values(app(ContactVisibility::class)->query($user)
                     ->where(function ($w) use ($like, $digits): void {
                         $w->where('first_name', 'like', $like)->orWhere('last_name', 'like', $like)->orWhere('primary_email', 'like', $like);
                         if (strlen($digits) >= 4) {
@@ -102,7 +102,7 @@ final class CrmServiceProvider extends ServiceProvider
                     })
                     ->orderByDesc('updated_at')->limit($limit)->get()
                     ->map(fn (Contact $c): array => ['title' => $c->name !== '' ? $c->name : (string) $c->primary_email, 'subtitle' => $c->primary_email ?? $c->primary_phone,
-                        'href' => '/contacts/'.$c->ulid])->values()->all();
+                        'href' => '/contacts/'.$c->ulid])->all());
             });
         $this->app->make(Undo::class)->register('crm.task.complete', function (array $p, User $u): void { // SM1
             $task = Models\Task::query()->whereKey((int) ($p['task'] ?? 0))->first();

@@ -42,7 +42,7 @@ final class ListingsServiceProvider extends ServiceProvider
                 $number = ctype_digit($words[0] ?? '') ? $words[0] : null;
                 $street = trim(implode(' ', $number !== null ? array_slice($words, 1) : $words));
 
-                return Models\Listing::query()->visibleTo((int) $user->tenant_id)
+                return array_values(Models\Listing::query()->visibleTo((int) $user->tenant_id)
                     ->where(function ($w) use ($q, $number, $street): void {
                         $w->where('listing_id', $q);
                         if ($street !== '') {
@@ -56,7 +56,7 @@ final class ListingsServiceProvider extends ServiceProvider
                     })
                     ->limit($limit)->get()
                     ->map(fn (Models\Listing $l): array => ['title' => $l->address(), 'subtitle' => trim(($l->city ?? '').' · '.($l->standard_status ?? ''), ' ·'),
-                        'href' => '/listings/'.$l->ulid])->values()->all();
+                        'href' => '/listings/'.$l->ulid])->all());
             });
         if ($this->app->runningInConsole()) {
             $this->commands([Console\SyncListings::class, Console\ReconcileListings::class]);
