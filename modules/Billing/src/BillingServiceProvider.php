@@ -70,6 +70,8 @@ final class BillingServiceProvider extends ServiceProvider
         $nav->add(new NavItem('Platform', 'RightAlly credits', '/hq/credits', 'coins', 37, kinds: [UserKind::HqStaff]));
         $nav->add(new NavItem('HQ', 'Health checks', '/hq/health-checks', 'stethoscope', 12, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff]));
         $nav->add(new NavItem('HQ', 'Go-live', '/hq/go-live', 'rocket', 13, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff]));
+        $nav->add(new NavItem('HQ', 'Referral programme', '/hq/affiliates', 'heart-handshake', 14, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff])); // RF1
+        $nav->add(new NavItem('Settings', 'Refer a brokerage', '/settings/refer', 'heart-handshake', 75, kinds: [UserKind::Owner])); // RF1
         $nav->add(new NavItem('Settings', 'Switch to RightAlly', '/switch', 'rocket', 65, kinds: [UserKind::Owner, UserKind::Staff]));
         // Agents only see Plans when their brokerage uses the agent-pays model.
         $this->app->make(PermissionRegistry::class)->register('Billing', [
@@ -80,7 +82,7 @@ final class BillingServiceProvider extends ServiceProvider
         $nav->add(new NavItem('Overview', 'Plans', '/plans', 'gift', 90, ability: 'billing.plans.view'));
 
         if ($this->app->runningInConsole()) {
-            $this->commands([Console\ApplyPriceChanges::class, Console\EndGrace::class, Console\BillSubsidies::class, Console\PartnerPayouts::class, Console\GrantMonthlyCredits::class, Console\WatchCreditMargins::class, Console\ExpirePurchasedCredits::class, Console\RemindPausedMaps::class, Console\PruneHealthChecks::class, Console\GoLiveWeekly::class]);
+            $this->commands([Console\ApplyPriceChanges::class, Console\EndGrace::class, Console\BillSubsidies::class, Console\PartnerPayouts::class, Console\GrantMonthlyCredits::class, Console\WatchCreditMargins::class, Console\ExpirePurchasedCredits::class, Console\RemindPausedMaps::class, Console\PruneHealthChecks::class, Console\GoLiveWeekly::class, Console\SettleAffiliates::class]);
         }
     }
 }

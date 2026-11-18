@@ -2,6 +2,7 @@ import {
     ClosingPanel,
     type ClosingProps,
 } from '@/components/deals/closing-panel';
+import { WinCardPanel, type WinCard } from '@/components/deals/win-card';
 import {
     MoneyDesk,
     type Cda,
@@ -299,12 +300,14 @@ export default function ShowDeal({
     risk,
     deposits,
     referrals,
+    winCard,
     cdas,
     titles,
     can,
 }: Props & {
     deposits: Deposit[];
     referrals: Referral[];
+    winCard: WinCard | null;
     cdas: Cda[];
     titles: { ulid: string; name: string }[];
     can: {
@@ -393,6 +396,7 @@ export default function ShowDeal({
                     action={`/deals/${deal.ulid}/fields`}
                     canEdit={!deal.locked}
                 />
+                {winCard && <WinCardPanel ulid={deal.ulid} win={winCard} />}
                 {deal.status === 'closed' && can.managePay && (
                     <DealPay
                         ulid={deal.ulid}

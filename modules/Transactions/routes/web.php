@@ -22,6 +22,7 @@ use Modules\Transactions\Http\PortalAdminController;
 use Modules\Transactions\Http\PortalController;
 use Modules\Transactions\Http\PublicOfferController;
 use Modules\Transactions\Http\RepairsController;
+use Modules\Transactions\Http\WinCardController;
 
 Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoffice.minimal'])->prefix('deals')->name('deals.')->group(function (): void {
     Route::get('/', [DealController::class, 'index'])->name('index');
@@ -137,6 +138,8 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoff
     Route::post('deposits/{deposit}/receive', [MoneyDeskController::class, 'receiveDeposit'])->name('deposits.receive');
     Route::post('deposits/{deposit}/release', [MoneyDeskController::class, 'releaseDeposit'])->name('deposits.release');
     Route::post('{deal}/referrals', [MoneyDeskController::class, 'referral'])->name('referrals.store');
+    Route::post('{deal}/win-card', [WinCardController::class, 'make'])->middleware('throttle:20,1')->name('win.make'); // RF1
+    Route::delete('{deal}/win-card', [WinCardController::class, 'hide'])->name('win.hide');
     Route::post('{deal}/cdas', [MoneyDeskController::class, 'generateCda'])->name('cdas.generate');
     Route::post('cdas/{cda}/approve', [MoneyDeskController::class, 'approveCda'])->name('cdas.approve');
     Route::post('cdas/{cda}/send', [MoneyDeskController::class, 'sendCda'])->middleware('throttle:10,1')->name('cdas.send');

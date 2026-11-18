@@ -8,6 +8,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
+use Modules\Billing\Affiliates\Affiliates;
 use Modules\Billing\HealthCheck\HealthChecks;
 use Modules\Billing\Models\Package;
 use Modules\Billing\ProductFeatures;
@@ -48,7 +49,7 @@ final class SignupController
         return redirect()->away($signups->begin([
             'brokerage' => (string) $data['brokerage'], 'slug' => (string) $data['slug'], 'owner_name' => (string) $data['owner_name'], 'owner_email' => (string) $data['owner_email'],
             'state' => $data['state'] ?? null, 'agents' => isset($data['agents']) ? (int) $data['agents'] : null, 'package' => (string) $data['package'], 'interval' => (string) $data['interval'],
-            'health_check_id' => $check !== null ? (int) $check->id : null,
+            'health_check_id' => $check !== null ? (int) $check->id : null, 'ref' => is_string($request->cookie(Affiliates::COOKIE)) ? $request->cookie(Affiliates::COOKIE) : null,
         ], 'https://'.config('core.hq_host')));
     }
 
@@ -74,6 +75,7 @@ final class SignupController
         return redirect()->away($signups->begin([
             'brokerage' => trim((string) ($data['business'] ?? '')) !== '' ? trim((string) $data['business']) : $name, 'slug' => (string) $data['slug'], 'owner_name' => $name,
             'owner_email' => (string) $data['email'], 'state' => $data['state'] ?? null, 'agents' => 1, 'package' => (string) $data['package'], 'interval' => (string) $data['interval'],
+            'ref' => is_string($request->cookie(Affiliates::COOKIE)) ? $request->cookie(Affiliates::COOKIE) : null,
         ], 'https://'.config('core.hq_host'), 'solo'));
     }
 

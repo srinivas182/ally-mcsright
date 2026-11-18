@@ -3,7 +3,7 @@
     "name": "Transactions",
     "version": "0.1.0",
     "provider": "Modules\\Transactions\\TransactionsServiceProvider",
-    "depends": ["core", "compensation", "crm"],
+    "depends": ["core", "compensation", "crm", "sites"],
     "entitlement": null,
     "description": "Deals, checklists, documents, broker review and the link to compensation."
 }

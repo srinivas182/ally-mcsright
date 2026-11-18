@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
+use Modules\Billing\Http\AffiliateController;
 use Modules\Billing\Http\BillingController;
 use Modules\Billing\Http\CallStatusController;
 use Modules\Billing\Http\Credits\CreditsController;
@@ -39,6 +40,13 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function
     Route::get('settings/credits/export', [CreditsController::class, 'export'])->middleware('throttle:20,1')->name('credits.export');
     Route::get('switch', [GoLiveController::class, 'index'])->name('switch');
     Route::post('settings/partner/connect', [PaymentsController::class, 'connect'])->middleware('throttle:10,1')->name('billing.connect');
+    Route::get('settings/refer', [AffiliateController::class, 'brokerage'])->name('billing.refer'); // RF1
+});
+
+// RF1 (specs/billing/08): referral links and a referrer's private dashboard, on the RightAlly host.
+Route::domain((string) config('core.hq_host'))->middleware('web')->group(function (): void {
+    Route::get('r/{code}', [AffiliateController::class, 'link'])->where('code', '[a-z0-9]{3,24}')->middleware('throttle:60,1')->name('affiliate.link');
+    Route::get('affiliate/{token}', [AffiliateController::class, 'dashboard'])->where('token', '[A-Za-z0-9]{40}')->middleware('throttle:30,1')->name('affiliate.dashboard');
 });
 
 // Public partner lookup for rightally.io ("My brokerage is a partner").
@@ -72,6 +80,9 @@ Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.tenants.manage
     Route::get('billing', [BillingController::class, 'hq'])->name('billing');
     Route::get('health-checks', [HealthCheckController::class, 'hq'])->name('health-checks');
     Route::get('go-live', [GoLiveController::class, 'hq'])->name('go-live');
+    Route::get('affiliates', [AffiliateController::class, 'hq'])->name('affiliates');
+    Route::post('affiliates', [AffiliateController::class, 'addPerson'])->middleware('throttle:20,1')->name('affiliates.store');
+    Route::post('affiliates/referrals/{referral}/paid', [AffiliateController::class, 'markPaid'])->whereNumber('referral')->middleware('password.confirm')->name('affiliates.paid');
     Route::post('go-live/{tenant}/coach', [GoLiveController::class, 'coach'])->name('go-live.coach');
     Route::get('health-checks/{check}', [HealthCheckController::class, 'hqShow'])->where('check', '[0-9A-HJKMNP-TV-Z]{26}')->name('health-checks.show');
     Route::get('health-checks/{check}/preview', [HealthCheckController::class, 'hqPreview'])->where('check', '[0-9A-HJKMNP-TV-Z]{26}')->name('health-checks.preview');
