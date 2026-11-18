@@ -1,6 +1,6 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
+import { useState } from 'react';
 
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/ui/page-header';
@@ -144,24 +144,21 @@ export default function HqWebsitePage({
     versions,
     locales,
 }: Props) {
+    const [list, setList] = useState<Block[]>(blocks);
     const form = useForm({
         locale: page?.locale ?? 'en',
         slug: page?.slug ?? '',
         title: page?.title ?? '',
         description: page?.description ?? '',
-        blocks: blocks,
     });
     const opts = { preserveScroll: true };
     const set = (i: number, b: Block) =>
-        form.setData(
-            'blocks',
-            form.data.blocks.map((x, j) => (j === i ? b : x)),
-        );
+        setList(list.map((x, j) => (j === i ? b : x)));
     const move = (i: number, d: number) => {
-        const next = [...form.data.blocks];
+        const next = [...list];
         const [b] = next.splice(i, 1);
         next.splice(Math.max(0, Math.min(next.length, i + d)), 0, b);
-        form.setData('blocks', next);
+        setList(next);
     };
 
     return (
@@ -250,6 +247,7 @@ export default function HqWebsitePage({
                     className="grid gap-4"
                     onSubmit={(e) => {
                         e.preventDefault();
+                        form.transform((d) => ({ ...d, blocks: list }));
                         if (page) {
                             form.put(`/hq/website/pages/${page.ulid}`, opts);
                         } else {
@@ -307,7 +305,7 @@ export default function HqWebsitePage({
                         />
                     </label>
 
-                    {form.data.blocks.map((b, i) => (
+                    {list.map((b, i) => (
                         <fieldset
                             key={i}
                             className="grid gap-3 rounded-lg border p-4"
@@ -319,7 +317,11 @@ export default function HqWebsitePage({
                                 <BlockField
                                     key={f.key}
                                     field={f}
-                                    value={String(b[f.key] ?? '')}
+                                    value={
+                                        typeof b[f.key] === 'string'
+                                            ? (b[f.key] as string)
+                                            : ''
+                                    }
                                     onChange={(v) =>
                                         set(i, { ...b, [f.key]: v })
                                     }
@@ -352,7 +354,7 @@ export default function HqWebsitePage({
                                     type="button"
                                     size="sm"
                                     variant="outline"
-                                    disabled={i === form.data.blocks.length - 1}
+                                    disabled={i === list.length - 1}
                                     onClick={() => move(i, 1)}
                                 >
                                     Move down
@@ -362,12 +364,7 @@ export default function HqWebsitePage({
                                     size="sm"
                                     variant="ghost"
                                     onClick={() =>
-                                        form.setData(
-                                            'blocks',
-                                            form.data.blocks.filter(
-                                                (_, j) => j !== i,
-                                            ),
-                                        )
+                                        setList(list.filter((_, j) => j !== i))
                                     }
                                 >
                                     Remove
@@ -383,10 +380,7 @@ export default function HqWebsitePage({
                             value=""
                             onChange={(e) =>
                                 e.target.value &&
-                                form.setData('blocks', [
-                                    ...form.data.blocks,
-                                    blank(e.target.value),
-                                ])
+                                setList([...list, blank(e.target.value)])
                             }
                         >
                             <option value="">Add a block…</option>
@@ -488,7 +482,11 @@ function ItemsEditor({
                         <BlockField
                             key={f.key}
                             field={f}
-                            value={String(item[f.key] ?? '')}
+                            value={
+                                typeof item[f.key] === 'string'
+                                    ? (item[f.key] as string)
+                                    : ''
+                            }
                             onChange={(v) =>
                                 onChange({
                                     ...block,

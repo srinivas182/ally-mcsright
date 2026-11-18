@@ -64,7 +64,8 @@ final class Website
         $clean = Blocks::clean($blocks);
         $table = $this->db()->table('marketing_pages');
         $existing = $ulid !== null ? $table->clone()->where('ulid', $ulid)->first() : null;
-        $clash = $table->clone()->where('locale', $locale)->where('slug', $slug)->when($existing !== null, fn ($q) => $q->where('id', '!=', $existing->id))->exists();
+        $existingId = $existing !== null ? (int) $existing->id : null;
+        $clash = $table->clone()->where('locale', $locale)->where('slug', $slug)->when($existingId !== null, fn ($q) => $q->where('id', '!=', $existingId))->exists();
         if ($clash) {
             throw ValidationException::withMessages(['slug' => 'Another page already uses this address.']);
         }
@@ -158,7 +159,8 @@ final class Website
         }
         $table = $this->db()->table('marketing_posts');
         $existing = $ulid !== null ? $table->clone()->where('ulid', $ulid)->first() : null;
-        if ($table->clone()->where('locale', $locale)->where('slug', $slug)->when($existing !== null, fn ($q) => $q->where('id', '!=', $existing->id))->exists()) {
+        $existingId = $existing !== null ? (int) $existing->id : null;
+        if ($table->clone()->where('locale', $locale)->where('slug', $slug)->when($existingId !== null, fn ($q) => $q->where('id', '!=', $existingId))->exists()) {
             throw ValidationException::withMessages(['slug' => 'Another post already uses this address.']);
         }
         $when = $live ? ($publishAt !== null && $publishAt !== '' ? CarbonImmutable::parse($publishAt) : ($existing->published_at ?? now())) : null;

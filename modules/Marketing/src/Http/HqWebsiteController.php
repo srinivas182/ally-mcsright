@@ -41,7 +41,9 @@ final class HqWebsiteController
     {
         $row = $page !== null ? collect($this->site->pages())->firstWhere('ulid', $page) : null;
         abort_if($page !== null && ! $row instanceof stdClass, 404);
-        $blocks = $row instanceof stdClass ? json_decode((string) ($row->draft_blocks ?? $row->blocks ?? '[]'), true) : [];
+        $decoded = $row instanceof stdClass ? json_decode((string) ($row->draft_blocks ?? $row->blocks ?? '[]'), true) : [];
+        /** @var list<array<string, mixed>> $blocks */
+        $blocks = is_array($decoded) ? array_values(array_filter($decoded, 'is_array')) : [];
         $title = $row instanceof stdClass ? (string) ($row->draft_title ?? $row->title) : '';
         $description = $row instanceof stdClass ? (string) ($row->draft_description ?? $row->description) : '';
         $locale = $row instanceof stdClass ? (string) $row->locale : 'en';
@@ -54,9 +56,9 @@ final class HqWebsiteController
                 'status' => (string) $row->status, 'has_draft' => $row->draft_blocks !== null,
                 'preview' => $host !== '' ? URL::temporarySignedRoute('marketing.preview', now()->addHour(), ['ulid' => $row->ulid]) : null,
                 'url' => 'https://'.$host.'/'.trim(($locale === 'es' ? 'es/' : '').$slug, '/')] : null,
-            'blocks' => is_array($blocks) ? $blocks : [],
+            'blocks' => $blocks,
             'types' => Blocks::TYPES,
-            'checks' => $row instanceof stdClass ? Website::check($locale, $slug, $title, $description, is_array($blocks) ? $blocks : [], $twin) : [],
+            'checks' => $row instanceof stdClass ? Website::check($locale, $slug, $title, $description, $blocks, $twin) : [],
             'versions' => $row instanceof stdClass ? $this->site->versions((string) $row->ulid) : [],
             'locales' => Website::LOCALES,
         ]);
