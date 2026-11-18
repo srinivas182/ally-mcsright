@@ -16,6 +16,7 @@ use Modules\Core\Tenancy\TenantContext;
 use Modules\Crm\Consent\ConsentRequests;
 use Modules\Crm\ContactVisibility;
 use Modules\Crm\Models\Contact;
+use stdClass;
 
 /**
  * One-tap texting consent (CN1, specs/grow/18): the agent asks one contact or everyone in their list who can be asked;
@@ -70,12 +71,12 @@ final class ConsentRequestController
         return $this->view($state, $requests->find($token), $token);
     }
 
-    private function view(string $state, ?object $req, string $token): HttpResponse
+    private function view(string $state, ?stdClass $req, string $token): HttpResponse
     {
         $phone = $req !== null ? (string) $req->phone : '';
 
         return response()->view('crm::consent.ask', [
-            'state' => $state, 'brokerage' => (string) app(TenantContext::class)->current()->name, 'wording' => $req->wording ?? '',
+            'state' => $state, 'brokerage' => (string) app(TenantContext::class)->current()->name, 'wording' => $req !== null ? (string) $req->wording : '',
             'phone' => strlen(preg_replace('/\D+/', '', $phone) ?? '') >= 4 ? '•••-•••-'.substr(preg_replace('/\D+/', '', $phone) ?? '', -4) : '', 'token' => $token,
         ], $state === 'expired' ? 410 : 200)->header('Cache-Control', 'no-store')->header('X-Robots-Tag', 'noindex, nofollow')->header('Referrer-Policy', 'no-referrer');
     }
