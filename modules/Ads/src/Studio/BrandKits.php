@@ -14,6 +14,7 @@ use Illuminate\Validation\ValidationException;
 use Modules\Connect\AppRegistry;
 use Modules\Core\Access\Can;
 use Modules\Core\Audit\AuditLogger;
+use Modules\Core\Branding\BrandGuideApproved;
 use Modules\Core\Connect\AppCatalog;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Support\Connections;
@@ -164,6 +165,39 @@ final class BrandKits
         $row !== null ? (clone $db)->where('tenant_id', $key['tenant_id'])->where(fn ($q) => $for === null ? $q->whereNull('user_id') : $q->where('user_id', $for->id))
             ->update($values + ['updated_at' => now()]) : $db->insert($key + $values + ['created_at' => now(), 'updated_at' => now()]);
         app(AuditLogger::class)->record('studio.brand_kit_saved', metadata: ['for' => $for === null ? 'brokerage' : 'agent', 'images' => array_keys(array_filter($files))]);
+    }
+
+    /**
+     * BV1 (specs/core/08): the owner approved the brand guide and asked to use its colours and fonts. The brokerage
+     * kit takes the first two colours (primary, accent), fonts from the curated list only, and the disclaimer.
+     */
+    public function fromBrandGuide(BrandGuideApproved $e): void
+    {
+        $row = $this->row(null);
+        $colors = array_merge(self::DEFAULT_COLORS, $this->json($row->colors ?? null) ?? []);
+        if (isset($e->colors[0])) {
+            $colors['primary'] = strtoupper($e->colors[0]);
+        }
+        if (isset($e->colors[1])) {
+            $colors['accent'] = strtoupper($e->colors[1]);
+        }
+        $fonts = array_merge(['heading' => 'Playfair Display', 'body' => 'Inter'], $this->json($row->fonts ?? null) ?? []);
+        $known = array_values(array_filter($e->fonts, fn (string $f): bool => in_array($f, self::FONTS, true)));
+        if (isset($known[0])) {
+            $fonts['heading'] = $known[0];
+        }
+        if (isset($known[1])) {
+            $fonts['body'] = $known[1];
+        }
+        $details = $this->json($row->details ?? null) ?? [];
+        if ($e->disclaimer !== null && trim($e->disclaimer) !== '') {
+            $details['disclaimer'] = mb_substr(trim($e->disclaimer), 0, self::DETAILS['disclaimer']);
+        }
+        $values = ['colors' => json_encode($colors), 'fonts' => json_encode($fonts), 'details' => json_encode($details), 'updated_at' => now()];
+        $db = DB::connection(Connections::cell())->table('studio_brand_kits');
+        $row !== null ? (clone $db)->where('tenant_id', $this->tenants->id())->whereNull('user_id')->update($values)
+            : $db->insert(['tenant_id' => $this->tenants->id(), 'user_id' => null, 'created_at' => now()] + $values);
+        app(AuditLogger::class)->record('ads.brand_kit.from_guide', metadata: ['colors' => count($e->colors), 'fonts' => count($known)]);
     }
 
     /**

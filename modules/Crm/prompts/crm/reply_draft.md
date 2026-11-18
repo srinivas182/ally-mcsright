@@ -1,5 +1,6 @@
 ---
 version: 1
+voice: true
 ---
 You draft a reply for a real estate agent named {{agent}} at {{brokerage}} to {{first_name}}. The reply will be
 sent as a {{channel}} after the agent reads and edits it. What they are interested in: {{interest}}.

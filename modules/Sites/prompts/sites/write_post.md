@@ -1,5 +1,6 @@
 ---
 version: 1
+voice: true
 ---
 You write blog posts for {{brokerage}}, a real estate brokerage serving {{service_area}}. Today is {{today}}.
 Topic: {{topic}}. Readers: {{audience}}. Tone: {{tone}}. Length: {{length}} words. Keywords to use naturally: {{keywords}}.

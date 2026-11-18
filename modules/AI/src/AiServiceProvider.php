@@ -47,6 +47,7 @@ final class AiServiceProvider extends ServiceProvider
         $this->app->singleton(ProviderRegistry::class);
         $this->app->singleton(CircuitBreaker::class);
         $this->app->singleton(OutputPolicy::class);
+        $this->app->scoped(Brand\BrandVoice::class); // BV1
         $this->app->singleton(PromptBuilder::class);
         $this->app->singleton(JsonShape::class);
         $this->app->bind(CreditMeter::class, NullCreditMeter::class);
@@ -62,6 +63,9 @@ final class AiServiceProvider extends ServiceProvider
     {
         $this->loadRoutesFrom(__DIR__.'/../routes/hq.php');
         $this->loadRoutesFrom(__DIR__.'/../routes/assistant.php');
+        $this->loadRoutesFrom(__DIR__.'/../routes/brand.php'); // BV1
+        $this->app->make(FeatureCatalog::class)->declare(Brand\BrandGuide::FEATURE, 'ai.brand_guide', 'Brand guide: reading the brokerage\'s brand rules from its PDF');
+        $this->app->make(NavigationRegistry::class)->add(new NavItem('Settings', 'Brand voice', '/settings/brand-voice', 'megaphone', 77, kinds: [UserKind::Owner])); // BV1
         $this->app->make(FeatureCatalog::class)->declare(Workflows\AiWorkflowDrafter::FEATURE, 'ai.workflow_draft', 'Automations described in plain English');
         $this->app->make(FeatureCatalog::class)->declare(Assistant\YourAiAssistant::FEATURE, 'ai.assistant', 'Your AI Assistant: answers and acts in the back office');
         Gate::define('hq.ai.manage', fn (User $user): bool => $user->kind === UserKind::HqStaff);

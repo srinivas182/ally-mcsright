@@ -7,6 +7,10 @@
         "version": "1",
         "sha256": "39066441e11ebd341ceb2954018f29c2deaaa982d10da7c7476d2f33a225eba9"
     },
+    "ai.brand_guide": {
+        "version": "1",
+        "sha256": "e9d0ff1f4eb05c4388ad3fc649b3bba848372e720d904c9e2d36d237ae61bf5f"
+    },
     "crm.ai_responder": {
         "version": "2",
         "sha256": "54e5b4ace0f6500eb2e79c529cf8aaa16438b340f93e051f30a67cc56d1f2378"
