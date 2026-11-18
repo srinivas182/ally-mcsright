@@ -73,11 +73,11 @@ final class ConsentRequestController
 
     private function view(string $state, ?stdClass $req, string $token): HttpResponse
     {
-        $phone = $req !== null ? (string) $req->phone : '';
+        $digits = (string) preg_replace('/\D+/', '', $req !== null ? (string) $req->phone : '');
 
         return response()->view('crm::consent.ask', [
             'state' => $state, 'brokerage' => (string) app(TenantContext::class)->current()->name, 'wording' => $req !== null ? (string) $req->wording : '',
-            'phone' => strlen(preg_replace('/\D+/', '', $phone) ?? '') >= 4 ? '•••-•••-'.substr(preg_replace('/\D+/', '', $phone) ?? '', -4) : '', 'token' => $token,
+            'phone' => strlen($digits) >= 4 ? '•••-•••-'.substr($digits, -4) : '', 'token' => $token,
         ], $state === 'expired' ? 410 : 200)->header('Cache-Control', 'no-store')->header('X-Robots-Tag', 'noindex, nofollow')->header('Referrer-Policy', 'no-referrer');
     }
 
