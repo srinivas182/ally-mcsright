@@ -1,6 +1,6 @@
 # Release readiness (Sprints 58 to 63)
 
-**Status:** Sprints 58 to 60 done: integration and regression with pen-test preparation (58), the full regression pass (59), and the load test with tuning on a large made-up brokerage (60). The full-scale run on staging is the last step of Sprint 60. Sprints 61 to 63 follow.
+**Status:** Sprints 58 to 63 done. 58: integration and regression with pen-test preparation. 59: the full regression pass. 60: the load test with tuning on a large made-up brokerage (the full-scale staging run is still to do). 61: the internal security review (the outside firm's test is to book). 62: the SOC 2 readiness review (the company provides the policies and the auditor). 63: launch readiness (`launch:check`, the load-balancer fix in Http\Middleware\TrustLoadBalancer with `TRUSTED_PROXIES`, and the runbook). Version 1.0 is tagged at go-live.
 
 The plan's last phase checks that everything built in Sprints 1 to 57 works together, holds up under load and attack, and is ready for SOC 2 and launch. This page records what each sprint checked, what it found, and what was fixed.
 
@@ -151,6 +151,7 @@ Both build one row per agent for all 1,000 agents on one page, and are worth pag
 4. Pass marks: p95 under 800 ms for pages and under 1.5 s for reports, with errors under 1%.
 
 This run needs the staging environment and k6 machines. It cannot be run from this workspace.
+
 ## Sprint 61: penetration test
 
 The test itself is done by an outside security firm (to book). This sprint ran RightAlly's own review first, so their time goes on deeper work, and prepared the brief they need.
