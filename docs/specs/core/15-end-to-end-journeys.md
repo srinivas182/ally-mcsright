@@ -1,6 +1,6 @@
-# End-to-end journeys (E2E1)
+# End-to-end journeys (E2E1, E2E2)
 
-**Status:** built in E2E1. Runs every night; more journeys are added in the integration sprints (58–63).
+**Status:** built in E2E1; E2E2 adds seven journeys for the batch-2 features and an accessibility check on every page they open. Runs every night; more journeys are added in the integration sprints (58–63).
 
 ## What it is
 
@@ -16,7 +16,23 @@ RightAlly.
 | The website has an accessibility statement and a sitemap                                 | SEO and accessibility pages on the brokerage website                     |
 | An agent sets up a referral network profile once the brokerage switches it on            | owner settings, the network, the agent's profile                         |
 
-The website journey also runs on a phone-sized screen.
+E2E2 (`e2e/batch2.spec.ts`) adds:
+
+| Journey                                                                          | Checks                                                                     |
+| -------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| RightAlly installs like an app, and the search bar finds a contact               | the app manifest and offline page, adding a contact, search                |
+| The owner sees outside services, features and approvals in plain words           | HQ/tenant outside services with Off/Test/Live, feature switches, approvals |
+| A visitor asks the brokerage what data it holds and is asked to confirm by email | the public privacy request form and its email check                        |
+| An agent forwards contracts to their own Deal-IQ address and adds an assistant   | Deal-IQ email intake address, My assistants with presets                   |
+| An agent opens the call queue and sees what to say when someone is busy          | the call queue and call cards                                              |
+| An agent starts an accountability pod with the owner and checks in               | Learn pods, check-ins                                                      |
+| The owner opens bank reconciliation and an appointment's recording panel         | bank feeds (read-only), appointment recording and coaching                 |
+
+Every page these journeys open is checked with axe; a serious or critical accessibility problem fails the run.
+Fixed along the way: the credit meter's grey text and the default button's hover colour now meet the 4.5:1
+contrast rule.
+
+The website and app journeys also run on a phone-sized screen.
 
 ## How it runs
 

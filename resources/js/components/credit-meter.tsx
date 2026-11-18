@@ -57,7 +57,7 @@ export function CreditMeter() {
                         {state !== 'collapsed' && (
                             <span className="flex min-w-0 flex-1 flex-col gap-1">
                                 <span className="flex justify-between text-xs">
-                                    <span className="text-muted-foreground">
+                                    <span className="text-sidebar-foreground">
                                         {credits.scope === 'you'
                                             ? 'Your credits'
                                             : 'Credits this month'}

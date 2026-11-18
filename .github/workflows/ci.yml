@@ -121,7 +121,8 @@ jobs:
           touch database/database.sqlite
 
       - name: Production build
-        run: npm run build
+        # One retry: the font service (fonts.bunny.net) occasionally times out on CI runners.
+        run: npm run build || (sleep 20 && npm run build)
 
       - name: Front-end component tests
         run: npm run test
