@@ -133,6 +133,7 @@ final class CoreServiceProvider extends ServiceProvider
         $this->app->singleton(Search\SearchRegistry::class); // PW1: universal search
         $this->app->singleton(Privacy\PrivacyRegistry::class); // TR1: where personal data lives
         $this->app->singleton(Assistant\Handoffs::class); // AS1: the assistant hands a conversation to a person
+        $this->app->scoped(Identity\AgentAssistants::class); // AG1: agents' own assistants
         $this->app->scoped(Privacy\PrivacyRequests::class);
         $this->app->scoped(Privacy\Retention::class);
         $this->app->scoped(Switches\FeatureSwitches::class);
@@ -390,6 +391,9 @@ final class CoreServiceProvider extends ServiceProvider
 
                 return (Services\Catalog::get($service)['label'] ?? $service).' is now Live.';
             }, default: 0);
+        // AG1: agents adding their own assistants (no approval unless the owner sets one).
+        $this->app->make(Approvals\Approvals::class)->register('agents.add_assistant', 'An agent adds their own assistant',
+            fn (array $payload, User $by): string => $this->app->make(Identity\AgentAssistants::class)->send($payload), default: 0);
     }
 
     private function registerNavigation(): void
@@ -417,6 +421,7 @@ final class CoreServiceProvider extends ServiceProvider
         $nav->add(new NavItem('Settings', 'Outside services', '/settings/services', 'plug', 83, ability: 'core.platform.manage')); // FL1
         $nav->add(new NavItem('Settings', 'Approvals', '/settings/approvals', 'check-check', 84, kinds: [UserKind::Owner, UserKind::Staff])); // FL1
         $nav->add(new NavItem('Settings', 'Support access', '/settings/support-access', 'life-buoy', 86, kinds: [UserKind::Owner])); // FL1
+        $nav->add(new NavItem('Settings', 'My assistants', '/my-assistants', 'users', 88, kinds: [UserKind::Agent])); // AG1
         $nav->add(new NavItem('Settings', 'Privacy requests', '/settings/privacy', 'shield-check', 87, ability: 'core.privacy.manage', kinds: [UserKind::Owner, UserKind::Staff])); // TR1
     }
 

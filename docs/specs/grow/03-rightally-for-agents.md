@@ -56,3 +56,28 @@ Tests: `tests/Feature/Grow/RightAllyForAgentsTest.php`.
 Not in SO2: Spanish website pages (with the Spanish back office, MB1), email open and click tracking as signals, and editing plans in plain words.
 
 Tests: `tests/Feature/Crm/ReactiveFollowUpTest.php`; `VisitorJourneyTest` checks the step-up task.
+
+## AG1 (built 2026-11-18): agents' own assistants
+
+Completes E01. Solo packages and signup, the workspace (Today, simple view, goal planner), portability (SO1 and the
+"take my people" link) and "Ask my broker" were already built. "Ask my broker" is answered by AI first from the
+brokerage's policy manual and passed to the broker when needed (Policies, spec transactions/31), and since AS1
+"Your AI Assistant" can also hand any conversation to the broker.
+
+**Market check:** Follow Up Boss and Lofty let a team add an ISA or assistant seat, but usually only the account owner
+can, and assistants see the whole team's leads. RightAlly lets the agent add their own assistant, limited to that
+agent's own contacts and deals, with a preset.
+
+- **Settings → My assistants** (agents): add up to 3 assistants (name, email, preset); change the preset; remove one
+  (password confirmed; they can no longer sign in).
+- **Presets** (what they may open; enforced on every page and in the menu):
+    - Full: everything the agent uses, except the agent's money;
+    - Leads: contacts, tasks, inbox and follow-up;
+    - Marketing: Studio, social posts, ads and the website;
+    - Admin: deals, documents, tasks and contacts.
+      Money pages (my money, my plan, revenue share, billing) are never open to assistants.
+- Assistants work only the agent's own contacts and deals (existing rule: `assisted_user_id`).
+- The brokerage can require approval before an agent adds an assistant (Settings → Approvals, "An agent adds their
+  own assistant"; no approval by default). The owner sees every assistant on the People page.
+
+Tests: `tests/Feature/Core/AgentAssistantsTest.php`.

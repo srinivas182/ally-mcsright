@@ -13,6 +13,7 @@ use Modules\Core\CustomFields\CustomFieldsController;
 use Modules\Core\Identity\EmailChange;
 use Modules\Core\Identity\Http\Controllers\ImpersonationController;
 use Modules\Core\Identity\Http\Controllers\InvitationController;
+use Modules\Core\Identity\Http\Controllers\MyAssistantsController;
 use Modules\Core\Identity\Http\Controllers\SignInSecurityController;
 use Modules\Core\Identity\Http\Controllers\SingleSignOnController;
 use Modules\Core\Identity\Http\Controllers\UserController;
@@ -164,4 +165,12 @@ Route::middleware(['web', EnsureTenantHost::class, 'auth', 'password.confirm'])-
     Route::post('/', [DataExportController::class, 'request'])->middleware('throttle:3,1')->name('request');
     Route::get('{export}', [DataExportController::class, 'download'])->where('export', '[0-9A-HJKMNP-TV-Z]{26}')->name('download');
     Route::post('{export}/password', [DataExportController::class, 'password'])->where('export', '[0-9A-HJKMNP-TV-Z]{26}')->name('password');
+});
+
+// AG1 (specs/grow/03): agents add, change and remove their own assistants.
+Route::middleware(['web', EnsureTenantHost::class, 'auth'])->prefix('my-assistants')->name('my-assistants.')->group(function (): void {
+    Route::get('/', [MyAssistantsController::class, 'index'])->name('index');
+    Route::post('/', [MyAssistantsController::class, 'invite'])->middleware('throttle:10,60')->name('invite');
+    Route::post('{assistant}', [MyAssistantsController::class, 'update'])->where('assistant', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->name('update');
+    Route::post('{assistant}/remove', [MyAssistantsController::class, 'remove'])->where('assistant', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->middleware('password.confirm')->name('remove');
 });

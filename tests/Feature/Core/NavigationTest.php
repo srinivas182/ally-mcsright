@@ -23,7 +23,7 @@ it('shows owners the dashboard, people and finance', function (): void {
 });
 
 it('shows agents only their own pages', function (): void {
-    expect(menuFor(User::factory()->create()))->toBe(['Today', 'Game plan', "Today's 10", 'Tasks', 'Deals', 'Team chat', 'My numbers', 'Policies', 'Reports', 'Business planner', 'My plan', 'Database', 'My money', 'My licences and onboarding', 'Revenue share', 'Leads', 'Inbox', 'Listings', 'Buyer demand', 'CMA and estimates', 'Contacts', 'List-IQ', 'Appointments', 'Ally Studio', 'Funnels', 'Postcards', 'Reviews', 'Movewise', 'Prospector', 'Social posts', 'Ads', 'Referral network', 'Marketing check', 'Refer an agent', 'Outreach', 'Directory', 'Learn', 'Apps', 'My website', 'My availability', 'RightAlly credits', 'Help'])
+    expect(menuFor(User::factory()->create()))->toBe(['Today', 'Game plan', "Today's 10", 'Tasks', 'Deals', 'Team chat', 'My numbers', 'Policies', 'Reports', 'Business planner', 'My plan', 'Database', 'My money', 'My licences and onboarding', 'Revenue share', 'Leads', 'Inbox', 'Listings', 'Buyer demand', 'CMA and estimates', 'Contacts', 'List-IQ', 'Appointments', 'Ally Studio', 'Funnels', 'Postcards', 'Reviews', 'Movewise', 'Prospector', 'Social posts', 'Ads', 'Referral network', 'Marketing check', 'Refer an agent', 'Outreach', 'Directory', 'Learn', 'Apps', 'My website', 'My availability', 'RightAlly credits', 'My assistants', 'Help'])
         ->and(menuFor(User::factory()->assistantOf(User::factory()->create())->create()))->toBe(['Today', "Today's 10", 'Tasks', 'Deals', 'Team chat', 'Policies', 'Inbox', 'Listings', 'Contacts', 'Outreach', 'Learn', 'Help']);
 });
 
