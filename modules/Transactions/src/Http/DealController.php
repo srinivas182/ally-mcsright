@@ -65,11 +65,15 @@ final class DealController
             $q->where('agent_user_id', self::actingFor($user));
         }
 
+        $list = $q->limit(300)->get();
+        $missing = $deals->missingCounts(array_values($list->pluck('id')->map(fn ($id): int => (int) $id)->all())); // PS1: no queries per deal
+        $agents = User::query()->whereIn('id', $list->pluck('agent_user_id')->unique()->all())->pluck('first_name', 'id');
+
         return Inertia::render('deals/index', [
-            'deals' => $q->limit(300)->get()->map(fn (Deal $d): array => [
+            'deals' => $list->map(fn (Deal $d): array => [
                 'ulid' => $d->ulid, 'street' => $d->street, 'city' => $d->city, 'type' => $d->type, 'status' => $d->status, 'price_cents' => $d->price_cents,
-                'closing_date' => $d->closing_date?->toDateString(), 'agent' => User::query()->whereKey($d->agent_user_id)->value('first_name'),
-                'missing' => count($deals->missing($d)),
+                'closing_date' => $d->closing_date?->toDateString(), 'agent' => $agents[$d->agent_user_id] ?? null,
+                'missing' => $missing[$d->id] ?? 0,
             ]),
             'forecast' => self::reviewer($user) && Fields::visible($user, 'commission') ? app(Forecast::class)->pending() : null,
             'canBringOverFiles' => self::reviewer($user),

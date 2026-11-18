@@ -238,6 +238,29 @@ final class CustomFields
     }
 
     /**
+     * How many required-to-close fields each deal is missing, in two queries for any number of deals (PS1).
+     *
+     * @param  list<int>  $dealIds
+     * @return array<int, int>
+     */
+    public function missingToCloseCounts(array $dealIds): array
+    {
+        $required = array_values(array_filter($this->definitions('deal'), fn (array $f): bool => $f['required_to_close']));
+        $out = array_fill_keys($dealIds, 0);
+        if ($required === [] || $dealIds === []) {
+            return $out;
+        }
+        $filled = DB::connection(Connections::cell())->table('custom_field_values as v')->join('custom_fields as f', 'f.id', '=', 'v.field_id')
+            ->where('f.entity', 'deal')->whereIn('v.entity_id', $dealIds)->whereIn('f.key', array_column($required, 'key'))->where('v.value', '!=', '')
+            ->groupBy('v.entity_id')->selectRaw('v.entity_id as id, count(*) as n')->pluck('n', 'id');
+        foreach ($dealIds as $id) {
+            $out[$id] = count($required) - (int) ($filled[$id] ?? 0);
+        }
+
+        return $out;
+    }
+
+    /**
      * Labels of required deal fields with no value (they hold up closing, like a missing document).
      *
      * @return list<string>

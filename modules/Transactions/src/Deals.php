@@ -89,6 +89,26 @@ final class Deals
     }
 
     /**
+     * How many things each deal still needs, for a list of deals, in a few queries (PS1: the deals list did three
+     * queries per deal).
+     *
+     * @param  list<int>  $dealIds
+     * @return array<int, int>
+     */
+    public function missingCounts(array $dealIds): array
+    {
+        $items = Item::query()->whereIn('deal_id', $dealIds)->where('required', true)->whereNotIn('status', ['approved', 'waived'])
+            ->groupBy('deal_id')->selectRaw('deal_id, count(*) as n')->pluck('n', 'deal_id');
+        $fields = app(CustomFields::class)->missingToCloseCounts($dealIds);
+        $out = [];
+        foreach ($dealIds as $id) {
+            $out[$id] = (int) ($items[$id] ?? 0) + (int) ($fields[$id] ?? 0);
+        }
+
+        return $out;
+    }
+
+    /**
      * Required checklist items that are not approved or waived yet.
      *
      * @return list<array{label: string, status: string}>

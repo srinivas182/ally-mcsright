@@ -277,12 +277,20 @@ final class RosterController
             ->when($q !== '', fn ($w) => $w->where(fn ($x) => $x->where('first_name', 'like', "%{$q}%")->orWhere('last_name', 'like', "%{$q}%")->orWhere('email', 'like', "%{$q}%")))
             ->orderBy('first_name')->limit(300)->get();
 
+        // PS1: three queries for everyone instead of three per person.
+        $ids = $people->pluck('id')->all();
+        $offices = $db->table('user_offices')->join('offices', 'offices.id', '=', 'user_offices.office_id')->whereIn('user_offices.user_id', $ids)
+            ->get(['user_offices.user_id', 'offices.name'])->groupBy('user_id');
+        $teams = $db->table('team_members')->join('teams', 'teams.id', '=', 'team_members.team_id')->whereIn('team_members.user_id', $ids)
+            ->get(['team_members.user_id', 'teams.name'])->groupBy('user_id');
+        $licences = $db->table('roster_credentials')->whereIn('user_id', $ids)->where('kind', 'licence')->where('status', 'current')
+            ->get(['user_id', 'state_code', 'number'])->groupBy('user_id');
+
         return Inertia::render('roster/directory', ['q' => $q, 'people' => $people->map(fn (User $u): array => [
             'name' => $u->name, 'email' => $u->email, 'phone' => $u->phone, 'role' => $u->kind->value,
-            'offices' => $db->table('user_offices')->join('offices', 'offices.id', '=', 'user_offices.office_id')->where('user_offices.user_id', $u->id)->pluck('offices.name')->all(),
-            'teams' => $db->table('team_members')->join('teams', 'teams.id', '=', 'team_members.team_id')->where('team_members.user_id', $u->id)->pluck('teams.name')->all(),
-            'licences' => $db->table('roster_credentials')->where('user_id', $u->id)->where('kind', 'licence')->where('status', 'current')
-                ->get(['state_code', 'number'])->map(fn ($c) => "{$c->state_code} {$c->number}")->all(),
+            'offices' => array_values(($offices[$u->id] ?? collect())->pluck('name')->all()),
+            'teams' => array_values(($teams[$u->id] ?? collect())->pluck('name')->all()),
+            'licences' => array_values(($licences[$u->id] ?? collect())->map(fn ($c) => "{$c->state_code} {$c->number}")->all()),
         ])->values()]);
     }
 }

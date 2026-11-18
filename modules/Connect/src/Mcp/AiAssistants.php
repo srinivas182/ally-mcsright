@@ -100,8 +100,10 @@ final class AiAssistants implements McpGate
     {
         $people = $viewer->kind === UserKind::Owner ? User::query()->get() : collect([$viewer]);
         $rows = [];
+        // PS1: one query for everyone's tokens instead of one per person.
+        $all = Token::query()->with('client')->whereIn('user_id', $people->pluck('id')->all())->where('revoked', false)->where('expires_at', '>', now())->get()->groupBy('user_id');
         foreach ($people as $person) {
-            $tokens = Token::query()->with('client')->where('user_id', $person->id)->where('revoked', false)->where('expires_at', '>', now())->get();
+            $tokens = $all->get($person->id, collect());
             foreach ($tokens->groupBy('client_id') as $clientId => $group) {
                 $latest = $group->sortByDesc('created_at')->first();
                 $client = $latest?->client;
