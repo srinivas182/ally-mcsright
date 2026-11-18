@@ -18,7 +18,7 @@ use Modules\Crm\ContactVisibility;
 beforeEach(function (): void {
     $this->tenant = $this->onTenantHost('acme');
     $this->owner = User::factory()->owner()->create();
-    $this->staff = User::factory()->staff()->create(['first_name' => 'Sue']);
+    $this->staff = User::factory()->staff()->withoutTwoFactor()->create(['first_name' => 'Sue']);
     $this->agent = User::factory()->create(['first_name' => 'Pat']);
     $this->roles = app(Roles::class);
     $this->roles->all();

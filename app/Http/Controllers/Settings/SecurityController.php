@@ -48,7 +48,8 @@ class SecurityController extends Controller
             'trustedDevices' => TrustedDevice::query()->where('user_id', AuthenticatedUser::from($request)->id)
                 ->where('expires_at', '>', now())->orderByDesc('last_used_at')->get()
                 ->map(fn (TrustedDevice $d): array => ['id' => $d->id, 'label' => $d->label, 'expires_at' => $d->expires_at->toIso8601String()])->all(),
-            'twoFactorRequired' => app(TwoFactorPolicy::class)->requires(AuthenticatedUser::from($request)),
+            'twoFactorRequired' => app(TwoFactorPolicy::class)->mustSetUpNow(AuthenticatedUser::from($request)),
+            'twoFactorDaysLeft' => app(TwoFactorPolicy::class)->daysLeft(AuthenticatedUser::from($request)), // SX3
             'ssoProviders' => app(SingleSignOn::class)->configured(),
             'identities' => UserIdentity::query()->where('user_id', AuthenticatedUser::from($request)->id)->get()
                 ->map(fn (UserIdentity $i): array => ['provider' => $i->provider, 'email' => $i->email])->values(),

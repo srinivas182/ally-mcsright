@@ -92,7 +92,8 @@ class FortifyServiceProvider extends ServiceProvider
             'status' => $request->session()->get('status'),
         ]));
 
-        Fortify::twoFactorChallengeView(fn () => Inertia::render('auth/two-factor-challenge'));
+        // SX3: the "I lost my phone" answer comes back as the session status.
+        Fortify::twoFactorChallengeView(fn (Request $request) => Inertia::render('auth/two-factor-challenge', ['status' => $request->session()->get('status')]));
 
         Fortify::confirmPasswordView(fn () => Inertia::render('auth/confirm-password'));
     }

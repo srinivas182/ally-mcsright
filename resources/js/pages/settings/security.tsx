@@ -24,6 +24,7 @@ type Props = {
     sessions: SessionRow[];
     trustedDevices: TrustedDeviceRow[];
     twoFactorRequired: boolean;
+    twoFactorDaysLeft: number | null;
     passwordRules: string;
 } & ManagePasskeysProps &
     ManageTwoFactorProps;
@@ -35,18 +36,32 @@ export default function Security(props: Props) {
     return (
         <>
             <Head title="Security settings" />
-            {props.twoFactorRequired && (
+            {(props.twoFactorRequired || props.twoFactorDaysLeft !== null) && (
                 <p
                     role="status"
-                    className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-100"
+                    className="rounded-md border border-amber-300 bg-amber-50 p-3 text-base text-amber-900 dark:bg-amber-950 dark:text-amber-100"
                 >
-                    Your brokerage requires two-step verification for your
-                    account. Set up a passkey or an authenticator app below to
-                    continue.
+                    {props.twoFactorRequired
+                        ? 'Add a second step to your sign-in to continue. The easiest is a passkey: your fingerprint, face or phone PIN.'
+                        : `Add a second step to your sign-in within ${props.twoFactorDaysLeft === 1 ? 'today' : `${props.twoFactorDaysLeft} days`}. The easiest is a passkey: your fingerprint, face or phone PIN.`}
                 </p>
             )}
 
             <h1 className="sr-only">Security settings</h1>
+
+            {/* SX3: passkeys first — nothing to type, and a fake website cannot steal one. */}
+            <div id="passkeys">
+                <ManagePasskeys
+                    canManagePasskeys={props.canManagePasskeys}
+                    passkeys={props.passkeys}
+                />
+            </div>
+
+            <ManageTwoFactor
+                canManageTwoFactor={props.canManageTwoFactor}
+                requiresConfirmation={props.requiresConfirmation}
+                twoFactorEnabled={props.twoFactorEnabled}
+            />
 
             <div className="space-y-6">
                 <Heading
@@ -143,17 +158,6 @@ export default function Security(props: Props) {
                     )}
                 </Form>
             </div>
-
-            <ManageTwoFactor
-                canManageTwoFactor={props.canManageTwoFactor}
-                requiresConfirmation={props.requiresConfirmation}
-                twoFactorEnabled={props.twoFactorEnabled}
-            />
-
-            <ManagePasskeys
-                canManagePasskeys={props.canManagePasskeys}
-                passkeys={props.passkeys}
-            />
 
             <ConnectedAccounts
                 providers={props.ssoProviders}

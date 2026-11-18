@@ -14,6 +14,7 @@ use Modules\Core\Identity\EmailChange;
 use Modules\Core\Identity\Http\Controllers\ImpersonationController;
 use Modules\Core\Identity\Http\Controllers\InvitationController;
 use Modules\Core\Identity\Http\Controllers\MyAssistantsController;
+use Modules\Core\Identity\Http\Controllers\SignInHelpController;
 use Modules\Core\Identity\Http\Controllers\SignInSecurityController;
 use Modules\Core\Identity\Http\Controllers\SingleSignOnController;
 use Modules\Core\Identity\Http\Controllers\UserController;
@@ -31,6 +32,10 @@ Route::middleware(['web', EnsureTenantHost::class, 'guest'])->group(function ():
         ->middleware('throttle:10,1')->name('invitations.accept');
 });
 
+// SX3: "I lost my phone" from the two-step page (the password was already checked; the person is not signed in yet).
+Route::middleware(['web', EnsureTenantHost::class, 'guest', 'throttle:5,60'])
+    ->post('two-factor-challenge/help', [SignInHelpController::class, 'ask'])->name('two-factor.help');
+
 Route::middleware(['web', EnsureTenantHost::class, 'signed', 'throttle:10,1'])
     ->get('security/secure-account/{user}', [SignInSecurityController::class, 'secureAccount'])
     ->name('security.secure-account');
@@ -41,6 +46,8 @@ Route::middleware(['web', EnsureTenantHost::class, 'auth'])->group(function (): 
     Route::delete('settings/trusted-devices/{id}', [SignInSecurityController::class, 'revokeTrustedDevice'])->name('security.trusted.revoke');
     Route::post('security/passkey-prompt/dismiss', [SignInSecurityController::class, 'dismissPasskeyPrompt'])->name('security.passkey-prompt.dismiss');
     Route::post('users/{user}/security-reset', [UserController::class, 'resetSecurity'])->name('users.security-reset');
+    Route::post('users/sign-in-help/{help}/reset', [SignInHelpController::class, 'reset'])->middleware('throttle:20,1')->name('users.sign-in-help.reset'); // SX3
+    Route::post('users/sign-in-help/{help}/decline', [SignInHelpController::class, 'decline'])->middleware('throttle:20,1')->name('users.sign-in-help.decline');
     Route::post('users/{user}/sign-out-everywhere', [UserController::class, 'signOutEverywhere'])->name('users.sign-out-everywhere');
 
     Route::get('agent', [BriefController::class, 'agent'])->name('agent.home');

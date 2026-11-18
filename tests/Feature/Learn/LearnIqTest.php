@@ -27,7 +27,7 @@ beforeEach(function (): void {
     $this->travelTo(CarbonImmutable::parse('2026-06-01 09:00'));
     $this->tenant = $this->onTenantHost('acme');
     $this->owner = User::factory()->owner()->create();
-    $this->ann = User::factory()->create(['first_name' => 'Ann', 'last_name' => 'New']);
+    $this->ann = User::factory()->withoutTwoFactor()->create(['first_name' => 'Ann', 'last_name' => 'New']);
     $this->mo = User::factory()->create(['first_name' => 'Mo', 'last_name' => 'Mentor']);
     $this->zed = User::factory()->create(['first_name' => 'Zed', 'last_name' => 'Mentor']);
 });

@@ -12,7 +12,8 @@ use Modules\Core\Identity\Security\TwoFactorPolicy;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Users who must use a second factor and have none are sent to set one up before anything else.
+ * Users who must use a second factor and have none are sent to set one up before anything else (SX3: once their
+ * grace period, if any, is over).
  */
 final class EnsureSecondFactor
 {
@@ -31,7 +32,7 @@ final class EnsureSecondFactor
             return $next($request);
         }
 
-        if (! $user instanceof User || ! $this->policy->requires($user) || $this->policy->satisfied($user)) {
+        if (! $user instanceof User || ! $this->policy->mustSetUpNow($user)) {
             return $next($request);
         }
 

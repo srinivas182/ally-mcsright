@@ -31,6 +31,7 @@ declare module '@inertiajs/core' {
             } | null;
             security: {
                 secondFactorMissing: boolean;
+                secondFactorDaysLeft: number | null;
                 passkeyPrompt: boolean;
             } | null;
             [key: string]: unknown;

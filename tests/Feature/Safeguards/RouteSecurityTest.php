@@ -23,7 +23,7 @@ use Modules\Sites\SiteSetup;
 const RS_PUBLIC = [
     'brokerage website pages, SEO and app files' => ['#^$#', '#^\{slug\}$#', '#^es(/|$)#', '#^blog(/|$)#', '#^sitemap\.xml$#', '#^robots\.txt$#', '#^llms\.txt$#',
         '#^manifest\.webmanifest$#', '#^studio-fonts/#', '#^preview/\{ulid\}$#', '#^up$#', '#^app$#'],
-    'signing in (the sign-in itself is the check)' => ['#^/$#', '#^login$#', '#^forgot-password$#', '#^reset-password(/|$)#', '#^two-factor-challenge$#',
+    'signing in (the sign-in itself is the check)' => ['#^/$#', '#^login$#', '#^forgot-password$#', '#^reset-password(/|$)#', '#^two-factor-challenge(/help)?$#',
         '#^passkeys/login#', '#^invitations/\{token\}$#', '#^auth/#', '#^oauth/#', '#^\.well-known/#', '#^authorize(/|$)#', '#^register$#', '#^token$#',
         '#^impersonate/accept$#', '#^security/secure-account/\{user\}$#'],
     'signing up, partner and referral links' => ['#^start(/|$)#', '#^agents(/|$)#', '#^partners/#', '#^r/\{code\}$#', '#^affiliate/#', '#^health-check(/|$)#'],

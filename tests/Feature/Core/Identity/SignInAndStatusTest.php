@@ -31,8 +31,8 @@ function signIn(string $host, string $email, string $password = 'password'): Tes
 }
 
 it('treats the same email in two brokerages as two separate accounts', function (): void {
-    $inAcme = User::factory()->create(['email' => 'pat@x.test', 'password' => 'acme-password-123']);
-    $inOther = app(TenantContext::class)->runAs($this->other, fn () => User::factory()->create(['email' => 'pat@x.test', 'password' => 'other-password-123']));
+    $inAcme = User::factory()->withoutTwoFactor()->create(['email' => 'pat@x.test', 'password' => 'acme-password-123']);
+    $inOther = app(TenantContext::class)->runAs($this->other, fn () => User::factory()->withoutTwoFactor()->create(['email' => 'pat@x.test', 'password' => 'other-password-123']));
 
     signIn('other', 'pat@x.test', 'acme-password-123')->assertSessionHasErrors('email');
     $this->assertGuest();
@@ -48,8 +48,8 @@ it('lands each kind of user on their own page', function (Closure $make, string 
     signIn('acme', $user->email)->assertRedirect($landing);
 })->with([
     'owner' => [fn () => User::factory()->owner()->withoutTwoFactor()->create(), '/dashboard'],
-    'staff' => [fn () => User::factory()->staff()->create(), '/dashboard'],
-    'agent' => [fn () => User::factory()->create(), '/agent'],
+    'staff' => [fn () => User::factory()->staff()->withoutTwoFactor()->create(), '/dashboard'],
+    'agent' => [fn () => User::factory()->withoutTwoFactor()->create(), '/agent'],
 ]);
 
 it('lands HQ staff on the HQ console', function (): void {
@@ -100,7 +100,7 @@ it('raises a security alert after 20 failed sign-ins for one email in an hour', 
 });
 
 it('signs out a user deactivated while signed in', function (): void {
-    $agent = User::factory()->create();
+    $agent = User::factory()->withoutTwoFactor()->create();
     $this->actingAs($agent)->get('/agent')->assertOk();
 
     $this->actingAs($this->owner)->post("/users/{$agent->ulid}/deactivate")->assertSessionHasNoErrors();
@@ -111,7 +111,7 @@ it('signs out a user deactivated while signed in', function (): void {
 
 it('suspends, deactivates and reactivates with the right rules', function (): void {
     Event::fake([UserSuspended::class, UserDeactivated::class]);
-    $agent = User::factory()->create();
+    $agent = User::factory()->withoutTwoFactor()->create();
 
     $this->actingAs($this->owner)->post("/users/{$agent->ulid}/suspend");
     expect($agent->fresh()?->status)->toBe(UserStatus::Suspended);
@@ -136,7 +136,7 @@ it('protects the last active owner', function (): void {
 });
 
 it('suspends an agent\'s assistants with them', function (): void {
-    $agent = User::factory()->create();
+    $agent = User::factory()->withoutTwoFactor()->create();
     $assistant = User::factory()->assistantOf($agent)->create();
 
     $this->actingAs($this->owner)->post("/users/{$agent->ulid}/deactivate");
@@ -146,8 +146,8 @@ it('suspends an agent\'s assistants with them', function (): void {
 
 it('keeps password-reset links separate per brokerage', function (): void {
     Notification::fake();
-    $acmePat = User::factory()->create(['email' => 'pat@x.test']);
-    $otherPat = app(TenantContext::class)->runAs($this->other, fn () => User::factory()->create(['email' => 'pat@x.test']));
+    $acmePat = User::factory()->withoutTwoFactor()->create(['email' => 'pat@x.test']);
+    $otherPat = app(TenantContext::class)->runAs($this->other, fn () => User::factory()->withoutTwoFactor()->create(['email' => 'pat@x.test']));
 
     $this->post('http://acme.rightally.app/forgot-password', ['email' => 'pat@x.test']);
     $this->post('http://other.rightally.app/forgot-password', ['email' => 'pat@x.test']);
