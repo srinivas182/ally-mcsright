@@ -66,6 +66,9 @@ use Modules\Listings\Access\MlsAccess;
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $price_changed_at
  * @property MlsSource $source
+ * @property string|null $address_key
+ * @property int|null $duplicate_of_id
+ * @property int|null $duplicate_of_source_id
  */
 final class Listing extends Model
 {

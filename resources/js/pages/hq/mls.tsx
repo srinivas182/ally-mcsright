@@ -1,4 +1,4 @@
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
@@ -114,6 +114,12 @@ export default function HqMls({
                     title="MLS connections"
                     description="Each MLS feed is stored once and shared by every brokerage licensed for it. Credentials are write-only."
                 />
+                <p>
+                    <Link href="/hq/mls/search" className="underline">
+                        Fast listing search: server health and Test-mode
+                        comparison
+                    </Link>
+                </p>
 
                 <section className="grid gap-3 text-sm">
                     <h2 className="font-semibold">Feeds</h2>
