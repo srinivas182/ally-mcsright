@@ -38,7 +38,7 @@
             <h2>Your choices</h2>
             <ul>
                 <li>Unsubscribe from emails with the link in any email, and from texts by replying STOP.</li>
-                <li>Ask us what we hold about you, or to correct or delete it, using the contact details below. Some records may be kept where the law requires.</li>
+                <li>Ask us what we hold about you, or to correct or delete it, with the form below or the contact details at the end. Some records may be kept where the law requires.</li>
                 <li>Turn on Global Privacy Control in your browser to stop us recording the homes you view.</li>
             </ul>
 
@@ -51,6 +51,32 @@
             <h2>Listing information</h2>
             <p>Homes for sale come from the multiple listing service (MLS). Listing information is deemed reliable but not guaranteed.</p>
         @endif
+
+        {{-- TR1 (specs/core/18): privacy requests, confirmed by email and answered within 45 days. --}}
+        <h2 id="request">Make a privacy request</h2>
+        @if (is_string($notice) && str_starts_with($notice, 'confirmed:'))
+            <p role="status"><strong>Thank you. Your request is confirmed.</strong> We will answer by {{ \Carbon\CarbonImmutable::parse(substr($notice, 10))->format('F j, Y') }} at the latest.</p>
+        @elseif ($notice === 'expired')
+            <p role="alert">That confirmation link has expired or was already used. Please send the request again.</p>
+        @elseif ($notice === 'sent')
+            <p role="status"><strong>Almost done.</strong> We emailed you a link. Please open it to confirm the request is really from you.</p>
+        @endif
+        @if (! empty($formError))<p role="alert">{{ $formError }}</p>@endif
+        <p>You can ask to see the information we hold about you, delete it, correct it, or stop it being sold or shared. We will email you a link first to make sure the request is really from you, then answer within 45 days.</p>
+        <form method="post" action="/_privacy" class="lead-form">
+            <div class="hp" aria-hidden="true"><label>Leave empty <input name="website" tabindex="-1" autocomplete="off"></label></div>
+            <fieldset><legend>What would you like us to do?</legend>
+                @foreach ($kinds as $value => $label)
+                    <label class="check"><input type="radio" name="kind" value="{{ $value }}" required @checked($loop->first)> {{ $label }}</label>
+                @endforeach
+            </fieldset>
+            <label>Your name <input type="text" name="name" required maxlength="160" autocomplete="name"></label>
+            <label>Your email <input type="email" name="email" required maxlength="254" autocomplete="email"></label>
+            <label>Your phone (optional, helps us find you) <input type="tel" name="phone" maxlength="30" autocomplete="tel"></label>
+            <label>Anything else we should know (optional) <textarea name="details" rows="3" maxlength="4000"></textarea></label>
+            @include('core::bot-check', ['bot' => $bot ?? null])
+            <button class="btn btn-primary" type="submit">Send my request</button>
+        </form>
 
         <h2>Contact us</h2>
         <p>{{ $name }}@if (! empty($info['street']))<br>{{ $info['street'] }}, {{ trim(implode(', ', array_filter([$info['city'] ?? '', trim(($info['state'] ?? '').' '.($info['zip'] ?? ''))]))) }}@endif

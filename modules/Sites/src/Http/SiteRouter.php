@@ -44,6 +44,8 @@ final class SiteRouter
         $r->get('homes/compare', [IdxController::class, 'compare']);
         $r->get('home-value', [ValuationController::class, 'show']);
         $r->get('privacy', [PrivacyController::class, 'show']);
+        $r->post('_privacy', [PrivacyController::class, 'store']); // TR1: privacy requests
+        $r->get('privacy/confirm/{token}', [PrivacyController::class, 'confirm'])->where('token', '[A-Za-z0-9]{48}');
         $r->get('accessibility', [AccessibilityController::class, 'show']); // AX1
         $r->post('_valuation', [ValuationController::class, 'submit']);
         $r->get('go/{slug}', [FunnelController::class, 'show'])->where('slug', '[a-z0-9-]{1,80}');

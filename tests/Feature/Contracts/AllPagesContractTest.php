@@ -105,6 +105,7 @@ it('sends every brokerage page the data its component needs', function (string $
     'settings: outside services' => ['owner', '/settings/services', 'settings/services'],
     'settings: approvals' => ['owner', '/settings/approvals', 'settings/approvals'],
     'settings: support access' => ['owner', '/settings/support-access', 'settings/support-access'],
+    'settings: privacy requests' => ['owner', '/settings/privacy', 'settings/privacy'],
 ]);
 
 it('sends record pages (a deal, a contact, a journal, an account statement) the data they need', function (): void {
@@ -150,6 +151,7 @@ it('sends every HQ console page the data its component needs', function (string 
     'feature switches' => ['/hq/switches', 'hq/switches'],
     'feature switches: one brokerage' => ['/hq/switches?tenant={tenant}', 'hq/switches'],
     'outside services' => ['/hq/services', 'settings/services'],
+    'security controls' => ['/hq/controls', 'hq/controls'],
     'RightAlly website' => ['/hq/website', 'hq/website/index'],
     'RightAlly website: new page' => ['/hq/website/pages/new', 'hq/website/page'],
     'RightAlly website: new post' => ['/hq/website/posts/new', 'hq/website/post'],

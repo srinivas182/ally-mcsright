@@ -1,5 +1,6 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 
+import { AillyWhatIf } from '@/components/hq/ailly-what-if';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/ui/page-header';
@@ -169,6 +170,15 @@ export default function AiCost({
                         ])}
                     />
                 </div>
+
+                <AillyWhatIf
+                    replyCents={(() => {
+                        const a = features.find(
+                            (f) => f.feature === 'sites.ailly',
+                        );
+                        return a && a.requests > 0 ? a.per_request_cents : null;
+                    })()}
+                />
 
                 <section aria-labelledby="settings" className="grid gap-3">
                     <h2 id="settings" className="text-lg font-semibold">

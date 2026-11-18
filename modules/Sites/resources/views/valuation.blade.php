@@ -40,6 +40,7 @@
                     <div class="hp" aria-hidden="true"><label>Leave empty <input name="website" tabindex="-1" autocomplete="off"></label></div>
                     <input type="hidden" name="first_referrer"><input type="hidden" name="landing_url"><input type="hidden" name="vid" data-vid>
                     <input type="hidden" name="t" value="{{ $t }}">
+            @include('core::bot-check', ['bot' => $bot ?? null])
                     <button class="btn btn-primary" type="submit">See my home's value</button>
                 </form>
             </div>

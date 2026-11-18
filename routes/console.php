@@ -103,6 +103,8 @@ Schedule::command('audit:maintain stream')->everyMinute()->withoutOverlapping()-
 Schedule::command('core:expire-access')->hourly()->onOneServer();
 // Approval requests nobody answered within 7 days (specs/core/16, FL1).
 Schedule::command('core:expire-approvals')->dailyAt('02:35')->onOneServer();
+// Data past its retention time, and privacy requests due soon (specs/core/18, TR1).
+Schedule::command('core:privacy-daily')->dailyAt('03:25')->onOneServer();
 // The quarterly access review reminder (specs/core/03, R1): Mondays, from two weeks into each quarter.
 // Alerts held for quiet hours and the daily digest (specs/core/10, N1).
 // Automations whose wait is over carry on (specs/core/06, W1).

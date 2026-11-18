@@ -10,6 +10,7 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
+use Modules\Core\Security\BotProtection;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Listings\Search\ListingSearch;
 use Modules\Sites\Models\Site;
@@ -67,8 +68,8 @@ final class ValuationController
     {
         $site = Site::query()->where('kind', 'brokerage')->where('status', 'live')->first();
         $back = $request->getSchemeAndHttpHost().'/home-value';
-        if ($site === null || trim((string) $request->input('website', '')) !== '') {
-            return redirect($back.'?sent=1', 303);
+        if ($site === null || trim((string) $request->input('website', '')) !== '' || ! app(BotProtection::class)->passes($request, $this->tenants->id())) {
+            return redirect($back.'?sent=1', 303); // honeypot or bot check (TR1)
         }
         try {
             $shown = (int) Crypt::decryptString((string) $request->input('t', ''));

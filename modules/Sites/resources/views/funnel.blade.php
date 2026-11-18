@@ -70,6 +70,7 @@
                         @if (is_string(request()->query($k)))<input type="hidden" name="{{ $k }}" value="{{ mb_substr(request()->query($k), 0, 150) }}">@endif
                     @endforeach
                     <input type="hidden" name="t" value="{{ $t }}">
+                    @include('core::bot-check', ['bot' => $bot ?? null])
                     <button class="btn btn-primary" type="submit">{{ $funnel->kind === 'home_value' ? 'See my home\'s value' : 'Send me these homes' }}</button>
                 </form>
             </div>

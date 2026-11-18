@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Modules\Ads\ListingAds;
+use Modules\Core\Privacy\PrivacyConfirmMail;
+use Modules\Core\Support\Connections;
 use Modules\Sites\SiteSetup;
 
 /* Sprint W15: every brokerage website has a privacy policy at /privacy — RightAlly's standard one, matching what the
@@ -37,4 +41,24 @@ it('uses the brokerage\'s own policy when the owner writes one, escaped as plain
 it('offers the site\'s policy as the instant-form ad privacy link', function (): void {
     $this->get($this->web.'/privacy')->assertOk();
     expect(app(ListingAds::class)->privacyUrl())->toEndWith('/privacy');
+});
+
+it('takes a privacy request from the website and confirms it by email before the brokerage sees it (TR1)', function (): void {
+    Notification::fake();
+    $this->get($this->web.'/privacy')->assertOk()->assertSee('Make a privacy request')->assertSee('action="/_privacy"', false);
+    $this->post($this->web.'/_privacy', ['kind' => 'delete', 'name' => 'Nia Lopez', 'email' => 'nia@example.test', 'website' => ''])
+        ->assertRedirect($this->web.'/privacy?sent=1#request');
+    $this->post($this->web.'/_privacy', ['kind' => 'delete', 'name' => 'Bot', 'email' => 'bot@example.test', 'website' => 'spam']); // honeypot
+
+    $link = null;
+    Notification::assertSentOnDemand(PrivacyConfirmMail::class, function ($m) use (&$link): bool {
+        $link = $m->link;
+
+        return true;
+    });
+    expect(DB::connection(Connections::cell())->table('privacy_requests')->count())->toBe(1)
+        ->and($link)->toStartWith($this->web.'/privacy/confirm/');
+    $this->get($link)->assertOk()->assertSee('Your request is confirmed')->assertHeader('Cache-Control', 'no-store, private');
+    $this->get($link)->assertOk()->assertSee('expired or was already used');
+    $this->post($this->web.'/_privacy', ['kind' => 'nope', 'name' => 'Pat', 'email' => 'pat@example.test'])->assertRedirectContains('error=');
 });
