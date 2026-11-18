@@ -42,21 +42,54 @@ final class BankReconciliation
             throw ValidationException::withMessages(['month' => 'This month is approved and locked.']);
         }
         $lines = str_contains(strtoupper(substr($file, 0, 4000)), '<STMTTRN>') ? self::parseOfx($file) : self::parseCsv($file);
+
+        return $this->importLines($month, $lines, $endingBalanceCents, $by, hash('sha256', $file), 'file');
+    }
+
+    /**
+     * BK1: a month from the live bank feed instead of a downloaded statement.
+     */
+    public function importFromFeed(string $month, ?int $endingBalanceCents, User $by): string
+    {
+        if (preg_match('/^\d{4}-\d{2}$/', $month) !== 1) {
+            throw ValidationException::withMessages(['month' => 'Choose the month.']);
+        }
+        if (CarbonImmutable::parse($month.'-01')->endOfMonth()->isFuture()) {
+            throw ValidationException::withMessages(['month' => 'Fill a month from the feed once it has ended.']);
+        }
+        $statement = app(BankFeeds\BankFeeds::class)->statement($month);
+        $ending = $endingBalanceCents ?? $statement['ending_cents'] ?? throw ValidationException::withMessages(['ending_balance' => 'Type the ending balance from your statement.']);
+
+        return $this->importLines($month, $statement['lines'], $ending, $by, hash('sha256', (string) json_encode($statement['lines'])), 'feed');
+    }
+
+    /**
+     * @param  list<array{posted_on: string, description: string, amount_cents: int, fitid: string|null}>  $lines
+     */
+    private function importLines(string $month, array $lines, int $endingBalanceCents, User $by, string $sha, string $source): string
+    {
+        if (preg_match('/^\d{4}-\d{2}$/', $month) !== 1) {
+            throw ValidationException::withMessages(['month' => 'Choose the month.']);
+        }
+        $db = DB::connection(Connections::cell());
+        if ($db->table('acct_bank_statements')->where('tenant_id', $this->tenants->id())->where('month', $month)->where('status', 'approved')->exists()) {
+            throw ValidationException::withMessages(['month' => 'This month is approved and locked.']);
+        }
         $ulid = (string) Str::ulid();
-        $db->transaction(function () use ($db, $month, $file, $endingBalanceCents, $by, $lines, $ulid): void {
+        $db->transaction(function () use ($db, $month, $sha, $endingBalanceCents, $by, $lines, $ulid): void {
             $old = $db->table('acct_bank_statements')->where('tenant_id', $this->tenants->id())->where('month', $month)->value('id');
             if ($old !== null) {
                 $db->table('acct_bank_lines')->where('statement_id', $old)->delete();
                 $db->table('acct_bank_statements')->where('id', $old)->delete();
             }
             $id = $db->table('acct_bank_statements')->insertGetId(['ulid' => $ulid, 'tenant_id' => $this->tenants->id(), 'month' => $month, 'ending_balance_cents' => $endingBalanceCents,
-                'file_sha256' => hash('sha256', $file), 'status' => 'draft', 'prepared_by' => $by->id, 'created_at' => now(), 'updated_at' => now()]);
+                'file_sha256' => $sha, 'status' => 'draft', 'prepared_by' => $by->id, 'created_at' => now(), 'updated_at' => now()]);
             foreach ($lines as $l) {
                 $db->table('acct_bank_lines')->insert($l + ['tenant_id' => $this->tenants->id(), 'statement_id' => $id, 'created_at' => now(), 'updated_at' => now()]);
             }
         });
         $this->autoMatch($ulid);
-        app(AuditLogger::class)->record('finance.bank_statement_imported', metadata: ['month' => $month, 'lines' => count($lines)], severity: 'notice');
+        app(AuditLogger::class)->record('finance.bank_statement_imported', metadata: ['month' => $month, 'lines' => count($lines), 'source' => $source], severity: 'notice');
 
         return $ulid;
     }

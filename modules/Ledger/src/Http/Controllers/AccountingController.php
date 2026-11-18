@@ -7,6 +7,7 @@ namespace Modules\Ledger\Http\Controllers;
 use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
@@ -15,6 +16,7 @@ use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Core\Tenancy\TenantContext;
+use Modules\Ledger\Accounting\BankFeeds\BankFeeds;
 use Modules\Ledger\Accounting\BankReconciliation;
 use Modules\Ledger\Accounting\Bills;
 use Modules\Ledger\Accounting\Invoices;
@@ -121,7 +123,8 @@ final class AccountingController
         $month = is_string($request->query('month')) && preg_match('/^\d{4}-\d{2}$/', $request->query('month')) === 1 ? $request->query('month')
             : CarbonImmutable::today()->subMonthNoOverflow()->format('Y-m');
 
-        return Inertia::render('finance/bank', ['summary' => $bank->summary($month, self::user($request)), 'accounts' => array_merge(app(Bills::class)->expenseAccounts(), app(Invoices::class)->incomeAccounts())]);
+        return Inertia::render('finance/bank', ['summary' => $bank->summary($month, self::user($request)), 'accounts' => array_merge(app(Bills::class)->expenseAccounts(), app(Invoices::class)->incomeAccounts()),
+            'feed' => app(BankFeeds::class)->status()]); // BK1
     }
 
     public function importBank(Request $request, BankReconciliation $bank): RedirectResponse
@@ -130,6 +133,60 @@ final class AccountingController
         $data = $request->validate(['month' => ['required', 'regex:/^\d{4}-\d{2}$/'], 'ending_balance' => ['required', 'string', 'max:20'], 'file' => ['required', 'file', 'max:5120']]);
         $ending = (int) round((float) str_replace([',', '$', ' '], '', $data['ending_balance']) * 100);
         $bank->import($data['month'], (string) file_get_contents($request->file('file')->getRealPath()), $ending, self::user($request));
+
+        return redirect('/finance/bank?month='.$data['month']);
+    }
+
+    /** BK1: what the page needs to open the bank-feed provider's own sign-in. */
+    public function feedStart(Request $request, BankFeeds $feeds): JsonResponse
+    {
+        Gate::authorize('finance.ledger.adjust');
+
+        return response()->json($feeds->start(self::user($request)));
+    }
+
+    public function feedFinish(Request $request, BankFeeds $feeds): RedirectResponse
+    {
+        Gate::authorize('finance.ledger.adjust');
+        $feeds->finish($request->validate(['public_token' => ['nullable', 'string', 'max:300'], 'access_token' => ['nullable', 'string', 'max:300'],
+            'user_guid' => ['nullable', 'string', 'max:100']]), self::user($request));
+
+        return back();
+    }
+
+    public function feedAccount(Request $request, BankFeeds $feeds): RedirectResponse
+    {
+        Gate::authorize('finance.ledger.adjust');
+        $feeds->choose((string) $request->validate(['account' => ['required', 'string', 'max:120']])['account'], self::user($request));
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Connected. Transactions come in every morning.']);
+
+        return back();
+    }
+
+    public function feedSync(Request $request, BankFeeds $feeds): RedirectResponse
+    {
+        Gate::authorize('finance.ledger.adjust');
+        $n = $feeds->sync();
+        Inertia::flash('toast', ['type' => 'success', 'message' => $n === 0 ? 'Up to date.' : "{$n} transactions brought in."]);
+
+        return back();
+    }
+
+    public function feedDisconnect(Request $request, BankFeeds $feeds): RedirectResponse
+    {
+        Gate::authorize('finance.ledger.adjust');
+        $feeds->disconnect(self::user($request));
+
+        return back();
+    }
+
+    /** BK1: fill a month's reconciliation from the feed instead of a downloaded statement. */
+    public function importFromFeed(Request $request, BankReconciliation $bank): RedirectResponse
+    {
+        Gate::authorize('finance.ledger.adjust');
+        $data = $request->validate(['month' => ['required', 'regex:/^\d{4}-\d{2}$/'], 'ending_balance' => ['nullable', 'string', 'max:20']]);
+        $ending = isset($data['ending_balance']) && trim($data['ending_balance']) !== '' ? (int) round((float) str_replace([',', '$', ' '], '', $data['ending_balance']) * 100) : null;
+        $bank->importFromFeed($data['month'], $ending, self::user($request));
 
         return redirect('/finance/bank?month='.$data['month']);
     }

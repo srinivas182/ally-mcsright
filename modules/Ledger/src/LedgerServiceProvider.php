@@ -75,7 +75,7 @@ final class LedgerServiceProvider extends ServiceProvider
             'One person cannot both change bank details and approve payouts (separation of duties).');
 
         if ($this->app->runningInConsole()) {
-            $this->commands([ReconcileBalances::class, Console\CloseCheck::class, Console\ExpireAuditPacks::class]);
+            $this->commands([ReconcileBalances::class, Console\CloseCheck::class, Console\ExpireAuditPacks::class, Console\SyncBankFeeds::class]);
         }
     }
 }

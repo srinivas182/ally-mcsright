@@ -44,6 +44,13 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])
         Route::post('invoices/{invoice}/void', [AccountingController::class, 'voidInvoice'])->where('invoice', '[0-9A-HJKMNP-TV-Z]{26}')->name('invoices.void');
         Route::get('invoices/{invoice}.pdf', [AccountingController::class, 'invoicePdf'])->where('invoice', '[0-9A-HJKMNP-TV-Z]{26}')->name('invoices.pdf');
         Route::get('bank', [AccountingController::class, 'bank'])->name('bank.index');
+        // BK1: the live, read-only bank feed.
+        Route::post('bank/feed/start', [AccountingController::class, 'feedStart'])->middleware('throttle:10,1')->name('bank.feed.start');
+        Route::post('bank/feed/finish', [AccountingController::class, 'feedFinish'])->middleware(['throttle:10,1', 'password.confirm'])->name('bank.feed.finish');
+        Route::post('bank/feed/account', [AccountingController::class, 'feedAccount'])->name('bank.feed.account');
+        Route::post('bank/feed/sync', [AccountingController::class, 'feedSync'])->middleware('throttle:6,1')->name('bank.feed.sync');
+        Route::post('bank/feed/disconnect', [AccountingController::class, 'feedDisconnect'])->middleware('password.confirm')->name('bank.feed.disconnect');
+        Route::post('bank/from-feed', [AccountingController::class, 'importFromFeed'])->middleware('throttle:20,1')->name('bank.from-feed');
         Route::post('bank/import', [AccountingController::class, 'importBank'])->middleware('throttle:20,1')->name('bank.import');
         Route::post('bank/lines/{line}/add', [AccountingController::class, 'addToBooks'])->whereNumber('line')->name('bank.add');
         Route::post('bank/lines/{line}/match', [AccountingController::class, 'matchBank'])->whereNumber('line')->name('bank.match');

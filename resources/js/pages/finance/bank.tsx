@@ -1,6 +1,7 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 
+import { BankFeedPanel, type Feed } from '@/components/finance/bank-feed';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,9 +38,11 @@ type Summary = {
 export default function Bank({
     summary,
     accounts,
+    feed,
 }: {
     summary: Summary;
     accounts: { code: string; name: string }[];
+    feed: Feed;
 }) {
     const s = summary;
     const imp = useForm<{
@@ -57,6 +60,7 @@ export default function Bank({
                     title="Bank reconciliation"
                     description="Each month, download the statement from your bank (CSV or Quicken/OFX), add it here, and we match it to the books. Anything the bank shows that the books don't, add with one click."
                 />
+                <BankFeedPanel feed={feed} month={s.month} locked={locked} />
                 <div className="flex flex-wrap items-end gap-3">
                     <label className="grid gap-1">
                         Month
