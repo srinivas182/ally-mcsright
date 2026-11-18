@@ -21,7 +21,7 @@ jobs:
   journeys:
     name: Journeys on MySQL 8.4
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     services:
       mysql:
@@ -89,15 +89,25 @@ jobs:
       - name: Browser
         run: npx playwright install --with-deps chromium
 
-      # Port 80, as in production, so the app's own links need no port. The PHP server needs root for it.
+      # Port 80, as in production, so the app's own links need no port. The PHP server needs root for it. This
+      # runner's sudo ignores -E, so PATH (the PHP set up above) and the app's settings are passed to it by name;
+      # without them the server ran with no database settings and every page failed.
       - name: Start the app
-        run: sudo -E php artisan serve --host=127.0.0.1 --port=80 > storage/logs/serve.log 2>&1 &
+        run: |
+          sudo env "PATH=$PATH" $(env | grep -E '^(APP_ENV|DB_[A-Z_]+|MAIL_MAILER|QUEUE_CONNECTION)=' | xargs) \
+            php artisan serve --host=127.0.0.1 --port=80 > storage/logs/serve.log 2>&1 &
+          if ! curl --silent --show-error --fail --retry 60 --retry-delay 1 --retry-all-errors http://127.0.0.1/up > /dev/null; then
+            echo '--- serve.log'; cat storage/logs/serve.log || true
+            echo '--- laravel.log'; tail -n 80 storage/logs/laravel.log || true
+            echo '--- /up'; curl --silent --show-error -i http://127.0.0.1/up > up.txt; head -c 3000 up.txt || true
+            exit 1
+          fi
 
       - name: Journeys
         run: E2E_NO_SERVER=1 npx playwright test
 
-      - name: Report (on failure)
-        if: failure()
+      - name: Report (when anything but success, also when cancelled)
+        if: ${{ !success() }}
         uses: actions/upload-artifact@v5
         with:
           name: e2e-report
