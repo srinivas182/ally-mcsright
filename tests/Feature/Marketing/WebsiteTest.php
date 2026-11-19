@@ -34,7 +34,7 @@ function site(string $path): string
 
 it('publishes the starter pages with search and AI-answer markup, and keeps the comparison as a draft', function (): void {
     $html = $this->get(site('/'))->assertOk()->assertHeader('Cache-Control', 'max-age=300, public')->getContent();
-    expect($html)->toContain('<h1>Everything your brokerage runs on, in one place</h1>')
+    expect($html)->toContain('<h1>Run your whole real estate business in one place</h1>')
         ->toContain('<link rel="canonical" href="https://rightally.io/">')
         ->toContain('hreflang="es" href="https://rightally.io/es"')
         ->toContain('"@type":"FAQPage"')->toContain('"@type":"SoftwareApplication"')->toContain('"price":"499.00"')
@@ -60,7 +60,7 @@ it('gives search engines and AI answer engines a sitemap, robots rules and llms.
 
 it('lets HQ edit a draft, preview it privately, publish it, and put back an earlier version', function (): void {
     $page = app(Website::class)->page('en', 'pricing');
-    $this->actingAs($this->staff)->get('http://app.rightally.io/hq/website')->assertInertia(fn (Assert $p) => $p->component('hq/website/index')->has('pages', 7));
+    $this->actingAs($this->staff)->get('http://app.rightally.io/hq/website')->assertInertia(fn (Assert $p) => $p->component('hq/website/index')->has('pages', 8));
     $this->actingAs($this->staff)->get('http://app.rightally.io/hq/website/pages/'.$page->ulid)->assertInertia(fn (Assert $p) => $p->component('hq/website/page')
         ->where('checks', [])->has('versions', 1)->where('page.preview', fn (string $u): bool => str_contains($u, 'rightally.io/preview/')));
 

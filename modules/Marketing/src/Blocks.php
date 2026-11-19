@@ -27,6 +27,9 @@ final class Blocks
         'text' => 'Text',
         'testimonials' => 'What customers say',
         'cta' => 'Call to action',
+        'doors' => 'Two doors: brokerage or agent',
+        'modules' => 'What is included (live from packages)',
+        'savings' => '"What you pay today" calculator',
     ];
 
     /**
@@ -52,7 +55,12 @@ final class Blocks
                 'features' => ['type' => 'features', 'heading' => self::text($b, 'heading', 120, $n), 'items' => self::items($b, $n, 24, ['title' => 80, 'text' => 400], ['title'])],
                 'faq' => ['type' => 'faq', 'heading' => self::text($b, 'heading', 120, $n), 'items' => self::items($b, $n, 30, ['q' => 200, 'a' => 1200], ['q', 'a'])],
                 'compare' => self::compare($b, $n),
-                'pricing' => ['type' => 'pricing', 'heading' => self::text($b, 'heading', 120, $n), 'note' => self::text($b, 'note', 300, $n)],
+                'pricing' => ['type' => 'pricing', 'heading' => self::text($b, 'heading', 120, $n), 'note' => self::text($b, 'note', 300, $n), 'audience' => self::audience($b)],
+                'doors' => ['type' => 'doors', 'heading' => self::text($b, 'heading', 120, $n),
+                    'broker_heading' => self::text($b, 'broker_heading', 80, $n, true), 'broker_text' => self::text($b, 'broker_text', 200, $n), 'broker_href' => self::link($b, 'broker_href', $n, true),
+                    'agent_heading' => self::text($b, 'agent_heading', 80, $n, true), 'agent_text' => self::text($b, 'agent_text', 200, $n), 'agent_href' => self::link($b, 'agent_href', $n, true)],
+                'modules' => ['type' => 'modules', 'heading' => self::text($b, 'heading', 120, $n), 'audience' => self::audience($b)],
+                'savings' => ['type' => 'savings', 'heading' => self::text($b, 'heading', 120, $n), 'text' => self::text($b, 'text', 300, $n), 'audience' => self::audience($b)],
                 'steps' => ['type' => 'steps', 'heading' => self::text($b, 'heading', 120, $n), 'items' => self::items($b, $n, 10, ['title' => 80, 'text' => 300], ['title'])],
                 'text' => ['type' => 'text', 'heading' => self::text($b, 'heading', 120, $n), 'body' => self::text($b, 'body', 8000, $n, true)],
                 'testimonials' => self::testimonials($b, $n),
@@ -65,6 +73,12 @@ final class Blocks
     }
 
     /** @param array<string, mixed> $b */
+    private static function audience(array $b): string
+    {
+        return ($b['audience'] ?? 'brokerage') === 'agent' ? 'agent' : 'brokerage';
+    }
+
+    /** @param array<string, mixed> $b */
     private static function text(array $b, string $key, int $max, int $n, bool $required = false): string
     {
         $value = trim(strip_tags((string) ($b[$key] ?? '')));
@@ -73,6 +87,10 @@ final class Blocks
         }
         if (mb_strlen($value) > $max) {
             throw ValidationException::withMessages(['blocks' => "Block {$n}: “{$key}” is too long (at most {$max} characters)."]);
+        }
+        $problem = ClaimsCheck::problem($value); // MK1: no other companies named, never "cheap"
+        if ($problem !== null) {
+            throw ValidationException::withMessages(['blocks' => "Block {$n}: {$problem}"]);
         }
 
         return $value;

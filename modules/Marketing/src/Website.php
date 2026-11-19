@@ -55,6 +55,12 @@ final class Website
         }
         $title = trim($title);
         $description = trim($description);
+        foreach (['title' => $title, 'description' => $description] as $field => $text) {
+            $problem = ClaimsCheck::problem($text); // MK1
+            if ($problem !== null) {
+                throw ValidationException::withMessages([$field => $problem]);
+            }
+        }
         if ($title === '' || mb_strlen($title) > 70) {
             throw ValidationException::withMessages(['title' => 'Give the page a title of up to 70 characters.']);
         }
@@ -138,6 +144,12 @@ final class Website
         $errors = [];
         if (! isset(self::LOCALES[$locale])) {
             $errors['locale'] = 'Choose English or Spanish.';
+        }
+        foreach (['title' => $title, 'description' => $description, 'body' => $body] as $field => $text) {
+            $problem = ClaimsCheck::problem($text); // MK1: no other companies named, never "cheap"
+            if ($problem !== null) {
+                $errors[$field] = $problem;
+            }
         }
         if (preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $slug) !== 1 || mb_strlen($slug) > 100) {
             $errors['slug'] = 'Use lower-case words joined by dashes.';

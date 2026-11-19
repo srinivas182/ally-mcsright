@@ -46,12 +46,13 @@
             <section><div class="wrap">
                 <h2>{{ $b['heading'] !== '' ? $b['heading'] : ($es ? 'Precios' : 'Prices') }}</h2>
                 <div class="grid">
-                    @forelse ($packages as $p)
+                    @php($start2 = ($b['audience'] ?? 'brokerage') === 'agent' ? preg_replace('#/start$#', '/agents', $start) : $start)
+                    @forelse (($byAudience[$b['audience'] ?? 'brokerage'] ?? $packages) as $p)
                         <div class="card">
                             <h3>{{ $p->name }}</h3>
                             <p class="price">${{ number_format(((int) $p->monthly_cents) / 100, 0) }}<span class="small muted"> / {{ $es ? 'mes' : 'month' }}</span></p>
                             @if ((int) $p->yearly_cents > 0)<p class="small muted">{{ $es ? 'o' : 'or' }} ${{ number_format(((int) $p->yearly_cents) / 100, 0) }} / {{ $es ? 'año' : 'year' }}</p>@endif
-                            <a class="btn" href="{{ $start }}?package={{ $p->ulid ?? '' }}">{{ $es ? 'Elegir' : 'Choose' }} {{ $p->name }}</a>
+                            <a class="btn" href="{{ $start2 }}?package={{ $p->ulid ?? '' }}">{{ $es ? 'Elegir' : 'Choose' }} {{ $p->name }}</a>
                         </div>
                     @empty
                         <p class="muted">{{ $es ? 'Pronto publicaremos los precios.' : 'Prices are coming soon.' }}</p>
@@ -71,6 +72,51 @@
                 @if ($b['heading'] !== '')<h2>{{ $b['heading'] }}</h2>@endif
                 <div class="grid">@foreach ($b['items'] as $item)<figure class="card"><blockquote>“{{ $item['quote'] }}”</blockquote><figcaption class="muted small">— {{ $item['name'] }}@if ($item['role'] !== ''), {{ $item['role'] }}@endif</figcaption></figure>@endforeach</div>
             </div></section>
+            @break
+        @case('doors')
+            <section><div class="wrap">
+                @if ($b['heading'] !== '')<h2>{{ $b['heading'] }}</h2>@endif
+                <div class="grid doors">
+                    <a class="card door" href="{{ $b['broker_href'] }}"><h3>{{ $b['broker_heading'] }}</h3>@if ($b['broker_text'] !== '')<p>{{ $b['broker_text'] }}</p>@endif<span class="btn">{{ $es ? 'Ver más' : 'See how' }} →</span></a>
+                    <a class="card door" href="{{ $b['agent_href'] }}"><h3>{{ $b['agent_heading'] }}</h3>@if ($b['agent_text'] !== '')<p>{{ $b['agent_text'] }}</p>@endif<span class="btn">{{ $es ? 'Ver más' : 'See how' }} →</span></a>
+                </div>
+            </div></section>
+            @break
+        @case('modules')
+            @php($show = $showcase[$b['audience']] ?? ['modules' => []])
+            <section><div class="wrap">
+                <h2>{{ $b['heading'] !== '' ? $b['heading'] : ($es ? 'Lo que incluye' : 'What is included') }}</h2>
+                <div class="grid">
+                    @foreach ($show['modules'] as $m)
+                        <div class="card">
+                            <h3>{{ $m['label'] }}</h3>
+                            <p>{{ $m['about'] }}</p>
+                            @if ($m['packages'] !== [])<p class="small muted">{{ $es ? 'Incluido en' : 'In' }}: {{ implode(', ', $m['packages']) }}</p>@endif
+                            @if ($m['video'] !== null)<p><a href="{{ $m['video'] }}" target="_blank" rel="noopener">{{ $es ? 'Ver en 1 minuto' : 'Watch in 1 minute' }} ▶</a></p>@endif
+                        </div>
+                    @endforeach
+                </div>
+            </div></section>
+            @break
+        @case('savings')
+            @php($show = $showcase[$b['audience']] ?? ['categories' => [], 'packages' => []])
+            <section><div class="wrap"><div class="card savings" data-savings='@json(['packages' => $show['packages'], 'categories' => $show['categories']])'>
+                <h2>{{ $b['heading'] !== '' ? $b['heading'] : ($es ? '¿Cuánto paga hoy?' : 'What do you pay today?') }}</h2>
+                @if ($b['text'] !== '')<p class="lead">{{ $b['text'] }}</p>@endif
+                <div class="grid">
+                    @foreach ($show['categories'] as $c)
+                        <label class="small">{{ $c['label'] }} ({{ $es ? 'al mes' : 'a month' }})<br><input type="number" min="0" step="1" inputmode="numeric" name="{{ $c['key'] }}" placeholder="$0" style="width:100%;font-size:1.1rem;padding:.5rem"></label>
+                    @endforeach
+                </div>
+                <p class="lead" data-savings-result aria-live="polite">{{ $es ? 'Escriba lo que paga hoy por cada herramienta.' : 'Type what you pay today for each tool.' }}</p>
+            </div></div></section>
+            <script nonce="{{ Vite::cspNonce() }}">(function(){document.querySelectorAll('[data-savings]').forEach(function(box){var d=JSON.parse(box.getAttribute('data-savings')),out=box.querySelector('[data-savings-result]'),es={{ $es ? 'true' : 'false' }};
+function money(c){return '$'+Math.round(c/100).toLocaleString('en-US')}
+function calc(){var total=0,need={};d.categories.forEach(function(c){var v=parseFloat((box.querySelector('[name="'+c.key+'"]')||{}).value||'0')||0;if(v>0){total+=v*100;c.modules.forEach(function(m){need[m]=1})}});
+if(total<=0){return}var best=null;d.packages.forEach(function(p){var ok=Object.keys(need).every(function(m){return p.modules.indexOf(m)>-1});if(ok&&(best===null||p.monthly<best.monthly)){best=p}});
+if(best===null){out.textContent=(es?'Hoy paga ':'Today you pay ')+money(total)+(es?' al mes. Hable con nosotros para un paquete con todo esto.':' a month. Talk to us for a package with all of this.');return}
+var diff=total-best.monthly;out.textContent=(es?'Hoy paga ':'Today you pay ')+money(total)+(es?' al mes en herramientas separadas. ':' a month for separate tools. ')+best.name+(es?' incluye todo esto por ':' includes all of this for ')+money(best.monthly)+(es?' al mes':' a month')+(diff>0?(es?' — ahorra ':' — you save ')+money(diff)+(es?' al mes, con una sola factura.':' a month, on one bill.'):(es?', con una sola factura y todo en un lugar.':', on one bill with everything in one place.'))}
+box.addEventListener('input',calc)})})();</script>
             @break
         @case('cta')
             <section><div class="wrap"><div class="card">

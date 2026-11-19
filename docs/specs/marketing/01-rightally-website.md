@@ -52,3 +52,36 @@ person before it is published. Existing pages are never touched.
 
 - Starter wording and the comparison draft need a marketing and legal read before launch.
 - The site's canonical host (`rightally.io`) and `sameAs` profiles are set by environment.
+
+## MK1: a website that sells itself
+
+**Rules that apply to every page and post** (`Marketing\ClaimsCheck`, checked on every save, owner's decision of
+November 2026):
+
+- **No other company is named** anywhere on RightAlly's website, including titles, descriptions and blog posts.
+- **RightAlly is never called "cheap", "cheapest" or "lowest price".** It sells on value: everything in one place,
+  one bill, easy for everyone, data kept safe, and we move you.
+- A save that breaks these rules is refused with the reason.
+
+**New blocks**
+
+- **Two doors** at the top of the home page: "I run a brokerage" and "I'm an agent", each leading to its own page
+  (`/for-brokers`, `/for-agents`).
+- **What is included** is read live from the package builder. A module shows once it is in a live package for that
+  audience, along with which packages include it. Its 1-minute video shows when HQ adds one under HQ → Help videos
+  for the page `/modules/<module>`. Turning a module on in a package puts it on the website, with no page editing.
+- **"What do you pay today?"**: the visitor types what they pay each month for separate tools, by category, never by
+  company. The page shows that total next to the cheapest RightAlly package that covers all of it, and the saving on
+  one bill.
+- **Prices for each audience**: brokerage packages, or agent plans whose "Choose" button goes to the agent sign-up.
+
+**Starter content**
+
+- The home page leads with the two doors, what is included, the calculator, "We move you", "Easy for everyone"
+  (Today's 10, the microphone, Help, practice clients), "Your data stays yours", prices and questions.
+- New page "For brokerages"; "For agents" now has its modules, calculator and plans.
+- `marketing:starter --refresh` saves the new content as **drafts** of pages that already exist. Nothing live
+  changes until HQ publishes.
+
+**Still to come:** "Try it now" with made-up clients and no sign-up needs a separate demo brokerage that resets
+itself, so it comes with self-serve onboarding (MK2).
