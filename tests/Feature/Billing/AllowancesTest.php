@@ -43,6 +43,7 @@ beforeEach(function (): void {
     $this->owner = User::factory()->owner()->create();
     $this->package = Package::query()->create(['name' => 'Growth', 'monthly_cents' => 10_000, 'yearly_cents' => 0, 'ailly_conversations' => 0, 'features' => [], 'active' => true]);
     $this->package->forceFill(['included_text_segments' => 10, 'included_call_minutes' => 4, 'included_map_views' => 20])->save();
+    DB::connection(Connections::control())->table('cost_catalog')->where('kind', 'monthly')->update(['cost_microcents' => 0]); // no per-brokerage costs here
     DB::connection(Connections::control())->table('billing_tenant_subscriptions')->insert(['tenant_id' => $this->tenant->id, 'package_id' => $this->package->id,
         'interval' => 'month', 'status' => 'active', 'price_cents' => 10_000, 'created_at' => now(), 'updated_at' => now()]);
     $this->texts = new FakeSmsSender;

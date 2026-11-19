@@ -74,6 +74,9 @@ interface PaymentGateway
     /** Stop a subscription at the end of the current period. */
     public function cancelAtPeriodEnd(string $subscriptionRef): void;
 
+    /** PB4: stop an unpaid subscription now and void its open invoices, so nothing old is charged later. */
+    public function endUnpaid(string $subscriptionRef): void;
+
     /**
      * Verifies an incoming event and returns it as an array; throws when the signature is wrong.
      *
