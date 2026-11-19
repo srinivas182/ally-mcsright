@@ -89,6 +89,7 @@ Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.tenants.manage
     Route::get('health-checks', [HealthCheckController::class, 'hq'])->name('health-checks');
     Route::get('go-live', [GoLiveController::class, 'hq'])->name('go-live');
     Route::get('affiliates', [AffiliateController::class, 'hq'])->name('affiliates');
+    Route::post('affiliates/rewards', [AffiliateController::class, 'saveRewards'])->middleware('password.confirm')->name('affiliates.rewards');
     Route::post('affiliates', [AffiliateController::class, 'addPerson'])->middleware('throttle:20,1')->name('affiliates.store');
     Route::post('affiliates/referrals/{referral}/paid', [AffiliateController::class, 'markPaid'])->whereNumber('referral')->middleware('password.confirm')->name('affiliates.paid');
     Route::post('go-live/{tenant}/coach', [GoLiveController::class, 'coach'])->name('go-live.coach');

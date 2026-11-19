@@ -19,7 +19,8 @@ use Modules\Core\Tenancy\TenantContext;
 
 /*
 | RF1 (specs/billing/08): RightAlly's own referral programme. People earn 20% of a referred brokerage's first-year
-| subscription; brokerages earn one month's credit. Rewards wait 30 days, self-referrals earn nothing, HQ pays.
+| subscription as cash; brokerages earn 20% as credit (PB3: HQ can change both). Rewards wait 30 days, self-referrals
+| earn nothing, HQ pays.
 */
 
 const RF = 'http://app.rightally.io';
@@ -70,7 +71,7 @@ it('gives a person a link and private dashboard, and earns 20% of the first year
     expect($ref->status)->toBe('pending')->and((int) $ref->tenant_id)->toBe($tenant->id)->and((int) $ref->reward_cents)->toBe(5_980)
         ->and($ref->reward_kind)->toBe('cash');
     // A renewal in the first year adds to the reward; after the first year it doesn't.
-    app(Affiliates::class)->paid($tenant->id, 29_900, 29_900);
+    app(Affiliates::class)->paid($tenant->id, 29_900);
     expect((int) rfDb()->table('affiliate_referrals')->value('reward_cents'))->toBe(11_960);
 
     $this->artisan('billing:affiliates-settle')->assertSuccessful();
@@ -93,11 +94,11 @@ it('gives a person a link and private dashboard, and earns 20% of the first year
         ->where('referrals.0.status', 'paid')->where('referrals.0.brokerage', 'Oak-realty')->where('affiliates.0.joined', 1));
 });
 
-it('gives a referring brokerage one month of credit, and nothing for referring itself or after a quick cancel', function (): void {
+it('gives a referring brokerage 20% of the first year as credit, and nothing for referring itself or after a quick cancel', function (): void {
     $acme = $this->onTenantHost('acme');
     $owner = User::factory()->owner()->create(['email' => 'owner@acme-realty.com']);
     $this->actingAs($owner)->get('/settings/refer')->assertOk()->assertInertia(fn (Assert $page) => $page->component('settings/refer')
-        ->where('link', fn (string $l): bool => str_starts_with($l, 'https://app.rightally.io/r/'))->where('months', 1)->where('stats.joined', 0));
+        ->where('link', fn (string $l): bool => str_starts_with($l, 'https://app.rightally.io/r/'))->where('share', 20)->where('stats.joined', 0));
     $agent = User::factory()->create();
     $this->actingAs($agent)->get('/settings/refer')->assertForbidden();
     auth()->logout();
@@ -108,7 +109,7 @@ it('gives a referring brokerage one month of credit, and nothing for referring i
     $quick = rfSignup($code, 'quick-homes', 'lee@quick.test');
 
     $refs = rfDb()->table('affiliate_referrals')->get()->keyBy('tenant_id');
-    expect($refs[$pine->id]->status)->toBe('pending')->and((int) $refs[$pine->id]->reward_cents)->toBe(29_900)->and($refs[$pine->id]->reward_kind)->toBe('credit')
+    expect($refs[$pine->id]->status)->toBe('pending')->and((int) $refs[$pine->id]->reward_cents)->toBe(5_980)->and($refs[$pine->id]->reward_kind)->toBe('credit')
         ->and($refs[$same->id]->status)->toBe('void')->and($refs[$same->id]->note)->toBe('Self-referral: the same company email domain');
 
     rfDb()->table('billing_tenant_subscriptions')->where('tenant_id', $quick->id)->update(['status' => 'cancelled']);
@@ -120,4 +121,20 @@ it('gives a referring brokerage one month of credit, and nothing for referring i
     // An unknown or missing code changes nothing.
     rfSignup(null, 'plain-homes', 'pat@plain.test');
     expect(rfDb()->table('affiliate_referrals')->count())->toBe(3);
+});
+
+it('lets HQ change both referral shares, behind the password, for payments from then on', function (): void {
+    $this->actingAs($this->staff)->post(RF.'/hq/affiliates', ['name' => 'Coach Kim', 'email' => 'kim@coaching.test'])->assertRedirect();
+    $tenant = rfSignup('coachkim', 'oak-realty', 'dana@oak.test');
+    expect((int) rfDb()->table('affiliate_referrals')->value('reward_cents'))->toBe(5_980); // 20% to start
+
+    $this->actingAs($this->staff)->post(RF.'/hq/affiliates/rewards', ['person' => 25, 'brokerage' => 15])->assertRedirect(); // asks for the password first
+    expect(Affiliates::rewards())->toBe(['person' => 20, 'brokerage' => 20]);
+    $this->actingAs($this->staff)->withSession(['auth.password_confirmed_at' => time()])->post(RF.'/hq/affiliates/rewards', ['person' => 60, 'brokerage' => 15])->assertSessionHasErrors('person');
+    $this->actingAs($this->staff)->withSession(['auth.password_confirmed_at' => time()])->post(RF.'/hq/affiliates/rewards', ['person' => 25, 'brokerage' => 15])->assertSessionHasNoErrors();
+    expect(Affiliates::rewards())->toBe(['person' => 25, 'brokerage' => 15]);
+
+    app(Affiliates::class)->paid($tenant->id, 29_900); // the next payment earns the new share; the first keeps its 20%
+    expect((int) rfDb()->table('affiliate_referrals')->value('reward_cents'))->toBe(5_980 + 7_475);
+    $this->actingAs($this->staff)->get(RF.'/hq/affiliates')->assertInertia(fn (Assert $page) => $page->where('share', 25)->where('brokerageShare', 15));
 });

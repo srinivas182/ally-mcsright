@@ -16,9 +16,10 @@ use stdClass;
 /**
  * RightAlly's own referral programme (RF1, specs/billing/08).
  *
- * - People (coaches, trainers, influencers) get a link and earn 20% of what a brokerage they refer pays in its first
- *   year, as cash paid by HQ.
- * - A brokerage that refers another gets one month of its own subscription as credit.
+ * - People (coaches, trainers, influencers) get a link and earn a share (20% to start) of what a brokerage they refer
+ *   pays in its first year, as cash paid by HQ.
+ * - A brokerage that refers another earns a share (20% to start) of the same, as credit on its own RightAlly bill.
+ * - HQ changes both shares in HQ › Referral programme (PB3); a change applies to payments from then on.
  * - Rewards wait 30 days after the new brokerage's first payment (the refund window), then become approved, or void
  *   if it cancelled. HQ pays approved rewards and marks them paid. Nothing pays itself.
  * - Fraud checks: no rewards for referring yourself (same email, same company email domain, or your own brokerage).
@@ -27,9 +28,7 @@ use stdClass;
  */
 final class Affiliates
 {
-    public const PERSON_SHARE_PERCENT = 20;
-
-    public const BROKERAGE_CREDIT_MONTHS = 1;
+    public const DEFAULT_PERCENT = 20;
 
     public const HOLD_DAYS = 30;
 
@@ -108,8 +107,32 @@ final class Affiliates
         app(AuditLogger::class)->record('billing.affiliate.referred', metadata: ['code' => $affiliate->code, 'tenant' => $tenant->id, 'void' => $why], severity: 'notice');
     }
 
+    /**
+     * The shares HQ set: what a person and a brokerage earn of a referred brokerage's first-year payments.
+     *
+     * @return array{person: int, brokerage: int}
+     */
+    public static function rewards(): array
+    {
+        $row = DB::connection(Connections::control())->table('credit_settings')->first();
+
+        return ['person' => (int) ($row->referral_person_pct ?? self::DEFAULT_PERCENT), 'brokerage' => (int) ($row->referral_brokerage_pct ?? self::DEFAULT_PERCENT)];
+    }
+
+    /** HQ changes the shares (0–50%). */
+    public function saveRewards(int $person, int $brokerage, ?int $byUserId): void
+    {
+        if ($person < 0 || $person > 50 || $brokerage < 0 || $brokerage > 50) {
+            throw ValidationException::withMessages(['person' => 'Choose a share from 0% to 50%.']);
+        }
+        $db = DB::connection(Connections::control())->table('credit_settings');
+        $values = ['referral_person_pct' => $person, 'referral_brokerage_pct' => $brokerage, 'updated_by' => $byUserId, 'updated_at' => now()];
+        $db->clone()->exists() ? $db->clone()->update($values) : $db->clone()->insert($values + ['created_at' => now()]);
+        app(AuditLogger::class)->record('billing.affiliate.rewards', metadata: ['person_pct' => $person, 'brokerage_pct' => $brokerage], severity: 'warning');
+    }
+
     /** The referred brokerage paid: the reward grows (first year only). */
-    public function paid(int $tenantId, int $amountCents, int $monthlyPriceCents): void
+    public function paid(int $tenantId, int $amountCents): void
     {
         $db = DB::connection(Connections::control())->table('affiliate_referrals');
         $r = $db->clone()->where('tenant_id', $tenantId)->whereIn('status', ['pending', 'approved'])->first();
@@ -121,7 +144,8 @@ final class Affiliates
             return; // only the first year counts
         }
         $paid = (int) $r->paid_cents + $amountCents;
-        $reward = $r->reward_kind === 'cash' ? intdiv($paid * self::PERSON_SHARE_PERCENT, 100) : self::BROKERAGE_CREDIT_MONTHS * $monthlyPriceCents;
+        $shares = self::rewards();
+        $reward = (int) $r->reward_cents + intdiv($amountCents * ($r->reward_kind === 'cash' ? $shares['person'] : $shares['brokerage']), 100);
         $db->clone()->where('id', $r->id)->update(['paid_cents' => $paid, 'reward_cents' => $reward, 'first_paid_at' => $first, 'updated_at' => now()]);
     }
 

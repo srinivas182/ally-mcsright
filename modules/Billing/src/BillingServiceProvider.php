@@ -83,7 +83,7 @@ final class BillingServiceProvider extends ServiceProvider
         $nav->add(new NavItem('Overview', 'Plans', '/plans', 'gift', 90, ability: 'billing.plans.view'));
 
         if ($this->app->runningInConsole()) {
-            $this->commands([Console\ApplyPriceChanges::class, Console\EndGrace::class, Console\BillSubsidies::class, Console\PartnerPayouts::class, Console\GrantMonthlyCredits::class, Console\WatchCreditMargins::class, Console\ExpirePurchasedCredits::class, Console\RemindPausedMaps::class, Console\PruneHealthChecks::class, Console\GoLiveWeekly::class, Console\SettleAffiliates::class, Console\BillAddOns::class, Console\DemoCleanup::class]);
+            $this->commands([Console\ApplyPriceChanges::class, Console\EndGrace::class, Console\BillSubsidies::class, Console\PartnerPayouts::class, Console\GrantMonthlyCredits::class, Console\WatchCreditMargins::class, Console\ExpirePurchasedCredits::class, Console\RemindPausedMaps::class, Console\PruneHealthChecks::class, Console\GoLiveWeekly::class, Console\SettleAffiliates::class, Console\BillAddOns::class, Console\DemoCleanup::class, Console\StarterPrices::class]);
         }
     }
 }
