@@ -15,6 +15,7 @@ use Inertia\Response;
 use Modules\Core\Support\Connections;
 use Modules\Crm\Practice\PracticeClients;
 use Modules\Team\Chat;
+use Modules\Team\Help\Concierge;
 use Modules\Team\Help\HelpCentre;
 use Modules\Team\Help\PageHelp;
 use Modules\Team\Help\SupportTickets;
@@ -91,6 +92,17 @@ final class HelpController
         $tickets->open($user, 'callback', 'Please call me back '.$when, "Phone: {$data['phone']}\nBest time: {$when}\n".(trim((string) ($data['note'] ?? '')) !== '' ? "About: {$data['note']}" : 'About: help with this page'),
             $data['page'] ?? null);
         Inertia::flash('toast', ['type' => 'success', 'message' => "Thanks. Someone from RightAlly will call you {$when} on the next working day."]);
+
+        return back();
+    }
+
+    /** SX6: concierge setup — send us your spreadsheet and we set it up for you. */
+    public function concierge(Request $request, Concierge $concierge): RedirectResponse
+    {
+        $data = $request->validate(['file' => ['required', 'file', 'max:10240', 'mimes:csv,txt,xlsx,xls'], 'what' => ['required', 'in:contacts,listings,other'],
+            'note' => ['nullable', 'string', 'max:1000']]);
+        $concierge->send(self::user($request), $data['file'], $data['what'], $data['note'] ?? null);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Thanks. We will set it up for you, usually within two working days, and tell you by email when it is done.']);
 
         return back();
     }

@@ -24,7 +24,7 @@ use Modules\Core\Tenancy\TenantContext;
 final class SupportTickets
 {
     public const TOPICS = ['how_to' => 'How do I…?', 'problem' => 'Something is not working', 'billing' => 'Billing and credits', 'idea' => 'An idea or request',
-        'data' => 'My data or privacy', 'callback' => 'Please call me back']; // SX5: "call me back" from Help me
+        'data' => 'My data or privacy', 'callback' => 'Please call me back', 'concierge' => 'Set it up for me']; // SX5 call me back, SX6 concierge setup
 
     public function __construct(private readonly TenantContext $tenants) {}
 
@@ -56,7 +56,7 @@ final class SupportTickets
     /**
      * This person's requests in this brokerage, newest first.
      *
-     * @return list<array{ulid: string, topic: string, subject: string, body: string, status: string, reply: string|null, created_at: string, replied_at: string|null}>
+     * @return list<array{ulid: string, topic: string, subject: string, body: string, status: string, reply: string|null, created_at: string, replied_at: string|null, file: string|null}>
      */
     public function mine(User $user): array
     {
@@ -101,11 +101,12 @@ final class SupportTickets
         app(AuditLogger::class)->record('hq.support.replied', metadata: ['ticket' => $ulid, 'tenant' => (int) $t->tenant_id], severity: 'notice');
     }
 
-    /** @return array{ulid: string, topic: string, subject: string, body: string, status: string, reply: string|null, created_at: string, replied_at: string|null} */
+    /** @return array{ulid: string, topic: string, subject: string, body: string, status: string, reply: string|null, created_at: string, replied_at: string|null, file: string|null} */
     private static function row(\stdClass $t): array
     {
         return ['ulid' => (string) $t->ulid, 'topic' => self::TOPICS[$t->topic] ?? (string) $t->topic, 'subject' => (string) $t->subject,
             'body' => Crypt::decryptString((string) $t->body), 'status' => (string) $t->status, 'reply' => $t->reply !== null ? Crypt::decryptString((string) $t->reply) : null,
-            'created_at' => (string) $t->created_at, 'replied_at' => $t->replied_at !== null ? (string) $t->replied_at : null];
+            'created_at' => (string) $t->created_at, 'replied_at' => $t->replied_at !== null ? (string) $t->replied_at : null,
+            'file' => isset($t->file_path) ? (string) ($t->file_name ?? 'file') : null];
     }
 }

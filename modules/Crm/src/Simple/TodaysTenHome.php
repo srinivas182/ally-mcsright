@@ -7,6 +7,7 @@ namespace Modules\Crm\Simple;
 use App\Models\User;
 use Modules\Billing\Entitlements;
 use Modules\Core\Simple\HomePeople;
+use Modules\Crm\Brief\MorningList;
 use Modules\Crm\Inbox\SendGuard;
 use Modules\Crm\TodaysTen;
 
@@ -35,5 +36,10 @@ final class TodaysTenHome implements HomePeople
             return ['ulid' => (string) $p['ulid'], 'name' => (string) $p['name'], 'reason' => (string) $p['reason'], 'phone' => $phone,
                 'call' => $phone !== null && (bool) $p['can_call'], 'text' => $phone !== null && (bool) $p['can_text'] && $wait === null, 'text_wait' => $wait];
         }, $this->today->for($user, 10));
+    }
+
+    public function listLink(User $user): ?string
+    {
+        return $this->entitlements->allows($user, 'crm.intelligence') ? app(MorningList::class)->link($user) : null;
     }
 }

@@ -54,6 +54,9 @@ final class TeamServiceProvider extends ServiceProvider
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'team'); // SX5: printable cheat sheets
+        if ($this->app->runningInConsole()) {
+            $this->commands([Console\CleanupConcierge::class]); // SX6
+        }
         $this->app->make(NoticeTypes::class)->register(MentionMail::class, 'Unread @mentions in team chat', 'Team');
         self::handoffs($this->app->make(Handoffs::class)); // AS1
         $nav = $this->app->make(NavigationRegistry::class);

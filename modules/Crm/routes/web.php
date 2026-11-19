@@ -22,6 +22,7 @@ use Modules\Crm\Http\Controllers\Leads\LeadApiController;
 use Modules\Crm\Http\Controllers\Leads\LeadConnectController;
 use Modules\Crm\Http\Controllers\Leads\LeadController;
 use Modules\Crm\Http\Controllers\Leads\LeadFormController;
+use Modules\Crm\Http\Controllers\MorningListController;
 use Modules\Crm\Http\Controllers\PipelineController;
 use Modules\Crm\Http\Controllers\PlanController;
 use Modules\Crm\Http\Controllers\PortabilityController;
@@ -119,6 +120,7 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function
     Route::put('follow-up-plans/{plan}', [PlanController::class, 'update'])->name('crm.plans.update');
     Route::post('follow-up-plans/{plan}/toggle', [PlanController::class, 'toggle'])->name('crm.plans.toggle');
     Route::post('plan-enrollments/{enrollment}/stop', [PlanController::class, 'stop'])->name('crm.plans.stop');
+    Route::post('brief/morning-text', [MorningListController::class, 'text'])->middleware('throttle:10,1')->name('crm.morning-text'); // SX6
     Route::post('practice', [PracticeController::class, 'start'])->middleware('throttle:5,1')->name('crm.practice.start'); // SX5
     Route::post('practice/clear', [PracticeController::class, 'clear'])->middleware('throttle:5,1')->name('crm.practice.clear');
     Route::post('voice/transcribe', [AskController::class, 'transcribe'])->middleware('feature:crm.ai')->middleware('throttle:30,1')->name('crm.voice.transcribe');
@@ -238,3 +240,9 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoff
     Route::delete('searches/{search}', [SavedSearchController::class, 'destroy'])->name('crm.searches.destroy');
 });
 Route::middleware(['tenant', EnsureTenantWorkspace::class, 'throttle:30,1,alert-stop'])->match(['get', 'post'], 'alerts/{search}/stop', [SavedSearchController::class, 'stop'])->name('crm.alerts.stop');
+
+// SX6: "your list for today" from the morning email or text — no sign-in; a signed link for one agent, until midnight.
+Route::middleware(['web', EnsureTenantWorkspace::class, 'signed:relative', 'throttle:30,1,morning-list'])->group(function (): void {
+    Route::get('morning/{user}', [MorningListController::class, 'show'])->where('user', '[0-9A-HJKMNP-TV-Z]{26}')->name('crm.morning-list');
+    Route::post('morning/{user}', [MorningListController::class, 'log'])->where('user', '[0-9A-HJKMNP-TV-Z]{26}')->name('crm.morning-list.log');
+});

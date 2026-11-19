@@ -30,7 +30,7 @@ const RS_PUBLIC = [
     'links sent to clients by email or text (token or signature checked in the controller)' => ['#^my-deal(/|$)#', '#^sign/#', '#^verify-document$#', '#^offer/#',
         '#^cda/#', '#^appointment/#', '#^consent/#', '#^deal-upload/#', '#^take-my-people/#', '#^book/#', '#^l/#', '#^cma/#', '#^estimate/#', '#^calendar/#',
         '#^shared/doc/#', '#^privacy-copy/#', '#^my-home/#', '#^showing-feedback/#', '#^alerts/\{search\}/stop$#', '#^home-reports/\{report\}/stop$#',
-        '#^market-reports/\{report\}/stop$#', '#^recruiting-stop/#'],
+        '#^market-reports/\{report\}/stop$#', '#^recruiting-stop/#', '#^morning/\{user\}$#'],
     'webhooks (each checks the provider\'s signature or secret)' => ['#^webhooks/#', '#^billing/(webhook|twilio/call-status)$#', '#^payout-rails/#',
         '#^connect/apps/\{app\}/webhook$#', '#^connect/hooks/#', '#^connect/oauth/callback$#', '#^connect/canva/return$#'],
     'API with its own keys and limits' => ['#^api/v1/#', '#^api/zapier/#', '#^api/leads$#', '#^mcp$#'],
