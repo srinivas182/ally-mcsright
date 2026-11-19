@@ -56,6 +56,8 @@ final class ModuleCatalog
             'features' => [], 'usage' => [['property_lookups', 'data.property', 10, 'package']]],
         'learn' => ['label' => 'Learn and coaching', 'about' => 'Courses, role-play practice and coaching.', 'audience' => ['brokerage', 'agent'],
             'features' => [], 'usage' => [['ai_credits', self::AI_CREDIT, 20, 'seat']]],
+        'blog_writer' => ['label' => 'AI blog writer', 'about' => 'Unique local articles for your website under your name, checked and approved by you, to build your name in search.', 'audience' => ['brokerage', 'agent'],
+            'features' => ['content.blog'], 'usage' => [['ai_credits', self::AI_CREDIT, 100, 'package']]],
         'recruiting' => ['label' => 'Recruiting', 'about' => 'Find and invite agents to join the brokerage.', 'audience' => ['brokerage'],
             'features' => [], 'usage' => [['emails', 'postmark.email', 500, 'package']]],
     ];

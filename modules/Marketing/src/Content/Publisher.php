@@ -7,12 +7,17 @@ namespace Modules\Marketing\Content;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Services\OutsideServices;
 use Modules\Core\Support\Connections;
 use Modules\Core\Support\SafeUrl;
 use Modules\Marketing\Website;
+use Modules\Sites\Content\Posts;
+use Modules\Sites\Models\SitePost;
+use Modules\Sites\SiteAccess;
+use Modules\Sites\SiteSetup;
 use Throwable;
 
 /**
@@ -83,29 +88,84 @@ final class Publisher
         return $url;
     }
 
-    public function reject(string $ulid, User $by, string $why): void
+    /**
+     * MK4: a brokerage's owner or staff approves a draft from its own blog writer. It becomes a post on the brokerage's
+     * website with the author named and a short "who wrote this" line; in Test mode it stays a website draft.
+     *
+     * @param  array{title?: string, description?: string, body?: string}  $edits
+     */
+    public function approveForTenant(int $tenantId, string $ulid, User $by, array $edits = []): string
     {
-        DB::connection(Connections::control())->table('content_drafts')->where('ulid', $ulid)->where('status', 'review')->where('tenant_id', 0)
+        if (! SiteAccess::manager($by)) {
+            throw ValidationException::withMessages(['draft' => 'Your broker approves posts before they go on the website.']);
+        }
+        $db = DB::connection(Connections::control())->table('content_drafts');
+        $d = $db->clone()->where('ulid', $ulid)->where('status', 'review')->where('tenant_id', $tenantId)->first();
+        if ($tenantId < 1 || $d === null) {
+            throw ValidationException::withMessages(['draft' => 'This draft has already been answered.']);
+        }
+        $sites = app(SiteSetup::class);
+        $site = $sites->brokerageSite();
+        if ($site === null) {
+            throw ValidationException::withMessages(['draft' => 'Set up your website first (Settings → Website).']);
+        }
+        $desk = DB::connection(Connections::control())->table('content_desks')->where('id', $d->desk_id)->where('tenant_id', $tenantId)->first();
+        $live = $desk?->mode === 'live';
+        $agent = $desk?->user_id !== null ? User::query()->find((int) $desk->user_id) : null;
+        $info = (array) $site->info;
+        $title = trim($edits['title'] ?? (string) $d->title);
+        $description = trim($edits['description'] ?? (string) $d->description);
+        $body = trim($edits['body'] ?? (string) $d->body);
+        $faq = array_values(array_filter((array) json_decode((string) $d->faq, true), 'is_array'));
+        $faqText = $faq === [] ? '' : "\n\n## Questions\n\n".implode("\n\n", array_map(fn (array $q): string => '**'.trim((string) ($q['q'] ?? '')).'** '.trim((string) ($q['a'] ?? '')), $faq));
+        $licence = trim((string) ($info['licence'] ?? ''));
+        $byline = "\n\n---\n\n*Written for ".trim((string) ($info['name'] ?? '')).($agent !== null ? ' by '.$agent->name : '')
+            .($licence !== '' ? ' (licence '.$licence.')' : '').'. Market figures come from MLS listings and change daily; ask us for today\'s numbers.*';
+        $slug = mb_substr(Str::slug($title), 0, 100);
+        for ($n = 2; SitePost::query()->where('site_id', $site->id)->where('slug', $slug)->exists(); $n++) {
+            $slug = mb_substr(Str::slug($title), 0, 95).'-'.$n;
+        }
+        $post = app(Posts::class)->save($site, null, ['title' => mb_substr($title, 0, 160), 'slug' => $slug, 'excerpt' => $description, 'meta_description' => $description,
+            'seo_title' => mb_substr($title, 0, 70), 'category' => 'Local guides', 'body' => $body.$faqText.$byline, 'status' => $live ? 'published' : 'draft'], $by);
+        if ($agent !== null) {
+            $post->forceFill(['author_user_id' => $agent->id])->save();
+        }
+        $host = $sites->liveHost();
+        $url = $host !== null ? 'https://'.$host.'/blog/'.$post->slug : '/blog/'.$post->slug;
+        $db->clone()->where('id', $d->id)->update(['title' => mb_substr($title, 0, 120), 'description' => mb_substr($description, 0, 300), 'body' => $body, 'status' => 'published',
+            'reviewed_by' => $by->id, 'reviewed_at' => now(), 'published_url' => $url, 'ref' => $post->ulid, 'updated_at' => now()]);
+        $this->audit->record('marketing.blog_writer.published', $post, metadata: ['draft' => $ulid, 'live' => $live], severity: 'info');
+        if ($live && $host !== null) {
+            // Search engines are told at once; sharing to social media stays with the brokerage's own tools.
+            $this->announce($url, $title, $description, share: false, perHost: true);
+        }
+
+        return $url;
+    }
+
+    public function reject(string $ulid, User $by, string $why, int $tenantId = 0): void
+    {
+        DB::connection(Connections::control())->table('content_drafts')->where('ulid', $ulid)->where('status', 'review')->where('tenant_id', $tenantId)
             ->update(['status' => 'rejected', 'note' => mb_substr(trim($why) ?: 'Rejected', 0, 300), 'reviewed_by' => $by->id, 'reviewed_at' => now(), 'updated_at' => now()]);
     }
 
-    /** The IndexNow key, served at /indexnow-key.txt on RightAlly's website. */
-    public static function indexNowKey(): string
+    /** The IndexNow key, served at /indexnow-key.txt on RightAlly's website (and, per host, on every brokerage website). */
+    public static function indexNowKey(?string $host = null): string
     {
-        return substr(hash('sha256', (string) config('app.key').'|indexnow'), 0, 32);
+        return substr(hash('sha256', (string) config('app.key').'|indexnow'.($host !== null ? '|'.strtolower($host) : '')), 0, 32);
     }
 
     /** Tell search engines and share; failures are reported, never block publishing. */
-    public function announce(string $url, string $title, string $summary): void
+    public function announce(string $url, string $title, string $summary, bool $share = true, bool $perHost = false): void
     {
         $host = (string) parse_url($url, PHP_URL_HOST);
         try {
-            Http::timeout(10)->post('https://api.indexnow.org/indexnow', ['host' => $host, 'key' => self::indexNowKey(),
+            Http::timeout(10)->post('https://api.indexnow.org/indexnow', ['host' => $host, 'key' => self::indexNowKey($perHost ? $host : null),
                 'keyLocation' => 'https://'.$host.'/indexnow-key.txt', 'urlList' => [$url]]);
         } catch (Throwable $e) {
             report($e);
         }
-        $share = $this->services->active('social_share');
+        $share = $share ? $this->services->active('social_share') : null;
         if ($share === null) {
             return;
         }

@@ -148,3 +148,32 @@ the server:
 
 **AI.** Writing uses the `marketing.content` route in HQ → AI gateway, with prompt `marketing.content_desk`. The cost
 is charged to HQ, or to the brokerage for MK4 desks.
+
+## MK4: the AI blog writer (an extra for brokerages and agents)
+
+The content desk, sold as an add-on. It writes local posts for home buyers and sellers on the brokerage's own
+website, under the brokerage's name or one of its agents' (Settings → AI blog writer, `/settings/blog-writer`).
+
+**How HQ sells it.** It is module `blog_writer` (feature `content.blog`) in the package builder: put it in a package,
+or create an extra of kind _module_ with key `blog_writer` under HQ → Package builder → Extras. Its cost line is AI
+credits (100 a month at cost + 70%). Solo agents can have it too (it is in the agent audience).
+
+**Never thin, never duplicate — even with ten brokerages in one city.**
+
+| Rule                                     | How it is enforced                                                                                                                                                                                                           |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Something only this brokerage can say    | Every post must use the owner's own words or their MLS figures for the area. With neither, the night is skipped, no AI is spent, and the owner is told what to add.                                                          |
+| No two sites in a city get the same post | Topics and angles are booked city by city across every desk (HQ and every brokerage) for 6 months; the owner's own ideas are booked to them alone.                                                                           |
+| Never like anything else in the state    | Each draft is compared (5-word shingles) with everything written in the state by anyone; over 20% alike → rewritten, then skipped. Other brokerages' drafts are compared on our side and never shown to the AI or the owner. |
+| Never more than search engines trust     | The same levels as HQ: 3 a week to start; up to 1 a day after 4 healthy weeks (≥ 10 approved, ≥ 80% indexed, no warnings). A brokerage site never goes above 1 a day. Without Search Console numbers it stays at 3 a week.   |
+| A person approves every post             | Only owners and staff approve (the broker supervises the brokerage's advertising). An agent with their own writer adds ideas and words and sees how posts are doing.                                                         |
+| Honest authorship                        | Each post ends "Written for {brokerage} by {agent} (licence …)"; facts are checked for Fair Housing wording, other company names and "cheap" claims; numbers come only from the data given.                                  |
+
+**Publishing.** Approving puts the post on the website's blog (category "Local guides"); the sitemap and llms.txt
+include it at once, and IndexNow is told using the website's own key (`/indexnow-key.txt` on every brokerage
+site). Practice mode keeps approved posts as website drafts. Social sharing stays with the brokerage's own tools.
+
+**Nightly.** `content:tenant-desks` at 03:45 (after HQ's `content:desk`, which also moves every desk's level). A desk
+whose extra was stopped, or whose agent left, writes nothing.
+
+**Defaults to review:** 100 AI credits a month in the module's cost; "Local guides" category; the byline wording.

@@ -30,6 +30,17 @@ final class Topics
         'recruiting' => ['article', 'How {city} brokerages attract and keep agents', ['training', 'tools', 'support']],
     ];
 
+    /** MK4: what a brokerage's or agent's blog writes about — for home buyers and sellers in their area. */
+    public const TENANT = [
+        'market-update' => ['post', '{city} homes this month: prices, choice and speed', ['buyers', 'sellers', 'investors']],
+        'first-time' => ['post', 'Buying your first home in {city}', ['saving-up', 'pre-approval', 'making-an-offer']],
+        'selling-prep' => ['post', 'Getting your {city} home ready to sell', ['repairs', 'pricing', 'timing']],
+        'downsizing' => ['post', 'Moving to a smaller home in {city}', ['when', 'what-to-keep', 'buying-and-selling']],
+        'neighbourhoods' => ['post', 'Places to live around {city}: what each offers', ['commute', 'homes', 'parks-and-shops']],
+        'costs' => ['post', 'What buying a home in {city} really costs', ['closing-costs', 'taxes', 'insurance']],
+        'relocating' => ['post', 'Moving to {city}: a practical guide', ['first-month', 'renting-or-buying', 'schools-and-services']],
+    ];
+
     public const STATES = ['AL' => 'Alabama', 'AK' => 'Alaska', 'AZ' => 'Arizona', 'AR' => 'Arkansas', 'CA' => 'California', 'CO' => 'Colorado', 'CT' => 'Connecticut',
         'DE' => 'Delaware', 'FL' => 'Florida', 'GA' => 'Georgia', 'HI' => 'Hawaii', 'ID' => 'Idaho', 'IL' => 'Illinois', 'IN' => 'Indiana', 'IA' => 'Iowa', 'KS' => 'Kansas',
         'KY' => 'Kentucky', 'LA' => 'Louisiana', 'ME' => 'Maine', 'MD' => 'Maryland', 'MA' => 'Massachusetts', 'MI' => 'Michigan', 'MN' => 'Minnesota', 'MS' => 'Mississippi',

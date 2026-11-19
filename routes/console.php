@@ -134,6 +134,7 @@ Schedule::command('billing:bill-subsidies')->monthlyOn(1, '05:00')->onOneServer(
 Schedule::command('billing:bill-addons')->monthlyOn(1, '05:10')->onOneServer(); // PB2
 Schedule::command('billing:demo-cleanup')->dailyAt('02:40')->onOneServer(); // MK2
 Schedule::command('content:desk')->dailyAt('03:15')->onOneServer(); // MK3: drafts ready for the morning review
+Schedule::command('content:tenant-desks')->dailyAt('03:45')->onOneServer(); // MK4: brokerage blog writers' drafts
 // Partner statements for last month and payouts by Stripe Connect (specs/core/07).
 Schedule::command('billing:partner-payouts')->monthlyOn(2, '06:00')->onOneServer();
 // Agents' recurring fee invoices, reminders and late fees (specs/finance/02, part 4).
