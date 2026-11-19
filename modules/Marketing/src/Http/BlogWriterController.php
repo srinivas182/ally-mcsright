@@ -39,7 +39,7 @@ final class BlogWriterController
         $drafts = DB::connection(Connections::control())->table('content_drafts')->where('tenant_id', (int) $this->tenants->id())->whereIn('desk_id', $ids === [] ? [0] : $ids);
         $site = $sites->brokerageSite();
         $info = $site !== null ? (array) $site->info : [];
-        $names = User::query()->whereIn('id', array_filter(array_map(fn (stdClass $d): ?int => $d->user_id !== null ? (int) $d->user_id : null, $mine)))->pluck('name', 'id');
+        $names = User::query()->whereIn('id', array_filter(array_map(fn (stdClass $d): ?int => $d->user_id !== null ? (int) $d->user_id : null, $mine)))->get(['id', 'first_name', 'last_name'])->mapWithKeys(fn (User $u): array => [$u->id => $u->name]);
 
         return Inertia::render('settings/blog-writer', [
             'included' => TenantDesk::included($user),
@@ -47,7 +47,7 @@ final class BlogWriterController
             'hasSite' => $sites->brokerageSite() !== null,
             'defaults' => ['state' => strtoupper((string) ($info['state'] ?? '')), 'cities' => (string) ($info['area'] ?? '')],
             'states' => Topics::STATES,
-            'agents' => $manager ? User::query()->orderBy('name')->limit(500)->get(['id', 'name'])->map(fn (User $u): array => ['id' => $u->id, 'name' => $u->name])->values() : [],
+            'agents' => $manager ? User::query()->orderBy('first_name')->orderBy('last_name')->limit(500)->get(['id', 'first_name', 'last_name'])->map(fn (User $u): array => ['id' => $u->id, 'name' => $u->name])->values() : [],
             'desks' => array_map(function (stdClass $d) use ($names): array {
                 $inputs = (array) json_decode((string) ($d->inputs ?? '{}'), true);
 
