@@ -10,6 +10,7 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\URL;
 use Modules\Billing\Models\Package;
+use Modules\Marketing\Showcase;
 use Modules\Marketing\Website;
 use Modules\Sites\Content\Posts;
 use stdClass;
@@ -169,14 +170,29 @@ final class SiteController
         if ($faq !== []) {
             $graph[] = ['@type' => 'FAQPage', 'mainEntity' => $faq];
         }
-        $packages = in_array('pricing', array_column($blocks, 'type'), true) || $slug === '' ? Package::offered('brokerage') : collect();
+        // MK1: prices, included modules and the savings calculator read live from the package builder, per audience.
+        $audiences = [];
+        foreach ($blocks as $b) {
+            if (in_array($b['type'], ['pricing', 'modules', 'savings'], true)) {
+                $audiences[(string) ($b['audience'] ?? 'brokerage')] = true;
+            }
+        }
+        $byAudience = [];
+        foreach (array_keys($audiences) as $a) {
+            $byAudience[$a] = Package::offered($a);
+        }
+        $packages = in_array('pricing', array_column($blocks, 'type'), true) || $slug === '' ? ($byAudience['brokerage'] ?? Package::offered('brokerage')) : collect();
+        $showcase = [];
+        foreach ($byAudience as $a => $list) {
+            $showcase[$a] = Showcase::for($a, $list);
+        }
         if ($packages->isNotEmpty()) {
             $graph[] = ['@type' => 'SoftwareApplication', 'name' => 'RightAlly', 'applicationCategory' => 'BusinessApplication', 'operatingSystem' => 'Web, iOS, Android',
                 'offers' => $packages->map(fn (Package $p): array => ['@type' => 'Offer', 'name' => $p->name, 'price' => number_format(((int) $p->monthly_cents) / 100, 2, '.', ''),
                     'priceCurrency' => 'USD', 'url' => 'https://'.config('core.hq_host').'/start'])->values()->all()];
         }
 
-        return $this->view('marketing::page', $locale, $slug, $title, $description, $preview, ['blocks' => $blocks, 'packages' => $packages], $graph);
+        return $this->view('marketing::page', $locale, $slug, $title, $description, $preview, ['blocks' => $blocks, 'packages' => $packages, 'byAudience' => $byAudience, 'showcase' => $showcase], $graph);
     }
 
     /**

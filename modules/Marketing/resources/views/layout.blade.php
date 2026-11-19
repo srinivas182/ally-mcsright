@@ -48,6 +48,7 @@
         details{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px 18px;margin:0 0 10px}summary{font-weight:700;cursor:pointer;min-height:32px}
         table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line)}td,th{padding:12px;border-top:1px solid var(--line);text-align:left;vertical-align:top}th{background:var(--bg)}
         .tablewrap{overflow-x:auto}.price{font-size:36px;font-weight:800}
+        .doors .door{display:grid;gap:10px;text-decoration:none;color:var(--ink);border-width:2px}.doors .door:hover,.doors .door:focus-visible{border-color:var(--brand)}.doors .door h3{font-size:26px}
         ol.steps{counter-reset:s;list-style:none;padding:0;display:grid;gap:12px}ol.steps li{counter-increment:s;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px 16px 64px;position:relative}
         ol.steps li::before{content:counter(s);position:absolute;left:18px;top:14px;width:32px;height:32px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center;font-weight:800}
         blockquote{margin:0}.prose{max-width:72ch}.prose img{max-width:100%;height:auto}

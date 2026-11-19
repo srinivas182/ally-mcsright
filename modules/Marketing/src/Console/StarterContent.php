@@ -18,7 +18,7 @@ use Modules\Marketing\Website;
  */
 final class StarterContent extends Command
 {
-    protected $signature = 'marketing:starter';
+    protected $signature = 'marketing:starter {--refresh : Save the latest starter content as a new draft of pages that already exist (HQ reviews and publishes)}';
 
     protected $description = "Add RightAlly's starter website pages (existing pages are left alone)";
 
@@ -33,7 +33,13 @@ final class StarterContent extends Command
         }
         $added = 0;
         foreach (self::pages() as [$locale, $slug, $title, $description, $blocks, $publish]) {
-            if ($site->page($locale, $slug) !== null) {
+            $existing = $site->page($locale, $slug);
+            if ($existing !== null) {
+                if ($this->option('refresh')) { // MK1: a new draft beside what is live; nothing changes until HQ publishes it
+                    $site->saveDraft((string) $existing->ulid, $locale, $slug, $title, $description, $blocks, $by);
+                    $added++;
+                }
+
                 continue;
             }
             $ulid = $site->saveDraft(null, $locale, $slug, $title, $description, $blocks, $by);
@@ -58,26 +64,47 @@ final class StarterContent extends Command
             'label' => 'Empezar', 'href' => '/start'];
 
         return [
-            ['en', '', 'RightAlly: the all-in-one platform for real estate brokerages', 'Website, CRM, transactions, compliance, commissions, accounting and AI assistants for US brokerages, in one place, with public prices.', [
-                ['type' => 'hero', 'heading' => 'Everything your brokerage runs on, in one place', 'text' => 'Website and IDX, CRM and lead follow-up, deals and compliance, commissions and payouts, accounting, recruiting and training, with AI assistants that do the busywork.',
-                    'cta_label' => 'Start now', 'cta_href' => '/start', 'second_label' => 'Free Health Check', 'second_href' => '/health-check'],
-                ['type' => 'answer', 'question' => 'What is RightAlly?', 'answer' => 'RightAlly is an all-in-one platform for US real estate brokerages. It replaces separate website, CRM, transaction, compliance, commission and accounting tools with one system that agents and staff can learn quickly, with public prices and online signup.'],
-                ['type' => 'features', 'heading' => 'What you get', 'items' => [
-                    ['title' => 'Grow', 'text' => 'Your website with IDX search, lead capture, AI follow-up, marketing and a referral network with other brokerages.'],
-                    ['title' => 'Run', 'text' => 'Deals, documents and e-signing, deadlines and state rules, with an AI transaction coordinator.'],
-                    ['title' => 'Money', 'text' => 'Commission plans, caps and revenue share, agent payouts, 1099s and brokerage accounting.'],
-                    ['title' => 'Protect', 'text' => 'Fair Housing checks, texting consent, audit trails and access controls built in.'],
+            ['en', '', 'RightAlly: run your whole brokerage in one place', 'Website, CRM, deals, e-sign, commissions, accounting and AI help for US brokerages and agents, in one place, on one bill.', [
+                ['type' => 'hero', 'heading' => 'Run your whole real estate business in one place', 'text' => 'Your website, CRM, deals and e-sign, commissions, accounting and AI help, on one bill, easy enough for anyone, and set up for you.',
+                    'cta_label' => 'Choose a package', 'cta_href' => '/pricing', 'second_label' => 'Free Health Check', 'second_href' => '/health-check'],
+                ['type' => 'doors', 'heading' => 'Which one are you?', 'broker_heading' => 'I run a brokerage', 'broker_text' => 'One system for your agents, deals, compliance and money, with nothing to stitch together.', 'broker_href' => '/for-brokers',
+                    'agent_heading' => 'I\'m an agent', 'agent_text' => 'Know who to call today, follow up in a tap, and build your own name.', 'agent_href' => '/for-agents'],
+                ['type' => 'answer', 'question' => 'What is RightAlly?', 'answer' => 'RightAlly is one system for US real estate brokerages and agents: website and leads, CRM and follow-up, deals and e-signatures, commissions and payouts, accounting, training and AI help. It replaces separate tools with one login and one bill, and RightAlly moves your people, deals and files over for you.'],
+                ['type' => 'modules', 'heading' => 'Everything in one place', 'audience' => 'brokerage'],
+                ['type' => 'savings', 'heading' => 'What do you pay today?', 'text' => 'Add up the separate tools you pay for now and see it next to one RightAlly bill.', 'audience' => 'brokerage'],
+                ['type' => 'steps', 'heading' => 'We move you', 'items' => [
+                    ['title' => 'Choose a package', 'text' => 'Pay online; your account is ready straight away.'],
+                    ['title' => 'Send us your spreadsheets', 'text' => 'Your people, agents and deals, as they are. We set them up for you.'],
+                    ['title' => 'Start in days', 'text' => 'Your website goes live with ready-made content, and a checklist shows what is left.'],
                 ]],
-                ['type' => 'steps', 'heading' => 'How switching works', 'items' => [
-                    ['title' => 'Sign up online', 'text' => 'Choose a package and pay; your brokerage is created straight away.'],
-                    ['title' => 'Bring your old files', 'text' => 'People, agents and deals come over from spreadsheets and the apps you use now.'],
-                    ['title' => 'Go live in 30 days', 'text' => 'A plan that ticks itself off, with a named coach.'],
+                ['type' => 'features', 'heading' => 'Easy for everyone', 'items' => [
+                    ['title' => 'Today\'s 10', 'text' => 'Who to call today and why, with big Call and Text buttons.'],
+                    ['title' => 'Talk instead of type', 'text' => 'A microphone on every page: say what you need.'],
+                    ['title' => 'Help on every page', 'text' => 'A 1-minute video, a printable cheat sheet, or ask us to call you back.'],
+                    ['title' => 'Practice first', 'text' => 'Try everything on made-up clients before using it with real ones.'],
                 ]],
+                ['type' => 'features', 'heading' => 'Your data stays yours', 'items' => [
+                    ['title' => 'Kept apart', 'text' => 'Each brokerage\'s data is separate, and an agent\'s private contacts stay theirs.'],
+                    ['title' => 'Safe sign-in', 'text' => 'Fingerprint or face sign-in (passkeys) and a second step for everyone.'],
+                    ['title' => 'Every change recorded', 'text' => 'A tamper-evident record of who did what, which you can export.'],
+                    ['title' => 'Never sold', 'text' => 'Your leads and your clients\' details are never sold or shared.'],
+                ]],
+                ['type' => 'pricing', 'heading' => 'Public prices', 'note' => 'Prices in US dollars, monthly or yearly. Taxes may apply.', 'audience' => 'brokerage'],
                 ['type' => 'faq', 'heading' => '', 'items' => [
-                    ['q' => 'Do I need a demo before signing up?', 'a' => 'No. Prices are public and you can sign up online. A coach helps you go live.'],
+                    ['q' => 'Do I need a demo before signing up?', 'a' => 'No. Prices are public and you can sign up online. We set up your people and deals for you.'],
                     ['q' => 'Can agents use it on their phone?', 'a' => 'Yes. RightAlly works in the phone\'s browser and can be added to the home screen like an app.'],
-                    ['q' => 'Is it available in Spanish?', 'a' => 'Yes. Agents can choose Spanish for the menus, search and the simple view, and client pages are in English and Spanish.'],
+                    ['q' => 'Is it hard to learn?', 'a' => 'No. There is a simple view with big buttons, a microphone on every page, help on every page and practice clients to try things on.'],
+                    ['q' => 'Is it available in Spanish?', 'a' => 'Yes. Menus, the simple view and client pages work in English and Spanish.'],
                 ]],
+                $startEn,
+            ], true],
+            ['en', 'for-brokers', 'RightAlly for brokerages: one system, one bill', 'For broker owners: agents, deals, compliance, commissions, accounting and your website in one system, set up for you.', [
+                ['type' => 'hero', 'heading' => 'One system for your whole brokerage', 'text' => 'Agents, deals and compliance, commissions and payouts, accounting, recruiting and your website, on one bill. We move you in.',
+                    'cta_label' => 'Choose a package', 'cta_href' => '/pricing', 'second_label' => 'Free Health Check', 'second_href' => '/health-check'],
+                ['type' => 'answer', 'question' => 'Why do brokerages choose RightAlly?', 'answer' => 'Because it replaces many separate tools with one system, one login and one bill; it is easy for agents of every age; client data is kept safe and apart; and RightAlly moves your people, agents and deals over for you.'],
+                ['type' => 'modules', 'heading' => 'What your brokerage gets', 'audience' => 'brokerage'],
+                ['type' => 'savings', 'heading' => 'What do you pay today?', 'text' => 'Add up what your brokerage pays for separate tools now.', 'audience' => 'brokerage'],
+                ['type' => 'pricing', 'heading' => 'Brokerage packages', 'note' => 'Prices in US dollars, monthly or yearly. Need more texts or an extra module later? Add it on its own.', 'audience' => 'brokerage'],
                 $startEn,
             ], true],
             ['es', '', 'RightAlly: la plataforma todo en uno para corredurías', 'Sitio web, CRM, operaciones, cumplimiento, comisiones, contabilidad y asistentes de IA para corredurías en EE. UU., en un solo lugar.', [
@@ -125,13 +152,16 @@ final class StarterContent extends Command
             ['en', 'for-agents', 'RightAlly for agents: your business on your phone', 'For agents: contacts, follow-up, deals and commissions on your phone, with AI that drafts and reminds, in English or Spanish.', [
                 ['type' => 'hero', 'heading' => 'Your business, on your phone', 'text' => 'See who to call today, follow up in a tap, track your deals and know what you will be paid.', 'cta_label' => 'Start now', 'cta_href' => '/start',
                     'second_label' => '', 'second_href' => ''],
+                ['type' => 'modules', 'heading' => 'What you get', 'audience' => 'agent'],
+                ['type' => 'savings', 'heading' => 'What do you pay today?', 'text' => 'Add up the tools you pay for yourself now.', 'audience' => 'agent'],
+                ['type' => 'pricing', 'heading' => 'Plans for agents', 'note' => 'Prices in US dollars, monthly or yearly.', 'audience' => 'agent'],
                 ['type' => 'answer', 'question' => 'Can a solo agent use RightAlly?', 'answer' => 'Yes. Solo agents can sign up for their own plan, use the CRM, follow-up, website and deal tools on their phone, and keep their contacts if they move brokerages. Brokerages can also give every agent access as part of their package.'],
                 $startEn,
             ], true],
             ['en', 'security', 'RightAlly security and privacy', 'How RightAlly protects brokerage and client data: separate databases, encryption, two-step sign-in, audit trails and consent rules.', [
                 ['type' => 'hero', 'heading' => 'Your data stays yours', 'text' => 'Each brokerage\'s data is kept apart, encrypted, and never sold.', 'cta_label' => '', 'cta_href' => '', 'second_label' => '', 'second_href' => ''],
                 ['type' => 'features', 'heading' => 'How we protect it', 'items' => [
-                    ['title' => 'Two-step sign-in', 'text' => 'Every account can use an authenticator app, and owners can require it.'],
+                    ['title' => 'Safe sign-in', 'text' => 'Fingerprint or face sign-in (passkeys), and a second step for everyone.'],
                     ['title' => 'Audit trail', 'text' => 'Who did what and when is recorded and can be exported.'],
                     ['title' => 'Support asks first', 'text' => 'Brokerages can require RightAlly support to ask before viewing their account, and see every visit.'],
                     ['title' => 'Texting consent', 'text' => 'Only people who agreed can be texted, between 8am and 9pm their time.'],
