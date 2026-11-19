@@ -90,7 +90,7 @@ final class BrokeragePayments
         }
         if ($type === 'invoice.paid' && ($object['billing_reason'] ?? '') !== 'subscription_create') { // the first payment is counted at signup
             // RF1: what the brokerage pays in its first year counts toward its referrer's reward.
-            app(Affiliates\Affiliates::class)->paid($tenantId, (int) ($object['amount_paid'] ?? 0), $current->interval === 'year' ? intdiv((int) $current->price_cents, 12) : (int) $current->price_cents);
+            app(Affiliates\Affiliates::class)->paid($tenantId, (int) ($object['amount_paid'] ?? 0));
         }
         match ($type) {
             'invoice.paid' => $db->table('billing_tenant_subscriptions')->where('id', $current->id)->update(['status' => 'active', 'grace_until' => null, 'updated_at' => now()]),

@@ -27,16 +27,19 @@ type Props = {
     }[];
     token: { code: string; link: string; dashboard: string } | null;
     share: number;
+    brokerageShare: number;
 };
 
-/** RF1: HQ adds coaches and influencers, and pays confirmed referral rewards. */
+/** RF1: HQ adds coaches and influencers, and pays confirmed referral rewards. PB3: HQ sets both shares. */
 export default function Affiliates({
     affiliates,
     referrals,
     token,
     share,
+    brokerageShare,
 }: Props) {
     const form = useForm({ name: '', email: '' });
+    const rewards = useForm({ person: share, brokerage: brokerageShare });
 
     return (
         <>
@@ -44,8 +47,56 @@ export default function Affiliates({
             <div className="flex flex-col gap-6 p-4 md:p-6">
                 <PageHeader
                     title="Referral programme"
-                    description={`People earn ${share}% of a referred brokerage's first-year payments (cash). Brokerages earn a month of credit. Rewards are confirmed 30 days after the first payment; you pay them and mark them paid here.`}
+                    description={`People earn ${share}% of a referred brokerage's first-year payments (cash). Brokerages earn ${brokerageShare}% as credit on their own bill. Rewards are confirmed 30 days after the first payment; you pay them and mark them paid here.`}
                 />
+                <form
+                    className="flex flex-wrap items-end gap-3 rounded-lg border p-4"
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        rewards.post('/hq/affiliates/rewards', {
+                            preserveScroll: true,
+                        });
+                    }}
+                >
+                    <label className="grid gap-1 text-sm">
+                        People earn (% of first year, cash)
+                        <Input
+                            type="number"
+                            min={0}
+                            max={50}
+                            value={rewards.data.person}
+                            onChange={(e) =>
+                                rewards.setData(
+                                    'person',
+                                    Number(e.target.value),
+                                )
+                            }
+                        />
+                    </label>
+                    <label className="grid gap-1 text-sm">
+                        Brokerages earn (% of first year, as credit)
+                        <Input
+                            type="number"
+                            min={0}
+                            max={50}
+                            value={rewards.data.brokerage}
+                            onChange={(e) =>
+                                rewards.setData(
+                                    'brokerage',
+                                    Number(e.target.value),
+                                )
+                            }
+                        />
+                    </label>
+                    <Button type="submit" disabled={rewards.processing}>
+                        Save shares
+                    </Button>
+                    {rewards.errors.person && (
+                        <p className="w-full text-sm text-destructive">
+                            {rewards.errors.person}
+                        </p>
+                    )}
+                </form>
                 <form
                     className="flex flex-wrap items-end gap-3 rounded-lg border p-4"
                     onSubmit={(e) => {

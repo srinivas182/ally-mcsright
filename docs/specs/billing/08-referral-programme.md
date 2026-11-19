@@ -1,6 +1,6 @@
 # Referral programme (RF1)
 
-**Status:** built in RF1. **Defaults flagged for owner review:** 20% share, one month's credit, 30-day hold.
+**Status:** built in RF1. **Defaults flagged for owner review:** 20% share for people, 20% credit for brokerages (PB3; was one month's credit), 30-day hold.
 
 ## What it is
 
@@ -9,7 +9,7 @@ RightAlly's own way to grow by word of mouth. Two kinds of referrers:
 | Referrer                              | How they join                                    | Reward                                                                                    |
 | ------------------------------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------- |
 | A person (coach, trainer, influencer) | HQ adds them in **HQ › Referral programme**      | 20% of what the brokerage they refer pays RightAlly in its first year, paid in cash by HQ |
-| A brokerage already on RightAlly      | Its owner opens **Settings › Refer a brokerage** | One month of its own subscription, as credit                                              |
+| A brokerage already on RightAlly      | Its owner opens **Settings › Refer a brokerage** | 20% of what the brokerage it refers pays in its first year, as credit on its own bill     |
 
 This is about brokerages joining RightAlly. It has nothing to do with agent-to-agent referral fees: RightAlly never
 takes a share of those (see specs/transactions/32 and the referral network sprints).
@@ -21,7 +21,7 @@ takes a share of those (see specs/transactions/32 and the referral network sprin
    60 days. Unknown codes just go to the signup page.
 3. When the visitor signs up, the code is saved on the signup.
 4. When the first payment comes through and the brokerage is created, the referral is recorded as **pending**.
-5. Every payment in the brokerage's first year adds to the reward (20% for people; a brokerage's credit is one month).
+5. Every payment in the brokerage's first year adds to the reward (20% for people as cash, 20% for brokerages as credit). HQ changes both shares in **HQ › Referral programme** (password needed); a change applies to payments from then on.
 6. After **30 days** (the refund window) a daily job (`billing:affiliates-settle`, 06:20) makes the reward
    **approved**, or **void** if the brokerage already cancelled.
 7. HQ pays approved rewards outside RightAlly and marks them **paid** (password confirmed, audited). Nothing pays
@@ -45,6 +45,7 @@ A referral earns nothing ("void", with the reason shown to HQ) when the new brok
 
 ## For review
 
-- 20% of the first year for people, one month's credit for brokerages, and the 30-day hold are defaults. Change
-  them in `Modules\Billing\Affiliates\Affiliates` after the business decides.
+- 20% of the first year for people and for brokerages are defaults HQ can change (0–50%) in HQ › Referral programme.
+  The 30-day hold is set in `Modules\Billing\Affiliates\Affiliates`.
+- Paying licensed brokers for software referrals: the attorney should confirm no state licensing or RESPA issue.
 - Payments to people may need a W-9 and a 1099 at year end; HQ collects these outside RightAlly for now.

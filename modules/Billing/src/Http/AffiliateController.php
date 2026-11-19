@@ -42,7 +42,7 @@ final class AffiliateController
         return Inertia::render('settings/refer', [
             'link' => 'https://'.config('core.hq_host').'/r/'.$a->code,
             'stats' => $affiliates->stats($a, false),
-            'months' => Affiliates::BROKERAGE_CREDIT_MONTHS, 'hold_days' => Affiliates::HOLD_DAYS,
+            'share' => Affiliates::rewards()['brokerage'], 'hold_days' => Affiliates::HOLD_DAYS,
         ]);
     }
 
@@ -52,7 +52,7 @@ final class AffiliateController
         $a = $affiliates->byToken($token) ?? abort(404);
 
         return response()->view('billing::affiliate', ['affiliate' => $a, 'stats' => $affiliates->stats($a, false), 'link' => 'https://'.config('core.hq_host').'/r/'.$a->code,
-            'share' => Affiliates::PERSON_SHARE_PERCENT, 'hold' => Affiliates::HOLD_DAYS])->header('X-Robots-Tag', 'noindex, nofollow')->header('Cache-Control', 'no-store');
+            'share' => Affiliates::rewards()['person'], 'hold' => Affiliates::HOLD_DAYS])->header('X-Robots-Tag', 'noindex, nofollow')->header('Cache-Control', 'no-store');
     }
 
     /** HQ › Referral programme. */
@@ -71,7 +71,8 @@ final class AffiliateController
                 'status' => (string) $r->status, 'reward_cents' => (int) $r->reward_cents, 'reward_kind' => (string) $r->reward_kind, 'paid_cents' => (int) $r->paid_cents,
                 'note' => $r->note, 'first_paid_at' => $r->first_paid_at !== null ? substr((string) $r->first_paid_at, 0, 10) : null])->values()->all(),
             'token' => $request->session()->get('affiliateToken'),
-            'share' => Affiliates::PERSON_SHARE_PERCENT,
+            'share' => Affiliates::rewards()['person'],
+            'brokerageShare' => Affiliates::rewards()['brokerage'],
         ]);
     }
 
@@ -82,6 +83,17 @@ final class AffiliateController
 
         return back()->with('affiliateToken', ['code' => $made['code'], 'link' => 'https://'.config('core.hq_host').'/r/'.$made['code'],
             'dashboard' => 'https://'.config('core.hq_host').'/affiliate/'.$made['token']]);
+    }
+
+    /** PB3: HQ sets what people and brokerages earn for a referral. */
+    public function saveRewards(Request $request, Affiliates $affiliates): RedirectResponse
+    {
+        $data = $request->validate(['person' => ['required', 'integer', 'min:0', 'max:50'], 'brokerage' => ['required', 'integer', 'min:0', 'max:50']]);
+        $id = $request->user()?->getAuthIdentifier();
+        $affiliates->saveRewards((int) $data['person'], (int) $data['brokerage'], is_numeric($id) ? (int) $id : null);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Referral shares saved.']);
+
+        return back();
     }
 
     public function markPaid(Request $request, int $referral, Affiliates $affiliates): RedirectResponse

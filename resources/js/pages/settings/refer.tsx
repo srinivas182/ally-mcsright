@@ -21,7 +21,7 @@ type Props = {
             joined: string;
         }[];
     };
-    months: number;
+    share: number;
     hold_days: number;
 };
 
@@ -32,8 +32,8 @@ const STATUS: Record<string, string> = {
     void: 'Not eligible',
 };
 
-/** RF1: a brokerage refers another brokerage to RightAlly and earns a month's credit. */
-export default function Refer({ link, stats, months, hold_days }: Props) {
+/** RF1 / PB3: a brokerage refers another brokerage to RightAlly and earns a share of its first year as credit. */
+export default function Refer({ link, stats, share, hold_days }: Props) {
     const [copied, setCopied] = useState(false);
 
     return (
@@ -42,7 +42,7 @@ export default function Refer({ link, stats, months, hold_days }: Props) {
             <div className="flex flex-col gap-6 p-4 md:p-6">
                 <PageHeader
                     title="Refer a brokerage"
-                    description={`Know a broker who'd like RightAlly? Share your link. When their brokerage joins and stays past ${hold_days} days, you get ${months === 1 ? 'one month' : `${months} months`} of your RightAlly free.`}
+                    description={`Know a broker who'd like RightAlly? Share your link. When their brokerage joins and stays past ${hold_days} days, you get ${share}% of what they pay RightAlly in their first year, taken off your own RightAlly bill.`}
                 />
                 <div className="flex flex-wrap items-center gap-3 rounded-lg border p-4">
                     <code className="text-base break-all">{link}</code>

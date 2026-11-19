@@ -310,6 +310,7 @@ It fails (exit code 1) when anything is not ready, so it can gate a deployment.
     - email with SPF, DKIM and DMARC.
 2. Size it from the Sprint 60 sizing, and run the full-size load test on staging.
 3. Switch outside services from Test to Live one at a time, checking each on its HQ page.
+   Run `php artisan billing:starter-prices` once, so there are packages to sell (it adds only what is missing).
 4. `launch:check` passes on every server, and the nightly browser journeys pass against staging.
 5. Run a restore drill (two-person approval), and record it for SOC 2.
 

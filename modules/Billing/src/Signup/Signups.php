@@ -123,7 +123,7 @@ final class Signups
         $db->table('signups')->where('id', $signup->id)->update(['status' => 'live', 'tenant_id' => $tenant->id, 'updated_at' => now()]);
         // RF1 (specs/billing/08): a signup that came through a referral link.
         app(Affiliates::class)->attribute($signup->referral_code ?? null, $tenant, (string) $signup->owner_email);
-        app(Affiliates::class)->paid($tenant->id, (int) ($object['amount_total'] ?? 0), (int) ($signup->interval === 'year' ? intdiv((int) ($meta['price_cents'] ?? 0), 12) : (int) ($meta['price_cents'] ?? 0)));
+        app(Affiliates::class)->paid($tenant->id, (int) ($object['amount_total'] ?? 0));
         app(AuditLogger::class)->record('billing.signup.live', metadata: ['brokerage' => $signup->brokerage, 'package_id' => (int) $signup->package_id, 'interval' => $signup->interval],
             severity: 'notice', tenantId: $tenant->id);
     }

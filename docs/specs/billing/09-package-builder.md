@@ -82,3 +82,23 @@ builder's pricing rules now keeps the credit pages in step: 70% markup is a 41% 
 - what we keep. Anyone costing more than they pay is shown first, in red.
 
 Counts and money only.
+
+## Starter prices (PB3)
+
+`php artisan billing:starter-prices` adds RightAlly's starter prices where missing. It never changes or replaces a
+package, seat or share HQ has saved, so it is safe to run on every deploy. Edit everything afterwards in HQ.
+
+| What                                                                                                 | Price                                                                                                  |
+| ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| **RightAlly Brokerage** (owner + 2 staff, every brokerage module)                                    | $499 a month, or $4,990 a year                                                                         |
+| Agent seat **Basic** (back office, CRM, deals, forms and e-sign)                                     | $38 through a brokerage · $58 on their own                                                             |
+| Agent seat **Pro** (Basic + AI for contacts, Today's 10, texting, calling, website, email marketing) | $98 · $138                                                                                             |
+| Agent seat **All-in** (every module)                                                                 | $158 · $198                                                                                            |
+| **Solo agent** packages Basic, Pro and All-in                                                        | $58, $138, $198 a month                                                                                |
+| **Brokerage share** of what its agents pay                                                           | 20% of the through-a-brokerage price, plus anything the brokerage adds on top (up to the public price) |
+
+Agents pay RightAlly directly by default; HQ can make a brokerage pay for its agents instead (Billing settings).
+What one All-in seat costs RightAlly with the current cost list: about $12.58 a month at full use, $7.58 at typical
+use. The platform cost per person ($2) and hosting per brokerage ($0) are still placeholders.
+
+**For review:** all prices and the 20% share are business defaults set by the owner (Nov 2026), not settled terms.
