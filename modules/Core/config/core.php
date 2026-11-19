@@ -32,6 +32,9 @@ return [
     // "enforce" once two weeks of reports show only expected items (docs/specs/core/12).
     'csp' => env('CSP_MODE', 'report'),
 
+    // MK2: "Try it now" from RightAlly's website (a demo brokerage with made-up clients). Off until HQ turns it on.
+    'demo' => (bool) env('DEMO_ENABLED', false),
+
     'connections' => [
         'control' => env('CORE_CONTROL_CONNECTION'),
         'cell' => env('CORE_CELL_CONNECTION'),

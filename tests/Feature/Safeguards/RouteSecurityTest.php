@@ -26,7 +26,7 @@ const RS_PUBLIC = [
     'signing in (the sign-in itself is the check)' => ['#^/$#', '#^login$#', '#^forgot-password$#', '#^reset-password(/|$)#', '#^two-factor-challenge(/help)?$#',
         '#^passkeys/login#', '#^invitations/\{token\}$#', '#^auth/#', '#^oauth/#', '#^\.well-known/#', '#^authorize(/|$)#', '#^register$#', '#^token$#',
         '#^impersonate/accept$#', '#^security/secure-account/\{user\}$#'],
-    'signing up, partner and referral links' => ['#^start(/|$)#', '#^agents(/|$)#', '#^partners/#', '#^r/\{code\}$#', '#^affiliate/#', '#^health-check(/|$)#'],
+    'signing up, partner and referral links' => ['#^start(/|$)#', '#^agents(/|$)#', '#^partners/#', '#^r/\{code\}$#', '#^affiliate/#', '#^health-check(/|$)#', '#^try$#', '#^try/enter/\{user\}$#'],
     'links sent to clients by email or text (token or signature checked in the controller)' => ['#^my-deal(/|$)#', '#^sign/#', '#^verify-document$#', '#^offer/#',
         '#^cda/#', '#^appointment/#', '#^consent/#', '#^deal-upload/#', '#^take-my-people/#', '#^book/#', '#^l/#', '#^cma/#', '#^estimate/#', '#^calendar/#',
         '#^shared/doc/#', '#^privacy-copy/#', '#^my-home/#', '#^showing-feedback/#', '#^alerts/\{search\}/stop$#', '#^home-reports/\{report\}/stop$#',

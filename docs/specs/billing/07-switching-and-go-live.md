@@ -70,3 +70,31 @@ On the RightAlly host, server-rendered.
 ## Still to come
 
 The RightAlly website CMS (rest of A19) and the AI setup assistant (A21).
+
+## MK2: start with little HQ involvement
+
+**"Get set up in about 10 minutes"** (`/setup`, the owner's first page after accepting the sign-up invitation). It has
+five big steps, each with one button, and each is ticked off from what is really done:
+
+1. **Add your logo and colours.** Uses the brand kit; the theme is made from it.
+2. **Put your website live.** **One tap** publishes a ready-made website with the brokerage's details, listings
+   search and starter pages. Anything can be changed later.
+3. **Invite your agents** (brokerages only). One at a time or from a spreadsheet.
+4. **Bring your people.** Add them yourself, or "send us your spreadsheet" (concierge).
+5. **Connect your MLS.** RightAlly asks the MLS on the brokerage's behalf.
+
+The owner's dashboard shows "Finish setting up: 2 of 5 done" until all five are done. HQ is only involved where the
+MLS requires approval, or where the customer asked for concierge setup. Everything else runs by itself, alongside
+the 30-day go-live plan.
+
+**"Try it now", with no sign-up** (`/try` on RightAlly's website, off until `DEMO_ENABLED=true`):
+
+- Each visitor gets **their own guest agent** in a separate demo brokerage, "Sunny Realty (demo)", in simple view, with
+  the five made-up practice clients.
+- Guests only see their own made-up clients. Nothing can be sent to them.
+- The demo brokerage has no texting or calling switched on, and guests are agents, so they can't change users,
+  billing or settings.
+- The sign-in link is signed, works once and lasts 10 minutes.
+- Guests and their clients are deleted after a day (`billing:demo-cleanup`, daily).
+- AI help in the demo uses RightAlly's own AI costs, within the assistant's rate limits. Switch it on for staging
+  first, and watch the AI cost.

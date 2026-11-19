@@ -1,4 +1,4 @@
-import { Head } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 
 import { type BriefItem, DailyBrief } from '@/components/brief/daily-brief';
 import { dashboard } from '@/routes';
@@ -8,10 +8,12 @@ export default function Dashboard({
     firstName,
     brief,
     briefEmail,
+    setup = null,
 }: {
     firstName: string;
     brief: BriefItem[];
     briefEmail: boolean;
+    setup?: { done: number; total: number } | null;
 }) {
     return (
         <>
@@ -26,6 +28,18 @@ export default function Dashboard({
                         money and licences.
                     </p>
                 </header>
+                {setup && (
+                    <Link
+                        href="/setup"
+                        className="flex items-center justify-between gap-3 rounded-xl border-2 border-primary/40 p-4 text-lg hover:border-primary"
+                    >
+                        <span>
+                            Finish setting up: {setup.done} of {setup.total}{' '}
+                            done
+                        </span>
+                        <span className="text-primary">Continue →</span>
+                    </Link>
+                )}
                 <DailyBrief items={brief} email={briefEmail} />
             </div>
         </>

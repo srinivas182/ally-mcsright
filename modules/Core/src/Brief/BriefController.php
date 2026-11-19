@@ -9,6 +9,8 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Modules\Billing\Onboarding\Setup;
+use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Simple\SimpleMode;
 use Modules\Crm\Brief\MorningList;
 
@@ -25,7 +27,11 @@ final class BriefController
             return redirect('/simple');
         }
 
-        return Inertia::render('dashboard', ['firstName' => $user->first_name, 'brief' => $briefs->for($user), 'briefEmail' => self::emailOn($briefs, $user)]);
+        // MK2: owners see how far they are with "Get set up" until it is done.
+        $setup = $user->isKind(UserKind::Owner) && class_exists(Setup::class) ? app(Setup::class)->for($user) : null;
+
+        return Inertia::render('dashboard', ['firstName' => $user->first_name, 'brief' => $briefs->for($user), 'briefEmail' => self::emailOn($briefs, $user),
+            'setup' => $setup !== null && $setup['done'] < $setup['total'] ? ['done' => $setup['done'], 'total' => $setup['total']] : null]);
     }
 
     public function agent(Request $request, DailyBriefs $briefs): Response|RedirectResponse

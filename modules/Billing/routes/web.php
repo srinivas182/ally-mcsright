@@ -12,9 +12,12 @@ use Modules\Billing\Http\GoLiveController;
 use Modules\Billing\Http\HealthCheckController;
 use Modules\Billing\Http\HqPackageBuilderController;
 use Modules\Billing\Http\PaymentsController;
+use Modules\Billing\Http\SetupController;
 use Modules\Billing\Http\SignupController;
+use Modules\Billing\Http\TryController;
 use Modules\Core\Http\Middleware\EnsureHqConsole;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
+use Modules\Core\Identity\Http\Middleware\EnsureTenantHost;
 
 Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function (): void {
     Route::get('plans', [BillingController::class, 'plans'])->name('billing.plans');
@@ -25,6 +28,8 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function
     Route::post('plans/{plan}/checkout', [PaymentsController::class, 'checkout'])->middleware('throttle:10,1')->name('billing.checkout');
     Route::get('plans/portal', [PaymentsController::class, 'portal'])->middleware('throttle:10,1')->name('billing.portal');
     Route::get('settings/billing', [PaymentsController::class, 'billing'])->name('billing.brokerage');
+    Route::get('setup', [SetupController::class, 'show'])->name('setup'); // MK2: get set up in 10 minutes
+    Route::post('setup/website', [SetupController::class, 'website'])->middleware('throttle:5,1')->name('setup.website');
     Route::post('settings/billing/checkout', [PaymentsController::class, 'brokerageCheckout'])->middleware('throttle:10,1')->name('billing.brokerage.checkout');
     Route::post('settings/billing/extras/{addon}', [PaymentsController::class, 'buyExtra'])->where('addon', '[0-9A-HJKMNP-TV-Z]{26}')->middleware('throttle:10,1')->name('billing.extras.buy'); // PB2
     Route::post('settings/billing/extras/{addon}/stop', [PaymentsController::class, 'stopExtra'])->where('addon', '[0-9A-HJKMNP-TV-Z]{26}')->middleware('throttle:10,1')->name('billing.extras.stop');
@@ -125,3 +130,7 @@ Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.tenants.manage
         Route::post('payments/mode', [PaymentsController::class, 'setMode'])->name('payments.mode');
     });
 });
+
+// MK2: the demo's one-time sign-in link (signed, 10 minutes) on the demo brokerage's own address.
+Route::middleware(['web', EnsureTenantHost::class, 'signed:relative', 'throttle:10,1'])
+    ->get('try/enter/{user}', [TryController::class, 'enter'])->where('user', '[0-9A-HJKMNP-TV-Z]{26}')->name('try.enter');
