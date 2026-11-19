@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
+use Modules\Billing\Http\TryController;
 use Modules\Marketing\Http\SiteController;
 
 /*
@@ -21,6 +22,8 @@ foreach ((array) config('marketing.hosts') as $i => $host) {
         Route::get('es/blog', [SiteController::class, 'blog'])->defaults('locale', 'es')->name('marketing.blog.es'.$n);
         Route::get('blog/{slug}', [SiteController::class, 'post'])->defaults('locale', 'en')->where('slug', '[a-z0-9-]{1,100}')->name('marketing.post'.$n);
         Route::get('es/blog/{slug}', [SiteController::class, 'post'])->defaults('locale', 'es')->where('slug', '[a-z0-9-]{1,100}')->name('marketing.post.es'.$n);
+        // MK2: "Try it now" with made-up clients (off unless DEMO_ENABLED).
+        Route::get('try', [TryController::class, 'start'])->middleware('throttle:5,60')->name('marketing.try'.$n);
         Route::get('/', [SiteController::class, 'page'])->defaults('locale', 'en')->defaults('slug', '')->name('marketing.home'.$n);
         Route::get('es', [SiteController::class, 'page'])->defaults('locale', 'es')->defaults('slug', '')->name('marketing.home.es'.$n);
         Route::get('es/{slug}', [SiteController::class, 'page'])->defaults('locale', 'es')->where('slug', $slug)->name('marketing.page.es'.$n);

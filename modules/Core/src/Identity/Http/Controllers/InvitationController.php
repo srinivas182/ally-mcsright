@@ -7,12 +7,14 @@ namespace Modules\Core\Identity\Http\Controllers;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Core\Identity\Actions\AcceptInvitation;
 use Modules\Core\Identity\Actions\ManageInvitations;
 use Modules\Core\Identity\Auth\LandingPage;
+use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Tenancy\TenantContext;
 
 /**
@@ -57,6 +59,7 @@ final class InvitationController
         Auth::guard('web')->login($user);
         $request->session()->regenerate();
 
-        return redirect(LandingPage::for($user));
+        // MK2: a new owner starts on "Get set up" (Billing's onboarding page) when it is installed.
+        return redirect($user->isKind(UserKind::Owner) && Route::has('setup') ? '/setup' : LandingPage::for($user));
     }
 }
