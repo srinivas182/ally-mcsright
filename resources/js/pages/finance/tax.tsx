@@ -51,7 +51,7 @@ const match: Record<string, string> = {
     pending: 'Not checked yet',
     matched: 'Matches IRS records',
     mismatch: "Name and TIN don't match",
-    invalid: 'Invalid TIN',
+    invalid: 'Tax number does not look right',
 };
 
 /** Year-end 1099-NEC totals, W-9s and IRS TIN matching. */

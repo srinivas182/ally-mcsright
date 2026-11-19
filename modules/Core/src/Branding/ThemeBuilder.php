@@ -44,8 +44,10 @@ final class ThemeBuilder
             $adjustments[] = $note;
         }
 
-        $mutedLight = $this->readableOn($neutral[600], $white, darken: true);
-        $mutedDark = $this->readableOn($neutral[400], $neutral[950], darken: false);
+        // SX7: muted text must also read on the muted surface (grey panels), not only on the page background; the
+        // muted surface is the harder of the two, so passing there passes on the background too.
+        $mutedLight = $this->readableOn($neutral[600], $neutral[100], darken: true);
+        $mutedDark = $this->readableOn($neutral[400], $neutral[800], darken: false);
 
         $light = $this->scaleVars('brand', $brand) + $this->scaleVars('neutral', $neutral) + [
             'background' => $white->css(),

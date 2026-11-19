@@ -261,16 +261,16 @@ export default function TwoFactorSetupModal({
     }>(() => {
         if (twoFactorEnabled) {
             return {
-                title: 'Two-factor authentication enabled',
+                title: 'Two-step sign-in is on',
                 description:
-                    'Two-factor authentication is now enabled. Scan the QR code or enter the setup key in your authenticator app.',
+                    'Two-step sign-in is on. Scan the square code or type the setup key into your authenticator app.',
                 buttonText: 'Close',
             };
         }
 
         if (showVerificationStep) {
             return {
-                title: 'Verify authentication code',
+                title: 'Type the code from the app',
                 description:
                     'Enter the 6-digit code from your authenticator app',
                 buttonText: 'Continue',
@@ -278,9 +278,9 @@ export default function TwoFactorSetupModal({
         }
 
         return {
-            title: 'Enable two-factor authentication',
+            title: 'Turn on two-step sign-in',
             description:
-                'To finish enabling two-factor authentication, scan the QR code or enter the setup key in your authenticator app',
+                'To finish, scan the square code with your authenticator app (or type the setup key), then type the 6-digit code it shows.',
             buttonText: 'Continue',
         };
     }, [twoFactorEnabled, showVerificationStep]);

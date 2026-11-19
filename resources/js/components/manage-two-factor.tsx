@@ -54,9 +54,8 @@ export default function ManageTwoFactor(props: Props) {
             {twoFactorEnabled ? (
                 <div className="flex flex-col items-start justify-start space-y-4">
                     <p className="text-sm text-muted-foreground">
-                        You will be prompted for a secure, random pin during
-                        login, which you can retrieve from the TOTP-supported
-                        application on your phone.
+                        When you sign in, type the 6-digit code your
+                        authenticator app shows.
                     </p>
 
                     <div className="relative inline">
@@ -67,7 +66,7 @@ export default function ManageTwoFactor(props: Props) {
                                     type="submit"
                                     disabled={processing}
                                 >
-                                    Disable 2FA
+                                    Turn off the authenticator app
                                 </Button>
                             )}
                         </Form>
@@ -82,10 +81,8 @@ export default function ManageTwoFactor(props: Props) {
             ) : (
                 <div className="flex flex-col items-start justify-start space-y-4">
                     <p className="text-sm text-muted-foreground">
-                        When you enable two-factor authentication, you will be
-                        prompted for a secure pin during login. This pin can be
-                        retrieved from a TOTP-supported application on your
-                        phone.
+                        Once it is on, you type the 6-digit code from the app on
+                        your phone each time you sign in.
                     </p>
 
                     <div>

@@ -326,3 +326,40 @@ It fails (exit code 1) when anything is not ready, so it can gate a deployment.
 
 - weekly: red team (C1.1), access reviews every quarter, dependency updates;
 - the SOC 2 observation window starts on launch day.
+
+## SX7: plain words and the pre-test check (2026-11-18)
+
+**Checks that run on every change** (`tests/Architecture/PlainWordsAndSizesTest.php`):
+
+- **Plain words.** Text people read on any screen outside HQ may not use jargon such as "authentication", "TOTP",
+  "two-factor", "credentials", "invalid", "configure" or "utilize". The failure names the plain word to use. The first
+  run found 18 places, all on the sign-in screens and one tax message, and they were reworded ("two-step sign-in",
+  "the code from your app", "does not look right").
+- **Big buttons.** Simple view and its help may not use small buttons or tiny text.
+- **Contrast.** Every text-on-background pair in the design tokens meets WCAG AA (4.5:1) in light and dark. The first
+  run found grey text on grey panels at 4.05:1 (light) and 3.65:1 (dark). The theme builder now picks the muted text
+  colour against the grey panel, for RightAlly and for every brokerage's own brand theme.
+
+**For people:**
+
+- the 50+ usability-test kit, `docs/usability/50-plus-test-kit.md`;
+- drafts for the attorney, in `docs/legal/drafts/`: the privacy notice, the subprocessor list and the data processing
+  agreement. They are not for publication before review.
+
+**Final security re-check before the outside pen test:**
+
+| Check                                                                                                  | Result            |
+| ------------------------------------------------------------------------------------------------------ | ----------------- |
+| `composer audit`                                                                                       | No advisories     |
+| `npm audit --audit-level=high`                                                                         | 0 vulnerabilities |
+| Route security (all 1,316 addresses: HQ guard, brokerage tie, reviewed public list, public limits)     | Pass              |
+| Agent privacy sweep (every route with a contact, deal, document, item or task, tried as another agent) | Pass              |
+| Brokerage guard (raw SQL, joins, jobs), log redaction, content security policy (report-only)           | Pass              |
+
+Points to give the testers:
+
+- the no-sign-in morning list link (SX6);
+- the "lost my phone" flow (SX3);
+- `/csp-report`.
+
+Switch the content security policy to `enforce` after two clean weeks of reports.

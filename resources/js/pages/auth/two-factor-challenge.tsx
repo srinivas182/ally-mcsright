@@ -40,14 +40,14 @@ export default function TwoFactorChallenge({
                 title: 'Recovery code',
                 description:
                     'Please confirm access to your account by entering one of your emergency recovery codes.',
-                toggleText: 'login using an authentication code',
+                toggleText: 'use the code from my app instead',
             };
         }
 
         return {
-            title: 'Authentication code',
+            title: 'Type the code from your app',
             description:
-                'Enter the authentication code provided by your authenticator application.',
+                'Open the authenticator app on your phone and type the 6-digit code it shows.',
             toggleText: 'login using a recovery code',
         };
     }, [showRecoveryInput]);
@@ -65,7 +65,7 @@ export default function TwoFactorChallenge({
 
     return (
         <>
-            <Head title="Two-factor authentication" />
+            <Head title="Two-step sign-in" />
 
             <div className="space-y-6">
                 <Form
