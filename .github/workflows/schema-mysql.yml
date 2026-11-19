@@ -23,7 +23,7 @@ jobs:
     name: Full suite on MySQL 8.4
     if: github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
-    timeout-minutes: 45 # the suite now takes 20-30 minutes on MySQL; leave headroom
+    timeout-minutes: 75 # the suite takes 25-45 minutes on MySQL (one process); leave headroom
 
     services:
       mysql:
