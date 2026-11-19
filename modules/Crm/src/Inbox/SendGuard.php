@@ -33,6 +33,9 @@ final class SendGuard
     public function check(Contact $contact, string $channel, string $body): array
     {
         $reasons = [];
+        if ($contact->practice) { // SX5: made-up people are for practising; nothing is ever sent to them
+            return ['This is a made-up practice person, so nothing is sent. Everything else works as usual.'];
+        }
         if (trim($body) === '') {
             $reasons[] = 'Write the message.';
         }

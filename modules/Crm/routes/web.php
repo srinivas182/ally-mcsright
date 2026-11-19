@@ -26,6 +26,7 @@ use Modules\Crm\Http\Controllers\PipelineController;
 use Modules\Crm\Http\Controllers\PlanController;
 use Modules\Crm\Http\Controllers\PortabilityController;
 use Modules\Crm\Http\Controllers\PostcardsController;
+use Modules\Crm\Http\Controllers\PracticeController;
 use Modules\Crm\Http\Controllers\PropertyLookupController;
 use Modules\Crm\Http\Controllers\ProspectorController;
 use Modules\Crm\Http\Controllers\RelationshipController;
@@ -118,6 +119,8 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function
     Route::put('follow-up-plans/{plan}', [PlanController::class, 'update'])->name('crm.plans.update');
     Route::post('follow-up-plans/{plan}/toggle', [PlanController::class, 'toggle'])->name('crm.plans.toggle');
     Route::post('plan-enrollments/{enrollment}/stop', [PlanController::class, 'stop'])->name('crm.plans.stop');
+    Route::post('practice', [PracticeController::class, 'start'])->middleware('throttle:5,1')->name('crm.practice.start'); // SX5
+    Route::post('practice/clear', [PracticeController::class, 'clear'])->middleware('throttle:5,1')->name('crm.practice.clear');
     Route::post('voice/transcribe', [AskController::class, 'transcribe'])->middleware('feature:crm.ai')->middleware('throttle:30,1')->name('crm.voice.transcribe');
     Route::get('contact-imports/{import}', [DataController::class, 'show'])->name('crm.imports.show');
     Route::post('contact-imports/{import}/run', [DataController::class, 'run'])->name('crm.imports.run');

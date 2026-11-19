@@ -24,7 +24,7 @@ use Modules\Core\Tenancy\TenantContext;
 final class SupportTickets
 {
     public const TOPICS = ['how_to' => 'How do I…?', 'problem' => 'Something is not working', 'billing' => 'Billing and credits', 'idea' => 'An idea or request',
-        'data' => 'My data or privacy'];
+        'data' => 'My data or privacy', 'callback' => 'Please call me back']; // SX5: "call me back" from Help me
 
     public function __construct(private readonly TenantContext $tenants) {}
 

@@ -53,11 +53,13 @@ final class TeamServiceProvider extends ServiceProvider
     {
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
+        $this->loadViewsFrom(__DIR__.'/../resources/views', 'team'); // SX5: printable cheat sheets
         $this->app->make(NoticeTypes::class)->register(MentionMail::class, 'Unread @mentions in team chat', 'Team');
         self::handoffs($this->app->make(Handoffs::class)); // AS1
         $nav = $this->app->make(NavigationRegistry::class);
         $nav->add(new NavItem('Overview', 'Team chat', '/chat', 'message-circle', 27, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant]));
         $nav->add(new NavItem('Settings', 'Help', '/help', 'life-buoy', 99, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant]));
         $nav->add(new NavItem('HQ', 'Support', '/hq/support', 'life-buoy', 12, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff]));
+        $nav->add(new NavItem('HQ', 'Help videos', '/hq/support/videos', 'video', 13, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff])); // SX5
     }
 }

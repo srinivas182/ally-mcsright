@@ -52,6 +52,7 @@ Schedule::command('transactions:playbooks')->hourlyAt(10)->onOneServer();
 Schedule::command('forms:library-sync')->dailyAt('10:00')->onOneServer();
 // Nightly AI brief refresh at batch price (specs/crm/01).
 Schedule::command('crm:refresh-briefs')->dailyAt('02:00')->onOneServer();
+Schedule::command('crm:practice-cleanup')->dailyAt('02:20')->onOneServer(); // SX5
 // Follow-up plan steps (specs/crm/01).
 Schedule::command('crm:run-plans')->everyFifteenMinutes()->onOneServer();
 // Nightly database intelligence (specs/crm/01, additions 10-12, 15).

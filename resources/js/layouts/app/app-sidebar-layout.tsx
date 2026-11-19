@@ -5,6 +5,7 @@ import { AppSidebar } from '@/components/app-sidebar';
 import { AppSidebarHeader } from '@/components/app-sidebar-header';
 import { CreditConsentHost } from '@/components/credit-consent';
 import { CreditsBanner } from '@/components/credits-banner';
+import { HelpMe } from '@/components/help-me';
 import { SecondFactorReminder } from '@/components/second-factor-reminder';
 import { ImpersonationBanner } from '@/components/impersonation-banner';
 import { MobileNav } from '@/components/mobile-nav';
@@ -52,6 +53,7 @@ export default function AppSidebarLayout({
             <PasskeyPrompt />
             <CreditConsentHost />
             <TalkButton />
+            <HelpMe />
             <YourAiAssistant />
         </AppShell>
     );

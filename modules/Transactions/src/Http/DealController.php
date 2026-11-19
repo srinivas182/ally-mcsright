@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Core\Access\Fields;
@@ -200,6 +201,9 @@ final class DealController
         if (isset($data['contact'])) {
             $contact = Contact::query()->where('ulid', $data['contact'])->firstOrFail();
             abort_unless(app(ContactVisibility::class)->canSee($user, $contact), 403);
+            if ($contact->practice) { // SX5: a deal is real (money, compliance, the broker's reports)
+                throw ValidationException::withMessages(['contact' => 'Practice people cannot be put on a real deal. Choose a real client.']);
+            }
         }
         $deal = $deals->create($data + ['price_cents' => (int) round((float) ($data['price'] ?? 0) * 100)], $agent, $user, $contact);
 

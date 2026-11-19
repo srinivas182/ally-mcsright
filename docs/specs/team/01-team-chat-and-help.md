@@ -74,3 +74,29 @@ Status: built in CH1. Tracker row B22. Module: `modules/Team`.
 - File attachments in chat.
 - Voice messages (EN1).
 - Supervised review of direct messages for brokerages that need it (a later setting with clear notice to agents).
+
+## SX5: help everywhere
+
+**A "Help" button on every back-office page** (bottom left, above the microphone) opens "How can we help?" with big
+buttons for the page the person is on (`Team\Help\PageHelp`):
+
+- **Watch a 1-minute video.** Shown when HQ has added one under HQ → Help videos, set per page by the start of its
+  address. Links must be YouTube, Vimeo or an https MP4. YouTube plays from youtube-nocookie.com and Vimeo with "do
+  not track". An MP4's captions are read from the same address ending `.vtt`.
+- **Print a cheat sheet.** The page's how-to, on one large-print page (`/help/{article}/print`).
+- **Call me back.** The person gives their number (filled in from their profile) and the best time: morning,
+  afternoon, early evening or any time. HQ gets it in the Support queue as "Please call me back…". People can ask at
+  most 3 times an hour.
+- **Practice with made-up clients**, or **Remove my practice people** once they have some.
+- **See all how-tos** opens the help centre.
+
+**Practice mode** (`Crm\Practice\PracticeClients`) adds five made-up people with notes and a to-do:
+
+- Rosa, Tom, Ana, Walt and June, each with the last name "Practice".
+- Their numbers are 555-01xx and their emails are at example.com. Both are reserved for fiction, so nothing can reach
+  a real person.
+- Only the person practising (and their assistant) sees them. Owners, managers and teammates never do.
+- Nothing is ever sent to them; the send check says so. They start no automations, and they cannot be put on a real
+  deal.
+- "Remove my practice people" deletes them and their timelines. They are also removed by themselves after 14 days
+  (`crm:practice-cleanup`, daily).
