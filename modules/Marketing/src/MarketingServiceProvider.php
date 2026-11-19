@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Marketing;
 
 use Illuminate\Support\ServiceProvider;
+use Modules\AI\Support\PromptRegistry;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
@@ -25,8 +26,10 @@ final class MarketingServiceProvider extends ServiceProvider
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
         $this->loadRoutesFrom(__DIR__.'/../routes/hq.php');
         $this->app->make(NavigationRegistry::class)->add(new NavItem('HQ', 'RightAlly website', '/hq/website', 'house', 19, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff]));
+        $this->app->make(NavigationRegistry::class)->add(new NavItem('HQ', 'Content desk', '/hq/content', 'newspaper', 19, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff])); // MK3
+        $this->app->make(PromptRegistry::class)->addPath(__DIR__.'/../prompts'); // MK3: the content desk's writing prompt
         if ($this->app->runningInConsole()) {
-            $this->commands([Console\StarterContent::class]);
+            $this->commands([Console\StarterContent::class, Console\ContentDesk::class]);
         }
     }
 }

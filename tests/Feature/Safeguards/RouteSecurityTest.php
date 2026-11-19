@@ -21,7 +21,7 @@ use Modules\Sites\SiteSetup;
 
 /** Reviewed public routes, by reason. Patterns match the route's address without the leading slash. */
 const RS_PUBLIC = [
-    'brokerage website pages, SEO and app files' => ['#^$#', '#^\{slug\}$#', '#^es(/|$)#', '#^blog(/|$)#', '#^sitemap\.xml$#', '#^robots\.txt$#', '#^llms\.txt$#',
+    'brokerage website pages, SEO and app files' => ['#^$#', '#^\{slug\}$#', '#^es(/|$)#', '#^blog(/|$)#', '#^sitemap\.xml$#', '#^robots\.txt$#', '#^llms\.txt$#', '#^indexnow-key\.txt$#',
         '#^manifest\.webmanifest$#', '#^studio-fonts/#', '#^preview/\{ulid\}$#', '#^up$#', '#^app$#'],
     'signing in (the sign-in itself is the check)' => ['#^/$#', '#^login$#', '#^forgot-password$#', '#^reset-password(/|$)#', '#^two-factor-challenge(/help)?$#',
         '#^passkeys/login#', '#^invitations/\{token\}$#', '#^auth/#', '#^oauth/#', '#^\.well-known/#', '#^authorize(/|$)#', '#^register$#', '#^token$#',

@@ -43,6 +43,10 @@
         "version": "1",
         "sha256": "447f6e8a6c6d8bb900c4ec06ef848f4a1ce9f938bab08d3d65fcce10e29075fc"
     },
+    "marketing.content_desk": {
+        "version": "1",
+        "sha256": "3d39a3377400d353961a87d16c03cecb1756be91397a2f972279b111924e2bb2"
+    },
     "network.intro": {
         "version": "1",
         "sha256": "52dd212caba58562854411842e287a245187da539240743a61942ff65f5ff6d5"

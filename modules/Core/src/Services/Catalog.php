@@ -101,6 +101,21 @@ final class Catalog
                     'paddle' => ['label' => 'Paddle (also handles US sales tax)', 'fields' => ['api_key' => ['label' => 'API key', 'kind' => 'secret'], 'client_token' => ['label' => 'Client-side token', 'kind' => 'text']]],
                     'chargebee' => ['label' => 'Chargebee', 'fields' => ['site' => ['label' => 'Site name (yoursite)', 'kind' => 'text'], 'api_key' => ['label' => 'API key', 'kind' => 'secret']]],
                 ]],
+            // MK3: the AI content desk's reach — sharing new pages, and Search Console numbers that set the posting level.
+            'social_share' => ['label' => 'Share new pages on social media', 'about' => 'Posts each newly published content desk page to RightAlly\'s LinkedIn and Facebook pages.',
+                'level' => 'hq', 'sprint' => 'MK3', 'contacts' => false, 'providers' => [
+                    'zapier' => ['label' => 'Zapier webhook (recommended)', 'fields' => ['webhook_url' => ['label' => 'Zapier "Catch Hook" address', 'kind' => 'secret']],
+                        'note' => 'In Zapier: Catch Hook → LinkedIn Page post and Facebook Page post. RightAlly sends title, url and summary.'],
+                    'make' => ['label' => 'Make webhook', 'fields' => ['webhook_url' => ['label' => 'Make webhook address', 'kind' => 'secret']]],
+                    'buffer' => ['label' => 'Buffer', 'fields' => ['access_token' => ['label' => 'Access token', 'kind' => 'secret'], 'profile_ids' => ['label' => 'Profile IDs (comma-separated)', 'kind' => 'text']]],
+                ]],
+            'search_console' => ['label' => 'Search Console numbers', 'about' => 'How many content desk pages search engines have indexed, and any warnings; this decides how much the desk may write.',
+                'level' => 'both', 'sprint' => 'MK3', 'contacts' => false, 'providers' => [
+                    'google' => ['label' => 'Google Search Console (recommended)', 'fields' => ['site_url' => ['label' => 'Property (for example sc-domain:rightally.io)', 'kind' => 'text'],
+                        'service_account' => ['label' => 'Service account key (JSON)', 'kind' => 'secret']], 'note' => 'Add the service account as a user of the property, with read access.'],
+                    'bing' => ['label' => 'Bing Webmaster Tools', 'fields' => ['site_url' => ['label' => 'Site address', 'kind' => 'text'], 'api_key' => ['label' => 'API key', 'kind' => 'secret']]],
+                    'manual' => ['label' => 'Typed in by hand', 'fields' => [], 'note' => 'HQ types the indexed and submitted counts each week.'],
+                ]],
             'bot_protection' => ['label' => 'Bot protection', 'about' => 'Stops robots on sign-up, contact and lead forms, without picture puzzles for people.',
                 'level' => 'both', 'sprint' => 'TR1', 'contacts' => false, 'providers' => [
                     'turnstile' => ['label' => 'Cloudflare Turnstile (recommended, free)', 'fields' => ['site_key' => ['label' => 'Site key', 'kind' => 'text'], 'secret_key' => ['label' => 'Secret key', 'kind' => 'secret']],
