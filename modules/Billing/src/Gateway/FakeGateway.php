@@ -17,6 +17,9 @@ final class FakeGateway implements PaymentGateway
     /** @var list<string> */
     public array $cancelled = [];
 
+    /** @var list<string> PB4: unpaid subscriptions stopped now, their open invoices voided */
+    public array $ended = [];
+
     /** @var list<array<string, mixed>> */
     public array $payments = [];
 
@@ -119,6 +122,11 @@ final class FakeGateway implements PaymentGateway
     public function cancelAtPeriodEnd(string $subscriptionRef): void
     {
         $this->cancelled[] = $subscriptionRef;
+    }
+
+    public function endUnpaid(string $subscriptionRef): void
+    {
+        $this->ended[] = $subscriptionRef;
     }
 
     public function verifyEvent(string $payload, string $signature): array

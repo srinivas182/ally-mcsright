@@ -152,7 +152,8 @@ final class AgentPayments
     }
 
     /**
-     * Daily: plans whose 7-day grace period has passed end; the brokerage's no-plan level applies.
+     * Daily: plans whose 7-day grace period has passed end; the brokerage's no-plan level applies. Nothing is owed
+     * for the months after: the agent simply has no seat until they choose a plan again (PB4).
      */
     public function endExpiredGrace(): int
     {
@@ -160,7 +161,13 @@ final class AgentPayments
         foreach (AgentSubscription::query()->where('status', 'grace')->where('grace_until', '<=', CarbonImmutable::now())->get() as $sub) {
             $sub->update(['status' => 'ended']);
             if ($sub->gateway_ref !== null && ! $sub->sponsored) {
-                $this->gateway->cancelAtPeriodEnd($sub->gateway_ref);
+                // PB4: stop it now and void the unpaid invoice. Agents never owe back months: if they come back later
+                // they start again at this month's price, and nothing old is ever charged.
+                try {
+                    $this->gateway->endUnpaid($sub->gateway_ref);
+                } catch (\RuntimeException $e) {
+                    report($e); // the plan has ended either way; HQ sees the error and can stop it in Stripe by hand
+                }
             }
             app(AuditLogger::class)->asAutomation('billing_grace', $sub->user_id, 'End plan after unpaid grace period',
                 fn () => app(AuditLogger::class)->record('billing.subscription.ended', User::query()->find($sub->user_id), metadata: ['reason' => 'unpaid'], severity: 'warning'));

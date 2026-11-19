@@ -118,8 +118,15 @@ it('activates on a signed event, once, and handles failed payments with a 7-day 
     $this->travel(8)->days();
     $this->artisan('billing:end-grace')->assertSuccessful();
     app(Entitlements::class)->forget();
-    expect($sub->fresh()?->status)->toBe('ended')->and($this->gateway->cancelled)->toBe(['sub_1'])
+    expect($sub->fresh()?->status)->toBe('ended')->and($this->gateway->ended)->toBe(['sub_1']) // stopped now, the unpaid invoice voided
         ->and(app(Entitlements::class)->allows($this->agent, 'crm.ai'))->toBeFalse();
+
+    // PB4: six months later the agent comes back and pays only this month, at today's price; nothing old is owed.
+    $this->travel(180)->days();
+    $before = count($this->gateway->checkouts);
+    $this->actingAs($this->agent)->post('/plans/'.$this->pro->ulid.'/checkout');
+    expect($this->gateway->checkouts)->toHaveCount($before + 1)->and($this->gateway->checkouts[$before]['unitCents'])->toBe(15_000);
+    expect($this->gateway->invoiceItems)->toBe([]); // no back dues added to the bill
 });
 
 it('lets owners sponsor an agent and agents manage their card', function (): void {

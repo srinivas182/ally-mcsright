@@ -135,6 +135,22 @@ final class StripeGateway implements PaymentGateway
         $this->post('subscriptions/'.urlencode($subscriptionRef), ['cancel_at_period_end' => 'true']);
     }
 
+    public function endUnpaid(string $subscriptionRef): void
+    {
+        $open = $this->get('invoices?'.http_build_query(['subscription' => $subscriptionRef, 'status' => 'open', 'limit' => 20]));
+        foreach ((array) ($open['data'] ?? []) as $invoice) {
+            $this->post('invoices/'.urlencode((string) ($invoice['id'] ?? '')).'/void', []);
+        }
+        $secret = $this->settings->keys()['secret'] ?? null;
+        if ($secret === null) {
+            throw new RuntimeException('Payments are not set up yet.');
+        }
+        $response = $this->http->withToken($secret)->timeout(20)->delete(self::API.'subscriptions/'.urlencode($subscriptionRef));
+        if ($response->failed() && $response->status() !== 404) { // already gone is fine
+            throw new RuntimeException('The payment provider refused the request ('.$response->status().').');
+        }
+    }
+
     public function verifyEvent(string $payload, string $signature): array
     {
         $secret = $this->settings->keys()['webhook_secret'] ?? null;

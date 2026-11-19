@@ -127,6 +127,7 @@ it('applies suggested prices, all or only those below the minimum margin', funct
 
 it('shows each package\'s margin for a typical customer and the worst case, and asks for a reason below the minimum', function (): void {
     DB::connection(Connections::control())->table('cost_catalog')->where('key', 'hosting.brokerage')->update(['cost_microcents' => 500_000_000]); // $5 a month
+    DB::connection(Connections::control())->table('cost_catalog')->where('key', 'mls.data_fee')->delete(); // only hosting counts here
     $package = Package::query()->create(['name' => 'Growth', 'monthly_cents' => 10_000, 'yearly_cents' => 0, 'ailly_conversations' => 0, 'features' => [], 'active' => true]);
 
     // Only ai.crm_ask has a cost: 5,250,000 per use at 1 credit. Typical = worst = 5.25¢ per credit.

@@ -98,7 +98,22 @@ package, seat or share HQ has saved, so it is safe to run on every deploy. Edit 
 | **Brokerage share** of what its agents pay                                                           | 20% of the through-a-brokerage price, plus anything the brokerage adds on top (up to the public price) |
 
 Agents pay RightAlly directly by default; HQ can make a brokerage pay for its agents instead (Billing settings).
-What one All-in seat costs RightAlly with the current cost list: about $12.58 a month at full use, $7.58 at typical
-use. The platform cost per person ($2) and hosting per brokerage ($0) are still placeholders.
+**Planning costs (PB4).** The placeholders are replaced with planning figures, only where HQ had not entered its own:
+platform $4 per person a month (servers, databases and backups $1.25; monitoring and search $0.25; support $2.00;
+security and compliance $0.50), hosting $10 per brokerage a month, and a new MLS data fee of $10 per brokerage a month
+(varies by MLS: enter each MLS's real fee). With these, what RightAlly pays per month:
+
+|                                 | Full use | Typical use | Price | Margin at full use                  |
+| ------------------------------- | -------- | ----------- | ----- | ----------------------------------- |
+| Brokerage package (3 people)    | $54.98   | $44.93      | $499  | 89%                                 |
+| Basic seat through a brokerage  | $5.75    | $5.01       | $38   | 85% before the 20% share            |
+| Pro seat through a brokerage    | $12.40   | $8.49       | $98   | 87% before the 20% share            |
+| All-in seat through a brokerage | $14.68   | $9.68       | $158  | 91% before, 71% after the 20% share |
+| Solo agent All-in               | $54.85   | $40.86      | $198  | 72%                                 |
+
+**Agents who stop paying (PB4).** A failed payment starts 7 days' grace. After that the plan ends, the payment
+provider stops the subscription at once and voids the unpaid invoice. The agent drops to the brokerage's no-plan level
+(minimal back office, or blocked) and keeps their data. Nothing is owed for the months without a seat: an agent who
+comes back pays only the current month, at today's price.
 
 **For review:** all prices and the 20% share are business defaults set by the owner (Nov 2026), not settled terms.
