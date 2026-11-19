@@ -142,7 +142,7 @@ it('shows each package\'s margin for a typical customer and the worst case, and 
         ->and($package->fresh()->getAttribute('margin_override_reason'))->toBe('Launch promotion for first 10 brokerages');
 
     hqAs()->get($this->hq.'/hq/credits')->assertInertia(fn (Assert $page) => $page->where('packages.0.typical_margin_pct', 16)
-        ->where('typical_cost_per_credit', 5_250_000)->has('catalog', 15)->where('margins', ['target' => 60, 'floor' => 40, 'usage_budget' => 20, 'maps_alert_views' => 60_000]));
+        ->where('typical_cost_per_credit', 5_250_000)->has('catalog', 19)->where('margins', ['target' => 60, 'floor' => 40, 'usage_budget' => 20, 'maps_alert_views' => 60_000]));
 });
 
 it('goes live in one step: suggested credits for packages without any, then enforcement', function (): void {

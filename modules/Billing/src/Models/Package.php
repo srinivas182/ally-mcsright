@@ -19,6 +19,8 @@ use Modules\Core\Tenancy\Concerns\HasPublicUlid;
  * @property int $ailly_conversations
  * @property list<string> $features
  * @property bool $active
+ * @property list<string>|null $modules PB1: the modules in the package
+ * @property int $seats
  */
 final class Package extends Model
 {
@@ -50,6 +52,6 @@ final class Package extends Model
      */
     protected function casts(): array
     {
-        return ['features' => 'array', 'active' => 'boolean'];
+        return ['features' => 'array', 'active' => 'boolean', 'modules' => 'array', 'usage' => 'array', 'quote' => 'array']; // PB1: modules, usage, quote
     }
 }
