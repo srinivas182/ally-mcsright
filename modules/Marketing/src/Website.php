@@ -25,7 +25,7 @@ final class Website
 
     public const VERSIONS = 20;
 
-    private const RESERVED = ['blog', 'es', 'sitemap.xml', 'robots.txt', 'llms.txt', 'start', 'health-check', 'login', 'app', 'hq', 'r', 'affiliate', 'partners', 'agents', 'preview', 'try'];
+    private const RESERVED = ['blog', 'es', 'sitemap.xml', 'robots.txt', 'llms.txt', 'start', 'health-check', 'login', 'app', 'hq', 'r', 'affiliate', 'partners', 'agents', 'preview', 'try', 'indexnow-key.txt'];
 
     public function page(string $locale, string $slug): ?stdClass
     {

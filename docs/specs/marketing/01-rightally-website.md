@@ -85,3 +85,66 @@ November 2026):
 
 **Still to come:** "Try it now" with made-up clients and no sign-up needs a separate demo brokerage that resets
 itself, so it comes with self-serve onboarding (MK2).
+
+## MK3: the AI content desk (HQ → Content desk)
+
+**What it does.** HQ turns writing on per state (Off, Test or Live) and can list the cities that matter most. Otherwise
+the cities are ranked by how many listings each has. Each night (`content:desk`) the desk:
+
+1. fetches Search Console numbers;
+2. moves each state up or down a level;
+3. writes that day's drafts for broker owners and agents. Landing pages and articles alternate, for example "Running a
+   real estate brokerage in Houston, Texas" or "Texas rules every real estate broker should know".
+
+**Every draft is checked before a person sees it.**
+
+- The shape search engines and AI answers expect: a direct 40–60 word answer, 4–6 sections, 3–5 questions, a title
+  under 65 characters and a 120–155 character description.
+- At least 3 facts, each with an https source. The reviewer sees them with their links.
+- No other company is named, nothing is called "cheap", and the Fair Housing wording check passes.
+- **Not similar to anything already written in the state**, by HQ or any brokerage: at most 20% of five-word runs in
+  common.
+- A draft that fails is rewritten with the reason, at most twice. If it still fails, the slot is skipped and HQ sees
+  why. Skipping is always better than publishing something weak or a lookalike.
+
+**Topic booking.** A topic and angle booked in a city is not given to any other desk, HQ or tenant, for six months.
+
+**Morning review.** HQ reads each draft, can edit the title, description and text, and checks the facts. It then
+approves or rejects it. Nothing is published without a person.
+
+When a draft is approved in Live mode:
+
+- landing pages are published under the state (`/tx/...`) with prices; articles go to the blog under the reviewer's
+  name;
+- the sitemap and llms.txt include it at once;
+- **IndexNow** tells Bing and other search engines straight away. The key is at `/indexnow-key.txt`. ChatGPT search
+  relies on Bing;
+- Google finds it through the sitemap and the state's links. Google offers no way to request a visit for ordinary
+  pages;
+- it is shared through the **Share new pages on social media** service: a Zapier webhook (recommended), a Make
+  webhook, or Buffer, posting to LinkedIn and Facebook.
+
+In Test mode, approving only saves a website draft, and nothing is announced.
+
+**How much it may write** (`Content\Cadence`). The same rules apply to HQ, brokerages and agents, and are enforced on
+the server:
+
+| Level       | How often                        | How it is reached                                                            |
+| ----------- | -------------------------------- | ---------------------------------------------------------------------------- |
+| 1 Starting  | 3 a week; a person approves each | every new desk                                                               |
+| 2 Trusted   | up to 1 a day                    | 4 weeks at level 1, at least 10 published, at least 80% indexed, no warnings |
+| 3 (HQ only) | up to 4 a day per state          | 8 more healthy weeks                                                         |
+
+- Hard ceilings: 1 a day for a brokerage or agent site, and 4 a day per state for HQ.
+- Without Search Console numbers, a desk stays at level 1.
+- A warning, or indexing below 80%, drops a desk one level, and the change is audited.
+
+**Search Console numbers** come from the **Search Console numbers** service:
+
+- Google Search Console (recommended): the URL Inspection API on the desk's 50 most recent pages, using a service
+  account with read access;
+- Bing Webmaster Tools;
+- or typed in by hand.
+
+**AI.** Writing uses the `marketing.content` route in HQ → AI gateway, with prompt `marketing.content_desk`. The cost
+is charged to HQ, or to the brokerage for MK4 desks.

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use Modules\Billing\Http\TryController;
+use Modules\Marketing\Content\Publisher;
 use Modules\Marketing\Http\SiteController;
 
 /*
@@ -17,6 +18,8 @@ foreach ((array) config('marketing.hosts') as $i => $host) {
         Route::get('sitemap.xml', [SiteController::class, 'sitemap'])->name('marketing.sitemap'.$n);
         Route::get('robots.txt', [SiteController::class, 'robots'])->name('marketing.robots'.$n);
         Route::get('llms.txt', [SiteController::class, 'llms'])->name('marketing.llms'.$n);
+        // MK3: the IndexNow key, so search engines accept "this page is new" notices from RightAlly.
+        Route::get('indexnow-key.txt', fn () => response(Publisher::indexNowKey(), 200, ['Content-Type' => 'text/plain']))->name('marketing.indexnow'.$n);
         Route::get('preview/{ulid}', [SiteController::class, 'preview'])->where('ulid', '[0-9A-HJKMNP-TV-Z]{26}')->name('marketing.preview'.$n);
         Route::get('blog', [SiteController::class, 'blog'])->defaults('locale', 'en')->name('marketing.blog'.$n);
         Route::get('es/blog', [SiteController::class, 'blog'])->defaults('locale', 'es')->name('marketing.blog.es'.$n);

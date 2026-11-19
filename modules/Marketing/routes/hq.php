@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use Modules\Core\Http\Middleware\EnsureHqConsole;
+use Modules\Marketing\Http\HqContentController;
 use Modules\Marketing\Http\HqWebsiteController;
 
 /* SG1 (specs/marketing/01): editing RightAlly's website from the HQ console. */
@@ -21,4 +22,14 @@ Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.tenants.manage
     Route::get('posts/{post}', [HqWebsiteController::class, 'post'])->where('post', $ulid)->name('posts.edit');
     Route::post('posts', [HqWebsiteController::class, 'savePost'])->name('posts.store');
     Route::put('posts/{post}', [HqWebsiteController::class, 'savePost'])->where('post', $ulid)->name('posts.update');
+});
+
+/* MK3: the AI content desk — states, levels and the morning review. */
+Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.tenants.manage'])->prefix('hq/content')->name('hq.content.')->group(function (): void {
+    $ulid = '[0-9A-HJKMNP-TV-Z]{26}';
+    Route::get('/', [HqContentController::class, 'index'])->name('index');
+    Route::post('desks', [HqContentController::class, 'saveDesk'])->name('desks');
+    Route::post('desks/{desk}/stats', [HqContentController::class, 'manualStats'])->whereNumber('desk')->name('stats');
+    Route::post('drafts/{draft}/approve', [HqContentController::class, 'approve'])->where('draft', $ulid)->middleware('throttle:60,1')->name('approve');
+    Route::post('drafts/{draft}/reject', [HqContentController::class, 'reject'])->where('draft', $ulid)->name('reject');
 });
