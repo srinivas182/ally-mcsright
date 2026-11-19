@@ -10,6 +10,7 @@ use Modules\Billing\Http\Credits\CreditsController;
 use Modules\Billing\Http\Credits\HqCreditsController;
 use Modules\Billing\Http\GoLiveController;
 use Modules\Billing\Http\HealthCheckController;
+use Modules\Billing\Http\HqPackageBuilderController;
 use Modules\Billing\Http\PaymentsController;
 use Modules\Billing\Http\SignupController;
 use Modules\Core\Http\Middleware\EnsureHqConsole;
@@ -92,6 +93,12 @@ Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.tenants.manage
     Route::post('billing/tiers', [BillingController::class, 'hqSaveTiers'])->name('billing.tiers');
     Route::get('payments', [PaymentsController::class, 'hq'])->name('payments');
     Route::get('credits', [HqCreditsController::class, 'index'])->name('credits');
+    // PB1: the package builder.
+    Route::get('packages', [HqPackageBuilderController::class, 'index'])->name('packages');
+    Route::post('packages/quote', [HqPackageBuilderController::class, 'quote'])->middleware('throttle:120,1')->name('packages.quote');
+    Route::post('packages/rules', [HqPackageBuilderController::class, 'rules'])->middleware('password.confirm')->name('packages.rules');
+    Route::post('packages', [HqPackageBuilderController::class, 'save'])->name('packages.store');
+    Route::put('packages/{package}', [HqPackageBuilderController::class, 'save'])->name('packages.update');
     Route::post('credits/enforce', [HqCreditsController::class, 'enforce'])->middleware('password.confirm')->name('credits.enforce');
     Route::post('credits/go-live', [HqCreditsController::class, 'goLive'])->middleware('password.confirm')->name('credits.go-live');
     Route::post('credits/margins', [HqCreditsController::class, 'margins'])->name('credits.margins');

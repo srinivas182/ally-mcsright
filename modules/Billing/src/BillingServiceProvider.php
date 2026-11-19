@@ -70,6 +70,7 @@ final class BillingServiceProvider extends ServiceProvider
         $nav->add(new NavItem('Platform', 'RightAlly credits', '/hq/credits', 'coins', 37, kinds: [UserKind::HqStaff]));
         $nav->add(new NavItem('HQ', 'Health checks', '/hq/health-checks', 'stethoscope', 12, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff]));
         $nav->add(new NavItem('HQ', 'Go-live', '/hq/go-live', 'rocket', 13, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff]));
+        $nav->add(new NavItem('HQ', 'Package builder', '/hq/packages', 'package', 13, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff])); // PB1
         $nav->add(new NavItem('HQ', 'Referral programme', '/hq/affiliates', 'heart-handshake', 14, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff])); // RF1
         $nav->add(new NavItem('Settings', 'Refer a brokerage', '/settings/refer', 'heart-handshake', 75, kinds: [UserKind::Owner])); // RF1
         $nav->add(new NavItem('Settings', 'Switch to RightAlly', '/switch', 'rocket', 65, kinds: [UserKind::Owner, UserKind::Staff]));
