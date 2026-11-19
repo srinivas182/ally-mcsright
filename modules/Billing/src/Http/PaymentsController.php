@@ -12,6 +12,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Billing\AgentPayments;
 use Modules\Billing\BrokeragePayments;
+use Modules\Billing\Builder\AddOns;
 use Modules\Billing\Catalogue;
 use Modules\Billing\Gateway\PaymentGateway;
 use Modules\Billing\Models\AgentPlan;
@@ -137,7 +138,25 @@ final class PaymentsController
             'readOnly' => $brokerage->readOnly(),
             'partnerCode' => $brokerage->partnerCode(),
             'featureNames' => ProductFeatures::all(),
+            'extras' => app(AddOns::class)->forOwner(), // PB2
         ]);
+    }
+
+    /** PB2: the owner adds an extra (on straight away, billed monthly with the subscription). */
+    public function buyExtra(Request $request, string $addon, AddOns $addOns): RedirectResponse
+    {
+        $addOns->buy(self::user($request), $addon);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Added. It is on now and appears on your next invoice.']);
+
+        return back();
+    }
+
+    public function stopExtra(Request $request, string $addon, AddOns $addOns): RedirectResponse
+    {
+        $addOns->stop(self::user($request), $addon);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Stopped. It stays on until the end of this month.']);
+
+        return back();
     }
 
     public function brokerageCheckout(Request $request, BrokeragePayments $brokerage): HttpResponse

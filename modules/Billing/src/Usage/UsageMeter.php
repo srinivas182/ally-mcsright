@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Modules\AI\Exceptions\InsufficientCredits;
+use Modules\Billing\Builder\AddOns;
 use Modules\Billing\Credits\CreditLedger;
 use Modules\Billing\Credits\RateCard;
 use Modules\Billing\Jobs\TopUpCredits;
@@ -41,7 +42,13 @@ final class UsageMeter
 
     public function __construct(private readonly TenantContext $tenants, private readonly CreditLedger $ledger, private readonly RateCard $rates) {}
 
-    /** This month's allowance for a meter, from the brokerage's current package. */
+    /** Forget the remembered allowances (after an add-on is bought). */
+    public function forget(): void
+    {
+        $this->allowances = null;
+    }
+
+    /** This month's allowance for a meter, from the brokerage's current package and its add-ons. */
     public function allowance(string $meter): int
     {
         if ($this->allowances === null) {
@@ -52,7 +59,8 @@ final class UsageMeter
                 ->first(['billing_packages.included_text_segments', 'billing_packages.included_call_minutes', 'billing_packages.included_map_views']);
             $this->allowances = [];
             foreach (self::METERS as $key => $m) {
-                $this->allowances[$key] = $row !== null ? (int) $row->{$m['column']} : 0;
+                // PB2: plus any add-ons bought for more of it this month.
+                $this->allowances[$key] = ($row !== null ? (int) $row->{$m['column']} : 0) + app(AddOns::class)->extraAllowance($key);
             }
         }
 

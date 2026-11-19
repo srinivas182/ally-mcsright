@@ -8,12 +8,17 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
+use Modules\Billing\Builder\AddOns;
 use Modules\Billing\Builder\ModuleCatalog;
 use Modules\Billing\Builder\PackageBuilder;
 use Modules\Billing\Builder\PackageQuote;
+use Modules\Billing\Builder\TenantEconomics;
+use Modules\Billing\Credits\Economics;
 use Modules\Billing\Models\Package;
+use Modules\Core\Support\Connections;
 
 /** HQ → Package builder (PB1): choose modules, see what they cost RightAlly, price at HQ's markup. */
 final class HqPackageBuilderController
@@ -37,6 +42,12 @@ final class HqPackageBuilderController
                 'quote' => $quotes->quote($p->getAttribute('audience') ?? 'brokerage', $p->getAttribute('modules') ?? [], (int) ($p->getAttribute('seats') ?? 1), $p->getAttribute('usage') ?? [],
                     $p->getAttribute('markup_pct')),
             ])->values(),
+            // PB2: extras, credit packs at cost + markup, and this month's money by brokerage.
+            'addons' => app(AddOns::class)->all(),
+            'creditPacks' => DB::connection(Connections::control())->table('credit_packs')->where('active', true)->orderBy('credits')->get()
+                ->map(fn (object $p): array => ['name' => (string) $p->name, 'credits' => (int) $p->credits, 'price_cents' => (int) $p->price_cents,
+                    'suggested_cents' => app(AddOns::class)->suggestedCents((int) ceil((int) $p->credits * app(Economics::class)->typicalCostPerCredit() / 1_000_000))])->values(),
+            'tenants' => app(TenantEconomics::class)->month(),
             // "What if every module were on?" for each audience, at the default markup.
             'everything' => ['brokerage' => $quotes->quote('brokerage', array_keys(ModuleCatalog::MODULES), 10), 'agent' => $quotes->quote('agent', array_keys(ModuleCatalog::MODULES), 1)],
         ]);
@@ -60,6 +71,18 @@ final class HqPackageBuilderController
         Inertia::flash('toast', ['type' => 'success', 'message' => "{$saved->name} saved at $".number_format($saved->monthly_cents / 100).' a month.']);
 
         return redirect('/hq/packages');
+    }
+
+    public function saveAddOn(Request $request, AddOns $addOns, ?string $addon = null): RedirectResponse
+    {
+        $d = $request->validate(['kind' => ['required', 'in:allowance,module'], 'key' => ['required', 'string', 'max:40'], 'amount' => ['nullable', 'integer', 'min:0', 'max:1000000'],
+            'name' => ['required', 'string', 'max:80'], 'audience' => ['required', 'in:brokerage,agent,both'], 'price' => ['nullable', 'numeric', 'min:0', 'max:100000'],
+            'reason' => ['nullable', 'string', 'max:300'], 'active' => ['nullable', 'boolean']]);
+        $addOns->save($addon, ['kind' => $d['kind'], 'key' => $d['key'], 'amount' => (int) ($d['amount'] ?? 0), 'name' => $d['name'], 'audience' => $d['audience'],
+            'price_cents' => isset($d['price']) ? (int) round((float) $d['price'] * 100) : null, 'reason' => $d['reason'] ?? null, 'active' => (bool) ($d['active'] ?? true)], self::user($request));
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Extra saved.']);
+
+        return back();
     }
 
     public function rules(Request $request, PackageBuilder $builder): RedirectResponse

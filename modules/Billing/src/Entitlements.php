@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Billing;
 
 use App\Models\User;
+use Modules\Billing\Builder\AddOns;
 use Modules\Billing\Models\AgentPlan;
 use Modules\Billing\Models\AgentSubscription;
 use Modules\Billing\Models\Package;
@@ -111,6 +112,7 @@ final class Entitlements
         $id = $this->tenants->check() ? $this->tenants->current()->getAttribute('billing_package_id') : null;
         $package = $id !== null ? Package::query()->whereKey((int) $id)->first() : null;
 
-        return $package !== null ? array_values(array_unique([...ProductFeatures::MINIMAL, ...$package->features])) : array_keys(ProductFeatures::all());
+        // PB2: module add-ons switch on their features too.
+        return $package !== null ? array_values(array_unique([...ProductFeatures::MINIMAL, ...$package->features, ...app(AddOns::class)->extraFeatures()])) : array_keys(ProductFeatures::all());
     }
 }

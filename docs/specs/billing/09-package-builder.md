@@ -47,3 +47,37 @@ The defaults below are placeholders, flagged for review; HQ changes them under P
 - 70% markup, 40% minimum, 50% typical use, 10-month year;
 - $2 per person per month platform cost (HQ must enter the real figure);
 - the included amounts per module.
+
+## PB2: when they need more (extras, credits, upgrades)
+
+**Extras HQ offers** (HQ → Package builder → Extras):
+
+- **More of something each month:** for example "1,000 more texts", "200 more call minutes" or "10,000 more website
+  map views";
+- **one extra module** on a smaller package, for example AI voice calls.
+
+The price is suggested at cost + HQ's markup (70%) plus card fees, ending in 9. For example, 1,000 texts cost us $13.30,
+so the suggested price is $29. A price below cost + 40% needs a written reason. HQ sees each extra's price, today's
+cost and how many customers have it.
+
+**Owners buy them** (Settings → Billing → "Need more? Add an extra"):
+
+- An extra is on straight away: the allowance goes up, or the module's features switch on.
+- It is billed on the 1st with the subscription (`billing:bill-addons`, once a month).
+- Stopping keeps it on until the end of the month.
+- Only the owner can add or stop extras, and a card must be on file.
+
+**"Moving up would save you $X a month."** When the package plus extras costs at least as much as the next package
+up, the owner is told the upgrade is cheaper.
+
+**Credits:** use beyond the package and extras still draws RightAlly Credits, as before. Changing the markup in the
+builder's pricing rules now keeps the credit pages in step: 70% markup is a 41% margin, and a 40% minimum markup is a
+28% margin. Credit packs show their price next to the suggested price at cost + 70%.
+
+**This month by customer** (HQ):
+
+- what each brokerage or solo agent pays: package, extras and credits bought;
+- what it costs us: texts, calls and map views used, AI credits used, platform per person and hosting;
+- what we keep. Anyone costing more than they pay is shown first, in red.
+
+Counts and money only.

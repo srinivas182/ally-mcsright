@@ -7,6 +7,7 @@ namespace Modules\Billing\Builder;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Modules\Billing\Credits\RateCard;
 use Modules\Billing\Models\Package;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Support\Connections;
@@ -65,5 +66,8 @@ final class PackageBuilder
         $values = ['markup_pct' => $markup, 'min_markup_pct' => $minMarkup, 'typical_use_pct' => $typicalUse, 'yearly_months' => $yearlyMonths, 'updated_by' => $by->id, 'updated_at' => now()];
         $db->clone()->exists() ? $db->clone()->update($values) : $db->clone()->insert($values + ['created_at' => now()]);
         $this->audit->record('billing.package.rules', metadata: $values, severity: 'notice');
+        // Credits follow the same rule: the credit pages work in margin, so keep them in step (70% markup = 41% margin).
+        $rates = app(RateCard::class);
+        $rates->saveMargins(intdiv($markup * 100, 100 + $markup), intdiv($minMarkup * 100, 100 + $minMarkup), $rates->margins()['usage_budget'], $by);
     }
 }

@@ -79,17 +79,58 @@ const money = (cents: number) =>
  * HQ → Package builder (PB1): tick modules (or "Enable all"), set people and what is included, and see what it costs
  * RightAlly — with the sum behind every number — and the price at HQ's markup (70%: cost $100 → price $170).
  */
+type AddOn = {
+    ulid: string;
+    kind: string;
+    key: string;
+    amount: number;
+    name: string;
+    price_cents: number;
+    audience: string;
+    active: boolean;
+    cost_cents: number;
+    buyers: number;
+};
+type TenantRow = {
+    tenant: string;
+    package: string | null;
+    paid_cents: number;
+    cost_cents: number;
+    margin_pct: number | null;
+    losing: boolean;
+};
+
 export default function Packages({
     catalog,
     rules,
     packages,
     everything,
+    addons = [],
+    creditPacks = [],
+    tenants = [],
 }: {
     catalog: Module[];
     rules: Rules;
     packages: Pkg[];
     everything: Record<'brokerage' | 'agent', Quote>;
+    addons?: AddOn[];
+    creditPacks?: {
+        name: string;
+        credits: number;
+        price_cents: number;
+        suggested_cents: number;
+    }[];
+    tenants?: TenantRow[];
 }) {
+    const [extra, setExtra] = useState({
+        kind: 'allowance',
+        key: 'texts',
+        amount: 1000,
+        name: '1,000 more texts',
+        audience: 'both',
+        price: '',
+        reason: '',
+    });
     const [editing, setEditing] = useState<Pkg | null>(null);
     const [name, setName] = useState('');
     const [audience, setAudience] = useState<'brokerage' | 'agent'>(
@@ -255,6 +296,192 @@ export default function Packages({
                                         >
                                             Edit
                                         </Button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </section>
+
+                <section aria-labelledby="extras-h" className="grid gap-3">
+                    <h2 id="extras-h" className="text-lg font-medium">
+                        Extras customers can add
+                    </h2>
+                    <table className="w-full text-sm">
+                        <thead>
+                            <tr className="text-left text-muted-foreground">
+                                <th className="py-2">Extra</th>
+                                <th>For</th>
+                                <th>Price a month</th>
+                                <th>Our cost</th>
+                                <th>Customers</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {addons.map((a) => (
+                                <tr key={a.ulid} className="border-t">
+                                    <td className="py-2">
+                                        {a.name}
+                                        {!a.active && ' (off)'}
+                                    </td>
+                                    <td>{a.audience}</td>
+                                    <td>{money(a.price_cents)}</td>
+                                    <td>{money(a.cost_cents)}</td>
+                                    <td>{a.buyers}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                    <form
+                        className="grid gap-2 rounded-md border p-3 text-sm sm:grid-cols-4"
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            router.post(
+                                '/hq/packages/addons',
+                                {
+                                    ...extra,
+                                    price:
+                                        extra.price === '' ? null : extra.price,
+                                },
+                                {
+                                    preserveScroll: true,
+                                    onError: (er) => setErrors(er),
+                                },
+                            );
+                        }}
+                    >
+                        <select
+                            className="h-10 rounded-md border bg-background px-2"
+                            value={`${extra.kind}:${extra.key}`}
+                            onChange={(e) => {
+                                const [kind, key] = e.target.value.split(':');
+                                setExtra({
+                                    ...extra,
+                                    kind: kind ?? 'allowance',
+                                    key: key ?? 'texts',
+                                });
+                            }}
+                        >
+                            <option value="allowance:texts">More texts</option>
+                            <option value="allowance:calls">
+                                More call minutes
+                            </option>
+                            <option value="allowance:maps">
+                                More website map views
+                            </option>
+                            {catalog
+                                .filter((m) => !m.always)
+                                .map((m) => (
+                                    <option
+                                        key={m.key}
+                                        value={`module:${m.key}`}
+                                    >
+                                        Module: {m.label}
+                                    </option>
+                                ))}
+                        </select>
+                        <input
+                            className="h-10 rounded-md border bg-background px-3"
+                            aria-label="Name"
+                            value={extra.name}
+                            onChange={(e) =>
+                                setExtra({ ...extra, name: e.target.value })
+                            }
+                        />
+                        {extra.kind === 'allowance' && (
+                            <input
+                                type="number"
+                                aria-label="How many more a month"
+                                className="h-10 rounded-md border bg-background px-3"
+                                value={extra.amount}
+                                onChange={(e) =>
+                                    setExtra({
+                                        ...extra,
+                                        amount: Number(e.target.value),
+                                    })
+                                }
+                            />
+                        )}
+                        <select
+                            aria-label="For"
+                            className="h-10 rounded-md border bg-background px-2"
+                            value={extra.audience}
+                            onChange={(e) =>
+                                setExtra({ ...extra, audience: e.target.value })
+                            }
+                        >
+                            <option value="both">Everyone</option>
+                            <option value="brokerage">Brokerages</option>
+                            <option value="agent">Solo agents</option>
+                        </select>
+                        <input
+                            inputMode="decimal"
+                            aria-label="Price (empty: suggested at cost + markup)"
+                            placeholder="Price (empty: suggested)"
+                            className="h-10 rounded-md border bg-background px-3"
+                            value={extra.price}
+                            onChange={(e) =>
+                                setExtra({ ...extra, price: e.target.value })
+                            }
+                        />
+                        {errors.price && (
+                            <input
+                                aria-label="Why below cost + minimum?"
+                                placeholder="Why below cost + minimum?"
+                                className="h-10 rounded-md border bg-background px-3"
+                                value={extra.reason}
+                                onChange={(e) =>
+                                    setExtra({
+                                        ...extra,
+                                        reason: e.target.value,
+                                    })
+                                }
+                            />
+                        )}
+                        <Button type="submit">Add extra</Button>
+                    </form>
+                    {creditPacks.length > 0 && (
+                        <p className="text-sm text-muted-foreground">
+                            Credit packs at cost + {rules.markup}%:{' '}
+                            {creditPacks
+                                .map(
+                                    (c) =>
+                                        `${c.name} ${money(c.price_cents)} (suggested ${money(c.suggested_cents)})`,
+                                )
+                                .join(' · ')}
+                        </p>
+                    )}
+                </section>
+
+                <section aria-labelledby="month-h" className="grid gap-2">
+                    <h2 id="month-h" className="text-lg font-medium">
+                        This month by customer
+                    </h2>
+                    <table className="w-full text-sm">
+                        <thead>
+                            <tr className="text-left text-muted-foreground">
+                                <th className="py-2">Customer</th>
+                                <th>Package</th>
+                                <th>They pay</th>
+                                <th>They cost</th>
+                                <th>We keep</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {tenants.map((t) => (
+                                <tr
+                                    key={t.tenant}
+                                    className={`border-t ${t.losing ? 'text-destructive' : ''}`}
+                                >
+                                    <td className="py-2">{t.tenant}</td>
+                                    <td>{t.package ?? 'None'}</td>
+                                    <td>{money(t.paid_cents)}</td>
+                                    <td>{money(t.cost_cents)}</td>
+                                    <td>
+                                        {t.margin_pct === null
+                                            ? '—'
+                                            : `${t.margin_pct}%`}
+                                        {t.losing && ' (losing money)'}
                                     </td>
                                 </tr>
                             ))}
