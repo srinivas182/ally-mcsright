@@ -27,6 +27,22 @@ type Props = {
     readOnly: boolean;
     partnerCode: string;
     featureNames: Record<string, string>;
+    extras?: {
+        offers: {
+            ulid: string;
+            name: string;
+            kind: string;
+            price_cents: number;
+            about: string;
+            have: boolean;
+            ends_at: string | null;
+        }[];
+        upgrade: {
+            name: string;
+            monthly_cents: number;
+            saves_cents: number;
+        } | null;
+    };
 };
 
 /** The brokerage's own RightAlly subscription, card and invoices, and its partner code. */
@@ -36,6 +52,7 @@ export default function Billing({
     readOnly,
     partnerCode,
     featureNames,
+    extras,
 }: Props) {
     const [interval, setInterval] = useState<'month' | 'year'>('year');
     const errors = usePage().props.errors as Record<string, string>;
@@ -169,6 +186,86 @@ export default function Billing({
                         ))}
                     </ul>
                 </section>
+                {extras && extras.offers.length > 0 && (
+                    <section
+                        aria-labelledby="extras"
+                        className="grid gap-3 rounded-lg border p-4"
+                    >
+                        <h2 id="extras" className="text-lg font-medium">
+                            Need more? Add an extra
+                        </h2>
+                        <p className="text-muted-foreground">
+                            Extras are on straight away and billed each month
+                            with your package. Anything beyond your package and
+                            extras uses RightAlly Credits.
+                        </p>
+                        {extras.upgrade && (
+                            <p
+                                role="status"
+                                className="rounded-md border border-amber-300 bg-amber-50 p-3 text-amber-950 dark:bg-amber-950 dark:text-amber-100"
+                            >
+                                Moving up to {extras.upgrade.name} (
+                                {usd(extras.upgrade.monthly_cents)} a month)
+                                would save you {usd(extras.upgrade.saves_cents)}{' '}
+                                a month.
+                            </p>
+                        )}
+                        <ul className="grid gap-2">
+                            {extras.offers.map((x) => (
+                                <li
+                                    key={x.ulid}
+                                    className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-3"
+                                >
+                                    <span className="grid">
+                                        <span className="font-medium">
+                                            {x.name} · {usd(x.price_cents)} a
+                                            month
+                                        </span>
+                                        <span className="text-muted-foreground">
+                                            {x.about}
+                                        </span>
+                                    </span>
+                                    {x.have ? (
+                                        x.ends_at ? (
+                                            <Badge variant="secondary">
+                                                On until {x.ends_at}
+                                            </Badge>
+                                        ) : (
+                                            <Button
+                                                variant="outline"
+                                                disabled={readOnly}
+                                                onClick={() =>
+                                                    router.post(
+                                                        `/settings/billing/extras/${x.ulid}/stop`,
+                                                        {},
+                                                        {
+                                                            preserveScroll: true,
+                                                        },
+                                                    )
+                                                }
+                                            >
+                                                Stop at month end
+                                            </Button>
+                                        )
+                                    ) : (
+                                        <Button
+                                            disabled={readOnly}
+                                            onClick={() =>
+                                                router.post(
+                                                    `/settings/billing/extras/${x.ulid}`,
+                                                    {},
+                                                    { preserveScroll: true },
+                                                )
+                                            }
+                                        >
+                                            Add
+                                        </Button>
+                                    )}
+                                </li>
+                            ))}
+                        </ul>
+                    </section>
+                )}
                 <section className="grid gap-1 rounded-lg border p-4 text-sm">
                     <span className="font-medium">Your partner code</span>
                     <span className="font-mono text-2xl tracking-wider">

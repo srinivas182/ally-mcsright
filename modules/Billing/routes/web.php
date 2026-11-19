@@ -26,6 +26,8 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function
     Route::get('plans/portal', [PaymentsController::class, 'portal'])->middleware('throttle:10,1')->name('billing.portal');
     Route::get('settings/billing', [PaymentsController::class, 'billing'])->name('billing.brokerage');
     Route::post('settings/billing/checkout', [PaymentsController::class, 'brokerageCheckout'])->middleware('throttle:10,1')->name('billing.brokerage.checkout');
+    Route::post('settings/billing/extras/{addon}', [PaymentsController::class, 'buyExtra'])->where('addon', '[0-9A-HJKMNP-TV-Z]{26}')->middleware('throttle:10,1')->name('billing.extras.buy'); // PB2
+    Route::post('settings/billing/extras/{addon}/stop', [PaymentsController::class, 'stopExtra'])->where('addon', '[0-9A-HJKMNP-TV-Z]{26}')->middleware('throttle:10,1')->name('billing.extras.stop');
     Route::get('settings/billing/portal', [PaymentsController::class, 'brokeragePortal'])->middleware('throttle:10,1')->name('billing.brokerage.portal');
     Route::post('settings/agent-plans-subsidy', [PaymentsController::class, 'subsidy'])->name('billing.subsidy');
     Route::get('settings/partner', [PaymentsController::class, 'partner'])->name('billing.partner-earnings');
@@ -98,6 +100,8 @@ Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.tenants.manage
     Route::post('packages/quote', [HqPackageBuilderController::class, 'quote'])->middleware('throttle:120,1')->name('packages.quote');
     Route::post('packages/rules', [HqPackageBuilderController::class, 'rules'])->middleware('password.confirm')->name('packages.rules');
     Route::post('packages', [HqPackageBuilderController::class, 'save'])->name('packages.store');
+    Route::post('packages/addons', [HqPackageBuilderController::class, 'saveAddOn'])->name('packages.addons.store'); // PB2
+    Route::put('packages/addons/{addon}', [HqPackageBuilderController::class, 'saveAddOn'])->where('addon', '[0-9A-HJKMNP-TV-Z]{26}')->name('packages.addons.update');
     Route::put('packages/{package}', [HqPackageBuilderController::class, 'save'])->name('packages.update');
     Route::post('credits/enforce', [HqCreditsController::class, 'enforce'])->middleware('password.confirm')->name('credits.enforce');
     Route::post('credits/go-live', [HqCreditsController::class, 'goLive'])->middleware('password.confirm')->name('credits.go-live');
