@@ -47,6 +47,7 @@ export function YourAiAssistant() {
     const [turns, setTurns] = useState<Turn[]>([]);
     const [conversation, setConversation] = useState<string | null>(null);
     const [text, setText] = useState('');
+    const [listen, setListen] = useState(0);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [people, setPeople] = useState<
@@ -65,11 +66,18 @@ export function YourAiAssistant() {
         };
         // Simple mode's "Talk to RightAlly" button (SM1) opens the assistant from anywhere.
         const onOpen = () => setOpen(true);
+        // SX4: the microphone button on every page opens the assistant and starts listening.
+        const onListen = () => {
+            setOpen(true);
+            setListen((n) => n + 1);
+        };
         window.addEventListener('keydown', onKey);
         window.addEventListener('assistant:open', onOpen);
+        window.addEventListener('assistant:listen', onListen);
         return () => {
             window.removeEventListener('keydown', onKey);
             window.removeEventListener('assistant:open', onOpen);
+            window.removeEventListener('assistant:listen', onListen);
         };
     }, []);
 
@@ -354,7 +362,11 @@ export function YourAiAssistant() {
                         }
                     }}
                 />
-                <VoiceButton onText={(t) => ask(t)} label="Speak" />
+                <VoiceButton
+                    onText={(t) => ask(t)}
+                    label="Speak"
+                    listen={listen}
+                />
                 <Button
                     type="submit"
                     size="icon"

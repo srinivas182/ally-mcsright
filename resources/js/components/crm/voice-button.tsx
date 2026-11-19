@@ -11,9 +11,12 @@ import { postForm } from '@/lib/http';
 export function VoiceButton({
     onText,
     label = 'Speak',
+    listen = 0,
 }: {
     onText: (text: string) => void;
     label?: string;
+    /** SX4: change this number to start recording (the microphone button on every page). */
+    listen?: number;
 }) {
     const [state, setState] = useState<'idle' | 'recording' | 'working'>(
         'idle',
@@ -21,6 +24,7 @@ export function VoiceButton({
     const [error, setError] = useState<string | null>(null);
     const [supported, setSupported] = useState(false);
     const recorder = useRef<MediaRecorder | null>(null);
+    const startRef = useRef<(() => Promise<void>) | null>(null);
     const chunks = useRef<Blob[]>([]);
 
     useEffect(() => {
@@ -30,6 +34,16 @@ export function VoiceButton({
                 !!navigator.mediaDevices?.getUserMedia,
         );
     }, []);
+
+    useEffect(() => {
+        if (
+            listen > 0 &&
+            supported &&
+            recorder.current?.state !== 'recording'
+        ) {
+            void startRef.current?.();
+        }
+    }, [listen, supported]);
 
     if (!supported) {
         return null;
@@ -67,10 +81,18 @@ export function VoiceButton({
             recorder.current = rec;
             rec.start();
             setState('recording');
+            // SX4: stop by itself after a minute (the most that is written down at once).
+            window.setTimeout(() => {
+                if (rec.state === 'recording') {
+                    rec.stop();
+                }
+            }, 60_000);
         } catch {
             setError('Allow microphone access to speak.');
         }
     };
+
+    startRef.current = start;
 
     return (
         <span className="inline-flex flex-col gap-1">

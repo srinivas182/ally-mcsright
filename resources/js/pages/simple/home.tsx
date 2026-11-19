@@ -1,6 +1,9 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import { useState } from 'react';
 import {
     BriefcaseIcon,
+    CheckIcon,
+    MessageSquareIcon,
     CalculatorIcon,
     CircleHelpIcon,
     FilePlusIcon,
@@ -11,6 +14,16 @@ import {
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+
+type Person = {
+    ulid: string;
+    name: string;
+    reason: string;
+    phone: string | null;
+    call: boolean;
+    text: boolean;
+    text_wait: string | null;
+};
 
 type Item = {
     key: string;
@@ -24,11 +37,14 @@ type Item = {
 /** The simple home (SM1): "What do you want to do?" with big buttons, and what needs you today. */
 export default function SimpleHome({
     firstName,
+    people = [],
     today,
 }: {
     firstName: string;
+    people?: Person[];
     today: Item[];
 }) {
+    const [called, setCalled] = useState<string | null>(null);
     const w = usePage().props.simple?.words ?? {};
     const tiles = [
         { href: '/contacts?add=1', label: w.add_person, icon: UserPlusIcon },
@@ -63,6 +79,144 @@ export default function SimpleHome({
                         </span>
                     </span>
                 </Button>
+                {people.length > 0 && (
+                    <section
+                        aria-labelledby="call"
+                        className="grid gap-3"
+                        data-tour="people"
+                    >
+                        <h2 id="call" className="text-xl font-semibold">
+                            {w.call_today ?? 'Who to call today'}
+                        </h2>
+                        <ol className="grid gap-3">
+                            {people.map((p, i) => (
+                                <li
+                                    key={p.ulid}
+                                    className="grid gap-3 rounded-2xl border-2 p-4"
+                                >
+                                    <Link
+                                        href={`/contacts/${p.ulid}`}
+                                        className="grid text-lg hover:underline"
+                                    >
+                                        <span className="font-semibold">
+                                            {i + 1}. {p.name}
+                                        </span>
+                                        <span className="text-base text-muted-foreground">
+                                            {p.reason}
+                                        </span>
+                                    </Link>
+                                    {called === p.ulid ? (
+                                        <div className="grid gap-2">
+                                            <p className="text-lg">
+                                                {w.how_went ?? 'How did it go?'}
+                                            </p>
+                                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                                                {(
+                                                    [
+                                                        [
+                                                            'connected',
+                                                            w.talked ??
+                                                                'We talked',
+                                                        ],
+                                                        [
+                                                            'left_voicemail',
+                                                            w.left_message ??
+                                                                'Left a message',
+                                                        ],
+                                                        [
+                                                            'no_answer',
+                                                            w.no_answer ??
+                                                                'No answer',
+                                                        ],
+                                                    ] as const
+                                                ).map(([outcome, text]) => (
+                                                    <Button
+                                                        key={outcome}
+                                                        size="lg"
+                                                        variant="outline"
+                                                        className="h-14 text-lg"
+                                                        onClick={() => {
+                                                            setCalled(null);
+                                                            router.post(
+                                                                `/contacts/${p.ulid}/activities`,
+                                                                {
+                                                                    type: 'call',
+                                                                    direction:
+                                                                        'out',
+                                                                    outcome,
+                                                                },
+                                                                {
+                                                                    preserveScroll: true,
+                                                                },
+                                                            );
+                                                        }}
+                                                    >
+                                                        <CheckIcon
+                                                            className="size-5"
+                                                            aria-hidden
+                                                        />
+                                                        {text}
+                                                    </Button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {p.call && p.phone ? (
+                                                <Button
+                                                    size="lg"
+                                                    className="h-16 text-xl"
+                                                    asChild
+                                                >
+                                                    <a
+                                                        href={`tel:${p.phone}`}
+                                                        onClick={() =>
+                                                            setCalled(p.ulid)
+                                                        }
+                                                    >
+                                                        <PhoneIcon
+                                                            className="size-6"
+                                                            aria-hidden
+                                                        />
+                                                        {w.call ?? 'Call'}
+                                                    </a>
+                                                </Button>
+                                            ) : (
+                                                <p className="self-center text-base text-muted-foreground">
+                                                    {w.no_call ??
+                                                        'No phone number we may call.'}
+                                                </p>
+                                            )}
+                                            {p.text && p.phone ? (
+                                                <Button
+                                                    size="lg"
+                                                    variant="outline"
+                                                    className="h-16 text-xl"
+                                                    asChild
+                                                >
+                                                    <a href={`sms:${p.phone}`}>
+                                                        <MessageSquareIcon
+                                                            className="size-6"
+                                                            aria-hidden
+                                                        />
+                                                        {w.text ?? 'Text'}
+                                                    </a>
+                                                </Button>
+                                            ) : (
+                                                <p className="self-center text-base text-muted-foreground">
+                                                    {p.text_wait ??
+                                                        w.no_text ??
+                                                        'Texts only after they say yes to texts.'}
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
+                                </li>
+                            ))}
+                        </ol>
+                    </section>
+                )}
+
                 <section aria-labelledby="what" className="grid gap-3">
                     <h2 id="what" className="text-xl font-semibold">
                         {w.what}
