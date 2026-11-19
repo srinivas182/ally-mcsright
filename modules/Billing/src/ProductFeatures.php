@@ -24,6 +24,7 @@ final class ProductFeatures
             'crm.ai' => 'AI contact brief, Ask your database, voice',
             'crm.intelligence' => "Today's 10, opportunity scores and alerts",
             'website' => 'Own website with AIlly',
+            'content.blog' => 'AI blog writer (MK4)',
         ];
     }
 }

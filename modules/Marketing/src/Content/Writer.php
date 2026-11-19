@@ -33,6 +33,9 @@ final class Writer
 {
     public const FEATURE = 'marketing.content';
 
+    /** Fact sources a brokerage's own post may cite besides a web page. */
+    public const LOCAL_SOURCES = ['mls-figures', 'your-words'];
+
     private const SCHEMA = ['type' => 'object', 'required' => ['title', 'description', 'answer', 'sections', 'faq', 'facts']];
 
     public function __construct(private readonly AiGateway $ai) {}
@@ -62,22 +65,25 @@ final class Writer
     public function draft(stdClass $desk, array $topic, string $site, string $audience, string $extra = ''): bool
     {
         $state = Topics::STATES[(string) $desk->state] ?? (string) $desk->state;
+        $tenant = (int) $desk->tenant_id > 0;
         $others = DB::connection(Connections::control())->table('content_drafts')->where('state', (string) $desk->state)->whereIn('status', ['review', 'published'])
-            ->orderByDesc('id')->limit(300)->get(['title', 'body']);
+            ->orderByDesc('id')->limit(300)->get(['title', 'body', 'status']);
+        // The AI is only told titles already public; another brokerage's drafts are compared on our side, never shown.
+        $avoid = ($tenant ? $others->where('status', 'published') : $others)->pluck('title')->take(40)->implode('; ');
         $problem = '';
         for ($attempt = 0; $attempt < 3; $attempt++) {
             // AI runs (and is charged) as the brokerage the desk belongs to, or as HQ for HQ's desks.
             $owner = (int) $desk->tenant_id > 0 ? Tenant::query()->find((int) $desk->tenant_id) : Tenant::query()->where('type', TenantType::Hq)->first();
             $task = new AiTask(self::FEATURE, 'marketing.content_desk', 'content:'.$desk->id.':'.$topic['topic'].':'.$topic['angle'].':'.$attempt.':'.now()->format('Ymd'),
                 inputs: ['kind' => $topic['kind'] === 'landing' ? 'landing page' : 'article', 'site' => $site, 'audience' => $audience, 'place' => $topic['city'], 'state' => $state,
-                    'title' => $topic['title'], 'angle' => str_replace('-', ' ', $topic['angle']), 'avoid' => $others->pluck('title')->take(40)->implode('; '),
+                    'title' => $topic['title'], 'angle' => str_replace('-', ' ', $topic['angle']), 'avoid' => $avoid,
                     'extra' => trim($extra.($problem !== '' ? "\nYour last draft was rejected: {$problem} Fix that." : ''))],
                 outputSchema: self::SCHEMA);
             $result = $owner !== null ? app(TenantContext::class)->runAs($owner, fn () => $this->ai->run($task)) : $this->ai->run($task);
             $d = (array) ($result->json ?? []);
             $body = self::body($d);
             $similarity = 0.0;
-            $problem = $this->problem($d, $body, array_values(array_map('strval', $others->pluck('body')->all())), $similarity);
+            $problem = $this->problem($d, $body, array_values(array_map('strval', $others->pluck('body')->all())), $similarity, $tenant);
             if ($problem === '') {
                 DB::connection(Connections::control())->table('content_drafts')->insert(['ulid' => (string) Str::ulid(), 'desk_id' => $desk->id, 'tenant_id' => (int) $desk->tenant_id,
                     'state' => (string) $desk->state, 'city' => $topic['city'], 'kind' => $topic['kind'], 'topic' => $topic['topic'], 'title' => mb_substr((string) $d['title'], 0, 120),
@@ -113,7 +119,7 @@ final class Writer
      * @param  array<string, mixed>  $d
      * @param  list<string>  $others
      */
-    private function problem(array $d, string $body, array $others, float &$similarity): string
+    private function problem(array $d, string $body, array $others, float &$similarity, bool $tenant = false): string
     {
         $similarity = 0.0;
         $title = trim((string) ($d['title'] ?? ''));
@@ -121,7 +127,10 @@ final class Writer
         $answer = trim((string) ($d['answer'] ?? ''));
         $sections = (array) ($d['sections'] ?? []);
         $faq = (array) ($d['faq'] ?? []);
-        $facts = array_filter((array) ($d['facts'] ?? []), fn ($f): bool => is_array($f) && trim((string) ($f['fact'] ?? '')) !== '' && str_starts_with((string) ($f['source'] ?? ''), 'https://'));
+        // A brokerage's post may also rest on its own MLS figures or the owner's own words (MK4).
+        $local = $tenant ? self::LOCAL_SOURCES : [];
+        $facts = array_filter((array) ($d['facts'] ?? []), fn ($f): bool => is_array($f) && trim((string) ($f['fact'] ?? '')) !== ''
+            && (str_starts_with((string) ($f['source'] ?? ''), 'https://') || in_array((string) ($f['source'] ?? ''), $local, true)));
         if ($title === '' || mb_strlen($title) > 65 || mb_strlen($description) < 120 || mb_strlen($description) > 155) {
             return 'The title must be under 65 characters and the description 120 to 155 characters.';
         }
@@ -130,7 +139,7 @@ final class Writer
             return 'It needs a 40 to 60 word answer first, 4 to 6 sections and 3 to 5 questions.';
         }
         if (count($facts) < 3) {
-            return 'It needs at least 3 facts, each with an https source.';
+            return $tenant ? 'It needs at least 3 facts, each from the market figures, your own words or an https source.' : 'It needs at least 3 facts, each with an https source.';
         }
         $all = $title."\n".$description."\n".$body."\n".implode("\n", array_map(fn ($q): string => implode(' ', (array) $q), $faq));
         $claims = ClaimsCheck::problem($all);

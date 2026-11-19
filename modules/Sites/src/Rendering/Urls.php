@@ -10,7 +10,7 @@ use Illuminate\Support\Str;
 final class Urls
 {
     /** Paths the site engine owns; pages cannot use them. */
-    public const RESERVED = ['homes', 'market', 'home-value', '_search', '_lead', '_preview', '_valuation', '_t', '_auth', '_me', 'robots.txt', 'sitemap.xml', 'llms.txt'];
+    public const RESERVED = ['homes', 'market', 'home-value', '_search', '_lead', '_preview', '_valuation', '_t', '_auth', '_me', 'robots.txt', 'sitemap.xml', 'llms.txt', 'indexnow-key.txt'];
 
     /** /homes/{ulid}/{address-words}: the id finds the listing, the words help people and search engines. */
     public static function listing(string $ulid, ?string $label = null): string

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use Modules\Core\Http\Middleware\EnsureHqConsole;
+use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
+use Modules\Marketing\Http\BlogWriterController;
 use Modules\Marketing\Http\HqContentController;
 use Modules\Marketing\Http\HqWebsiteController;
 
@@ -32,4 +34,13 @@ Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.tenants.manage
     Route::post('desks/{desk}/stats', [HqContentController::class, 'manualStats'])->whereNumber('desk')->name('stats');
     Route::post('drafts/{draft}/approve', [HqContentController::class, 'approve'])->where('draft', $ulid)->middleware('throttle:60,1')->name('approve');
     Route::post('drafts/{draft}/reject', [HqContentController::class, 'reject'])->where('draft', $ulid)->name('reject');
+});
+
+/* MK4: a brokerage's own AI blog writer (an add-on), in its back office. */
+Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('settings/blog-writer')->name('settings.blog-writer.')->group(function (): void {
+    $ulid = '[0-9A-HJKMNP-TV-Z]{26}';
+    Route::get('/', [BlogWriterController::class, 'index'])->name('index');
+    Route::post('/', [BlogWriterController::class, 'save'])->middleware('throttle:30,1')->name('save');
+    Route::post('drafts/{draft}/approve', [BlogWriterController::class, 'approve'])->where('draft', $ulid)->middleware('throttle:60,1')->name('approve');
+    Route::post('drafts/{draft}/reject', [BlogWriterController::class, 'reject'])->where('draft', $ulid)->name('reject');
 });

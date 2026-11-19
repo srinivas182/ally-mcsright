@@ -21,7 +21,7 @@ final class NavWords
         'Ads' => 'Anuncios', 'Agent activity' => 'Actividad de agentes', 'Agent billing' => 'Cobros a agentes', 'Agent database' => 'Base de agentes',
         'Agent plans' => 'Planes para agentes', 'Ally Studio' => 'Ally Studio', 'Appointments' => 'Citas', 'Approvals' => 'Aprobaciones', 'Apps' => 'Aplicaciones',
         'Audit log' => 'Registro de auditoría', 'Audit pack' => 'Paquete de auditoría', 'Automations' => 'Automatizaciones', 'Bank reconciliation' => 'Conciliación bancaria',
-        'Billing' => 'Facturación', 'Bills' => 'Facturas por pagar', 'Brand voice' => 'Voz de la marca', 'Books (QuickBooks, Xero)' => 'Contabilidad (QuickBooks, Xero)', 'Bring your old files' => 'Traiga sus archivos',
+        'Billing' => 'Facturación', 'Bills' => 'Facturas por pagar', 'Brand voice' => 'Voz de la marca', 'AI blog writer' => 'Redactor de blog con IA', 'Books (QuickBooks, Xero)' => 'Contabilidad (QuickBooks, Xero)', 'Bring your old files' => 'Traiga sus archivos',
         'Business planner' => 'Plan de negocio', 'Buyer demand' => 'Demanda de compradores', 'CMA and estimates' => 'CMA y estimaciones', 'Chart of accounts' => 'Plan de cuentas',
         'Contacts' => 'Contactos', 'Credits' => 'Créditos', 'Custom fields' => 'Campos personalizados', 'Dashboard' => 'Panel', 'Database' => 'Base de datos', 'Deals' => 'Operaciones',
         'Directory' => 'Directorio', 'Fair Housing' => 'Vivienda justa', 'Features and seats' => 'Funciones y licencias', 'Fees' => 'Cargos', 'Forms' => 'Formularios',

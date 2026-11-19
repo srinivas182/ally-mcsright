@@ -50,7 +50,7 @@ it('offers solo agents only the modules made for them, and shows what everything
 
     $this->actingAs($this->staff)->get('http://app.rightally.io/hq/packages')->assertOk()->assertInertia(fn (Assert $p) => $p->component('hq/packages')
         ->where('rules.markup', 70)->where('rules.min_markup', 40)
-        ->where('everything.brokerage.modules', fn ($m): bool => count($m) === 16)->has('catalog', 16));
+        ->where('everything.brokerage.modules', fn ($m): bool => count($m) === 17)->has('catalog', 17));
 });
 
 it('saves a package with its modules, features and allowances, and needs a reason for a price under cost + 40%', function (): void {

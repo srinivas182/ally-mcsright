@@ -8,6 +8,7 @@ use Illuminate\Container\Container;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Router;
+use Modules\Marketing\Content\Publisher;
 use Modules\Sites\Content\Redirects;
 use Modules\Sites\Http\Controllers\AccessibilityController;
 use Modules\Sites\Http\Controllers\AgentSiteController;
@@ -38,6 +39,8 @@ final class SiteRouter
         $r->get('robots.txt', [SiteController::class, 'robots']);
         $r->get('sitemap.xml', [SiteController::class, 'sitemap']);
         $r->get('llms.txt', [SiteController::class, 'llms']);
+        // MK4: this website's IndexNow key, so a new AI-written post can be announced to search engines at once.
+        $r->get('indexnow-key.txt', fn (Request $request) => response(Publisher::indexNowKey($request->getHost()), 200, ['Content-Type' => 'text/plain']));
         $r->post('_lead', [SiteController::class, 'lead']);
         $r->get('_preview/{page}', [SiteController::class, 'preview'])->where('page', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}');
         $r->get('homes', [IdxController::class, 'search']);

@@ -1,13 +1,14 @@
 # Billing 09: package builder (PB1)
 
-HQ builds every brokerage and solo-agent package by ticking modules. There are 16, in plain words:
+HQ builds every brokerage and solo-agent package by ticking modules. There are 17, in plain words:
 
 - back office (always on), CRM, AI for contacts, Today's 10;
 - website with AIlly, texting, calling and transcripts, AI voice calls;
 - deals, forms and e-sign;
 - commissions and payouts, and books and trust accounting (both brokerage only);
 - Ally Studio, email marketing, property look-ups, Learn;
-- recruiting (brokerage only).
+- recruiting (brokerage only);
+- AI blog writer (MK4, also sold as an extra; see specs/marketing/01).
 
 **What HQ sets for each package**
 
