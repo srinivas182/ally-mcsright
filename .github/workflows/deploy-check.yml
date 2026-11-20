@@ -60,6 +60,8 @@ jobs:
         run: |
           set -e
           docker compose -f compose.prod.yaml exec -T app php artisan tenants:bootstrap-hq --admin-email=dev@example.com   # HQ and its first staff invite
+          # On a real server the HQ person accepts the emailed invitation; here we stand in for that.
+          docker compose -f compose.prod.yaml exec -T app php artisan tinker --execute='app(Modules\Core\Tenancy\TenantContext::class)->runAs(Modules\Core\Tenancy\Models\Tenant::where("type", "hq")->firstOrFail(), fn () => App\Models\User::forceCreate(["kind" => "hq_staff", "status" => "active", "first_name" => "Check", "last_name" => "Staff", "email" => "staff@example.com", "email_verified_at" => now(), "password" => Illuminate\Support\Str::random(40)]));'
           docker compose -f compose.prod.yaml exec -T app php artisan marketing:starter  # RightAlly's own website pages
           hit() { code=$(curl -s -o /dev/null -w '%{http_code}' -H "Host: $1" "http://127.0.0.1:8100$2"); echo "$1$2 → $code"; [ "$code" = "$3" ]; }
           hit app.rightally.app /up 200

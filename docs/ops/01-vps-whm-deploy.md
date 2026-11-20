@@ -86,12 +86,18 @@ The first build takes 10–15 minutes. Then:
 C="docker compose -f compose.prod.yaml exec app php artisan"
 $C tenants:bootstrap-hq --admin-email=you@yourcompany.com     # emails you the HQ invitation
 $C billing:starter-prices                                      # the starter packages and agent seats
-$C marketing:starter                                           # RightAlly's own website pages (rightally.app)
 $C ai:sync-features
 $C launch:check                                                # the launch checklist
 ```
 
-Open `https://app.rightally.app`, accept the invitation, and turn on two-step sign-in. On this one server,
+Open `https://app.rightally.app`, accept the invitation, and turn on two-step sign-in. Then add RightAlly's own
+website pages (they need an HQ person to be their author):
+
+```bash
+docker compose -f compose.prod.yaml exec app php artisan marketing:starter
+```
+
+On this one server,
 `launch:check` will show two items as not done, both expected until the move: **files on shared storage** (set
 Cloudflare R2 in `.env` if you want it now) and **a separate brokerage database** (set up and tested at the move).
 
