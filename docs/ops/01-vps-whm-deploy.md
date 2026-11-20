@@ -107,11 +107,8 @@ RightAlly's own email (invitations, sign-in codes, notices, Watchtower) is set u
 Platform email**: Brevo (recommended), Postmark or Amazon SES. Verify the sending domain with the provider and add its
 DNS records in Cloudflare (DNS only), paste the keys, put your own address in **Test contacts**, run **Check
 connection**, and switch to **Test**: every email then goes only to you, with the real recipient in the subject. Switch
-to **Live** when it works. Until then mail is written to the app's log; to find the HQ invitation link:
-
-```bash
-docker compose -f compose.prod.yaml logs app | grep -o 'https://app.rightally.app/[^ "]*invitation[^ "]*' | tail -1
-```
+to **Live** when it works. Until then nothing is really sent: `tenants:bootstrap-hq` prints the HQ invitation link
+for you to open.
 
 ## 4 · Every night: backups
 

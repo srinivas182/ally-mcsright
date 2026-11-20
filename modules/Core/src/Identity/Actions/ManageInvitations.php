@@ -120,11 +120,15 @@ final class ManageInvitations
         return $invitation !== null && $invitation->isOpen() ? $invitation : null;
     }
 
+    /** The link in the last invitation sent by this process (EM1: shown by tenants:bootstrap-hq before email is set up). */
+    public ?string $lastLink = null;
+
     private function send(Invitation $invitation, string $token, ?User $by): void
     {
         $tenant = $this->tenants->current();
         $host = $tenant->primaryDomain()?->host;
         $url = ($host !== null ? 'https://'.$host : rtrim((string) config('app.url'), '/')).'/invitations/'.$token;
+        $this->lastLink = $url;
 
         Notification::route('mail', $invitation->email)->notify(new InvitationNotification(
             $url,

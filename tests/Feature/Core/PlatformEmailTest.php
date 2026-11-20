@@ -86,3 +86,11 @@ it('knows each provider\'s mail server, and refuses incomplete sign-ins', functi
 it('is listed for HQ in Outside services', function (): void {
     $this->actingAs($this->staff)->get('http://app.rightally.io/hq/services')->assertOk()->assertSee('Platform email');
 });
+
+it('gives the HQ invitation link on screen while email is not set up yet', function (): void {
+    config(['mail.default' => 'array']);
+    $this->artisan('tenants:bootstrap-hq', ['--admin-email' => 'srini@mcs.test'])
+        ->expectsOutputToContain('Email is not set up yet')
+        ->expectsOutputToContain('/invitations/')
+        ->assertSuccessful();
+});

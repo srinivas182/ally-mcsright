@@ -92,8 +92,13 @@ final class LaunchReadiness
         return $checks;
     }
 
-    /** EM1: email reaches people when HQ's Platform email is Live, or the server's own mailer really sends. */
     private function realEmail(): bool
+    {
+        return self::emailSends();
+    }
+
+    /** EM1: email reaches people when HQ's Platform email is Live, or the server's own mailer really sends. */
+    public static function emailSends(): bool
     {
         $server = (string) (config('mail.default') === 'platform' ? config('mail.mailers.platform.fallback') : config('mail.default'));
 
