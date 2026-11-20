@@ -1,0 +1,164 @@
+# RightAlly production stack (DP1, docs/ops/01-vps-whm-deploy.md).
+#
+# One image (docker/prod/Dockerfile) runs the app, the queue workers and the scheduler; nginx serves it on
+# 127.0.0.1:${RIGHTALLY_PORT:-8100} only, so the server's own web server (WHM's Apache, or a load balancer later) and
+# Cloudflare sit in front. MySQL and Redis live inside Docker with their own volumes: nothing else on the server is
+# touched. Each service has a memory and CPU limit so other sites on a shared VPS are never slowed down.
+#
+# Do not run this by hand: scripts/ops/deploy.sh builds, runs the database updates and restarts in the right order.
+
+x-app: &app
+    image: rightally-app:${APP_RELEASE:-dev}
+    build:
+        context: .
+        dockerfile: docker/prod/Dockerfile
+        target: app
+        args:
+            APP_RELEASE: ${APP_RELEASE:-dev}
+            APP_COMMIT: ${APP_COMMIT:-}
+    env_file: .env
+    environment:
+        APP_RELEASE: ${APP_RELEASE:-dev}
+        APP_COMMIT: ${APP_COMMIT:-}
+        DB_HOST: mysql
+        DB_PORT: 3306
+        REDIS_HOST: redis
+        CACHE_STORE: redis
+        SESSION_DRIVER: redis
+        QUEUE_CONNECTION: redis
+        LOG_CHANNEL: stderr
+        FPM_MAX_CHILDREN: ${FPM_MAX_CHILDREN:-16}
+    volumes:
+        - storage-app:/var/www/html/storage/app
+    depends_on:
+        mysql: { condition: service_healthy }
+        redis: { condition: service_healthy }
+    restart: unless-stopped
+    logging: &logs
+        driver: json-file
+        options: { max-size: '20m', max-file: '5' }
+
+services:
+    app:
+        <<: *app
+        mem_limit: ${APP_MEMORY:-2g}
+        cpus: ${APP_CPUS:-1.5}
+        healthcheck:
+            test:
+                [
+                    'CMD-SHELL',
+                    'php -r ''exit(@fsockopen("127.0.0.1", 9000) ? 0 : 1);''',
+                ]
+            interval: 15s
+            retries: 5
+            start_period: 30s
+
+    web:
+        image: rightally-web:${APP_RELEASE:-dev}
+        build:
+            context: .
+            dockerfile: docker/prod/Dockerfile
+            target: web
+        ports:
+            - '127.0.0.1:${RIGHTALLY_PORT:-8100}:80'
+        volumes:
+            - storage-app:/var/www/html/storage/app:ro
+        depends_on:
+            app: { condition: service_healthy }
+        mem_limit: 256m
+        cpus: 0.5
+        restart: unless-stopped
+        logging: *logs
+
+    queue:
+        <<: *app
+        command:
+            [
+                'php',
+                'artisan',
+                'queue:work',
+                'redis',
+                '--sleep=1',
+                '--tries=3',
+                '--timeout=300',
+                '--max-time=3600',
+                '--memory=384',
+            ]
+        deploy:
+            replicas: ${QUEUE_WORKERS:-2}
+        mem_limit: ${QUEUE_MEMORY:-768m}
+        cpus: ${QUEUE_CPUS:-1}
+        healthcheck: { disable: true }
+
+    scheduler:
+        <<: *app
+        command: ['php', 'artisan', 'schedule:work']
+        mem_limit: 512m
+        cpus: 0.5
+        healthcheck: { disable: true }
+
+    mysql:
+        image: mysql:8.4
+        command:
+            - --character-set-server=utf8mb4
+            - --collation-server=utf8mb4_unicode_ci
+            # The money ledger's migration creates triggers; MySQL with binary logs needs this (docs/architecture/deployment-requirements.md).
+            - --log-bin-trust-function-creators=1
+            - --innodb-buffer-pool-size=${MYSQL_BUFFER_POOL:-1G}
+            - --max-connections=300
+        environment:
+            MYSQL_DATABASE: ${DB_DATABASE:-rightally}
+            MYSQL_USER: ${DB_USERNAME:-rightally}
+            MYSQL_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+            MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env}
+        volumes:
+            - mysql-data:/var/lib/mysql
+        healthcheck:
+            test:
+                [
+                    'CMD-SHELL',
+                    'mysqladmin ping -h 127.0.0.1 -uroot -p"$$MYSQL_ROOT_PASSWORD" --silent',
+                ]
+            interval: 5s
+            retries: 30
+            start_period: 30s
+        mem_limit: ${MYSQL_MEMORY:-2g}
+        cpus: ${MYSQL_CPUS:-1}
+        restart: unless-stopped
+        logging: *logs
+
+    redis:
+        image: redis:7-alpine
+        command:
+            [
+                'redis-server',
+                '--appendonly',
+                'yes',
+                '--maxmemory',
+                '384mb',
+                '--maxmemory-policy',
+                'noeviction',
+                '--requirepass',
+                '${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}',
+            ]
+        volumes:
+            - redis-data:/data
+        healthcheck:
+            test:
+                [
+                    'CMD-SHELL',
+                    'redis-cli -a "$$REDIS_PASSWORD" --no-auth-warning ping | grep -q PONG',
+                ]
+            interval: 5s
+            retries: 20
+        environment:
+            REDIS_PASSWORD: ${REDIS_PASSWORD}
+        mem_limit: 512m
+        cpus: 0.5
+        restart: unless-stopped
+        logging: *logs
+
+volumes:
+    storage-app:
+    mysql-data:
+    redis-data:
