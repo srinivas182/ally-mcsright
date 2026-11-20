@@ -1,0 +1,94 @@
+# DP1: the production Docker setup really works (docs/ops/01-vps-whm-deploy.md).
+#
+# On a fresh machine, exactly as on a new server: builds the production images, runs scripts/ops/deploy.sh (database
+# updates, start, health check), checks the HQ, a brokerage address and the public routes answer, takes a backup,
+# then deploys again over the running release (as every later update does).
+# Runs when the deploy files, the PHP or JS packages, or the migrations change.
+name: Production deploy check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - 'docker/prod/**'
+      - 'compose.prod.yaml'
+      - '.dockerignore'
+      - '.env.production.example'
+      - 'scripts/ops/**'
+      - 'composer.lock'
+      - 'package-lock.json'
+      - 'modules/*/database/migrations/**'
+      - 'database/migrations/**'
+      - '.github/workflows/deploy-check.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-check-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Production Docker deploy
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Settings like a real server (random secrets, mail to the log)
+        run: |
+          cp .env.production.example .env
+          sed -i "s#^APP_KEY=.*#APP_KEY=base64:$(openssl rand -base64 32)#" .env
+          for k in DB_PASSWORD MYSQL_ROOT_PASSWORD REDIS_PASSWORD CRM_INBOUND_EMAIL_SECRET; do
+            sed -i "s#^${k}=.*#${k}=$(openssl rand -hex 16)#" .env
+          done
+          sed -i -e 's#^MAIL_MAILER=.*#MAIL_MAILER=log#' -e 's#^MAIL_HOST=.*#MAIL_HOST=localhost#' -e 's#^MAIL_USERNAME=.*#MAIL_USERNAME=#' \
+                 -e 's#^MAIL_PASSWORD=.*#MAIL_PASSWORD=#' -e 's#^WATCHTOWER_EMAILS=.*#WATCHTOWER_EMAILS=dev@example.com#' .env
+          echo "BACKUP_DIR=${RUNNER_TEMP}/backups" >> .env
+          ! grep -n "=CHANGE_ME" .env
+
+      - name: First deploy (fresh server)
+        run: DEPLOY_SKIP_FETCH=1 scripts/ops/deploy.sh "$(git rev-parse HEAD)"
+
+      - name: It answers on every kind of address
+        run: |
+          set -e
+          docker compose -f compose.prod.yaml exec -T app php artisan tenants:bootstrap-hq --admin-email=dev@example.com   # HQ and its first staff invite
+          # On a real server the HQ person accepts the emailed invitation; here we stand in for that.
+          docker compose -f compose.prod.yaml exec -T -e HOME=/tmp app php artisan tinker --execute='app(Modules\Core\Tenancy\TenantContext::class)->runAs(Modules\Core\Tenancy\Models\Tenant::where("type", "hq")->firstOrFail(), fn () => App\Models\User::forceCreate(["kind" => "hq_staff", "status" => "active", "first_name" => "Check", "last_name" => "Staff", "email" => "staff@example.com", "email_verified_at" => now(), "password" => Illuminate\Support\Str::random(40)]));'
+          docker compose -f compose.prod.yaml exec -T app php artisan marketing:starter  # RightAlly's own website pages
+          hit() { code=$(curl -s -o /dev/null -w '%{http_code}' -H "Host: $1" "http://127.0.0.1:8100$2"); echo "$1$2 → $code"; [ "$code" = "$3" ]; }
+          hit app.rightally.app /up 200
+          hit app.rightally.app /up/scheduler 503      # the scheduler has not run its first minute yet
+          hit app.rightally.app /login 200
+          code=$(curl -s -o /dev/null -w "%{http_code}" -H "Host: rightally.app" http://127.0.0.1:8100/); echo "rightally.app/ → $code"; [ "$code" = 200 ] || [ "$code" = 302 ]
+          hit nobody.rightally.app / 404              # no such brokerage
+          curl -s -H "Host: app.rightally.app" http://127.0.0.1:8100/login | grep -q '/build/assets/' # built screens are served
+          docker compose -f compose.prod.yaml exec -T app php artisan billing:starter-prices
+          docker compose -f compose.prod.yaml exec -T app php artisan launch:check || true # single server: shared files and the cell database are expected ✗
+          docker compose -f compose.prod.yaml ps
+
+      - name: The scheduler and a queue worker run
+        run: |
+          sleep 75
+          code=$(curl -s -o /dev/null -w '%{http_code}' -H "Host: app.rightally.app" http://127.0.0.1:8100/up/scheduler); echo "scheduler → $code"; [ "$code" = 200 ]
+          docker compose -f compose.prod.yaml ps --status running --services | sort | tee /dev/stderr | grep -qx queue
+
+      - name: Backup
+        run: |
+          scripts/ops/backup.sh
+          ls -l "${RUNNER_TEMP}/backups"
+          gunzip -c "${RUNNER_TEMP}"/backups/db-*.sql.gz | grep -q 'CREATE TABLE `tenants`'
+
+      - name: Second deploy over the running release
+        run: DEPLOY_SKIP_FETCH=1 scripts/ops/deploy.sh "$(git rev-parse HEAD)"
+
+      - name: Logs if anything failed
+        if: failure()
+        run: docker compose -f compose.prod.yaml logs --tail=200
