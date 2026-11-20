@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Identity\Enums\UserStatus;
+use Modules\Core\Mail\PlatformEmail;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\Models\Tenant;
 use Modules\Core\Tenancy\TenantContext;
@@ -45,8 +46,8 @@ final class LaunchReadiness
                 'Set CACHE_STORE=redis: rate limits and kept counts must be shared by every server.'),
             $this->check('Background work on a queue', ! in_array(config('queue.default'), ['sync', 'null'], true), 'Queue: '.config('queue.default').'.',
                 'Set QUEUE_CONNECTION=redis (or sqs) and run queue workers; "sync" makes visitors wait for emails and AI.'),
-            $this->check('Real email', ! in_array(config('mail.default'), ['log', 'array'], true), 'Mail: '.config('mail.default').'.',
-                'Set MAIL_MAILER to the sending service (Postmark, SES…); "log" sends nothing.'),
+            $this->check('Real email', $this->realEmail(), $this->emailFound(),
+                'Switch on HQ › Outside services › Platform email (Brevo, Postmark or Amazon SES) and set it to Live.'),
             $this->check('Files on shared storage', ! in_array(config('filesystems.default'), ['local', 'public'], true) && config('listings.media_disk') !== 'public',
                 'Files: '.config('filesystems.default').'; listing photos: '.config('listings.media_disk', 'public').'.',
                 'Use S3 (FILESYSTEM_DISK=s3, LISTINGS_MEDIA_DISK=s3) with the CDN in front, so every server sees the same files.'),
@@ -89,6 +90,22 @@ final class LaunchReadiness
             'Run "php artisan schedule:run" every minute (cron) on one server, or "schedule:work".');
 
         return $checks;
+    }
+
+    /** EM1: email reaches people when HQ's Platform email is Live, or the server's own mailer really sends. */
+    private function realEmail(): bool
+    {
+        $server = (string) (config('mail.default') === 'platform' ? config('mail.mailers.platform.fallback') : config('mail.default'));
+
+        return (PlatformEmail::active()['mode'] ?? null) === 'live' || ! in_array($server, ['log', 'array'], true);
+    }
+
+    private function emailFound(): string
+    {
+        $active = PlatformEmail::active();
+
+        return $active !== null ? 'Platform email: '.$active['provider'].', '.$active['mode'].'.'
+            : 'Mail: '.(config('mail.default') === 'platform' ? config('mail.mailers.platform.fallback') : config('mail.default')).'.';
     }
 
     /** @param  list<array{check: string, ok: bool, detail: string}>  $checks */

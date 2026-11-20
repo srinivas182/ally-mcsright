@@ -101,6 +101,18 @@ On this one server,
 `launch:check` will show two items as not done, both expected until the move: **files on shared storage** (set
 Cloudflare R2 in `.env` if you want it now) and **a separate brokerage database** (set up and tested at the move).
 
+## Email
+
+RightAlly's own email (invitations, sign-in codes, notices, Watchtower) is set up in **HQ › Outside services ›
+Platform email**: Brevo (recommended), Postmark or Amazon SES. Verify the sending domain with the provider and add its
+DNS records in Cloudflare (DNS only), paste the keys, put your own address in **Test contacts**, run **Check
+connection**, and switch to **Test**: every email then goes only to you, with the real recipient in the subject. Switch
+to **Live** when it works. Until then mail is written to the app's log; to find the HQ invitation link:
+
+```bash
+docker compose -f compose.prod.yaml logs app | grep -o 'https://app.rightally.app/[^ "]*invitation[^ "]*' | tail -1
+```
+
 ## 4 · Every night: backups
 
 ```bash

@@ -60,6 +60,10 @@ jobs:
         run: |
           set -e
           docker compose -f compose.prod.yaml exec -T app php artisan tenants:bootstrap-hq --admin-email=dev@example.com   # HQ and its first staff invite
+          # Before Platform email is on, the invitation is in the log: the guide's command finds the link, and it opens.
+          link=$(docker compose -f compose.prod.yaml logs app | grep -o 'https://app.rightally.app/[^ "]*invitation[^ "]*' | tail -1)
+          echo "invitation link: ${link%%invitations/*}invitations/…"; [ -n "$link" ]
+          code=$(curl -s -o /dev/null -w '%{http_code}' -H "Host: app.rightally.app" "http://127.0.0.1:8100${link#https://app.rightally.app}"); echo "invitation page → $code"; [ "$code" = 200 ]
           # On a real server the HQ person accepts the emailed invitation; here we stand in for that.
           docker compose -f compose.prod.yaml exec -T -e HOME=/tmp app php artisan tinker --execute='app(Modules\Core\Tenancy\TenantContext::class)->runAs(Modules\Core\Tenancy\Models\Tenant::where("type", "hq")->firstOrFail(), fn () => App\Models\User::forceCreate(["kind" => "hq_staff", "status" => "active", "first_name" => "Check", "last_name" => "Staff", "email" => "staff@example.com", "email_verified_at" => now(), "password" => Illuminate\Support\Str::random(40)]));'
           docker compose -f compose.prod.yaml exec -T app php artisan marketing:starter  # RightAlly's own website pages
