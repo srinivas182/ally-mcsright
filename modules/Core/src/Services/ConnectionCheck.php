@@ -7,6 +7,7 @@ namespace Modules\Core\Services;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
+use Modules\Core\Mail\PlatformEmail;
 use Modules\Core\Watchtower\ErrorTracking;
 use Modules\Core\Watchtower\Jobs\SendToErrorTracking;
 use Modules\Core\Watchtower\Signal;
@@ -71,6 +72,10 @@ final class ConnectionCheck
             'numverify' => $this->json($this->http()->get('https://apilayer.net/api/validate', ['access_key' => $k['api_key'], 'number' => '14158586273']),
                 fn (array $j): bool => ! array_key_exists('success', $j) || $j['success'] !== false),
             'stripe' => $this->stripe($k['secret_key'], $test),
+            // EM1: sign in to the provider's mail server (nothing is sent).
+            'brevo', 'postmark_send', 'ses' => ($why = PlatformEmail::check($provider, $k)) === null
+                ? ['ok' => true, 'message' => 'Signed in to the mail server. Switch to Test and send yourself an invitation to see it arrive.']
+                : ['ok' => false, 'message' => $why],
             // OB1: one test event to the project; Bugsnag and Honeybadger keys are checked for shape (the default line).
             'sentry' => ErrorTracking::sentryDsn($k['dsn']) !== null && SendToErrorTracking::sentry($k['dsn'], ErrorTracking::payload('sentry',
                 new Signal('check', 'connection-test', 'RightAlly connection test', message: 'RightAlly connection test: you can resolve this.'), $test ? 'test' : 'production'))

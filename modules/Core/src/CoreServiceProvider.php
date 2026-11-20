@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Fortify\Events\ValidTwoFactorAuthenticationCodeProvided;
@@ -53,6 +54,7 @@ use Modules\Core\Identity\Security\SignInSecurity;
 use Modules\Core\Identity\Security\TrustedDevices;
 use Modules\Core\Leads\NoVisitorJourneys;
 use Modules\Core\Leads\VisitorJourneys;
+use Modules\Core\Mail\PlatformEmail;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
 use Modules\Core\Safeguards\BrokerageKeys;
@@ -164,6 +166,19 @@ final class CoreServiceProvider extends ServiceProvider
         $this->app->bind(BrandColourSource::class, NullBrandColourSource::class);
     }
 
+    /**
+     * EM1: RightAlly's own email goes through the provider HQ switches on in Outside services (PlatformEmail); when
+     * none is on, through the server's MAIL_MAILER as before. Tests (the "array" mailer) are left alone.
+     */
+    private function registerPlatformEmail(): void
+    {
+        Mail::extend('platform', fn (array $config): PlatformEmail => new PlatformEmail((string) ($config['fallback'] ?? 'log')));
+        $server = (string) config('mail.default');
+        if (! in_array($server, ['array', 'platform'], true)) {
+            config(['mail.mailers.platform' => ['transport' => 'platform', 'fallback' => $server], 'mail.default' => 'platform']);
+        }
+    }
+
     public function boot(): void
     {
         $this->app->make(Mcp\McpToolbox::class)->add(Mcp\DailyBrief::class); // sections come from each module
@@ -177,6 +192,7 @@ final class CoreServiceProvider extends ServiceProvider
         $this->registerIdentity();
         $this->registerNavigation();
         $this->registerPlatform();
+        $this->registerPlatformEmail();
 
         $this->registerTenantAwareQueues();
         $this->registerMigrationMacros();

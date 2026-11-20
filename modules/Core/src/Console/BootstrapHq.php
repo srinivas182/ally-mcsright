@@ -7,6 +7,7 @@ namespace Modules\Core\Console;
 use Illuminate\Console\Command;
 use Modules\Core\Identity\Actions\ManageInvitations;
 use Modules\Core\Identity\Enums\UserKind;
+use Modules\Core\Launch\LaunchReadiness;
 use Modules\Core\Tenancy\Enums\CellStatus;
 use Modules\Core\Tenancy\Enums\DomainKind;
 use Modules\Core\Tenancy\Enums\SslStatus;
@@ -64,6 +65,11 @@ final class BootstrapHq extends Command
                 $email, (string) $this->option('admin-first-name'), (string) $this->option('admin-last-name'), UserKind::HqStaff, null,
             ));
             $this->info("Invitation emailed to {$email}. It expires in ".ManageInvitations::VALID_DAYS.' days.');
+            if (! LaunchReadiness::emailSends()) {
+                // EM1: before Platform email is switched on, nothing is really sent: give the link here, once.
+                $this->warn('Email is not set up yet (HQ › Outside services › Platform email), so open this link to accept:');
+                $this->line((string) $invitations->lastLink);
+            }
         }
 
         return self::SUCCESS;
