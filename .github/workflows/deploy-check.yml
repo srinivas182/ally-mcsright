@@ -51,7 +51,7 @@ jobs:
           sed -i -e 's#^MAIL_MAILER=.*#MAIL_MAILER=log#' -e 's#^MAIL_HOST=.*#MAIL_HOST=localhost#' -e 's#^MAIL_USERNAME=.*#MAIL_USERNAME=#' \
                  -e 's#^MAIL_PASSWORD=.*#MAIL_PASSWORD=#' -e 's#^WATCHTOWER_EMAILS=.*#WATCHTOWER_EMAILS=dev@example.com#' .env
           echo "BACKUP_DIR=${RUNNER_TEMP}/backups" >> .env
-          ! grep -n CHANGE_ME .env
+          ! grep -n "=CHANGE_ME" .env
 
       - name: First deploy (fresh server)
         run: DEPLOY_SKIP_FETCH=1 scripts/ops/deploy.sh "$(git rev-parse HEAD)"

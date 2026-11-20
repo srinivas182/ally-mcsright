@@ -16,7 +16,7 @@ HQ="$(grep -E '^CORE_HQ_HOST=' .env | cut -d= -f2 || true)"; HQ="${HQ:-app.right
 say() { printf '\n\033[1m%s\033[0m\n' "$*"; }
 
 [ -f .env ] || { echo "No .env here. Copy .env.production.example to .env and fill it in first." >&2; exit 1; }
-grep -q 'CHANGE_ME' .env && { echo "The .env still has CHANGE_ME values. Fill them in first." >&2; exit 1; }
+grep -q '=CHANGE_ME' .env && { echo "The .env still has CHANGE_ME values. Fill them in first." >&2; exit 1; }
 
 PREVIOUS="$(docker image inspect rightally-app:current --format '{{ index .Config.Labels "rightally.release" }}' 2>/dev/null || true)"
 
