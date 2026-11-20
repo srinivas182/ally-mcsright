@@ -59,6 +59,7 @@ jobs:
       - name: It answers on every kind of address
         run: |
           set -e
+          docker compose -f compose.prod.yaml exec -T app php artisan tenants:bootstrap-hq   # HQ exists before its pages can answer
           hit() { code=$(curl -s -o /dev/null -w '%{http_code}' -H "Host: $1" "http://127.0.0.1:8100$2"); echo "$1$2 → $code"; [ "$code" = "$3" ]; }
           hit app.rightally.app /up 200
           hit app.rightally.app /up/scheduler 503      # the scheduler has not run its first minute yet
@@ -66,7 +67,6 @@ jobs:
           code=$(curl -s -o /dev/null -w "%{http_code}" -H "Host: rightally.app" http://127.0.0.1:8100/); echo "rightally.app/ → $code"; [ "$code" = 200 ] || [ "$code" = 302 ]
           hit nobody.rightally.app / 404              # no such brokerage
           curl -s -H "Host: app.rightally.app" http://127.0.0.1:8100/login | grep -q '/build/assets/' # built screens are served
-          docker compose -f compose.prod.yaml exec -T app php artisan tenants:bootstrap-hq
           docker compose -f compose.prod.yaml exec -T app php artisan billing:starter-prices
           docker compose -f compose.prod.yaml exec -T app php artisan launch:check || true # single server: shared files and the cell database are expected ✗
           docker compose -f compose.prod.yaml ps
