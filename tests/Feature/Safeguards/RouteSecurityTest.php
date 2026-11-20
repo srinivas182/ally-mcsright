@@ -33,6 +33,7 @@ const RS_PUBLIC = [
         '#^market-reports/\{report\}/stop$#', '#^recruiting-stop/#', '#^morning/\{user\}$#'],
     'webhooks (each checks the provider\'s signature or secret)' => ['#^webhooks/#', '#^billing/(webhook|twilio/call-status)$#', '#^payout-rails/#',
         '#^connect/apps/\{app\}/webhook$#', '#^connect/hooks/#', '#^connect/oauth/callback$#', '#^connect/canva/return$#'],
+    'Watchtower (OB1): the scheduler pulse for the uptime checker, and masked browser crash reports, rate-limited' => ['#^up/scheduler$#', '#^watchtower/browser-error$#'],
     'API with its own keys and limits' => ['#^api/v1/#', '#^api/zapier/#', '#^api/leads$#', '#^mcp$#'],
     'framework: signed file links, developer tools (local only)' => ['#^storage/\{path\}$#', '#^_inertia/devtools/#', '#^dev/design$#'],
 ];

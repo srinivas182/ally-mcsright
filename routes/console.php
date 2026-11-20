@@ -155,3 +155,9 @@ Schedule::command('safeguards:daily')->dailyAt('04:20')->onOneServer();
 
 // EN1: Monday check-in drafts for agents and retention alerts for owners.
 Schedule::command('engage:weekly')->weeklyOn(1, '07:40')->onOneServer();
+
+// OB1 (specs/core/20): Watchtower — every minute it checks each system and emails HQ about problems; the daily report
+// at 8 am Central; old problems tidied at night.
+Schedule::command('watchtower:check')->everyMinute()->withoutOverlapping(5)->onOneServer();
+Schedule::command('watchtower:report')->dailyAt('08:00')->timezone('America/Chicago')->onOneServer();
+Schedule::command('watchtower:sweep')->dailyAt('03:47')->onOneServer();

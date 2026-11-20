@@ -13,6 +13,15 @@ return [
     */
     'hq_host' => env('CORE_HQ_HOST', 'app.rightally.io'),
 
+    // OB1 (specs/core/20): Watchtower. The running release and commit (set at build time), and who gets problem
+    // emails until HQ names people in HQ › Watchtower (comma-separated).
+    'release' => env('APP_RELEASE', 'dev'),
+    'commit' => env('APP_COMMIT'),
+    'watchtower' => [
+        'emails' => env('WATCHTOWER_EMAILS', ''),
+        'timing_sample' => (float) env('WATCHTOWER_TIMING_SAMPLE', 0.02),
+    ],
+
     /*
     | Hosts that run without a tenant (local development and the starter-kit
     | routes until Identity moves them onto tenant domains in Sprints 3-4).

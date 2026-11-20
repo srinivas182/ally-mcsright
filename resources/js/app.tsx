@@ -6,11 +6,15 @@ import { initializeTheme } from '@/hooks/use-appearance';
 import AppLayout from '@/layouts/app-layout';
 import AuthLayout from '@/layouts/auth-layout';
 import SettingsLayout from '@/layouts/settings/layout';
+import { watchBrowserErrors } from '@/lib/watchtower';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
 // PW1: the installable app (only built app files and the offline page are cached; never pages or data).
 registerServiceWorker();
+
+// OB1: crashes in the browser reach Watchtower with the other problems.
+watchBrowserErrors();
 
 void createInertiaApp({
     title: (title) => (title ? `${title} - ${appName}` : appName),
