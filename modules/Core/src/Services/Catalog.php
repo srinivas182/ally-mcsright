@@ -132,6 +132,13 @@ final class Catalog
                         'signing_key' => ['label' => 'HTTP webhook signing key', 'kind' => 'secret']],
                         'note' => 'Route action: forward("https://<HQ address>/webhooks/inbound/mailgun"). Each post is checked with the webhook signing key.'],
                 ]],
+            'error_tracking' => ['label' => 'Error tracking', 'about' => 'Also sends each problem Watchtower finds to an error-tracking service, with personal data removed. Watchtower keeps working without it.',
+                'level' => 'hq', 'sprint' => 'OB1', 'contacts' => false, 'providers' => [
+                    'sentry' => ['label' => 'Sentry (recommended)', 'fields' => ['dsn' => ['label' => 'DSN (Settings › Projects › Client Keys)', 'kind' => 'secret']],
+                        'note' => 'Test sends to Sentry with the environment "test"; Live with the server\'s environment. The check sends one test event.'],
+                    'bugsnag' => ['label' => 'Bugsnag', 'fields' => ['api_key' => ['label' => 'Project notifier API key', 'kind' => 'secret']]],
+                    'honeybadger' => ['label' => 'Honeybadger', 'fields' => ['api_key' => ['label' => 'Project API key', 'kind' => 'secret']]],
+                ]],
             'video' => ['label' => 'Video intros, outros and reels', 'about' => 'Makes branded videos and listing reels.',
                 'level' => 'hq', 'sprint' => 'MK3, MD1', 'contacts' => false, 'providers' => [
                     'own' => ['label' => 'RightAlly\'s own renderer (recommended)', 'fields' => [], 'note' => 'Already built for ads. No extra account or fee.'],

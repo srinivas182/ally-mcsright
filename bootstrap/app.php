@@ -22,6 +22,7 @@ use Modules\Core\Identity\Http\Middleware\ImpersonationGuard;
 use Modules\Core\Safeguards\Http\BrokerageMoving;
 use Modules\Core\Switches\Http\EnsureAreaOn;
 use Modules\Core\Tenancy\Http\Middleware\ResolveTenant;
+use Modules\Core\Watchtower\WatchtowerServiceProvider;
 use Modules\Movewise\Http\Middleware\ServeMovewise;
 use Modules\Sites\Http\Middleware\ServeWebsite;
 
@@ -73,4 +74,6 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+        // OB1: every reported error also goes to Watchtower (specs/core/20); the normal log carries on.
+        $exceptions->report(fn (Throwable $e) => WatchtowerServiceProvider::report($e));
     })->create();

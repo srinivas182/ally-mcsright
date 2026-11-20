@@ -78,5 +78,9 @@
     "transactions.portal_concierge": {
         "version": "1",
         "sha256": "ecd9a551835d15212cd3da9e7dd477d6875c39d3b75e4b411af65b824a791f53"
+    },
+    "watchtower.explain": {
+        "version": "1",
+        "sha256": "50ef9846a1bfc62713ee14555cda19f6a0cd6849fe4f3ff33bc50221b63d774b"
     }
 }

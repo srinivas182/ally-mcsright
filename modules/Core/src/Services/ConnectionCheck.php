@@ -7,6 +7,9 @@ namespace Modules\Core\Services;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
+use Modules\Core\Watchtower\ErrorTracking;
+use Modules\Core\Watchtower\Jobs\SendToErrorTracking;
+use Modules\Core\Watchtower\Signal;
 use Throwable;
 
 /**
@@ -68,6 +71,11 @@ final class ConnectionCheck
             'numverify' => $this->json($this->http()->get('https://apilayer.net/api/validate', ['access_key' => $k['api_key'], 'number' => '14158586273']),
                 fn (array $j): bool => ! array_key_exists('success', $j) || $j['success'] !== false),
             'stripe' => $this->stripe($k['secret_key'], $test),
+            // OB1: one test event to the project; Bugsnag and Honeybadger keys are checked for shape (the default line).
+            'sentry' => ErrorTracking::sentryDsn($k['dsn']) !== null && SendToErrorTracking::sentry($k['dsn'], ErrorTracking::payload('sentry',
+                new Signal('check', 'connection-test', 'RightAlly connection test', message: 'RightAlly connection test: you can resolve this.'), $test ? 'test' : 'production'))
+                ? ['ok' => true, 'message' => 'A test event reached Sentry. You can resolve it there.']
+                : ['ok' => false, 'message' => 'Paste the whole DSN from Sentry (https://…@….ingest.sentry.io/…), and check the project accepts events.'],
             'paddle' => $this->status($this->http()->withToken($k['api_key'])->get(($test ? 'https://sandbox-api.paddle.com' : 'https://api.paddle.com').'/event-types')),
             'chargebee' => $this->status($this->http()->withBasicAuth($k['api_key'], '')->get('https://'.rawurlencode($k['site']).'.chargebee.com/api/v2/item_prices', ['limit' => 1])),
             'turnstile' => $this->captcha('https://challenges.cloudflare.com/turnstile/v0/siteverify', $k['secret_key']),

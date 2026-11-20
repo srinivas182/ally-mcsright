@@ -1,0 +1,90 @@
+{
+    "prompt": "watchtower.explain",
+    "feature": "hq.watchtower",
+    "cases": [
+        {
+            "name": "names the cause in our code and a fix with a test",
+            "inputs": {},
+            "untrusted": [
+                "PROBLEM WT-7KQ2M4\nKind: Failed job\nTitle: RuntimeException: Bank token expired for payout [id]\nError class: RuntimeException\nWhere: job Modules\\Payouts\\Jobs\\SendPayout\nOrigin: modules/Payouts/src/Rails/PayoutSender.php:40\nHappened 12 times (12 in the last hour), at 3 brokerages, first in release v1.4.0, last in v1.4.0.\nTrace:\nmodules/Payouts/src/Rails/PayoutSender.php:40\n#0 modules/Payouts/src/Jobs/SendPayout.php:31 Modules\\Payouts\\Rails\\PayoutSender->send()",
+                "CODE (the running release):\n--- modules/Payouts/src/Rails/PayoutSender.php\n   38      $token = $this->tokens->saved($rail);\n>  40      if ($token->expiresAt->isPast()) { throw new RuntimeException('Bank token expired for payout '.$payout->ulid); }",
+                "EARLIER PROBLEMS IN THE SAME FILE: none"
+            ],
+            "expect": {
+                "json_keys": [
+                    "summary",
+                    "cause",
+                    "fix",
+                    "severity",
+                    "confidence"
+                ],
+                "fields": {
+                    "cause": {
+                        "contains_any": ["PayoutSender", "token"]
+                    },
+                    "fix": {
+                        "contains_any": ["test", "refresh", "renew"]
+                    },
+                    "severity": {
+                        "contains_any": ["critical", "high"]
+                    }
+                }
+            },
+            "golden": "{\"summary\": \"Payouts to agents fail at 3 brokerages because the saved bank token has expired.\", \"cause\": \"PayoutSender.php line 40 throws when the saved token is past its expiry; nothing refreshes it first.\", \"fix\": \"Refresh the token before sending when it has expired, and add a test that sends a payout with an expired token.\", \"severity\": \"critical\", \"confidence\": \"medium\"}"
+        },
+        {
+            "name": "keeps a cosmetic problem normal and says when unsure",
+            "inputs": {},
+            "untrusted": [
+                "PROBLEM WT-1A2B3C\nKind: Browser error\nTitle: Browser: ResizeObserver loop completed with undelivered notifications.\nWhere: page /dashboard\nHappened 6 times (1 in the last hour), at 2 brokerages, first in release v1.4.0, last in v1.4.0.",
+                "CODE: not available",
+                "EARLIER PROBLEMS IN THE SAME FILE: none"
+            ],
+            "expect": {
+                "json_keys": [
+                    "summary",
+                    "cause",
+                    "fix",
+                    "severity",
+                    "confidence"
+                ],
+                "fields": {
+                    "severity": {
+                        "contains_any": ["normal"]
+                    },
+                    "confidence": {
+                        "contains_any": ["low", "medium"]
+                    }
+                }
+            },
+            "golden": "{\"summary\": \"A harmless browser warning on the dashboard; nothing stops working for anyone.\", \"cause\": \"A chart resizes while the page lays out, which browsers report as a ResizeObserver loop. No code was shown, so this is a guess.\", \"fix\": \"Ignore this warning in the browser error reporter, or wrap the chart resize in requestAnimationFrame; a test is not needed.\", \"severity\": \"normal\", \"confidence\": \"low\"}"
+        },
+        {
+            "name": "treats one brokerage seeing another's data as critical",
+            "inputs": {},
+            "untrusted": [
+                "PROBLEM WT-9Z8Y7X\nKind: Server error\nTitle: AuthorizationException: Document [id] belongs to another brokerage\nError class: Illuminate\\Auth\\Access\\AuthorizationException\nWhere: GET roster/documents/{document} (roster.documents.show)\nOrigin: modules/Roster/src/Http/DocumentController.php:52\nHappened 4 times (4 in the last hour), at 1 brokerages, first in release v1.4.0, last in v1.4.0.\nIt was marked fixed in v1.3.9 and has come back.",
+                "CODE (the running release):\n--- modules/Roster/src/Http/DocumentController.php\n   50      $doc = DB::table('roster_documents')->where('id', $id)->first();\n>  52      abort_unless($doc->tenant_id === $this->tenants->id(), 403);",
+                "EARLIER PROBLEMS IN THE SAME FILE:\n- Roster document downloaded by another brokerage (fixed, fixed in v1.3.9)"
+            ],
+            "expect": {
+                "json_keys": [
+                    "summary",
+                    "cause",
+                    "fix",
+                    "severity",
+                    "confidence"
+                ],
+                "fields": {
+                    "severity": {
+                        "contains_any": ["critical"]
+                    },
+                    "cause": {
+                        "contains_any": ["tenant", "brokerage"]
+                    }
+                }
+            },
+            "golden": "{\"summary\": \"A brokerage tried to open another brokerage's roster document; the check stopped it, but the same bug fixed in v1.3.9 has come back.\", \"cause\": \"DocumentController.php line 50 reads the document without the tenant_id condition, so the id alone finds another brokerage's file before line 52 refuses it.\", \"fix\": \"Add where('tenant_id', ...) to the query on line 50 (or use the Eloquent model with the tenant scope), and add a test where a second brokerage asks for the first one's document and gets a 404.\", \"severity\": \"critical\", \"confidence\": \"high\"}"
+        }
+    ]
+}

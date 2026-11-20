@@ -10,6 +10,7 @@ use Modules\Billing\BillingServiceProvider;
 use Modules\Compensation\CompensationServiceProvider;
 use Modules\Connect\ConnectServiceProvider;
 use Modules\Core\CoreServiceProvider;
+use Modules\Core\Watchtower\WatchtowerServiceProvider;
 use Modules\Crm\CrmServiceProvider;
 use Modules\Engage\EngageServiceProvider;
 use Modules\Forms\FormsServiceProvider;
@@ -35,6 +36,7 @@ return [
     AppServiceProvider::class,
     FortifyServiceProvider::class,
     CoreServiceProvider::class,
+    WatchtowerServiceProvider::class, // OB1: watches every module, so it boots right after Core
     LedgerServiceProvider::class,
     CompensationServiceProvider::class,
     CrmServiceProvider::class,
