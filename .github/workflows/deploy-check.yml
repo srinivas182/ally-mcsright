@@ -59,7 +59,7 @@ jobs:
       - name: It answers on every kind of address
         run: |
           set -e
-          docker compose -f compose.prod.yaml exec -T app php artisan tenants:bootstrap-hq   # HQ exists before its pages can answer
+          docker compose -f compose.prod.yaml exec -T app php artisan tenants:bootstrap-hq --admin-email=dev@example.com   # HQ and its first staff invite
           docker compose -f compose.prod.yaml exec -T app php artisan marketing:starter  # RightAlly's own website pages
           hit() { code=$(curl -s -o /dev/null -w '%{http_code}' -H "Host: $1" "http://127.0.0.1:8100$2"); echo "$1$2 → $code"; [ "$code" = "$3" ]; }
           hit app.rightally.app /up 200
