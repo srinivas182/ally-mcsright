@@ -17,6 +17,7 @@ use Modules\Core\Usage\WebsiteMaps;
 use Modules\Listings\Search\ListingSearch;
 use Modules\Listings\Search\MarketStats;
 use Modules\Listings\Search\PlainSearch;
+use Modules\Sites\Content\AreaPages;
 use Modules\Sites\Maps;
 use Modules\Sites\Models\Site;
 use Modules\Sites\Rendering\Chrome;
@@ -179,13 +180,16 @@ final class IdxController
         if (! $site instanceof Site) {
             return $site;
         }
-        $places = $stats->places($this->tenants->id());
+        $areas = app(AreaPages::class);
+        $places = $areas->published();
+        $sample = $areas->sample();
 
         return response()->view('sites::idx.markets', [
             'site' => $site, 'current' => '/market', 'cities' => array_values(array_filter($places, fn (array $p): bool => $p['kind'] === 'city')),
             'zips' => array_values(array_filter($places, fn (array $p): bool => $p['kind'] === 'zip')),
+            'areas' => array_values(array_filter($places, fn (array $p): bool => $p['kind'] === 'area')), 'sample' => $sample,
             'seo' => Seo::build($site, $request->getSchemeAndHttpHost(), '/market', 'Real estate market reports | '.self::suffix($site),
-                'Live housing market figures by city and ZIP code: homes for sale, median prices, price per square foot and days on market.', null, $places !== [],
+                'Live housing market figures by city, neighborhood and ZIP code: homes for sale, median prices, price per square foot and days on market.', null, $places !== [] && ! $sample,
                 [['Market reports', '/market']]),
             'chrome' => Chrome::for($site, $this->tenants->id()),
         ])->header('Cache-Control', 'public, max-age=300, s-maxage=900');
@@ -197,28 +201,54 @@ final class IdxController
         if (! $site instanceof Site) {
             return $site;
         }
-        $m = $stats->forPlace($this->tenants->id(), $place);
+        $areas = app(AreaPages::class);
+        $m = $areas->hidden($place) ? null : $stats->forPlace($this->tenants->id(), $place);
         if ($m === null) {
             return response()->view('sites::missing', ['site' => $site], 404)->header('Cache-Control', 'public, max-age=300');
         }
         $tenantId = $this->tenants->id();
-        $homes = $this->search->search($tenantId, ['q' => $m['zip'] ?? $m['city'] ?? '', 'per_page' => 12])['results'];
+        $homes = $this->search->search($tenantId, ['q' => $m['zip'] ?? $m['area'] ?? $m['city'] ?? '', 'per_page' => 12])['results'];
+        $sample = $areas->sample();
         $asOf = Carbon::parse($m['as_of'])->format('F j, Y');
         $faqs = self::marketFaqs($m, $asOf, $site);
         $path = Urls::market($m['slug']);
         $crumbs = [['Market reports', '/market']];
-        if ($m['kind'] === 'zip' && $m['city'] !== null && $m['state'] !== null) {
+        if (in_array($m['kind'], ['zip', 'area'], true) && $m['city'] !== null && $m['state'] !== null) {
             $crumbs[] = [$m['city'], Urls::market(MarketStats::citySlug($m['city'], $m['state']))];
         }
         $crumbs[] = [$m['name'], $path];
 
         return response()->view('sites::idx.market', [
             'site' => $site, 'current' => '/market', 'm' => $m, 'homes' => $homes, 'faqs' => $faqs, 'asOf' => $asOf, 'summary' => self::marketSummary($m, $asOf),
-            'cityPath' => $m['kind'] === 'zip' && $m['city'] !== null && $m['state'] !== null ? Urls::market(MarketStats::citySlug($m['city'], $m['state'])) : null,
+            'intro' => $areas->intro($place), 'sample' => $sample, 'nearby' => self::nearby($areas->published(), $m),
+            'cityPath' => in_array($m['kind'], ['zip', 'area'], true) && $m['city'] !== null && $m['state'] !== null ? Urls::market(MarketStats::citySlug($m['city'], $m['state'])) : null,
             'seo' => Seo::build($site, $request->getSchemeAndHttpHost(), $path, $m['name'].' real estate market: homes for sale and prices ('.Carbon::parse($m['as_of'])->format('M Y').')',
-                self::marketSummary($m, $asOf), $homes[0]['photo'] ?? null, true, $crumbs, $faqs, [], $m['as_of']),
+                self::marketSummary($m, $asOf), $homes[0]['photo'] ?? null, ! $sample, $crumbs, $faqs, [], $m['as_of']),
             'chrome' => Chrome::for($site, $tenantId, array_column($homes, 'disclaimer')),
         ])->header('Cache-Control', 'public, max-age=300, s-maxage=900, stale-while-revalidate=3600');
+    }
+
+    /**
+     * IDX9: other neighbourhoods in the same city (for a city or a neighbourhood page), busiest first.
+     *
+     * @param  list<array{kind: string, slug: string, name: string, count: int, intro: string|null}>  $places
+     * @param  array<string, mixed>  $m
+     * @return list<array{slug: string, name: string, count: int}>
+     */
+    private static function nearby(array $places, array $m): array
+    {
+        if ($m['city'] === null || $m['state'] === null || $m['kind'] === 'zip') {
+            return [];
+        }
+        $suffix = '--'.MarketStats::citySlug((string) $m['city'], (string) $m['state']);
+        $out = [];
+        foreach ($places as $p) {
+            if ($p['kind'] === 'area' && str_ends_with($p['slug'], $suffix) && $p['slug'] !== $m['slug']) {
+                $out[] = ['slug' => $p['slug'], 'name' => $p['name'], 'count' => $p['count']];
+            }
+        }
+
+        return array_slice($out, 0, 12);
     }
 
     /**

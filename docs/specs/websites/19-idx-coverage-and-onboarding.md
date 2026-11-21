@@ -130,3 +130,18 @@ charged yet.
   for the agent to sign. My website shows the brokerage's boards and their status, read-only. Solo agents sign up as
   their own brokerage and add boards themselves.
 - Table `idx_board_requests` (control database, listed in `ControlTables`).
+
+## IDX9: automatic area pages
+
+- Every **city, neighborhood and ZIP code** with at least three homes for sale gets its own page at `/market/...`:
+  live figures (homes for sale, median price, price per square foot, days on market, new and reduced in 30 days), the
+  newest homes, common questions with FAQ markup, breadcrumbs, and links between a city and its neighborhoods and
+  ZIP codes. Neighborhoods come from the MLS subdivision (`river-oaks--houston-tx`); names in capitals are shown in title
+  case. They are listed in `sitemap.xml` and `llms.txt` and on `/market`.
+- **Your own words.** Settings › Website › Area pages lists every area. The brokerage can add a few paragraphs of local
+  knowledge to any area (shown under the summary; plain text; checked against Fair Housing words like ads and review
+  replies) or switch a page off (it then returns "not found" and leaves the sitemap).
+- **Sample listings stay out of search engines.** While the website shows sample (demo) listings only, area pages are
+  still shown, marked "These figures come from sample listings…", but are `noindex`, and the sitemap and llms.txt list
+  no area pages and no listings.
+- Table `site_areas` (cell database, scoped to the brokerage).

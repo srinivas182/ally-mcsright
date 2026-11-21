@@ -7,6 +7,7 @@ use Modules\Core\Http\Middleware\EnsureHqConsole;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
 use Modules\Sites\Http\Controllers\AillyController;
 use Modules\Sites\Http\Controllers\AillyLiveController;
+use Modules\Sites\Http\Controllers\AreaPagesController;
 use Modules\Sites\Http\Controllers\BlogAdminController;
 use Modules\Sites\Http\Controllers\DemandController;
 use Modules\Sites\Http\Controllers\FunnelAdminController;
@@ -83,6 +84,10 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])
         Route::post('ai/page', [StudioController::class, 'page'])->middleware('throttle:20,1,site-ai')->name('ai.page');
         Route::post('ai/assist', [StudioController::class, 'assist'])->middleware('throttle:60,1,site-ai-assist')->name('ai.assist');
         Route::post('ai/market-updates', [StudioController::class, 'marketUpdates'])->name('ai.market');
+
+        // IDX9: area pages (cities, neighborhoods and ZIP codes).
+        Route::get('areas', [AreaPagesController::class, 'index'])->name('areas.index');
+        Route::put('areas/{area}', [AreaPagesController::class, 'update'])->where('area', '[a-z0-9-]{2,140}')->middleware('throttle:60,1')->name('areas.update');
 
         // Media library.
         Route::get('media', [MediaController::class, 'index'])->name('media.index');

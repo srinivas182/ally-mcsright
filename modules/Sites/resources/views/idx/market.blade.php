@@ -7,7 +7,9 @@
             <nav class="crumbs" aria-label="Breadcrumb"><ol><li><a href="/">Home</a></li><li><a href="/market">Market reports</a></li>@if ($cityPath)<li><a href="{{ $cityPath }}">{{ $m['city'] }}</a></li>@endif<li aria-current="page">{{ $m['name'] }}</li></ol></nav>
             <h1 class="section-title">{{ $m['name'] }} real estate market</h1>
             <p class="updated">Updated <time datetime="{{ $m['as_of'] }}">{{ $asOf }}</time> from MLS listings</p>
+            @if ($sample)<p class="sample-note">These figures come from sample listings while the brokerage's MLS connection is being approved.</p>@endif
             <p class="answer">{{ $summary }}</p>
+            @if ($intro)<div class="area-intro">@foreach (preg_split('/\R{2,}/', $intro) as $para)<p>{!! nl2br(e($para)) !!}</p>@endforeach</div>@endif
             <ul class="stats">
                 <li><span>Homes for sale</span><strong>{{ number_format($m['active']) }}</strong></li>
                 @if ($m['median_price'] !== null)<li><span>Median list price</span><strong>${{ number_format($m['median_price']) }}</strong></li>@endif
@@ -37,6 +39,15 @@
             @endforeach
         </div>
     </section>
+
+    @if ($nearby !== [])
+        <section class="section">
+            <div class="wrap">
+                <h2>{{ $m['kind'] === 'area' ? 'More neighborhoods in '.$m['city'] : 'Neighborhoods in '.$m['city'] }}</h2>
+                <ul class="place-list">@foreach ($nearby as $n)<li><a href="/market/{{ $n['slug'] }}">{{ $n['name'] }}</a> <span>{{ number_format($n['count']) }} homes</span></li>@endforeach</ul>
+            </div>
+        </section>
+    @endif
 
     @if ($m['zips'] !== [])
         <section class="section">

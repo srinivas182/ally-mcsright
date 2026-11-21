@@ -16,6 +16,7 @@ use Modules\Crm\Consent;
 use Modules\Listings\Search\ListingSearch;
 use Modules\Listings\Search\MarketStats;
 use Modules\Sites\AgentSites;
+use Modules\Sites\Content\AreaPages;
 use Modules\Sites\Http\SiteExtensions;
 use Modules\Sites\Models\Site;
 use Modules\Sites\Models\SitePage;
@@ -96,7 +97,9 @@ final class SiteController
                 $urls[] = '<url><loc>'.e($base.$p->path).'</loc><lastmod>'.($p->updated_at?->toAtomString() ?? '').'</lastmod></url>';
             }
             $tenantId = $this->tenants->id();
-            $places = app(MarketStats::class)->places($tenantId);
+            // IDX9: area pages the brokerage has not switched off; none while the website shows sample listings only.
+            $sample = app(AreaPages::class)->sample();
+            $places = $sample ? [] : app(AreaPages::class)->published(200);
             $urls[] = '<url><loc>'.e($base.'/homes').'</loc></url>';
             $urls[] = '<url><loc>'.e($base.'/privacy').'</loc></url>';
             $urls[] = '<url><loc>'.e($base.'/accessibility').'</loc></url>';
@@ -127,7 +130,8 @@ final class SiteController
             }
             // Homes for sale (newest 5,000; a sitemap index takes over beyond that).
             $search = app(ListingSearch::class);
-            $listings = $search->query($tenantId, ListingSearch::clean([]))->limit(5000)
+            // Sample listings are never sent to search engines.
+            $listings = $sample ? collect() : $search->query($tenantId, ListingSearch::clean([]))->limit(5000)
                 ->get(['ulid', 'street_number', 'street_name', 'unit_number', 'city', 'state_or_province', 'postal_code', 'address_display_allowed', 'modification_timestamp']);
             foreach ($listings as $l) {
                 $label = trim(implode(' ', array_filter([$l->address_display_allowed ? $l->address() : null, $l->city, $l->state_or_province, $l->postal_code])));
@@ -190,7 +194,7 @@ final class SiteController
                 $out[] = '- ['.$post->title.']('.$base.'/blog/'.$post->slug.')'.($post->excerpt ? ': '.$post->excerpt : '');
             }
         }
-        $places = array_slice(app(MarketStats::class)->places($this->tenants->id()), 0, 12);
+        $places = app(AreaPages::class)->sample() ? [] : array_slice(app(AreaPages::class)->published(), 0, 12);
         if ($places !== []) {
             $out[] = '';
             $out[] = '## Market reports';
