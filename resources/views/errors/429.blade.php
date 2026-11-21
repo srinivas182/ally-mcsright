@@ -1,0 +1,5 @@
+@extends('errors.layout')
+@section('code', 'Error 429')
+@section('title', 'Too many tries in a short time')
+@section('message', 'Please wait a minute, then try again.')
+@section('help', 'This protects your account from people guessing passwords.')

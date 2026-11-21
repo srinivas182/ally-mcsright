@@ -110,7 +110,7 @@ export function TalkButton() {
                 size="icon"
                 aria-label="Speak to Your AI Assistant"
                 title="Speak to Your AI Assistant"
-                className="fixed bottom-24 left-4 z-40 size-14 rounded-full shadow-lg md:bottom-6"
+                className="fixed bottom-24 left-4 z-40 size-14 rounded-full shadow-lg md:right-4 md:bottom-[4.25rem] md:left-auto"
                 onClick={listen}
             >
                 <MicIcon className="size-6" aria-hidden="true" />
@@ -121,7 +121,7 @@ export function TalkButton() {
     return (
         <Button
             size="lg"
-            className="fixed bottom-24 left-4 z-40 h-14 rounded-full px-6 text-base shadow-lg md:bottom-6"
+            className="fixed bottom-24 left-4 z-40 h-14 rounded-full px-6 text-base shadow-lg md:right-4 md:bottom-[4.25rem] md:left-auto"
             onClick={listen}
         >
             <MicIcon className="size-6" aria-hidden="true" />{' '}

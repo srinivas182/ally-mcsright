@@ -1,0 +1,5 @@
+@extends('errors.layout')
+@section('code', 'Error 500')
+@section('title', 'Something went wrong on our side')
+@section('message', 'We have been told about it and are looking into it. Please try again in a few minutes.')
+@section('help', 'Nothing is lost: what you saved before this is safe.')

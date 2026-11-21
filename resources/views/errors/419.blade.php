@@ -1,0 +1,7 @@
+@extends('errors.layout')
+@section('code', 'Error 419')
+@section('title', 'Your page timed out')
+@section('message', 'For your safety, pages expire after a while. Go back, refresh the page and try again.')
+@section('action', 'Refresh and start again')
+@section('href', '/')
+@section('help', 'Nothing you typed was saved, so please enter it again.')

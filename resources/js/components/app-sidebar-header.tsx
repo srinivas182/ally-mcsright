@@ -13,7 +13,10 @@ export function AppSidebarHeader({
     breadcrumbs?: BreadcrumbItemType[];
 }) {
     return (
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b border-sidebar-border/50 px-4 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 md:px-4">
+        <header
+            data-slot="app-topbar"
+            className="flex h-16 shrink-0 items-center gap-2 border-b border-[rgb(6_22_63/0.07)] px-4 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 md:px-4"
+        >
             <div className="flex min-w-0 items-center gap-2">
                 <SidebarTrigger className="-ml-1 hidden md:inline-flex" />
                 <div className="hidden min-w-0 md:block">
