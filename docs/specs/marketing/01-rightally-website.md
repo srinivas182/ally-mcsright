@@ -177,3 +177,21 @@ site). Practice mode keeps approved posts as website drafts. Social sharing stay
 whose extra was stopped, or whose agent left, writes nothing.
 
 **Defaults to review:** 100 AI credits a month in the module's cost; "Local guides" category; the byline wording.
+
+## SITE1: website polish (sizes, alignment, prices, legal pages)
+
+- **Type sizes** follow common B2B SaaS practice: 17px body, section headings up to 34px, the main headline up to 52px,
+  weights 650–700. Still easy to read for older agents, without looking oversized.
+- **Alignment:** section headings, card groups, price cards, simple page heroes and the closing band are centred;
+  paragraphs, legal text and questions stay left-aligned for easy reading.
+- **Language selector:** a globe "EN ▾" menu in the header (and a language row in the mobile menu) replaces the
+  "Español" menu item. The footer keeps a language link.
+- **What do you pay today?** Every box has its label on top and its input on the same line, whatever the label's
+  length; the card is centred with the result under the boxes.
+- **Prices:** the pricing page always shows agent prices too (added automatically when the page has no agents block).
+  Every price card lists what it includes, live from HQ › Packages: agent seats, each module (the website reads "IDX
+  website with AIlly and 1 MLS board" for brokerages) and AIlly conversations; agent cards list their plan features.
+- **Legal pages:** `/privacy` and `/terms` (and `/es/...`) show default text (`Modules\Marketing\LegalDefaults`) until
+  HQ publishes its own version in HQ › RightAlly website (`marketing:starter` adds them as editable pages). Linked in
+  the centred footer line with ©. The default text must be reviewed by counsel.
+- **Favicon:** icon links carry `?v=br1` so browsers and Cloudflare fetch RightAlly's icon instead of an old cached one.

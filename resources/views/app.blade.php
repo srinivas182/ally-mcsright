@@ -37,9 +37,9 @@
             <style>{!! $tenantThemeCss !!}</style>
         @endif
 
-        <link rel="icon" href="/favicon.ico" sizes="any">
-        <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+        <link rel="icon" href="/favicon.ico?v=br1" sizes="any">
+        <link rel="icon" href="/favicon.svg?v=br1" type="image/svg+xml">
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=br1">
         {{-- PW1: installable app (specs/core/17) --}}
         <link rel="manifest" href="/manifest.webmanifest">
         <meta name="theme-color" content="#06369E">

@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\URL;
 use Modules\Billing\Models\AgentPlan;
 use Modules\Billing\Models\Package;
+use Modules\Marketing\LegalDefaults;
+use Modules\Marketing\PlanIncludes;
 use Modules\Marketing\Showcase;
 use Modules\Marketing\Website;
 use Modules\Sites\Content\Posts;
@@ -33,7 +35,10 @@ final class SiteController
         }
         $page = $this->site->page($locale, trim($slug, '/'));
         if ($page === null || $page->status !== 'live' || $page->blocks === null) {
-            return $this->missing($locale);
+            // SITE1: the default privacy policy and terms until HQ publishes its own.
+            $legal = LegalDefaults::page($locale, trim($slug, '/'));
+
+            return $legal !== null ? $this->render($locale, trim($slug, '/'), $legal['title'], $legal['description'], $legal['blocks'], false) : $this->missing($locale);
         }
 
         return $this->render($page->locale, $page->slug, (string) $page->title, (string) $page->description, $this->blocks($page->blocks), false);
@@ -193,11 +198,18 @@ final class SiteController
                     'priceCurrency' => 'USD', 'url' => 'https://'.config('core.hq_host').'/start'])->values()->all()];
         }
 
+        // SITE1: the pricing page always shows agent prices too, even before its content is refreshed.
+        if ($slug === 'pricing' && ! in_array('seats', array_column($blocks, 'type'), true)) {
+            $at = array_key_last(array_filter($blocks, fn (array $b): bool => $b['type'] === 'pricing'));
+            $seat = ['type' => 'seats', 'heading' => $locale === 'es' ? 'Para agentes' : 'For agents', 'note' => ''];
+            $at === null ? $blocks[] = $seat : array_splice($blocks, $at + 1, 0, [$seat]);
+        }
         // BR4: agent seat prices (through a brokerage, and on their own), live from HQ › Packages.
         $seats = in_array('seats', array_column($blocks, 'type'), true)
-            ? AgentPlan::query()->where('active', true)->orderBy('sort')->get(['name', 'description', 'floor_cents', 'list_cents'])->all() : [];
+            ? AgentPlan::query()->where('active', true)->orderBy('sort')->get(['name', 'description', 'floor_cents', 'list_cents', 'features'])->all() : [];
 
-        return $this->view('marketing::page', $locale, $slug, $title, $description, $preview, ['blocks' => $blocks, 'packages' => $packages, 'byAudience' => $byAudience, 'showcase' => $showcase, 'seats' => $seats], $graph);
+        return $this->view('marketing::page', $locale, $slug, $title, $description, $preview, ['blocks' => $blocks, 'packages' => $packages, 'byAudience' => $byAudience, 'showcase' => $showcase, 'seats' => $seats,
+            'includes' => PlanIncludes::forPackages($byAudience, $locale), 'seatIncludes' => PlanIncludes::forSeats($seats, $locale)], $graph);
     }
 
     /**
@@ -229,7 +241,7 @@ final class SiteController
         return response()->view($view, $data + ['L' => $locale, 'title' => $title, 'description' => $description, 'canonical' => $canonical, 'alternates' => $alternates,
             'jsonld' => $jsonld, 'preview' => $preview, 'home' => $this->url($locale, ''), 'start' => 'https://'.config('core.hq_host').'/start',
             'healthCheck' => 'https://'.config('core.hq_host').($locale === 'es' ? '/health-check/es' : '/health-check'), 'other' => $alternates[$twin] ?? $this->url($twin, ''),
-            'nav' => $this->nav($locale), 'slug' => $slug], 200)->header('Cache-Control', $preview ? 'no-store' : 'public, max-age=300')
+            'nav' => $this->nav($locale), 'slug' => $slug, 'legal' => ['privacy' => $this->url($locale, 'privacy'), 'terms' => $this->url($locale, 'terms')]], 200)->header('Cache-Control', $preview ? 'no-store' : 'public, max-age=300')
             ->header('X-Robots-Tag', $preview ? 'noindex, nofollow' : 'index, follow');
     }
 
@@ -244,7 +256,8 @@ final class SiteController
     {
         $out = [];
         foreach ($this->site->pages() as $p) {
-            if ($p->status === 'live' && $p->locale === $locale && $p->slug !== '' && ! str_contains((string) $p->slug, '/')) {
+            // SITE1: the privacy policy and terms live in the footer, not the menu.
+            if ($p->status === 'live' && $p->locale === $locale && $p->slug !== '' && ! str_contains((string) $p->slug, '/') && ! in_array((string) $p->slug, LegalDefaults::SLUGS, true)) {
                 // BR3: short menu words; a page without one uses its title up to the colon.
                 $label = self::MENU[$locale][(string) $p->slug] ?? trim((string) strtok((string) $p->title, ':'));
                 $out[] = ['label' => mb_strimwidth($label, 0, 24, '…'), 'href' => $this->url($locale, (string) $p->slug), 'slug' => (string) $p->slug];

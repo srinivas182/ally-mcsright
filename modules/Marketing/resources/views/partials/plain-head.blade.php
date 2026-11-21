@@ -1,7 +1,7 @@
 {{-- BR1: shared look for RightAlly's small standalone pages (log in finder, page not found). --}}
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex"><meta name="theme-color" content="#06369E">
-<link rel="icon" href="/favicon.ico" sizes="any"><link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico?v=br1" sizes="any"><link rel="icon" href="/favicon.svg?v=br1" type="image/svg+xml">
 <style>
     *{box-sizing:border-box}
     body{margin:0;min-height:100vh;display:grid;background:#F4F6FB;color:#0A1330;font:400 18px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}

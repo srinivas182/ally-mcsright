@@ -10,6 +10,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>{{ $title }}</title>
+    <link rel="icon" href="/favicon.ico?v=br1" sizes="any"><link rel="icon" href="/favicon.svg?v=br1" type="image/svg+xml">
     <meta name="description" content="{{ $description }}">
     <meta name="robots" content="{{ ($indexable ?? false) ? 'index, follow' : 'noindex, nofollow' }}">
     @isset($canonical)<link rel="canonical" href="{{ $canonical }}">

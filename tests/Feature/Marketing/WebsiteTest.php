@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\URL;
 use Inertia\Testing\AssertableInertia as Assert;
+use Modules\Billing\Models\AgentPlan;
 use Modules\Billing\Models\Package;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\Models\Tenant;
@@ -60,7 +62,7 @@ it('gives search engines and AI answer engines a sitemap, robots rules and llms.
 
 it('lets HQ edit a draft, preview it privately, publish it, and put back an earlier version', function (): void {
     $page = app(Website::class)->page('en', 'pricing');
-    $this->actingAs($this->staff)->get('http://app.rightally.io/hq/website')->assertInertia(fn (Assert $p) => $p->component('hq/website/index')->has('pages', 8));
+    $this->actingAs($this->staff)->get('http://app.rightally.io/hq/website')->assertInertia(fn (Assert $p) => $p->component('hq/website/index')->has('pages', 12)); // SITE1: + privacy and terms in English and Spanish
     $this->actingAs($this->staff)->get('http://app.rightally.io/hq/website/pages/'.$page->ulid)->assertInertia(fn (Assert $p) => $p->component('hq/website/page')
         ->where('checks', [])->has('versions', 1)->where('page.preview', fn (string $u): bool => str_contains($u, 'rightally.io/preview/')));
 
@@ -121,4 +123,42 @@ it('runs a blog with scheduled posts, safe Markdown and article markup', functio
     expect($html)->toContain('"@type":"BlogPosting"')->toContain('id="what-a-cap-is"')->not->toContain('<script>alert');
     $this->get(site('/blog'))->assertSee('How commission caps work');
     expect($this->get(site('/sitemap.xml'))->getContent())->toContain('https://rightally.io/blog/commission-caps');
+});
+
+it('shows a language selector, centred legal links and default privacy and terms pages (SITE1)', function (): void {
+    $html = (string) $this->get(site('/'))->assertOk()->getContent();
+    expect($html)->toContain('<details class="lang">')->toContain('aria-label="Language: English"')->toContain('hreflang="es" lang="es"')
+        ->toContain('href="https://rightally.io/privacy"')->toContain('href="https://rightally.io/terms"')->toContain('© '.date('Y').' RightAlly')
+        ->toContain('/favicon.svg?v=br1');
+    preg_match('#<span class="links">(.*?)</span>#s', $html, $m);
+    expect($m[1] ?? '')->not->toContain('Español'); // a language selector, never a menu item
+
+    $this->get(site('/privacy'))->assertOk()->assertSee('Privacy policy')->assertSee('We do not sell personal information')->assertSee('index, follow', false);
+    $this->get(site('/terms'))->assertOk()->assertSee('Terms of use')->assertSee('State of Florida');
+    $this->get(site('/es/privacy'))->assertOk()->assertSee('Política de privacidad');
+
+    // Once HQ publishes its own version, that is what shows.
+    $page = app(Website::class)->page('en', 'privacy');
+    $ulid = app(Website::class)->saveDraft((string) $page->ulid, 'en', 'privacy', 'Privacy policy | RightAlly', 'Ours',
+        [['type' => 'text', 'heading' => 'Our own words', 'body' => 'Edited by HQ.']], $this->staff);
+    app(Website::class)->publish($ulid, $this->staff);
+    Cache::flush();
+    $this->get(site('/privacy'))->assertOk()->assertSee('Edited by HQ.')->assertDontSee('We do not sell personal information');
+});
+
+it('always shows agent prices on the pricing page, and what every price includes (SITE1)', function (): void {
+    $this->package->forceFill(['modules' => ['crm', 'website', 'transactions'], 'seats' => 10, 'ailly_conversations' => 500])->save();
+    AgentPlan::query()->create(['key' => 'pro', 'name' => 'Agent Pro', 'description' => 'For busy agents', 'list_cents' => 7_900, 'floor_cents' => 4_900,
+        'features' => ['backoffice.basic', 'website', 'content.blog'], 'sort' => 1, 'active' => true]);
+    // An old pricing page without the agents block (made before BR4).
+    $page = app(Website::class)->page('en', 'pricing');
+    $blocks = array_values(array_filter(json_decode((string) $page->blocks, true), fn (array $b): bool => $b['type'] !== 'seats'));
+    $ulid = app(Website::class)->saveDraft((string) $page->ulid, 'en', 'pricing', (string) $page->title, (string) $page->description, $blocks, $this->staff);
+    app(Website::class)->publish($ulid, $this->staff);
+    Cache::flush();
+
+    $html = (string) $this->get(site('/pricing'))->assertOk()->getContent();
+    expect($html)->toContain('Agent Pro')->toContain('$49')->toContain('10 agent seats included')->toContain('IDX website with AIlly and 1 MLS board')
+        ->toContain('Deals, forms and e-sign')->toContain('500 AIlly conversations a month')
+        ->toContain('Own website with AIlly')->toContain('AI blog writer')->not->toContain('(MK4)');
 });
