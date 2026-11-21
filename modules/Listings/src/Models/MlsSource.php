@@ -41,7 +41,10 @@ final class MlsSource extends Model
 {
     use HasPublicUlid;
 
-    public const PROVIDERS = ['mls_grid', 'trestle', 'bridge', 'direct_reso'];
+    public const PROVIDERS = ['mls_grid', 'trestle', 'bridge', 'direct_reso', 'spark'];
+
+    /** IDX2: Spark asks to be read at most every 10 minutes. */
+    public const SPARK_MIN_INTERVAL = 10;
 
     /**
      * Ready-made settings per provider (specs/websites/17): HQ only pastes the keys the MLS issued. A blank base URL
@@ -58,6 +61,10 @@ final class MlsSource extends Model
             'help' => 'Use the dataset address Bridge gave you (it ends with the dataset name) and the server token.'],
         'direct_reso' => ['base_url' => null, 'token_url' => null, 'auth' => 'token',
             'help' => 'Use the RESO Web API address and the token or client details from the MLS.'],
+        // IDX2: Flexmls boards on Spark (such as MLS United). With no token here, RightAlly's Spark key from
+        // HQ › Outside services › MLS listings: Spark API is used.
+        'spark' => ['base_url' => 'https://replication.sparkapi.com/Reso/OData', 'token_url' => null, 'auth' => 'token',
+            'help' => 'Leave the token empty to use RightAlly\'s Spark key (HQ › Outside services), or paste a key that board issued. Spark is read every 10 minutes at most.'],
     ];
 
     protected $table = 'mls_sources';
