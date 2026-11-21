@@ -14,6 +14,8 @@ use Illuminate\Support\Arr;
 use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Core\Tenancy\Models\TenantDomain;
+use Modules\Core\Tenancy\TenantContext;
+use Modules\Listings\Idx\Subscriptions;
 use Modules\Sites\AgentSites;
 use Modules\Sites\Ailly\AillySettings;
 use Modules\Sites\Content\MediaLibrary;
@@ -26,6 +28,27 @@ final class MyWebsiteController
 {
     public function __construct(private readonly AgentSites $agents, private readonly SiteSetup $sites) {}
 
+    /**
+     * IDX8: agents inherit their brokerage's MLS boards: the listings on their website come from the same boards, with
+     * the same notices. Shown read-only, so an agent knows where the homes come from and never has to sign up again.
+     *
+     * @return list<array{name: string, status: string, status_label: string}>
+     */
+    private static function boards(): array
+    {
+        if (! class_exists(Subscriptions::class)) {
+            return [];
+        }
+        try {
+            $all = app(Subscriptions::class)->forTenant(app(TenantContext::class)->id());
+        } catch (\Throwable) {
+            return [];
+        }
+
+        return array_values(array_map(fn (array $b): array => ['name' => (string) $b['board'], 'status' => (string) $b['status'], 'status_label' => (string) $b['status_label']],
+            array_filter($all, fn (array $b): bool => $b['status'] !== 'cancelled')));
+    }
+
     public function index(Request $request, MediaLibrary $media): Response
     {
         $user = self::user($request);
@@ -35,6 +58,7 @@ final class MyWebsiteController
         $host = $this->sites->liveHost();
 
         return Inertia::render('settings/my-website', [
+            'mls_boards' => self::boards(),
             'available' => $brokerage !== null && $rules['enabled'],
             'brokerage_live' => $brokerage?->status === 'live',
             'rules' => $rules,

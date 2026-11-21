@@ -16,6 +16,7 @@ use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Listings\Access\MlsAccess;
 use Modules\Listings\Idx\BoardFees;
+use Modules\Listings\Idx\BoardRequests;
 use Modules\Listings\Idx\Coverage;
 use Modules\Listings\Idx\DemoListings;
 use Modules\Listings\Idx\Subscriptions;
@@ -42,6 +43,9 @@ final class MlsSettingsController
             'boards' => $boards,
             // IDX7: one board is included in the package; each extra board is added to the monthly invoice.
             'fees' => app(BoardFees::class)->current(),
+            // IDX8: "My board isn't listed": the brokerage's own requests and the states it can pick.
+            'requests' => app(BoardRequests::class)->forTenant($tenants->id()),
+            'all_states' => collect($coverage->states())->pluck('name', 'code')->all(),
             'demo' => ['on' => app(DemoListings::class)->enabled($tenants->id()), 'showing' => app(DemoListings::class)->sourcesFor($tenants->id()) !== []],
             'available' => array_values(array_filter($coverage->offered($coverage->enabledStates()), fn (array $b): bool => ! in_array($b['code'], $taken, true))),
             'sources' => MlsSource::query()->whereIn('status', ['active', 'setup'])->where(fn ($q) => $q->whereNull('locked_tenant_id')->orWhere('locked_tenant_id', $tenants->id()))->orderBy('name')->get()->map(function (MlsSource $s) use ($mine, $profiles): array {
@@ -71,6 +75,15 @@ final class MlsSettingsController
         $user = self::owner($request);
         $subs->add($tenants->id(), (string) $request->validate(['board' => ['required', 'string', 'size:26']])['board'], $user);
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Board added. Demo listings show on your website until the MLS approves.']);
+
+        return back();
+    }
+
+    /** IDX8: ask HQ to add a board that is not listed yet. */
+    public function requestBoard(Request $request, TenantContext $tenants, BoardRequests $requests): RedirectResponse
+    {
+        $requests->ask($tenants->id(), $request->only(['name', 'state', 'website', 'note']), self::owner($request));
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Thank you. We will email you as soon as this board is ready.']);
 
         return back();
     }

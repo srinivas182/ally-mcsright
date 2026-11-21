@@ -73,6 +73,22 @@ type Fees = {
     extras: { name: string; fee_cents: number }[];
 };
 
+/** IDX8: a board the brokerage asked RightAlly to add. */
+type BoardRequest = {
+    ulid: string;
+    name: string;
+    state: string;
+    status: 'open' | 'added' | 'closed';
+    hq_note: string | null;
+    asked: string;
+};
+
+const REQUEST_STATUS: Record<BoardRequest['status'], string> = {
+    open: 'We are looking into it',
+    added: 'Being set up; we will email you when it is ready',
+    closed: 'Not possible yet',
+};
+
 /** The steps every board goes through, in order (IDX4). */
 const STEPS: { key: string; label: string }[] = [
     { key: 'demo', label: 'Your details' },
@@ -93,7 +109,11 @@ export default function MlsSettings({
     available = [],
     demo = { on: true, showing: false },
     fees = { included: null, included_ulid: null, extra_cents: 0, extras: [] },
+    requests = [],
+    all_states = {},
 }: {
+    requests?: BoardRequest[];
+    all_states?: Record<string, string>;
     sources: Source[];
     boards?: Board[];
     available?: Available[];
@@ -197,12 +217,10 @@ export default function MlsSettings({
                                 Add board
                             </Button>
                         </div>
-                        <p className="text-sm text-muted-foreground">
-                            Your board is not listed? Tell RightAlly support and
-                            we will add it.
-                        </p>
                     </section>
                 )}
+
+                <RequestBoard requests={requests} states={all_states} />
 
                 {sources.length > 0 && (
                     <section className="grid gap-3">
@@ -218,6 +236,154 @@ export default function MlsSettings({
                 )}
             </div>
         </>
+    );
+}
+
+/** IDX8: "My board isn't listed": name the board and we email you when it is ready. */
+function RequestBoard({
+    requests,
+    states,
+}: {
+    requests: BoardRequest[];
+    states: Record<string, string>;
+}) {
+    const [open, setOpen] = useState(false);
+    const form = useForm({ name: '', state: '', website: '', note: '' });
+
+    return (
+        <section className="grid gap-3 rounded-xl border bg-card p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <h2 className="text-lg font-semibold">
+                        My board isn’t listed
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                        Tell us its name and we will add it. We email you the
+                        day it is ready.
+                    </p>
+                </div>
+                {!open && (
+                    <Button variant="outline" onClick={() => setOpen(true)}>
+                        Ask for a board
+                    </Button>
+                )}
+            </div>
+            {open && (
+                <form
+                    className="grid gap-3 md:grid-cols-2"
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        form.post('/settings/mls/requests', {
+                            preserveScroll: true,
+                            onSuccess: () => {
+                                form.reset();
+                                setOpen(false);
+                            },
+                        });
+                    }}
+                >
+                    <FormField
+                        label="The board's name"
+                        error={form.errors.name}
+                        required
+                    >
+                        {(control) => (
+                            <Input
+                                {...control}
+                                value={form.data.name}
+                                onChange={(e) =>
+                                    form.setData('name', e.target.value)
+                                }
+                            />
+                        )}
+                    </FormField>
+                    <FormField label="State" error={form.errors.state} required>
+                        {(control) => (
+                            <select
+                                {...control}
+                                className="h-11 rounded-md border bg-background px-3 text-base"
+                                value={form.data.state}
+                                onChange={(e) =>
+                                    form.setData('state', e.target.value)
+                                }
+                            >
+                                <option value="">Choose…</option>
+                                {Object.entries(states).map(([code, name]) => (
+                                    <option key={code} value={code}>
+                                        {name}
+                                    </option>
+                                ))}
+                            </select>
+                        )}
+                    </FormField>
+                    <FormField
+                        label="Its website (optional)"
+                        error={form.errors.website}
+                    >
+                        {(control) => (
+                            <Input
+                                {...control}
+                                type="url"
+                                placeholder="https://"
+                                value={form.data.website}
+                                onChange={(e) =>
+                                    form.setData('website', e.target.value)
+                                }
+                            />
+                        )}
+                    </FormField>
+                    <FormField
+                        label="Anything else (optional)"
+                        error={form.errors.note}
+                    >
+                        {(control) => (
+                            <Input
+                                {...control}
+                                value={form.data.note}
+                                onChange={(e) =>
+                                    form.setData('note', e.target.value)
+                                }
+                            />
+                        )}
+                    </FormField>
+                    <div className="flex gap-3 md:col-span-2">
+                        <Button
+                            size="lg"
+                            type="submit"
+                            disabled={form.processing}
+                        >
+                            Send
+                        </Button>
+                        <Button
+                            size="lg"
+                            type="button"
+                            variant="ghost"
+                            onClick={() => setOpen(false)}
+                        >
+                            Cancel
+                        </Button>
+                    </div>
+                </form>
+            )}
+            {requests.length > 0 && (
+                <ul className="grid gap-2 text-sm">
+                    {requests.map((r) => (
+                        <li
+                            key={r.ulid}
+                            className="flex flex-wrap justify-between gap-2 rounded-lg border p-3"
+                        >
+                            <span>
+                                {r.name} ({r.state}), asked {r.asked}
+                            </span>
+                            <span className="text-muted-foreground">
+                                {REQUEST_STATUS[r.status]}
+                                {r.hq_note ? `: ${r.hq_note}` : ''}
+                            </span>
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </section>
     );
 }
 

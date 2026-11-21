@@ -100,6 +100,21 @@ type Props = {
     state: string | null;
     queue: QueueItem[];
     statuses: Record<string, string>;
+    requests?: RequestItem[];
+};
+
+/** IDX8: a board a brokerage asked us to add. */
+type RequestItem = {
+    ulid: string;
+    name: string;
+    state: string;
+    website: string | null;
+    note: string | null;
+    brokerage: string;
+    status: 'open' | 'added' | 'closed';
+    hq_note: string | null;
+    same: number;
+    asked: string;
 };
 
 const VISIBILITY: Record<string, string> = {
@@ -127,6 +142,7 @@ export default function HqIdx({
     state,
     queue,
     statuses,
+    requests = [],
 }: Props) {
     const open = states.filter((s) => s.enabled);
     const [filter, setFilter] = useState<string>(
@@ -167,6 +183,11 @@ export default function HqIdx({
                             to do)
                         </TabsTrigger>
                         <TabsTrigger value="boards">MLS boards</TabsTrigger>
+                        <TabsTrigger value="requests">
+                            Asked for (
+                            {requests.filter((r) => r.status === 'open').length}
+                            )
+                        </TabsTrigger>
                         <TabsTrigger value="states">
                             States ({open.length} open)
                         </TabsTrigger>
@@ -324,6 +345,23 @@ export default function HqIdx({
                                 </tbody>
                             </table>
                         </div>
+                    </TabsContent>
+
+                    <TabsContent value="requests" className="grid gap-3">
+                        <p className="text-sm text-muted-foreground">
+                            Boards brokerages could not find. Add one to the
+                            directory (it starts hidden), give it a connector
+                            and a fee, then make it public: everyone who asked
+                            is emailed that day.
+                        </p>
+                        {requests.length === 0 && (
+                            <p className="rounded-xl border bg-card p-6 text-center text-muted-foreground">
+                                No brokerage has asked for a board yet.
+                            </p>
+                        )}
+                        {requests.map((r) => (
+                            <RequestRow key={r.ulid} item={r} />
+                        ))}
                     </TabsContent>
 
                     <TabsContent value="states" className="grid gap-3">
@@ -1224,5 +1262,92 @@ function BoardDialog({
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+    );
+}
+
+/** IDX8: one request: add the board (with a short code) or close it with a reason the brokerage sees. */
+function RequestRow({ item: r }: { item: RequestItem }) {
+    const [code, setCode] = useState(
+        r.name
+            .replace(/\(([^)]+)\)/, ' $1 ')
+            .match(/\b[A-Za-z0-9]/g)
+            ?.join('')
+            .toUpperCase()
+            .slice(0, 20) ?? '',
+    );
+    const [note, setNote] = useState('');
+
+    return (
+        <section className="grid gap-3 rounded-xl border bg-card p-4">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                    <h3 className="font-semibold">
+                        {r.name} ({r.state})
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                        {r.brokerage}, asked {r.asked}
+                        {r.same > 1 ? ` · ${r.same} brokerages asked` : ''}
+                        {r.website ? ` · ${r.website}` : ''}
+                    </p>
+                    {r.note && <p className="text-sm">{r.note}</p>}
+                </div>
+                <Badge variant={r.status === 'open' ? 'default' : 'secondary'}>
+                    {r.status === 'open'
+                        ? 'Open'
+                        : r.status === 'added'
+                          ? 'Added'
+                          : 'Closed'}
+                </Badge>
+            </div>
+            {r.hq_note && (
+                <p className="text-sm text-muted-foreground">{r.hq_note}</p>
+            )}
+            {r.status === 'open' && (
+                <div className="flex flex-wrap items-end gap-3">
+                    <label className="grid gap-1 text-sm">
+                        Short code
+                        <Input
+                            className="w-40"
+                            value={code}
+                            onChange={(e) =>
+                                setCode(e.target.value.toUpperCase())
+                            }
+                        />
+                    </label>
+                    <Button
+                        disabled={code === ''}
+                        onClick={() =>
+                            router.post(
+                                `/hq/idx/requests/${r.ulid}/add`,
+                                { code },
+                                { preserveScroll: true },
+                            )
+                        }
+                    >
+                        Add to MLS boards
+                    </Button>
+                    <label className="grid flex-1 gap-1 text-sm">
+                        Or close, with a reason the brokerage sees
+                        <Input
+                            value={note}
+                            onChange={(e) => setNote(e.target.value)}
+                        />
+                    </label>
+                    <Button
+                        variant="outline"
+                        disabled={note.trim() === ''}
+                        onClick={() =>
+                            router.post(
+                                `/hq/idx/requests/${r.ulid}/close`,
+                                { note },
+                                { preserveScroll: true },
+                            )
+                        }
+                    >
+                        Close
+                    </Button>
+                </div>
+            )}
+        </section>
     );
 }
