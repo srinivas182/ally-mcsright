@@ -15,6 +15,7 @@ use Modules\Core\Support\Connections;
 use Modules\Listings\Idx\AgreementCheck;
 use Modules\Listings\Idx\Agreements;
 use Modules\Listings\Idx\AgreementWatch;
+use Modules\Listings\Idx\BoardForm;
 use Modules\Listings\Idx\BoardRequests;
 use Modules\Listings\Idx\Coverage;
 use Modules\Listings\Idx\Subscriptions;
@@ -76,6 +77,29 @@ final class HqIdxController
         $action = (string) $request->validate(['action' => ['required', 'in:use_new,keep,confirm,check']])['action'];
         $message = $watch->act($board, $action, self::user($request));
         Inertia::flash('toast', ['type' => 'success', 'message' => $message]);
+
+        return back();
+    }
+
+    /** IDX12: what fills each field of the board's own form (checked by HQ once per form version). */
+    public function fields(Request $request, BoardForm $form, string $board): RedirectResponse
+    {
+        $data = $request->validate(['fields' => ['required', 'array', 'max:200'], 'fields.*.key' => ['required', 'string', 'max:40'],
+            'fields.*.source' => ['nullable', 'string', 'max:30'], 'fields.*.role' => ['nullable', 'string', 'max:30'], 'fields.*.label' => ['nullable', 'string', 'max:80'],
+            'fields.*.required' => ['nullable', 'boolean']]);
+        $form->save($board, array_values($data['fields']), self::user($request));
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Saved. Brokerages now see this form filled in before they sign.']);
+
+        return back();
+    }
+
+    public function findFields(BoardForm $form, string $board): RedirectResponse
+    {
+        $row = DB::connection(Connections::control())->table('idx_boards')->where('ulid', $board)->first();
+        abort_if($row === null, 404);
+        $n = $form->refresh($row);
+        Inertia::flash('toast', ['type' => $n > 0 ? 'success' : 'info', 'message' => $n > 0 ? "Found {$n} field(s). Check what fills each one, then save."
+            : 'This PDF has no fillable fields. Brokerages sign on RightAlly\'s summary page instead.']);
 
         return back();
     }
