@@ -43,6 +43,7 @@ final class Subscriptions
     public const STATUSES = [
         'demo' => 'Demo listings: enter your MLS details',
         'awaiting_signature' => 'Waiting for signatures',
+        'review' => 'Review and complete your agreement', // IDX12
         'hq_check' => 'Signed: RightAlly is checking it', // IDX11
         'sent' => 'Sent to the MLS',
         'mls_review' => 'Waiting on the MLS',
@@ -55,10 +56,11 @@ final class Subscriptions
     private const MOVES = [
         'demo' => ['needs_fixing'],
         'awaiting_signature' => ['sent', 'needs_fixing'],
+        'review' => ['needs_fixing'], // IDX12: the brokerage completes the board's form
         'hq_check' => ['needs_fixing'], // IDX11: sending to the MLS is its own step
         'sent' => ['mls_review', 'needs_fixing'],
         'mls_review' => ['needs_fixing', 'sent'],
-        'needs_fixing' => ['awaiting_signature', 'hq_check', 'sent', 'mls_review'],
+        'needs_fixing' => ['review', 'awaiting_signature', 'hq_check', 'sent', 'mls_review'],
         'live' => [],
         'cancelled' => [],
     ];
@@ -137,9 +139,11 @@ final class Subscriptions
     public function submit(int $tenantId, string $ulid, array $input, User $by): void
     {
         $sub = $this->own($tenantId, $ulid);
-        if (! in_array($sub->status, ['demo', 'needs_fixing', 'awaiting_signature'], true)) {
+        if (! in_array($sub->status, ['demo', 'needs_fixing', 'awaiting_signature', 'review'], true)) {
             throw ValidationException::withMessages(['status' => 'These details can no longer be changed here. Ask RightAlly support.']);
         }
+        $board = $this->db()->table('idx_boards')->where('id', $sub->board_id)->first();
+        $ownForm = $board instanceof stdClass && BoardForm::inUse($board);
         $data = Validator::make($input, [
             'member_id' => ['required', 'string', 'max:30'],
             'office_id' => ['nullable', 'string', 'max:30'],
@@ -150,19 +154,59 @@ final class Subscriptions
         ], [], ['member_id' => 'MLS member ID', 'license_number' => 'licence number', 'managing_broker_email' => 'managing broker email'])->validate();
         $row = ['member_id' => trim($data['member_id']), 'office_id' => trim((string) ($data['office_id'] ?? '')) ?: null, 'license_number' => trim($data['license_number']),
             'managing_broker_name' => trim($data['managing_broker_name']), 'managing_broker_email' => mb_strtolower(trim($data['managing_broker_email'])),
-            'status' => 'awaiting_signature', 'client_note' => null, 'reminders' => 0, 'status_at' => now(), 'submitted_at' => now(), 'updated_at' => now()];
+            'status' => $ownForm ? 'review' : 'awaiting_signature', 'client_note' => null, 'reminders' => 0, 'status_at' => now(), 'submitted_at' => now(),
+            // New details mean a new signature: an earlier signed copy no longer matches them.
+            'signed_path' => null, 'signed_at' => null, 'check_result' => null, 'checked_at' => null, 'updated_at' => now()];
         if (($data['own_key'] ?? '') !== '') {
             $row['own_key'] = Crypt::encryptString(trim((string) $data['own_key']));
         }
         $this->db()->table('idx_subscriptions')->where('id', $sub->id)->update($row);
         $this->audit->record('idx.details_submitted', metadata: ['subscription' => $ulid, 'own_key' => ($data['own_key'] ?? '') !== ''], severity: 'notice', tenantId: $tenantId);
 
-        // IDX6: an agreement already signed goes on to the MLS; otherwise the board's agreement is prepared for signing.
-        $fresh = $this->find($ulid);
+        // IDX12: with the board's own form, the brokerage reviews it filled in first; otherwise it goes for signing now.
+        if ($ownForm) {
+            return;
+        }
         try {
-            $fresh->signed_path !== null ? app(Agreements::class)->deliver($ulid, false) : app(Agreements::class)->prepare($fresh);
+            app(Agreements::class)->prepare($this->find($ulid));
         } catch (Throwable $e) {
             report($e); // HQ can still handle the paperwork by hand; the brokerage's details are saved
+        }
+    }
+
+    /**
+     * IDX12: the brokerage checked the board's form filled in, completed anything missing, and sends it for signature.
+     *
+     * @param  array<string, mixed>  $values
+     */
+    public function review(int $tenantId, string $ulid, array $values, User $by, bool $send = true): void
+    {
+        $sub = $this->own($tenantId, $ulid);
+        $board = $this->db()->table('idx_boards')->where('id', $sub->board_id)->first();
+        if ($sub->status !== 'review' || ! $board instanceof stdClass || ! BoardForm::inUse($board)) {
+            throw ValidationException::withMessages(['status' => 'This agreement is not waiting for your review.']);
+        }
+        $clean = [];
+        foreach (BoardForm::fields($board) as $f) {
+            if ($f['source'] !== null && $f['source'] !== 'skip') {
+                $clean[$f['key']] = trim(mb_substr(strip_tags((string) ($values[$f['key']] ?? '')), 0, 300));
+            }
+        }
+        if (! $send) { // saved for a preview; nothing is sent yet
+            $this->db()->table('idx_subscriptions')->where('id', $sub->id)->update(['form_values' => json_encode($clean), 'updated_at' => now()]);
+
+            return;
+        }
+        if (($missing = BoardForm::clean($board, $clean)) !== []) {
+            throw ValidationException::withMessages(['values' => 'Please fill in: '.implode(', ', $missing).'.']);
+        }
+        $this->db()->table('idx_subscriptions')->where('id', $sub->id)->update(['form_values' => json_encode($clean), 'status' => 'awaiting_signature', 'status_at' => now(),
+            'updated_at' => now()]);
+        $this->audit->record('idx.form_reviewed', metadata: ['subscription' => $ulid, 'by' => $by->id], severity: 'notice', tenantId: $tenantId);
+        try {
+            app(Agreements::class)->prepare($this->find($ulid));
+        } catch (Throwable $e) {
+            report($e);
         }
     }
 
@@ -330,6 +374,23 @@ final class Subscriptions
         return $sub;
     }
 
+    /**
+     * @return list<array{key: string, label: string, type: string, value: string, required: bool, filled_by_us: bool}>
+     */
+    private static function formRows(stdClass $board, stdClass $s): array
+    {
+        $values = BoardForm::values($board, $s);
+        $out = [];
+        foreach (BoardForm::fields($board) as $f) {
+            if ($f['source'] !== null && $f['source'] !== 'skip') {
+                $out[] = ['key' => $f['key'], 'label' => $f['label'], 'type' => $f['type'] === 'date' ? 'date' : ($f['type'] === 'checkbox' ? 'checkbox' : 'text'),
+                    'value' => $values[$f['key']] ?? '', 'required' => $f['required'], 'filled_by_us' => $f['source'] !== 'fill'];
+            }
+        }
+
+        return $out;
+    }
+
     /** @return array<string, mixed> */
     private function describe(stdClass $s, ?stdClass $board, bool $hq): array
     {
@@ -348,6 +409,8 @@ final class Subscriptions
             },
             'has_copy' => ($s->signed_path ?? null) !== null, 'website' => $s->website ?? null,
             'compliance_ok' => isset($s->compliance_ok) ? (bool) $s->compliance_ok : null, 'compliance_note' => $s->compliance_note ?? null];
+        // IDX12: the board's own form, filled in, for the brokerage to review (signature lines are signed later).
+        $out['form'] = $board !== null && BoardForm::inUse($board) ? self::formRows($board, $s) : null;
         if ($hq) {
             // IDX11: the check of the signed agreement (rules, then AI), for HQ to send on or send back.
             $out['check'] = ($s->checked_at ?? null) !== null ? ['result' => (string) $s->check_result, 'source' => (string) $s->check_source,

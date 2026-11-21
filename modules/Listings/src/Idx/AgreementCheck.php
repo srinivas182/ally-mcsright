@@ -123,6 +123,15 @@ final class AgreementCheck
         if ($siteProblem !== null) {
             $add('The website '.($website !== '' ? $website.' ' : '').'is not ready for the MLS: '.$siteProblem);
         }
+        // IDX12: every field the board's form needs is filled in.
+        if (BoardForm::inUse($board)) {
+            $values = BoardForm::values($board, $sub);
+            foreach (BoardForm::fields($board) as $f) {
+                if ($f['required'] && trim($values[$f['key']] ?? '') === '') {
+                    $add('"'.$f['label'].'" on the board\'s form is empty.');
+                }
+            }
+        }
         if (! Agreements::automatic($board)) {
             $add('This board has no "send to" address yet. Add it in HQ › IDX coverage › MLS boards.', 'hq');
         }

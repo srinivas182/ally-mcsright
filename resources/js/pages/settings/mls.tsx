@@ -54,6 +54,7 @@ type Board = {
     approval: string | null;
     agreement: string | null;
     has_copy: boolean;
+    form?: FormRow[] | null;
 };
 type Available = {
     ulid: string;
@@ -71,6 +72,16 @@ type Fees = {
     included_ulid: string | null;
     extra_cents: number;
     extras: { name: string; fee_cents: number }[];
+};
+
+/** IDX12: one field of the board's own agreement form, filled in for the brokerage to check. */
+type FormRow = {
+    key: string;
+    label: string;
+    type: 'text' | 'date' | 'checkbox';
+    value: string;
+    required: boolean;
+    filled_by_us: boolean;
 };
 
 /** IDX8: a board the brokerage asked RightAlly to add. */
@@ -92,6 +103,7 @@ const REQUEST_STATUS: Record<BoardRequest['status'], string> = {
 /** The steps every board goes through, in order (IDX4). */
 const STEPS: { key: string; label: string }[] = [
     { key: 'demo', label: 'Your details' },
+    { key: 'review', label: 'Check the form' },
     { key: 'awaiting_signature', label: 'Signatures' },
     { key: 'hq_check', label: 'RightAlly check' },
     { key: 'sent', label: 'Sent to the MLS' },
@@ -407,9 +419,12 @@ function BoardCard({
         own_key: '',
     });
     const at = STEPS.findIndex((s) => s.key === b.status);
-    const canEdit = ['demo', 'needs_fixing', 'awaiting_signature'].includes(
-        b.status,
-    );
+    const canEdit = [
+        'demo',
+        'needs_fixing',
+        'awaiting_signature',
+        'review',
+    ].includes(b.status);
 
     return (
         <section className="grid gap-4 rounded-xl border bg-card p-5">
@@ -468,6 +483,9 @@ function BoardCard({
                 <p className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
                     What to fix: {b.note}
                 </p>
+            )}
+            {b.status === 'review' && b.form && (
+                <ReviewForm board={b} rows={b.form} />
             )}
             {b.status === 'awaiting_signature' && (
                 <p className="text-sm text-muted-foreground">
@@ -738,5 +756,117 @@ function SourceRow({ source: s }: { source: Source }) {
                 </form>
             )}
         </li>
+    );
+}
+
+/**
+ * IDX12: the board's own agreement, filled in. The brokerage checks what RightAlly filled in, completes the rest,
+ * previews the form exactly as the MLS will see it, then sends it for signature.
+ */
+function ReviewForm({ board: b, rows }: { board: Board; rows: FormRow[] }) {
+    const form = useForm<{ values: Record<string, string>; send: boolean }>({
+        values: Object.fromEntries(rows.map((r) => [r.key, r.value])),
+        send: false,
+    });
+    const [saved, setSaved] = useState(false);
+    const set = (key: string, value: string) => {
+        setSaved(false);
+        form.setData('values', { ...form.data.values, [key]: value });
+    };
+    const ours = rows.filter((r) => r.filled_by_us);
+    const theirs = rows.filter((r) => !r.filled_by_us);
+    const field = (r: FormRow) =>
+        r.type === 'checkbox' ? (
+            <label key={r.key} className="flex items-center gap-3 text-base">
+                <Switch
+                    checked={['1', 'yes', 'x', 'true', 'on'].includes(
+                        (form.data.values[r.key] ?? '').toLowerCase(),
+                    )}
+                    onCheckedChange={(on) => set(r.key, on ? 'Yes' : '')}
+                />
+                {r.label}
+            </label>
+        ) : (
+            <FormField key={r.key} label={r.label} required={r.required}>
+                {(control) => (
+                    <Input
+                        {...control}
+                        className="h-11 text-base"
+                        value={form.data.values[r.key] ?? ''}
+                        onChange={(e) => set(r.key, e.target.value)}
+                    />
+                )}
+            </FormField>
+        );
+    const save = (send: boolean, after?: () => void) => {
+        form.transform((d) => ({ ...d, send }));
+        form.put(`/settings/mls/boards/${b.ulid}/review`, {
+            preserveScroll: true,
+            onSuccess: () => after?.(),
+        });
+    };
+
+    return (
+        <section className="grid gap-4 rounded-lg border bg-muted/20 p-4">
+            <div>
+                <h3 className="text-base font-semibold">
+                    Check your {b.board_code} agreement
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                    This is the MLS's own form. We filled in what we know;
+                    please check it, complete anything empty, and send it for
+                    signature.
+                </p>
+            </div>
+            {ours.length > 0 && (
+                <div className="grid gap-3 sm:grid-cols-2">
+                    <p className="text-sm font-medium sm:col-span-2">
+                        Filled in for you (change anything that is wrong)
+                    </p>
+                    {ours.map(field)}
+                </div>
+            )}
+            {theirs.length > 0 && (
+                <div className="grid gap-3 sm:grid-cols-2">
+                    <p className="text-sm font-medium sm:col-span-2">
+                        Please complete
+                    </p>
+                    {theirs.map(field)}
+                </div>
+            )}
+            {(form.errors as Record<string, string>).values && (
+                <p className="text-sm text-destructive">
+                    {(form.errors as Record<string, string>).values}
+                </p>
+            )}
+            <div className="flex flex-wrap gap-3">
+                <Button
+                    size="lg"
+                    variant="outline"
+                    disabled={form.processing}
+                    onClick={() => save(false, () => setSaved(true))}
+                >
+                    Save
+                </Button>
+                {saved && (
+                    <Button size="lg" variant="outline" asChild>
+                        <a
+                            href={`/settings/mls/boards/${b.ulid}/preview.pdf`}
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            Open the preview (PDF)
+                        </a>
+                    </Button>
+                )}
+                <Button
+                    size="lg"
+                    disabled={form.processing}
+                    onClick={() => save(true)}
+                >
+                    Looks right: send for signature
+                </Button>
+            </div>
+        </section>
     );
 }

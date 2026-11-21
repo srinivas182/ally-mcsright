@@ -110,6 +110,8 @@ final class Coverage
                 'form_update' => ($b->agreement_pending_path ?? null) !== null, 'form_watch_note' => $b->agreement_watch_note ?? null,
                 'form_confirmed' => ($b->agreement_confirmed_at ?? null) !== null ? substr((string) $b->agreement_confirmed_at, 0, 10) : null,
                 'form_due' => AgreementWatch::due($b),
+                // IDX12: the board's own fields and what fills each one.
+                'form_fields' => BoardForm::fields($b), 'form_fields_checked' => ($b->agreement_fields_at ?? null) !== null,
             ])->all());
     }
 
@@ -152,6 +154,11 @@ final class Coverage
             'agreement_version' => $board->agreement_path !== null ? (int) ($board->agreement_version ?? 1) + 1 : (int) ($board->agreement_version ?? 1),
             'agreement_pending_path' => null, 'agreement_pending_at' => null, 'agreement_confirmed_at' => now(), 'updated_by' => $by->id, 'updated_at' => now()]);
         $this->audit->record('idx.board.agreement_uploaded', metadata: ['board' => $board->code, 'by' => $by->id], severity: 'notice');
+        // IDX12: find the form's fillable fields again; HQ checks the match before the next brokerage signs.
+        $fresh = $this->db()->table('idx_boards')->where('id', $board->id)->first();
+        if ($fresh !== null) {
+            app(BoardForm::class)->refresh($fresh);
+        }
     }
 
     /** The client's monthly fee: what HQ set, else our cost plus the connector's margin, else none yet. */
