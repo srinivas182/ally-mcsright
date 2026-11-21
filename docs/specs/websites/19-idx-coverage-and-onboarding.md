@@ -163,3 +163,25 @@ charged yet.
   sees "Texts new homes" on the contact's saved search. The brokerage needs texts switched on by HQ.
 
 For review: the consent wording (`SavedSearches::TEXT_CONSENT`) should be checked by counsel before launch.
+
+## IDX11: checking signed agreements, and watching each board's form
+
+- **Nothing goes to the MLS unchecked.** When everyone has signed, the copy is kept and the board moves to "Signed:
+  RightAlly is checking it" (`hq_check`). A queued check (`Idx\AgreementCheck`) runs:
+    - **Rules:** the signed copy is a PDF; every signer signed; MLS member ID present and only letters and numbers;
+      license number present and plausible; managing broker's full name and email (when the board needs the managing
+      broker); the website opens over https without a password; the board has a "send to" address (a RightAlly problem,
+      shown as "For RightAlly").
+    - **AI** (`idx.agreement_check`, HQ pays, no brokerage credits): reads the same details as data and adds anything an
+      MLS would send back, then writes a short note to the brokerage listing every problem. If AI is not set up or fails,
+      the rules' result and a plain note stand.
+- **HQ decides.** The queue shows "Check: clear to send" or the list, with the note in an editable box. **Send to the
+  MLS** emails the board (send to, CC, BCC; password confirmed). **Send back to the brokerage** moves it to "Needs
+  fixing" with the note plus anything HQ adds (up to 1,500 characters) and emails the owner. **Check again** reruns it.
+- **The board's own form.** HQ can save the web address where the board publishes its IDX agreement. Every Monday
+  (`idx:agreement-watch`) RightAlly downloads it: the first download becomes the form; a different file is kept aside
+  and HQ is emailed ("Use the new version" or "Keep current"). Each upload or switch is a new version; agreements
+  record the version they were signed on, and those already signed are never changed. A form that cannot be
+  downloaded (a member sign-in page) gets "Confirm this form is current" every 90 days.
+- Filling in the board's own PDF fields (not only our signature page) is planned as IDX12 and needs a PDF form library;
+  it will be proposed separately.

@@ -12,7 +12,9 @@ use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Core\Support\Connections;
+use Modules\Listings\Idx\AgreementCheck;
 use Modules\Listings\Idx\Agreements;
+use Modules\Listings\Idx\AgreementWatch;
 use Modules\Listings\Idx\BoardRequests;
 use Modules\Listings\Idx\Coverage;
 use Modules\Listings\Idx\Subscriptions;
@@ -58,6 +60,26 @@ final class HqIdxController
         return back();
     }
 
+    /** IDX11: run the check of a signed agreement again (after HQ fixed the board's set-up, say). */
+    public function recheck(AgreementCheck $check, string $subscription): RedirectResponse
+    {
+        $result = $check->run($subscription);
+        Inertia::flash('toast', $result === null ? ['type' => 'error', 'message' => 'That board is no longer there.']
+            : ['type' => 'success', 'message' => $result['result'] === 'clear' ? 'Checked: clear to send.' : 'Checked: '.count($result['issues']).' thing(s) to look at.']);
+
+        return back();
+    }
+
+    /** IDX11: the board's form, from the address HQ saved: use the newer version, keep the current one, or confirm it. */
+    public function form(Request $request, AgreementWatch $watch, string $board): RedirectResponse
+    {
+        $action = (string) $request->validate(['action' => ['required', 'in:use_new,keep,confirm,check']])['action'];
+        $message = $watch->act($board, $action, self::user($request));
+        Inertia::flash('toast', ['type' => 'success', 'message' => $message]);
+
+        return back();
+    }
+
     public function copy(string $subscription): StreamedResponse
     {
         $path = DB::connection(Connections::control())->table('idx_subscriptions')->where('ulid', $subscription)->value('signed_path');
@@ -68,7 +90,7 @@ final class HqIdxController
 
     public function move(Request $request, Subscriptions $subs, string $subscription): RedirectResponse
     {
-        $data = $request->validate(['to' => ['required', 'string', 'max:20'], 'note' => ['nullable', 'string', 'max:300']]);
+        $data = $request->validate(['to' => ['required', 'string', 'max:20'], 'note' => ['nullable', 'string', 'max:1500']]);
         $subs->move($subscription, $data['to'], $data['note'] ?? null, self::user($request));
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Moved to: '.(Subscriptions::STATUSES[$data['to']] ?? $data['to']).'.']);
 

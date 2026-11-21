@@ -43,6 +43,7 @@ final class Subscriptions
     public const STATUSES = [
         'demo' => 'Demo listings: enter your MLS details',
         'awaiting_signature' => 'Waiting for signatures',
+        'hq_check' => 'Signed: RightAlly is checking it', // IDX11
         'sent' => 'Sent to the MLS',
         'mls_review' => 'Waiting on the MLS',
         'live' => 'Live',
@@ -54,9 +55,10 @@ final class Subscriptions
     private const MOVES = [
         'demo' => ['needs_fixing'],
         'awaiting_signature' => ['sent', 'needs_fixing'],
+        'hq_check' => ['needs_fixing'], // IDX11: sending to the MLS is its own step
         'sent' => ['mls_review', 'needs_fixing'],
         'mls_review' => ['needs_fixing', 'sent'],
-        'needs_fixing' => ['awaiting_signature', 'sent', 'mls_review'],
+        'needs_fixing' => ['awaiting_signature', 'hq_check', 'sent', 'mls_review'],
         'live' => [],
         'cancelled' => [],
     ];
@@ -177,7 +179,7 @@ final class Subscriptions
         if ($to === 'needs_fixing' && $note === '') {
             throw ValidationException::withMessages(['note' => 'Say what the brokerage needs to fix.']);
         }
-        $this->db()->table('idx_subscriptions')->where('id', $sub->id)->update(['status' => $to, 'client_note' => $to === 'needs_fixing' ? mb_substr($note, 0, 300) : null,
+        $this->db()->table('idx_subscriptions')->where('id', $sub->id)->update(['status' => $to, 'client_note' => $to === 'needs_fixing' ? mb_substr($note, 0, 1500) : null,
             'status_at' => now(), 'updated_at' => now()]);
         $this->audit->record('idx.status.'.$to, metadata: ['subscription' => $ulid, 'by' => $by->id], severity: 'notice', tenantId: (int) $sub->tenant_id);
         if ($to === 'needs_fixing') {
@@ -346,6 +348,13 @@ final class Subscriptions
             },
             'has_copy' => ($s->signed_path ?? null) !== null, 'website' => $s->website ?? null,
             'compliance_ok' => isset($s->compliance_ok) ? (bool) $s->compliance_ok : null, 'compliance_note' => $s->compliance_note ?? null];
+        if ($hq) {
+            // IDX11: the check of the signed agreement (rules, then AI), for HQ to send on or send back.
+            $out['check'] = ($s->checked_at ?? null) !== null ? ['result' => (string) $s->check_result, 'source' => (string) $s->check_source,
+                'issues' => (array) json_decode((string) ($s->check_issues ?? '[]'), true), 'note' => $s->check_note,
+                'at' => CarbonImmutable::parse((string) $s->checked_at)->toIso8601String()] : null;
+            $out['form_version'] = ($s->agreement_version ?? null) !== null ? (int) $s->agreement_version : null;
+        }
         if ($hq) {
             $out += ['connector' => $s->connector, 'feed_id' => $s->feed_id, 'mls_source_id' => $board?->mls_source_id !== null ? (int) $board->mls_source_id : null,
                 'reminders' => (int) $s->reminders, 'submitted_at' => $s->submitted_at];
