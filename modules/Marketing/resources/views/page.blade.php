@@ -51,13 +51,13 @@
             @break
         @case('faq')
             <section class="tinted"><div class="wrap" style="max-width:880px">
-                <h2 style="margin-bottom:24px">{{ $b['heading'] !== '' ? $b['heading'] : ($es ? 'Preguntas frecuentes' : 'Questions and answers') }}</h2>
+                <div class="head"><h2>{{ $b['heading'] !== '' ? $b['heading'] : ($es ? 'Preguntas frecuentes' : 'Questions and answers') }}</h2></div>
                 @foreach ($b['items'] as $item)<details><summary>{{ $item['q'] }}</summary><p>{{ $item['a'] }}</p></details>@endforeach
             </div></section>
             @break
         @case('compare')
             <section><div class="wrap">
-                @if ($b['heading'] !== '')<h2>{{ $b['heading'] }}</h2>@endif
+                @if ($b['heading'] !== '')<div class="head"><h2>{{ $b['heading'] }}</h2></div>@endif
                 <div class="tablewrap"><table>
                     <thead><tr><th scope="col"><span class="small muted">{{ $es ? 'Comparado el' : 'Checked on' }} {{ $b['checked_on'] }}</span></th>@foreach ($b['columns'] as $c)<th scope="col">{{ $c }}</th>@endforeach</tr></thead>
                     <tbody>@foreach ($b['rows'] as $row)<tr><th scope="row">{{ $row['label'] }}</th>@foreach ($row['values'] as $v)<td>{{ $v }}</td>@endforeach</tr>@endforeach</tbody>
@@ -67,7 +67,8 @@
             @break
         @case('pricing')
             <section><div class="wrap">
-                <div class="head"><h2>{{ $b['heading'] !== '' ? $b['heading'] : ($es ? 'Precios' : 'Prices') }}</h2></div>
+                <div class="head"><h2>{{ $b['heading'] !== '' ? $b['heading'] : ($es ? 'Precios' : 'Prices') }}</h2>
+                    <p class="lead">{{ $es ? 'Un precio por mes para su correduría. Cada plan muestra lo que incluye.' : 'One monthly price for your brokerage. Each plan shows what is included.' }}</p></div>
                 @php($plans = ($byAudience[$b['audience'] ?? 'brokerage'] ?? $packages))
                 <div class="grid plans">
                     @php($start2 = ($b['audience'] ?? 'brokerage') === 'agent' ? preg_replace('#/start$#', '/agents', $start) : $start)
@@ -76,6 +77,7 @@
                             <h3>{{ $p->name }}</h3>
                             <p class="price">${{ number_format(((int) $p->monthly_cents) / 100, 0) }}<span class="small muted"> / {{ $es ? 'mes' : 'month' }}</span></p>
                             @if ((int) $p->yearly_cents > 0)<p class="small muted">{{ $es ? 'o' : 'or' }} ${{ number_format(((int) $p->yearly_cents) / 100, 0) }} / {{ $es ? 'año' : 'year' }}</p>@endif
+                            @include('marketing::partials.includes', ['lines' => $includes[(string) ($p->ulid ?? '')] ?? []])
                             <a class="btn" href="{{ $start2 }}?package={{ $p->ulid ?? '' }}">{{ $es ? 'Elegir' : 'Choose' }} {{ $p->name }}</a>
                         </div>
                     @empty
@@ -97,6 +99,7 @@
                             <p class="price">${{ number_format(((int) $seat->floor_cents) / 100, 0) }}<span class="per">{{ $es ? 'al mes con su correduría' : 'a month with your brokerage' }}</span></p>
                             <p class="small muted">${{ number_format(((int) $seat->list_cents) / 100, 0) }} / {{ $es ? 'mes por su cuenta' : 'month on your own' }}</p>
                             <p class="small muted">{{ $es ? 'Con correduría: su broker le invita.' : 'With a brokerage: your broker invites you.' }}</p>
+                            @include('marketing::partials.includes', ['lines' => $seatIncludes[$si] ?? []])
                             <a class="btn ghost" href="{{ preg_replace('#/start$#', '/agents', $start) }}">{{ $es ? 'Empezar por su cuenta' : 'Start on your own' }}</a>
                         </div>
                     @empty
@@ -150,7 +153,7 @@
                 @if ($b['text'] !== '')<p class="lead">{{ $b['text'] }}</p>@endif
                 <div class="grid">
                     @foreach ($show['categories'] as $c)
-                        <label class="small">{{ $c['label'] }} ({{ $es ? 'al mes' : 'a month' }})<br><input type="number" min="0" step="1" inputmode="numeric" name="{{ $c['key'] }}" placeholder="$0" style="width:100%;font-size:1.1rem;padding:.5rem"></label>
+                        <label><span>{{ $c['label'] }} ({{ $es ? 'al mes' : 'a month' }})</span><input type="number" min="0" step="1" inputmode="numeric" name="{{ $c['key'] }}" placeholder="$0"></label>
                     @endforeach
                 </div>
                 <p class="lead" data-savings-result aria-live="polite">{{ $es ? 'Escriba lo que paga hoy por cada herramienta.' : 'Type what you pay today for each tool.' }}</p>

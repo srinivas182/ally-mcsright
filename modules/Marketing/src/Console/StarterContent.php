@@ -9,6 +9,7 @@ use Illuminate\Console\Command;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Tenancy\Models\Tenant;
 use Modules\Core\Tenancy\TenantContext;
+use Modules\Marketing\LegalDefaults;
 use Modules\Marketing\Website;
 
 /**
@@ -63,7 +64,7 @@ final class StarterContent extends Command
         $startEs = ['type' => 'cta', 'heading' => 'Listo cuando usted lo esté', 'text' => 'Regístrese en línea en pocos minutos. Su correduría se crea en cuanto se procesa el primer pago.',
             'label' => 'Empezar', 'href' => '/start'];
 
-        return [
+        return array_merge([
             ['en', '', 'RightAlly: run your whole brokerage in one place', 'Website, CRM, deals, e-sign, commissions, accounting and AI help for US brokerages and agents, in one place, on one bill.', [
                 ['type' => 'hero', 'heading' => 'Run your whole real estate business in one place', 'text' => 'Your website, CRM, deals and e-sign, commissions, accounting and AI help, on one bill, easy enough for anyone, and set up for you.',
                     'cta_label' => 'Choose a package', 'cta_href' => '/pricing', 'second_label' => 'Free Health Check', 'second_href' => '/health-check'],
@@ -173,6 +174,6 @@ final class StarterContent extends Command
                 ]],
                 $startEn,
             ], true],
-        ];
+        ], LegalDefaults::starterPages());
     }
 }
