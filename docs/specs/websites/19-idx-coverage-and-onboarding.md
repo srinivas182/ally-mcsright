@@ -79,3 +79,19 @@ onboarding, connector blueprint, multi-MLS PRD), adjusted to RightAlly.
 - **MLS notices are read-only for brokerages:** the logo, disclaimer and attribution come only from HQ's display
   templates, are printed on every listing and in the footer of every page with listings, and no brokerage screen or
   setting can change or hide them.
+
+## IDX6 · The IDX agreement and the compliance watch (built)
+
+- **HQ, per board (IDX coverage › board › IDX agreement):** "Send the signed agreement to" (for example Repliers'
+  onboarding desk or the MLS), CC, BCC, the terms printed on the signature page (with `{brokerage}`, `{mls_id}`,
+  `{office_id}`, `{license}`, `{website}`, `{managing_broker}`, `{board}`, `{date}`), whether the managing broker signs
+  too, and the MLS's own agreement as a PDF (optional). With no "send to", HQ handles the paperwork by hand.
+- **When the brokerage sends its details:** RightAlly builds the agreement (the MLS's PDF, then a signature page with the
+  brokerage's facts and terms) and sends it through its own e-signature, as RightAlly: the brokerage owner signs first,
+  then the managing broker. Signing reminders (IDX4) keep going until it is signed.
+- **When everyone has signed:** the sealed agreement (with its signature certificate) is kept, the brokerage's website is
+  checked (it must open over https and not ask for a password), and the agreement is emailed to the board's addresses
+  with the brokerage's details; the board shows "Sent to the MLS". If the website fails, the board goes to "Needs fixing"
+  with the reason; HQ can "Send signed agreement to the MLS now" anyway. HQ and the brokerage can download the signed copy.
+- **Nightly compliance watch (`idx:compliance`):** each live board's website home search must open and show the board's
+  MLS notice (its fixed words). Problems are shown in the queue and emailed to HQ's Watchtower recipients.
