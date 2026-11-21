@@ -272,10 +272,37 @@ html[data-motion='reduce'] *::after {
 
 @media (min-width: 768px) {
     [data-variant='inset'] ~ [data-slot='sidebar-inset'] {
-        box-shadow:
-            0 0 0 1px rgb(6 22 63 / 0.06),
-            0 24px 60px -30px rgb(0 0 0 / 0.55);
+        box-shadow: -1px 0 0 rgb(6 22 63 / 0.08);
     }
+}
+
+/* UI2: one navy frame: no inner box inside the sidebar. */
+[data-variant='inset'] [data-sidebar='sidebar'] {
+    background: transparent;
+}
+
+/* UI2: the sidebar scrolls quietly: a thin, dark scrollbar that only shows while the pointer is over it. */
+[data-sidebar='content'] {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+    scrollbar-gutter: stable;
+}
+[data-sidebar='content']:hover,
+[data-sidebar='content']:focus-within {
+    scrollbar-color: rgb(255 255 255 / 0.18) transparent;
+}
+[data-sidebar='content']::-webkit-scrollbar {
+    width: 6px;
+}
+[data-sidebar='content']::-webkit-scrollbar-track {
+    background: transparent;
+}
+[data-sidebar='content']::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 999px;
+}
+[data-sidebar='content']:hover::-webkit-scrollbar-thumb {
+    background: rgb(255 255 255 / 0.18);
 }
 
 [data-slot='app-topbar'] {

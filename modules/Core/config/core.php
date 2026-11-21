@@ -13,6 +13,10 @@ return [
     */
     'hq_host' => env('CORE_HQ_HOST', 'app.rightally.io'),
 
+    // UI2: while testing before launch, two-step sign-in can be paused until a date (at most 30 days ahead). Everyone
+    // still sees the reminder, launch:check reports it, and it switches itself back on at the date. Leave empty.
+    'two_factor_paused_until' => env('SECURITY_TWO_FACTOR_PAUSED_UNTIL'),
+
     // OB1 (specs/core/20): Watchtower. The running release and commit (set at build time), and who gets problem
     // emails until HQ names people in HQ › Watchtower (comma-separated).
     'release' => env('APP_RELEASE', 'dev'),

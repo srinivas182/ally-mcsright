@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Identity\Enums\UserStatus;
+use Modules\Core\Identity\Security\TwoFactorPolicy;
 use Modules\Core\Mail\PlatformEmail;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\Models\Tenant;
@@ -77,6 +78,10 @@ final class LaunchReadiness
         } catch (Throwable) {
             [$hq, $staff, $twoStep] = [null, 0, 0]; // the database checks above say why
         }
+        // UI2: a test-period pause of two-step sign-in must be gone before launch.
+        $paused = TwoFactorPolicy::pausedUntil();
+        $checks[] = $this->check('Two-step sign-in on for everyone', $paused === null, $paused === null ? 'Not paused.' : 'Paused for testing until '.$paused->toDateString().'.',
+            'Remove SECURITY_TWO_FACTOR_PAUSED_UNTIL from .env and restart.');
         $checks[] = $this->check('HQ ready', $hq !== null && $staff > 0 && $twoStep === $staff, $hq === null ? 'No HQ yet.' : "{$twoStep} of {$staff} HQ staff use two-step sign-in.",
             $hq === null ? 'Run php artisan tenants:bootstrap-hq.' : 'Every HQ staff member must turn on two-step sign-in.');
 
