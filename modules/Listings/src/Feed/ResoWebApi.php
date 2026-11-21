@@ -4,16 +4,18 @@ declare(strict_types=1);
 
 namespace Modules\Listings\Feed;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Factory as Http;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Cache;
+use Modules\Core\Services\OutsideServices;
 use Modules\Listings\Models\Listing;
 use Modules\Listings\Models\MlsSource;
 use RuntimeException;
 
 /**
- * RESO Web API (OData) client for MLS Grid, Trestle, Bridge and direct RESO servers. Credentials are either a
+ * RESO Web API (OData) client for MLS Grid, Trestle, Bridge, Spark (IDX2) and direct RESO servers. Credentials are either a
  * bearer token or OAuth2 client credentials (token cached until shortly before it expires). Paging follows
  *
  * @odata.nextLink; changes are ordered by ModificationTimestamp so a cursor never skips records.
@@ -31,8 +33,13 @@ final class ResoWebApi implements ResoFeed
         if ($source->provider === 'mls_grid' && $source->originating_system !== null) {
             $filter = "OriginatingSystemName eq '".str_replace("'", "''", $source->originating_system)."' and ".$filter;
         }
+        if ($source->provider === 'spark') {
+            // Spark asks for a closed window (a lower and an upper time) because of its server-side caching.
+            $filter = '('.$filter.' and ModificationTimestamp lt '.CarbonImmutable::now('UTC')->subMinute()->format('Y-m-d\TH:i:s\Z').')';
+            $top = min($top, 1000);
+        }
         $query = ['$filter' => $filter, '$orderby' => 'ModificationTimestamp asc', '$top' => (string) $top];
-        if ($source->provider === 'mls_grid') {
+        if (in_array($source->provider, ['mls_grid', 'spark'], true)) {
             $query['$expand'] = 'Media';
         }
 
@@ -106,6 +113,16 @@ final class ResoWebApi implements ResoFeed
         $c = $source->credentials ?? [];
         if (($c['token'] ?? '') !== '') {
             return (string) $c['token'];
+        }
+        if ($source->provider === 'spark') {
+            // IDX2: RightAlly's own Spark key, from HQ › Outside services (Test uses the demo key, Live the real one).
+            $spark = app(OutsideServices::class)->active('idx_spark');
+            $token = trim((string) ($spark['keys']['access_token'] ?? ''));
+            if ($token === '') {
+                throw new RuntimeException('Switch on MLS listings: Spark API in HQ › Outside services first.');
+            }
+
+            return $token;
         }
         if (($c['client_id'] ?? '') === '' || ($c['token_url'] ?? '') === '') {
             throw new RuntimeException('Add the MLS credentials first.');
