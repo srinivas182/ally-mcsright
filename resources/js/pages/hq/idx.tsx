@@ -57,6 +57,12 @@ type Board = {
     checked: boolean;
     notes: string | null;
     ready: boolean;
+    has_agreement_pdf: boolean;
+    agreement_text: string | null;
+    managing_broker_signs: boolean;
+    send_to: string | null;
+    send_cc: string | null;
+    send_bcc: string | null;
 };
 type Option = { id: number; name: string };
 type QueueItem = {
@@ -79,6 +85,11 @@ type QueueItem = {
     feed_id: string | null;
     mls_source_id: number | null;
     reminders: number;
+    agreement: string | null;
+    has_copy: boolean;
+    website: string | null;
+    compliance_ok: boolean | null;
+    compliance_note: string | null;
 };
 type Props = {
     states: State[];
@@ -458,6 +469,53 @@ function QueueRow({
             {q.note && (
                 <p className="text-sm text-destructive">To fix: {q.note}</p>
             )}
+            {(q.agreement || q.website || q.compliance_ok !== null) && (
+                <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                    {q.agreement && <span>Agreement: {q.agreement}</span>}
+                    {q.website && (
+                        <span className="text-muted-foreground">
+                            {q.website}
+                        </span>
+                    )}
+                    {q.compliance_ok !== null && (
+                        <span
+                            className={
+                                q.compliance_ok
+                                    ? 'text-emerald-700'
+                                    : 'text-destructive'
+                            }
+                        >
+                            Website check:{' '}
+                            {q.compliance_ok
+                                ? 'passed'
+                                : (q.compliance_note ?? 'failed')}
+                        </span>
+                    )}
+                    {q.has_copy && (
+                        <a
+                            className="font-medium underline"
+                            href={`/hq/idx/subscriptions/${q.ulid}/agreement.pdf`}
+                        >
+                            Signed copy
+                        </a>
+                    )}
+                    {q.has_copy && q.status !== 'live' && (
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                                router.post(
+                                    `/hq/idx/subscriptions/${q.ulid}/send`,
+                                    {},
+                                    opts,
+                                )
+                            }
+                        >
+                            Send signed agreement to the MLS now
+                        </Button>
+                    )}
+                </p>
+            )}
             {open && (
                 <div className="grid gap-3 md:grid-cols-3">
                     <label className="grid gap-1 text-sm">
@@ -708,6 +766,11 @@ function BoardDialog({
         rules_profile_id: board?.rules_profile_id ?? null,
         checked: board?.checked ?? false,
         notes: board?.notes ?? '',
+        agreement_text: board?.agreement_text ?? '',
+        managing_broker_signs: board?.managing_broker_signs ?? true,
+        send_to: board?.send_to ?? '',
+        send_cc: board?.send_cc ?? '',
+        send_bcc: board?.send_bcc ?? '',
     });
     const submit = () => {
         form.transform((d) => ({
@@ -1032,6 +1095,113 @@ function BoardDialog({
                             />
                         )}
                     </FormField>
+                    <fieldset className="grid gap-4 rounded-xl border p-4 sm:col-span-2 sm:grid-cols-2">
+                        <legend className="px-1 text-sm font-semibold">
+                            IDX agreement
+                        </legend>
+                        <p className="text-sm text-muted-foreground sm:col-span-2">
+                            When a brokerage sends its details, RightAlly fills
+                            this board's agreement, collects the signatures,
+                            keeps a copy and emails the signed agreement to the
+                            addresses below. Leave “Send to” empty to handle the
+                            paperwork by hand.
+                        </p>
+                        <FormField
+                            label="Send the signed agreement to"
+                            help="For example the Repliers onboarding desk, or the MLS (commas between addresses)"
+                            error={form.errors.send_to}
+                            className="sm:col-span-2"
+                        >
+                            {(control) => (
+                                <Input
+                                    {...control}
+                                    value={form.data.send_to}
+                                    onChange={(e) =>
+                                        form.setData('send_to', e.target.value)
+                                    }
+                                />
+                            )}
+                        </FormField>
+                        <FormField label="CC" error={form.errors.send_cc}>
+                            {(control) => (
+                                <Input
+                                    {...control}
+                                    value={form.data.send_cc}
+                                    onChange={(e) =>
+                                        form.setData('send_cc', e.target.value)
+                                    }
+                                />
+                            )}
+                        </FormField>
+                        <FormField
+                            label="BCC"
+                            help="For example HQ's own address"
+                            error={form.errors.send_bcc}
+                        >
+                            {(control) => (
+                                <Input
+                                    {...control}
+                                    value={form.data.send_bcc}
+                                    onChange={(e) =>
+                                        form.setData('send_bcc', e.target.value)
+                                    }
+                                />
+                            )}
+                        </FormField>
+                        <FormField
+                            label="Terms printed on the signature page"
+                            help="You can use {brokerage}, {mls_id}, {office_id}, {license}, {website}, {managing_broker}, {board}, {date}"
+                            error={form.errors.agreement_text}
+                            className="sm:col-span-2"
+                        >
+                            {(control) => (
+                                <Textarea
+                                    {...control}
+                                    rows={4}
+                                    value={form.data.agreement_text}
+                                    onChange={(e) =>
+                                        form.setData(
+                                            'agreement_text',
+                                            e.target.value,
+                                        )
+                                    }
+                                />
+                            )}
+                        </FormField>
+                        <label className="flex items-center gap-3 text-sm sm:col-span-2">
+                            <Switch
+                                checked={form.data.managing_broker_signs}
+                                onCheckedChange={(v) =>
+                                    form.setData('managing_broker_signs', v)
+                                }
+                            />
+                            The managing broker signs too (after the brokerage)
+                        </label>
+                        {board && (
+                            <label className="grid gap-1 text-sm sm:col-span-2">
+                                {board.has_agreement_pdf
+                                    ? "The MLS's own agreement is saved. Upload a new PDF to replace it:"
+                                    : "The MLS's own agreement (PDF, optional): a signature page is added to it"}
+                                <input
+                                    type="file"
+                                    accept="application/pdf"
+                                    onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                            router.post(
+                                                `/hq/idx/boards/${board.ulid}/agreement`,
+                                                { file },
+                                                {
+                                                    forceFormData: true,
+                                                    preserveScroll: true,
+                                                },
+                                            );
+                                        }
+                                    }}
+                                />
+                            </label>
+                        )}
+                    </fieldset>
                     <label className="flex items-center gap-3 text-sm sm:col-span-2">
                         <Switch
                             checked={form.data.checked}

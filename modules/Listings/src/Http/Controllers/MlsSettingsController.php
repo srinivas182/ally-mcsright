@@ -7,9 +7,12 @@ namespace Modules\Listings\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Core\Identity\Enums\UserKind;
+use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Listings\Access\MlsAccess;
 use Modules\Listings\Idx\Coverage;
@@ -18,6 +21,7 @@ use Modules\Listings\Idx\Subscriptions;
 use Modules\Listings\Models\MlsAuthorization;
 use Modules\Listings\Models\MlsSource;
 use Modules\Listings\Models\RulesProfile;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /** Settings → MLS: the brokerage requests access to its MLSs and sees status, freshness and the rules that apply (never credentials). */
 final class MlsSettingsController
@@ -83,6 +87,16 @@ final class MlsSettingsController
         Inertia::flash('toast', ['type' => 'success', 'message' => $on ? 'Demo listings on until your first board is live.' : 'Demo listings off.']);
 
         return back();
+    }
+
+    /** IDX6: the brokerage's copy of its signed MLS agreement. */
+    public function copy(Request $request, TenantContext $tenants, string $subscription): StreamedResponse
+    {
+        self::owner($request);
+        $path = DB::connection(Connections::control())->table('idx_subscriptions')->where('ulid', $subscription)->where('tenant_id', $tenants->id())->value('signed_path');
+        abort_unless(is_string($path) && Storage::disk('local')->exists($path), 404);
+
+        return Storage::disk('local')->download($path, 'IDX agreement.pdf');
     }
 
     public function cancelBoard(Request $request, TenantContext $tenants, Subscriptions $subs, string $subscription): RedirectResponse

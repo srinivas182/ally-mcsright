@@ -13,6 +13,7 @@ use Modules\Core\Listings\MlsStatus;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
 use Modules\Core\Search\SearchRegistry;
+use Modules\Forms\Events\PacketSealed;
 
 /** Listings: MLS ingestion, display rules and licence enforcement (specs/websites/02). */
 final class ListingsServiceProvider extends ServiceProvider
@@ -62,9 +63,11 @@ final class ListingsServiceProvider extends ServiceProvider
                         'href' => '/listings/'.$l->ulid])->all());
             });
         if ($this->app->runningInConsole()) {
-            $this->commands([Console\SyncListings::class, Console\ReconcileListings::class, Console\RebuildSearch::class, Console\TagPhotosAndPlaces::class, Console\RemindIdxSignatures::class]);
+            $this->commands([Console\SyncListings::class, Console\ReconcileListings::class, Console\RebuildSearch::class, Console\TagPhotosAndPlaces::class, Console\RemindIdxSignatures::class, Console\IdxComplianceWatch::class]);
         }
 
+        // IDX6: a signed MLS agreement is kept and sent on.
+        Event::listen(PacketSealed::class, [Idx\Agreements::class, 'sealed']);
         Gate::define('hq.mls.manage', fn (User $user): bool => $user->kind === UserKind::HqStaff);
         $nav = $this->app->make(NavigationRegistry::class);
         $nav->add(new NavItem('HQ', 'MLS connections', '/hq/mls', 'building-2', 18, ability: 'hq.mls.manage', kinds: [UserKind::HqStaff]));

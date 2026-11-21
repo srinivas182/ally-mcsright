@@ -154,6 +154,14 @@ final class Subscriptions
         }
         $this->db()->table('idx_subscriptions')->where('id', $sub->id)->update($row);
         $this->audit->record('idx.details_submitted', metadata: ['subscription' => $ulid, 'own_key' => ($data['own_key'] ?? '') !== ''], severity: 'notice', tenantId: $tenantId);
+
+        // IDX6: an agreement already signed goes on to the MLS; otherwise the board's agreement is prepared for signing.
+        $fresh = $this->find($ulid);
+        try {
+            $fresh->signed_path !== null ? app(Agreements::class)->deliver($ulid, false) : app(Agreements::class)->prepare($fresh);
+        } catch (Throwable $e) {
+            report($e); // HQ can still handle the paperwork by hand; the brokerage's details are saved
+        }
     }
 
     /**
@@ -328,7 +336,16 @@ final class Subscriptions
             'since' => $s->status_at !== null ? CarbonImmutable::parse((string) $s->status_at)->toIso8601String() : null, 'note' => $s->client_note,
             'member_id' => $s->member_id, 'office_id' => $s->office_id, 'license_number' => $s->license_number, 'managing_broker_name' => $s->managing_broker_name,
             'managing_broker_email' => $s->managing_broker_email, 'has_own_key' => $s->own_key !== null, 'fee_cents' => $s->fee_cents !== null ? (int) $s->fee_cents : null,
-            'approval' => $board !== null ? $board->approval_days_min.'–'.$board->approval_days_max.' business days' : null];
+            'approval' => $board !== null ? $board->approval_days_min.'–'.$board->approval_days_max.' business days' : null,
+            // IDX6: the agreement and the nightly website check.
+            'agreement' => match (true) {
+                ($s->sent_to_mls_at ?? null) !== null => 'Signed and sent to the MLS',
+                ($s->signed_at ?? null) !== null => 'Signed',
+                ($s->packet_ulid ?? null) !== null => 'Out for signature',
+                default => null,
+            },
+            'has_copy' => ($s->signed_path ?? null) !== null, 'website' => $s->website ?? null,
+            'compliance_ok' => isset($s->compliance_ok) ? (bool) $s->compliance_ok : null, 'compliance_note' => $s->compliance_note ?? null];
         if ($hq) {
             $out += ['connector' => $s->connector, 'feed_id' => $s->feed_id, 'mls_source_id' => $board?->mls_source_id !== null ? (int) $board->mls_source_id : null,
                 'reminders' => (int) $s->reminders, 'submitted_at' => $s->submitted_at];
