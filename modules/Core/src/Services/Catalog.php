@@ -140,6 +140,12 @@ final class Catalog
                         'endpoint' => ['label' => 'Address (leave empty for the replication address)', 'kind' => 'text', 'hint' => 'https://replication.sparkapi.com/Reso/OData', 'optional' => true]],
                         'note' => 'For Spark\'s demo data use the address https://sparkapi.com/Reso/OData in Test. Live needs a key with replication permission (ask api-support@sparkplatform.com).'],
                 ]],
+            // IDX3: MLS listings through Repliers (Texas, Florida and other boards it carries).
+            'idx_repliers' => ['label' => 'MLS listings: Repliers', 'about' => 'Copies listings from the MLS boards Repliers carries for RightAlly (such as HAR and Stellar) into RightAlly. Test uses Repliers\' sample data; Live uses the boards that approved RightAlly.',
+                'level' => 'hq', 'sprint' => 'IDX3', 'contacts' => false, 'providers' => [
+                    'repliers' => ['label' => 'Repliers (recommended for Texas and Florida)', 'fields' => ['api_key' => ['label' => 'API key (REPLIERS-API-KEY)', 'kind' => 'secret']],
+                        'note' => 'A test key reads Repliers\' sample data (about 1 request a second). Each board\'s feed is set in HQ › MLS connections with the provider "Repliers" and its board ID.'],
+                ]],
             'platform_email' => ['label' => 'Platform email', 'about' => 'Sends RightAlly\'s own email: invitations, sign-in codes, notices and Watchtower alerts. Test sends everything only to your first test contact. Off uses the server\'s mail settings.',
                 'level' => 'hq', 'sprint' => 'EM1', 'contacts' => false, 'providers' => [
                     'brevo' => ['label' => 'Brevo (recommended)', 'fields' => ['smtp_login' => ['label' => 'SMTP login (Settings › SMTP & API › SMTP)', 'kind' => 'text'],

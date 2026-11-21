@@ -41,7 +41,7 @@ final class MlsSource extends Model
 {
     use HasPublicUlid;
 
-    public const PROVIDERS = ['mls_grid', 'trestle', 'bridge', 'direct_reso', 'spark'];
+    public const PROVIDERS = ['mls_grid', 'trestle', 'bridge', 'direct_reso', 'spark', 'repliers'];
 
     /** IDX2: Spark asks to be read at most every 10 minutes. */
     public const SPARK_MIN_INTERVAL = 10;
@@ -65,6 +65,10 @@ final class MlsSource extends Model
         // HQ › Outside services › MLS listings: Spark API is used.
         'spark' => ['base_url' => 'https://replication.sparkapi.com/Reso/OData', 'token_url' => null, 'auth' => 'token',
             'help' => 'Leave the token empty to use RightAlly\'s Spark key (HQ › Outside services), or paste a key that board issued. Spark is read every 10 minutes at most.'],
+        // IDX3: Repliers. Put the Repliers board ID in "originating system"; with no token here, RightAlly's Repliers key
+        // from HQ › Outside services › MLS listings: Repliers is used.
+        'repliers' => ['base_url' => 'https://api.repliers.io', 'token_url' => null, 'auth' => 'token',
+            'help' => 'Put the board ID Repliers gave you in "originating system" (leave it empty for the sample data). Leave the token empty to use RightAlly\'s Repliers key.'],
     ];
 
     protected $table = 'mls_sources';

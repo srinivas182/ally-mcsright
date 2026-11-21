@@ -20,7 +20,7 @@ final class ListingsServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->mergeConfigFrom(__DIR__.'/../config/listings.php', 'listings');
-        $this->app->bindIf(Feed\ResoFeed::class, Feed\ResoWebApi::class);
+        $this->app->bindIf(Feed\ResoFeed::class, Feed\FeedRouter::class); // IDX3: Repliers or the RESO Web API, per feed
         $this->app->scoped(Media\Photos::class);
         $this->app->scoped(Search\ListingSearch::class);
         $this->app->scoped(Search\MarketStats::class);

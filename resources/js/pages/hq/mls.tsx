@@ -83,6 +83,7 @@ const providerLabels: Record<string, string> = {
     bridge: 'Bridge Interactive',
     direct_reso: 'Direct RESO Web API',
     spark: 'Spark API (Flexmls, MLS United)',
+    repliers: 'Repliers (Texas, Florida)',
 };
 
 /** HQ → MLS connections: feeds, write-only credentials, display rules, freshness and brokerage licences. */
