@@ -1,4 +1,5 @@
 import {
+    Map as MapIcon,
     ChartColumn,
     ListPlus,
     ShieldCheck,
@@ -64,6 +65,7 @@ import {
 
 /** Icons the server may name for menu items. Unknown names fall back to a dot. */
 const icons: Record<string, LucideIcon> = {
+    map: MapIcon,
     'book-open': BookOpen,
     'chart-column': ChartColumn,
     'list-plus': ListPlus,
