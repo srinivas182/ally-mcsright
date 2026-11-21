@@ -47,6 +47,7 @@
                     @if ($home['mls_number'])<span>MLS# {{ $home['mls_number'] }}</span>@endif
                 </p>
                 <p class="listing-price">{{ $home['price'] !== null ? '$'.number_format($home['price']) : 'Price on request' }}</p>
+                @if ($home['sample'] ?? false)<p class="sample-note" role="note">Sample listing: shown as an example while this website's MLS listings are being set up. It is not for sale through this website.</p>@endif
                 <h1 class="listing-title">{{ $home['address'] ?? 'Home for sale' }}<span>{{ $place }}</span></h1>
                 <ul class="key-facts">
                     <li><strong>{{ $home['beds'] ?? '—' }}</strong> beds</li>

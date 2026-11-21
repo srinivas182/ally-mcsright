@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/ui/page-header';
 
 type Source = {
+    is_demo: boolean;
     ulid: string;
     key: string;
     name: string;
@@ -378,6 +379,20 @@ function SourceCard({
                     }
                 >
                     {s.status === 'paused' ? 'Resume' : 'Pause'}
+                </Button>
+                <Button
+                    size="sm"
+                    variant={s.is_demo ? 'default' : 'outline'}
+                    title="Demo data shows, marked as samples, on brokerages' websites until their first MLS board is live."
+                    onClick={() =>
+                        router.patch(
+                            `/hq/mls/sources/${s.ulid}`,
+                            { is_demo: !s.is_demo },
+                            opts,
+                        )
+                    }
+                >
+                    {s.is_demo ? 'Demo data: on' : 'Use as demo data'}
                 </Button>
                 <label className="flex items-center gap-2">
                     Display rules

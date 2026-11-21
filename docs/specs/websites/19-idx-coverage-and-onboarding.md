@@ -68,3 +68,14 @@ onboarding, connector blueprint, multi-MLS PRD), adjusted to RightAlly.
   a brokerage's own key is locked to that brokerage; no other brokerage can be licensed on it.
 - **Emails** (platform email): needs fixing, live, and signing reminders 1 and 3 days on (`idx:remind`, daily), to the
   owners and the managing broker. Brokerages never see connector names.
+
+## IDX5 · Demo listings (built)
+
+- **HQ:** in MLS connections, "Use as demo data" on a feed (for example Repliers' sample data, or Spark's demo data).
+- **Brokerage websites:** a brokerage that has added a board but has none live shows the demo feeds' listings, each marked
+  **Sample listing** (a note on the listing page), never indexed by search engines, with the demo feed's own notice. The
+  first board that goes live replaces them; the back office never shows demo listings.
+- **Brokerage switch:** Settings › MLS › "Show demo listings until my first board is live" (on by default).
+- **MLS notices are read-only for brokerages:** the logo, disclaimer and attribution come only from HQ's display
+  templates, are printed on every listing and in the footer of every page with listings, and no brokerage screen or
+  setting can change or hide them.

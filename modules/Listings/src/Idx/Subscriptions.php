@@ -120,6 +120,7 @@ final class Subscriptions
             $ulid = (string) Str::ulid();
             $this->db()->table('idx_subscriptions')->insert($row + ['ulid' => $ulid, 'tenant_id' => $tenantId, 'board_id' => $board->id, 'created_at' => now()]);
         }
+        DemoListings::forget($tenantId);
         $this->audit->record('idx.board.added_by_brokerage', metadata: ['board' => $board->code], severity: 'notice', tenantId: $tenantId);
 
         return $ulid;
@@ -217,6 +218,7 @@ final class Subscriptions
         $this->access->approve($auth, ['idx'], null, 'IDX '.$ulid, $by);
         $this->db()->table('idx_subscriptions')->where('id', $sub->id)->update(['status' => 'live', 'mls_authorization_id' => $auth->id,
             'feed_id' => $feedId !== null && trim($feedId) !== '' ? mb_substr(trim($feedId), 0, 120) : $sub->feed_id, 'client_note' => null, 'status_at' => now(), 'live_at' => now(), 'updated_at' => now()]);
+        DemoListings::forget((int) $sub->tenant_id);
         $this->audit->record('idx.live', metadata: ['subscription' => $ulid, 'source' => $source->key, 'by' => $by->id], severity: 'critical', tenantId: (int) $sub->tenant_id);
         $this->tell($sub, 'Your MLS listings are live', ['Real listings from '.($board->name ?? 'your MLS board').' now show on your website, with the MLS\'s required notices.',
             'Demo listings for this board are switched off.'], 'See your MLS boards');
@@ -236,6 +238,7 @@ final class Subscriptions
             $this->access->revoke($auth, 'IDX board cancelled', $by);
         }
         $this->db()->table('idx_subscriptions')->where('id', $sub->id)->update(['status' => 'cancelled', 'status_at' => now(), 'cancelled_at' => now(), 'updated_at' => now()]);
+        DemoListings::forget((int) $sub->tenant_id);
         $this->audit->record('idx.cancelled', metadata: ['subscription' => $ulid, 'by' => $by->id, 'by_brokerage' => $tenantId !== null], severity: 'warning', tenantId: (int) $sub->tenant_id);
     }
 
