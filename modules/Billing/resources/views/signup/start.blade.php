@@ -71,7 +71,8 @@
                     <label>Owner's email (the sign-in link goes here)<input type="email" name="owner_email" required maxlength="190" value="{{ $v('owner_email') }}" autocomplete="email"></label>
                 </div>
             </fieldset>
-            <fieldset><legend>3. Package</legend>
+            @include('billing::signup.boards', ['number' => 3])
+            <fieldset><legend>{{ empty($idxBoards) ? 3 : 4 }}. Package</legend>
                 <div class="choices" role="radiogroup" aria-label="Package">
                     @foreach ($packages as $i => $p)
                         <label><input type="radio" name="package" value="{{ $p->ulid }}" @checked(old('package', $chosen ?? $packages->first()->ulid) === $p->ulid)> {{ $p->name }} — {{ $usd((int) $p->monthly_cents) }} a month or {{ $usd((int) $p->yearly_cents) }} a year</label>

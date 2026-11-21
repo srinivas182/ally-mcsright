@@ -70,7 +70,8 @@
                     </label>
                 </div>
             </fieldset>
-            <fieldset><legend>2. Plan</legend>
+            @include('billing::signup.boards', ['number' => 2])
+            <fieldset><legend>{{ empty($idxBoards) ? 2 : 3 }}. Plan</legend>
                 <div class="choices" role="radiogroup" aria-label="Plan">
                     @foreach ($packages as $p)
                         <label><input type="radio" name="package" value="{{ $p->ulid }}" @checked(old('package', $packages->first()->ulid) === $p->ulid)> {{ $p->name }} — {{ $usd((int) $p->monthly_cents) }} a month or {{ $usd((int) $p->yearly_cents) }} a year</label>
