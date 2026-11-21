@@ -35,21 +35,6 @@
         a{color:var(--brand-deep)}:focus-visible{outline:3px solid var(--brand);outline-offset:3px;border-radius:6px}
         .wrap{max-width:1180px;margin:0 auto;padding:0 20px}
         .skip{position:absolute;left:-999px}.skip:focus{left:16px;top:8px;background:#fff;padding:8px 12px;z-index:99}
-        header.top{position:sticky;top:0;z-index:50;background:rgb(255 255 255/.86);backdrop-filter:saturate(1.4) blur(12px);border-bottom:1px solid rgb(6 22 63/.06)}
-        header.top .wrap{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;min-height:74px;gap:8px 20px}
-        .brand{display:inline-flex;color:#09090B;text-decoration:none}.brand svg{height:34px;width:auto}
-        nav.main{display:flex;flex-wrap:wrap;gap:2px 6px;align-items:center}
-        nav.main a{text-decoration:none;color:var(--ink);padding:10px 12px;border-radius:10px;font-weight:600;font-size:16px}
-        nav.main a:hover{background:var(--tint)}
-        nav.main .login{color:var(--brand-deep)}
-        nav.main a.btn{color:#fff;white-space:nowrap;padding:0 18px}nav.main a.btn:hover{background:#0F4FDB}
-        nav.main .links{display:contents}
-        details.menu{display:none;position:relative}
-        details.menu summary{list-style:none;cursor:pointer;display:grid;place-items:center;width:46px;height:46px;border:1px solid var(--line);border-radius:12px;color:var(--ink)}
-        details.menu summary svg{width:22px;height:22px}details.menu summary .open{display:none}details.menu[open] summary .open{display:block}details.menu[open] summary .closed{display:none}
-        details.menu summary::-webkit-details-marker{display:none}
-        details.menu>div{position:absolute;right:0;top:calc(100% + 8px);background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:8px;display:grid;min-width:220px}
-        @media (max-width:899px){nav.main .links{display:none}details.menu{display:block}header.top .wrap{flex-wrap:nowrap}nav.main{flex-wrap:nowrap}nav.main .login{display:none}.brand svg{height:28px}}
         h1{font-size:clamp(34px,4.4vw,52px);line-height:1.08;letter-spacing:-.03em;margin:0 0 18px;font-weight:700}
         h2{font-size:clamp(24px,2.6vw,34px);line-height:1.18;letter-spacing:-.02em;margin:0 0 12px;font-weight:700}
         h3{margin:0 0 6px;font-size:19px;letter-spacing:-.01em;font-weight:650}
@@ -125,70 +110,18 @@
         .plans .includes li::before{content:"";width:18px;height:18px;margin-top:1px;border-radius:50%;background:#E6EEFF url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%23155DFC'%3E%3Cpath d='M8.2 13.6 4.9 10.3l1.2-1.2 2.1 2.1 5.7-5.7 1.2 1.2z'/%3E%3C/svg%3E") center/14px no-repeat}
         .plans .includes .more{color:var(--muted)}.plans .includes .more::before{background:none}
         /* SITE1: language selector. */
-        details.lang{position:relative}details.lang summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:6px;padding:10px 12px;border-radius:10px;font-weight:600;font-size:16px;color:var(--ink)}
-        details.lang summary::-webkit-details-marker{display:none}details.lang summary:hover{background:var(--tint)}details.lang summary svg{width:18px;height:18px}
-        details.lang>div{position:absolute;right:0;top:calc(100% + 6px);background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:6px;display:grid;min-width:170px;z-index:60}
-        details.lang a{display:flex;justify-content:space-between;gap:12px}details.lang a[aria-current]::after{content:"✓";color:var(--brand)}
-        details.menu .lang-row{border-top:1px solid var(--line);margin-top:6px;padding-top:6px;display:grid}
-        @media (max-width:899px){details.lang{display:none}}
-        footer{background:var(--navy);color:#AFC0E6;padding:56px 0 40px;font-size:16px}
-        footer .cols{display:grid;gap:28px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
-        footer a{color:#DCE5FB;text-decoration:none}footer a:hover{text-decoration:underline}
-        footer h3{color:#fff;font-size:16px;margin:0 0 10px}footer ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
-        footer .brand{color:#fff}footer .legal{border-top:1px solid rgb(255 255 255/.1);margin-top:36px;padding-top:20px;font-size:14px;color:#8EA0CC;text-align:center;display:flex;flex-wrap:wrap;justify-content:center;gap:6px 18px}footer .legal p{margin:0}
         .preview{background:#fef3c7;color:#78350f;text-align:center;padding:8px;font-weight:700}
         @media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
     </style>
+    @include('marketing::partials.chrome-css')
 </head>
 <body>
 <a class="skip" href="#main">{{ $L === 'es' ? 'Ir al contenido' : 'Skip to content' }}</a>
 @if ($preview)<div class="preview" role="status">{{ $L === 'es' ? 'Vista previa privada: aún no se publica' : 'Private preview: not published yet' }}</div>@endif
-<header class="top"><div class="wrap">
-    <a class="brand" href="{{ $home }}">@include('marketing::partials.brand-logo', ['id' => 'head'])</a>
-    @php($links = array_merge($nav, [['label' => 'Blog', 'href' => rtrim($home, '/').'/blog']]))
-    <nav class="main" aria-label="{{ $L === 'es' ? 'Principal' : 'Main' }}">
-        <span class="links">@foreach ($links as $item)<a href="{{ $item['href'] }}">{{ $item['label'] }}</a>@endforeach</span>
-        @php($langs = ['en' => ['English', $L === 'en' ? $canonical : $other], 'es' => ['Español', $L === 'es' ? $canonical : $other]])
-        <details class="lang"><summary aria-label="{{ $L === 'es' ? 'Idioma: Español' : 'Language: English' }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg>{{ $L === 'es' ? 'ES' : 'EN' }}<span aria-hidden="true">▾</span></summary>
-            <div>@foreach ($langs as $code => [$label, $href])<a href="{{ $href }}" hreflang="{{ $code }}" lang="{{ $code }}" @if ($code === $L) aria-current="true" @endif>{{ $label }}</a>@endforeach</div>
-        </details>
-        <a class="login" href="/login">{{ $L === 'es' ? 'Iniciar sesión' : 'Log in' }}</a>
-        <a class="btn small" href="{{ $start }}">{{ $L === 'es' ? 'Empezar' : 'Start now' }}</a>
-        <details class="menu"><summary aria-label="{{ $L === 'es' ? 'Menú' : 'Menu' }}"><svg class="closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg><svg class="open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></summary>
-            <div>@foreach ($links as $item)<a href="{{ $item['href'] }}">{{ $item['label'] }}</a>@endforeach
-                <a href="/login">{{ $L === 'es' ? 'Iniciar sesión' : 'Log in' }}</a>
-                <span class="lang-row" aria-label="{{ $L === 'es' ? 'Idioma' : 'Language' }}">@foreach ($langs as $code => [$label, $href])<a href="{{ $href }}" hreflang="{{ $code }}" lang="{{ $code }}" @if ($code === $L) aria-current="true" @endif>{{ $label }}{{ $code === $L ? ' ✓' : '' }}</a>@endforeach</span></div>
-        </details>
-    </nav>
-</div></header>
+@include('marketing::partials.site-header')
 <main id="main">
     @yield('content')
 </main>
-<footer><div class="wrap">
-    <div class="cols">
-        <div>
-            <a class="brand" href="{{ $home }}">@include('marketing::partials.brand-logo', ['id' => 'foot', 'class' => 'foot-logo'])</a>
-            <p>{{ $L === 'es' ? 'Todo lo que su correduría necesita, en un solo lugar.' : 'Everything your brokerage runs on, in one place.' }}</p>
-        </div>
-        <div><h3>{{ $L === 'es' ? 'Producto' : 'Product' }}</h3><ul>
-            @foreach ($nav as $item)<li><a href="{{ $item['href'] }}">{{ $item['label'] }}</a></li>@endforeach
-            <li><a href="{{ rtrim($home, '/').'/blog' }}">Blog</a></li>
-        </ul></div>
-        <div><h3>{{ $L === 'es' ? 'Empiece' : 'Get started' }}</h3><ul>
-            <li><a href="{{ $start }}">{{ $L === 'es' ? 'Registrarse' : 'Sign up' }}</a></li>
-            <li><a href="{{ $healthCheck }}">{{ $L === 'es' ? 'Chequeo gratuito' : 'Free Health Check' }}</a></li>
-            <li><a href="/login">{{ $L === 'es' ? 'Iniciar sesión' : 'Log in' }}</a></li>
-        </ul></div>
-        <div><h3>{{ $L === 'es' ? 'Idioma' : 'Language' }}</h3><ul>
-            <li><a href="{{ $other }}" hreflang="{{ $L === 'es' ? 'en' : 'es' }}">{{ $L === 'es' ? 'English' : 'Español' }}</a></li>
-            <li><a href="/sitemap.xml">Sitemap</a></li>
-        </ul></div>
-    </div>
-    <div class="legal">
-        <p>© {{ date('Y') }} RightAlly</p>
-        <p><a href="{{ $legal['privacy'] }}">{{ $L === 'es' ? 'Política de privacidad' : 'Privacy policy' }}</a></p>
-        <p><a href="{{ $legal['terms'] }}">{{ $L === 'es' ? 'Términos de uso' : 'Terms of use' }}</a></p>
-    </div>
-</div></footer>
+@include('marketing::partials.site-footer')
 </body>
 </html>
