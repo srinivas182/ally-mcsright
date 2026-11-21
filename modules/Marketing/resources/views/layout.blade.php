@@ -45,7 +45,8 @@
         nav.main a.btn{color:#fff;white-space:nowrap;padding:0 18px}nav.main a.btn:hover{background:#0F4FDB}
         nav.main .links{display:contents}
         details.menu{display:none;position:relative}
-        details.menu summary{list-style:none;cursor:pointer;font-weight:700;padding:10px 14px;border:1px solid var(--line);border-radius:10px}
+        details.menu summary{list-style:none;cursor:pointer;display:grid;place-items:center;width:46px;height:46px;border:1px solid var(--line);border-radius:12px;color:var(--ink)}
+        details.menu summary svg{width:22px;height:22px}details.menu summary .open{display:none}details.menu[open] summary .open{display:block}details.menu[open] summary .closed{display:none}
         details.menu summary::-webkit-details-marker{display:none}
         details.menu>div{position:absolute;right:0;top:calc(100% + 8px);background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:8px;display:grid;min-width:220px}
         @media (max-width:899px){nav.main .links{display:none}details.menu{display:block}header.top .wrap{flex-wrap:nowrap}nav.main{flex-wrap:nowrap}nav.main .login{display:none}.brand svg{height:28px}}
@@ -153,7 +154,7 @@
         </details>
         <a class="login" href="/login">{{ $L === 'es' ? 'Iniciar sesión' : 'Log in' }}</a>
         <a class="btn small" href="{{ $start }}">{{ $L === 'es' ? 'Empezar' : 'Start now' }}</a>
-        <details class="menu"><summary>{{ $L === 'es' ? 'Menú' : 'Menu' }}</summary>
+        <details class="menu"><summary aria-label="{{ $L === 'es' ? 'Menú' : 'Menu' }}"><svg class="closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg><svg class="open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></summary>
             <div>@foreach ($links as $item)<a href="{{ $item['href'] }}">{{ $item['label'] }}</a>@endforeach
                 <a href="/login">{{ $L === 'es' ? 'Iniciar sesión' : 'Log in' }}</a>
                 <span class="lang-row" aria-label="{{ $L === 'es' ? 'Idioma' : 'Language' }}">@foreach ($langs as $code => [$label, $href])<a href="{{ $href }}" hreflang="{{ $code }}" lang="{{ $code }}" @if ($code === $L) aria-current="true" @endif>{{ $label }}{{ $code === $L ? ' ✓' : '' }}</a>@endforeach</span></div>
