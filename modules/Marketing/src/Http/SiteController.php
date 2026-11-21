@@ -224,9 +224,15 @@ final class SiteController
         return response()->view($view, $data + ['L' => $locale, 'title' => $title, 'description' => $description, 'canonical' => $canonical, 'alternates' => $alternates,
             'jsonld' => $jsonld, 'preview' => $preview, 'home' => $this->url($locale, ''), 'start' => 'https://'.config('core.hq_host').'/start',
             'healthCheck' => 'https://'.config('core.hq_host').($locale === 'es' ? '/health-check/es' : '/health-check'), 'other' => $alternates[$twin] ?? $this->url($twin, ''),
-            'nav' => $this->nav($locale)], 200)->header('Cache-Control', $preview ? 'no-store' : 'public, max-age=300')
+            'nav' => $this->nav($locale), 'slug' => $slug], 200)->header('Cache-Control', $preview ? 'no-store' : 'public, max-age=300')
             ->header('X-Robots-Tag', $preview ? 'noindex, nofollow' : 'index, follow');
     }
+
+    /** BR3: the website menu's short words for RightAlly's own pages. */
+    private const MENU = [
+        'en' => ['for-brokers' => 'Brokerages', 'for-agents' => 'Agents', 'pricing' => 'Pricing', 'compare' => 'Compare', 'security' => 'Security', 'features' => 'Features'],
+        'es' => ['para-corredurias' => 'Corredurías', 'para-agentes' => 'Agentes', 'pricing' => 'Precios', 'precios' => 'Precios', 'security' => 'Seguridad', 'seguridad' => 'Seguridad', 'funciones' => 'Funciones'],
+    ];
 
     /** @return list<array{label: string, href: string}> */
     private function nav(string $locale): array
@@ -234,10 +240,12 @@ final class SiteController
         $out = [];
         foreach ($this->site->pages() as $p) {
             if ($p->status === 'live' && $p->locale === $locale && $p->slug !== '' && ! str_contains((string) $p->slug, '/')) {
-                $out[] = ['label' => mb_strimwidth((string) $p->title, 0, 28, '…'), 'href' => $this->url($locale, (string) $p->slug), 'slug' => (string) $p->slug];
+                // BR3: short menu words; a page without one uses its title up to the colon.
+                $label = self::MENU[$locale][(string) $p->slug] ?? trim((string) strtok((string) $p->title, ':'));
+                $out[] = ['label' => mb_strimwidth($label, 0, 24, '…'), 'href' => $this->url($locale, (string) $p->slug), 'slug' => (string) $p->slug];
             }
         }
-        $order = ['features', 'pricing', 'compare', 'for-agents', 'security', 'funciones', 'precios'];
+        $order = ['for-brokers', 'for-agents', 'features', 'pricing', 'compare', 'security', 'funciones', 'precios'];
         usort($out, fn (array $a, array $b): int => [array_search($a['slug'], $order, true) === false ? 99 : array_search($a['slug'], $order, true), $a['label']]
             <=> [array_search($b['slug'], $order, true) === false ? 99 : array_search($b['slug'], $order, true), $b['label']]);
 

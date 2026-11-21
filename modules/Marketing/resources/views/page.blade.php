@@ -4,31 +4,54 @@
 @foreach ($blocks as $i => $b)
     @switch($b['type'])
         @case('hero')
-            <section class="hero"><div class="wrap">
-                @if ($i === 0)<h1>{{ $b['heading'] }}</h1>@else<h2>{{ $b['heading'] }}</h2>@endif
-                @if ($b['text'] !== '')<p class="lead">{{ $b['text'] }}</p>@endif
-                @if ($b['cta_label'] !== '' && $b['cta_href'] !== '')<a class="btn" href="{{ $b['cta_href'] === '/start' ? $start : $b['cta_href'] }}">{{ $b['cta_label'] }}</a>@endif
-                @if ($b['second_label'] !== '' && $b['second_href'] !== '')<a class="btn ghost" href="{{ $b['second_href'] === '/health-check' ? $healthCheck : $b['second_href'] }}">{{ $b['second_label'] }}</a>@endif
+            @php($homeHero = $i === 0 && ($slug ?? '') === '')
+            <section class="hero{{ $homeHero ? ' split' : '' }}"><div class="wrap">
+                <div>
+                    @if ($i === 0)<h1>{{ $b['heading'] }}</h1>@else<h2>{{ $b['heading'] }}</h2>@endif
+                    @if ($b['text'] !== '')<p class="lead">{{ $b['text'] }}</p>@endif
+                    @if ($b['cta_label'] !== '' && $b['cta_href'] !== '')<a class="btn" href="{{ $b['cta_href'] === '/start' ? $start : $b['cta_href'] }}">{{ $b['cta_label'] }}</a>@endif
+                    @if ($b['second_label'] !== '' && $b['second_href'] !== '')<a class="btn ghost" href="{{ $b['second_href'] === '/health-check' ? $healthCheck : $b['second_href'] }}">{{ $b['second_label'] }}</a>@endif
+                    @if ($homeHero)
+                        <ul class="facts">
+                            <li>{{ $es ? 'Precios públicos' : 'Public prices' }}</li>
+                            <li>{{ $es ? 'Le mudamos sus datos' : 'We move your data in' }}</li>
+                            <li>{{ $es ? 'Inglés y español' : 'English and Spanish' }}</li>
+                            <li>{{ $es ? 'Sus prospectos nunca se venden' : 'Your leads are never sold' }}</li>
+                        </ul>
+                    @endif
+                </div>
+                @if ($homeHero)
+                    {{-- An illustration of the daily brief (made-up names), not a screenshot of anyone's account. --}}
+                    <div class="preview-app" aria-hidden="true">
+                        <div class="band"><span>{{ $es ? 'Lunes' : 'Monday' }}</span><b>{{ $es ? 'Buenos días, Dana' : 'Good morning, Dana' }}</b></div>
+                        <ul>
+                            <li><i style="background:#EAF0FF;color:#0B3FB8">JM</i><span>{{ $es ? 'Nuevo prospecto: Jordan M.' : 'New lead: Jordan M.' }}<small>{{ $es ? 'Pidió una visita el sábado' : 'Asked to tour on Saturday' }}</small></span><span class="tag">{{ $es ? 'Llamar' : 'Call' }}</span></li>
+                            <li><i style="background:#FFF4DE;color:#8A5A00">14</i><span>{{ $es ? 'Cierre: 14 Oak Lane' : 'Closing: 14 Oak Lane' }}<small>{{ $es ? 'Falta 1 firma, vence el viernes' : '1 signature missing, due Friday' }}</small></span><span class="tag">{{ $es ? 'Revisar' : 'Review' }}</span></li>
+                            <li><i style="background:#E6F6EE;color:#0B6B3A">$</i><span>{{ $es ? 'Comisión lista para pagar' : 'Commission ready to pay' }}<small>{{ $es ? 'Calculada con su plan' : 'Worked out from your plan' }}</small></span><span class="tag">{{ $es ? 'Aprobar' : 'Approve' }}</span></li>
+                            <li><i style="background:#F1ECFF;color:#4B2BB8">AI</i><span>{{ $es ? 'Borrador de seguimiento listo' : 'Follow-up draft ready' }}<small>{{ $es ? 'Para 3 clientes de la semana pasada' : 'For 3 clients from last week' }}</small></span><span class="tag">{{ $es ? 'Enviar' : 'Send' }}</span></li>
+                        </ul>
+                    </div>
+                @endif
             </div></section>
             @break
         @case('answer')
             <section><div class="wrap"><div class="answer"><h2>{{ $b['question'] }}</h2><p>{{ $b['answer'] }}</p></div></div></section>
             @break
         @case('features')
-            <section><div class="wrap">
-                @if ($b['heading'] !== '')<h2>{{ $b['heading'] }}</h2>@endif
-                <div class="grid">@foreach ($b['items'] as $item)<div class="card"><h3>{{ $item['title'] }}</h3>@if ($item['text'] !== '')<p class="muted">{{ $item['text'] }}</p>@endif</div>@endforeach</div>
+            <section class="{{ $i % 2 === 0 ? 'tinted' : '' }}"><div class="wrap">
+                @if ($b['heading'] !== '')<div class="head"><h2>{{ $b['heading'] }}</h2></div>@endif
+                <div class="grid">@foreach ($b['items'] as $k => $item)<div class="card feature"><span class="ico" aria-hidden="true">{!! \Modules\Marketing\Support\BrandLogo::icon($k, (string) $item['title']) !!}</span><h3>{{ $item['title'] }}</h3>@if ($item['text'] !== '')<p class="muted">{{ $item['text'] }}</p>@endif</div>@endforeach</div>
             </div></section>
             @break
         @case('steps')
             <section><div class="wrap">
-                @if ($b['heading'] !== '')<h2>{{ $b['heading'] }}</h2>@endif
+                @if ($b['heading'] !== '')<div class="head"><h2>{{ $b['heading'] }}</h2></div>@endif
                 <ol class="steps">@foreach ($b['items'] as $item)<li><h3>{{ $item['title'] }}</h3>@if ($item['text'] !== '')<p class="muted">{{ $item['text'] }}</p>@endif</li>@endforeach</ol>
             </div></section>
             @break
         @case('faq')
-            <section><div class="wrap">
-                <h2>{{ $b['heading'] !== '' ? $b['heading'] : ($es ? 'Preguntas frecuentes' : 'Questions and answers') }}</h2>
+            <section class="tinted"><div class="wrap" style="max-width:880px">
+                <h2 style="margin-bottom:24px">{{ $b['heading'] !== '' ? $b['heading'] : ($es ? 'Preguntas frecuentes' : 'Questions and answers') }}</h2>
                 @foreach ($b['items'] as $item)<details><summary>{{ $item['q'] }}</summary><p>{{ $item['a'] }}</p></details>@endforeach
             </div></section>
             @break
@@ -44,11 +67,12 @@
             @break
         @case('pricing')
             <section><div class="wrap">
-                <h2>{{ $b['heading'] !== '' ? $b['heading'] : ($es ? 'Precios' : 'Prices') }}</h2>
-                <div class="grid">
+                <div class="head"><h2>{{ $b['heading'] !== '' ? $b['heading'] : ($es ? 'Precios' : 'Prices') }}</h2></div>
+                @php($plans = ($byAudience[$b['audience'] ?? 'brokerage'] ?? $packages))
+                <div class="grid plans">
                     @php($start2 = ($b['audience'] ?? 'brokerage') === 'agent' ? preg_replace('#/start$#', '/agents', $start) : $start)
-                    @forelse (($byAudience[$b['audience'] ?? 'brokerage'] ?? $packages) as $p)
-                        <div class="card">
+                    @forelse ($plans as $pi => $p)
+                        <div class="card{{ count($plans) === 3 && $pi === 1 ? ' best' : '' }}" data-best="{{ $es ? 'Recomendado' : 'Recommended' }}">
                             <h3>{{ $p->name }}</h3>
                             <p class="price">${{ number_format(((int) $p->monthly_cents) / 100, 0) }}<span class="small muted"> / {{ $es ? 'mes' : 'month' }}</span></p>
                             @if ((int) $p->yearly_cents > 0)<p class="small muted">{{ $es ? 'o' : 'or' }} ${{ number_format(((int) $p->yearly_cents) / 100, 0) }} / {{ $es ? 'año' : 'year' }}</p>@endif
@@ -69,26 +93,26 @@
             @break
         @case('testimonials')
             <section><div class="wrap">
-                @if ($b['heading'] !== '')<h2>{{ $b['heading'] }}</h2>@endif
+                @if ($b['heading'] !== '')<div class="head"><h2>{{ $b['heading'] }}</h2></div>@endif
                 <div class="grid">@foreach ($b['items'] as $item)<figure class="card"><blockquote>“{{ $item['quote'] }}”</blockquote><figcaption class="muted small">— {{ $item['name'] }}@if ($item['role'] !== ''), {{ $item['role'] }}@endif</figcaption></figure>@endforeach</div>
             </div></section>
             @break
         @case('doors')
             <section><div class="wrap">
-                @if ($b['heading'] !== '')<h2>{{ $b['heading'] }}</h2>@endif
+                @if ($b['heading'] !== '')<div class="head"><h2>{{ $b['heading'] }}</h2></div>@endif
                 <div class="grid doors">
-                    <a class="card door" href="{{ $b['broker_href'] }}"><h3>{{ $b['broker_heading'] }}</h3>@if ($b['broker_text'] !== '')<p>{{ $b['broker_text'] }}</p>@endif<span class="btn">{{ $es ? 'Ver más' : 'See how' }} →</span></a>
-                    <a class="card door" href="{{ $b['agent_href'] }}"><h3>{{ $b['agent_heading'] }}</h3>@if ($b['agent_text'] !== '')<p>{{ $b['agent_text'] }}</p>@endif<span class="btn">{{ $es ? 'Ver más' : 'See how' }} →</span></a>
+                    <a class="card door" href="{{ $b['broker_href'] }}"><h3>{{ $b['broker_heading'] }}</h3>@if ($b['broker_text'] !== '')<p>{{ $b['broker_text'] }}</p>@endif<span class="go">{{ $es ? 'Ver cómo funciona' : 'See how it works' }}</span></a>
+                    <a class="card door" href="{{ $b['agent_href'] }}"><h3>{{ $b['agent_heading'] }}</h3>@if ($b['agent_text'] !== '')<p>{{ $b['agent_text'] }}</p>@endif<span class="go">{{ $es ? 'Ver cómo funciona' : 'See how it works' }}</span></a>
                 </div>
             </div></section>
             @break
         @case('modules')
             @php($show = $showcase[$b['audience']] ?? ['modules' => []])
-            <section><div class="wrap">
-                <h2>{{ $b['heading'] !== '' ? $b['heading'] : ($es ? 'Lo que incluye' : 'What is included') }}</h2>
+            <section class="modules"><div class="wrap">
+                <div class="head"><h2>{{ $b['heading'] !== '' ? $b['heading'] : ($es ? 'Lo que incluye' : 'What is included') }}</h2></div>
                 <div class="grid">
-                    @foreach ($show['modules'] as $m)
-                        <div class="card">
+                    @foreach ($show['modules'] as $mi => $m)
+                        <div class="card feature"><span class="ico" aria-hidden="true">{!! \Modules\Marketing\Support\BrandLogo::icon($mi, (string) $m['label']) !!}</span>
                             <h3>{{ $m['label'] }}</h3>
                             <p>{{ $m['about'] }}</p>
                             @if ($m['packages'] !== [])<p class="small muted">{{ $es ? 'Incluido en' : 'In' }}: {{ implode(', ', $m['packages']) }}</p>@endif
@@ -119,7 +143,7 @@ var diff=total-best.monthly;out.textContent=(es?'Hoy paga ':'Today you pay ')+mo
 box.addEventListener('input',calc)})})();</script>
             @break
         @case('cta')
-            <section><div class="wrap"><div class="card">
+            <section><div class="wrap"><div class="cta-band">
                 <h2>{{ $b['heading'] }}</h2>
                 @if ($b['text'] !== '')<p class="lead">{{ $b['text'] }}</p>@endif
                 <a class="btn" href="{{ $b['href'] === '/start' ? $start : ($b['href'] === '/health-check' ? $healthCheck : $b['href']) }}">{{ $b['label'] }}</a>
