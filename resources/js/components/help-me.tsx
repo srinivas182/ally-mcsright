@@ -64,7 +64,7 @@ export function HelpMe() {
             <Button
                 variant="outline"
                 size="lg"
-                className="fixed bottom-40 left-4 z-40 h-14 rounded-full bg-background px-5 text-base shadow-lg md:bottom-24"
+                className="fixed bottom-40 left-4 z-40 h-14 rounded-full bg-background px-5 text-base shadow-lg md:right-4 md:bottom-[8.75rem] md:left-auto"
                 onClick={show}
             >
                 <LifeBuoyIcon className="size-6" aria-hidden="true" /> Help

@@ -1,0 +1,6 @@
+@extends('errors.layout')
+@section('code', 'Error 401')
+@section('title', 'Please log in')
+@section('message', 'You need to log in to see this page.')
+@section('action', 'Log in')
+@section('href', '/login')

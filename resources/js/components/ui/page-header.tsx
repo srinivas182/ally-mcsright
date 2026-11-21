@@ -17,9 +17,9 @@ function PageHeader({ title, description, actions, className }: PageHeaderProps)
             className={cn('flex flex-wrap items-start justify-between gap-4', className)}
         >
             <div className="grid min-w-0 gap-1">
-                <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+                <h1 className="text-[1.65rem] leading-tight font-semibold tracking-[-0.02em]">{title}</h1>
                 {description && (
-                    <p className="text-sm text-muted-foreground">{description}</p>
+                    <p className="text-[0.95rem] text-muted-foreground">{description}</p>
                 )}
             </div>
             {actions && <div className="flex flex-wrap gap-2">{actions}</div>}

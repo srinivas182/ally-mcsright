@@ -1,6 +1,7 @@
 import { Head } from '@inertiajs/react';
 
 import { type BriefItem, DailyBrief } from '@/components/brief/daily-brief';
+import { WelcomeHero } from '@/components/welcome-hero';
 
 type Props = {
     firstName: string;
@@ -21,17 +22,15 @@ export default function AgentHome({
     return (
         <>
             <Head title="Today" />
-            <div className="flex flex-col gap-6 p-4 md:p-6">
-                <header>
-                    <h1 className="text-2xl font-semibold">
-                        Good to see you, {firstName}
-                    </h1>
-                    {assisting && (
-                        <p className="text-sm text-muted-foreground">
-                            You're working for {assisting}.
-                        </p>
-                    )}
-                </header>
+            <div className="flex flex-col gap-6 p-4 md:p-8">
+                <WelcomeHero
+                    firstName={firstName}
+                    line={
+                        assisting
+                            ? `You're working for ${assisting}. Here is what needs doing today.`
+                            : 'Here is what needs you today: new leads, follow-ups and deals.'
+                    }
+                />
                 <DailyBrief
                     items={brief}
                     email={briefEmail}

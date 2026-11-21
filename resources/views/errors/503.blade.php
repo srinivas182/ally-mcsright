@@ -1,0 +1,6 @@
+@extends('errors.layout')
+@section('code', 'Error 503')
+@section('title', 'RightAlly is being updated')
+@section('message', 'This takes a few minutes. Please try again shortly.')
+@section('action', 'Try again')
+@section('help', 'Your data is safe while we update.')

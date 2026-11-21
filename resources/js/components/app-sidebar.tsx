@@ -1,5 +1,7 @@
 import { Link, usePage } from '@inertiajs/react';
 
+import AppLogoIcon from '@/components/app-logo-icon';
+import { Wordmark } from '@/components/app-logo';
 import { CreditMeter } from '@/components/credit-meter';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
@@ -34,15 +36,36 @@ export function AppSidebar() {
                     <SidebarMenuItem>
                         <SidebarMenuButton size="lg" asChild>
                             <Link href={home} prefetch>
-                                <span
-                                    aria-hidden="true"
-                                    className="flex size-8 items-center justify-center rounded-md bg-primary text-sm font-semibold text-primary-foreground"
-                                >
-                                    {initials(name)}
-                                </span>
-                                <span className="truncate font-semibold">
-                                    {name}
-                                </span>
+                                {tenant?.isHq ? (
+                                    <>
+                                        <span className="flex size-8 shrink-0 items-center justify-center">
+                                            <AppLogoIcon className="!size-8 drop-shadow-sm" />
+                                        </span>
+                                        <span className="flex min-w-0 items-center gap-2 text-white">
+                                            <Wordmark className="h-[0.95rem] w-auto" />
+                                            <span className="rounded-md bg-white/12 px-1.5 py-0.5 text-[0.65rem] font-semibold tracking-wide text-[#C3CDEA] ring-1 ring-white/15">
+                                                HQ
+                                            </span>
+                                        </span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <span
+                                            aria-hidden="true"
+                                            className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-b from-[#2A6BFF] to-[#0B3FB8] text-sm font-semibold text-white shadow-[0_1px_0_rgb(255_255_255/0.2)_inset,0_4px_10px_-4px_rgb(21_93_252/0.8)]"
+                                        >
+                                            {initials(name)}
+                                        </span>
+                                        <span className="grid min-w-0 leading-tight">
+                                            <span className="truncate font-semibold text-white">
+                                                {name}
+                                            </span>
+                                            <span className="truncate text-xs text-[#9FB0DA]">
+                                                on RightAlly
+                                            </span>
+                                        </span>
+                                    </>
+                                )}
                             </Link>
                         </SidebarMenuButton>
                     </SidebarMenuItem>

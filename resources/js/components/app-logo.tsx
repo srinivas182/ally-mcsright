@@ -78,7 +78,9 @@ export function Wordmark({ className }: { className?: string }) {
 export default function AppLogo() {
     return (
         <>
-            <AppLogoIcon className="size-8 shrink-0 drop-shadow-sm" />
+            <span className="flex size-8 shrink-0 items-center justify-center">
+                <AppLogoIcon className="!size-8 drop-shadow-sm" />
+            </span>
             <div className="ml-1 flex flex-1 items-center text-sidebar-foreground">
                 <Wordmark className="h-4 w-auto" />
             </div>

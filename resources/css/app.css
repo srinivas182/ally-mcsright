@@ -207,3 +207,103 @@ html[data-motion='reduce'] *::after {
         0 1px 0 rgb(255 255 255 / 0.15) inset,
         0 8px 20px -8px rgb(21 93 252 / 0.6);
 }
+
+/* ---------------------------------------------------------------------------------------------------------------
+ * BR2: the premium back office. A deep-navy frame (the sidebar) holds the working page as a raised light panel;
+ * cards sit on a softly tinted page with real depth. Brokerages' own accent colour still sets the primary.
+ * Easier reading (high contrast, larger text) keeps working: it only changes text and border colours.
+ * ------------------------------------------------------------------------------------------------------------- */
+:root:not(.dark) {
+    --background: oklch(0.975 0.006 262.9);
+    --sidebar: #061536;
+    --sidebar-foreground: #c3cdea;
+    --sidebar-primary: #155dfc;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: rgb(255 255 255 / 0.07);
+    --sidebar-accent-foreground: #ffffff;
+    --sidebar-border: rgb(255 255 255 / 0.09);
+    --sidebar-ring: #5b8cff;
+    --elevation-xs: 0 1px 2px 0 rgb(6 22 63 / 0.05);
+    --elevation-sm:
+        0 1px 2px 0 rgb(6 22 63 / 0.04), 0 4px 14px -6px rgb(6 22 63 / 0.1);
+    --elevation-md:
+        0 1px 2px 0 rgb(6 22 63 / 0.05), 0 10px 28px -12px rgb(6 22 63 / 0.18);
+}
+
+.dark {
+    --sidebar: oklch(0.2 0.03 262.9);
+    --sidebar-accent: rgb(255 255 255 / 0.06);
+    --sidebar-border: rgb(255 255 255 / 0.08);
+}
+
+/* The sidebar: brand-blue pill for the current page, quiet labels, white wordmark. */
+[data-slot='sidebar-wrapper']:has([data-variant='inset']) {
+    background-image: radial-gradient(
+        70rem 40rem at -10% -10%,
+        rgb(21 93 252 / 0.28),
+        transparent 60%
+    );
+}
+
+[data-sidebar='group-label'] {
+    color: rgb(195 205 234 / 0.6);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+}
+
+[data-sidebar='menu-button'][data-active='true'] {
+    background: linear-gradient(180deg, #2a6bff, #155dfc);
+    color: #ffffff;
+    font-weight: 600;
+    box-shadow:
+        0 1px 0 rgb(255 255 255 / 0.18) inset,
+        0 6px 16px -6px rgb(21 93 252 / 0.7);
+}
+
+[data-sidebar='menu-button']:not([data-active='true']):hover {
+    color: #ffffff;
+}
+
+/* The working page: a raised light panel on the navy frame, with a sticky, frosted top bar. */
+[data-slot='sidebar-inset'] {
+    background: var(--background);
+}
+
+@media (min-width: 768px) {
+    [data-variant='inset'] ~ [data-slot='sidebar-inset'] {
+        box-shadow:
+            0 0 0 1px rgb(6 22 63 / 0.06),
+            0 24px 60px -30px rgb(0 0 0 / 0.55);
+    }
+}
+
+[data-slot='app-topbar'] {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: color-mix(in oklab, var(--background) 82%, transparent);
+    backdrop-filter: saturate(1.4) blur(10px);
+    border-top-left-radius: inherit;
+    border-top-right-radius: inherit;
+}
+
+/* Cards and tiles: white on the tinted page, with depth instead of grey lines. */
+:root:not(.dark) [data-slot='card'],
+:root:not(.dark) [data-slot='stat-card'] {
+    border-color: rgb(6 22 63 / 0.07);
+    box-shadow: var(--elevation-sm);
+}
+
+:root:not(.dark) [data-slot='input'],
+:root:not(.dark) [data-slot='select-trigger'],
+:root:not(.dark) [data-slot='textarea'] {
+    background-color: #ffffff;
+}
+
+/* Primary buttons: a touch of light and depth. */
+[data-slot='button'].bg-primary {
+    box-shadow:
+        0 1px 0 rgb(255 255 255 / 0.16) inset,
+        0 4px 12px -6px color-mix(in oklab, var(--primary) 70%, transparent);
+}
