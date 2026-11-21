@@ -7,6 +7,7 @@ namespace Modules\Listings\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -16,6 +17,7 @@ use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Listings\Access\MlsAccess;
 use Modules\Listings\Idx\BoardFees;
+use Modules\Listings\Idx\BoardForm;
 use Modules\Listings\Idx\BoardRequests;
 use Modules\Listings\Idx\Coverage;
 use Modules\Listings\Idx\DemoListings;
@@ -113,6 +115,29 @@ final class MlsSettingsController
         abort_unless(is_string($path) && Storage::disk('local')->exists($path), 404);
 
         return Storage::disk('local')->download($path, 'IDX agreement.pdf');
+    }
+
+    /** IDX12: the board's form filled in (no signatures yet), to check before signing. */
+    public function preview(Request $request, TenantContext $tenants, string $subscription): HttpResponse
+    {
+        self::owner($request);
+        $db = DB::connection(Connections::control());
+        $sub = $db->table('idx_subscriptions')->where('ulid', $subscription)->where('tenant_id', $tenants->id())->first();
+        $board = $sub !== null ? $db->table('idx_boards')->where('id', $sub->board_id)->first() : null;
+        $pdf = $sub !== null && $board !== null && BoardForm::inUse($board) ? BoardForm::preview($board, $sub) : null;
+        abort_if($pdf === null, 404);
+
+        return response($pdf, 200, ['Content-Type' => 'application/pdf', 'Content-Disposition' => 'inline; filename="IDX agreement preview.pdf"', 'Cache-Control' => 'no-store']);
+    }
+
+    /** IDX12: save the brokerage's values (to preview), or save and send the form for signature. */
+    public function review(Request $request, TenantContext $tenants, Subscriptions $subs, string $subscription): RedirectResponse
+    {
+        $data = $request->validate(['values' => ['present', 'array', 'max:200'], 'values.*' => ['nullable', 'string', 'max:300'], 'send' => ['required', 'boolean']]);
+        $subs->review($tenants->id(), $subscription, (array) $data['values'], self::owner($request), (bool) $data['send']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => $data['send'] ? 'Sent for signature. Check your email to sign.' : 'Saved. Open the preview to check it.']);
+
+        return back();
     }
 
     public function cancelBoard(Request $request, TenantContext $tenants, Subscriptions $subs, string $subscription): RedirectResponse

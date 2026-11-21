@@ -185,3 +185,23 @@ For review: the consent wording (`SavedSearches::TEXT_CONSENT`) should be checke
   downloaded (a member sign-in page) gets "Confirm this form is current" every 90 days.
 - Filling in the board's own PDF fields (not only our signature page) is planned as IDX12 and needs a PDF form library;
   it will be proposed separately.
+
+## IDX12: the board's own agreement, filled in
+
+- **Fields found automatically.** When HQ uploads a board's agreement (or the form watch adopts a new version), its
+  fillable fields are read with qpdf (the same reader every imported form uses, already in the server image) and
+  placed exactly where the board put them. Each field is matched by its name to what RightAlly knows: firm name,
+  website, MLS member ID, office ID, license number, managing broker name and email, owner name and email, technology
+  provider, today's date. Anything else is "the brokerage fills it in". Signature, initials and date-signed lines are
+  assigned to the brokerage owner or the managing broker.
+- **HQ checks once per form version** in HQ › IDX coverage › MLS boards (rename a field, change what fills it, who
+  signs it, whether it is required; "Find fields again"). Until HQ saves the check, brokerages keep signing on
+  RightAlly's summary page. A new form version needs a new check.
+- **The brokerage reviews before signing.** After entering its MLS details, the board shows "Check the form": the
+  fields RightAlly filled in (editable) and the ones to complete. **Save** then **Open the preview (PDF)** shows the
+  board's form exactly as the MLS will see it. **Looks right: send for signature** (password confirmed) prepares the
+  packet: the board's own pages with the values, the board's signature lines for the right people, and RightAlly's
+  summary page only when someone has no signature line on the board's form.
+- Changing MLS details always starts a fresh signature (an earlier signed copy no longer matches). The check before
+  sending (IDX11) also flags any required field left empty.
+- Forms that are scans (no fillable fields) keep working as before, with RightAlly's summary and signature page.

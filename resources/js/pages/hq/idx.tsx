@@ -69,7 +69,35 @@ type Board = {
     form_watch_note?: string | null;
     form_confirmed?: string | null;
     form_due?: boolean;
+    form_fields?: FormFieldRow[];
+    form_fields_checked?: boolean;
 };
+/** IDX12: a field in the board's own agreement form and what fills it. */
+type FormFieldRow = {
+    key: string;
+    label: string;
+    type: string;
+    page: number;
+    source: string | null;
+    role: string | null;
+    required: boolean;
+};
+const SOURCES: Record<string, string> = {
+    brokerage_name: 'Brokerage (firm) name',
+    website: 'Website address',
+    member_id: 'MLS member ID',
+    office_id: 'Office ID',
+    license_number: 'Real estate license number',
+    managing_broker_name: 'Managing broker name',
+    managing_broker_email: 'Managing broker email',
+    owner_name: "Owner's name",
+    owner_email: "Owner's email",
+    vendor: 'Technology provider (RightAlly)',
+    today: "Today's date",
+    fill: 'The brokerage fills it in',
+    skip: 'Leave blank',
+};
+const SIGNER_TYPES = ['signature', 'initials', 'date_signed'];
 type Option = { id: number; name: string };
 type QueueItem = {
     ulid: string;
@@ -1397,6 +1425,12 @@ function BoardDialog({
                             )}
                         </FormField>
                         {board && <FormWatch board={board} />}
+                        {board && (
+                            <BoardFormFields
+                                key={`${board.form_fields_checked ? 1 : 0}-${(board.form_fields ?? []).map((f) => f.key).join(',')}`}
+                                board={board}
+                            />
+                        )}
                     </fieldset>
                     <label className="flex items-center gap-3 text-sm sm:col-span-2">
                         <Switch
@@ -1571,6 +1605,182 @@ function FormWatch({ board }: { board: Board }) {
                     </Button>
                 )}
             </div>
+        </div>
+    );
+}
+
+/**
+ * IDX12: the fields RightAlly found in the board's own form. HQ checks what fills each one (once per form version);
+ * brokerages then see the form filled in, complete the rest and sign the board's own signature lines.
+ */
+function BoardFormFields({ board }: { board: Board }) {
+    const found = board.form_fields ?? [];
+    const [rows, setRows] = useState<FormFieldRow[]>(found);
+    const set = (key: string, patch: Partial<FormFieldRow>) =>
+        setRows((all) =>
+            all.map((r) => (r.key === key ? { ...r, ...patch } : r)),
+        );
+
+    if (!board.has_agreement_pdf) {
+        return null;
+    }
+
+    return (
+        <div className="grid gap-3 rounded-lg border p-3 text-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="font-medium">
+                    Fields in the board's form ({found.length})
+                    {found.length > 0 && !board.form_fields_checked && (
+                        <Badge className="ml-2">Check before use</Badge>
+                    )}
+                </p>
+                <Button
+                    size="sm"
+                    variant="outline"
+                    type="button"
+                    onClick={() =>
+                        router.post(
+                            `/hq/idx/boards/${board.ulid}/fields/find`,
+                            {},
+                            { preserveScroll: true },
+                        )
+                    }
+                >
+                    Find fields again
+                </Button>
+            </div>
+            {found.length === 0 ? (
+                <p className="text-muted-foreground">
+                    No fillable fields in this PDF. Brokerages sign on
+                    RightAlly's summary page added to it.
+                </p>
+            ) : (
+                <>
+                    <div className="max-h-80 overflow-auto rounded border">
+                        <table className="w-full text-left">
+                            <thead className="bg-muted/50 text-xs">
+                                <tr>
+                                    <th className="p-2">Field (page)</th>
+                                    <th className="p-2">
+                                        Filled with / signed by
+                                    </th>
+                                    <th className="p-2">Required</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {rows.map((r) => {
+                                    const signer = SIGNER_TYPES.includes(
+                                        r.type,
+                                    );
+
+                                    return (
+                                        <tr key={r.key} className="border-t">
+                                            <td className="p-2">
+                                                <Input
+                                                    value={r.label}
+                                                    onChange={(e) =>
+                                                        set(r.key, {
+                                                            label: e.target
+                                                                .value,
+                                                        })
+                                                    }
+                                                    aria-label={`Name of ${r.key}`}
+                                                />
+                                                <span className="text-xs text-muted-foreground">
+                                                    {r.type} · page {r.page}
+                                                </span>
+                                            </td>
+                                            <td className="p-2">
+                                                {signer ? (
+                                                    <select
+                                                        className={selectClass}
+                                                        value={r.role ?? ''}
+                                                        onChange={(e) =>
+                                                            set(r.key, {
+                                                                role: e.target
+                                                                    .value,
+                                                            })
+                                                        }
+                                                    >
+                                                        <option
+                                                            value=""
+                                                            disabled
+                                                        >
+                                                            Who signs?
+                                                        </option>
+                                                        <option value="brokerage">
+                                                            Brokerage owner
+                                                        </option>
+                                                        <option value="managing_broker">
+                                                            Managing broker
+                                                        </option>
+                                                    </select>
+                                                ) : (
+                                                    <select
+                                                        className={selectClass}
+                                                        value={
+                                                            r.source ?? 'fill'
+                                                        }
+                                                        onChange={(e) =>
+                                                            set(r.key, {
+                                                                source: e.target
+                                                                    .value,
+                                                            })
+                                                        }
+                                                    >
+                                                        {Object.entries(
+                                                            SOURCES,
+                                                        ).map(([k, v]) => (
+                                                            <option
+                                                                key={k}
+                                                                value={k}
+                                                            >
+                                                                {v}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                )}
+                                            </td>
+                                            <td className="p-2">
+                                                {!signer &&
+                                                    r.source === 'fill' && (
+                                                        <Switch
+                                                            checked={r.required}
+                                                            onCheckedChange={(
+                                                                v,
+                                                            ) =>
+                                                                set(r.key, {
+                                                                    required: v,
+                                                                })
+                                                            }
+                                                        />
+                                                    )}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div>
+                        <Button
+                            size="sm"
+                            type="button"
+                            onClick={() =>
+                                router.put(
+                                    `/hq/idx/boards/${board.ulid}/fields`,
+                                    { fields: rows },
+                                    { preserveScroll: true },
+                                )
+                            }
+                        >
+                            {board.form_fields_checked
+                                ? 'Save fields'
+                                : 'Checked: use this form'}
+                        </Button>
+                    </div>
+                </>
+            )}
         </div>
     );
 }

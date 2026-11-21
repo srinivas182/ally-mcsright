@@ -57,6 +57,9 @@ Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.mls.manage'])
         // IDX11: the check of a signed agreement, and the watch on each board's own form.
         Route::post('subscriptions/{subscription}/recheck', [HqIdxController::class, 'recheck'])->where('subscription', $sub)->middleware('throttle:20,1')->name('subscriptions.recheck');
         Route::post('boards/{board}/form', [HqIdxController::class, 'form'])->where('board', $sub)->middleware('throttle:20,1')->name('boards.form');
+        // IDX12: the board's own form fields.
+        Route::put('boards/{board}/fields', [HqIdxController::class, 'fields'])->where('board', $sub)->name('boards.fields');
+        Route::post('boards/{board}/fields/find', [HqIdxController::class, 'findFields'])->where('board', $sub)->middleware('throttle:20,1')->name('boards.fields.find');
         // IDX8: boards brokerages asked for.
         Route::post('requests/{boardRequest}/add', [HqIdxController::class, 'addRequested'])->where('boardRequest', $sub)->name('requests.add');
         Route::post('requests/{boardRequest}/close', [HqIdxController::class, 'closeRequested'])->where('boardRequest', $sub)->name('requests.close');
@@ -74,6 +77,9 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])
         Route::post('requests', [MlsSettingsController::class, 'requestBoard'])->middleware('throttle:20,1')->name('requests.store'); // IDX8
         Route::put('boards/{subscription}', [MlsSettingsController::class, 'submitBoard'])->where('subscription', '[0-9A-HJKMNP-TV-Z]{26}')->middleware(['password.confirm', 'throttle:20,1'])->name('boards.update');
         Route::get('boards/{subscription}/agreement.pdf', [MlsSettingsController::class, 'copy'])->where('subscription', '[0-9A-HJKMNP-TV-Z]{26}')->name('boards.copy'); // IDX6
+        // IDX12: review the board's form filled in, then send it for signature.
+        Route::get('boards/{subscription}/preview.pdf', [MlsSettingsController::class, 'preview'])->where('subscription', '[0-9A-HJKMNP-TV-Z]{26}')->middleware('throttle:30,1')->name('boards.preview');
+        Route::put('boards/{subscription}/review', [MlsSettingsController::class, 'review'])->where('subscription', '[0-9A-HJKMNP-TV-Z]{26}')->middleware(['password.confirm', 'throttle:20,1'])->name('boards.review');
         Route::delete('boards/{subscription}', [MlsSettingsController::class, 'cancelBoard'])->where('subscription', '[0-9A-HJKMNP-TV-Z]{26}')->middleware('password.confirm')->name('boards.destroy');
     });
 

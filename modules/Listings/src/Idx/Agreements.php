@@ -93,8 +93,10 @@ final class Agreements
             $packetId = (int) $cell->table('form_packets')->insertGetId(['ulid' => $packetUlid, 'tenant_id' => $tenant->id, 'deal_id' => 0,
                 'title' => mb_substr('IDX agreement: '.$board->name, 0, 160), 'status' => 'sent', 'verify' => 'email', 'sent_at' => now(), 'created_by' => $owner->id,
                 'created_at' => now(), 'updated_at' => now()]);
+            // IDX12: the board's own form carries the values the brokerage reviewed.
+            $values = BoardForm::inUse($board) ? BoardForm::values($board, $sub) : [];
             $cell->table('form_packet_forms')->insert(['tenant_id' => $tenant->id, 'packet_id' => $packetId, 'template_id' => $template['id'],
-                'template_version' => $template['version'], 'values' => '{}', 'sort' => 0]);
+                'template_version' => $template['version'], 'values' => json_encode((object) $values), 'sort' => 0]);
             foreach ($signers as $i => $s) {
                 $cell->table('form_signers')->insert(['ulid' => (string) Str::ulid(), 'tenant_id' => $tenant->id, 'packet_id' => $packetId, 'role' => $s['role'],
                     'name' => mb_substr($s['name'], 0, 160), 'email' => $s['email'], 'sign_order' => $i + 1, 'created_at' => now(), 'updated_at' => now()]);
@@ -257,6 +259,21 @@ final class Agreements
         $pdf = new Fpdi('P', 'pt', 'Letter');
         $pdf->SetAutoPageBreak(false);
         $pages = 0;
+        // IDX12: the board's own fields, where the board placed them; its signature lines go to our signers.
+        $own = BoardForm::inUse($board) ? BoardForm::fields($board) : [];
+        $roles = array_column($signers, 'role');
+        $fields = [];
+        foreach ($own as $f) {
+            if ($f['role'] !== null && ! in_array($f['role'], $roles, true)) {
+                $f['role'] = 'brokerage'; // the owner is also the managing broker
+            }
+            if ($f['source'] === 'skip') {
+                continue;
+            }
+            $fields[] = ['key' => $f['key'], 'type' => $f['type'] === 'date' ? 'text' : $f['type'], 'page' => $f['page'], 'x' => $f['x'], 'y' => $f['y'], 'w' => $f['w'],
+                'h' => $f['h'], 'role' => $f['role'], 'required' => $f['role'] !== null, 'label' => $f['label']];
+        }
+        $boardSigns = array_values(array_unique(array_filter(array_column(array_filter($fields, fn (array $f): bool => $f['type'] === 'signature'), 'role'))));
         if (is_string($board->agreement_path) && $board->agreement_path !== '' && Storage::disk('local')->exists($board->agreement_path)) {
             $src = tempnam(sys_get_temp_dir(), 'idx-agreement-');
             file_put_contents($src, (string) Storage::disk('local')->get($board->agreement_path));
@@ -269,6 +286,10 @@ final class Agreements
                 $pages++;
             }
             @unlink($src);
+        }
+        // Our summary and signature page is added unless every signer already signs on the board's own form.
+        if ($own !== [] && array_diff($roles, $boardSigns) === []) {
+            return [$pdf->Output('S'), $fields];
         }
         $pdf->AddPage('P', self::PAGE);
         $pages++;
@@ -293,7 +314,6 @@ final class Agreements
         $terms = trim($terms) !== '' ? $terms : 'The brokerage asks '.$board->name.' to license its listing data for display on the website above, through RightAlly as its technology provider, under the MLS\'s IDX rules. The brokerage confirms the details above are correct.';
         $pdf->SetXY(54, $y + 14);
         $pdf->MultiCell(504, 13, $text($terms));
-        $fields = [];
         $blockY = 560.0;
         foreach ($signers as $s) {
             $pdf->SetFont('Helvetica', 'B', 10);
