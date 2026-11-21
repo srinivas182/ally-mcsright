@@ -53,6 +53,14 @@
                 <button type="button" class="btn btn-ghost" data-save-search>Save search</button>
                 @if ($chrome['mapbox'])<button type="button" class="btn btn-ghost map-toggle" data-map-toggle aria-pressed="false">Map</button>@endif
             </div>
+            {{-- IDX10: after saving a search, an optional text when a new home matches (written consent, shown word for word). --}}
+            <form class="text-alerts" data-text-alerts hidden>
+                <p><strong>Want a text when a new home matches?</strong></p>
+                <label>Mobile number <input type="tel" name="phone" autocomplete="tel" inputmode="tel" required maxlength="20"></label>
+                <label class="check"><input type="checkbox" name="agree" value="1" required> <span>{{ \Modules\Crm\Searches\SavedSearches::TEXT_CONSENT }}</span></label>
+                <button type="submit" class="btn btn-primary">Text me new homes</button>
+                <p class="small" role="status" data-text-status></p>
+            </form>
             @if ($heard)
                 <p class="heard" role="status" data-heard lang="{{ $heard['language'] }}">
                     {{ $heard['language'] === 'es' ? 'Buscamos' : 'We searched for' }}: <strong>{{ $heard['understood'] === [] ? ($heard['language'] === 'es' ? 'todas las casas' : 'all homes') : implode(' · ', $heard['understood']) }}</strong>.

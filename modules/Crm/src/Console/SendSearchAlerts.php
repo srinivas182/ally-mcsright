@@ -24,6 +24,8 @@ final class SendSearchAlerts extends Command
         foreach (Tenant::query()->where('status', 'active')->where('type', '!=', 'hq')->get() as $tenant) {
             try {
                 $n += $tenants->runAs($tenant, fn (): int => app(SavedSearches::class)->sendDue());
+                // IDX10: texts about new homes, for searches that asked for them (written consent, 8am–9pm).
+                $n += $tenants->runAs($tenant, fn (): int => app(SavedSearches::class)->sendTexts());
             } catch (\Throwable $e) {
                 report($e);
             }

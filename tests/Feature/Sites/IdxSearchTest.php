@@ -25,6 +25,7 @@ use Modules\Listings\Search\ListingSearch;
 use Modules\Listings\Search\MarketStats;
 use Modules\Listings\Search\PlainSearch;
 use Modules\Listings\Sync\ListingSync;
+use Modules\Listings\Sync\ResoMapper;
 use Modules\Sites\Maps;
 use Modules\Sites\SiteSetup;
 
@@ -253,8 +254,12 @@ it('offers fifteen designs', function (): void {
 });
 
 it('reads plain-words searches into filters, in English and Spanish', function (): void {
-    $p = PlainSearch::parse('3 bed homes under 500k in Austin with a pool');
-    expect($p['filters'])->toBe(['max_price' => '500000', 'beds' => '3', 'q' => 'Austin'])->and($p['not_filtered'])->toBe(['pool'])->and($p['language'])->toBe('en');
+    $p = PlainSearch::parse('3 bed homes under 500k in Austin with a pool and a view');
+    expect($p['filters'])->toBe(['max_price' => '500000', 'beds' => '3', 'pool' => '1', 'q' => 'Austin'])->and($p['not_filtered'])->toBe(['view'])->and($p['language'])->toBe('en');
+    // IDX10: home facts from the MLS are real filters now.
+    expect(PlainSearch::parse('waterfront condo with a 2 car garage in Mobile')['filters'])->toBe(['garage' => '2', 'waterfront' => '1', 'sub' => 'condo', 'q' => 'Mobile'])
+        ->and(PlainSearch::parse('new construction on 5 acres near Baton Rouge')['filters'])->toBe(['new_build' => '1', 'acres' => '5', 'q' => 'Baton Rouge'])
+        ->and(PlainSearch::parse('homes in Lake Charles')['filters'])->toBe(['q' => 'Lake Charles']);
 
     $es = PlainSearch::parse('casa de 3 recámaras y 2 baños hasta 400 mil en San Antonio');
     expect($es['filters'])->toBe(['max_price' => '400000', 'beds' => '3', 'baths' => '2', 'q' => 'San Antonio'])->and($es['language'])->toBe('es')
@@ -266,13 +271,13 @@ it('reads plain-words searches into filters, in English and Spanish', function (
 });
 
 it('turns a plain-words search into the same crawlable filter page', function (): void {
-    $r = $this->get($this->web.'/homes?q='.rawurlencode('3 bed homes under 500k in Austin with a pool'));
+    $r = $this->get($this->web.'/homes?q='.rawurlencode('3 bed homes under 500k in Austin with a pool and a view'));
     $r->assertRedirect();
     $to = (string) $r->headers->get('Location');
-    expect($to)->toContain('beds=3')->toContain('max_price=500000')->toContain('q=Austin')->toContain('heard=');
+    expect($to)->toContain('beds=3')->toContain('max_price=500000')->toContain('q=Austin')->toContain('pool=1')->toContain('heard=');
 
     $html = (string) $this->get($this->web.'/homes?'.parse_url($to, PHP_URL_QUERY))->assertOk()->getContent();
-    expect($html)->toContain('We searched for')->toContain('under $500k · 3+ bedrooms · in Austin')->toContain('filter by pool')
+    expect($html)->toContain('We searched for')->toContain('under $500k · 3+ bedrooms · a pool · in Austin')->toContain('filter by view')
         ->toContain('content="noindex'); // a filtered page is not a canonical page
 
     $es = (string) $this->followingRedirects()->get($this->web.'/homes?q='.rawurlencode('casa de 3 recámaras hasta 400 mil en Austin'))->assertOk()->getContent();
@@ -284,4 +289,17 @@ it('turns a plain-words search into the same crawlable filter page', function ()
 
 it('fills in the MLS Grid and Trestle addresses for HQ', function (): void {
     expect(MlsSource::PRESETS['trestle']['token_url'])->toStartWith('https://')->and(MlsSource::PRESETS['mls_grid']['base_url'])->toBe('https://api.mlsgrid.com/v2');
+});
+
+it('keeps home facts from the MLS and filters on them (IDX10)', function (): void {
+    $m = ResoMapper::map(idxHome(9, ['PoolPrivateYN' => true, 'GarageSpaces' => 2.0, 'WaterfrontYN' => 'N', 'NewConstructionYN' => null]), 'actris');
+    expect($m['pool'])->toBeTrue()->and($m['garage_spaces'])->toBe(2)->and($m['waterfront'])->toBeFalse()->and($m['new_construction'])->toBeNull();
+
+    $this->feed->records = [idxHome(1, ['PoolPrivateYN' => true, 'GarageSpaces' => 2, 'ModificationTimestamp' => '2026-05-30T00:00:00Z']),
+        idxHome(3, ['WaterfrontYN' => true, 'GarageSpaces' => 1, 'ModificationTimestamp' => '2026-05-30T00:01:00Z'])];
+    app(ListingSync::class)->run($this->source->refresh());
+    $search = app(ListingSearch::class);
+    expect(array_column($search->search($this->tenant->id, ['pool' => '1'])['results'], 'mls_number'))->toBe(['MLS1'])
+        ->and(array_column($search->search($this->tenant->id, ['garage' => '2'])['results'], 'mls_number'))->toBe(['MLS1'])
+        ->and(array_column($search->search($this->tenant->id, ['waterfront' => '1'])['results'], 'mls_number'))->toBe(['MLS3']);
 });

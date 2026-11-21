@@ -26,6 +26,7 @@ use Modules\Core\Tenancy\Concerns\HasPublicUlid;
  * @property CarbonImmutable|null $last_sent_at
  * @property int $sent_count
  * @property CarbonImmutable|null $unsubscribed_at
+ * @property bool $text_alerts
  * @property CarbonImmutable $created_at
  * @property Contact $contact
  */
@@ -50,7 +51,8 @@ final class SavedSearch extends Model
      */
     protected function casts(): array
     {
-        return ['filters' => 'array', 'last_checked_at' => 'immutable_datetime', 'last_sent_at' => 'immutable_datetime', 'unsubscribed_at' => 'immutable_datetime', 'created_at' => 'immutable_datetime'];
+        return ['filters' => 'array', 'last_checked_at' => 'immutable_datetime', 'last_sent_at' => 'immutable_datetime', 'unsubscribed_at' => 'immutable_datetime', 'created_at' => 'immutable_datetime',
+            'text_alerts' => 'boolean'];
     }
 
     /**

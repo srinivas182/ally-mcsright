@@ -130,7 +130,24 @@ final class RepliersFeed implements ResoFeed
             'Media' => array_map(fn (string $path, int $i): array => ['MediaKey' => mb_substr($path, 0, 100), 'MediaURL' => self::CDN.ltrim($path, '/'),
                 'MediaCategory' => 'Photo', 'Order' => $i], $images, array_keys($images)),
             'RepliersBoardId' => $l['boardId'] ?? null,
+            // IDX10: home facts (Repliers' wording varies by board: anything other than none/no counts as yes).
+            'PoolPrivateYN' => self::yes($d['swimmingPool'] ?? null),
+            'WaterfrontYN' => self::yes($d['waterfront'] ?? null),
+            'GarageSpaces' => $num($d['numGarageSpaces'] ?? null),
         ];
+    }
+
+    /** "Inground" → true, "None" or "No" → false, missing → null. */
+    private static function yes(mixed $v): ?bool
+    {
+        if (is_bool($v)) {
+            return $v;
+        }
+        if (! is_string($v) || trim($v) === '') {
+            return null;
+        }
+
+        return ! in_array(strtolower(trim($v)), ['none', 'no', 'n', 'false', '0'], true);
     }
 
     /**

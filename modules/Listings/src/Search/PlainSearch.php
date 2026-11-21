@@ -21,10 +21,23 @@ final class PlainSearch
 
     /** Words for features we cannot filter on yet (shown back so nothing is silently ignored). */
     private const FEATURES = [
-        'pool' => 'pool', 'piscina' => 'pool', 'alberca' => 'pool', 'garage' => 'garage', 'garaje' => 'garage', 'cochera' => 'garage',
-        'waterfront' => 'waterfront', 'lake' => 'waterfront', 'lago' => 'waterfront', 'view' => 'view', 'vista' => 'view',
-        'yard' => 'yard', 'patio' => 'yard', 'jard[ií]n' => 'yard', 'basement' => 'basement', 's[oó]tano' => 'basement',
-        'condo' => 'condo or townhome', 'condominio' => 'condo or townhome', 'townhouse' => 'condo or townhome', 'townhome' => 'condo or townhome', 'acreage' => 'acreage', 'acres?' => 'acreage', 'new construction' => 'new construction', 'nueva construcci[oó]n' => 'new construction',
+        'view' => 'view', 'vista' => 'view', 'yard' => 'yard', 'patio' => 'yard', 'jard[ií]n' => 'yard', 'basement' => 'basement', 's[oó]tano' => 'basement',
+    ];
+
+    /**
+     * IDX10: home facts the MLS gives us, so these are real filters now: words → [filter, value, what we tell the visitor].
+     * Order matters: "2 car garage" and "5 acres" are read before the plain words.
+     */
+    private const FACTS = [
+        '(\d{1,2})\s*-?\s*(?:car|cars|coches?|autos?)\s+(?:garage|garaje|cochera)' => ['garage', null, '{n}-car garage'],
+        'garage|garaje|cochera' => ['garage', '1', 'a garage'],
+        'pool|piscina|alberca' => ['pool', '1', 'a pool'],
+        'waterfront|on the water|lakefront|frente al agua' => ['waterfront', '1', 'waterfront'],
+        'new construction|new build|newly built|nueva construcci[oó]n' => ['new_build', '1', 'new construction'],
+        '(\d{1,3})\s*\+?\s*(?:acres?|acre lots?)' => ['acres', null, '{n}+ acres'],
+        'acreage|acres?' => ['acres', '1', '1+ acre'],
+        'townhouses?|townhomes?|casa adosada' => ['sub', 'townhome', 'townhome'],
+        'condos?|condominiums?|condominios?' => ['sub', 'condo', 'condo'],
     ];
 
     /** Plain words to RESO property types. */
@@ -126,6 +139,18 @@ final class PlainSearch
                 'Residential Lease' => 'for rent', 'Residential Income' => 'multi-family', 'Commercial Sale' => 'commercial', default => strtolower($x),
             }, array_unique($types)));
         }
+        foreach (self::FACTS as $words => [$key, $value, $label]) {
+            if (isset($f[$key]) || preg_match('/\b(?:'.$words.')\b/u', $t, $m) !== 1) {
+                continue;
+            }
+            $n = $m[1] ?? $value;
+            if ($n === null || ($value === null && (int) $n < 1)) {
+                continue;
+            }
+            $f[$key] = (string) $n;
+            $understood[] = str_replace('{n}', (string) $n, $label);
+            $t = str_replace($m[0], ' ', $t);
+        }
         $notFiltered = [];
         foreach (self::FEATURES as $words => $label) {
             if (preg_match('/\b('.$words.')\b/u', $t, $m) === 1) {
@@ -165,7 +190,8 @@ final class PlainSearch
         $words = ['under ' => 'hasta ', 'over ' => 'más de ', ' to ' => ' a ', '+ bedrooms' => '+ recámaras', '+ bathrooms' => '+ baños', '+ sq ft' => '+ pies cuadrados',
             'for rent' => 'en renta', 'multi-family' => 'multifamiliar', 'commercial' => 'comercial', 'land' => 'terreno', 'farm' => 'rancho', 'pool' => 'piscina',
             'garage' => 'garaje', 'waterfront' => 'frente al agua', 'view' => 'vista', 'yard' => 'jardín', 'basement' => 'sótano', 'acreage' => 'acres',
-            'new construction' => 'nueva construcción', 'condo or townhome' => 'condominio o casa adosada'];
+            'new construction' => 'nueva construcción', 'condo or townhome' => 'condominio o casa adosada',
+            'a pool' => 'piscina', 'a garage' => 'garaje', '-car garage' => ' autos en garaje', '+ acres' => '+ acres', '1+ acre' => '1+ acre', 'townhome' => 'casa adosada', 'condo' => 'condominio'];
 
         return array_map(fn (string $p): string => str_starts_with($p, 'in ') ? 'en '.substr($p, 3) : strtr($p, $words), $phrases);
     }
