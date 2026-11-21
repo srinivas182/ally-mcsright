@@ -62,7 +62,10 @@ export default function MyWebsite({
     templates,
     media,
     cname_target,
-}: Props) {
+    mls_boards = [],
+}: Props & {
+    mls_boards?: { name: string; status: string; status_label: string }[];
+}) {
     return (
         <>
             <Head title="My website" />
@@ -96,17 +99,53 @@ export default function MyWebsite({
                         </div>
                     </div>
                 ) : (
-                    <Manage
-                        site={site}
-                        rules={rules}
-                        templates={templates}
-                        media={media}
-                        brokerageLive={brokerage_live}
-                        cnameTarget={cname_target}
-                    />
+                    <>
+                        <MlsBoards boards={mls_boards} />
+                        <Manage
+                            site={site}
+                            rules={rules}
+                            templates={templates}
+                            media={media}
+                            brokerageLive={brokerage_live}
+                            cnameTarget={cname_target}
+                        />
+                    </>
                 )}
             </div>
         </>
+    );
+}
+
+/** IDX8: the listings on an agent's website come from the brokerage's MLS boards; nothing for the agent to set up. */
+function MlsBoards({
+    boards,
+}: {
+    boards: { name: string; status: string; status_label: string }[];
+}) {
+    if (boards.length === 0) {
+        return null;
+    }
+    const live = boards.filter((b) => b.status === 'live');
+
+    return (
+        <section className="grid gap-2 rounded-lg border p-4 text-sm">
+            <h2 className="text-base font-semibold">Homes on your website</h2>
+            <p className="text-muted-foreground">
+                {live.length > 0
+                    ? 'Your website shows homes from your brokerage’s MLS boards, with the notices each MLS asks for. There is nothing for you to sign up for.'
+                    : 'Your brokerage is setting up its MLS boards. Until the first one is approved, your website shows sample homes, each marked “Sample listing”.'}
+            </p>
+            <ul className="grid gap-1">
+                {boards.map((b) => (
+                    <li key={b.name} className="flex justify-between gap-3">
+                        <span>{b.name}</span>
+                        <span className="text-muted-foreground">
+                            {b.status_label}
+                        </span>
+                    </li>
+                ))}
+            </ul>
+        </section>
     );
 }
 

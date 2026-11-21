@@ -24,7 +24,7 @@
         @endforeach
     </div>
     <p class="card small" id="idx-total" role="status" aria-live="polite">No boards ticked yet.</p>
-    <p class="muted small">After you pay, we prepare each board's paperwork for you to sign. Until the board approves, your website shows sample listings, clearly marked.</p>
+    <p class="muted small">Your board is not listed? Sign up without it, then choose "My board isn’t listed" in Settings › MLS and we will add it. After you pay, we prepare each board's paperwork for you to sign. Until the board approves, your website shows sample listings, clearly marked.</p>
 </fieldset>
 <script nonce="{{ Vite::cspNonce() }}">
 (function () {

@@ -13,6 +13,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Core\Support\Connections;
 use Modules\Listings\Idx\Agreements;
+use Modules\Listings\Idx\BoardRequests;
 use Modules\Listings\Idx\Coverage;
 use Modules\Listings\Idx\Subscriptions;
 use Modules\Listings\Models\MlsSource;
@@ -35,6 +36,7 @@ final class HqIdxController
             'state' => preg_match('/^[A-Z]{2}$/', $state) === 1 ? $state : null,
             'queue' => app(Subscriptions::class)->queue(),
             'statuses' => Subscriptions::STATUSES,
+            'requests' => app(BoardRequests::class)->queue(), // IDX8
         ]);
     }
 
@@ -69,6 +71,23 @@ final class HqIdxController
         $data = $request->validate(['to' => ['required', 'string', 'max:20'], 'note' => ['nullable', 'string', 'max:300']]);
         $subs->move($subscription, $data['to'], $data['note'] ?? null, self::user($request));
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Moved to: '.(Subscriptions::STATUSES[$data['to']] ?? $data['to']).'.']);
+
+        return back();
+    }
+
+    /** IDX8: add a board a brokerage asked for (hidden until it has a connector and a fee). */
+    public function addRequested(Request $request, BoardRequests $requests, string $boardRequest): RedirectResponse
+    {
+        $requests->add($boardRequest, (string) $request->validate(['code' => ['required', 'string', 'max:20']])['code'], self::user($request));
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Added to MLS boards as hidden. Give it a connector and a fee, then make it public: the brokerage is emailed then.']);
+
+        return back();
+    }
+
+    public function closeRequested(Request $request, BoardRequests $requests, string $boardRequest): RedirectResponse
+    {
+        $requests->close($boardRequest, (string) $request->validate(['note' => ['required', 'string', 'max:500']])['note'], self::user($request));
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Closed. The brokerage has been told why.']);
 
         return back();
     }
