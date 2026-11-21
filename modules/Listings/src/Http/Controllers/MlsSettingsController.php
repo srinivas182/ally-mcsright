@@ -13,6 +13,7 @@ use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Listings\Access\MlsAccess;
 use Modules\Listings\Idx\Coverage;
+use Modules\Listings\Idx\DemoListings;
 use Modules\Listings\Idx\Subscriptions;
 use Modules\Listings\Models\MlsAuthorization;
 use Modules\Listings\Models\MlsSource;
@@ -34,6 +35,7 @@ final class MlsSettingsController
         return Inertia::render('settings/mls', [
             // IDX4: the brokerage's MLS boards and the boards it can add (open states, public, priced).
             'boards' => $boards,
+            'demo' => ['on' => app(DemoListings::class)->enabled($tenants->id()), 'showing' => app(DemoListings::class)->sourcesFor($tenants->id()) !== []],
             'available' => array_values(array_filter($coverage->offered($coverage->enabledStates()), fn (array $b): bool => ! in_array($b['code'], $taken, true))),
             'sources' => MlsSource::query()->whereIn('status', ['active', 'setup'])->where(fn ($q) => $q->whereNull('locked_tenant_id')->orWhere('locked_tenant_id', $tenants->id()))->orderBy('name')->get()->map(function (MlsSource $s) use ($mine, $profiles): array {
                 $a = $mine->get($s->id);
@@ -70,6 +72,15 @@ final class MlsSettingsController
     {
         $subs->submit($tenants->id(), $subscription, $request->all(), self::owner($request));
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Thank you. Next: the agreement to sign. We will remind you if it waits.']);
+
+        return back();
+    }
+
+    public function demo(Request $request, TenantContext $tenants, DemoListings $demo): RedirectResponse
+    {
+        $on = (bool) $request->validate(['on' => ['required', 'boolean']])['on'];
+        $demo->set($tenants->id(), $on, self::owner($request));
+        Inertia::flash('toast', ['type' => 'success', 'message' => $on ? 'Demo listings on until your first board is live.' : 'Demo listings off.']);
 
         return back();
     }

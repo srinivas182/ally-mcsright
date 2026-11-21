@@ -40,7 +40,7 @@ final class HqMlsController
         return Inertia::render('hq/mls', [
             'sources' => $sources->map(fn (MlsSource $s): array => [
                 'ulid' => $s->ulid, 'key' => $s->key, 'name' => $s->name, 'provider' => $s->provider, 'base_url' => $s->base_url, 'states' => $s->states,
-                'originating_system' => $s->originating_system, 'status' => $s->status, 'has_credentials' => $s->credentials !== null || ($s->provider === 'spark' && $sparkKey),
+                'originating_system' => $s->originating_system, 'status' => $s->status, 'is_demo' => $s->is_demo, 'has_credentials' => $s->credentials !== null || ($s->provider === 'spark' && $sparkKey),
                 'sync_interval_minutes' => $s->sync_interval_minutes, 'rate_limit_per_hour' => $s->rate_limit_per_hour, 'rules_profile_id' => $s->rules_profile_id,
                 'minutes_behind' => $s->minutesBehind(), 'full_sync_done' => $s->full_sync_done, 'last_error' => $s->last_error,
                 'backoff_until' => $s->backoff_until?->toIso8601String(), 'listings' => (int) ($counts->get($s->id)->total ?? 0), 'on_market' => (int) ($counts->get($s->id)->on_market ?? 0),
@@ -83,7 +83,7 @@ final class HqMlsController
 
     public function update(Request $request, MlsSource $source): RedirectResponse
     {
-        $data = $request->validate(['status' => ['nullable', Rule::in(['active', 'paused'])], 'rules_profile_id' => ['nullable', 'integer'],
+        $data = $request->validate(['status' => ['nullable', Rule::in(['active', 'paused'])], 'rules_profile_id' => ['nullable', 'integer'], 'is_demo' => ['nullable', 'boolean'],
             'sync_interval_minutes' => ['nullable', 'integer', 'min:1', 'max:1440'], 'rate_limit_per_hour' => ['nullable', 'integer', 'min:1', 'max:100000']]);
         if (array_key_exists('rules_profile_id', $data) && $data['rules_profile_id'] !== null) {
             abort_unless(RulesProfile::query()->whereKey($data['rules_profile_id'])->exists(), 422);

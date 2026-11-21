@@ -60,6 +60,7 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])
         Route::get('/', [MlsSettingsController::class, 'index'])->name('index');
         Route::post('{source}/request', [MlsSettingsController::class, 'request'])->name('request');
         // IDX4: the brokerage's MLS boards, each on its own track.
+        Route::put('demo', [MlsSettingsController::class, 'demo'])->name('demo'); // IDX5
         Route::post('boards', [MlsSettingsController::class, 'addBoard'])->middleware('throttle:20,1')->name('boards.store');
         Route::put('boards/{subscription}', [MlsSettingsController::class, 'submitBoard'])->where('subscription', '[0-9A-HJKMNP-TV-Z]{26}')->middleware(['password.confirm', 'throttle:20,1'])->name('boards.update');
         Route::delete('boards/{subscription}', [MlsSettingsController::class, 'cancelBoard'])->where('subscription', '[0-9A-HJKMNP-TV-Z]{26}')->middleware('password.confirm')->name('boards.destroy');
