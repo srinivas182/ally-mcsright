@@ -14,6 +14,7 @@ use Modules\Billing\Models\Package;
 use Modules\Marketing\LegalDefaults;
 use Modules\Marketing\PlanIncludes;
 use Modules\Marketing\Showcase;
+use Modules\Marketing\SiteChrome;
 use Modules\Marketing\Website;
 use Modules\Sites\Content\Posts;
 use stdClass;
@@ -245,29 +246,10 @@ final class SiteController
             ->header('X-Robots-Tag', $preview ? 'noindex, nofollow' : 'index, follow');
     }
 
-    /** BR3: the website menu's short words for RightAlly's own pages. */
-    private const MENU = [
-        'en' => ['for-brokers' => 'Brokerages', 'for-agents' => 'Agents', 'pricing' => 'Pricing', 'compare' => 'Compare', 'security' => 'Security', 'features' => 'Features'],
-        'es' => ['para-corredurias' => 'Corredurías', 'para-agentes' => 'Agentes', 'pricing' => 'Precios', 'precios' => 'Precios', 'security' => 'Seguridad', 'seguridad' => 'Seguridad', 'funciones' => 'Funciones'],
-    ];
-
     /** @return list<array{label: string, href: string}> */
     private function nav(string $locale): array
     {
-        $out = [];
-        foreach ($this->site->pages() as $p) {
-            // SITE1: the privacy policy and terms live in the footer, not the menu.
-            if ($p->status === 'live' && $p->locale === $locale && $p->slug !== '' && ! str_contains((string) $p->slug, '/') && ! in_array((string) $p->slug, LegalDefaults::SLUGS, true)) {
-                // BR3: short menu words; a page without one uses its title up to the colon.
-                $label = self::MENU[$locale][(string) $p->slug] ?? trim((string) strtok((string) $p->title, ':'));
-                $out[] = ['label' => mb_strimwidth($label, 0, 24, '…'), 'href' => $this->url($locale, (string) $p->slug), 'slug' => (string) $p->slug];
-            }
-        }
-        $order = ['for-brokers', 'for-agents', 'features', 'pricing', 'compare', 'security', 'funciones', 'precios'];
-        usort($out, fn (array $a, array $b): int => [array_search($a['slug'], $order, true) === false ? 99 : array_search($a['slug'], $order, true), $a['label']]
-            <=> [array_search($b['slug'], $order, true) === false ? 99 : array_search($b['slug'], $order, true), $b['label']]);
-
-        return array_map(fn (array $i): array => ['label' => $i['label'], 'href' => $i['href']], array_slice($out, 0, 6));
+        return SiteChrome::nav($locale); // SITE2: shared with the sign-up and Health Check pages
     }
 
     /**

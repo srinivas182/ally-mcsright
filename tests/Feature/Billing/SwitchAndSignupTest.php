@@ -72,6 +72,16 @@ it('has every Health Check word in English and Spanish, with a Spanish page sear
     expect($row->lang)->toBe('es')->and((string) $row->scores)->toContain('Usted dijo: En menos de 5 minutos.');
 });
 
+it('wears the same header and footer as rightally.app on the sign-up and Health Check pages (SITE2)', function (): void {
+    config(['marketing.hosts' => ['rightally.app']]);
+    foreach (['/start', '/agents', '/health-check'] as $path) {
+        $html = (string) $this->get(RA.$path)->assertOk()->getContent();
+        expect($html)->toContain('<header class="top">')->toContain('<details class="lang">')->toContain('href="https://rightally.app/"')
+            ->toContain('<footer class="site">')->toContain('href="https://rightally.app/privacy"')->toContain('href="https://rightally.app/login"')
+            ->not->toContain('Right<span>Ally</span>');
+    }
+});
+
 it('shows public prices with offer markup, checks the address, and sends the broker to payment', function (): void {
     $this->get(RA.'/start')->assertOk()->assertSee('$299')->assertSee('"@type":"Offer"', false)->assertSee('<meta name="robots" content="index, follow">', false);
     $this->getJson(RA.'/start/address?slug=oak-realty')->assertJson(['ok' => true, 'host' => 'oak-realty.rightally.app']);
