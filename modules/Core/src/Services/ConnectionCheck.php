@@ -72,6 +72,8 @@ final class ConnectionCheck
             'numverify' => $this->json($this->http()->get('https://apilayer.net/api/validate', ['access_key' => $k['api_key'], 'number' => '14158586273']),
                 fn (array $j): bool => ! array_key_exists('success', $j) || $j['success'] !== false),
             'stripe' => $this->stripe($k['secret_key'], $test),
+            // IDX2: read one listing (nothing is changed).
+            'spark' => $this->status($this->http()->withToken($k['access_token'])->acceptJson()->get(rtrim(($k['endpoint'] ?? '') !== '' ? $this->host($k['endpoint']) : 'https://replication.sparkapi.com/Reso/OData', '/').'/Property', ['$top' => 1, '$select' => 'ListingKey'])),
             // EM1: sign in to the provider's mail server (nothing is sent).
             'brevo', 'postmark_send', 'ses' => ($why = PlatformEmail::check($provider, $k)) === null
                 ? ['ok' => true, 'message' => 'Signed in to the mail server. Switch to Test and send yourself an invitation to see it arrive.']
@@ -107,7 +109,8 @@ final class ConnectionCheck
     {
         foreach (Catalog::all() as $service) {
             if (isset($service['providers'][$provider])) {
-                return array_keys($service['providers'][$provider]['fields']);
+                // A field marked optional (such as a different server address) may be left empty.
+                return array_keys(array_filter($service['providers'][$provider]['fields'], fn (array $f): bool => ! ($f['optional'] ?? false)));
             }
         }
 

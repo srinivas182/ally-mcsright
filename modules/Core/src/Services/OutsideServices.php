@@ -210,7 +210,7 @@ final class OutsideServices
     }
 
     /**
-     * @return array{label: string, about: string, level: string, sprint: string, contacts: bool, providers: array<string, array{label: string, fields: array<string, array{label: string, kind: string, hint?: string}>, note?: string}>}
+     * @return array{label: string, about: string, level: string, sprint: string, contacts: bool, providers: array<string, array{label: string, fields: array<string, array{label: string, kind: string, hint?: string, optional?: bool}>, note?: string}>}
      */
     private function guard(int $tenantId, string $service): array
     {

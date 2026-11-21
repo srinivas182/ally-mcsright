@@ -31,3 +31,13 @@ onboarding, connector blueprint, multi-MLS PRD), adjusted to RightAlly.
 | IDX8   | "My board isn't listed" requests; agents inheriting the brokerage's boards                                                                                                                              |
 | IDX9   | Automatic area pages (city, neighbourhood, school) from live listings                                                                                                                                   |
 | IDX10  | Plain-English home search through Ailly; instant new-listing alerts (opt-in, 8am–9pm)                                                                                                                   |
+
+## IDX2 · Spark API (built)
+
+- **Key:** HQ › Outside services › _MLS listings: Spark API_. Test uses Spark's demo data (address
+  `https://sparkapi.com/Reso/OData`); Live uses RightAlly's replication key (`https://replication.sparkapi.com/Reso/OData`,
+  ask api-support@sparkplatform.com for replication permission). "Check connection" reads one listing.
+- **Each board's feed:** HQ › MLS connections → add a connection with provider _Spark API_. Leave the token empty to use
+  RightAlly's key, or paste a key that board issued. Spark is read at most every 10 minutes (enforced).
+- **How it reads:** a closed time window (`ModificationTimestamp gt <last> and lt <now − 1 min>`, as Spark asks because of
+  its caching), up to 1,000 listings a page with photos, following Spark's next-page links.

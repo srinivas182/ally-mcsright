@@ -16,7 +16,7 @@ namespace Modules\Core\Services;
 final class Catalog
 {
     /**
-     * @return array<string, array{label: string, about: string, level: string, sprint: string, contacts: bool, providers: array<string, array{label: string, fields: array<string, array{label: string, kind: string, hint?: string}>, note?: string}>}>
+     * @return array<string, array{label: string, about: string, level: string, sprint: string, contacts: bool, providers: array<string, array{label: string, fields: array<string, array{label: string, kind: string, hint?: string, optional?: bool}>, note?: string}>}>
      */
     public static function all(): array
     {
@@ -132,6 +132,14 @@ final class Catalog
                         'signing_key' => ['label' => 'HTTP webhook signing key', 'kind' => 'secret']],
                         'note' => 'Route action: forward("https://<HQ address>/webhooks/inbound/mailgun"). Each post is checked with the webhook signing key.'],
                 ]],
+            // IDX2: MLS listings through Spark (Flexmls boards such as MLS United). The key is RightAlly's vendor key;
+            // each MLS board's feed is set in HQ › MLS connections with the provider "Spark API".
+            'idx_spark' => ['label' => 'MLS listings: Spark API', 'about' => 'Copies listings from Flexmls boards on Spark (such as MLS United) into RightAlly, every 10 minutes. Test uses Spark\'s demo data; Live uses the boards that approved RightAlly.',
+                'level' => 'hq', 'sprint' => 'IDX2', 'contacts' => false, 'providers' => [
+                    'spark' => ['label' => 'Spark API (recommended for MLS United)', 'fields' => ['access_token' => ['label' => 'Access token (from your Spark API key)', 'kind' => 'secret'],
+                        'endpoint' => ['label' => 'Address (leave empty for the replication address)', 'kind' => 'text', 'hint' => 'https://replication.sparkapi.com/Reso/OData', 'optional' => true]],
+                        'note' => 'For Spark\'s demo data use the address https://sparkapi.com/Reso/OData in Test. Live needs a key with replication permission (ask api-support@sparkplatform.com).'],
+                ]],
             'platform_email' => ['label' => 'Platform email', 'about' => 'Sends RightAlly\'s own email: invitations, sign-in codes, notices and Watchtower alerts. Test sends everything only to your first test contact. Off uses the server\'s mail settings.',
                 'level' => 'hq', 'sprint' => 'EM1', 'contacts' => false, 'providers' => [
                     'brevo' => ['label' => 'Brevo (recommended)', 'fields' => ['smtp_login' => ['label' => 'SMTP login (Settings › SMTP & API › SMTP)', 'kind' => 'text'],
@@ -168,7 +176,7 @@ final class Catalog
         ];
     }
 
-    /** @return array{label: string, about: string, level: string, sprint: string, contacts: bool, providers: array<string, array{label: string, fields: array<string, array{label: string, kind: string, hint?: string}>, note?: string}>}|null */
+    /** @return array{label: string, about: string, level: string, sprint: string, contacts: bool, providers: array<string, array{label: string, fields: array<string, array{label: string, kind: string, hint?: string, optional?: bool}>, note?: string}>}|null */
     public static function get(string $service): ?array
     {
         return self::all()[$service] ?? null;

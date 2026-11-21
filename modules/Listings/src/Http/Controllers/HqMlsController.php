@@ -12,6 +12,7 @@ use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Core\Audit\AuditLogger;
+use Modules\Core\Services\OutsideServices;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\Attributes\CrossTenantAccess;
 use Modules\Core\Tenancy\Models\Tenant;
@@ -34,11 +35,12 @@ final class HqMlsController
         $runs = DB::connection(Connections::listings())->table('mls_sync_runs')->orderByDesc('id')->limit(200)->get()->groupBy('mls_source_id');
         $tenants = Tenant::query()->pluck('name', 'id');
         $sources = MlsSource::query()->orderBy('name')->get();
+        $sparkKey = app(OutsideServices::class)->active('idx_spark') !== null; // IDX2: Spark feeds may use RightAlly's Spark key
 
         return Inertia::render('hq/mls', [
             'sources' => $sources->map(fn (MlsSource $s): array => [
                 'ulid' => $s->ulid, 'key' => $s->key, 'name' => $s->name, 'provider' => $s->provider, 'base_url' => $s->base_url, 'states' => $s->states,
-                'originating_system' => $s->originating_system, 'status' => $s->status, 'has_credentials' => $s->credentials !== null,
+                'originating_system' => $s->originating_system, 'status' => $s->status, 'has_credentials' => $s->credentials !== null || ($s->provider === 'spark' && $sparkKey),
                 'sync_interval_minutes' => $s->sync_interval_minutes, 'rate_limit_per_hour' => $s->rate_limit_per_hour, 'rules_profile_id' => $s->rules_profile_id,
                 'minutes_behind' => $s->minutesBehind(), 'full_sync_done' => $s->full_sync_done, 'last_error' => $s->last_error,
                 'backoff_until' => $s->backoff_until?->toIso8601String(), 'listings' => (int) ($counts->get($s->id)->total ?? 0), 'on_market' => (int) ($counts->get($s->id)->on_market ?? 0),
@@ -67,6 +69,9 @@ final class HqMlsController
             'sync_interval_minutes' => ['required', 'integer', 'min:1', 'max:1440'], 'rate_limit_per_hour' => ['required', 'integer', 'min:1', 'max:100000'],
         ]);
         $data['base_url'] = ($data['base_url'] ?? '') !== '' ? $data['base_url'] : MlsSource::PRESETS[$data['provider']]['base_url'];
+        if ($data['provider'] === 'spark') {
+            $data['sync_interval_minutes'] = max(MlsSource::SPARK_MIN_INTERVAL, (int) $data['sync_interval_minutes']); // Spark: at most every 10 minutes
+        }
         if ($data['base_url'] === null) {
             return back()->withErrors(['base_url' => 'Enter the address the MLS gave you for this feed.']);
         }
@@ -82,6 +87,9 @@ final class HqMlsController
             'sync_interval_minutes' => ['nullable', 'integer', 'min:1', 'max:1440'], 'rate_limit_per_hour' => ['nullable', 'integer', 'min:1', 'max:100000']]);
         if (array_key_exists('rules_profile_id', $data) && $data['rules_profile_id'] !== null) {
             abort_unless(RulesProfile::query()->whereKey($data['rules_profile_id'])->exists(), 422);
+        }
+        if ($source->provider === 'spark' && isset($data['sync_interval_minutes'])) {
+            $data['sync_interval_minutes'] = max(MlsSource::SPARK_MIN_INTERVAL, (int) $data['sync_interval_minutes']);
         }
         $source->fill(array_filter($data, fn ($v): bool => $v !== null) + (array_key_exists('rules_profile_id', $data) ? ['rules_profile_id' => $data['rules_profile_id']] : []))->save();
         app(AuditLogger::class)->record('listings.mls.source_updated', metadata: ['key' => $source->key, 'changes' => array_keys($data)], severity: 'notice');

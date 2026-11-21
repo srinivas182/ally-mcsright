@@ -82,6 +82,7 @@ const providerLabels: Record<string, string> = {
     trestle: 'Trestle (CoreLogic)',
     bridge: 'Bridge Interactive',
     direct_reso: 'Direct RESO Web API',
+    spark: 'Spark API (Flexmls, MLS United)',
 };
 
 /** HQ → MLS connections: feeds, write-only credentials, display rules, freshness and brokerage licences. */
