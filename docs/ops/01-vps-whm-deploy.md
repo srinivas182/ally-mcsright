@@ -43,13 +43,15 @@ changes (a load balancer instead of Apache).
 4. **Send the traffic to RightAlly.** Find the folder names cPanel uses for the two sites:
 
     ```bash
-    ls /var/cpanel/userdata/<cpuser>/      # rightally.app and the wildcard (usually _wildcard_.rightally.app)
+    ls /var/cpanel/userdata/<cpuser>/      # rightally.app and the wildcard: wildcard_safe.rightally.app
     ```
 
-    For **each** of the two names, create the same file in both the `ssl` and `std` folders:
+    cPanel names the wildcard's folder `wildcard_safe.rightally.app` (not `*.rightally.app`). **Install the
+    certificates (step 3) first**: the secure (`ssl`) sites only exist once a certificate is installed. Then, for
+    **each** of the two names, create the same file in both the `ssl` and `std` folders:
 
     ```bash
-    for site in rightally.app _wildcard_.rightally.app; do
+    for site in rightally.app wildcard_safe.rightally.app; do
       for kind in ssl std; do
         mkdir -p /etc/apache2/conf.d/userdata/$kind/2_4/<cpuser>/$site
         cat > /etc/apache2/conf.d/userdata/$kind/2_4/<cpuser>/$site/rightally.conf <<'CONF'
@@ -61,11 +63,28 @@ changes (a load balancer instead of Apache).
     CONF
       done
     done
-    /scripts/ensure_vhost_includes --user=<cpuser>
-    /scripts/restartsrv_httpd
+    /scripts/rebuildhttpdconf && /scripts/restartsrv_httpd
+    grep -n "userdata/.*/<cpuser>" /etc/apache2/conf/httpd.conf     # 4 Include lines without a # in front
+    curl -sI https://app.rightally.app/up | head -1                  # HTTP/2 200 once RightAlly is running
     ```
 
     Nothing needs opening in the firewall: port 8100 only listens on the server itself.
+
+    **Keep AutoSSL away:** it does not trust Cloudflare's certificate and would replace it (Cloudflare then shows
+    error 526). In cPanel › SSL/TLS Status exclude all three names, or:
+
+    ```bash
+    uapi --user=<cpuser> SSL add_autossl_excluded_domains domains='rightally.app,*.rightally.app,www.rightally.app'
+    ```
+
+    **Checking the certificate:** test against the server's public IP, not `127.0.0.1` (cPanel's secure sites
+    listen on the public IP; `127.0.0.1` always shows the server's own certificate):
+
+    ```bash
+    echo | openssl s_client -connect <server IP>:443 -servername app.rightally.app 2>/dev/null | openssl x509 -noout -issuer
+    ```
+
+    It should name `CloudFlare Origin SSL Certificate Authority`.
 
 ## 3 · Start RightAlly (first time)
 
