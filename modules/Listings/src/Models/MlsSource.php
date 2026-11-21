@@ -26,6 +26,7 @@ use Modules\Core\Tenancy\Concerns\HasPublicUlid;
  * @property int $sync_interval_minutes
  * @property int $rate_limit_per_hour
  * @property int|null $rules_profile_id
+ * @property bool $is_demo sample listings for brokerages waiting on MLS approval (IDX5)
  * @property int|null $locked_tenant_id only this brokerage may use the feed (its own key, IDX4)
  * @property string $timezone
  * @property string|null $cursor
@@ -75,7 +76,7 @@ final class MlsSource extends Model
     protected $table = 'mls_sources';
 
     protected $fillable = ['key', 'name', 'states', 'provider', 'base_url', 'originating_system', 'credentials', 'status', 'sync_interval_minutes', 'rate_limit_per_hour',
-        'rules_profile_id', 'locked_tenant_id', 'timezone', 'cursor', 'next_link', 'full_sync_done', 'last_success_at', 'last_reconciled_at', 'backoff_until', 'failures', 'last_error'];
+        'rules_profile_id', 'locked_tenant_id', 'is_demo', 'timezone', 'cursor', 'next_link', 'full_sync_done', 'last_success_at', 'last_reconciled_at', 'backoff_until', 'failures', 'last_error'];
 
     protected $hidden = ['credentials'];
 
@@ -89,7 +90,7 @@ final class MlsSource extends Model
      */
     protected function casts(): array
     {
-        return ['states' => 'array', 'credentials' => 'encrypted:array', 'full_sync_done' => 'boolean', 'locked_tenant_id' => 'integer', 'last_success_at' => 'immutable_datetime',
+        return ['states' => 'array', 'credentials' => 'encrypted:array', 'full_sync_done' => 'boolean', 'locked_tenant_id' => 'integer', 'is_demo' => 'boolean', 'last_success_at' => 'immutable_datetime',
             'last_reconciled_at' => 'immutable_datetime', 'backoff_until' => 'immutable_datetime'];
     }
 

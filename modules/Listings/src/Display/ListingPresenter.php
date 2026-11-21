@@ -77,7 +77,9 @@ final class ListingPresenter
             'allow_avm' => $listing->avm_allowed,
             'allow_comments' => $listing->comments_allowed,
             'stale' => $stale,
-            'indexable' => $onMarket || $rules->index_off_market,
+            // IDX5: a sample from a demo feed is marked as such and never indexed.
+            'sample' => $source->is_demo,
+            'indexable' => ! $source->is_demo && ($onMarket || $rules->index_off_market),
         ];
     }
 

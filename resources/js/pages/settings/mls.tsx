@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { FormField } from '@/components/ui/form-field';
 import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/ui/page-header';
+import { Switch } from '@/components/ui/switch';
 
 type Source = {
     ulid: string;
@@ -80,10 +81,12 @@ export default function MlsSettings({
     sources,
     boards = [],
     available = [],
+    demo = { on: true, showing: false },
 }: {
     sources: Source[];
     boards?: Board[];
     available?: Available[];
+    demo?: { on: boolean; showing: boolean };
 }) {
     const [adding, setAdding] = useState('');
     const current = boards.filter((b) => b.status !== 'cancelled');
@@ -104,6 +107,33 @@ export default function MlsSettings({
                 {current.map((b) => (
                     <BoardCard key={b.ulid} board={b} />
                 ))}
+
+                {current.length > 0 &&
+                    !current.some((b) => b.status === 'live') && (
+                        <label className="flex items-start justify-between gap-4 rounded-xl border bg-card p-5">
+                            <span>
+                                <span className="block font-semibold">
+                                    Show demo listings until my first board is
+                                    live
+                                </span>
+                                <span className="block text-sm text-muted-foreground">
+                                    {demo.showing
+                                        ? 'Your website shows sample homes now, each marked “Sample listing”.'
+                                        : 'Your website shows no homes until your first board is live.'}
+                                </span>
+                            </span>
+                            <Switch
+                                checked={demo.on}
+                                onCheckedChange={(on) =>
+                                    router.put(
+                                        '/settings/mls/demo',
+                                        { on },
+                                        { preserveScroll: true },
+                                    )
+                                }
+                            />
+                        </label>
+                    )}
 
                 {available.length > 0 && (
                     <section className="grid gap-3 rounded-xl border bg-card p-5">

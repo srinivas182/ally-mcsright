@@ -9,12 +9,14 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\ValidationException;
 use Modules\Core\Audit\AuditLogger;
+use Modules\Listings\Idx\DemoListings;
 use Modules\Listings\Models\MlsAuthorization;
 use Modules\Listings\Models\MlsSource;
 
 /**
  * MLS licences (ADR 0012): a brokerage requests access to an MLS; HQ approves with scopes and an expiry; every
- * listing query checks it (licensedSources). Revoked or expired licences take effect at once.
+ * listing query checks it (licensedSources). Revoked or expired licences take effect at once. IDX5: a brokerage with
+ * no live board yet sees demo listings on its websites instead (DemoListings), until its first board goes live.
  */
 final class MlsAccess
 {
@@ -29,8 +31,10 @@ final class MlsAccess
             ->get(['mls_source_id', 'scopes', 'expires_on'])->map(fn (MlsAuthorization $a): array => ['source' => $a->mls_source_id, 'scopes' => $a->scopes,
                 'expires' => $a->expires_on?->toDateString()])->all());
 
-        return array_values(array_map(fn (array $r): int => (int) $r['source'], array_filter($rows,
+        $licensed = array_values(array_map(fn (array $r): int => (int) $r['source'], array_filter($rows,
             fn (array $r): bool => in_array($scope, $r['scopes'], true) && ($r['expires'] === null || $r['expires'] >= $today))));
+
+        return $scope === 'idx' && $licensed === [] ? app(DemoListings::class)->sourcesFor($tenantId) : $licensed;
     }
 
     /**

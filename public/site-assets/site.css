@@ -2480,3 +2480,17 @@ h3 {
     background: #000;
     margin: 1rem 0;
 }
+
+/* IDX5: demo listings are clearly marked as samples. */
+.card-media .tag.sample {
+    background: #fff4de;
+    color: #7a4b00;
+}
+.sample-note {
+    margin: 0 0 12px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: #fff4de;
+    color: #7a4b00;
+    font-weight: 600;
+}
