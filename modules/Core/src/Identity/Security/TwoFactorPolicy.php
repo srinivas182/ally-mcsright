@@ -23,6 +23,28 @@ final class TwoFactorPolicy
 {
     public const GRACE_DAYS = 14;
 
+    /** UI2: the longest a test-period pause may run. */
+    public const MAX_PAUSE_DAYS = 30;
+
+    /**
+     * The end of a test-period pause (SECURITY_TWO_FACTOR_PAUSED_UNTIL), or null when there is none, it has ended, or
+     * it is set further ahead than MAX_PAUSE_DAYS (then it is ignored, so it can never be left on by accident).
+     */
+    public static function pausedUntil(): ?CarbonImmutable
+    {
+        $raw = config('core.two_factor_paused_until');
+        if (! is_string($raw) || trim($raw) === '') {
+            return null;
+        }
+        try {
+            $until = CarbonImmutable::parse(trim($raw))->endOfDay();
+        } catch (\Throwable) {
+            return null;
+        }
+
+        return $until->isFuture() && $until->lte(CarbonImmutable::now()->addDays(self::MAX_PAUSE_DAYS)->endOfDay()) ? $until : null;
+    }
+
     /** Whether the second factor is needed today, with no grace. */
     public function requiresNow(User $user): bool
     {
@@ -67,6 +89,9 @@ final class TwoFactorPolicy
         if ($this->satisfied($user)) {
             return false;
         }
+        if (self::pausedUntil() !== null) {
+            return false; // a test-period pause: the reminder stays, nothing is blocked
+        }
         $due = $this->dueAt($user);
 
         return $due === null || ! $due->isFuture();
@@ -79,6 +104,10 @@ final class TwoFactorPolicy
             return null;
         }
         $due = $this->dueAt($user);
+        $paused = self::pausedUntil();
+        if ($paused !== null && ($due === null || ! $due->isFuture() || $paused->gt($due))) {
+            $due = $paused;
+        }
         if ($due === null || ! $due->isFuture()) {
             return null;
         }

@@ -12,6 +12,7 @@ use Modules\Core\Identity\Models\TrustedDevice;
 use Modules\Core\Identity\Notifications\NewSignInNotification;
 use Modules\Core\Identity\Notifications\SecurityResetNotification;
 use Modules\Core\Identity\Security\TrustedDevices;
+use Modules\Core\Launch\LaunchReadiness;
 use PragmaRX\Google2FA\Google2FA;
 
 const CHROME_WIN = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
@@ -45,6 +46,24 @@ it('sends owners without a second factor to set one up', function (): void {
 
     withTwoFactor($owner);
     $this->actingAs($owner->fresh())->get('/users')->assertOk();
+});
+
+it('can pause two-step sign-in for testing until a date, at most 30 days ahead, with the reminder kept (UI2)', function (): void {
+    $owner = User::factory()->owner()->withoutTwoFactor()->create();
+    config(['core.two_factor_paused_until' => now()->addDays(10)->toDateString()]);
+
+    $this->actingAs($owner)->get('/users')->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->where('security.secondFactorMissing', false)->where('security.secondFactorDaysLeft', 11));
+    expect(collect(app(LaunchReadiness::class)->checks())->firstWhere('check', 'Two-step sign-in on for everyone')['ok'] ?? null)->toBeFalse();
+
+    // Too far ahead: ignored, so it can never be left on by accident.
+    config(['core.two_factor_paused_until' => now()->addDays(90)->toDateString()]);
+    $this->actingAs($owner)->get('/users')->assertRedirect('/settings/security');
+
+    // The date passes: it is required again.
+    config(['core.two_factor_paused_until' => now()->addDays(2)->toDateString()]);
+    $this->travel(3)->days();
+    $this->actingAs($owner)->get('/users')->assertRedirect('/settings/security');
 });
 
 it('gives agents 14 days to add a second step, unless the brokerage requires it now (SX3)', function (): void {
