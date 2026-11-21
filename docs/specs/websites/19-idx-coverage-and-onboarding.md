@@ -95,3 +95,23 @@ onboarding, connector blueprint, multi-MLS PRD), adjusted to RightAlly.
   with the reason; HQ can "Send signed agreement to the MLS now" anyway. HQ and the brokerage can download the signed copy.
 - **Nightly compliance watch (`idx:compliance`):** each live board's website home search must open and show the board's
   MLS notice (its fixed words). Problems are shown in the queue and emailed to HQ's Watchtower recipients.
+
+## IDX7: boards at sign-up and extra-board fees
+
+- The brokerage sign-up page (`/start`) and the agent sign-up page (`/agents`) show a "Your MLS boards" step when HQ has
+  opened at least one state with a public, priced board. The broker ticks the states where they hold a licence, then
+  the boards they belong to. Connector names are never shown. Without JavaScript every board is listed; the small
+  script only hides boards outside the ticked states and adds up the total.
+- Only boards offered at that moment are kept (open state, public, priced), at most 20. They are stored on the
+  `signups.idx_boards` column and, once the payment goes through, added to the new brokerage on demo listings
+  (`Subscriptions::add` with no user). A board that closed in the meantime is skipped and reported; the brokerage can
+  add another from Settings › MLS.
+- **Fees** (`Idx\BoardFees`): the package includes one board. The included board is the dearest one the brokerage has,
+  so it always pays the least. Each other board adds its monthly fee to the invoice on the 1st, in the same run as the
+  other extras (`billing:bill-addons`), once a month (`idx-boards:{tenant}:{Y-m}` in `billing_gateway_events`).
+- Settings › MLS shows "Included in your plan" on the included board and "+$X a month on your invoice" on the others,
+  with a one-line total.
+
+Defaults for HQ to review: extra boards are billed monthly even on yearly plans; no proration (a board added on the
+15th is billed in full on the next 1st, a board cancelled before the 1st is not billed); one-off setup fees are not
+charged yet.

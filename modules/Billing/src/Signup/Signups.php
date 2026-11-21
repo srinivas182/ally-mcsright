@@ -28,6 +28,8 @@ use Modules\Core\Tenancy\Models\Tenant;
 use Modules\Core\Tenancy\Models\TenantDomain;
 use Modules\Core\Tenancy\Slug;
 use Modules\Core\Tenancy\TenantContext;
+use Modules\Listings\Idx\Coverage;
+use Modules\Listings\Idx\Subscriptions;
 use stdClass;
 use Throwable;
 
@@ -52,7 +54,7 @@ final class Signups
      *
      * A solo agent's signup (type "solo") creates a RightAlly of their own; its name is the agent's or team's name.
      *
-     * @param  array{brokerage: string, slug: string, owner_name: string, owner_email: string, state?: string|null, agents?: int|null, package: string, interval: string, health_check_id?: int|null, ref?: string|null}  $in
+     * @param  array{brokerage: string, slug: string, owner_name: string, owner_email: string, state?: string|null, agents?: int|null, package: string, interval: string, health_check_id?: int|null, ref?: string|null, boards?: list<string>}  $in
      */
     public function begin(array $in, string $returnBase, string $type = 'brokerage'): string
     {
@@ -76,7 +78,7 @@ final class Signups
             'ulid' => $ulid, 'type' => $type, 'brokerage' => mb_substr(trim($in['brokerage']), 0, 150), 'slug' => $slug, 'owner_name' => mb_substr(trim($in['owner_name']), 0, 120),
             'owner_email' => mb_strtolower(trim($in['owner_email'])), 'state' => isset($in['state']) && $in['state'] !== '' ? strtoupper($in['state']) : null,
             'agents' => $in['agents'] ?? null, 'package_id' => $package->id, 'interval' => $interval, 'health_check_id' => $in['health_check_id'] ?? null,
-            'status' => 'pending', 'referral_code' => isset($in['ref']) && preg_match('/^[a-z0-9]{3,24}$/', (string) $in['ref']) === 1 ? (string) $in['ref'] : null,
+            'idx_boards' => self::chosenBoards($in['boards'] ?? []), 'status' => 'pending', 'referral_code' => isset($in['ref']) && preg_match('/^[a-z0-9]{3,24}$/', (string) $in['ref']) === 1 ? (string) $in['ref'] : null,
             'created_at' => now(), 'updated_at' => now(),
         ]);
 
@@ -120,12 +122,37 @@ final class Signups
             app(ManageInvitations::class)->invite((string) $signup->owner_email, $first, $last, UserKind::Owner, null);
         });
         app(GoLive::class)->start($tenant);
+        // IDX7: the MLS boards chosen at sign-up start on demo listings straight away.
+        foreach ((array) json_decode((string) ($signup->idx_boards ?? '[]'), true) as $board) {
+            try {
+                app(Subscriptions::class)->add($tenant->id, (string) $board, null);
+            } catch (Throwable $e) {
+                report($e); // a board closed in the meantime: the brokerage can add another from Settings › MLS
+            }
+        }
         $db->table('signups')->where('id', $signup->id)->update(['status' => 'live', 'tenant_id' => $tenant->id, 'updated_at' => now()]);
         // RF1 (specs/billing/08): a signup that came through a referral link.
         app(Affiliates::class)->attribute($signup->referral_code ?? null, $tenant, (string) $signup->owner_email);
         app(Affiliates::class)->paid($tenant->id, (int) ($object['amount_total'] ?? 0));
         app(AuditLogger::class)->record('billing.signup.live', metadata: ['brokerage' => $signup->brokerage, 'package_id' => (int) $signup->package_id, 'interval' => $signup->interval],
             severity: 'notice', tenantId: $tenant->id);
+    }
+
+    /**
+     * IDX7: only boards that are offered now (open state, public, priced); never more than 20.
+     *
+     * @param  array<int, mixed>  $boards
+     */
+    private static function chosenBoards(array $boards): ?string
+    {
+        if ($boards === [] || ! class_exists(Coverage::class)) {
+            return null;
+        }
+        $coverage = app(Coverage::class);
+        $offered = array_column($coverage->offered($coverage->enabledStates()), 'ulid');
+        $chosen = array_slice(array_intersect(array_unique(array_map('strval', $boards)), $offered), 0, 20);
+
+        return $chosen !== [] ? (string) json_encode($chosen) : null;
     }
 
     /** The brokerage a signup created, for the subscription's later payment events. */

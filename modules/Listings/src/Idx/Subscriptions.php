@@ -100,7 +100,7 @@ final class Subscriptions
     }
 
     /** The brokerage adds a board it belongs to: it starts on demo listings. */
-    public function add(int $tenantId, string $boardUlid, User $by): string
+    public function add(int $tenantId, string $boardUlid, ?User $by): string
     {
         $board = $this->db()->table('idx_boards')->where('ulid', $boardUlid)->first();
         $offered = collect($this->coverage->offered($this->coverage->enabledStates()))->firstWhere('ulid', $boardUlid);
@@ -112,7 +112,7 @@ final class Subscriptions
             throw ValidationException::withMessages(['board' => 'You already have this board.']);
         }
         $row = ['connector' => $board->main_connector, 'status' => 'demo', 'fee_cents' => $offered['fee_cents'], 'client_note' => null, 'reminders' => 0,
-            'status_at' => now(), 'cancelled_at' => null, 'live_at' => null, 'mls_authorization_id' => null, 'created_by' => $by->id, 'updated_at' => now()];
+            'status_at' => now(), 'cancelled_at' => null, 'live_at' => null, 'mls_authorization_id' => null, 'created_by' => $by?->id, 'updated_at' => now()];
         if ($existing !== null) {
             $this->db()->table('idx_subscriptions')->where('id', $existing->id)->update($row);
             $ulid = (string) $existing->ulid;

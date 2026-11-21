@@ -15,6 +15,7 @@ use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Listings\Access\MlsAccess;
+use Modules\Listings\Idx\BoardFees;
 use Modules\Listings\Idx\Coverage;
 use Modules\Listings\Idx\DemoListings;
 use Modules\Listings\Idx\Subscriptions;
@@ -39,6 +40,8 @@ final class MlsSettingsController
         return Inertia::render('settings/mls', [
             // IDX4: the brokerage's MLS boards and the boards it can add (open states, public, priced).
             'boards' => $boards,
+            // IDX7: one board is included in the package; each extra board is added to the monthly invoice.
+            'fees' => app(BoardFees::class)->current(),
             'demo' => ['on' => app(DemoListings::class)->enabled($tenants->id()), 'showing' => app(DemoListings::class)->sourcesFor($tenants->id()) !== []],
             'available' => array_values(array_filter($coverage->offered($coverage->enabledStates()), fn (array $b): bool => ! in_array($b['code'], $taken, true))),
             'sources' => MlsSource::query()->whereIn('status', ['active', 'setup'])->where(fn ($q) => $q->whereNull('locked_tenant_id')->orWhere('locked_tenant_id', $tenants->id()))->orderBy('name')->get()->map(function (MlsSource $s) use ($mine, $profiles): array {

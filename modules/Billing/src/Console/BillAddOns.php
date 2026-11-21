@@ -8,6 +8,7 @@ use Illuminate\Console\Command;
 use Modules\Billing\Builder\AddOns;
 use Modules\Core\Tenancy\Models\Tenant;
 use Modules\Core\Tenancy\TenantContext;
+use Modules\Listings\Idx\BoardFees;
 
 /** PB2, on the 1st: add each brokerage's extras for the month to its invoice. */
 final class BillAddOns extends Command
@@ -22,6 +23,10 @@ final class BillAddOns extends Command
         foreach (Tenant::query()->where('status', 'active')->where('type', '!=', 'hq')->get() as $tenant) {
             try {
                 $total += $tenants->runAs($tenant, fn (): int => app(AddOns::class)->bill());
+                // IDX7: MLS boards beyond the one the package includes.
+                if (class_exists(BoardFees::class)) {
+                    $total += $tenants->runAs($tenant, fn (): int => app(BoardFees::class)->bill());
+                }
             } catch (\Throwable $e) {
                 report($e);
             }
