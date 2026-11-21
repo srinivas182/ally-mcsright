@@ -12,6 +12,7 @@ use Inertia\Testing\AssertableInertia as Assert;
 use Modules\AI\Models\AiFeatureRoute;
 use Modules\AI\Models\AiModel;
 use Modules\AI\Providers\ProviderRegistry;
+use Modules\Crm\Consent;
 use Modules\Crm\Leads\LeadAlert;
 use Modules\Crm\Leads\LeadRouting;
 use Modules\Crm\Models\Activity;
@@ -250,4 +251,21 @@ it('compares homes side by side and lets the brokerage set the sign-up prompt', 
     $this->actingAs($this->owner)->patch('/settings/website', ['settings' => ['signup_after' => 0]])->assertSessionHasNoErrors();
     expect((string) $this->get($this->web.'/')->getContent())->toContain('data-signup-after="0"');
     $this->actingAs($this->owner)->get('/settings/website')->assertInertia(fn (Assert $p) => $p->where('site.signup_after', 0));
+});
+
+it('lets a visitor ask for texts about a saved search, recording their number and the exact consent words (IDX10)', function (): void {
+    $me = vjSignIn($this);
+    $auth = ['Authorization' => 'Bearer '.$me['token']];
+    $name = $this->postJson($this->web.'/_me/searches', ['query' => 'q=78704&max_price=600000&pool=1'], $auth)->assertOk()->json('name');
+    expect(SavedSearch::query()->sole()->filters['pool'])->toBeTrue();
+
+    $this->postJson($this->web.'/_me/searches/text', ['name' => $name, 'phone' => '512 555 0199'], $auth)->assertUnprocessable(); // the box must be ticked
+    $this->postJson($this->web.'/_me/searches/text', ['name' => $name, 'phone' => '12', 'agree' => true], $auth)->assertUnprocessable()->assertJsonValidationErrors('phone');
+    $this->postJson($this->web.'/_me/searches/text', ['name' => $name, 'phone' => '(512) 555-0199', 'agree' => true], $auth)->assertOk();
+
+    $search = SavedSearch::query()->sole();
+    $contact = $search->contact;
+    expect($search->text_alerts)->toBeTrue()->and($contact->primary_phone)->toBe('+15125550199')->and($contact->sms_consent_method)->toBe('web_form')
+        ->and($contact->sms_consent_text)->toContain('Reply STOP to stop')->and(app(Consent::class)->canAutoText($contact))->toBeTrue();
+    $this->postJson($this->web.'/_me/searches/text', ['name' => 'Not mine', 'phone' => '5125550199', 'agree' => true], $auth)->assertNotFound();
 });

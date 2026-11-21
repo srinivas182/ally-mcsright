@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 use Modules\Crm\Models\Contact;
 use Modules\Crm\Models\Lead;
+use Modules\Crm\Models\SavedSearch;
 use Modules\Crm\Searches\SavedSearches;
 use Modules\Sites\Models\Site;
 use Modules\Sites\Models\SiteVisitor;
@@ -114,6 +115,23 @@ final class VisitorController
         $this->visitors->note($visitor, 'search', null, ['saved' => $search->name]);
 
         return response()->json(['ok' => true, 'name' => $search->name]);
+    }
+
+    /** IDX10: texts too, for a search this visitor saved (their own number and written consent). */
+    public function textSearch(Request $request, SavedSearches $searches): JsonResponse
+    {
+        $visitor = $this->account($request);
+        abort_unless(RateLimiter::attempt('site-texts:'.$visitor->id, 5, fn (): bool => true, 600), 429, 'Too many tries. Wait a few minutes.');
+        $data = $request->validate(['name' => ['required', 'string', 'max:100'], 'phone' => ['required', 'string', 'max:20'], 'agree' => ['accepted']],
+            ['agree.accepted' => 'Tick the box to agree to texts.']);
+        $contact = $visitor->contact_id !== null ? Contact::query()->find($visitor->contact_id) : null;
+        abort_if($contact === null, 409, 'Your account is still being set up. Try again in a moment.');
+        $search = SavedSearch::query()->where('contact_id', $contact->id)->where('name', $data['name'])->first();
+        abort_if($search === null, 404);
+        $searches->enableTexts($contact, $search, (string) $data['phone'], $request);
+        $this->visitors->note($visitor, 'search', null, ['texts' => $search->name]);
+
+        return response()->json(['ok' => true]);
     }
 
     /**
