@@ -184,3 +184,26 @@ html[data-motion='reduce'] *::after {
     outline-offset: 4px;
     border-radius: 0.75rem;
 }
+
+/* BR1: sign-in screens use roomier fields and a full-height main button (easy to read and to tap). */
+.auth-form [data-slot='input'] {
+    height: 2.875rem;
+    font-size: 1rem;
+    border-radius: 0.625rem;
+}
+
+.auth-form [data-slot='button'] {
+    min-height: 2.875rem;
+    font-size: 1rem;
+    border-radius: 0.625rem;
+}
+
+.auth-form button[type='submit'][data-slot='button'] {
+    height: 2.875rem;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: 0.625rem;
+    box-shadow:
+        0 1px 0 rgb(255 255 255 / 0.15) inset,
+        0 8px 20px -8px rgb(21 93 252 / 0.6);
+}

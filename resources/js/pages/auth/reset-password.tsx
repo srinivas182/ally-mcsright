@@ -90,6 +90,6 @@ export default function ResetPassword({ token, email, passwordRules }: Props) {
 }
 
 ResetPassword.layout = {
-    title: 'Reset password',
-    description: 'Please enter your new password below',
+    title: 'Choose a new password',
+    description: 'Use at least 12 characters. A short sentence works well.',
 };

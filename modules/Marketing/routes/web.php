@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Route;
 use Modules\Billing\Http\TryController;
 use Modules\Marketing\Content\Publisher;
+use Modules\Marketing\Http\SignInController;
 use Modules\Marketing\Http\SiteController;
 
 /*
@@ -25,6 +26,10 @@ foreach ((array) config('marketing.hosts') as $i => $host) {
         Route::get('es/blog', [SiteController::class, 'blog'])->defaults('locale', 'es')->name('marketing.blog.es'.$n);
         Route::get('blog/{slug}', [SiteController::class, 'post'])->defaults('locale', 'en')->where('slug', '[a-z0-9-]{1,100}')->name('marketing.post'.$n);
         Route::get('es/blog/{slug}', [SiteController::class, 'post'])->defaults('locale', 'es')->where('slug', '[a-z0-9-]{1,100}')->name('marketing.post.es'.$n);
+        // BR1: "Log in" asks for the brokerage's own address and sends the person there.
+        Route::get('login', [SignInController::class, 'show'])->name('marketing.login'.$n);
+        Route::get('sign-in', fn () => redirect('/login', 301))->name('marketing.sign-in'.$n);
+        Route::get('login/go', [SignInController::class, 'go'])->middleware('throttle:30,1')->name('marketing.login.go'.$n);
         // MK2: "Try it now" with made-up clients (off unless DEMO_ENABLED).
         Route::get('try', [TryController::class, 'start'])->middleware('throttle:5,60')->name('marketing.try'.$n);
         Route::get('/', [SiteController::class, 'page'])->defaults('locale', 'en')->defaults('slug', '')->name('marketing.home'.$n);

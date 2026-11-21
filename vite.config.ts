@@ -30,7 +30,7 @@ export default defineConfig({
                       fonts: remoteFonts
                           ? [
                                 bunny('Instrument Sans', {
-                                    weights: [400, 500, 600],
+                                    weights: [400, 500, 600, 700],
                                 }),
                             ]
                           : [],
