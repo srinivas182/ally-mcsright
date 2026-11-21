@@ -105,6 +105,11 @@ final class Coverage
                 // IDX6: the agreement workflow.
                 'has_agreement_pdf' => is_string($b->agreement_path ?? null) && $b->agreement_path !== '', 'agreement_text' => $b->agreement_text ?? null,
                 'managing_broker_signs' => (bool) ($b->managing_broker_signs ?? true), 'send_to' => $b->send_to ?? null, 'send_cc' => $b->send_cc ?? null, 'send_bcc' => $b->send_bcc ?? null,
+                // IDX11: the watch on the board's own form.
+                'agreement_url' => $b->agreement_url ?? null, 'agreement_version' => (int) ($b->agreement_version ?? 1),
+                'form_update' => ($b->agreement_pending_path ?? null) !== null, 'form_watch_note' => $b->agreement_watch_note ?? null,
+                'form_confirmed' => ($b->agreement_confirmed_at ?? null) !== null ? substr((string) $b->agreement_confirmed_at, 0, 10) : null,
+                'form_due' => AgreementWatch::due($b),
             ])->all());
     }
 
@@ -142,7 +147,10 @@ final class Coverage
         }
         $path = 'idx/agreement-templates/'.$board->code.'-'.now()->format('YmdHis').'.pdf';
         Storage::disk('local')->put($path, $bytes);
-        $this->db()->table('idx_boards')->where('id', $board->id)->update(['agreement_path' => $path, 'updated_by' => $by->id, 'updated_at' => now()]);
+        // IDX11: each upload is a new version of the board's form, confirmed current today.
+        $this->db()->table('idx_boards')->where('id', $board->id)->update(['agreement_path' => $path, 'agreement_hash' => hash('sha256', $bytes),
+            'agreement_version' => $board->agreement_path !== null ? (int) ($board->agreement_version ?? 1) + 1 : (int) ($board->agreement_version ?? 1),
+            'agreement_pending_path' => null, 'agreement_pending_at' => null, 'agreement_confirmed_at' => now(), 'updated_by' => $by->id, 'updated_at' => now()]);
         $this->audit->record('idx.board.agreement_uploaded', metadata: ['board' => $board->code, 'by' => $by->id], severity: 'notice');
     }
 
@@ -197,6 +205,7 @@ final class Coverage
             'send_to' => ['nullable', 'string', 'max:500'],
             'send_cc' => ['nullable', 'string', 'max:500'],
             'send_bcc' => ['nullable', 'string', 'max:500'],
+            'agreement_url' => ['nullable', 'url:https,http', 'max:500'], // IDX11: where the board publishes its form
         ], ['code.regex' => 'Use capital letters, numbers, - or _ (for example HAR).', 'backup_connector.different' => 'The backup must be a different connector.'])->validate();
 
         foreach (['send_to', 'send_cc', 'send_bcc'] as $list) {

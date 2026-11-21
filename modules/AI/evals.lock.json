@@ -39,6 +39,10 @@
         "version": "1",
         "sha256": "003617402a92c5d5b0cf50c75dcbd046dfa40ca4bffb4c84f7e88d110782adab"
     },
+    "idx.agreement_check": {
+        "version": "1",
+        "sha256": "d6e7deb66cd09f7083ef67d235b6eca80bbbfd32253af054fed9482292d430d6"
+    },
     "listiq.description": {
         "version": "1",
         "sha256": "447f6e8a6c6d8bb900c4ec06ef848f4a1ce9f938bab08d3d65fcce10e29075fc"

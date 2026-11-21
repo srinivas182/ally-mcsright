@@ -63,6 +63,12 @@ type Board = {
     send_to: string | null;
     send_cc: string | null;
     send_bcc: string | null;
+    agreement_url?: string | null;
+    agreement_version?: number;
+    form_update?: boolean;
+    form_watch_note?: string | null;
+    form_confirmed?: string | null;
+    form_due?: boolean;
 };
 type Option = { id: number; name: string };
 type QueueItem = {
@@ -90,6 +96,16 @@ type QueueItem = {
     website: string | null;
     compliance_ok: boolean | null;
     compliance_note: string | null;
+    check?: Check | null;
+    form_version?: number | null;
+};
+/** IDX11: the check of a signed agreement (rules, then AI). */
+type Check = {
+    result: 'clear' | 'issues';
+    source: 'ai' | 'rules';
+    issues: { text: string; for: 'brokerage' | 'hq' }[];
+    note: string | null;
+    at: string;
 };
 type Props = {
     states: State[];
@@ -268,6 +284,20 @@ export default function HqIdx({
                                                         ? ` · ${b.region}`
                                                         : ''}
                                                 </p>
+                                                {b.form_update && (
+                                                    <Badge className="mt-1">
+                                                        New form version
+                                                    </Badge>
+                                                )}
+                                                {!b.form_update &&
+                                                    b.form_due && (
+                                                        <Badge
+                                                            variant="secondary"
+                                                            className="mt-1"
+                                                        >
+                                                            Confirm the form
+                                                        </Badge>
+                                                    )}
                                             </td>
                                             <td className="p-3">
                                                 {b.main_connector ? (
@@ -438,8 +468,111 @@ const NEXT: Record<string, string[]> = {
     awaiting_signature: ['sent', 'needs_fixing'],
     sent: ['mls_review', 'needs_fixing'],
     mls_review: ['sent', 'needs_fixing'],
-    needs_fixing: ['awaiting_signature', 'sent', 'mls_review'],
+    hq_check: ['needs_fixing'],
+    needs_fixing: ['awaiting_signature', 'hq_check', 'sent', 'mls_review'],
 };
+
+/**
+ * IDX11: a signed agreement waiting for HQ. The check says "Clear" or lists what to fix (the brokerage's and ours);
+ * HQ sends it to the MLS, or sends it back with the note (written by AI or the rules) plus anything it adds.
+ */
+function CheckPanel({ item: q }: { item: QueueItem }) {
+    const c = q.check ?? null;
+    const [note, setNote] = useState(c?.note ?? '');
+    const opts = { preserveScroll: true };
+    const theirs = (c?.issues ?? []).filter((i) => i.for === 'brokerage');
+    const ours = (c?.issues ?? []).filter((i) => i.for === 'hq');
+
+    return (
+        <section className="grid gap-3 rounded-lg border bg-muted/30 p-3 text-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="font-semibold">
+                    {c === null
+                        ? 'Checking the signed agreement…'
+                        : c.result === 'clear'
+                          ? 'Check: clear to send'
+                          : `Check: ${c.issues.length} thing(s) to look at`}
+                </p>
+                {c !== null && (
+                    <span className="text-xs text-muted-foreground">
+                        {c.source === 'ai' ? 'Rules and AI' : 'Rules only'} ·{' '}
+                        {new Date(c.at).toLocaleString()}
+                        {q.form_version ? ` · form v${q.form_version}` : ''}
+                    </span>
+                )}
+            </div>
+            {ours.length > 0 && (
+                <ul className="list-disc pl-5 text-destructive">
+                    {ours.map((i) => (
+                        <li key={i.text}>For RightAlly: {i.text}</li>
+                    ))}
+                </ul>
+            )}
+            {theirs.length > 0 && (
+                <ul className="list-disc pl-5">
+                    {theirs.map((i) => (
+                        <li key={i.text}>{i.text}</li>
+                    ))}
+                </ul>
+            )}
+            {theirs.length > 0 && (
+                <label className="grid gap-1">
+                    Note to the brokerage (edit or add to it)
+                    <Textarea
+                        rows={4}
+                        maxLength={1500}
+                        value={note}
+                        onChange={(e) => setNote(e.target.value)}
+                    />
+                </label>
+            )}
+            <div className="flex flex-wrap gap-2">
+                <Button
+                    size="sm"
+                    variant={c?.result === 'clear' ? 'default' : 'outline'}
+                    onClick={() =>
+                        router.post(
+                            `/hq/idx/subscriptions/${q.ulid}/send`,
+                            {},
+                            opts,
+                        )
+                    }
+                >
+                    {c?.result === 'clear'
+                        ? 'Send to the MLS'
+                        : 'Send to the MLS anyway'}
+                </Button>
+                <Button
+                    size="sm"
+                    variant={c?.result === 'issues' ? 'default' : 'outline'}
+                    disabled={note.trim() === ''}
+                    onClick={() =>
+                        router.post(
+                            `/hq/idx/subscriptions/${q.ulid}/move`,
+                            { to: 'needs_fixing', note },
+                            opts,
+                        )
+                    }
+                >
+                    Send back to the brokerage
+                </Button>
+                <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() =>
+                        router.post(
+                            `/hq/idx/subscriptions/${q.ulid}/recheck`,
+                            {},
+                            opts,
+                        )
+                    }
+                >
+                    Check again
+                </Button>
+            </div>
+        </section>
+    );
+}
 
 function QueueRow({
     item: q,
@@ -505,8 +638,11 @@ function QueueRow({
                 </div>
             </div>
             {q.note && (
-                <p className="text-sm text-destructive">To fix: {q.note}</p>
+                <p className="text-sm whitespace-pre-line text-destructive">
+                    To fix: {q.note}
+                </p>
             )}
+            {q.status === 'hq_check' && <CheckPanel item={q} />}
             {(q.agreement || q.website || q.compliance_ok !== null) && (
                 <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
                     {q.agreement && <span>Agreement: {q.agreement}</span>}
@@ -537,7 +673,7 @@ function QueueRow({
                             Signed copy
                         </a>
                     )}
-                    {q.has_copy && q.status !== 'live' && (
+                    {q.has_copy && !['live', 'hq_check'].includes(q.status) && (
                         <Button
                             size="sm"
                             variant="outline"
@@ -809,6 +945,7 @@ function BoardDialog({
         send_to: board?.send_to ?? '',
         send_cc: board?.send_cc ?? '',
         send_bcc: board?.send_bcc ?? '',
+        agreement_url: board?.agreement_url ?? '',
     });
     const submit = () => {
         form.transform((d) => ({
@@ -1239,6 +1376,27 @@ function BoardDialog({
                                 />
                             </label>
                         )}
+                        <FormField
+                            label="Where the board publishes this form (web address, optional)"
+                            help="Checked every week. When the board posts a new version, you are told and choose whether to use it."
+                            error={form.errors.agreement_url}
+                        >
+                            {(control) => (
+                                <Input
+                                    {...control}
+                                    type="url"
+                                    placeholder="https://"
+                                    value={form.data.agreement_url}
+                                    onChange={(e) =>
+                                        form.setData(
+                                            'agreement_url',
+                                            e.target.value,
+                                        )
+                                    }
+                                />
+                            )}
+                        </FormField>
+                        {board && <FormWatch board={board} />}
                     </fieldset>
                     <label className="flex items-center gap-3 text-sm sm:col-span-2">
                         <Switch
@@ -1349,5 +1507,70 @@ function RequestRow({ item: r }: { item: RequestItem }) {
                 </div>
             )}
         </section>
+    );
+}
+
+/** IDX11: the watch on a board's own agreement form: a newer version found, or a reminder to confirm it. */
+function FormWatch({ board }: { board: Board }) {
+    const act = (action: string) =>
+        router.post(
+            `/hq/idx/boards/${board.ulid}/form`,
+            { action },
+            { preserveScroll: true },
+        );
+
+    return (
+        <div className="grid gap-2 rounded-lg bg-muted/40 p-3 text-sm">
+            <p>
+                Form version {board.agreement_version ?? 1}
+                {board.form_confirmed
+                    ? ` · confirmed current on ${board.form_confirmed}`
+                    : ''}
+            </p>
+            {board.form_watch_note && (
+                <p className="text-muted-foreground">{board.form_watch_note}</p>
+            )}
+            {board.form_update && (
+                <p className="font-medium text-amber-700">
+                    The board published a new version of this form.
+                </p>
+            )}
+            <div className="flex flex-wrap gap-2">
+                {board.form_update && (
+                    <>
+                        <Button size="sm" onClick={() => act('use_new')}>
+                            Use the new version
+                        </Button>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => act('keep')}
+                        >
+                            Keep current
+                        </Button>
+                    </>
+                )}
+                {board.agreement_url && (
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => act('check')}
+                    >
+                        Check now
+                    </Button>
+                )}
+                {board.has_agreement_pdf && (
+                    <Button
+                        size="sm"
+                        variant={board.form_due ? 'default' : 'outline'}
+                        onClick={() => act('confirm')}
+                    >
+                        {board.form_due
+                            ? 'Confirm this form is current'
+                            : 'Confirm current'}
+                    </Button>
+                )}
+            </div>
+        </div>
     );
 }

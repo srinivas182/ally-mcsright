@@ -8,6 +8,8 @@ use App\Models\User;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use Modules\AI\FeatureCatalog;
+use Modules\AI\Support\PromptRegistry;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Listings\MlsStatus;
 use Modules\Core\Navigation\NavigationRegistry;
@@ -63,11 +65,14 @@ final class ListingsServiceProvider extends ServiceProvider
                         'href' => '/listings/'.$l->ulid])->all());
             });
         if ($this->app->runningInConsole()) {
-            $this->commands([Console\SyncListings::class, Console\ReconcileListings::class, Console\RebuildSearch::class, Console\TagPhotosAndPlaces::class, Console\RemindIdxSignatures::class, Console\IdxComplianceWatch::class]);
+            $this->commands([Console\SyncListings::class, Console\ReconcileListings::class, Console\RebuildSearch::class, Console\TagPhotosAndPlaces::class, Console\RemindIdxSignatures::class, Console\IdxComplianceWatch::class, Console\IdxAgreementWatch::class]);
         }
 
         // IDX6: a signed MLS agreement is kept and sent on.
         Event::listen(PacketSealed::class, [Idx\Agreements::class, 'sealed']);
+        // IDX11: AI reads each signed agreement's details before HQ sends it to the board (HQ pays; no brokerage credits).
+        $this->app->make(PromptRegistry::class)->addPath(__DIR__.'/../prompts');
+        $this->app->make(FeatureCatalog::class)->declare(Idx\AgreementCheck::FEATURE, 'ai.idx_agreement_check', 'Check of a signed MLS agreement before it goes to the board');
         Gate::define('hq.mls.manage', fn (User $user): bool => $user->kind === UserKind::HqStaff);
         $nav = $this->app->make(NavigationRegistry::class);
         $nav->add(new NavItem('HQ', 'MLS connections', '/hq/mls', 'building-2', 18, ability: 'hq.mls.manage', kinds: [UserKind::HqStaff]));
