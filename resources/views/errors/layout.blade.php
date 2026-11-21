@@ -3,6 +3,7 @@
 <html lang="en"><head>
 @include('marketing::partials.plain-head')
 <title>@yield('title') · RightAlly</title>
+<link rel="icon" href="/favicon.ico?v=br1" sizes="any"><link rel="icon" href="/favicon.svg?v=br1" type="image/svg+xml">
 </head>
 <body>
 <aside class="panel">
