@@ -59,6 +59,27 @@ type Board = {
     ready: boolean;
 };
 type Option = { id: number; name: string };
+type QueueItem = {
+    ulid: string;
+    brokerage: string;
+    board: string;
+    board_code: string;
+    state: string;
+    status: string;
+    status_label: string;
+    since: string | null;
+    note: string | null;
+    member_id: string | null;
+    office_id: string | null;
+    license_number: string | null;
+    managing_broker_name: string | null;
+    managing_broker_email: string | null;
+    has_own_key: boolean;
+    connector: string | null;
+    feed_id: string | null;
+    mls_source_id: number | null;
+    reminders: number;
+};
 type Props = {
     states: State[];
     boards: Board[];
@@ -66,6 +87,8 @@ type Props = {
     profiles: Option[];
     sources: Option[];
     state: string | null;
+    queue: QueueItem[];
+    statuses: Record<string, string>;
 };
 
 const VISIBILITY: Record<string, string> = {
@@ -89,7 +112,10 @@ export default function HqIdx({
     boards,
     connectors,
     profiles,
+    sources,
     state,
+    queue,
+    statuses,
 }: Props) {
     const open = states.filter((s) => s.enabled);
     const [filter, setFilter] = useState<string>(
@@ -115,14 +141,49 @@ export default function HqIdx({
                     title="IDX coverage"
                     description="Which states are open, the MLS boards in each, and the data connector behind every board. Brokers and agents see board names and fees only, never connector names."
                 />
-                <Tabs defaultValue="boards">
+                <Tabs defaultValue="queue">
                     <TabsList>
+                        <TabsTrigger value="queue">
+                            Brokerage boards (
+                            {
+                                queue.filter(
+                                    (q) =>
+                                        !['live', 'cancelled'].includes(
+                                            q.status,
+                                        ),
+                                ).length
+                            }{' '}
+                            to do)
+                        </TabsTrigger>
                         <TabsTrigger value="boards">MLS boards</TabsTrigger>
                         <TabsTrigger value="states">
                             States ({open.length} open)
                         </TabsTrigger>
                         <TabsTrigger value="connectors">Connectors</TabsTrigger>
                     </TabsList>
+
+                    <TabsContent value="queue" className="grid gap-3">
+                        <p className="text-sm text-muted-foreground">
+                            Each brokerage's boards, one at a time. Move a board
+                            along as the paperwork goes; going live turns on its
+                            real listings, cancelling hides them at once.
+                        </p>
+                        {queue.length === 0 && (
+                            <p className="rounded-xl border bg-card p-6 text-center text-muted-foreground">
+                                No brokerage has added a board yet.
+                            </p>
+                        )}
+                        {queue.map((q) => (
+                            <QueueRow
+                                key={q.ulid}
+                                item={q}
+                                statuses={statuses}
+                                connectors={connectors}
+                                sources={sources}
+                                names={names}
+                            />
+                        ))}
+                    </TabsContent>
 
                     <TabsContent value="boards" className="grid gap-4">
                         <div className="flex flex-wrap items-end gap-3">
@@ -320,6 +381,224 @@ export default function HqIdx({
                 />
             )}
         </>
+    );
+}
+
+const NEXT: Record<string, string[]> = {
+    demo: ['needs_fixing'],
+    awaiting_signature: ['sent', 'needs_fixing'],
+    sent: ['mls_review', 'needs_fixing'],
+    mls_review: ['sent', 'needs_fixing'],
+    needs_fixing: ['awaiting_signature', 'sent', 'mls_review'],
+};
+
+function QueueRow({
+    item: q,
+    statuses,
+    connectors,
+    sources,
+    names,
+}: {
+    item: QueueItem;
+    statuses: Record<string, string>;
+    connectors: Connector[];
+    sources: Option[];
+    names: Record<string, string>;
+}) {
+    const [note, setNote] = useState('');
+    const [source, setSource] = useState<string>(
+        q.mls_source_id !== null ? String(q.mls_source_id) : '',
+    );
+    const [feedId, setFeedId] = useState(q.feed_id ?? '');
+    const opts = { preserveScroll: true };
+    const open = !['live', 'cancelled'].includes(q.status);
+
+    return (
+        <article className="grid gap-3 rounded-xl border bg-card p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                    <p className="font-semibold">
+                        {q.brokerage} · {q.board}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                        {q.state} · MLS ID {q.member_id ?? '—'}
+                        {q.office_id ? ` · office ${q.office_id}` : ''} ·
+                        licence {q.license_number ?? '—'}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                        Managing broker: {q.managing_broker_name ?? '—'}{' '}
+                        {q.managing_broker_email
+                            ? `<${q.managing_broker_email}>`
+                            : ''}
+                        {q.has_own_key ? ' · gave its own feed key' : ''}
+                        {q.reminders > 0
+                            ? ` · ${q.reminders} reminder(s) sent`
+                            : ''}
+                    </p>
+                </div>
+                <div className="text-right">
+                    <Badge
+                        variant={
+                            q.status === 'live'
+                                ? 'default'
+                                : q.status === 'needs_fixing'
+                                  ? 'destructive'
+                                  : 'secondary'
+                        }
+                    >
+                        {statuses[q.status] ?? q.status}
+                    </Badge>
+                    {q.since && (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                            since {new Date(q.since).toLocaleDateString()}
+                        </p>
+                    )}
+                </div>
+            </div>
+            {q.note && (
+                <p className="text-sm text-destructive">To fix: {q.note}</p>
+            )}
+            {open && (
+                <div className="grid gap-3 md:grid-cols-3">
+                    <label className="grid gap-1 text-sm">
+                        Connector (this brokerage only)
+                        <select
+                            className={selectClass}
+                            value={q.connector ?? ''}
+                            onChange={(e) =>
+                                router.post(
+                                    `/hq/idx/subscriptions/${q.ulid}/connector`,
+                                    { connector: e.target.value },
+                                    opts,
+                                )
+                            }
+                        >
+                            <option value="" disabled>
+                                Choose…
+                            </option>
+                            {connectors.map((c) => (
+                                <option key={c.key} value={c.key}>
+                                    {names[c.key] ?? c.key}
+                                </option>
+                            ))}
+                        </select>
+                    </label>
+                    <div className="grid gap-1 text-sm">
+                        Move to
+                        <div className="flex flex-wrap gap-2">
+                            {(NEXT[q.status] ?? [])
+                                .filter((to) => to !== 'needs_fixing')
+                                .map((to) => (
+                                    <Button
+                                        key={to}
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() =>
+                                            router.post(
+                                                `/hq/idx/subscriptions/${q.ulid}/move`,
+                                                { to },
+                                                opts,
+                                            )
+                                        }
+                                    >
+                                        {statuses[to]}
+                                    </Button>
+                                ))}
+                        </div>
+                    </div>
+                    <div className="grid gap-1 text-sm">
+                        Needs fixing (tell the brokerage what)
+                        <div className="flex gap-2">
+                            <Input
+                                value={note}
+                                onChange={(e) => setNote(e.target.value)}
+                                placeholder="For example: MLS ID not found"
+                            />
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={note.trim() === ''}
+                                onClick={() =>
+                                    router.post(
+                                        `/hq/idx/subscriptions/${q.ulid}/move`,
+                                        { to: 'needs_fixing', note },
+                                        {
+                                            ...opts,
+                                            onSuccess: () => setNote(''),
+                                        },
+                                    )
+                                }
+                            >
+                                Send
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {['sent', 'mls_review'].includes(q.status) && (
+                <div className="flex flex-wrap items-end gap-3 rounded-lg bg-muted/40 p-3">
+                    <label className="grid gap-1 text-sm">
+                        Feed
+                        <select
+                            className={selectClass}
+                            value={source}
+                            onChange={(e) => setSource(e.target.value)}
+                        >
+                            <option value="">
+                                {q.has_own_key
+                                    ? "Brokerage's own key (made for you)"
+                                    : 'The board’s linked feed'}
+                            </option>
+                            {sources.map((o) => (
+                                <option key={o.id} value={o.id}>
+                                    {o.name}
+                                </option>
+                            ))}
+                        </select>
+                    </label>
+                    <label className="grid gap-1 text-sm">
+                        Feed ID from the connector (if any)
+                        <Input
+                            value={feedId}
+                            onChange={(e) => setFeedId(e.target.value)}
+                        />
+                    </label>
+                    <Button
+                        onClick={() =>
+                            router.post(
+                                `/hq/idx/subscriptions/${q.ulid}/live`,
+                                {
+                                    source_id:
+                                        source === '' ? null : Number(source),
+                                    feed_id: feedId,
+                                },
+                                opts,
+                            )
+                        }
+                    >
+                        Turn on live
+                    </Button>
+                </div>
+            )}
+            {q.status !== 'cancelled' && (
+                <div>
+                    <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-muted-foreground"
+                        onClick={() =>
+                            router.post(
+                                `/hq/idx/subscriptions/${q.ulid}/cancel`,
+                                {},
+                                opts,
+                            )
+                        }
+                    >
+                        Cancel this board
+                    </Button>
+                </div>
+            )}
+        </article>
     );
 }
 

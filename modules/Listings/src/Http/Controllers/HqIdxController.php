@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Listings\Idx\Coverage;
+use Modules\Listings\Idx\Subscriptions;
 use Modules\Listings\Models\MlsSource;
 use Modules\Listings\Models\RulesProfile;
 
@@ -27,7 +28,43 @@ final class HqIdxController
             'profiles' => RulesProfile::query()->orderBy('name')->get(['id', 'name'])->map(fn (RulesProfile $p): array => ['id' => $p->id, 'name' => $p->name]),
             'sources' => MlsSource::query()->orderBy('name')->get(['id', 'name'])->map(fn (MlsSource $s): array => ['id' => $s->id, 'name' => $s->name]),
             'state' => preg_match('/^[A-Z]{2}$/', $state) === 1 ? $state : null,
+            'queue' => app(Subscriptions::class)->queue(),
+            'statuses' => Subscriptions::STATUSES,
         ]);
+    }
+
+    public function move(Request $request, Subscriptions $subs, string $subscription): RedirectResponse
+    {
+        $data = $request->validate(['to' => ['required', 'string', 'max:20'], 'note' => ['nullable', 'string', 'max:300']]);
+        $subs->move($subscription, $data['to'], $data['note'] ?? null, self::user($request));
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Moved to: '.(Subscriptions::STATUSES[$data['to']] ?? $data['to']).'.']);
+
+        return back();
+    }
+
+    public function override(Request $request, Subscriptions $subs, string $subscription): RedirectResponse
+    {
+        $subs->override($subscription, (string) $request->validate(['connector' => ['required', 'string', 'max:30']])['connector'], self::user($request));
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Connector changed for this brokerage only.']);
+
+        return back();
+    }
+
+    public function live(Request $request, Subscriptions $subs, string $subscription): RedirectResponse
+    {
+        $data = $request->validate(['source_id' => ['nullable', 'integer'], 'feed_id' => ['nullable', 'string', 'max:120']]);
+        $subs->goLive($subscription, isset($data['source_id']) ? (int) $data['source_id'] : null, $data['feed_id'] ?? null, self::user($request));
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Live. The brokerage has been told.']);
+
+        return back();
+    }
+
+    public function cancel(Request $request, Subscriptions $subs, string $subscription): RedirectResponse
+    {
+        $subs->cancel($subscription, null, self::user($request));
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Cancelled. Its listings are hidden from the brokerage\'s website.']);
+
+        return back();
     }
 
     public function state(Request $request, Coverage $coverage, string $code): RedirectResponse

@@ -45,6 +45,12 @@ Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.mls.manage'])
         Route::post('boards', [HqIdxController::class, 'saveBoard'])->name('boards.store');
         Route::put('boards/{board}', [HqIdxController::class, 'saveBoard'])->where('board', '[0-9A-HJKMNP-TV-Z]{26}')->name('boards.update');
         Route::put('connectors/{connector}', [HqIdxController::class, 'saveConnector'])->where('connector', '[a-z_]{2,30}')->name('connectors.update');
+        // IDX4: the approval queue.
+        $sub = '[0-9A-HJKMNP-TV-Z]{26}';
+        Route::post('subscriptions/{subscription}/move', [HqIdxController::class, 'move'])->where('subscription', $sub)->name('subscriptions.move');
+        Route::post('subscriptions/{subscription}/connector', [HqIdxController::class, 'override'])->where('subscription', $sub)->name('subscriptions.connector');
+        Route::post('subscriptions/{subscription}/live', [HqIdxController::class, 'live'])->where('subscription', $sub)->middleware('password.confirm')->name('subscriptions.live');
+        Route::post('subscriptions/{subscription}/cancel', [HqIdxController::class, 'cancel'])->where('subscription', $sub)->middleware('password.confirm')->name('subscriptions.cancel');
     });
 
 Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])
@@ -53,6 +59,10 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])
     ->group(function (): void {
         Route::get('/', [MlsSettingsController::class, 'index'])->name('index');
         Route::post('{source}/request', [MlsSettingsController::class, 'request'])->name('request');
+        // IDX4: the brokerage's MLS boards, each on its own track.
+        Route::post('boards', [MlsSettingsController::class, 'addBoard'])->middleware('throttle:20,1')->name('boards.store');
+        Route::put('boards/{subscription}', [MlsSettingsController::class, 'submitBoard'])->where('subscription', '[0-9A-HJKMNP-TV-Z]{26}')->middleware(['password.confirm', 'throttle:20,1'])->name('boards.update');
+        Route::delete('boards/{subscription}', [MlsSettingsController::class, 'cancelBoard'])->where('subscription', '[0-9A-HJKMNP-TV-Z]{26}')->middleware('password.confirm')->name('boards.destroy');
     });
 
 // Back office → Listings.

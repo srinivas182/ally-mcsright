@@ -103,6 +103,7 @@ Schedule::command('crm:nurture')->hourlyAt(23)->withoutOverlapping()->onOneServe
 Schedule::command('crm:search-alerts')->everyFifteenMinutes()->withoutOverlapping()->onOneServer();
 Schedule::command('listings:sync')->everyMinute()->withoutOverlapping()->onOneServer();
 Schedule::command('listings:reconcile')->dailyAt('04:20')->onOneServer();
+Schedule::command('idx:remind')->dailyAt('14:10')->onOneServer(); // IDX4: 9am US Central
 Schedule::command('listings:reconcile --freshness-only')->everyFifteenMinutes()->onOneServer();
 // Audit log: seal any waiting events (specs/core/04).
 Schedule::command('audit:flush')->everyMinute()->withoutOverlapping()->onOneServer();
