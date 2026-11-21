@@ -125,7 +125,8 @@ final class StarterContent extends Command
             ], true],
             ['en', 'pricing', 'RightAlly prices: public, monthly or yearly', 'RightAlly prices for brokerages, shown in full. Sign up online, pay monthly or yearly, and cancel any time.', [
                 ['type' => 'hero', 'heading' => 'Simple, public prices', 'text' => 'No demo needed to see what it costs. Pay monthly or yearly.', 'cta_label' => '', 'cta_href' => '', 'second_label' => '', 'second_href' => ''],
-                ['type' => 'pricing', 'heading' => '', 'note' => 'Prices are in US dollars. Taxes may apply.'],
+                ['type' => 'pricing', 'heading' => 'For brokerages', 'note' => 'Prices are in US dollars. Taxes may apply.'],
+                ['type' => 'seats', 'heading' => 'For agents', 'note' => 'Monthly, in US dollars. The brokerage chooses whether it pays for its agents or each agent pays for their own seat.'],
                 ['type' => 'faq', 'heading' => '', 'items' => [
                     ['q' => 'Can agents pay for their own plan?', 'a' => 'Yes. The brokerage can pay for everyone, or agents can pay RightAlly for their own plan.'],
                     ['q' => 'What are credits?', 'a' => 'Some AI and messaging features use credits, so you only pay for what you use. Every package includes some.'],
@@ -134,7 +135,8 @@ final class StarterContent extends Command
             ], true],
             ['es', 'pricing', 'Precios de RightAlly: públicos, mensuales o anuales', 'Precios de RightAlly para corredurías, completos. Regístrese en línea, pague mensual o anualmente y cancele cuando quiera.', [
                 ['type' => 'hero', 'heading' => 'Precios simples y públicos', 'text' => 'No necesita una demostración para saber cuánto cuesta.', 'cta_label' => '', 'cta_href' => '', 'second_label' => '', 'second_href' => ''],
-                ['type' => 'pricing', 'heading' => '', 'note' => 'Precios en dólares estadounidenses. Pueden aplicarse impuestos.'],
+                ['type' => 'pricing', 'heading' => 'Para corredurías', 'note' => 'Precios en dólares estadounidenses. Pueden aplicarse impuestos.'],
+                ['type' => 'seats', 'heading' => 'Para agentes', 'note' => 'Mensual, en dólares estadounidenses. La correduría decide si paga por sus agentes o si cada agente paga su propio puesto.'],
                 ['type' => 'faq', 'heading' => '', 'items' => [
                     ['q' => '¿Los agentes pueden pagar su propio plan?', 'a' => 'Sí. La correduría puede pagar por todos, o cada agente puede pagar su propio plan.'],
                 ]],

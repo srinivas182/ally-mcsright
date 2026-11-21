@@ -94,7 +94,7 @@
         td,th{padding:14px 16px;border-top:1px solid var(--line);text-align:left;vertical-align:top}thead th{background:var(--tint);border-top:0}
         .tablewrap{overflow-x:auto}
         .price{font-size:44px;font-weight:800;letter-spacing:-.03em;margin:8px 0 2px}.price span{letter-spacing:0;font-weight:500;font-size:17px}
-        .plans{grid-template-columns:repeat(auto-fit,minmax(280px,380px))}.plans .card{display:flex;flex-direction:column}.plans .card .btn{margin-top:auto;width:100%}
+        .plans{grid-template-columns:repeat(auto-fit,minmax(260px,360px))}.price span.per{display:block;font-size:16px;margin-top:2px}.plans .card{display:flex;flex-direction:column}.plans .card .btn{margin-top:auto;width:100%}
         .plans .card.best{border:2px solid var(--brand);position:relative}
         .plans .card.best::before{content:attr(data-best);position:absolute;top:-14px;left:24px;background:var(--brand);color:#fff;font-size:13px;font-weight:700;border-radius:999px;padding:4px 12px}
         .doors .door{display:grid;gap:10px;text-decoration:none;color:var(--ink);padding:34px;transition:border-color .15s,transform .15s}

@@ -30,6 +30,7 @@ final class Blocks
         'doors' => 'Two doors: brokerage or agent',
         'modules' => 'What is included (live from packages)',
         'savings' => '"What you pay today" calculator',
+        'seats' => 'Agent seat prices (live from billing)',
     ];
 
     /**
@@ -61,6 +62,7 @@ final class Blocks
                     'agent_heading' => self::text($b, 'agent_heading', 80, $n, true), 'agent_text' => self::text($b, 'agent_text', 200, $n), 'agent_href' => self::link($b, 'agent_href', $n, true)],
                 'modules' => ['type' => 'modules', 'heading' => self::text($b, 'heading', 120, $n), 'audience' => self::audience($b)],
                 'savings' => ['type' => 'savings', 'heading' => self::text($b, 'heading', 120, $n), 'text' => self::text($b, 'text', 300, $n), 'audience' => self::audience($b)],
+                'seats' => ['type' => 'seats', 'heading' => self::text($b, 'heading', 120, $n), 'note' => self::text($b, 'note', 300, $n)],
                 'steps' => ['type' => 'steps', 'heading' => self::text($b, 'heading', 120, $n), 'items' => self::items($b, $n, 10, ['title' => 80, 'text' => 300], ['title'])],
                 'text' => ['type' => 'text', 'heading' => self::text($b, 'heading', 120, $n), 'body' => self::text($b, 'body', 8000, $n, true)],
                 'testimonials' => self::testimonials($b, $n),
