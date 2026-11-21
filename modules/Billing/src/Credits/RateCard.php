@@ -77,6 +77,7 @@ final class RateCard
         'studio.enhance' => [40, false, 'Ally Studio photo enhancement beyond the allowance'],
         'studio.voice' => [25, false, 'Ally Studio voice narration beyond the allowance'],
         'ai.movewise' => [0, true, 'Movewise AIlly reply (HQ pays)'],
+        'ai.idx_agreement_check' => [0, true, 'Check of a signed MLS agreement (HQ pays)'],
         // Movewise introductions (specs/movewise/04): charged as the state's price in credits, one credit per unit.
         'movewise.connection' => [1, false, 'Movewise introduction, charged when the agent accepts (the state\'s price, in credits)'],
         // Property data (specs/connect/21): one lookup each, kept for 30 days.
@@ -108,6 +109,7 @@ final class RateCard
         'ai.crm_lead_email' => [2000, 300, 0],
         'ai.crm_reply_draft' => [2000, 300, 0],
         'ai.crm_call_summary' => [3000, 300, 0],
+        'ai.idx_agreement_check' => [1500, 300, 0],
         'ai.appointments_coaching' => [9000, 800, 0],
         'ai.crm_ai_responder' => [2500, 300, 0],
         'ai.crm_nurture' => [2000, 250, 0],

@@ -93,6 +93,7 @@ const REQUEST_STATUS: Record<BoardRequest['status'], string> = {
 const STEPS: { key: string; label: string }[] = [
     { key: 'demo', label: 'Your details' },
     { key: 'awaiting_signature', label: 'Signatures' },
+    { key: 'hq_check', label: 'RightAlly check' },
     { key: 'sent', label: 'Sent to the MLS' },
     { key: 'mls_review', label: 'MLS review' },
     { key: 'live', label: 'Live' },

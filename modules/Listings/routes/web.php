@@ -54,6 +54,9 @@ Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.mls.manage'])
         Route::post('subscriptions/{subscription}/send', [HqIdxController::class, 'sendNow'])->where('subscription', $sub)->middleware('password.confirm')->name('subscriptions.send');
         Route::get('subscriptions/{subscription}/agreement.pdf', [HqIdxController::class, 'copy'])->where('subscription', $sub)->name('subscriptions.copy');
         Route::post('subscriptions/{subscription}/cancel', [HqIdxController::class, 'cancel'])->where('subscription', $sub)->middleware('password.confirm')->name('subscriptions.cancel');
+        // IDX11: the check of a signed agreement, and the watch on each board's own form.
+        Route::post('subscriptions/{subscription}/recheck', [HqIdxController::class, 'recheck'])->where('subscription', $sub)->middleware('throttle:20,1')->name('subscriptions.recheck');
+        Route::post('boards/{board}/form', [HqIdxController::class, 'form'])->where('board', $sub)->middleware('throttle:20,1')->name('boards.form');
         // IDX8: boards brokerages asked for.
         Route::post('requests/{boardRequest}/add', [HqIdxController::class, 'addRequested'])->where('boardRequest', $sub)->name('requests.add');
         Route::post('requests/{boardRequest}/close', [HqIdxController::class, 'closeRequested'])->where('boardRequest', $sub)->name('requests.close');

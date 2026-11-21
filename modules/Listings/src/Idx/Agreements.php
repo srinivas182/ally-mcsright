@@ -24,6 +24,7 @@ use Modules\Forms\Signing;
 use Modules\Forms\Templates;
 use Modules\Listings\Idx\Mail\IdxAgreementMail;
 use Modules\Listings\Idx\Mail\IdxUpdateMail;
+use Modules\Listings\Jobs\CheckIdxAgreement;
 use Modules\Listings\Models\MlsSource;
 use setasign\Fpdi\Fpdi;
 use stdClass;
@@ -109,7 +110,10 @@ final class Agreements
         });
     }
 
-    /** Everyone signed: keep a copy and send it on (listener for the e-signature's sealed event). */
+    /**
+     * Everyone signed: keep a copy and hold it for RightAlly's check (listener for the e-signature's sealed event).
+     * IDX11: nothing goes to the MLS until HQ has looked at the check and pressed "Send to the MLS".
+     */
     public function sealed(PacketSealed $event): void
     {
         $sub = $this->db()->table('idx_subscriptions')->where('tenant_id', $event->tenantId)->where('packet_ulid', $event->packetUlid)->first();
@@ -118,9 +122,12 @@ final class Agreements
         }
         $copy = 'idx/agreements/'.$sub->ulid.'.pdf';
         Storage::disk('local')->put($copy, (string) Storage::disk('local')->get($event->sealedPath));
-        $this->db()->table('idx_subscriptions')->where('id', $sub->id)->update(['signed_path' => $copy, 'signed_at' => now(), 'updated_at' => now()]);
+        $version = $this->db()->table('idx_boards')->where('id', $sub->board_id)->value('agreement_version');
+        $this->db()->table('idx_subscriptions')->where('id', $sub->id)->update(['signed_path' => $copy, 'signed_at' => now(), 'status' => 'hq_check', 'status_at' => now(),
+            'client_note' => null, 'check_result' => null, 'check_issues' => null, 'check_note' => null, 'checked_at' => null,
+            'agreement_version' => $version !== null ? (int) $version : null, 'updated_at' => now()]);
         $this->audit->record('idx.agreement.signed', metadata: ['subscription' => $sub->ulid], severity: 'notice', tenantId: (int) $sub->tenant_id);
-        $this->deliver((string) $sub->ulid, false);
+        CheckIdxAgreement::dispatch((string) $sub->ulid);
     }
 
     /**
@@ -311,7 +318,7 @@ final class Agreements
     }
 
     /** @return array<string, string> */
-    private function facts(Tenant $tenant, stdClass $sub, string $website): array
+    public function facts(Tenant $tenant, stdClass $sub, string $website): array
     {
         return array_filter(['Brokerage' => (string) $tenant->name, 'Website' => $website, 'MLS member ID' => (string) $sub->member_id,
             'Office ID' => (string) ($sub->office_id ?? ''), 'Real estate licence' => (string) $sub->license_number,
