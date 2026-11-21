@@ -15,7 +15,7 @@ use Modules\Core\Tenancy\TenantContext;
  */
 final class AppManifestController
 {
-    private const DEFAULT_COLOUR = '#0f172a';
+    private const DEFAULT_COLOUR = '#06369E';
 
     public function __invoke(TenantContext $tenants, BrandColourSource $brand): JsonResponse
     {

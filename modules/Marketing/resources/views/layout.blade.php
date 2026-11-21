@@ -74,7 +74,7 @@
 <footer><div class="wrap">
     <p><strong>RightAlly</strong> · {{ $L === 'es' ? 'Todo lo que su correduría necesita, en un solo lugar.' : 'Everything your brokerage runs on, in one place.' }}</p>
     <p><a href="{{ $start }}">{{ $L === 'es' ? 'Registrarse' : 'Sign up' }}</a> · <a href="{{ $healthCheck }}">{{ $L === 'es' ? 'Chequeo gratuito' : 'Free Health Check' }}</a>
-        · <a href="https://{{ config('core.hq_host') }}/login">{{ $L === 'es' ? 'Iniciar sesión' : 'Sign in' }}</a> · <a href="/sitemap.xml">Sitemap</a></p>
+        · <a href="/login">{{ $L === 'es' ? 'Iniciar sesión' : 'Sign in' }}</a> · <a href="/sitemap.xml">Sitemap</a></p>
 </div></footer>
 </body>
 </html>

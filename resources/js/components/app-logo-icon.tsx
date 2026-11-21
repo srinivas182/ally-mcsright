@@ -1,12 +1,42 @@
+import { useId } from 'react';
 import type { SVGAttributes } from 'react';
 
+/**
+ * BR1: the RightAlly mark (resources/brand/rightally-logo.svg): the white "A" roof on the RightAlly blue tile.
+ * Colours are the brand's own, so it reads the same on light and dark backgrounds.
+ */
 export default function AppLogoIcon(props: SVGAttributes<SVGElement>) {
+    const id = useId().replace(/:/g, '');
+
     return (
-        <svg {...props} viewBox="0 0 40 42" xmlns="http://www.w3.org/2000/svg">
+        <svg
+            viewBox="4.79 4.8 22.36 22.4"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-hidden="true"
+            {...props}
+        >
+            <defs>
+                <linearGradient
+                    id={`ra-mark-${id}`}
+                    x1="15.97"
+                    y1="4.8"
+                    x2="15.97"
+                    y2="27.2"
+                    gradientUnits="userSpaceOnUse"
+                >
+                    <stop stopColor="#155DFC" />
+                    <stop offset="1" stopColor="#06369E" />
+                </linearGradient>
+            </defs>
+            <path
+                d="M4.79102 9.60005C4.79102 6.94908 6.93604 4.80005 9.58206 4.80005H22.3582C25.0042 4.80005 27.1492 6.94908 27.1492 9.60005V22.4C27.1492 25.051 25.0042 27.2 22.3582 27.2H9.58206C6.93604 27.2 4.79102 25.051 4.79102 22.4V9.60005Z"
+                fill={`url(#ra-mark-${id})`}
+            />
             <path
                 fillRule="evenodd"
                 clipRule="evenodd"
-                d="M17.2 5.63325L8.6 0.855469L0 5.63325V32.1434L16.2 41.1434L32.4 32.1434V23.699L40 19.4767V9.85547L31.4 5.07769L22.8 9.85547V18.2999L17.2 21.411V5.63325ZM38 18.2999L32.4 21.411V15.2545L38 12.1434V18.2999ZM36.9409 10.4439L31.4 13.5221L25.8591 10.4439L31.4 7.36561L36.9409 10.4439ZM24.8 18.2999V12.1434L30.4 15.2545V21.411L24.8 18.2999ZM23.8 20.0323L29.3409 23.1105L16.2 30.411L10.6591 27.3328L23.8 20.0323ZM7.6 27.9212L15.2 32.1434V38.2999L2 30.9666V7.92116L7.6 11.0323V27.9212ZM8.6 9.29991L3.05913 6.22165L8.6 3.14339L14.1409 6.22165L8.6 9.29991ZM30.4 24.8101L17.2 32.1434V38.2999L30.4 30.9666V24.8101ZM9.6 11.0323L15.2 7.92117V22.5221L9.6 25.6333V11.0323Z"
+                d="M15.2956 9.99394C15.5954 9.46882 16.3447 9.46882 16.6444 9.99394L23.0511 21.2186C23.3508 21.7437 22.9762 22.4001 22.3767 22.4001H19.1091C18.8421 22.4001 18.5937 22.2618 18.451 22.0336L15.97 18.8389L13.4891 22.0336C13.3463 22.2618 13.098 22.4001 12.831 22.4001H9.56334C8.96388 22.4001 8.58921 21.7437 8.88893 21.2186L15.2956 9.99394ZM13.4964 18.3621C13.387 18.5369 13.5112 18.765 13.7157 18.765H18.2242C18.4287 18.765 18.5529 18.5369 18.4436 18.3621L15.97 14.4081L13.4964 18.3621Z"
+                fill="white"
             />
         </svg>
     );

@@ -27,10 +27,24 @@ export default function AcceptInvitation(props: Props) {
     return (
         <>
             <Head title="Accept invitation" />
-            <p className="mb-6 text-center text-sm text-muted-foreground">
-                You're joining <strong>{props.tenantName}</strong> as{' '}
-                {props.kind.toLowerCase()} with <strong>{props.email}</strong>.
-            </p>
+            <dl className="mb-6 grid gap-1.5 rounded-xl border border-[#E3E8F2] bg-[#F7F9FD] p-4 text-sm dark:border-border dark:bg-muted/40">
+                <div className="flex justify-between gap-4">
+                    <dt className="text-muted-foreground">Joining</dt>
+                    <dd className="text-right font-semibold">
+                        {props.tenantName}
+                    </dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                    <dt className="text-muted-foreground">Role</dt>
+                    <dd className="text-right font-semibold">{props.kind}</dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                    <dt className="text-muted-foreground">Sign-in email</dt>
+                    <dd className="truncate text-right font-semibold">
+                        {props.email}
+                    </dd>
+                </div>
+            </dl>
             <form
                 className="flex flex-col gap-6"
                 onSubmit={(event) => {
@@ -110,5 +124,5 @@ export default function AcceptInvitation(props: Props) {
 
 AcceptInvitation.layout = {
     title: 'Welcome to RightAlly',
-    description: 'Set up your account to get started',
+    description: 'Choose a password and you are in.',
 };
