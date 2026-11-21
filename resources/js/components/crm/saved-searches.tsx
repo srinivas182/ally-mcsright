@@ -11,6 +11,7 @@ export type SavedSearchRow = {
     last_sent_at: string | null;
     sent_count: number;
     unsubscribed: boolean;
+    texts?: boolean;
 };
 
 const frequencies = [
@@ -56,6 +57,9 @@ export function SavedSearches({
                         className="flex flex-wrap items-center gap-2 py-2"
                     >
                         <span className="font-medium">{s.name}</span>
+                        {s.texts && !s.unsubscribed && (
+                            <Badge variant="secondary">Texts new homes</Badge>
+                        )}
                         {s.unsubscribed && (
                             <Badge variant="outline">They unsubscribed</Badge>
                         )}

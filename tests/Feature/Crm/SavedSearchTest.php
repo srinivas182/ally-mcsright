@@ -4,8 +4,13 @@ declare(strict_types=1);
 
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Inertia\Testing\AssertableInertia as Assert;
+use Modules\Core\Messaging\FakeSmsSender;
+use Modules\Core\Messaging\SmsSender;
+use Modules\Core\Support\Connections;
 use Modules\Crm\Actions\ManageContacts;
 use Modules\Crm\Consent;
 use Modules\Crm\Inbox\MessageMail;
@@ -132,4 +137,43 @@ it('sends a listing to a client as a one-to-one email through the inbox', functi
         && str_starts_with($m->text, "Thought of you for this one!\n\n2 Oak St, Austin, TX\n\$420,000 · 3 bd · 2 ba · 1,800 sq ft") && str_contains($m->text, "Listing courtesy of Acme Realty\n\n--\n"));
     expect(Message::query()->sole()->channel)->toBe('email');
     $this->actingAs($this->ann)->post("/contacts/{$this->jane->ulid}/send-listing", ['listing' => str_repeat('0', 26)])->assertSessionHasErrors('listing');
+});
+
+it('texts new homes for a search that asked for texts: written consent only, 8am to 9pm, at most three a day (IDX10)', function (): void {
+    app()->instance(SmsSender::class, $sms = new FakeSmsSender);
+    $control = DB::connection(Connections::control());
+    $control->table('hq_messaging')->insert(['credentials' => Crypt::encryptString(json_encode(['sid' => 'AC'.str_repeat('1', 32), 'token' => 'tw-token'])),
+        'sms_from' => '+15125550000', 'sms_enabled' => true, 'voice_enabled' => false, 'created_at' => now(), 'updated_at' => now()]);
+    $control->table('hq_messaging_tenants')->insert(['tenant_id' => $this->tenant->id, 'sms' => true,
+        'voice' => false, 'sms_number' => '+15125550100', 'created_at' => now(), 'updated_at' => now()]);
+    $this->jane->forceFill(['phones' => [['e164' => '+15125550199', 'label' => 'mobile', 'primary' => true, 'can_text' => true]]])->save();
+    $search = app(SavedSearches::class)->createForVisitor($this->jane, ['q' => 'Austin'], '', $this->ann->id);
+    $search->forceFill(['text_alerts' => true, 'last_texted_at' => now()])->save();
+
+    // No written consent yet: no text.
+    $this->travel(61)->minutes();
+    $this->feed->records = [listing(6, ['ModificationTimestamp' => '2026-06-01T16:10:00Z'])];
+    app(ListingSync::class)->run($this->source->refresh());
+    expect(app(SavedSearches::class)->sendTexts())->toBe(0);
+
+    app(Consent::class)->optInSms($this->jane->refresh(), 'web_form', SavedSearches::TEXT_CONSENT);
+    expect(app(SavedSearches::class)->sendTexts())->toBe(1)
+        ->and($sms->sent[0]['to'])->toBe('+15125550199')->and($sms->sent[0]['message'])->toStartWith($this->tenant->name.': new home for "Austin": 3 bd, 2 ba, $460,000 in 6 Oak St, Austin.')
+        ->not->toContain('more)')->toContain('Reply STOP');
+    expect(app(SavedSearches::class)->sendTexts())->toBe(0); // the same home is never texted twice
+
+    // Late at night where Jane is (10:30pm in Austin): it waits for the morning.
+    $this->travelTo(CarbonImmutable::parse('2026-06-02 03:30', 'UTC'));
+    $this->feed->records = [listing(7, ['ModificationTimestamp' => '2026-06-02T03:20:00Z'])];
+    app(ListingSync::class)->run($this->source->refresh());
+    expect(app(SavedSearches::class)->sendTexts())->toBe(0);
+    $this->travelTo(CarbonImmutable::parse('2026-06-02 14:00', 'UTC'));
+    expect(app(SavedSearches::class)->sendTexts())->toBe(1)->and(count($sms->sent))->toBe(2);
+
+    // An opt-out (STOP) ends texts.
+    app(Consent::class)->optOutSms($this->jane->refresh());
+    $this->travel(2)->hours();
+    $this->feed->records = [listing(8, ['ModificationTimestamp' => '2026-06-02T15:00:00Z'])];
+    app(ListingSync::class)->run($this->source->refresh());
+    expect(app(SavedSearches::class)->sendTexts())->toBe(0);
 });
