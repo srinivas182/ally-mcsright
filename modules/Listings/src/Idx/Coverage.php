@@ -224,6 +224,10 @@ final class Coverage
                 }
             }
             $this->audit->record('idx.board.updated', changes: $changes, metadata: ['board' => $data['code'], 'by' => $by->id], severity: 'notice');
+            // IDX8: brokerages that asked for this board hear the day it opens.
+            if ($data['visibility'] === 'public' && $existing->visibility !== 'public') {
+                app(BoardRequests::class)->boardOpened((int) $existing->id);
+            }
         }
 
         return (string) $ulid;

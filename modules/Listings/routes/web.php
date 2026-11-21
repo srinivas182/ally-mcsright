@@ -54,6 +54,9 @@ Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.mls.manage'])
         Route::post('subscriptions/{subscription}/send', [HqIdxController::class, 'sendNow'])->where('subscription', $sub)->middleware('password.confirm')->name('subscriptions.send');
         Route::get('subscriptions/{subscription}/agreement.pdf', [HqIdxController::class, 'copy'])->where('subscription', $sub)->name('subscriptions.copy');
         Route::post('subscriptions/{subscription}/cancel', [HqIdxController::class, 'cancel'])->where('subscription', $sub)->middleware('password.confirm')->name('subscriptions.cancel');
+        // IDX8: boards brokerages asked for.
+        Route::post('requests/{boardRequest}/add', [HqIdxController::class, 'addRequested'])->where('boardRequest', $sub)->name('requests.add');
+        Route::post('requests/{boardRequest}/close', [HqIdxController::class, 'closeRequested'])->where('boardRequest', $sub)->name('requests.close');
     });
 
 Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])
@@ -65,6 +68,7 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])
         // IDX4: the brokerage's MLS boards, each on its own track.
         Route::put('demo', [MlsSettingsController::class, 'demo'])->name('demo'); // IDX5
         Route::post('boards', [MlsSettingsController::class, 'addBoard'])->middleware('throttle:20,1')->name('boards.store');
+        Route::post('requests', [MlsSettingsController::class, 'requestBoard'])->middleware('throttle:20,1')->name('requests.store'); // IDX8
         Route::put('boards/{subscription}', [MlsSettingsController::class, 'submitBoard'])->where('subscription', '[0-9A-HJKMNP-TV-Z]{26}')->middleware(['password.confirm', 'throttle:20,1'])->name('boards.update');
         Route::get('boards/{subscription}/agreement.pdf', [MlsSettingsController::class, 'copy'])->where('subscription', '[0-9A-HJKMNP-TV-Z]{26}')->name('boards.copy'); // IDX6
         Route::delete('boards/{subscription}', [MlsSettingsController::class, 'cancelBoard'])->where('subscription', '[0-9A-HJKMNP-TV-Z]{26}')->middleware('password.confirm')->name('boards.destroy');

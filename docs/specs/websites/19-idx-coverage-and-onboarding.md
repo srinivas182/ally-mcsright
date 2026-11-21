@@ -115,3 +115,18 @@ onboarding, connector blueprint, multi-MLS PRD), adjusted to RightAlly.
 Defaults for HQ to review: extra boards are billed monthly even on yearly plans; no proration (a board added on the
 15th is billed in full on the next 1st, a board cancelled before the 1st is not billed); one-off setup fees are not
 charged yet.
+
+## IDX8: "My board isn't listed" and agents inherit boards
+
+- **Asking for a board.** Settings › MLS has "My board isn't listed": board name, state, website and a note. One
+  request per board name and state per brokerage, at most 10 open at once. The brokerage sees only its own requests and
+  their status. The sign-up page tells brokers they can ask for it after sign-up.
+- **HQ › IDX coverage › Asked for.** Each request shows the brokerage and how many brokerages asked for the same board.
+  HQ either adds it to the directory with a short code (it starts hidden, and every open request for the same board is
+  linked to it) or closes it with a reason, which is emailed to the brokerage.
+- **The day it opens.** When HQ makes a linked board public, everyone who asked is emailed once ("… is ready for your
+  website") with a link to Settings › MLS.
+- **Agents inherit boards.** An agent's own website uses the brokerage's boards, with the same notices; there is nothing
+  for the agent to sign. My website shows the brokerage's boards and their status, read-only. Solo agents sign up as
+  their own brokerage and add boards themselves.
+- Table `idx_board_requests` (control database, listed in `ControlTables`).
