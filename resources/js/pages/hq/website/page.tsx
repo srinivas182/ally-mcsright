@@ -81,6 +81,12 @@ const FIELDS: Record<string, { fields: Field[]; items?: Field[] }> = {
             { key: 'note', label: 'Note under the prices' },
         ],
     },
+    seats: {
+        fields: [
+            { key: 'heading', label: 'Heading (optional)' },
+            { key: 'note', label: 'Note under the prices' },
+        ],
+    },
     text: {
         fields: [
             { key: 'heading', label: 'Heading' },

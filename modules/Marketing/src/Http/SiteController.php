@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\URL;
+use Modules\Billing\Models\AgentPlan;
 use Modules\Billing\Models\Package;
 use Modules\Marketing\Showcase;
 use Modules\Marketing\Website;
@@ -192,7 +193,11 @@ final class SiteController
                     'priceCurrency' => 'USD', 'url' => 'https://'.config('core.hq_host').'/start'])->values()->all()];
         }
 
-        return $this->view('marketing::page', $locale, $slug, $title, $description, $preview, ['blocks' => $blocks, 'packages' => $packages, 'byAudience' => $byAudience, 'showcase' => $showcase], $graph);
+        // BR4: agent seat prices (through a brokerage, and on their own), live from HQ › Packages.
+        $seats = in_array('seats', array_column($blocks, 'type'), true)
+            ? AgentPlan::query()->where('active', true)->orderBy('sort')->get(['name', 'description', 'floor_cents', 'list_cents'])->all() : [];
+
+        return $this->view('marketing::page', $locale, $slug, $title, $description, $preview, ['blocks' => $blocks, 'packages' => $packages, 'byAudience' => $byAudience, 'showcase' => $showcase, 'seats' => $seats], $graph);
     }
 
     /**

@@ -6,6 +6,7 @@ use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Modules\Billing\Models\AgentPlan;
 use Modules\Billing\Models\Package;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\Models\Tenant;
@@ -67,4 +68,19 @@ it('refreshes existing starter pages as drafts, leaving what is live alone', fun
     DB::connection(Connections::control())->table('marketing_pages')->where('id', $home->id)->update(['title' => 'Our own title']);
     $this->artisan('marketing:starter --refresh')->assertSuccessful();
     expect(app(Website::class)->page('en', '')->title)->toBe('Our own title');
+});
+
+it('shows agent seat prices live from billing: with a brokerage and on their own (BR4)', function (): void {
+    $this->artisan('billing:starter-prices')->assertSuccessful();
+    $this->artisan('marketing:starter', ['--refresh' => true])->assertSuccessful();
+    $site = app(Website::class);
+    $page = $site->page('en', 'pricing');
+    $site->publish((string) $page->ulid, $this->staff);
+
+    $html = (string) $this->get('http://rightally.io/pricing')->assertOk()->getContent();
+    expect($html)->toContain('For agents')->toContain('$38')->toContain('$58')->toContain('$98')->toContain('$138')->toContain('$158')->toContain('$198')
+        ->toContain('a month with your brokerage')->toContain('month on your own');
+
+    AgentPlan::query()->where('key', 'pro')->update(['floor_cents' => 9_900]);
+    expect((string) $this->get('http://rightally.io/pricing')->getContent())->toContain('$99');
 });

@@ -85,6 +85,27 @@
                 @if ($b['note'] !== '')<p class="small muted">{{ $b['note'] }}</p>@endif
             </div></section>
             @break
+        @case('seats')
+            <section><div class="wrap">
+                <div class="head"><h2>{{ $b['heading'] !== '' ? $b['heading'] : ($es ? 'Precios para agentes' : 'Prices for agents') }}</h2>
+                    <p class="lead">{{ $es ? 'Los agentes de una correduría en RightAlly pagan menos. Los agentes por su cuenta pagan el precio público.' : 'Agents whose brokerage is on RightAlly pay less. Agents on their own pay the public price.' }}</p></div>
+                <div class="grid plans">
+                    @forelse (($seats ?? []) as $si => $seat)
+                        <div class="card{{ count($seats) === 3 && $si === 1 ? ' best' : '' }}" data-best="{{ $es ? 'Recomendado' : 'Recommended' }}">
+                            <h3>{{ $seat->name }}</h3>
+                            <p class="muted small">{{ $seat->description }}</p>
+                            <p class="price">${{ number_format(((int) $seat->floor_cents) / 100, 0) }}<span class="per">{{ $es ? 'al mes con su correduría' : 'a month with your brokerage' }}</span></p>
+                            <p class="small muted">${{ number_format(((int) $seat->list_cents) / 100, 0) }} / {{ $es ? 'mes por su cuenta' : 'month on your own' }}</p>
+                            <p class="small muted">{{ $es ? 'Con correduría: su broker le invita.' : 'With a brokerage: your broker invites you.' }}</p>
+                            <a class="btn ghost" href="{{ preg_replace('#/start$#', '/agents', $start) }}">{{ $es ? 'Empezar por su cuenta' : 'Start on your own' }}</a>
+                        </div>
+                    @empty
+                        <p class="muted">{{ $es ? 'Pronto publicaremos los precios.' : 'Prices are coming soon.' }}</p>
+                    @endforelse
+                </div>
+                @if ($b['note'] !== '')<p class="small muted">{{ $b['note'] }}</p>@endif
+            </div></section>
+            @break
         @case('text')
             <section><div class="wrap prose">
                 @if ($b['heading'] !== '')<h2>{{ $b['heading'] }}</h2>@endif
