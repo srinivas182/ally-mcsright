@@ -65,6 +65,14 @@ type Available = {
     approval: string;
 };
 
+/** IDX7: one board is included in the package; the others are added to the monthly invoice. */
+type Fees = {
+    included: string | null;
+    included_ulid: string | null;
+    extra_cents: number;
+    extras: { name: string; fee_cents: number }[];
+};
+
 /** The steps every board goes through, in order (IDX4). */
 const STEPS: { key: string; label: string }[] = [
     { key: 'demo', label: 'Your details' },
@@ -84,11 +92,13 @@ export default function MlsSettings({
     boards = [],
     available = [],
     demo = { on: true, showing: false },
+    fees = { included: null, included_ulid: null, extra_cents: 0, extras: [] },
 }: {
     sources: Source[];
     boards?: Board[];
     available?: Available[];
     demo?: { on: boolean; showing: boolean };
+    fees?: Fees;
 }) {
     const [adding, setAdding] = useState('');
     const current = boards.filter((b) => b.status !== 'cancelled');
@@ -106,8 +116,19 @@ export default function MlsSettings({
                         You have no MLS boards yet. Add the first one below.
                     </p>
                 )}
+                {current.length > 0 && (
+                    <p className="rounded-xl border bg-card p-5 text-base">
+                        {fees.extras.length === 0
+                            ? 'Your plan includes one MLS board, so your boards cost nothing extra.'
+                            : `Your plan includes one MLS board (${fees.included}). The other ${fees.extras.length} add ${money(fees.extra_cents)} a month, on your invoice on the 1st.`}
+                    </p>
+                )}
                 {current.map((b) => (
-                    <BoardCard key={b.ulid} board={b} />
+                    <BoardCard
+                        key={b.ulid}
+                        board={b}
+                        included={b.ulid === fees.included_ulid}
+                    />
                 ))}
 
                 {current.length > 0 &&
@@ -200,7 +221,13 @@ export default function MlsSettings({
     );
 }
 
-function BoardCard({ board: b }: { board: Board }) {
+function BoardCard({
+    board: b,
+    included,
+}: {
+    board: Board;
+    included: boolean;
+}) {
     const [editing, setEditing] = useState(
         b.status === 'demo' || b.status === 'needs_fixing',
     );
@@ -224,9 +251,11 @@ function BoardCard({ board: b }: { board: Board }) {
                     <h2 className="text-lg font-semibold">{b.board}</h2>
                     <p className="text-sm text-muted-foreground">
                         {b.state}
-                        {b.fee_cents !== null
-                            ? ` · ${money(b.fee_cents)} a month`
-                            : ''}
+                        {included
+                            ? ' · Included in your plan'
+                            : b.fee_cents !== null
+                              ? ` · +${money(b.fee_cents)} a month on your invoice`
+                              : ''}
                         {b.approval
                             ? ` · MLS approval usually ${b.approval}`
                             : ''}
