@@ -101,6 +101,18 @@ On this one server,
 `launch:check` will show two items as not done, both expected until the move: **files on shared storage** (set
 Cloudflare R2 in `.env` if you want it now) and **a separate brokerage database** (set up and tested at the move).
 
+## AI
+
+`ai:sync-features` links every AI feature to a model, so it needs a provider and models first. In **HQ › AI console**:
+
+1. **Providers:** add Anthropic (Claude), recommended. Add OpenAI too if you want voice notes (speech to text).
+2. **API key:** paste the key. RightAlly checks it with the provider and saves it encrypted; nobody sees it again.
+3. **Edit:** confirm zero retention and no training (check your provider account really gives these), add a note,
+   set **Active**.
+4. **Models:** add the main model (chat, json, vision) and, for voice notes, a speech-to-text model (transcribe), with
+   the provider's prices.
+5. Run `docker compose -f compose.prod.yaml exec app php artisan ai:sync-features`.
+
 ## Email
 
 RightAlly's own email (invitations, sign-in codes, notices, Watchtower) is set up in **HQ › Outside services ›

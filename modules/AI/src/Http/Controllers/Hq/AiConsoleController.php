@@ -18,6 +18,7 @@ use Modules\AI\Models\AiProvider;
 use Modules\AI\Models\AiRedTeamRun;
 use Modules\AI\Models\AiRequest;
 use Modules\AI\Support\CircuitBreaker;
+use Modules\AI\Support\ProviderKeyCheck;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Tenancy\Attributes\CrossTenantAccess;
 use Modules\Core\Tenancy\CrossTenant;
@@ -58,6 +59,9 @@ final class AiConsoleController
                 'id' => $p->id, 'key' => $p->key, 'name' => $p->name, 'adapter' => $p->adapter, 'status' => $p->status,
                 'zero_retention_confirmed' => $p->zero_retention_confirmed, 'no_training_confirmed' => $p->no_training_confirmed,
                 'dpa_signed_at' => $p->dpa_signed_at?->toDateString(), 'usable' => $p->isUsable(), 'circuit_open' => $circuit->isOpen($p->key),
+                // AI1: never the key itself, only where it comes from and its last 4 characters.
+                'key_source' => $p->keySource(), 'key_hint' => $p->keySource() === 'hq' ? $p->api_key_hint : null,
+                'key_saved_at' => $p->key_saved_at?->toDateString(), 'key_checked_at' => $p->key_checked_at?->toDateString(),
             ]),
             'models' => AiModel::query()->with('provider')->orderBy('display_name')->get()->map(fn (AiModel $m): array => [
                 'id' => $m->id, 'name' => $m->display_name, 'model_id' => $m->model_id, 'provider' => $m->provider->name,
@@ -135,8 +139,56 @@ final class AiConsoleController
     }
 
     /**
-     * Known providers. API keys never live in the database: each provider reads its key from the server's
-     * environment (ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY via config/services.php).
+     * AI1: saves a provider's API key (encrypted; never shown again; password confirmed by the route), then checks
+     * the provider accepts it. A key the provider refuses is not saved.
+     */
+    public function saveKey(Request $request, AiProvider $provider, ProviderKeyCheck $check): RedirectResponse
+    {
+        $key = trim((string) $request->validate([
+            'api_key' => ['required', 'string', 'min:20', 'max:400', 'regex:/^[A-Za-z0-9._\-]+$/'],
+        ], ['api_key.regex' => 'That does not look like an API key. Copy it again, without spaces.'])['api_key']);
+
+        $problem = $check->check($provider, $key);
+        if ($problem !== null) {
+            throw ValidationException::withMessages(['api_key' => $problem.' The key was not saved.']);
+        }
+
+        $provider->forceFill([
+            'api_key' => $key, 'api_key_hint' => mb_substr($key, -4), 'key_saved_at' => now(), 'key_checked_at' => now(),
+        ])->save();
+        app(AuditLogger::class)->record('ai.provider.key_saved', $provider, metadata: ['provider' => $provider->key], severity: 'warning');
+        Inertia::flash('toast', ['type' => 'success', 'message' => "{$provider->name} accepted the key. It is saved and locked away."]);
+
+        return back();
+    }
+
+    /** AI1: "Check connection" with the key in use. */
+    public function checkKey(AiProvider $provider, ProviderKeyCheck $check): RedirectResponse
+    {
+        $problem = $check->check($provider);
+        if ($problem === null) {
+            $provider->forceFill(['key_checked_at' => now()])->save();
+        }
+        Inertia::flash('toast', $problem === null
+            ? ['type' => 'success', 'message' => "{$provider->name} accepted the key."]
+            : ['type' => 'error', 'message' => $problem]);
+
+        return back();
+    }
+
+    /** AI1: removes the saved key (the server's .env key, if any, is used again). */
+    public function removeKey(AiProvider $provider): RedirectResponse
+    {
+        $provider->forceFill(['api_key' => null, 'api_key_hint' => null, 'key_saved_at' => null, 'key_checked_at' => null])->save();
+        app(AuditLogger::class)->record('ai.provider.key_removed', $provider, metadata: ['provider' => $provider->key], severity: 'warning');
+        Inertia::flash('toast', ['type' => 'success', 'message' => "{$provider->name} key removed."]);
+
+        return back();
+    }
+
+    /**
+     * Known providers. Each one's API key is saved in this console (AI1); a key in the server's environment
+     * (ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY via config/services.php) is used when none is saved.
      */
     public const PROVIDER_PRESETS = [
         'anthropic' => ['name' => 'Anthropic (Claude)', 'adapter' => 'anthropic', 'base_url' => 'https://api.anthropic.com', 'credential_config_key' => 'services.anthropic.key'],

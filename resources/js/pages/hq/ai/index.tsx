@@ -38,7 +38,93 @@ type Provider = {
     dpa_signed_at: string | null;
     usable: boolean;
     circuit_open: boolean;
+    key_source: 'hq' | 'server' | 'none';
+    key_hint: string | null;
+    key_saved_at: string | null;
+    key_checked_at: string | null;
 };
+
+/** Where to get each provider's key, in plain words. */
+const KEY_HELP: Record<string, string> = {
+    anthropic: 'console.anthropic.com → API keys → Create key',
+    openai: 'platform.openai.com → API keys → Create new secret key',
+    gemini: 'aistudio.google.com → Get API key',
+};
+
+/** AI1: saves a provider's API key. The key is checked with the provider, locked away and never shown again. */
+function KeyDialog({
+    provider,
+    onClose,
+}: {
+    provider: Provider;
+    onClose: () => void;
+}) {
+    const form = useForm({ api_key: '' });
+
+    return (
+        <Dialog open onOpenChange={(open) => !open && onClose()}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>{provider.name} API key</DialogTitle>
+                    <DialogDescription>
+                        Paste the key from{' '}
+                        {KEY_HELP[provider.key] ?? 'the provider'}. RightAlly
+                        checks it with {provider.name}, then saves it locked
+                        away. Nobody can see it again, including you.
+                    </DialogDescription>
+                </DialogHeader>
+                <form
+                    id="key-form"
+                    className="grid gap-4"
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        form.post(`/hq/ai/providers/${provider.id}/key`, {
+                            preserveScroll: true,
+                            onSuccess: onClose,
+                            onFinish: () => form.reset('api_key'),
+                        });
+                    }}
+                >
+                    <FormField
+                        label="API key"
+                        help={
+                            provider.key_source === 'hq'
+                                ? `A key ending in ${provider.key_hint} is saved. Saving a new one replaces it.`
+                                : undefined
+                        }
+                        error={form.errors.api_key}
+                        required
+                    >
+                        {(control) => (
+                            <Input
+                                {...control}
+                                type="password"
+                                autoComplete="off"
+                                spellCheck={false}
+                                value={form.data.api_key}
+                                onChange={(e) =>
+                                    form.setData('api_key', e.target.value)
+                                }
+                            />
+                        )}
+                    </FormField>
+                </form>
+                <DialogFooter>
+                    <Button variant="outline" onClick={onClose}>
+                        Cancel
+                    </Button>
+                    <Button
+                        type="submit"
+                        form="key-form"
+                        disabled={form.processing || form.data.api_key === ''}
+                    >
+                        {form.processing ? 'Checking…' : 'Check and save'}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
 type Model = {
     id: number;
     name: string;
@@ -536,6 +622,7 @@ export default function AiConsole({
     redTeam,
 }: Props) {
     const [editing, setEditing] = useState<Provider | null>(null);
+    const [keyEditing, setKeyEditing] = useState<Provider | null>(null);
     const [modelEditing, setModelEditing] = useState<Model | 'new' | null>(
         null,
     );
@@ -719,9 +806,8 @@ export default function AiConsole({
                                     Add
                                 </Button>
                                 <span className="text-muted-foreground">
-                                    Its API key goes in the server environment
-                                    (ANTHROPIC_API_KEY, OPENAI_API_KEY,
-                                    GEMINI_API_KEY), never here.
+                                    Then paste its API key with the API key
+                                    button.
                                 </span>
                             </div>
                         )}
@@ -743,6 +829,13 @@ export default function AiConsole({
                                                 ? 'confirmed'
                                                 : 'not confirmed'}
                                         </p>
+                                        <p className="text-sm text-muted-foreground">
+                                            {p.key_source === 'hq'
+                                                ? `Key saved (ends ${p.key_hint})${p.key_checked_at ? `, last checked ${p.key_checked_at}` : ''}`
+                                                : p.key_source === 'server'
+                                                  ? 'Key from the server settings file. Paste it here to manage it from HQ.'
+                                                  : 'No key yet'}
+                                        </p>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         {p.circuit_open && (
@@ -759,6 +852,50 @@ export default function AiConsole({
                                         >
                                             {p.usable ? 'In use' : 'Not usable'}
                                         </Badge>
+                                        <Button
+                                            size="sm"
+                                            variant={
+                                                p.key_source === 'none'
+                                                    ? 'default'
+                                                    : 'outline'
+                                            }
+                                            onClick={() => setKeyEditing(p)}
+                                        >
+                                            API key
+                                        </Button>
+                                        {p.key_source !== 'none' && (
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() =>
+                                                    router.post(
+                                                        `/hq/ai/providers/${p.id}/key/check`,
+                                                        {},
+                                                        {
+                                                            preserveScroll: true,
+                                                        },
+                                                    )
+                                                }
+                                            >
+                                                Check connection
+                                            </Button>
+                                        )}
+                                        {p.key_source === 'hq' && (
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={() =>
+                                                    router.delete(
+                                                        `/hq/ai/providers/${p.id}/key`,
+                                                        {
+                                                            preserveScroll: true,
+                                                        },
+                                                    )
+                                                }
+                                            >
+                                                Remove key
+                                            </Button>
+                                        )}
                                         <Button
                                             size="sm"
                                             variant="outline"
@@ -880,6 +1017,12 @@ export default function AiConsole({
                     providers={providers}
                     capabilities={capabilities}
                     onClose={() => setModelEditing(null)}
+                />
+            )}
+            {keyEditing && (
+                <KeyDialog
+                    provider={keyEditing}
+                    onClose={() => setKeyEditing(null)}
                 />
             )}
             {editing && (
