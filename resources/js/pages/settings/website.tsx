@@ -481,6 +481,9 @@ function Manage({
                         <Link href="/settings/website/blog">Blog</Link>
                     </Button>
                     <Button asChild size="sm" variant="outline">
+                        <Link href="/settings/website/areas">Area pages</Link>
+                    </Button>
+                    <Button asChild size="sm" variant="outline">
                         <Link href="/settings/website/media">
                             Media library
                         </Link>

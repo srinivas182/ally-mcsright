@@ -2494,3 +2494,14 @@ h3 {
     color: #7a4b00;
     font-weight: 600;
 }
+
+/* IDX9: the brokerage's own words on an area page. */
+.area-intro {
+    max-width: 68ch;
+    margin: 0 0 1.25rem;
+    font-size: 1.0625rem;
+    line-height: 1.7;
+}
+.area-intro p {
+    margin: 0 0 0.75rem;
+}

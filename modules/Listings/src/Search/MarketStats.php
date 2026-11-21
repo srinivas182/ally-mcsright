@@ -33,9 +33,19 @@ final class MarketStats
                 ->orderByDesc('n')->limit($limit)->toBase()->get();
             $zips = $this->base($tenantId)->whereNotNull('postal_code')->groupBy('postal_code')->selectRaw('postal_code, min(city) as city, count(*) as n')
                 ->havingRaw('count(*) >= ?', [self::MIN_LISTINGS])->orderByDesc('n')->limit($limit)->toBase()->get();
+            // IDX9: neighbourhoods (the MLS's subdivision), within a city.
+            $areas = $this->base($tenantId)->whereNotNull('subdivision')->where('subdivision', '!=', '')->whereNotNull('city')->whereNotNull('state_or_province')
+                ->groupBy('subdivision', 'city', 'state_or_province')->selectRaw('subdivision, city, state_or_province, count(*) as n')->havingRaw('count(*) >= ?', [self::MIN_LISTINGS])
+                ->orderByDesc('n')->limit($limit)->toBase()->get();
             $out = [];
             foreach ($cities as $c) {
                 $out[] = ['kind' => 'city', 'slug' => self::citySlug((string) $c->city, (string) $c->state_or_province), 'name' => $c->city.', '.$c->state_or_province, 'count' => (int) $c->n];
+            }
+            foreach ($areas as $a) {
+                $slug = self::areaSlug((string) $a->subdivision, (string) $a->city, (string) $a->state_or_province);
+                if ($slug !== null) {
+                    $out[] = ['kind' => 'area', 'slug' => $slug, 'name' => self::areaName((string) $a->subdivision).', '.$a->city, 'count' => (int) $a->n];
+                }
             }
             foreach ($zips as $z) {
                 $out[] = ['kind' => 'zip', 'slug' => (string) $z->postal_code, 'name' => $z->postal_code.($z->city ? ' ('.$z->city.')' : ''), 'count' => (int) $z->n];
@@ -48,7 +58,7 @@ final class MarketStats
     /**
      * Figures for one area ("austin-tx" or "78704"); null when the area is unknown or too small to publish.
      *
-     * @return array{kind: string, slug: string, name: string, city: string|null, state: string|null, zip: string|null, as_of: string, active: int, median_price: int|null, low_price: int|null, high_price: int|null, median_ppsf: int|null, median_dom: int|null, new_30: int, reduced_30: int, reduced_share: int, types: array<string, int>, zips: list<string>}|null
+     * @return array{kind: string, slug: string, name: string, city: string|null, state: string|null, zip: string|null, area?: string|null, as_of: string, active: int, median_price: int|null, low_price: int|null, high_price: int|null, median_ppsf: int|null, median_dom: int|null, new_30: int, reduced_30: int, reduced_share: int, types: array<string, int>, zips: list<string>}|null
      */
     public function forPlace(int $tenantId, string $place): ?array
     {
@@ -61,6 +71,18 @@ final class MarketStats
                 $city = (string) ($this->base($tenantId)->where('postal_code', $place)->value('city') ?? '');
                 $state = (string) ($this->base($tenantId)->where('postal_code', $place)->value('state_or_province') ?? '');
                 $meta = ['kind' => 'zip', 'slug' => $place, 'name' => $place.($city !== '' ? " ({$city}, {$state})" : ''), 'city' => $city ?: null, 'state' => $state ?: null, 'zip' => $place];
+            } elseif (preg_match('/^([a-z0-9-]+)--([a-z0-9-]+)-([a-z]{2})$/', $place, $m) === 1) {
+                // IDX9: a neighbourhood, "river-oaks--houston-tx".
+                $state = strtoupper($m[3]);
+                $pair = $this->base($tenantId)->where('state_or_province', $state)->whereNotNull('subdivision')->whereNotNull('city')
+                    ->select('subdivision', 'city')->distinct()->limit(5000)->toBase()->get()
+                    ->first(fn (object $r): bool => Str::slug((string) $r->subdivision) === $m[1] && Str::slug((string) $r->city) === $m[2]);
+                if ($pair === null) {
+                    return null;
+                }
+                $q = $this->base($tenantId)->where('state_or_province', $state)->where('city', $pair->city)->where('subdivision', $pair->subdivision);
+                $meta = ['kind' => 'area', 'slug' => $place, 'name' => self::areaName((string) $pair->subdivision).', '.$pair->city, 'city' => (string) $pair->city,
+                    'state' => $state, 'zip' => null, 'area' => (string) $pair->subdivision];
             } elseif (preg_match('/^([a-z0-9-]+)-([a-z]{2})$/', $place, $m) === 1) {
                 $state = strtoupper($m[2]);
                 $city = $this->base($tenantId)->where('state_or_province', $state)->whereNotNull('city')->distinct()->limit(2000)->pluck('city')
@@ -96,6 +118,25 @@ final class MarketStats
                 'zips' => $meta['kind'] === 'city' ? array_values($rows->pluck('postal_code')->filter()->countBy()->filter(fn (int $n): bool => $n >= self::MIN_LISTINGS)->sortDesc()->keys()->map(fn ($z): string => (string) $z)->take(12)->all()) : [],
             ];
         });
+    }
+
+    /** IDX9: "RIVER OAKS SEC 02" → "river-oaks-sec-02--houston-tx"; null when the name has no letters. */
+    public static function areaSlug(string $subdivision, string $city, string $state): ?string
+    {
+        $area = Str::slug($subdivision);
+        if ($area === '' || strlen($area) > 60 || preg_match('/[a-z]/', $area) !== 1 || str_contains($area, '--')) {
+            return null;
+        }
+
+        return $area.'--'.self::citySlug($city, $state);
+    }
+
+    /** MLS subdivision names are often in capitals; show them in title case. */
+    public static function areaName(string $subdivision): string
+    {
+        $name = trim(preg_replace('/\s+/', ' ', $subdivision) ?? $subdivision);
+
+        return mb_strtoupper($name) === $name ? Str::title(mb_strtolower($name)) : $name;
     }
 
     public static function citySlug(string $city, string $state): string
