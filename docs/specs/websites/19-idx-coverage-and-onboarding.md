@@ -41,3 +41,15 @@ onboarding, connector blueprint, multi-MLS PRD), adjusted to RightAlly.
   RightAlly's key, or paste a key that board issued. Spark is read at most every 10 minutes (enforced).
 - **How it reads:** a closed time window (`ModificationTimestamp gt <last> and lt <now − 1 min>`, as Spark asks because of
   its caching), up to 1,000 listings a page with photos, following Spark's next-page links.
+
+## IDX3 · Repliers (built)
+
+- **Key:** HQ › Outside services › _MLS listings: Repliers_ (`REPLIERS-API-KEY`). A test key reads Repliers' sample data
+  (about 1 request a second). "Check connection" reads one listing.
+- **Each board's feed:** HQ › MLS connections → provider _Repliers_, with the Repliers board ID in "originating system"
+  (empty: all boards the key can read, such as the sample data). Leave the token empty to use RightAlly's key.
+- **How it reads:** Repliers' listings search, oldest change first (`sortBy=updatedOnAsc`, `minUpdatedOn`, both on and off
+  the market), 100 a page; each listing becomes a RESO record (status from A/U and the last status, address, price,
+  rooms, map point, agent and office, photos from `cdn.repliers.io`). From there it is the same sync as every feed.
+- **Open question for Repliers:** we copy listings into RightAlly (the recommended way). If Repliers' agreement asks for
+  live searching instead, a live-search engine is added behind the same search; nothing else changes.

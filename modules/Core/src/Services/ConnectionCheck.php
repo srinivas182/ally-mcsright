@@ -72,6 +72,8 @@ final class ConnectionCheck
             'numverify' => $this->json($this->http()->get('https://apilayer.net/api/validate', ['access_key' => $k['api_key'], 'number' => '14158586273']),
                 fn (array $j): bool => ! array_key_exists('success', $j) || $j['success'] !== false),
             'stripe' => $this->stripe($k['secret_key'], $test),
+            // IDX3: read one listing (nothing is changed).
+            'repliers' => $this->status($this->http()->withHeaders(['REPLIERS-API-KEY' => $k['api_key']])->acceptJson()->get('https://api.repliers.io/listings', ['resultsPerPage' => 1, 'fields' => 'mlsNumber'])),
             // IDX2: read one listing (nothing is changed).
             'spark' => $this->status($this->http()->withToken($k['access_token'])->acceptJson()->get(rtrim(($k['endpoint'] ?? '') !== '' ? $this->host($k['endpoint']) : 'https://replication.sparkapi.com/Reso/OData', '/').'/Property', ['$top' => 1, '$select' => 'ListingKey'])),
             // EM1: sign in to the provider's mail server (nothing is sent).
