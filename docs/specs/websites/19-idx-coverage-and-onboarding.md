@@ -145,3 +145,21 @@ charged yet.
   still shown, marked "These figures come from sample listings…", but are `noindex`, and the sitemap and llms.txt list
   no area pages and no listings.
 - Table `site_areas` (cell database, scoped to the brokerage).
+
+## IDX10: plain-words search with home facts, and new-home texts
+
+- **Home facts from the MLS.** Listings now keep `pool`, `garage_spaces`, `waterfront` and `new_construction` (RESO
+  `PoolPrivateYN`, `GarageSpaces`, `WaterfrontYN`, `NewConstructionYN`; Repliers `swimmingPool`, `numGarageSpaces`,
+  `waterfront`). Null when the MLS does not say. Homes already loaded get them on their next update.
+- **Plain-words search** (rules, no AI cost) now turns these into real filters instead of listing them back: "with a
+  pool", "2 car garage", "waterfront", "new construction", "5 acres", "condo", "townhome", in English and Spanish.
+  "Lake Charles" stays a place. A pool also matches homes whose photos show one. Only "view", "yard" and "basement" are
+  still listed back as not filtered. The same filters work in links (`pool=1`, `garage=2`, `waterfront=1`,
+  `new_build=1`, `acres=5`, `sub=condo|townhome`), in saved searches and in AIlly's home suggestions.
+- **New-home texts** (opt-in only). After saving a search on the website, the visitor can ask for texts: their mobile
+  number and the exact consent words (shown next to an unticked box) are recorded as written consent (web form). Texts
+  go only with that consent on file, only between 8am and 9pm where the person is, at most 3 a day and one an hour per
+  search, only for new homes (price drops stay in the email), never the same home twice, and STOP ends them. The agent
+  sees "Texts new homes" on the contact's saved search. The brokerage needs texts switched on by HQ.
+
+For review: the consent wording (`SavedSearches::TEXT_CONSENT`) should be checked by counsel before launch.

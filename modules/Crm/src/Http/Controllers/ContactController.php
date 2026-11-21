@@ -200,7 +200,7 @@ final class ContactController
 
         $savedSearches = SavedSearch::query()->where('contact_id', $contact->id)->latest('id')->get()
             ->map(fn (SavedSearch $s): array => ['ulid' => $s->ulid, 'name' => $s->name, 'frequency' => $s->frequency, 'last_sent_at' => $s->last_sent_at?->toIso8601String(),
-                'sent_count' => $s->sent_count, 'unsubscribed' => $s->unsubscribed_at !== null]);
+                'sent_count' => $s->sent_count, 'unsubscribed' => $s->unsubscribed_at !== null, 'texts' => (bool) $s->text_alerts]);
 
         return Inertia::render('crm/contacts/show', [
             'savedSearches' => $savedSearches,

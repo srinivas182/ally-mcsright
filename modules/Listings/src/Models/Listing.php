@@ -94,7 +94,8 @@ final class Listing extends Model
     {
         return ['close_date' => 'immutable_date', 'on_market_date' => 'immutable_date', 'listing_contract_date' => 'immutable_date',
             'modification_timestamp' => 'immutable_datetime', 'photos_change_timestamp' => 'immutable_datetime', 'off_market_at' => 'immutable_datetime', 'price_changed_at' => 'immutable_datetime', 'photos_tagged_at' => 'immutable_datetime', 'places_at' => 'immutable_datetime',
-            'internet_display_allowed' => 'boolean', 'address_display_allowed' => 'boolean', 'avm_allowed' => 'boolean', 'comments_allowed' => 'boolean'];
+            'internet_display_allowed' => 'boolean', 'address_display_allowed' => 'boolean', 'avm_allowed' => 'boolean', 'comments_allowed' => 'boolean',
+            'pool' => 'boolean', 'waterfront' => 'boolean', 'new_construction' => 'boolean', 'garage_spaces' => 'integer'];
     }
 
     /**

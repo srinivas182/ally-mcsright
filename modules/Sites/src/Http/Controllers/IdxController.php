@@ -35,7 +35,8 @@ final class IdxController
     private const PER_PAGE = 24;
 
     /** Query keys a search page keeps in its web address. */
-    private const KEYS = ['heard', 'q', 'min_price', 'max_price', 'beds', 'baths', 'min_sqft', 'features', 'types', 'statuses', 'bounds', 'poly', 'sort', 'page'];
+    private const KEYS = ['heard', 'q', 'min_price', 'max_price', 'beds', 'baths', 'min_sqft', 'features', 'types', 'statuses', 'bounds', 'poly', 'sort', 'page',
+        'pool', 'waterfront', 'new_build', 'garage', 'acres', 'sub']; // IDX10: home facts
 
     public function __construct(private readonly TenantContext $tenants, private readonly ListingSearch $search) {}
 

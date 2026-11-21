@@ -383,10 +383,38 @@
                     b.textContent = 'Saved: daily alerts';
                     b.disabled = true;
                 }
+                offerTexts(j.name);
             })
             .catch(function (x) {
                 if (b) b.textContent = x.message;
             });
+    }
+    // IDX10: an optional text when a new home matches the saved search (the box must be ticked; nothing is pre-ticked).
+    function offerTexts(name) {
+        var f = $('[data-text-alerts]');
+        if (!f || !name) return;
+        f.hidden = false;
+        f.onsubmit = function (e) {
+            e.preventDefault();
+            var out = $('[data-text-status]', f);
+            if (!f.agree.checked) {
+                out.textContent = 'Tick the box to agree to texts.';
+                return;
+            }
+            api('POST', '/_me/searches/text', {
+                name: name,
+                phone: f.phone.value,
+                agree: true,
+            })
+                .then(function () {
+                    out.textContent =
+                        'Done. We will text you when a new home matches. Reply STOP any time.';
+                    f.querySelector('button').disabled = true;
+                })
+                .catch(function (x) {
+                    out.textContent = x.message;
+                });
+        };
     }
     if (location.pathname === '/homes/compare') {
         var ids = new URLSearchParams(location.search).get('ids');

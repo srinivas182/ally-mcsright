@@ -6,17 +6,23 @@ namespace Modules\Crm\Searches;
 
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\ValidationException;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Identity\Enums\UserKind;
+use Modules\Core\Messaging\MessagingSettings;
+use Modules\Core\Messaging\SmsSender;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
+use Modules\Crm\Actions\ManageContacts;
 use Modules\Crm\Actions\Timeline;
+use Modules\Crm\Consent;
 use Modules\Crm\ContactVisibility;
 use Modules\Crm\Inbox\Inbox;
+use Modules\Crm\Inbox\SendGuard;
 use Modules\Crm\Leads\SpeedToLead;
 use Modules\Crm\Models\ConsentEvent;
 use Modules\Crm\Models\Contact;
@@ -30,7 +36,15 @@ use Modules\Listings\Search\ListingSearch;
  */
 final class SavedSearches
 {
-    private const FILTERS = ['q', 'min_price', 'max_price', 'beds', 'baths', 'min_sqft', 'types', 'statuses', 'bounds'];
+    private const FILTERS = ['q', 'min_price', 'max_price', 'beds', 'baths', 'min_sqft', 'types', 'statuses', 'bounds',
+        'pool', 'waterfront', 'new_build', 'garage', 'acres', 'sub']; // IDX10: home facts
+
+    /** IDX10: text alerts: at most this many a day per search, and never closer together than an hour. */
+    public const TEXTS_PER_DAY = 3;
+
+    /** The exact consent wording shown next to the box on the website (kept with the consent record). */
+    public const TEXT_CONSENT = 'Yes, text me at this number when new homes match this search. Up to 3 texts a day, between 8am and 9pm. '
+        .'Message and data rates may apply. Reply STOP to stop, HELP for help. Agreeing is not a condition of buying anything.';
 
     public function __construct(private readonly TenantContext $tenants, private readonly ListingSearch $search, private readonly ContactVisibility $visibility, private readonly Timeline $timeline) {}
 
@@ -169,6 +183,90 @@ final class SavedSearches
         return $sent;
     }
 
+    /**
+     * IDX10: a website visitor asks for texts too. Their mobile number and the exact consent wording are recorded as
+     * written consent (web form), so texts are allowed only with that proof on file.
+     */
+    public function enableTexts(Contact $contact, SavedSearch $search, string $phone, Request $request): void
+    {
+        abort_unless($search->contact_id === $contact->id, 404);
+        $e164 = ManageContacts::e164($phone);
+        if ($e164 === null) {
+            throw ValidationException::withMessages(['phone' => 'Enter a 10-digit US mobile number.']);
+        }
+        if ($contact->primary_phone !== null && $contact->primary_phone !== $e164) {
+            throw ValidationException::withMessages(['phone' => 'Use the number already on your account, or ask your agent to change it.']);
+        }
+        if ($contact->primary_phone === null) {
+            $contact->forceFill(['phones' => [...(array) $contact->phones, ['e164' => $e164, 'label' => 'mobile', 'primary' => true, 'can_text' => true]]])->save();
+        }
+        app(Consent::class)->optInSms($contact, 'web_form', self::TEXT_CONSENT, null, $request);
+        $search->forceFill(['text_alerts' => true, 'frequency' => $search->frequency === 'off' ? 'daily' : $search->frequency, 'unsubscribed_at' => null,
+            'last_texted_at' => CarbonImmutable::now()])->save();
+        $this->timeline->system($contact, 'Asked for texts about new homes for "'.$search->name.'" on the website (written consent recorded).');
+        app(AuditLogger::class)->record('crm.saved_search.texts_on', $search);
+    }
+
+    /**
+     * IDX10: texts about new homes for saved searches that asked for them. Only with written consent on file, only
+     * between 8am and 9pm where the person is, at most TEXTS_PER_DAY a day per search and one an hour. Price drops stay
+     * in the email. Returns the texts sent.
+     */
+    public function sendTexts(): int
+    {
+        $tenantId = $this->tenants->id();
+        if (! app(MessagingSettings::class)->smsFor($tenantId)) {
+            return 0;
+        }
+        $now = CarbonImmutable::now();
+        $consent = app(Consent::class);
+        $sent = 0;
+        foreach (SavedSearch::query()->where('text_alerts', true)->where('frequency', '!=', 'off')->whereNull('unsubscribed_at')->with('contact')->get() as $search) {
+            $contact = $search->contact;
+            $last = $search->getAttribute('last_texted_at') !== null ? CarbonImmutable::parse((string) $search->getAttribute('last_texted_at')) : null;
+            $today = (string) $search->getAttribute('texted_on') === $now->toDateString() ? (int) $search->getAttribute('texts_on_day') : 0;
+            if ($contact->primary_phone === null || ! $consent->canAutoText($contact) || SendGuard::quietHours((string) $contact->primary_phone) !== null
+                || ($last !== null && $last->gt($now->subHour())) || $today >= self::TEXTS_PER_DAY) {
+                continue;
+            }
+            $since = $last ?? $search->created_at;
+            $new = [];
+            foreach ($this->matches($search, $since, 24) as $l) {
+                if (is_string($l['added_at'] ?? null) && CarbonImmutable::parse($l['added_at'])->gt($since)
+                    && ! DB::connection(Connections::cell())->table('crm_search_alerts_sent')->where('saved_search_id', $search->id)->where('listing_ulid', $l['ulid'])->where('kind', 'text')->exists()) {
+                    $new[] = $l;
+                }
+            }
+            if ($new === []) {
+                continue;
+            }
+            $first = $new[0];
+            $facts = implode(', ', array_filter([($first['beds'] ?? null) !== null ? $first['beds'].' bd' : null, ($first['baths_full'] ?? null) !== null ? $first['baths_full'].' ba' : null,
+                isset($first['price']) ? '$'.number_format((int) $first['price']) : null]));
+            $where = implode(', ', array_filter([$first['address'] ?? null, $first['city'] ?? null]));
+            $link = ListingSearch::publicUrl((string) $first['ulid'], ListingSearch::label($first));
+            $more = count($new) > 1 ? ' (+'.(count($new) - 1).' more)' : '';
+            $text = mb_substr($this->tenants->current()->name.': new home for "'.$search->name.'": '.$facts.($where !== '' ? ' in '.$where : '').'.'
+                .($link !== null ? ' '.$link : '').$more.' Reply STOP to stop.', 0, 480);
+            try {
+                app(SmsSender::class)->send((string) $contact->primary_phone, $text);
+            } catch (\Throwable $e) {
+                report($e);
+
+                continue;
+            }
+            foreach ($new as $l) {
+                DB::connection(Connections::cell())->table('crm_search_alerts_sent')->insertOrIgnore(['tenant_id' => $tenantId, 'saved_search_id' => $search->id,
+                    'listing_ulid' => $l['ulid'], 'kind' => 'text', 'price' => (int) ($l['price'] ?? 0), 'sent_at' => $now]);
+            }
+            $search->forceFill(['last_texted_at' => $now, 'texted_on' => $now->toDateString(), 'texts_on_day' => $today + 1])->save();
+            $this->timeline->system($contact, 'Texted about '.count($new).' new '.(count($new) === 1 ? 'home' : 'homes').' for "'.$search->name.'".');
+            $sent++;
+        }
+
+        return $sent;
+    }
+
     /** "Send to client": a one-to-one email about one listing, through the inbox (its checks and timeline). */
     public function sendListing(Contact $contact, string $listingUlid, string $note, User $by): void
     {
@@ -210,6 +308,11 @@ final class SavedSearches
         $parts = [$f['q'] ?? '' ?: 'Map area'];
         if (($f['beds'] ?? null) !== null) {
             $parts[] = $f['beds'].'+ beds';
+        }
+        foreach (['pool' => 'pool', 'waterfront' => 'waterfront', 'new_build' => 'new construction'] as $k => $word) {
+            if (($f[$k] ?? false) === true) {
+                $parts[] = $word;
+            }
         }
         if (($f['max_price'] ?? null) !== null) {
             $parts[] = 'under $'.number_format((int) $f['max_price']);

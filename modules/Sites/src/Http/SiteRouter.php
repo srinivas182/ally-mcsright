@@ -59,6 +59,7 @@ final class SiteRouter
         $r->get('_me', [VisitorController::class, 'show']);
         $r->post('_me/favourites', [VisitorController::class, 'favourite']);
         $r->post('_me/searches', [VisitorController::class, 'saveSearch']);
+        $r->post('_me/searches/text', [VisitorController::class, 'textSearch']); // IDX10
         $r->get('_search', [IdxController::class, 'results']);
         $r->post('_map', [IdxController::class, 'openMap']);
         $r->post('_ailly/start', [AillyController::class, 'start']);

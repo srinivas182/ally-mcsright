@@ -40,7 +40,7 @@ final class ListingSearch
         $filters = self::clean($f);
         $index = app(SearchIndex::class);
         // A drawn area, or features seen in photos (C03), are answered by the database.
-        $server = $filters['polygon'] === null && $filters['features'] === [] ? $index->engine() : null;
+        $server = $filters['polygon'] === null && $filters['features'] === [] && ! self::hasFacts($filters) ? $index->engine() : null;
         $started = microtime(true);
         $rows = null;
         $total = 0;
@@ -264,6 +264,27 @@ final class ListingSearch
             $q->whereExists(fn ($e) => $e->from('listing_features')->whereColumn('listing_features.listing_id', 'listings.id')->where('feature', $feature));
         }
 
+        // IDX10: home facts from the MLS ("with a pool", "2 car garage", "waterfront", "new construction", acreage, condos).
+        if ($filters['pool']) {
+            $q->where(fn (Builder $w) => $w->where('pool', true)
+                ->orWhereExists(fn ($e) => $e->from('listing_features')->whereColumn('listing_features.listing_id', 'listings.id')->where('feature', 'pool')));
+        }
+        if ($filters['waterfront']) {
+            $q->where('waterfront', true);
+        }
+        if ($filters['new_build']) {
+            $q->where(fn (Builder $w) => $w->where('new_construction', true)->orWhere('year_built', '>=', (int) date('Y') - 1));
+        }
+        if ($filters['garage'] !== null) {
+            $q->where('garage_spaces', '>=', $filters['garage']);
+        }
+        if ($filters['acres'] !== null) {
+            $q->where('lot_size_sqft', '>=', $filters['acres'] * 43560);
+        }
+        if ($filters['sub'] !== null) {
+            $q->where('property_sub_type', 'like', $filters['sub'] === 'condo' ? '%condo%' : '%town%');
+        }
+
         if ($filters['q'] !== '') {
             $term = $filters['q'];
             if (preg_match('/^\d{5}$/', $term) === 1) {
@@ -322,6 +343,17 @@ final class ListingSearch
     }
 
     /**
+     * IDX10: true when the search uses a home fact only the database knows.
+     *
+     * @param  array<string, mixed>  $filters
+     */
+    public static function hasFacts(array $filters): bool
+    {
+        return ($filters['pool'] ?? false) || ($filters['waterfront'] ?? false) || ($filters['new_build'] ?? false)
+            || ($filters['garage'] ?? null) !== null || ($filters['acres'] ?? null) !== null || ($filters['sub'] ?? null) !== null;
+    }
+
+    /**
      * The listing's page on the brokerage's public website (bound by the Sites module): null when the brokerage has
      * no live website. $label adds the address words to the link.
      */
@@ -335,11 +367,12 @@ final class ListingSearch
 
     /**
      * @param  array<string, mixed>  $f
-     * @return array{q: string, min_price: int|null, max_price: int|null, beds: int|null, baths: int|null, min_sqft: int|null, types: list<string>, statuses: list<string>, bounds: list<float>|null, polygon: list<array{0: float, 1: float}>|null, near: array{0: float, 1: float, 2: float}|null, agent_mls_id: string|null, since: string|null, features: list<string>, states: list<string>, sort: string, page: int, per_page: int}
+     * @return array{q: string, min_price: int|null, max_price: int|null, beds: int|null, baths: int|null, min_sqft: int|null, types: list<string>, statuses: list<string>, bounds: list<float>|null, polygon: list<array{0: float, 1: float}>|null, near: array{0: float, 1: float, 2: float}|null, agent_mls_id: string|null, since: string|null, features: list<string>, states: list<string>, pool: bool, waterfront: bool, new_build: bool, garage: int|null, acres: int|null, sub: string|null, sort: string, page: int, per_page: int}
      */
     public static function clean(array $f): array
     {
         $int = static fn (string $k, int $max): ?int => is_numeric($f[$k] ?? null) && (int) $f[$k] > 0 ? min($max, (int) $f[$k]) : null;
+        $yes = static fn (string $k): bool => in_array($f[$k] ?? null, [true, 1, '1', 'yes', 'on'], true);
         $list = static fn (string $k): array => array_values(array_filter(array_map(fn ($v): string => mb_substr(trim((string) $v), 0, 40), is_array($f[$k] ?? null) ? $f[$k] : (is_string($f[$k] ?? null) && $f[$k] !== '' ? explode(',', $f[$k]) : [])), fn (string $v): bool => $v !== ''));
         $statuses = array_values(array_intersect($list('statuses'), self::STATUSES));
         $bounds = null;
@@ -384,6 +417,8 @@ final class ListingSearch
             'agent_mls_id' => is_string($f['agent_mls_id'] ?? null) && $f['agent_mls_id'] !== '' ? mb_substr($f['agent_mls_id'], 0, 30) : null, 'since' => $since,
             'features' => array_values(array_intersect(array_keys(PhotoTags::FEATURES), $list('features'))),
             'states' => array_values(array_filter(array_map(fn ($s): string => strtoupper((string) $s), (array) ($f['states'] ?? [])), fn (string $s): bool => preg_match('/^[A-Z]{2}$/', $s) === 1)),
+            'pool' => $yes('pool'), 'waterfront' => $yes('waterfront'), 'new_build' => $yes('new_build'), 'garage' => $int('garage', 10), 'acres' => $int('acres', 1000),
+            'sub' => in_array($f['sub'] ?? null, ['condo', 'townhome'], true) ? (string) $f['sub'] : null,
             'sort' => in_array($f['sort'] ?? null, self::SORTS, true) && ($f['sort'] !== 'distance' || $near !== null) ? (string) $f['sort'] : 'newest',
             'page' => max(1, min(500, (int) (is_numeric($f['page'] ?? null) ? $f['page'] : 1))), 'per_page' => max(1, min(48, (int) (is_numeric($f['per_page'] ?? null) ? $f['per_page'] : 24)))];
     }

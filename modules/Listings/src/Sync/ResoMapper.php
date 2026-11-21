@@ -81,6 +81,13 @@ final class ResoMapper
         foreach (self::FLAGS as $col => $field) {
             $out[$col] = ($r[$field] ?? true) !== false;
         }
+        // IDX10: home facts for plain-words search; null when the MLS does not say.
+        $yn = static fn (mixed $v): ?bool => is_bool($v) ? $v : (is_string($v) && in_array(strtolower(trim($v)), ['y', 'yes', 'true', '1'], true) ? true
+            : (is_string($v) && in_array(strtolower(trim($v)), ['n', 'no', 'false', '0'], true) ? false : (is_int($v) ? $v > 0 : null)));
+        $out['pool'] = $yn($r['PoolPrivateYN'] ?? null);
+        $out['waterfront'] = $yn($r['WaterfrontYN'] ?? null);
+        $out['new_construction'] = $yn($r['NewConstructionYN'] ?? null);
+        $out['garage_spaces'] = is_numeric($r['GarageSpaces'] ?? null) ? min(20, max(0, (int) floor((float) $r['GarageSpaces']))) : null;
         $state = $out['state_or_province'] ?? null;
         $out['state_or_province'] = is_string($state) ? strtoupper($state) : null;
         foreach (['latitude', 'longitude'] as $coord) {
