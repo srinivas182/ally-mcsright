@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 use App\Models\User;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Http;
 use Inertia\Testing\AssertableInertia as Assert;
 use Modules\AI\Contracts\ProviderAdapter;
 use Modules\AI\Data\ProviderRequest;
@@ -192,4 +194,57 @@ it('is scheduled weekly', function (): void {
         ->filter(fn ($e) => str_contains((string) $e->command, 'ai:red-team'));
 
     expect($events)->toHaveCount(1)->and($events->first()->expression)->toBe('0 5 * * 1');
+});
+
+// --- AI1: provider API keys saved in HQ ------------------------------------------------------------------------
+
+it('saves a provider key from HQ, encrypted, checked first and never shown again', function (): void {
+    Http::fake(['api.anthropic.com/v1/models' => Http::response(['data' => []])]);
+    $provider = AiProvider::factory()->create(['key' => 'anthropic', 'name' => 'Anthropic (Claude)', 'adapter' => 'anthropic', 'base_url' => 'https://api.anthropic.com', 'credential_config_key' => 'services.anthropic.key']);
+    config(['services.anthropic.key' => 'sk-ant-from-the-server-env-0000']);
+    expect($provider->keySource())->toBe('server');
+
+    $this->actingAs($this->staff)->withSession(['auth.password_confirmed_at' => time()])
+        ->post("http://app.rightally.io/hq/ai/providers/{$provider->id}/key", ['api_key' => 'sk-ant-api03-saved-in-hq-abcd1234'])
+        ->assertSessionHasNoErrors();
+
+    $provider->refresh();
+    expect($provider->apiKey())->toBe('sk-ant-api03-saved-in-hq-abcd1234')
+        ->and($provider->keySource())->toBe('hq')
+        ->and($provider->api_key_hint)->toBe('1234')
+        ->and((string) DB::connection($provider->getConnectionName())->table('ai_providers')->where('id', $provider->id)->value('api_key'))->not->toContain('saved-in-hq');
+    Http::assertSent(fn ($r) => $r->hasHeader('x-api-key', 'sk-ant-api03-saved-in-hq-abcd1234'));
+
+    $this->actingAs($this->staff)->get('http://app.rightally.io/hq/ai')
+        ->assertDontSee('saved-in-hq')
+        ->assertInertia(fn (Assert $page) => $page->where('providers', fn ($ps) => collect($ps)->contains(fn ($p) => $p['key'] === 'anthropic' && $p['key_source'] === 'hq' && $p['key_hint'] === '1234')));
+});
+
+it('does not save a key the provider refuses, and asks for the password', function (): void {
+    Http::fake(['api.openai.com/v1/models' => Http::response(['error' => 'bad key'], 401)]);
+    $provider = AiProvider::factory()->create(['key' => 'openai', 'name' => 'OpenAI (ChatGPT)', 'adapter' => 'openai_compatible', 'base_url' => 'https://api.openai.com']);
+
+    $this->actingAs($this->staff)
+        ->post("http://app.rightally.io/hq/ai/providers/{$provider->id}/key", ['api_key' => 'sk-proj-wrong-key-000000000000'])
+        ->assertRedirect();
+    expect($provider->refresh()->api_key)->toBeNull();
+
+    $this->actingAs($this->staff)->withSession(['auth.password_confirmed_at' => time()])
+        ->post("http://app.rightally.io/hq/ai/providers/{$provider->id}/key", ['api_key' => 'sk-proj-wrong-key-000000000000'])
+        ->assertSessionHasErrors('api_key');
+    expect($provider->refresh()->api_key)->toBeNull()->and($provider->keySource())->toBe('none');
+});
+
+it('checks and removes a saved key, falling back to the server key', function (): void {
+    Http::fake(['generativelanguage.googleapis.com/*' => Http::response(['models' => []])]);
+    $provider = AiProvider::factory()->create(['key' => 'gemini', 'adapter' => 'gemini', 'base_url' => 'https://generativelanguage.googleapis.com', 'credential_config_key' => 'services.gemini.key']);
+    $provider->forceFill(['api_key' => 'AIzaSy-saved-key-0000000000', 'api_key_hint' => '0000'])->save();
+    config(['services.gemini.key' => 'AIzaSy-server-key-111111111']);
+
+    $this->actingAs($this->staff)->post("http://app.rightally.io/hq/ai/providers/{$provider->id}/key/check")->assertRedirect();
+    expect($provider->refresh()->key_checked_at)->not->toBeNull();
+
+    $this->actingAs($this->staff)->withSession(['auth.password_confirmed_at' => time()])
+        ->delete("http://app.rightally.io/hq/ai/providers/{$provider->id}/key")->assertRedirect();
+    expect($provider->refresh()->api_key)->toBeNull()->and($provider->apiKey())->toBe('AIzaSy-server-key-111111111');
 });
