@@ -60,6 +60,10 @@ final class MlsAccess
      */
     public function approve(MlsAuthorization $auth, array $scopes, ?string $expiresOn, ?string $agreementRef, User $by): void
     {
+        $source = MlsSource::query()->whereKey($auth->mls_source_id)->first();
+        if ($source?->locked_tenant_id !== null && $source->locked_tenant_id !== $auth->tenant_id) {
+            throw ValidationException::withMessages(['mls' => 'This feed belongs to another brokerage (its own key).']); // IDX4
+        }
         $scopes = array_values(array_intersect($scopes, MlsAuthorization::SCOPES));
         if ($scopes === []) {
             throw ValidationException::withMessages(['scopes' => 'Choose what the licence covers.']);

@@ -53,3 +53,18 @@ onboarding, connector blueprint, multi-MLS PRD), adjusted to RightAlly.
   rooms, map point, agent and office, photos from `cdn.repliers.io`). From there it is the same sync as every feed.
 - **Open question for Repliers:** we copy listings into RightAlly (the recommended way). If Repliers' agreement asks for
   live searching instead, a live-search engine is added behind the same search; nothing else changes.
+
+## IDX4 · Each brokerage's boards (built)
+
+- **Brokerage (Settings › MLS):** add a board it belongs to (open state, public, priced; one of each). It starts on demo
+  listings. The brokerage gives its MLS member ID, office ID, licence number, managing broker and email (password
+  confirmed), and may paste its own feed key from that MLS (encrypted, never shown again). A step bar shows: Your details
+  → Signatures → Sent to the MLS → MLS review → Live. "Needs fixing" shows HQ's note; the brokerage fixes and sends again.
+  Removing a board hides its listings at once.
+- **HQ (IDX coverage › Brokerage boards):** move a board along (signed and sent, waiting on the MLS), send it back with a
+  note, change the connector for this brokerage only (not while live), **Turn on live** (password confirmed) with the
+  board's linked feed, another feed, or the brokerage's own key, and cancel.
+- **Going live** turns on the brokerage's MLS licence for that feed, which every search already checks. A feed made from
+  a brokerage's own key is locked to that brokerage; no other brokerage can be licensed on it.
+- **Emails** (platform email): needs fixing, live, and signing reminders 1 and 3 days on (`idx:remind`, daily), to the
+  owners and the managing broker. Brokerages never see connector names.
