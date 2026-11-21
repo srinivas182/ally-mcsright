@@ -16,6 +16,7 @@ use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Messaging\SmsSender;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
+use Modules\Forms\Events\PacketSealed;
 use Modules\Transactions\Documents;
 use Modules\Transactions\Models\Deal;
 use Modules\Transactions\Models\Item;
@@ -68,8 +69,9 @@ final class Signing
         foreach ($db->table('form_signers')->where('packet_id', $packetId)->where('sign_order', $next)->where('status', 'waiting')->get() as $s) {
             $token = Str::random(48);
             $db->table('form_signers')->where('id', $s->id)->update(['token_hash' => hash('sha256', $token), 'status' => 'sent', 'sent_at' => now(), 'updated_at' => now()]);
+            // IDX6: an MLS agreement (no deal) is sent by RightAlly on the brokerage's behalf.
             Notification::route('mail', (string) $s->email)->notify(new SignatureRequested((string) $packet->title, (string) $this->tenants->current()->name,
-                $agent->name ?? 'Your agent', $baseUrl.'/sign/'.$token, false));
+                (int) $packet->deal_id === 0 ? 'RightAlly' : ($agent->name ?? 'Your agent'), $baseUrl.'/sign/'.$token, false));
             $this->event($packetId, (int) $s->id, 'emailed', 'Signing link emailed to '.$s->email);
         }
     }
@@ -329,6 +331,7 @@ final class Signing
             Notification::route('mail', (string) $s->email)->notify(new PacketCompleted((string) $p->title, (string) $this->tenants->current()->name, $pdf));
         }
         app(AuditLogger::class)->record('forms.packet.completed', metadata: ['packet' => $p->ulid, 'sha256' => $sha], severity: 'notice');
+        PacketSealed::dispatch($this->tenants->id(), (string) $p->ulid, $path);
     }
 
     /**

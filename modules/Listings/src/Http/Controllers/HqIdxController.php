@@ -7,12 +7,17 @@ namespace Modules\Listings\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
+use Modules\Core\Support\Connections;
+use Modules\Listings\Idx\Agreements;
 use Modules\Listings\Idx\Coverage;
 use Modules\Listings\Idx\Subscriptions;
 use Modules\Listings\Models\MlsSource;
 use Modules\Listings\Models\RulesProfile;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /** IDX1: HQ › IDX coverage: open states, the MLS board directory and the data connectors. */
 final class HqIdxController
@@ -31,6 +36,32 @@ final class HqIdxController
             'queue' => app(Subscriptions::class)->queue(),
             'statuses' => Subscriptions::STATUSES,
         ]);
+    }
+
+    public function agreementPdf(Request $request, Coverage $coverage, string $board): RedirectResponse
+    {
+        $file = $request->validate(['file' => ['required', 'file', 'mimes:pdf', 'max:20480']])['file'];
+        $coverage->saveAgreementPdf($board, (string) file_get_contents($file->getRealPath()), self::user($request));
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Agreement saved. A signature page is added to it for each brokerage.']);
+
+        return back();
+    }
+
+    public function sendNow(Request $request, Agreements $agreements, string $subscription): RedirectResponse
+    {
+        $sent = $agreements->deliver($subscription, true, self::user($request));
+        Inertia::flash('toast', $sent ? ['type' => 'success', 'message' => 'Signed agreement sent to the MLS.']
+            : ['type' => 'error', 'message' => 'Nothing to send: the agreement is not signed yet, or the board has no "send to" address.']);
+
+        return back();
+    }
+
+    public function copy(string $subscription): StreamedResponse
+    {
+        $path = DB::connection(Connections::control())->table('idx_subscriptions')->where('ulid', $subscription)->value('signed_path');
+        abort_unless(is_string($path) && Storage::disk('local')->exists($path), 404);
+
+        return Storage::disk('local')->download($path, 'IDX agreement.pdf');
     }
 
     public function move(Request $request, Subscriptions $subs, string $subscription): RedirectResponse

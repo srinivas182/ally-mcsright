@@ -52,6 +52,8 @@ type Board = {
     has_own_key: boolean;
     fee_cents: number | null;
     approval: string | null;
+    agreement: string | null;
+    has_copy: boolean;
 };
 type Available = {
     ulid: string;

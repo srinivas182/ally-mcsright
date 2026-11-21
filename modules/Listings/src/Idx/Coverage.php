@@ -7,6 +7,7 @@ namespace Modules\Listings\Idx;
 use App\Models\User;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -101,6 +102,9 @@ final class Coverage
                 'setup_fee_cents' => (int) $b->setup_fee_cents, 'rules_profile_id' => $b->rules_profile_id !== null ? (int) $b->rules_profile_id : null,
                 'mls_source_id' => $b->mls_source_id !== null ? (int) $b->mls_source_id : null, 'checked' => (bool) $b->checked, 'notes' => $b->notes,
                 'ready' => $b->main_connector !== null && ($statuses[$b->main_connector] ?? null) === 'active',
+                // IDX6: the agreement workflow.
+                'has_agreement_pdf' => is_string($b->agreement_path ?? null) && $b->agreement_path !== '', 'agreement_text' => $b->agreement_text ?? null,
+                'managing_broker_signs' => (bool) ($b->managing_broker_signs ?? true), 'send_to' => $b->send_to ?? null, 'send_cc' => $b->send_cc ?? null, 'send_bcc' => $b->send_bcc ?? null,
             ])->all());
     }
 
@@ -124,6 +128,22 @@ final class Coverage
         }
 
         return $out;
+    }
+
+    /** IDX6: HQ uploads the MLS's own agreement (PDF) for a board; a signature page is added when it is sent. */
+    public function saveAgreementPdf(string $ulid, string $bytes, User $by): void
+    {
+        $board = $this->db()->table('idx_boards')->where('ulid', $ulid)->first();
+        if ($board === null) {
+            throw ValidationException::withMessages(['board' => 'That board no longer exists.']);
+        }
+        if (! str_starts_with($bytes, '%PDF-')) {
+            throw ValidationException::withMessages(['file' => 'Upload the agreement as a PDF.']);
+        }
+        $path = 'idx/agreement-templates/'.$board->code.'-'.now()->format('YmdHis').'.pdf';
+        Storage::disk('local')->put($path, $bytes);
+        $this->db()->table('idx_boards')->where('id', $board->id)->update(['agreement_path' => $path, 'updated_by' => $by->id, 'updated_at' => now()]);
+        $this->audit->record('idx.board.agreement_uploaded', metadata: ['board' => $board->code, 'by' => $by->id], severity: 'notice');
     }
 
     /** The client's monthly fee: what HQ set, else our cost plus the connector's margin, else none yet. */
@@ -172,8 +192,20 @@ final class Coverage
             'rules_profile_id' => ['nullable', 'integer'],
             'checked' => ['required', 'boolean'],
             'notes' => ['nullable', 'string', 'max:500'],
+            'agreement_text' => ['nullable', 'string', 'max:5000'],
+            'managing_broker_signs' => ['sometimes', 'boolean'],
+            'send_to' => ['nullable', 'string', 'max:500'],
+            'send_cc' => ['nullable', 'string', 'max:500'],
+            'send_bcc' => ['nullable', 'string', 'max:500'],
         ], ['code.regex' => 'Use capital letters, numbers, - or _ (for example HAR).', 'backup_connector.different' => 'The backup must be a different connector.'])->validate();
 
+        foreach (['send_to', 'send_cc', 'send_bcc'] as $list) {
+            $typed = array_filter(preg_split('/[\s,;]+/', (string) ($data[$list] ?? '')) ?: []);
+            if (count($typed) !== count(Agreements::emails((string) ($data[$list] ?? '')))) {
+                throw ValidationException::withMessages([$list => 'Use email addresses separated by commas.']);
+            }
+            $data[$list] = $typed !== [] ? implode(', ', Agreements::emails((string) $data[$list])) : null;
+        }
         // A board is only offered to brokers once it has a connector and a fee: say so rather than hide it quietly.
         if ($data['visibility'] === 'public' && ($data['main_connector'] ?? null) === null) {
             throw ValidationException::withMessages(['visibility' => 'Choose a main connector before making this board public.']);

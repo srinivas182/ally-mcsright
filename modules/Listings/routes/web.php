@@ -50,6 +50,9 @@ Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.mls.manage'])
         Route::post('subscriptions/{subscription}/move', [HqIdxController::class, 'move'])->where('subscription', $sub)->name('subscriptions.move');
         Route::post('subscriptions/{subscription}/connector', [HqIdxController::class, 'override'])->where('subscription', $sub)->name('subscriptions.connector');
         Route::post('subscriptions/{subscription}/live', [HqIdxController::class, 'live'])->where('subscription', $sub)->middleware('password.confirm')->name('subscriptions.live');
+        Route::post('boards/{board}/agreement', [HqIdxController::class, 'agreementPdf'])->where('board', $sub)->name('boards.agreement'); // IDX6
+        Route::post('subscriptions/{subscription}/send', [HqIdxController::class, 'sendNow'])->where('subscription', $sub)->middleware('password.confirm')->name('subscriptions.send');
+        Route::get('subscriptions/{subscription}/agreement.pdf', [HqIdxController::class, 'copy'])->where('subscription', $sub)->name('subscriptions.copy');
         Route::post('subscriptions/{subscription}/cancel', [HqIdxController::class, 'cancel'])->where('subscription', $sub)->middleware('password.confirm')->name('subscriptions.cancel');
     });
 
@@ -63,6 +66,7 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])
         Route::put('demo', [MlsSettingsController::class, 'demo'])->name('demo'); // IDX5
         Route::post('boards', [MlsSettingsController::class, 'addBoard'])->middleware('throttle:20,1')->name('boards.store');
         Route::put('boards/{subscription}', [MlsSettingsController::class, 'submitBoard'])->where('subscription', '[0-9A-HJKMNP-TV-Z]{26}')->middleware(['password.confirm', 'throttle:20,1'])->name('boards.update');
+        Route::get('boards/{subscription}/agreement.pdf', [MlsSettingsController::class, 'copy'])->where('subscription', '[0-9A-HJKMNP-TV-Z]{26}')->name('boards.copy'); // IDX6
         Route::delete('boards/{subscription}', [MlsSettingsController::class, 'cancelBoard'])->where('subscription', '[0-9A-HJKMNP-TV-Z]{26}')->middleware('password.confirm')->name('boards.destroy');
     });
 
