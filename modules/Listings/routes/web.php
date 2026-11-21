@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Route;
 use Modules\Core\Http\Middleware\EnsureHqConsole;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
+use Modules\Listings\Http\Controllers\HqIdxController;
 use Modules\Listings\Http\Controllers\HqMlsController;
 use Modules\Listings\Http\Controllers\HqPhotosPlacesController;
 use Modules\Listings\Http\Controllers\HqSearchController;
@@ -34,6 +35,18 @@ Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.mls.manage'])
     });
 
 // Settings → MLS (brokerage owners).
+// IDX1: HQ › IDX coverage: open states, the MLS board directory and the data connectors.
+Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.mls.manage'])
+    ->prefix('hq/idx')
+    ->name('hq.idx.')
+    ->group(function (): void {
+        Route::get('/', [HqIdxController::class, 'index'])->name('index');
+        Route::put('states/{code}', [HqIdxController::class, 'state'])->where('code', '[A-Za-z]{2}')->name('states.update');
+        Route::post('boards', [HqIdxController::class, 'saveBoard'])->name('boards.store');
+        Route::put('boards/{board}', [HqIdxController::class, 'saveBoard'])->where('board', '[0-9A-HJKMNP-TV-Z]{26}')->name('boards.update');
+        Route::put('connectors/{connector}', [HqIdxController::class, 'saveConnector'])->where('connector', '[a-z_]{2,30}')->name('connectors.update');
+    });
+
 Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])
     ->prefix('settings/mls')
     ->name('settings.mls.')
