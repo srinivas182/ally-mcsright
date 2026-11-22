@@ -12,6 +12,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Listings\Search\MarketStats;
+use Modules\Sites\Content\DemoPhotos;
 use Modules\Sites\Content\MediaLibrary;
 use Modules\Sites\Content\Pages;
 use Modules\Sites\Content\SeoCheck;
@@ -120,8 +121,9 @@ final class PageEditorController
      */
     public static function mediaList(Site $site, MediaLibrary $media): array
     {
-        return array_values(SiteMedia::query()->where('site_id', $site->id)->latest('id')->limit(200)->get()
-            ->map(fn ($m): array => ['ulid' => $m->ulid, 'url' => MediaLibrary::urlFor($m, 'thumb'), 'alt' => $m->alt])->all());
+        // TP2: the site's own photos first, then the demo photos (to swap a demo photo for a better-fitting one).
+        return array_merge(array_values(SiteMedia::query()->where('site_id', $site->id)->latest('id')->limit(200)->get()
+            ->map(fn ($m): array => ['ulid' => $m->ulid, 'url' => MediaLibrary::urlFor($m, 'thumb'), 'alt' => $m->alt])->all()), DemoPhotos::library());
     }
 
     /** The page's website, when this person may edit it (the brokerage's, a landing page, or their own agent website). */

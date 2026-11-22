@@ -28,6 +28,12 @@ final class DemoListings
      */
     public function sourcesFor(int $tenantId): array
     {
+        // TP4: the demo website shows the sample homes of the state its visitor is previewing (set for that request only).
+        $state = config('listings.sample_state');
+        if (is_string($state) && $state !== '' && SampleHomes::enabled()) {
+            return SampleHomes::sourceIds($state) ?: SampleHomes::sourceIds();
+        }
+
         return Cache::remember("idx-demo:{$tenantId}", 60, function () use ($tenantId): array {
             $db = DB::connection(Connections::control());
             if (! $this->enabled($tenantId)) {

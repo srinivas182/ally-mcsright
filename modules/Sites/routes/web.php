@@ -59,6 +59,7 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])
         Route::post('/', [WebsiteSettingsController::class, 'store'])->name('store');
         Route::patch('/', [WebsiteSettingsController::class, 'update'])->name('update');
         Route::post('publish', [WebsiteSettingsController::class, 'publish'])->name('publish');
+        Route::post('starter-pages', [WebsiteSettingsController::class, 'starterPages'])->middleware('throttle:10,1')->name('starter-pages');
         Route::patch('pages/{page}', [WebsiteSettingsController::class, 'page'])->name('pages.update');
         Route::post('pages/{page}/preview', [WebsiteSettingsController::class, 'preview'])->middleware('throttle:30,1,site-preview')->name('pages.preview');
         Route::post('domains', [WebsiteSettingsController::class, 'domain'])->middleware('throttle:10,1,site-domain')->name('domains.store');

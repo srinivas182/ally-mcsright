@@ -18,6 +18,7 @@ use Modules\Core\Tenancy\TenantContext;
 use Modules\Sites\AgentSites;
 use Modules\Sites\Content\Menus;
 use Modules\Sites\Content\Redirects;
+use Modules\Sites\Content\StarterSite;
 use Modules\Sites\Models\Site;
 use Modules\Sites\Models\SitePage;
 use Modules\Sites\PoweredBy;
@@ -44,6 +45,9 @@ final class WebsiteSettingsController
             ],
             'hosts' => $sites->hosts(),
             'live_host' => $sites->liveHost(),
+            // TP2: the standard pages this website doesn't have yet.
+            'starter_missing' => $site !== null ? array_values(array_diff(array_column(StarterSite::pages((array) $site->info), 'path'),
+                SitePage::query()->where('site_id', $site->id)->pluck('path')->all())) : [],
             'cname_target' => (string) config('sites.cname_target'),
             'templates' => DesignCards::all(),
             'powered_by' => $powered->forTenant($tenants->id()),
@@ -93,6 +97,18 @@ final class WebsiteSettingsController
         $live = $request->validate(['live' => ['required', 'boolean']])['live'];
         $sites->publish(self::site($sites), (bool) $live, $user);
         Inertia::flash('toast', ['type' => 'success', 'message' => $live ? 'Your website is live.' : 'Your website is offline and shows a coming-soon page.']);
+
+        return back();
+    }
+
+    /** TP2: adds the standard pages (and starter blog posts) a website made before them is missing. */
+    public function starterPages(Request $request, SiteSetup $sites): RedirectResponse
+    {
+        $user = self::manager($request);
+        $added = $sites->addStarterPages(self::site($sites), $user);
+        $titles = array_column(StarterSite::pages((array) self::site($sites)->info), 'title', 'path');
+        Inertia::flash('toast', ['type' => 'success', 'message' => $added === [] ? 'Your website already has every standard page.'
+            : 'Added '.count($added).' '.(count($added) === 1 ? 'page' : 'pages').': '.implode(', ', array_map(fn (string $path): string => $titles[$path] ?? $path, $added)).'. Edit them any time.']);
 
         return back();
     }

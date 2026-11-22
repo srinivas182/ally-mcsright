@@ -72,6 +72,7 @@ final class SignupWizardController
                 'font' => trim((string) strtok((string) ($t['fonts'] ?? 'Inter'), '+')), 'css' => (string) ($t['css'] ?? '')])->values()->all(),
             'template' => $draft?->template,
             'marketArea' => $draft !== null ? Signups::marketArea((string) ($draft->idx_boards ?? '[]'), $draft->state) : '',
+            'marketState' => $draft !== null ? Signups::marketState((string) ($draft->idx_boards ?? '[]'), $draft->state) : null,
             'canonical' => 'https://'.config('core.hq_host').$base,
             'review' => $draft !== null && $step === 4 ? self::review($draft) : null,
             'boardExtra' => $draft !== null ? ['cents' => self::review($draft)['extra_cents'], 'count' => max(0, count(self::review($draft)['boards']) - 1)] : null,

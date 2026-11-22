@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace Modules\Sites\Http\Controllers;
 
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Modules\Core\Tenancy\Enums\TenantType;
 use Modules\Core\Tenancy\Models\Tenant;
 use Modules\Core\Tenancy\TenantContext;
+use Modules\Sites\Content\DemoSite;
 use Modules\Sites\Models\Site;
 use Modules\Sites\Models\SitePage;
 use Modules\Sites\Rendering\PageRenderer;
@@ -20,9 +22,15 @@ use Modules\Sites\Sections;
  */
 final class DesignPreviewController
 {
-    public function __invoke(Request $request, string $design, PageRenderer $renderer, TenantContext $tenants): Response
+    public function __invoke(Request $request, string $design, PageRenderer $renderer, TenantContext $tenants): Response|RedirectResponse
     {
         abort_unless(array_key_exists($design, (array) config('sites.templates')), 404);
+        // TP4: the full demo website (every page, search and property pages) when it is installed.
+        $demo = DemoSite::previewUrl($design, mb_substr(trim((string) $request->query('name', '')), 0, 80), mb_substr(trim((string) $request->query('area', '')), 0, 60),
+            is_string($request->query('state')) ? strtoupper(substr($request->query('state'), 0, 2)) : null);
+        if ($demo !== null) {
+            return redirect()->away($demo);
+        }
         $name = mb_substr(trim((string) $request->query('name', '')), 0, 80) ?: 'Your Brokerage';
         $area = mb_substr(trim((string) $request->query('area', '')), 0, 60) ?: 'your city';
         $info = ['name' => $name, 'tagline' => 'Homes for sale in '.$area, 'area' => $area, 'phone' => '(555) 010-0100', 'email' => 'hello@example.com'];
@@ -31,7 +39,7 @@ final class DesignPreviewController
         $response = $tenants->runAs($hq, function () use ($request, $design, $info, $renderer): Response {
             $site = new Site(['kind' => 'brokerage', 'template' => $design, 'info' => $info, 'status' => 'live',
                 'brand' => (array) config("sites.templates.{$design}.brand", []), 'seo' => ['title_suffix' => $info['name']]]);
-            $sections = Sections::starterPages($info)['/'] ?? [];
+            $sections = Sections::starterPages($info, $design)['/'] ?? [];
             $page = new SitePage(['path' => '/', 'title' => 'Home', 'sections' => $sections, 'status' => 'published']);
 
             return $renderer->render($request, $site, $site, $page, $sections, false);

@@ -31,6 +31,7 @@ beforeEach(function (): void {
     $this->web = 'http://acme.rightally.site';
     $sites = app(SiteSetup::class);
     $this->site = $sites->create('modern', ['tagline' => 'Boutique homes in Austin'], $this->owner);
+    SitePost::query()->delete(); // these tests start with an empty blog (TP2 adds three starter posts)
     $sites->publish($this->site, true, $this->owner);
 });
 

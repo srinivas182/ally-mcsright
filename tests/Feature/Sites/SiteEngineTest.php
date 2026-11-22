@@ -49,7 +49,7 @@ it('creates a starter site with a website address, and only owners and staff can
     $site = makeSite($this, 'modern', false);
 
     expect($site->status)->toBe('draft')->and($site->info['state'])->toBe('TX')->and($site->info['name'])->toBe($this->tenant->name)
-        ->and(SitePage::query()->orderBy('position')->pluck('path')->all())->toBe(['/', '/about', '/contact']);
+        ->and(SitePage::query()->orderBy('position')->pluck('path')->all())->toBe(['/', '/buy', '/sell', '/communities', '/about', '/contact']);
     $domain = TenantDomain::query()->where('host', 'acme.rightally.site')->sole();
     expect($domain->purpose)->toBe('website')->and($domain->is_primary)->toBeFalse()
         ->and($this->tenant->refresh()->primaryDomain()?->host)->toBe('acme.rightally.app');
