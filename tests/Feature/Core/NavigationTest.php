@@ -37,7 +37,19 @@ it('shows HQ staff the HQ console and people', function (): void {
     $hq = Tenant::query()->where('type', 'hq')->sole();
     $staff = app(TenantContext::class)->runAs($hq, fn () => User::factory()->hqStaff()->create());
 
-    expect(menuFor($staff))->toBe(['People', 'Tenants', 'Watchtower', 'Health checks', 'Support', 'Go-live', 'Help videos', 'Package builder', 'Referral programme', 'Referral network', 'Texts and calls', 'Cells', 'Feature switches', 'Websites', 'App demand', 'IDX coverage', 'MLS connections', 'Outside services', 'Security controls', 'Connect setup', 'Content desk', 'RightAlly website', 'AI gateway', 'Partner apps', 'AI quality', 'AI cost', 'Pricing', 'RightAlly credits', 'Ally Studio', 'Movewise', 'Movewise agents', 'Movewise launch', 'Movewise money', 'Payments', 'Payout rails']);
+    // HQ1: grouped under plain headings, in the order HQ works.
+    $groups = collect(app(NavigationRegistry::class)->for($staff))->mapWithKeys(fn (array $g): array => [$g['label'] => array_column($g['items'], 'title')])->all();
+    expect($groups)->toBe([
+        'HQ team' => ['People'],
+        'Customers' => ['Brokerages', 'Health checks', 'Go-live', 'Support', 'Help videos'],
+        'Sales and pricing' => ['Package builder', 'Pricing', 'RightAlly credits', 'Referral programme'],
+        'Payments' => ['Payments', 'Payout rails'],
+        'Websites and MLS' => ['RightAlly website', 'Content desk', 'Websites', 'MLS connections', 'IDX coverage'],
+        'AI' => ['AI gateway', 'AI quality', 'AI cost'],
+        'Connections' => ['Outside services', 'Texts and calls', 'Connect setup', 'App demand', 'Partner apps'],
+        'Products' => ['Referral network', 'Ally Studio', 'Movewise', 'Movewise agents', 'Movewise money', 'Movewise launch'],
+        'System' => ['System health', 'Cells', 'Feature switches', 'Security controls'],
+    ]);
 });
 
 it('lets modules add items, grouped and ordered', function (): void {

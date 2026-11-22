@@ -406,7 +406,7 @@ export default function ShowTenant({
 }
 
 ShowTenant.layout = {
-    breadcrumbs: [{ title: 'Tenants', href: '/hq/tenants' }],
+    breadcrumbs: [{ title: 'Brokerages', href: '/hq/tenants' }],
 };
 
 function BillingException({

@@ -190,7 +190,7 @@ export default function CreateTenant({ platformDomain }: Props) {
 
 CreateTenant.layout = {
     breadcrumbs: [
-        { title: 'Tenants', href: '/hq/tenants' },
+        { title: 'Brokerages', href: '/hq/tenants' },
         { title: 'New tenant', href: '/hq/tenants/create' },
     ],
 };

@@ -65,13 +65,13 @@ final class BillingServiceProvider extends ServiceProvider
         $nav->add(new NavItem('Settings', 'Billing', '/settings/billing', 'credit-card', 72, kinds: [UserKind::Owner]));
         $nav->add(new NavItem('Settings', 'RightAlly credits', '/settings/credits', 'coins', 71, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent]));
         $nav->add(new NavItem('Settings', 'Partner earnings', '/settings/partner', 'trending-up', 74, kinds: [UserKind::Owner]));
-        $nav->add(new NavItem('Platform', 'Pricing', '/hq/billing', 'badge-dollar-sign', 35, kinds: [UserKind::HqStaff]));
-        $nav->add(new NavItem('Platform', 'Payments', '/hq/payments', 'credit-card', 40, kinds: [UserKind::HqStaff]));
-        $nav->add(new NavItem('Platform', 'RightAlly credits', '/hq/credits', 'coins', 37, kinds: [UserKind::HqStaff]));
-        $nav->add(new NavItem('HQ', 'Health checks', '/hq/health-checks', 'stethoscope', 12, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff]));
-        $nav->add(new NavItem('HQ', 'Go-live', '/hq/go-live', 'rocket', 13, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff]));
-        $nav->add(new NavItem('HQ', 'Package builder', '/hq/packages', 'package', 13, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff])); // PB1
-        $nav->add(new NavItem('HQ', 'Referral programme', '/hq/affiliates', 'heart-handshake', 14, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff])); // RF1
+        $nav->add(new NavItem('Sales and pricing', 'Pricing', '/hq/billing', 'badge-dollar-sign', 11, kinds: [UserKind::HqStaff]));
+        $nav->add(new NavItem('Payments', 'Payments', '/hq/payments', 'credit-card', 10, kinds: [UserKind::HqStaff]));
+        $nav->add(new NavItem('Sales and pricing', 'RightAlly credits', '/hq/credits', 'coins', 12, kinds: [UserKind::HqStaff]));
+        $nav->add(new NavItem('Customers', 'Health checks', '/hq/health-checks', 'stethoscope', 11, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff]));
+        $nav->add(new NavItem('Customers', 'Go-live', '/hq/go-live', 'rocket', 12, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff]));
+        $nav->add(new NavItem('Sales and pricing', 'Package builder', '/hq/packages', 'package', 10, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff])); // PB1
+        $nav->add(new NavItem('Sales and pricing', 'Referral programme', '/hq/affiliates', 'heart-handshake', 13, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff])); // RF1
         $nav->add(new NavItem('Settings', 'Refer a brokerage', '/settings/refer', 'heart-handshake', 75, kinds: [UserKind::Owner])); // RF1
         $nav->add(new NavItem('Settings', 'Switch to RightAlly', '/switch', 'rocket', 65, kinds: [UserKind::Owner, UserKind::Staff]));
         // Agents only see Plans when their brokerage uses the agent-pays model.

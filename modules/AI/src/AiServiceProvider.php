@@ -69,9 +69,9 @@ final class AiServiceProvider extends ServiceProvider
         $this->app->make(FeatureCatalog::class)->declare(Workflows\AiWorkflowDrafter::FEATURE, 'ai.workflow_draft', 'Automations described in plain English');
         $this->app->make(FeatureCatalog::class)->declare(Assistant\YourAiAssistant::FEATURE, 'ai.assistant', 'Your AI Assistant: answers and acts in the back office');
         Gate::define('hq.ai.manage', fn (User $user): bool => $user->kind === UserKind::HqStaff);
-        $this->app->make(NavigationRegistry::class)->add(new NavItem('HQ', 'AI gateway', '/hq/ai', 'sparkles', 20, ability: 'hq.ai.manage', kinds: [UserKind::HqStaff]));
-        $this->app->make(NavigationRegistry::class)->add(new NavItem('HQ', 'AI quality', '/hq/ai/quality', 'clipboard-check', 21, ability: 'hq.ai.manage', kinds: [UserKind::HqStaff])); // AQ1
-        $this->app->make(NavigationRegistry::class)->add(new NavItem('HQ', 'AI cost', '/hq/ai/cost', 'badge-dollar-sign', 22, ability: 'hq.ai.manage', kinds: [UserKind::HqStaff])); // AQ2
+        $this->app->make(NavigationRegistry::class)->add(new NavItem('AI', 'AI gateway', '/hq/ai', 'sparkles', 10, ability: 'hq.ai.manage', kinds: [UserKind::HqStaff]));
+        $this->app->make(NavigationRegistry::class)->add(new NavItem('AI', 'AI quality', '/hq/ai/quality', 'clipboard-check', 11, ability: 'hq.ai.manage', kinds: [UserKind::HqStaff])); // AQ1
+        $this->app->make(NavigationRegistry::class)->add(new NavItem('AI', 'AI cost', '/hq/ai/cost', 'badge-dollar-sign', 12, ability: 'hq.ai.manage', kinds: [UserKind::HqStaff])); // AQ2
         if ($this->app->runningInConsole()) {
             $this->commands([RunRedTeam::class, CollectBatches::class, SyncFeatures::class, Console\PruneAssistant::class, Console\RunEvals::class, Console\WatchAiCost::class]);
         }

@@ -62,10 +62,10 @@ final class MovewiseServiceProvider extends ServiceProvider
             $this->commands([Console\SendAlerts::class, Console\RecheckLicences::class, Console\ExpireOffers::class, Console\Outcomes::class, Console\LaunchCheck::class]);
         }
         $nav = $this->app->make(NavigationRegistry::class);
-        $nav->add(new NavItem('Platform', 'Movewise', '/hq/movewise', 'house', 39, kinds: [UserKind::HqStaff]));
-        $nav->add(new NavItem('Platform', 'Movewise agents', '/hq/movewise/program', 'users', 40, kinds: [UserKind::HqStaff]));
-        $nav->add(new NavItem('Platform', 'Movewise money', '/hq/movewise/money', 'banknote', 40, kinds: [UserKind::HqStaff]));
-        $nav->add(new NavItem('Platform', 'Movewise launch', '/hq/movewise/launch', 'rocket', 40, kinds: [UserKind::HqStaff]));
+        $nav->add(new NavItem('Products', 'Movewise', '/hq/movewise', 'house', 12, kinds: [UserKind::HqStaff]));
+        $nav->add(new NavItem('Products', 'Movewise agents', '/hq/movewise/program', 'users', 13, kinds: [UserKind::HqStaff]));
+        $nav->add(new NavItem('Products', 'Movewise money', '/hq/movewise/money', 'banknote', 14, kinds: [UserKind::HqStaff]));
+        $nav->add(new NavItem('Products', 'Movewise launch', '/hq/movewise/launch', 'rocket', 15, kinds: [UserKind::HqStaff]));
         $nav->add(new NavItem('Grow', 'Movewise', '/movewise', 'house', 27, kinds: [UserKind::Owner, UserKind::Agent]));
     }
 }

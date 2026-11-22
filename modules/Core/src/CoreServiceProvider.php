@@ -435,12 +435,12 @@ final class CoreServiceProvider extends ServiceProvider
         $nav->add(new NavItem('Overview', 'Dashboard', '/dashboard', 'layout-grid', 10, kinds: [UserKind::Owner, UserKind::Staff], mobile: true));
         $nav->add(new NavItem('Overview', 'Today', '/agent', 'sun', 10, kinds: [UserKind::Agent, UserKind::Assistant], mobile: true));
         $nav->add(new NavItem('Brokerage', 'People', '/users', 'users', 10, ability: 'core.users.view', mobile: true));
-        $nav->add(new NavItem('HQ', 'Tenants', '/hq/tenants', 'building-2', 10, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff], mobile: true));
-        $nav->add(new NavItem('HQ', 'Texts and calls', '/hq/messaging', 'phone', 15, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff]));
-        $nav->add(new NavItem('HQ', 'Cells', '/hq/cells', 'database', 16, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff])); // PS1
-        $nav->add(new NavItem('HQ', 'Feature switches', '/hq/switches', 'toggle-right', 17, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff])); // FL1
-        $nav->add(new NavItem('HQ', 'Outside services', '/hq/services', 'plug', 18, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff])); // FL1
-        $nav->add(new NavItem('HQ', 'Security controls', '/hq/controls', 'shield-check', 18, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff])); // TR1
+        $nav->add(new NavItem('Customers', 'Brokerages', '/hq/tenants', 'building-2', 10, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff], mobile: true));
+        $nav->add(new NavItem('Connections', 'Texts and calls', '/hq/messaging', 'phone', 11, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff]));
+        $nav->add(new NavItem('System', 'Cells', '/hq/cells', 'database', 11, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff])); // PS1
+        $nav->add(new NavItem('System', 'Feature switches', '/hq/switches', 'toggle-right', 12, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff])); // FL1
+        $nav->add(new NavItem('Connections', 'Outside services', '/hq/services', 'plug', 10, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff])); // FL1
+        $nav->add(new NavItem('System', 'Security controls', '/hq/controls', 'shield-check', 13, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff])); // TR1
         $nav->add(new NavItem('Settings', 'Features and seats', '/settings/features', 'toggle-right', 82, ability: 'core.platform.manage')); // FL1
         $nav->add(new NavItem('Settings', 'Outside services', '/settings/services', 'plug', 83, ability: 'core.platform.manage')); // FL1
         $nav->add(new NavItem('Settings', 'Approvals', '/settings/approvals', 'check-check', 84, kinds: [UserKind::Owner, UserKind::Staff])); // FL1
