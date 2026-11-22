@@ -90,7 +90,10 @@ final class SignupController
             $open = $coverage->enabledStates();
             $boards = $coverage->offered($open);
             // SU3: a state only shows when at least one board there can be chosen; without a board there is no IDX.
-            $withBoards = array_values(array_unique(array_merge(...array_map(fn (array $b): array => (array) ($b['states'] ?? [$b['state']]), $boards ?: [[]]))));
+            $withBoards = [];
+            foreach ($boards as $b) {
+                $withBoards = array_merge($withBoards, $b['states']);
+            }
             $names = collect($coverage->states())->pluck('name', 'code')->only($withBoards)->sort()->all();
 
             return ['idxStates' => $names, 'idxBoards' => $boards];

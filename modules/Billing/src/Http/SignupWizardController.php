@@ -91,7 +91,7 @@ final class SignupWizardController
         ] + ['slug' => ['required', 'string', 'max:40'], 'state' => ['nullable', 'string', 'size:2', 'alpha'], 'boards' => ['nullable', 'array', 'max:20'], 'boards.*' => ['string', 'size:26']]);
         // SU3: each state they hold a licence in needs at least one board there; without a board there are no listings.
         $request->validate(['licence_states' => ['nullable', 'array', 'max:60'], 'licence_states.*' => ['string', 'size:2', 'alpha']]);
-        $chosen = array_values(array_unique(array_map('strval', $data['boards'] ?? [])));
+        $chosen = array_values(array_unique($data['boards'] ?? []));
         $data['boards'] = $chosen;
         $offered = collect(SignupController::boardsAndStates()['idxBoards']);
         $states = SignupController::boardsAndStates()['idxStates'];
@@ -106,7 +106,7 @@ final class SignupWizardController
         $draft = $signups->saveAbout(self::current($request, $type)?->ulid, [
             'brokerage' => $solo ? (trim((string) ($data['business'] ?? '')) !== '' ? trim((string) $data['business']) : $name) : (string) $data['brokerage'],
             'slug' => (string) $data['slug'], 'owner_name' => $name, 'owner_email' => (string) ($solo ? $data['email'] : $data['owner_email']),
-            'state' => $data['state'] ?? null, 'agents' => $solo ? 1 : (isset($data['agents']) ? (int) $data['agents'] : null), 'boards' => array_values($data['boards'] ?? []),
+            'state' => $data['state'] ?? null, 'agents' => $solo ? 1 : (isset($data['agents']) ? (int) $data['agents'] : null), 'boards' => $chosen,
             'health_check_id' => $check !== null ? (int) $check->id : null, 'ref' => is_string($request->cookie(Affiliates::COOKIE)) ? $request->cookie(Affiliates::COOKIE) : null,
         ], $type);
         $request->session()->put(self::key($type), $draft);
