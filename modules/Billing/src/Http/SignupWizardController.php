@@ -16,6 +16,8 @@ use Modules\Billing\ProductFeatures;
 use Modules\Billing\Signup\Signups;
 use Modules\Core\Security\BotProtection;
 use Modules\Core\Support\Connections;
+use Modules\Sites\Content\DemoPhotos;
+use Modules\Sites\Content\StarterSite;
 use stdClass;
 
 /**
@@ -69,7 +71,10 @@ final class SignupWizardController
             'chosen' => is_string($chosenPackage) ? $chosenPackage : null, 'interval' => $draft?->interval,
             'designs' => collect((array) config('sites.templates'))->map(fn (array $t, string $k): array => ['key' => $k, 'name' => (string) $t['name'],
                 'description' => (string) ($t['description'] ?? ''), 'theme' => (string) ($t['theme'] ?? '#ffffff'), 'brand' => (array) ($t['brand'] ?? []),
-                'font' => trim((string) strtok((string) ($t['fonts'] ?? 'Inter'), '+')), 'css' => (string) ($t['css'] ?? '')])->values()->all(),
+                'font' => trim((string) strtok((string) ($t['fonts'] ?? 'Inter'), '+')), 'css' => (string) ($t['css'] ?? ''),
+                // SU4: a real thumbnail of the design: its banner photo, its layout and three sample homes.
+                'layout' => (string) ($t['layout'] ?? 'hdr-solid hero-full'), 'hero' => DemoPhotos::url(StarterSite::heroPhoto($k), 'card'),
+                'homes' => [DemoPhotos::url(DemoPhotos::pick('exterior_luxury', 2), 'thumb'), DemoPhotos::url(DemoPhotos::pick('exterior_family', 3), 'thumb'), DemoPhotos::url(DemoPhotos::pick('exterior_coastal', 5), 'thumb')]])->values()->all(),
             'template' => $draft?->template,
             'marketArea' => $draft !== null ? Signups::marketArea((string) ($draft->idx_boards ?? '[]'), $draft->state) : '',
             'marketState' => $draft !== null ? Signups::marketState((string) ($draft->idx_boards ?? '[]'), $draft->state) : null,
