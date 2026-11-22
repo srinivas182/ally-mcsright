@@ -296,3 +296,24 @@ it('shows each design with made-up content for choosing, never indexed (SU2)', f
     $this->get(RA.'/start/designs/aurum?name=Oak+Realty&area=Austin')->assertOk()->assertSee('Oak Realty')->assertHeader('X-Robots-Tag', 'noindex, nofollow');
     $this->get(RA.'/start/designs/nope')->assertNotFound();
 });
+
+it('asks for licence states first, shows only states that have a board, and needs a board in each ticked state (SU3)', function (): void {
+    control()->table('idx_states')->whereIn('code', ['TX', 'FL'])->update(['enabled' => true]);
+    control()->table('idx_boards')->update(['visibility' => 'private']);
+    control()->table('idx_boards')->where('code', 'HAR')->update(['visibility' => 'public', 'monthly_fee_cents' => 12_900, 'region' => 'Greater Houston']);
+    $har = (string) control()->table('idx_boards')->where('code', 'HAR')->value('ulid');
+
+    $page = (string) $this->get(RA.'/start')->assertOk()->getContent();
+    expect($page)->toContain('Where do you hold a real estate licence?')->toContain('name="licence_states[]" data-idx-state value="TX"')
+        ->not->toContain('name="licence_states[]" data-idx-state value="FL"') // Florida has no board yet, so it is not offered
+        ->toContain('data-idx-group="TX"');
+
+    $this->post(RA.'/start/step/about', ['brokerage' => 'Oak Realty', 'slug' => 'oak-realty', 'owner_name' => 'Dana Smith', 'owner_email' => 'dana@oak.test',
+        'state' => 'FL', 'licence_states' => ['TX']])->assertSessionHasErrors(['licence_states' => 'Choose at least one MLS board in Texas, or untick Texas.']);
+    signupStep1(['state' => 'FL', 'licence_states' => ['TX'], 'boards' => [$har, $har]]);
+    expect(json_decode((string) control()->table('signups')->sole()->idx_boards, true))->toBe([$har]);
+
+    // The website talks about where the board is, not the office state.
+    $this->post(RA.'/start/step/package', ['package' => $this->package->ulid, 'interval' => 'month']);
+    $this->get(RA.'/start?step=3')->assertOk()->assertSee('Find your place in Greater Houston')->assertDontSee('Find your place in Florida');
+});

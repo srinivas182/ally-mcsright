@@ -71,6 +71,7 @@ final class SignupWizardController
                 'description' => (string) ($t['description'] ?? ''), 'theme' => (string) ($t['theme'] ?? '#ffffff'), 'brand' => (array) ($t['brand'] ?? []),
                 'font' => trim((string) strtok((string) ($t['fonts'] ?? 'Inter'), '+')), 'css' => (string) ($t['css'] ?? '')])->values()->all(),
             'template' => $draft?->template,
+            'marketArea' => $draft !== null ? Signups::marketArea((string) ($draft->idx_boards ?? '[]'), $draft->state) : '',
             'canonical' => 'https://'.config('core.hq_host').$base,
             'review' => $draft !== null && $step === 4 ? self::review($draft) : null,
             'boardExtra' => $draft !== null ? ['cents' => self::review($draft)['extra_cents'], 'count' => max(0, count(self::review($draft)['boards']) - 1)] : null,
@@ -88,12 +89,24 @@ final class SignupWizardController
             'brokerage' => ['required', 'string', 'max:150'], 'owner_name' => ['required', 'string', 'max:120'], 'owner_email' => ['required', 'email:rfc', 'max:190'],
             'agents' => ['nullable', 'integer', 'min:1', 'max:20000'], 'check' => ['nullable', 'string', 'size:40'],
         ] + ['slug' => ['required', 'string', 'max:40'], 'state' => ['nullable', 'string', 'size:2', 'alpha'], 'boards' => ['nullable', 'array', 'max:20'], 'boards.*' => ['string', 'size:26']]);
+        // SU3: each state they hold a licence in needs at least one board there; without a board there are no listings.
+        $request->validate(['licence_states' => ['nullable', 'array', 'max:60'], 'licence_states.*' => ['string', 'size:2', 'alpha']]);
+        $chosen = array_values(array_unique($data['boards'] ?? []));
+        $data['boards'] = $chosen;
+        $offered = collect(SignupController::boardsAndStates()['idxBoards']);
+        $states = SignupController::boardsAndStates()['idxStates'];
+        foreach ((array) $request->input('licence_states', []) as $st) {
+            $has = $offered->contains(fn (array $b): bool => in_array($b['ulid'], $chosen, true) && in_array($st, (array) ($b['states'] ?? [$b['state']]), true));
+            if (is_string($st) && isset($states[$st]) && ! $has) {
+                throw ValidationException::withMessages(['licence_states' => 'Choose at least one MLS board in '.$states[$st].', or untick '.$states[$st].'.']);
+            }
+        }
         $name = $solo ? trim((string) $data['name']) : trim((string) $data['owner_name']);
         $check = ! $solo && isset($data['check']) ? HealthChecks::byToken($data['check']) : null;
         $draft = $signups->saveAbout(self::current($request, $type)?->ulid, [
             'brokerage' => $solo ? (trim((string) ($data['business'] ?? '')) !== '' ? trim((string) $data['business']) : $name) : (string) $data['brokerage'],
             'slug' => (string) $data['slug'], 'owner_name' => $name, 'owner_email' => (string) ($solo ? $data['email'] : $data['owner_email']),
-            'state' => $data['state'] ?? null, 'agents' => $solo ? 1 : (isset($data['agents']) ? (int) $data['agents'] : null), 'boards' => array_values($data['boards'] ?? []),
+            'state' => $data['state'] ?? null, 'agents' => $solo ? 1 : (isset($data['agents']) ? (int) $data['agents'] : null), 'boards' => $chosen,
             'health_check_id' => $check !== null ? (int) $check->id : null, 'ref' => is_string($request->cookie(Affiliates::COOKIE)) ? $request->cookie(Affiliates::COOKIE) : null,
         ], $type);
         $request->session()->put(self::key($type), $draft);
