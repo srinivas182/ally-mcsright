@@ -10,7 +10,6 @@ use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 use Modules\Sites\Content\DemoPhotos;
 use Modules\Sites\Content\StarterSite;
-use Modules\Sites\Models\Site;
 use Modules\Sites\Models\SitePage;
 use Modules\Sites\Models\SitePost;
 use Modules\Sites\Sections;

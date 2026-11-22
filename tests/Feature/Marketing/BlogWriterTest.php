@@ -45,6 +45,7 @@ function bwBrokerage(string $slug, string $name, string $words = 'Our east side 
     $owner = User::factory()->owner()->create();
     $sites = app(SiteSetup::class);
     $site = $sites->create('modern', ['name' => $name, 'area' => 'Austin', 'state' => 'TX', 'licence' => '9001234'], $owner);
+    SitePost::query()->where('site_id', $site->id)->delete(); // these tests start with an empty blog (TP2 adds three starter posts)
     $sites->publish($site, true, $owner);
     test()->actingAs($owner)->post('/settings/blog-writer', ['mode' => 'live', 'state' => 'TX', 'cities' => 'Austin', 'words' => $words])->assertSessionHasNoErrors();
 

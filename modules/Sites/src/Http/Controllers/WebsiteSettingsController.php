@@ -106,8 +106,9 @@ final class WebsiteSettingsController
     {
         $user = self::manager($request);
         $added = $sites->addStarterPages(self::site($sites), $user);
+        $titles = array_column(StarterSite::pages((array) self::site($sites)->info), 'title', 'path');
         Inertia::flash('toast', ['type' => 'success', 'message' => $added === [] ? 'Your website already has every standard page.'
-            : 'Added '.count($added).' '.(count($added) === 1 ? 'page' : 'pages').': '.implode(', ', array_map(fn (string $path): string => (string) collect(StarterSite::pages((array) self::site($sites)->info))->firstWhere('path', $path)['title'], $added)).'. Edit them any time.']);
+            : 'Added '.count($added).' '.(count($added) === 1 ? 'page' : 'pages').': '.implode(', ', array_map(fn (string $path): string => $titles[$path] ?? $path, $added)).'. Edit them any time.']);
 
         return back();
     }

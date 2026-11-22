@@ -23,6 +23,7 @@ use Modules\Core\Identity\Models\Invitation;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\Models\Tenant;
 use Modules\Core\Tenancy\TenantContext;
+use Modules\Sites\Content\DemoSite;
 use Modules\Sites\Models\Site;
 
 const RA = 'http://app.rightally.io';
@@ -319,7 +320,7 @@ it('asks for licence states first, shows only states that have a board, and need
 });
 
 it('opens design previews on the demo website in the chosen board\'s state, and keeps its address for it (TP4)', function (): void {
-    app(\Modules\Sites\Content\DemoSite::class)->install();
+    app(DemoSite::class)->install();
     control()->table('idx_states')->where('code', 'TX')->update(['enabled' => true]);
     control()->table('idx_boards')->where('code', 'HAR')->update(['visibility' => 'public', 'monthly_fee_cents' => 12_900, 'region' => 'Greater Houston']);
     $har = (string) control()->table('idx_boards')->where('code', 'HAR')->value('ulid');
