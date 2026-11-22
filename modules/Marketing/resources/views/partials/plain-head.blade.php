@@ -25,6 +25,9 @@
     .field{display:flex;align-items:stretch;border:1px solid #C9D2E3;border-radius:11px;background:#fff;overflow:hidden}
     .field:focus-within{outline:3px solid #155DFC;outline-offset:1px;border-color:#155DFC}
     .field input{flex:1;min-width:0;border:0;padding:0 14px;height:50px;font:inherit;color:inherit;background:transparent;outline:0}
+    input.email{display:block;width:100%;height:52px;padding:0 14px;border:1px solid #C9D2E3;border-radius:11px;font:inherit;color:inherit;background:#fff}
+    input.email:focus{outline:3px solid #155DFC;outline-offset:1px;border-color:#155DFC}
+    ul.choices{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:4px}ul.choices .btn{margin-top:10px}
     .field span{display:flex;align-items:center;padding:0 14px;background:#F1F4FA;color:#52607A;border-left:1px solid #E3E8F2;font-size:16px}
     .err{color:#B42318;font-size:16px;margin:10px 0 0}
     .btn{display:flex;width:100%;align-items:center;justify-content:center;height:52px;margin-top:20px;border:0;border-radius:11px;background:#155DFC;color:#fff;font-family:inherit;font-size:18px;font-weight:600;line-height:1;cursor:pointer;text-decoration:none;box-shadow:0 1px 0 rgb(255 255 255/.15) inset,0 8px 20px -8px rgb(21 93 252/.6)}

@@ -8,6 +8,9 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Support\Connections;
+use Modules\Core\Tenancy\Enums\SslStatus;
+use Modules\Core\Tenancy\Enums\VerificationStatus;
+use Modules\Core\Tenancy\Host;
 use Modules\Core\Tenancy\Models\Tenant;
 
 /**
@@ -36,6 +39,19 @@ final class Directory
     public static function forget(User $user): void
     {
         DB::connection(Connections::control())->table('identity_directory')->where('tenant_id', $user->tenant_id)->where('user_id', $user->id)->delete();
+    }
+
+    /**
+     * LOGIN1: where a brokerage's people sign in: its own verified back-office domain when it has one, otherwise its
+     * RightAlly address ({slug}.rightally.app), which always works.
+     */
+    public static function loginUrl(Tenant $tenant, ?string $email = null): string
+    {
+        $primary = $tenant->primaryDomain();
+        $host = $primary !== null && $primary->verification_status === VerificationStatus::Verified && $primary->ssl_status === SslStatus::Active
+            ? $primary->host : Host::platformHostFor($tenant->slug);
+
+        return 'https://'.$host.'/login'.($email !== null && $email !== '' ? '?'.http_build_query(['email' => $email]) : '');
     }
 
     /** @return list<Tenant> active brokerages where this email signs in */

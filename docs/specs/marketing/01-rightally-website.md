@@ -195,3 +195,14 @@ whose extra was stopped, or whose agent left, writes nothing.
   HQ publishes its own version in HQ › RightAlly website (`marketing:starter` adds them as editable pages). Linked in
   the centred footer line with ©. The default text must be reviewed by counsel.
 - **Favicon:** icon links carry `?v=br1` so browsers and Cloudflare fetch RightAlly's icon instead of an old cached one.
+
+- **rightally.app/login asks for an email.** RightAlly looks it up in the identity directory (emails kept as keyed
+  hashes; HQ staff never listed). One brokerage: straight to its log in page with the email filled in, so only the
+  password or passkey is left. Several: "Continue to …" for each. None: a plain message to check the spelling or ask
+  the broker for an invitation. "Use your brokerage's address instead" keeps the old way.
+- **Custom domains work.** A brokerage whose own back-office domain is verified and has its certificate is sent
+  there; otherwise its RightAlly address ({slug}.rightally.app), which always works.
+- **HQ's log in page** (app.rightally.app/login) is for the RightAlly team. After a failed attempt with an email that
+  belongs to a brokerage, it shows "Continue to {brokerage}"; it always links "With a brokerage? Find your log in page".
+- Showing the brokerage on screen was chosen for speed (HQ decision); it means anyone can see which brokerage an email
+  belongs to. Look-ups are limited to 10 a minute per address.
