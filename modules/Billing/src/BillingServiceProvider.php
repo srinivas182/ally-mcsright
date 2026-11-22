@@ -68,6 +68,7 @@ final class BillingServiceProvider extends ServiceProvider
         $nav->add(new NavItem('Sales and pricing', 'Pricing', '/hq/billing', 'badge-dollar-sign', 11, kinds: [UserKind::HqStaff]));
         $nav->add(new NavItem('Payments', 'Payments', '/hq/payments', 'credit-card', 10, kinds: [UserKind::HqStaff]));
         $nav->add(new NavItem('Sales and pricing', 'RightAlly credits', '/hq/credits', 'coins', 12, kinds: [UserKind::HqStaff]));
+        $nav->add(new NavItem('Customers', 'Sign-ups', '/hq/signups', 'user-plus', 11, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff])); // SU1
         $nav->add(new NavItem('Customers', 'Health checks', '/hq/health-checks', 'stethoscope', 11, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff]));
         $nav->add(new NavItem('Customers', 'Go-live', '/hq/go-live', 'rocket', 12, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff]));
         $nav->add(new NavItem('Sales and pricing', 'Package builder', '/hq/packages', 'package', 10, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff])); // PB1
@@ -83,7 +84,7 @@ final class BillingServiceProvider extends ServiceProvider
         $nav->add(new NavItem('Overview', 'Plans', '/plans', 'gift', 90, ability: 'billing.plans.view'));
 
         if ($this->app->runningInConsole()) {
-            $this->commands([Console\ApplyPriceChanges::class, Console\EndGrace::class, Console\BillSubsidies::class, Console\PartnerPayouts::class, Console\GrantMonthlyCredits::class, Console\WatchCreditMargins::class, Console\ExpirePurchasedCredits::class, Console\RemindPausedMaps::class, Console\PruneHealthChecks::class, Console\GoLiveWeekly::class, Console\SettleAffiliates::class, Console\BillAddOns::class, Console\DemoCleanup::class, Console\StarterPrices::class]);
+            $this->commands([Console\ApplyPriceChanges::class, Console\EndGrace::class, Console\BillSubsidies::class, Console\PartnerPayouts::class, Console\GrantMonthlyCredits::class, Console\WatchCreditMargins::class, Console\ExpirePurchasedCredits::class, Console\RemindPausedMaps::class, Console\PruneHealthChecks::class, Console\GoLiveWeekly::class, Console\SettleAffiliates::class, Console\BillAddOns::class, Console\DemoCleanup::class, Console\StarterPrices::class, Console\RemindSignups::class]);
         }
     }
 }

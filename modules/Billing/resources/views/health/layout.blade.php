@@ -36,15 +36,19 @@
         .hero{padding:44px 0 28px;background:linear-gradient(180deg,var(--brand-2),transparent)}
         .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px}
         fieldset{border:1px solid var(--line);border-radius:var(--radius);background:var(--card);padding:18px 20px 20px;margin:0 0 18px}legend{font-weight:800;font-size:20px;padding:0 6px}
-        label{display:grid;gap:4px;font-weight:600;margin:10px 0}
+        label{display:grid;align-content:start;gap:4px;font-weight:600;margin:10px 0}
         input[type=text],input[type=email],input[type=number],input[type=url],select{min-height:52px;border:1px solid var(--line);border-radius:12px;padding:0 14px;font:inherit;background:var(--bg);color:var(--ink);width:100%}
         input[type=color]{width:72px;height:52px;border:1px solid var(--line);border-radius:12px;background:var(--bg)}
         .check{display:flex;gap:10px;align-items:flex-start;font-weight:400}.check input{width:24px;height:24px;margin-top:3px;flex:none}
         .choices{display:grid;gap:8px;margin:6px 0 14px}.choices label{display:flex;gap:10px;align-items:center;margin:0;font-weight:400;border:1px solid var(--line);border-radius:12px;padding:10px 14px;background:var(--bg);min-height:52px}
         .choices input{width:22px;height:22px}
         .toolrow{display:grid;grid-template-columns:2fr 1fr auto;gap:8px;align-items:center;margin-bottom:8px}@media (max-width:640px){.toolrow{grid-template-columns:1fr 1fr}.toolrow .check{grid-column:1/-1}}
-        .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media (max-width:640px){.two{grid-template-columns:1fr}}
-        .btn{display:inline-flex;align-items:center;justify-content:center;min-height:56px;padding:0 26px;border-radius:14px;border:0;background:var(--brand);color:#fff;font:700 19px/1 inherit;cursor:pointer;text-decoration:none}
+        .billing-switch{display:inline-flex;gap:4px;padding:4px;border:1px solid var(--line);border-radius:999px;background:var(--bg);margin:4px 0 14px}.billing-switch label{display:flex;align-items:center;gap:8px;margin:0;padding:8px 16px;border-radius:999px;font-weight:600;cursor:pointer}.billing-switch input{position:absolute;opacity:0;pointer-events:none}.billing-switch label:has(input:checked){background:var(--card);box-shadow:0 1px 3px rgb(6 22 63/.12);color:var(--brand-deep)}.billing-switch label:has(input:focus-visible){outline:3px solid var(--brand);outline-offset:2px}.billing-switch .save{white-space:nowrap;font-size:13px;font-weight:700;color:var(--ok);background:var(--ok-2);border-radius:999px;padding:2px 8px}
+        .plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:0 0 14px}.plan{position:relative;display:grid;align-content:start;gap:6px;margin:0;padding:18px;border:2px solid var(--line);border-radius:var(--radius);background:var(--card);cursor:pointer;font-weight:400}.plan input{position:absolute;top:16px;right:16px;width:22px;height:22px}.plan:has(input:checked){border-color:var(--brand);box-shadow:0 0 0 4px var(--brand-2)}.plan:has(input:focus-visible){outline:3px solid var(--brand);outline-offset:2px}.plan-name{font-weight:800;font-size:19px;padding-right:30px}.plan-price strong{font-size:30px}.plan ul{margin:6px 0 0;padding-left:18px}.plan li{margin:2px 0}
+        .pay-today{font-weight:600}.pay-today:empty{display:none}
+        .slug-status{display:block;font-weight:600;min-height:1.2em}.slug-status.ok{color:var(--ok)}.slug-status.bad{color:var(--bad)}.linkish{border:0;background:none;color:var(--brand);font:inherit;font-weight:700;text-decoration:underline;cursor:pointer;padding:0}
+        .two{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}@media (max-width:640px){.two{grid-template-columns:1fr}}
+        .btn{display:inline-flex;align-items:center;justify-content:center;min-height:56px;padding:0 26px;border-radius:14px;border:0;background:var(--brand);color:#fff;font-family:inherit;font-size:19px;font-weight:700;line-height:1;cursor:pointer;text-decoration:none}
         .btn.ghost{background:transparent;color:var(--brand);border:1px solid var(--line)}
         .errors{border:2px solid var(--bad);background:var(--bad-2);border-radius:12px;padding:12px 16px}
         .promises{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:24px 0;padding:0;list-style:none}.promises li{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px}.promises strong{display:block}

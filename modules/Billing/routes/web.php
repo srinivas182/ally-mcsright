@@ -11,6 +11,7 @@ use Modules\Billing\Http\Credits\HqCreditsController;
 use Modules\Billing\Http\GoLiveController;
 use Modules\Billing\Http\HealthCheckController;
 use Modules\Billing\Http\HqPackageBuilderController;
+use Modules\Billing\Http\HqSignupsController;
 use Modules\Billing\Http\PaymentsController;
 use Modules\Billing\Http\SetupController;
 use Modules\Billing\Http\SignupController;
@@ -74,6 +75,7 @@ Route::domain((string) config('core.hq_host'))->middleware('web')->group(functio
     Route::get('agents', [SignupController::class, 'agents'])->name('signup.agents');
     Route::post('agents', [SignupController::class, 'storeAgent'])->middleware('throttle:10,60')->name('signup.agents.store');
     Route::get('start/address', [SignupController::class, 'address'])->middleware('throttle:60,1')->name('signup.address');
+    Route::get('start/stop-reminders/{signup}', [SignupController::class, 'stopReminders'])->where('signup', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->middleware(['signed', 'throttle:30,1'])->name('signup.reminders.stop'); // SU1
     Route::get('start/welcome/{signup}', [SignupController::class, 'welcome'])->where('signup', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->middleware('throttle:60,1')->name('signup.welcome');
     Route::post('health-check/r/{token}/delete', [HealthCheckController::class, 'destroy'])->where('token', $token)->middleware('throttle:10,1')->name('health.delete');
 });
@@ -87,6 +89,8 @@ Route::domain((string) config('core.hq_host'))->post('billing/webhook', [Payment
 Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.tenants.manage'])->prefix('hq')->name('hq.')->group(function (): void {
     Route::get('billing', [BillingController::class, 'hq'])->name('billing');
     Route::get('health-checks', [HealthCheckController::class, 'hq'])->name('health-checks');
+    Route::get('signups', [HqSignupsController::class, 'index'])->name('signups'); // SU1
+    Route::post('signups/{signup}/remind', [HqSignupsController::class, 'remind'])->where('signup', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->middleware('throttle:20,1')->name('signups.remind');
     Route::get('go-live', [GoLiveController::class, 'hq'])->name('go-live');
     Route::get('affiliates', [AffiliateController::class, 'hq'])->name('affiliates');
     Route::post('affiliates/rewards', [AffiliateController::class, 'saveRewards'])->middleware('password.confirm')->name('affiliates.rewards');

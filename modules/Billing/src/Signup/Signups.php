@@ -62,6 +62,10 @@ final class Signups
         $audience = $type === 'solo' ? 'agent' : 'brokerage';
         $package = Package::query()->where('ulid', $in['package'])->where('active', true)->where('audience', $audience)->first();
         $slug = mb_strtolower(trim($in['slug']));
+        $email = mb_strtolower(trim($in['owner_email']));
+        // SU1: starting again (after a cancelled payment, or from a reminder) replaces their earlier unpaid signup.
+        DB::connection(Connections::control())->table('signups')->where('owner_email', $email)->where('status', 'pending')
+            ->update(['status' => 'replaced', 'updated_at' => now()]);
         if ($package === null) {
             throw ValidationException::withMessages(['package' => 'Choose one of the packages.']);
         }
@@ -168,16 +172,38 @@ final class Signups
         return DB::connection(Connections::control())->table('signups')->where('ulid', $ulid)->first();
     }
 
-    /** Why an address can't be used, or null if it is free. */
-    public static function slugProblem(string $slug): ?string
+    /**
+     * Why an address can't be used, or null if it is free. An address someone is paying for right now is held for an
+     * hour, except for that same person (by email), so starting again after a cancelled payment keeps their address.
+     */
+    public static function slugProblem(string $slug, ?string $email = null): ?string
     {
         if (($problem = Slug::problem($slug)) !== null) {
             return $problem;
         }
-        $taken = Tenant::withTrashed()->where('slug', $slug)->exists() || TenantDomain::query()->where('host', Host::platformHostFor($slug))->exists()
-            || DB::connection(Connections::control())->table('signups')->where('slug', $slug)->where('status', 'pending')->where('created_at', '>', now()->subHour())->exists();
+        $held = DB::connection(Connections::control())->table('signups')->where('slug', $slug)->where('status', 'pending')->where('created_at', '>', now()->subHour());
+        if ($email !== null && trim($email) !== '') {
+            $held->where('owner_email', '!=', mb_strtolower(trim($email)));
+        }
+        $taken = Tenant::withTrashed()->where('slug', $slug)->exists() || TenantDomain::query()->where('host', Host::platformHostFor($slug))->exists() || $held->exists();
 
         return $taken ? 'This address is already in use. Please choose another.' : null;
+    }
+
+    /** SU1: a free address close to the one asked for (name-2, name-3 …), or null. */
+    public static function freeNear(string $slug, ?string $email = null): ?string
+    {
+        $base = mb_substr(trim((string) preg_replace('/-\d+$/', '', $slug), '-'), 0, 36);
+        if ($base === '' || Slug::problem($base) !== null && Slug::problem($base.'-2') !== null) {
+            return null;
+        }
+        for ($n = 2; $n <= 9; $n++) {
+            if (self::slugProblem($base.'-'.$n, $email) === null) {
+                return $base.'-'.$n;
+            }
+        }
+
+        return null;
     }
 
     /** A suggested address from the brokerage's name. */

@@ -72,6 +72,7 @@ Schedule::command('credits:grant-monthly')->dailyAt('00:20')->onOneServer();
 Schedule::command('credits:margin-watch')->dailyAt('06:10')->onOneServer();
 Schedule::command('credits:expire-purchases')->dailyAt('00:40')->onOneServer();
 Schedule::command('billing:prune-health-checks')->dailyAt('03:40')->onOneServer();
+Schedule::command('signups:remind')->everyTenMinutes()->withoutOverlapping()->onOneServer(); // SU1
 Schedule::command('billing:go-live-weekly')->weeklyOn(1, '14:20')->onOneServer();
 Schedule::command('credits:paused-maps')->dailyAt('14:05')->onOneServer();
 Schedule::command('sites:home-reports')->hourlyAt(7)->withoutOverlapping()->onOneServer();
