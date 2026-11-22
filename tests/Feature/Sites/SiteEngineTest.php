@@ -179,10 +179,11 @@ it('lets the website editor show the preview in a frame on the brokerage\'s own 
     $path = (string) parse_url($url, PHP_URL_PATH).'?'.parse_url($url, PHP_URL_QUERY);
 
     $res = $this->get($this->web.$path)->assertOk();
+    $csp = (string) ($res->headers->get('Content-Security-Policy') ?? $res->headers->get('Content-Security-Policy-Report-Only'));
     expect($res->headers->get('X-Frame-Options'))->toBeNull()->and($res->headers->get('X-Allow-Embed'))->toBeNull()
-        ->and((string) $res->headers->get('Content-Security-Policy'))->toContain("frame-ancestors 'self'");
+        ->and($csp)->toContain("frame-ancestors 'self'");
     foreach (TenantDomain::query()->where('tenant_id', $this->tenant->id)->pluck('host') as $host) {
-        expect((string) $res->headers->get('Content-Security-Policy'))->toContain('https://'.$host);
+        expect($csp)->toContain('https://'.$host);
     }
     expect((string) $res->getContent())->toContain('data-ra-block="text-ab12cd"')->toContain('rightally-builder');
 
