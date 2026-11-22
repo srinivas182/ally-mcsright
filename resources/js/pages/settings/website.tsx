@@ -5,6 +5,7 @@ import { confirmCredits } from '@/components/credit-consent';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DomainGuide } from '@/components/domain-guide';
 import { PageHeader } from '@/components/ui/page-header';
 import { Textarea } from '@/components/ui/textarea';
 import { postJson } from '@/lib/http';
@@ -513,6 +514,13 @@ function Manage({
 
             <section className="grid gap-3 rounded-lg border p-4 text-sm">
                 <h2 className="font-semibold">Domains</h2>
+                <DomainGuide
+                    cnameTarget={cname_target}
+                    example="www.yourbrokerage.com"
+                    connected={hosts.some(
+                        (h) => h.kind !== 'platform' && h.verified,
+                    )}
+                />
                 <ul className="grid gap-1">
                     {hosts.map((h) => (
                         <li

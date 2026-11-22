@@ -3,6 +3,7 @@ import { useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { SetupGuide } from '@/components/setup-guide';
 import { PageHeader } from '@/components/ui/page-header';
 import { usd } from '@/lib/cents';
 
@@ -89,6 +90,49 @@ export default function Partner({
                         smaller amounts roll into the next month.
                     </span>
                 </section>
+                {!connect.ready && (
+                    <SetupGuide
+                        title="How to get paid"
+                        steps={[
+                            {
+                                title: 'Click Connect with Stripe',
+                                body: (
+                                    <p>
+                                        Stripe is the payment company that sends
+                                        your earnings to your bank. It opens in
+                                        the same window.
+                                    </p>
+                                ),
+                            },
+                            {
+                                title: "Answer Stripe's questions",
+                                body: (
+                                    <p>
+                                        Your business name and address, the
+                                        owner's details, and the bank account to
+                                        pay into. Stripe asks for these by law
+                                        to send money. Have your EIN (or SSN)
+                                        and bank details ready: about 10
+                                        minutes.
+                                    </p>
+                                ),
+                            },
+                            {
+                                title: 'Come back here',
+                                done: connect.ready,
+                                body: (
+                                    <p>
+                                        Stripe sends you back when you finish.
+                                        Payouts shows Ready once Stripe has
+                                        checked your details, usually within a
+                                        day. If you stop part way, click Finish
+                                        setting up payouts to carry on.
+                                    </p>
+                                ),
+                            },
+                        ]}
+                    />
+                )}
                 <section className="grid gap-3 md:grid-cols-3">
                     <div className="rounded-lg border p-4 text-sm">
                         <p className="text-muted-foreground">
