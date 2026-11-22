@@ -131,7 +131,7 @@ final class HqDashboard
     private function attention(?string $control, CarbonImmutable $now): array
     {
         $items = [
-            ['Sign-ups not finished (not paid)', $this->sumOrNull($control, 'signups', fn (Builder $q): int => $q->where('status', 'pending')->where('created_at', '<=', $now->subHour())->where('created_at', '>=', $now->subDays(7))->count()), '/hq/signups'],
+            ['Sign-ups not finished (not paid)', $this->sumOrNull($control, 'signups', fn (Builder $q): int => $q->whereIn('status', ['draft', 'pending'])->where('updated_at', '<=', $now->subHour())->where('updated_at', '>=', $now->subDays(7))->count()), '/hq/signups'],
             ['Sign-ups that failed', $this->sumOrNull($control, 'signups', fn (Builder $q): int => $q->where('status', 'failed')->where('created_at', '>=', $now->subDays(30))->count()), '/hq/signups?status=failed'],
             ['Brokerage payments overdue', $this->sumOrNull($control, 'billing_tenant_subscriptions', fn (Builder $q): int => $q->where('status', 'grace')->count()), '/hq/billing'],
             ['Health Checks asking for a call', $this->sumOrNull($control, 'health_checks', fn (Builder $q): int => $q->where('contact_ok', true)->where('created_at', '>=', $now->subDays(14))->count()), '/hq/health-checks'],

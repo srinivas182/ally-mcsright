@@ -9,7 +9,7 @@
     $interval = old('interval', $interval ?? 'month');
     $saving = $packages->map(fn ($p) => $p->monthly_cents * 12 - $p->yearly_cents)->max();
 @endphp
-<fieldset id="plans"><legend>{{ $number }}. Choose your {{ mb_strtolower($label) }}</legend>
+<fieldset id="plans" data-extra="{{ (int) ($boardExtra['cents'] ?? 0) }}" data-extra-count="{{ (int) ($boardExtra['count'] ?? 0) }}"><legend>{{ $number }}. Choose your {{ mb_strtolower($label) }}</legend>
     <div class="billing-switch" role="radiogroup" aria-label="How often to pay">
         <label><input type="radio" name="interval" value="month" @checked($interval !== 'year')> Monthly</label>
         <label><input type="radio" name="interval" value="year" @checked($interval === 'year')> Yearly
@@ -46,6 +46,7 @@
         });
         var fees = Array.prototype.map.call(document.querySelectorAll('input[name="boards[]"]:checked'), function (i) { return +i.getAttribute('data-fee'); }).sort(function (a, b) { return b - a; });
         var boards = fees.slice(1).reduce(function (a, b) { return a + b; }, 0);
+        if (fees.length === 0 && +box.getAttribute('data-extra-count') > 0) { boards = +box.getAttribute('data-extra'); fees = new Array(+box.getAttribute('data-extra-count') + 1); }
         var out = document.getElementById('pay-today');
         if (!chosen) { out.textContent = ''; return; }
         var text = 'You pay today: ' + money(chosen.cents) + ' (' + chosen.name + ', ' + (year ? 'yearly' : 'monthly') + ')';

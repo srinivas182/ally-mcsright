@@ -8,7 +8,7 @@
     $picked = array_map('strval', (array) old('boards', $prefillBoards ?? []));
 @endphp
 @if (! empty($idxBoards))
-<fieldset id="idx-boards"><legend>{{ $number }}. Your MLS boards (for listings on your website)</legend>
+<fieldset id="idx-boards"><legend>{{ ($number ?? '') !== '' ? $number.'. ' : '' }}Your MLS boards (for listings on your website)</legend>
     <p class="muted small" style="margin-top:0">Tick the states where you hold a licence, then the boards you belong to. <strong>One board is included in the price.</strong> Each extra board adds the fee shown, every month. You can skip this and add boards later in Settings › MLS.</p>
     <div class="choices" role="group" aria-label="States where you hold a licence" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
         @foreach ($idxStates as $code => $name)

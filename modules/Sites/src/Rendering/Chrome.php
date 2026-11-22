@@ -6,6 +6,7 @@ namespace Modules\Sites\Rendering;
 
 use Carbon\CarbonImmutable;
 use Modules\Crm\Consent;
+use Modules\Listings\Idx\FooterDisclosures;
 use Modules\Sites\AgentSites;
 use Modules\Sites\Ailly\AillySettings;
 use Modules\Sites\Maps;
@@ -19,7 +20,7 @@ final class Chrome
 {
     /**
      * @param  array<int, mixed>  $disclaimers  MLS disclaimers of the listings on the page (empty and repeated ones dropped)
-     * @return array{agent: array{name: string, phone: string, email: string, photo: string|null, licence: array{state: string|null, number: string}|null, home: string, ulid: string}|null, template: string, brand: array<string, mixed>, menu: list<array{path: string, title: string}>, footer: list<array{path: string, title: string}>, powered: array{text: string, url: string}|null, year: int, mapbox: string|null, ailly: array{name: string, photo: string|null, nudge: bool}|null, disclaimers: list<string>, signup_after: int, consent: string}
+     * @return array{agent: array{name: string, phone: string, email: string, photo: string|null, licence: array{state: string|null, number: string}|null, home: string, ulid: string}|null, template: string, brand: array<string, mixed>, menu: list<array{path: string, title: string}>, footer: list<array{path: string, title: string}>, powered: array{text: string, url: string}|null, year: int, mapbox: string|null, ailly: array{name: string, photo: string|null, nudge: bool}|null, disclaimers: list<string>, mls: array{boards: list<array{name: string, logo: string|null, disclaimer: string}>, sample: bool}, signup_after: int, consent: string}
      */
     public static function for(Site $site, int $tenantId, array $disclaimers = []): array
     {
@@ -72,6 +73,7 @@ final class Chrome
         return ['agent' => $agent, 'template' => $agentSite !== null && $rules['template'] ? $agentSite->template : $site->template,
             'brand' => $agentSite !== null && $rules['colours'] ? $agentSite->brand : $site->brand, 'menu' => $menu, 'footer' => $footer !== [] ? $footer : [...$menu, ['path' => '/market', 'title' => 'Market reports']], 'powered' => app(PoweredBy::class)->forTenant($tenantId), 'year' => CarbonImmutable::now()->year,
             'mapbox' => app(Maps::class)->token(), 'ailly' => self::ailly(), 'disclaimers' => array_values(array_unique(array_filter($disclaimers, fn ($d): bool => is_string($d) && $d !== ''))),
+            'mls' => FooterDisclosures::for($tenantId), // SU2: locked MLS disclosure in every design's footer
             'signup_after' => max(0, min(20, (int) ($site->settings['signup_after'] ?? config('sites.signup_after', 3)))), 'consent' => Consent::DEFAULT_SMS_WORDING];
     }
 

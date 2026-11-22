@@ -15,6 +15,7 @@ use Modules\Billing\Http\HqSignupsController;
 use Modules\Billing\Http\PaymentsController;
 use Modules\Billing\Http\SetupController;
 use Modules\Billing\Http\SignupController;
+use Modules\Billing\Http\SignupWizardController;
 use Modules\Billing\Http\TryController;
 use Modules\Core\Http\Middleware\EnsureHqConsole;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
@@ -70,10 +71,17 @@ Route::domain((string) config('core.hq_host'))->middleware('web')->group(functio
     Route::get('health-check/r/{token}', [HealthCheckController::class, 'report'])->where('token', $token)->middleware('throttle:60,1')->name('health.report');
     Route::get('health-check/r/{token}/preview', [HealthCheckController::class, 'preview'])->where('token', $token)->middleware('throttle:60,1')->name('health.preview');
     Route::get('health-check/r/{token}/logo', [HealthCheckController::class, 'logo'])->where('token', $token)->middleware('throttle:60,1')->name('health.logo');
-    Route::get('start', [SignupController::class, 'start'])->name('signup.start');
-    Route::post('start', [SignupController::class, 'store'])->middleware('throttle:10,60')->name('signup.store');
-    Route::get('agents', [SignupController::class, 'agents'])->name('signup.agents');
-    Route::post('agents', [SignupController::class, 'storeAgent'])->middleware('throttle:10,60')->name('signup.agents.store');
+    // SU2: signup in four saved steps (about you and your boards, package, design, pay).
+    Route::get('start', [SignupWizardController::class, 'brokerage'])->name('signup.start');
+    Route::post('start/step/about', [SignupWizardController::class, 'about'])->defaults('type', 'brokerage')->middleware('throttle:30,10')->name('signup.about');
+    Route::post('start/step/package', [SignupWizardController::class, 'package'])->defaults('type', 'brokerage')->middleware('throttle:60,10')->name('signup.package');
+    Route::post('start/step/design', [SignupWizardController::class, 'design'])->defaults('type', 'brokerage')->middleware('throttle:60,10')->name('signup.design.save');
+    Route::post('start', [SignupWizardController::class, 'pay'])->defaults('type', 'brokerage')->middleware('throttle:10,60')->name('signup.store');
+    Route::get('agents', [SignupWizardController::class, 'agent'])->name('signup.agents');
+    Route::post('agents/step/about', [SignupWizardController::class, 'about'])->defaults('type', 'solo')->middleware('throttle:30,10')->name('signup.agents.about');
+    Route::post('agents/step/package', [SignupWizardController::class, 'package'])->defaults('type', 'solo')->middleware('throttle:60,10')->name('signup.agents.package');
+    Route::post('agents/step/design', [SignupWizardController::class, 'design'])->defaults('type', 'solo')->middleware('throttle:60,10')->name('signup.agents.design');
+    Route::post('agents', [SignupWizardController::class, 'pay'])->defaults('type', 'solo')->middleware('throttle:10,60')->name('signup.agents.store');
     Route::get('start/address', [SignupController::class, 'address'])->middleware('throttle:60,1')->name('signup.address');
     Route::get('start/stop-reminders/{signup}', [SignupController::class, 'stopReminders'])->where('signup', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->middleware(['signed', 'throttle:30,1'])->name('signup.reminders.stop'); // SU1
     Route::get('start/welcome/{signup}', [SignupController::class, 'welcome'])->where('signup', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->middleware('throttle:60,1')->name('signup.welcome');

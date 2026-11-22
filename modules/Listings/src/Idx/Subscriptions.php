@@ -270,6 +270,7 @@ final class Subscriptions
         }
         $auth = $this->access->request((int) $sub->tenant_id, $source, (string) $sub->member_id, array_filter([(string) $sub->office_id]), 'IDX '.$ulid, $by);
         $this->access->approve($auth, ['idx'], null, 'IDX '.$ulid, $by);
+        FooterDisclosures::forget((int) $sub->tenant_id); // SU2: the website footer shows the board at once
         $this->db()->table('idx_subscriptions')->where('id', $sub->id)->update(['status' => 'live', 'mls_authorization_id' => $auth->id,
             'feed_id' => $feedId !== null && trim($feedId) !== '' ? mb_substr(trim($feedId), 0, 120) : $sub->feed_id, 'client_note' => null, 'status_at' => now(), 'live_at' => now(), 'updated_at' => now()]);
         DemoListings::forget((int) $sub->tenant_id);
@@ -291,6 +292,7 @@ final class Subscriptions
         if ($sub->mls_authorization_id !== null && ($auth = MlsAuthorization::query()->whereKey((int) $sub->mls_authorization_id)->first()) !== null && $auth->status === 'active') {
             $this->access->revoke($auth, 'IDX board cancelled', $by);
         }
+        FooterDisclosures::forget((int) $sub->tenant_id); // SU2: the website footer shows the board at once
         $this->db()->table('idx_subscriptions')->where('id', $sub->id)->update(['status' => 'cancelled', 'status_at' => now(), 'cancelled_at' => now(), 'updated_at' => now()]);
         DemoListings::forget((int) $sub->tenant_id);
         $this->audit->record('idx.cancelled', metadata: ['subscription' => $ulid, 'by' => $by->id, 'by_brokerage' => $tenantId !== null], severity: 'warning', tenantId: (int) $sub->tenant_id);

@@ -190,8 +190,10 @@ it('offers only the states RightAlly works in, as a list, and packages as cards 
     control()->table('idx_states')->update(['enabled' => false]);
     control()->table('idx_states')->where('code', 'TX')->update(['enabled' => true]);
     $html = (string) $this->get(RA.'/start')->assertOk()->getContent();
-    expect($html)->toContain('<select name="state"')->toContain('<option value="TX"')->not->toContain('<option value="CA"')
-        ->toContain('class="plan"')->toContain('data-year="299000"')->toContain('id="pay-today"')->toContain('Save up to');
+    expect($html)->toContain('<select name="state"')->toContain('<option value="TX"')->not->toContain('<option value="CA"');
+    signupStep1();
+    $html = (string) $this->get(RA.'/start?step=2')->assertOk()->getContent();
+    expect($html)->toContain('class="plan"')->toContain('data-year="299000"')->toContain('id="pay-today"')->toContain('Save up to');
 });
 
 it('reminds people who did not pay, an hour and a day later, with a link that fills the form back in (SU1)', function (): void {
@@ -207,8 +209,11 @@ it('reminds people who did not pay, an hour and a day later, with a link that fi
 
         return true;
     });
-    $this->get($mail->resumeUrl)->assertOk()->assertSee('Welcome back')->assertSee('value="Oak Realty"', false)->assertSee('value="oak-realty"', false);
-    $this->get(RA.'/start?resume='.$signup)->assertOk()->assertDontSee('Welcome back'); // only with the signed link
+    $this->flushSession();
+    $this->get($mail->resumeUrl)->assertRedirect('/start?step=4&back=1'); // back at the step they stopped
+    $this->get(RA.'/start?step=1&back=1')->assertOk()->assertSee('Welcome back')->assertSee('value="Oak Realty"', false)->assertSee('value="oak-realty"', false);
+    $this->flushSession();
+    $this->get(RA.'/start?resume='.$signup)->assertOk()->assertDontSee('value="Oak Realty"', false); // only with the signed link
 
     $this->travel(1)->days();
     $this->artisan('signups:remind')->expectsOutputToContain('1 reminder(s) sent');
@@ -230,7 +235,8 @@ it('sends no reminder once the person has paid (SU1)', function (): void {
 it('lists sign-ups for HQ with where each stopped, and sends a reminder on request (SU1)', function (): void {
     $signup = startSignup();
     $this->actingAs($this->staff)->get(RA.'/hq/signups')->assertOk()->assertInertia(fn (Assert $p) => $p->component('hq/signups')
-        ->where('status', 'pending')->where('counts.pending', 1)->where('signups.0.brokerage', 'Oak Realty')->where('signups.0.price_cents', 29_900)
+        ->where('status', 'unfinished')->where('counts.unfinished', 1)->where('signups.0.brokerage', 'Oak Realty')->where('signups.0.price_cents', 29_900)
+        ->where('signups.0.stopped', 'At the payment page')
         ->where('signups.0.resume_url', fn ($u): bool => str_contains((string) $u, 'resume='.$signup)));
     $this->actingAs($this->staff)->post(RA.'/hq/signups/'.$signup.'/remind')->assertRedirect();
     Notification::assertSentOnDemandTimes(SignupReminderMail::class, 1);
@@ -239,4 +245,54 @@ it('lists sign-ups for HQ with where each stopped, and sends a reminder on reque
     $this->travel(2)->hours();
     Cache::flush();
     $this->actingAs($this->staff)->get(RA.'/hq/dashboard')->assertInertia(fn (Assert $p) => $p->where('attention', fn ($a): bool => collect($a)->pluck('label')->contains('Sign-ups not finished (not paid)')));
+});
+
+
+function signupStep1(array $over = []): void
+{
+    test()->post(RA.'/start/step/about', array_replace(['brokerage' => 'Oak Realty', 'slug' => 'oak-realty', 'owner_name' => 'Dana Smith', 'owner_email' => 'dana@oak.test',
+        'state' => 'TX', 'agents' => 12], $over))->assertRedirect('/start?step=2#signup');
+}
+
+it('signs up in four saved steps, and HQ sees where someone stopped (SU2)', function (): void {
+    // Later steps are not reachable before step 1.
+    $this->get(RA.'/start?step=3')->assertOk()->assertSee('name="brokerage"', false)->assertDontSee('name="template"', false);
+    signupStep1();
+    $signup = control()->table('signups')->sole();
+    expect($signup)->status->toBe('draft')->step->toBe(2)->package_id->toBeNull();
+    $this->actingAs($this->staff)->get(RA.'/hq/signups')->assertInertia(fn (Assert $p) => $p->where('signups.0.stopped', 'Stopped at step 2: Package'));
+    auth()->logout();
+
+    $this->post(RA.'/start/step/package', ['package' => $this->package->ulid, 'interval' => 'year'])->assertRedirect('/start?step=3#signup');
+    $this->get(RA.'/start?step=3')->assertOk()->assertSee('Choose your website design')->assertSee('value="aurum"', false)->assertSee('/start/designs/estate', false);
+    $this->post(RA.'/start/step/design', ['template' => 'nope'])->assertSessionHasErrors('template');
+    $this->post(RA.'/start/step/design', ['template' => 'estate'])->assertRedirect('/start?step=4#signup');
+    $this->get(RA.'/start?step=4')->assertOk()->assertSee('Review and pay')->assertSee('Estate')->assertSee('$2,990 a year')->assertSee('oak-realty.rightally.app');
+
+    $this->post(RA.'/start', [])->assertSessionHasErrors('terms');
+    $this->post(RA.'/start', ['terms' => '1'])->assertRedirect('https://checkout.example/session/1');
+    expect(control()->table('signups')->sole())->status->toBe('pending')->template->toBe('estate')
+        ->and($this->gateway->checkouts[0])->toMatchArray(['email' => 'dana@oak.test', 'unitCents' => 299_000, 'interval' => 'year']);
+
+    // Going back to change something keeps the rest.
+    $this->get(RA.'/start?step=1')->assertOk()->assertSee('value="oak-realty"', false);
+});
+
+it('puts the new website live in the chosen design the moment they pay (SU2)', function (): void {
+    signupStep1();
+    $this->post(RA.'/start/step/package', ['package' => $this->package->ulid, 'interval' => 'month']);
+    $this->post(RA.'/start/step/design', ['template' => 'ember']);
+    $this->post(RA.'/start', ['terms' => '1']);
+    $signup = (string) control()->table('signups')->value('ulid');
+    signupEvent('evt_paid', 'checkout.session.completed', $signup);
+
+    $tenant = Tenant::query()->where('slug', 'oak-realty')->sole();
+    $site = app(TenantContext::class)->runAs($tenant, fn () => \Modules\Sites\Models\Site::query()->where('kind', 'brokerage')->sole());
+    expect($site)->template->toBe('ember')->status->toBe('live')
+        ->and($site->info['name'])->toBe('Oak Realty');
+});
+
+it('shows each design with made-up content for choosing, never indexed (SU2)', function (): void {
+    $this->get(RA.'/start/designs/aurum?name=Oak+Realty&area=Austin')->assertOk()->assertSee('Oak Realty')->assertHeader('X-Robots-Tag', 'noindex, nofollow');
+    $this->get(RA.'/start/designs/nope')->assertNotFound();
 });

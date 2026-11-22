@@ -52,6 +52,24 @@ final class SiteSetup
     public function create(string $template, array $info, User $by): Site
     {
         self::guard($by);
+
+        return $this->build($template, $info, $by, 'draft');
+    }
+
+    /**
+     * SU2: the website of a brokerage that just signed up and paid: live straight away at its RightAlly address, in
+     * the design chosen while signing up, with starter pages and sample listings until its MLS board is approved.
+     *
+     * @param  array<string, mixed>  $info
+     */
+    public function launch(string $template, array $info): Site
+    {
+        return $this->build(array_key_exists($template, (array) config('sites.templates')) ? $template : 'modern', $info, null, 'live');
+    }
+
+    /** @param  array<string, mixed>  $info */
+    private function build(string $template, array $info, ?User $by, string $status): Site
+    {
         if ($this->brokerageSite() !== null) {
             throw ValidationException::withMessages(['site' => 'Your brokerage already has a website.']);
         }
@@ -60,7 +78,7 @@ final class SiteSetup
         }
         $tenant = $this->tenants->current();
         $info = self::cleanInfo($info + ['name' => $tenant->name]);
-        $site = Site::query()->create(['kind' => 'brokerage', 'template' => $template, 'info' => $info, 'status' => 'draft',
+        $site = Site::query()->create(['kind' => 'brokerage', 'template' => $template, 'info' => $info, 'status' => $status,
             'brand' => (array) config("sites.templates.{$template}.brand", ['primary' => '#1d4ed8', 'accent' => '#0f172a']),
             'seo' => ['title_suffix' => $info['name'], 'description' => (string) ($info['tagline'] ?? '')]]);
         $position = 0;
@@ -69,12 +87,12 @@ final class SiteSetup
                 '/' => 'Home', '/about' => 'About', default => 'Contact'
             },
                 'meta_description' => $path === '/' ? mb_substr((string) ($info['tagline'] ?? "Homes for sale with {$info['name']}."), 0, 300) : null,
-                'sections' => $sections, 'position' => $position++, 'status' => 'published', 'published_at' => CarbonImmutable::now(), 'updated_by' => $by->id]);
+                'sections' => $sections, 'position' => $position++, 'status' => 'published', 'published_at' => CarbonImmutable::now(), 'updated_by' => $by?->id]);
         }
         $host = Str::slug($tenant->slug).'.'.config('sites.platform_domain');
         TenantDomain::query()->firstOrCreate(['host' => $host], ['tenant_id' => $tenant->id, 'kind' => DomainKind::Platform, 'is_primary' => false,
             'verification_status' => VerificationStatus::Verified, 'ssl_status' => SslStatus::Active, 'verified_at' => now(), 'purpose' => 'website']);
-        app(AuditLogger::class)->record('sites.created', $site, metadata: ['template' => $template], severity: 'notice');
+        app(AuditLogger::class)->record('sites.created', $site, metadata: ['template' => $template, 'from' => $by === null ? 'signup' : 'settings'], severity: 'notice');
 
         return $site;
     }

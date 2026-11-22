@@ -24,7 +24,7 @@
     <h1>RightAlly for Agents</h1>
     <p class="lead">Everything one agent needs, in one place, and simple to use. Start in ten minutes. Your contacts stay yours.</p>
     @if ($cancelled)<p class="card" role="status">Payment was cancelled. Nothing was charged; you can try again below.</p>@endif
-    @if ($resumed ?? false)<p class="card" role="status">Welcome back. Everything you typed is filled in below: check it and continue to payment.</p>@endif
+    @if ($resumed ?? false)<p class="card" role="status">Welcome back. Everything you filled in is saved: carry on where you left off.</p>@endif
     <ul class="promises">
         <li><strong>Ten-minute start</strong>Bring your old CRM over; "Who to call today" is ready the same day.</li>
         <li><strong>Simple view</strong>A short menu, big buttons, English or Spanish.</li>
@@ -52,34 +52,10 @@
 
     @endif
 
-    <h2 id="signup">Start now</h2>
     @if (! $open || $packages->isEmpty())
         <p class="card">Online signup for agents opens soon.</p>
     @else
-        @if ($errors->any())
-            <div class="errors" role="alert"><strong>Please check these:</strong><ul>@foreach ($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul></div>
-        @endif
-        <form method="post" action="/agents" novalidate>
-            @csrf
-            <div class="hp" aria-hidden="true"><label>Fax<input type="text" name="fax" tabindex="-1" autocomplete="off"></label></div>
-            @if (! empty($prefill['resume']))<input type="hidden" name="resume" value="{{ $prefill['resume'] }}">@endif
-            @include('billing::signup.plans', ['number' => 1, 'label' => 'Plan', 'chosen' => $chosen ?? null])
-            <fieldset><legend>2. About you</legend>
-                <div class="two">
-                    <label>Your name<input type="text" name="name" required maxlength="120" value="{{ old('name', $prefill['name'] ?? '') }}" autocomplete="name"></label>
-                    <label>Your email (your sign-in link goes here)<input type="email" name="email" required maxlength="190" value="{{ old('email', $prefill['email'] ?? '') }}" autocomplete="email"></label>
-                    <label>Team or business name (optional)<input type="text" name="business" maxlength="150" value="{{ old('business', $prefill['business'] ?? '') }}" autocomplete="organization"></label>
-                    @include('billing::signup.state', ['value' => old('state', $prefill['state'] ?? '')])
-                    @include('billing::signup.address', ['value' => old('slug', $prefill['slug'] ?? ''), 'from' => 'name', 'hint' => 'Letters, numbers and dashes, for example jane-smith-homes.'])
-                </div>
-            </fieldset>
-            @include('billing::signup.boards', ['number' => 3])
-            <fieldset><legend>{{ empty($idxBoards) ? 3 : 4 }}. Confirm and pay</legend>
-                <label class="check"><input type="checkbox" name="terms" value="1" @checked(old('terms'))> I agree to pay the price shown each month or year until I cancel.</label>
-                <button class="btn" type="submit">Continue to payment</button>
-                <p class="muted small">You pay on our payment provider's secure page. Your RightAlly is created when the payment goes through.</p>
-            </fieldset>
-        </form>
+        @include('billing::signup.wizard')
     @endif
 
     <section class="faq" aria-labelledby="faq">

@@ -973,6 +973,21 @@ h3 {
     align-items: center;
     gap: 0.5rem;
 }
+.mls-disclosure {
+    display: grid;
+    gap: 0.75rem;
+    margin: 0.5rem 0 1rem;
+}
+.mls-board {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+}
+.mls-board img {
+    flex: none;
+    height: 28px;
+    width: auto;
+}
 .disclaimer {
     font-size: 0.75rem;
 }

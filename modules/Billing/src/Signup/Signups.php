@@ -30,6 +30,7 @@ use Modules\Core\Tenancy\Slug;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Listings\Idx\Coverage;
 use Modules\Listings\Idx\Subscriptions;
+use Modules\Sites\SiteSetup;
 use stdClass;
 use Throwable;
 
@@ -49,47 +50,107 @@ final class Signups
         return $this->gateway->ready() && Package::query()->where('active', true)->where('audience', $audience)->exists();
     }
 
+    /** SU2: the steps, in order (1 to 4), and what each is called on HQ's list. */
+    public const STEPS = [1 => 'You and your boards', 2 => 'Package', 3 => 'Website design', 4 => 'Review and pay'];
+
+    /**
+     * SU2 step 1: who they are, their address and their MLS boards. Starts a draft (replacing any earlier unfinished
+     * signup with the same email) or updates the one they are filling in.
+     *
+     * @param  array{brokerage: string, slug: string, owner_name: string, owner_email: string, state?: string|null, agents?: int|null, boards?: list<string>, health_check_id?: int|null, ref?: string|null}  $in
+     */
+    public function saveAbout(?string $draft, array $in, string $type = 'brokerage'): string
+    {
+        $type = $type === 'solo' ? 'solo' : 'brokerage';
+        $db = DB::connection(Connections::control());
+        $email = mb_strtolower(trim($in['owner_email']));
+        $slug = mb_strtolower(trim($in['slug']));
+        $row = $draft !== null ? $db->table('signups')->where('ulid', $draft)->whereIn('status', ['draft', 'pending'])->first() : null;
+        if (($problem = self::slugProblem($slug, $email, $row?->ulid)) !== null) {
+            throw ValidationException::withMessages(['slug' => $problem]);
+        }
+        $values = ['type' => $type, 'brokerage' => mb_substr(trim($in['brokerage']), 0, 150), 'slug' => $slug, 'owner_name' => mb_substr(trim($in['owner_name']), 0, 120),
+            'owner_email' => $email, 'state' => isset($in['state']) && $in['state'] !== '' ? strtoupper($in['state']) : null, 'agents' => $in['agents'] ?? null,
+            'idx_boards' => self::chosenBoards($in['boards'] ?? []), 'updated_at' => now()];
+        if ($row !== null) {
+            $db->table('signups')->where('id', $row->id)->update($values + ['status' => 'draft', 'step' => max(2, (int) $row->step)]);
+
+            return (string) $row->ulid;
+        }
+        $db->table('signups')->where('owner_email', $email)->whereIn('status', ['draft', 'pending'])->update(['status' => 'replaced', 'updated_at' => now()]);
+        $ulid = (string) Str::ulid();
+        $db->table('signups')->insert($values + ['ulid' => $ulid, 'status' => 'draft', 'step' => 2, 'health_check_id' => $in['health_check_id'] ?? null,
+            'referral_code' => isset($in['ref']) && preg_match('/^[a-z0-9]{3,24}$/', (string) $in['ref']) === 1 ? (string) $in['ref'] : null, 'created_at' => now()]);
+
+        return $ulid;
+    }
+
+    /** SU2 step 2: the package and how often they pay. */
+    public function savePackage(string $draft, string $package, string $interval): void
+    {
+        $row = $this->draft($draft);
+        $audience = $row->type === 'solo' ? 'agent' : 'brokerage';
+        $p = Package::query()->where('ulid', $package)->where('active', true)->where('audience', $audience)->first()
+            ?? throw ValidationException::withMessages(['package' => 'Choose one of the packages.']);
+        DB::connection(Connections::control())->table('signups')->where('id', $row->id)->update(['package_id' => $p->id, 'interval' => $interval === 'year' ? 'year' : 'month',
+            'status' => 'draft', 'step' => max(3, (int) $row->step), 'updated_at' => now()]);
+    }
+
+    /** SU2 step 3: the website design their RightAlly website starts in. */
+    public function saveDesign(string $draft, string $template): void
+    {
+        $row = $this->draft($draft);
+        if (! array_key_exists($template, (array) config('sites.templates'))) {
+            throw ValidationException::withMessages(['template' => 'Choose a design.']);
+        }
+        DB::connection(Connections::control())->table('signups')->where('id', $row->id)->update(['template' => $template, 'status' => 'draft',
+            'step' => max(4, (int) $row->step), 'updated_at' => now()]);
+    }
+
+    /** SU2 step 4: everything is chosen; returns the payment page's address. */
+    public function checkout(string $draft, string $returnBase): string
+    {
+        $row = $this->draft($draft);
+        $package = Package::query()->whereKey((int) $row->package_id)->where('active', true)->first();
+        if ($package === null || $row->interval === null) {
+            throw ValidationException::withMessages(['package' => 'Choose one of the packages.']);
+        }
+        if (($problem = self::slugProblem((string) $row->slug, (string) $row->owner_email, (string) $row->ulid)) !== null) {
+            throw ValidationException::withMessages(['slug' => $problem]);
+        }
+        if (! $this->open($row->type === 'solo' ? 'agent' : 'brokerage')) {
+            throw ValidationException::withMessages(['package' => 'Online signup is not open yet. Ask for a call and we will set you up.']);
+        }
+        $price = $row->interval === 'year' ? $package->yearly_cents : $package->monthly_cents;
+        DB::connection(Connections::control())->table('signups')->where('id', $row->id)->update(['status' => 'pending', 'updated_at' => now()]);
+
+        return $this->gateway->subscriptionCheckout((string) $row->owner_email, "RightAlly {$package->name} — ".$row->brokerage, $price, (string) $row->interval,
+            $returnBase.'/start/welcome/'.$row->ulid, $returnBase.($row->type === 'solo' ? '/agents' : '/start').'?cancelled=1',
+            ['kind' => 'signup', 'signup' => (string) $row->ulid, 'package_id' => (string) $package->id, 'interval' => (string) $row->interval, 'price_cents' => (string) $price],
+            $this->settings->automaticTax());
+    }
+
+    /** A signup still being filled in (or waiting at the payment page). */
+    private function draft(string $ulid): stdClass
+    {
+        return DB::connection(Connections::control())->table('signups')->where('ulid', $ulid)->whereIn('status', ['draft', 'pending'])->first()
+            ?? throw ValidationException::withMessages(['signup' => 'This signup has expired. Please start again.']);
+    }
+
     /**
      * Saves the signup and returns the payment page's address.
      *
      * A solo agent's signup (type "solo") creates a RightAlly of their own; its name is the agent's or team's name.
      *
-     * @param  array{brokerage: string, slug: string, owner_name: string, owner_email: string, state?: string|null, agents?: int|null, package: string, interval: string, health_check_id?: int|null, ref?: string|null, boards?: list<string>}  $in
+     * @param  array{brokerage: string, slug: string, owner_name: string, owner_email: string, state?: string|null, agents?: int|null, package: string, interval: string, health_check_id?: int|null, ref?: string|null, boards?: list<string>, template?: string}  $in
      */
     public function begin(array $in, string $returnBase, string $type = 'brokerage'): string
     {
-        $type = $type === 'solo' ? 'solo' : 'brokerage';
-        $audience = $type === 'solo' ? 'agent' : 'brokerage';
-        $package = Package::query()->where('ulid', $in['package'])->where('active', true)->where('audience', $audience)->first();
-        $slug = mb_strtolower(trim($in['slug']));
-        $email = mb_strtolower(trim($in['owner_email']));
-        // SU1: starting again (after a cancelled payment, or from a reminder) replaces their earlier unpaid signup.
-        DB::connection(Connections::control())->table('signups')->where('owner_email', $email)->where('status', 'pending')
-            ->update(['status' => 'replaced', 'updated_at' => now()]);
-        if ($package === null) {
-            throw ValidationException::withMessages(['package' => 'Choose one of the packages.']);
-        }
-        if (($problem = self::slugProblem($slug)) !== null) {
-            throw ValidationException::withMessages(['slug' => $problem]);
-        }
-        if (! $this->open($audience)) {
-            throw ValidationException::withMessages(['package' => 'Online signup is not open yet. Ask for a call and we will set you up.']);
-        }
-        $ulid = (string) Str::ulid();
-        $interval = $in['interval'] === 'year' ? 'year' : 'month';
-        $price = $interval === 'year' ? $package->yearly_cents : $package->monthly_cents;
-        DB::connection(Connections::control())->table('signups')->insert([
-            'ulid' => $ulid, 'type' => $type, 'brokerage' => mb_substr(trim($in['brokerage']), 0, 150), 'slug' => $slug, 'owner_name' => mb_substr(trim($in['owner_name']), 0, 120),
-            'owner_email' => mb_strtolower(trim($in['owner_email'])), 'state' => isset($in['state']) && $in['state'] !== '' ? strtoupper($in['state']) : null,
-            'agents' => $in['agents'] ?? null, 'package_id' => $package->id, 'interval' => $interval, 'health_check_id' => $in['health_check_id'] ?? null,
-            'idx_boards' => self::chosenBoards($in['boards'] ?? []), 'status' => 'pending', 'referral_code' => isset($in['ref']) && preg_match('/^[a-z0-9]{3,24}$/', (string) $in['ref']) === 1 ? (string) $in['ref'] : null,
-            'created_at' => now(), 'updated_at' => now(),
-        ]);
+        $draft = $this->saveAbout(null, $in, $type);
+        $this->savePackage($draft, $in['package'], $in['interval']);
+        $this->saveDesign($draft, $in['template'] ?? ($type === 'solo' ? 'modern' : 'modern'));
 
-        return $this->gateway->subscriptionCheckout(mb_strtolower(trim($in['owner_email'])), "RightAlly {$package->name} — ".trim($in['brokerage']), $price, $interval,
-            $returnBase.'/start/welcome/'.$ulid, $returnBase.($type === 'solo' ? '/agents' : '/start').'?cancelled=1',
-            ['kind' => 'signup', 'signup' => $ulid, 'package_id' => (string) $package->id, 'interval' => $interval, 'price_cents' => (string) $price],
-            $this->settings->automaticTax());
+        return $this->checkout($draft, $returnBase);
     }
 
     /**
@@ -126,6 +187,16 @@ final class Signups
             app(ManageInvitations::class)->invite((string) $signup->owner_email, $first, $last, UserKind::Owner, null);
         });
         app(GoLive::class)->start($tenant);
+        // SU2: the website goes live at once in the design chosen while signing up (sample listings until a board is approved).
+        if (class_exists(SiteSetup::class)) {
+            try {
+                $this->tenants->runAs($tenant, fn () => app(SiteSetup::class)->launch((string) ($signup->template ?? 'modern'),
+                    ['name' => (string) $signup->brokerage, 'email' => (string) $signup->owner_email,
+                        'area' => (string) ($db->table('idx_states')->where('code', (string) ($signup->state ?? ''))->value('name') ?? '')]));
+            } catch (Throwable $e) {
+                report($e); // the owner can still create it from Settings › Website
+            }
+        }
         // IDX7: the MLS boards chosen at sign-up start on demo listings straight away.
         foreach ((array) json_decode((string) ($signup->idx_boards ?? '[]'), true) as $board) {
             try {
@@ -176,12 +247,15 @@ final class Signups
      * Why an address can't be used, or null if it is free. An address someone is paying for right now is held for an
      * hour, except for that same person (by email), so starting again after a cancelled payment keeps their address.
      */
-    public static function slugProblem(string $slug, ?string $email = null): ?string
+    public static function slugProblem(string $slug, ?string $email = null, ?string $own = null): ?string
     {
         if (($problem = Slug::problem($slug)) !== null) {
             return $problem;
         }
-        $held = DB::connection(Connections::control())->table('signups')->where('slug', $slug)->where('status', 'pending')->where('created_at', '>', now()->subHour());
+        $held = DB::connection(Connections::control())->table('signups')->where('slug', $slug)->whereIn('status', ['draft', 'pending'])->where('updated_at', '>', now()->subHour());
+        if ($own !== null) {
+            $held->where('ulid', '!=', $own);
+        }
         if ($email !== null && trim($email) !== '') {
             $held->where('owner_email', '!=', mb_strtolower(trim($email)));
         }

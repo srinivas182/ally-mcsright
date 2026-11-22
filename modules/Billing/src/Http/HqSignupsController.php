@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Billing\Signup\SignupReminders;
+use Modules\Billing\Signup\Signups;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Support\Connections;
 use stdClass;
@@ -20,33 +21,41 @@ use stdClass;
  */
 final class HqSignupsController
 {
-    public const STATUSES = ['pending' => 'Not paid yet', 'live' => 'Paid', 'failed' => 'Paid, set-up failed', 'replaced' => 'Started again'];
+    public const STATUSES = ['unfinished' => 'Not finished', 'live' => 'Paid', 'failed' => 'Paid, set-up failed', 'replaced' => 'Started again'];
 
     public function index(Request $request): Response
     {
-        $status = in_array($request->query('status'), [...array_keys(self::STATUSES), 'all'], true) ? (string) $request->query('status') : 'pending';
+        $status = in_array($request->query('status'), [...array_keys(self::STATUSES), 'all'], true) ? (string) $request->query('status') : 'unfinished';
         $search = mb_substr(trim((string) $request->query('q', '')), 0, 80);
         $db = DB::connection(Connections::control());
         $rows = $db->table('signups')->leftJoin('billing_packages', 'billing_packages.id', '=', 'signups.package_id')
-            ->when($status !== 'all', fn ($q) => $q->where('signups.status', $status))
+            ->when($status === 'unfinished', fn ($q) => $q->whereIn('signups.status', ['draft', 'pending']))
+            ->when(! in_array($status, ['all', 'unfinished'], true), fn ($q) => $q->where('signups.status', $status))
             ->when($search !== '', fn ($q) => $q->where(fn ($q) => $q->where('signups.brokerage', 'like', "%{$search}%")->orWhere('signups.owner_email', 'like', "%{$search}%")
                 ->orWhere('signups.owner_name', 'like', "%{$search}%")->orWhere('signups.slug', 'like', "%{$search}%")))
-            ->orderByDesc('signups.id')->limit(200)
+            ->orderByDesc('signups.updated_at')->limit(200)
             ->get(['signups.*', 'billing_packages.name as package_name', 'billing_packages.monthly_cents', 'billing_packages.yearly_cents']);
 
         return Inertia::render('hq/signups', [
             'status' => $status, 'q' => $search, 'statuses' => self::STATUSES,
-            'counts' => $db->table('signups')->selectRaw('status, count(*) as n')->groupBy('status')->pluck('n', 'status')->map(fn ($n): int => (int) $n),
+            'counts' => (function () use ($db): array {
+                $n = $db->table('signups')->selectRaw('status, count(*) as n')->groupBy('status')->pluck('n', 'status')->map(fn ($v): int => (int) $v)->all();
+
+                return ['unfinished' => ($n['draft'] ?? 0) + ($n['pending'] ?? 0)] + $n;
+            })(),
             'signups' => $rows->map(fn (stdClass $s): array => [
                 'ulid' => (string) $s->ulid, 'type' => $s->type === 'solo' ? 'Agent' : 'Brokerage', 'brokerage' => (string) $s->brokerage, 'slug' => (string) $s->slug,
                 'owner' => (string) $s->owner_name, 'email' => (string) $s->owner_email, 'state' => $s->state, 'agents' => $s->agents !== null ? (int) $s->agents : null,
-                'package' => $s->package_name, 'interval' => (string) $s->interval,
+                'package' => $s->package_name, 'interval' => (string) ($s->interval ?? 'month'), 'design' => $s->template !== null ? (string) config('sites.templates.'.$s->template.'.name', $s->template) : null,
+                'stopped' => match ((string) $s->status) {
+                    'draft' => 'Stopped at step '.(int) $s->step.': '.(Signups::STEPS[(int) $s->step] ?? ''), 'pending' => 'At the payment page', default => null
+                },
                 'price_cents' => (int) ($s->interval === 'year' ? ($s->yearly_cents ?? 0) : ($s->monthly_cents ?? 0)),
                 'boards' => count((array) json_decode((string) ($s->idx_boards ?? '[]'), true)),
-                'status' => (string) $s->status, 'error' => $s->status === 'failed' ? $s->error : null,
-                'started_at' => (string) $s->created_at, 'reminders' => (int) ($s->reminders_sent ?? 0), 'reminded_at' => $s->reminded_at ?? null,
+                'status' => in_array($s->status, ['draft', 'pending'], true) ? 'unfinished' : (string) $s->status, 'error' => $s->status === 'failed' ? $s->error : null,
+                'started_at' => (string) $s->created_at, 'last_at' => (string) $s->updated_at, 'reminders' => (int) ($s->reminders_sent ?? 0), 'reminded_at' => $s->reminded_at ?? null,
                 'no_reminders' => (bool) ($s->no_reminders ?? false),
-                'resume_url' => $s->status === 'pending' ? SignupReminders::resumeUrl($s) : null,
+                'resume_url' => in_array($s->status, ['draft', 'pending'], true) ? SignupReminders::resumeUrl($s) : null,
             ])->values(),
         ]);
     }
