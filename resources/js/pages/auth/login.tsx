@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { SsoButtons } from '@/components/sso-buttons';
 import { Form, Head } from '@inertiajs/react';
 import InputError from '@/components/input-error';
@@ -16,13 +17,28 @@ type Props = {
     status?: string;
     canResetPassword: boolean;
     ssoProviders?: string[];
+    email?: string | null;
+    elsewhere?: {
+        finder: string;
+        brokerages: { name: string; url: string }[];
+    } | null;
 };
 
 export default function Login({
     status,
     canResetPassword,
     ssoProviders = [],
+    email = null,
+    elsewhere = null,
 }: Props) {
+    // LOGIN1: arriving with the email filled in, the cursor waits in the password box.
+    const passwordRef = useRef<HTMLInputElement>(null);
+    useEffect(() => {
+        if (email) {
+            passwordRef.current?.focus();
+        }
+    }, [email]);
+
     return (
         <>
             <Head title="Log in" />
@@ -46,6 +62,7 @@ export default function Login({
                                     required
                                     autoComplete="email"
                                     placeholder="email@example.com"
+                                    defaultValue={email ?? undefined}
                                 />
                                 <InputError message={errors.email} />
                             </div>
@@ -68,6 +85,7 @@ export default function Login({
                                     required
                                     autoComplete="current-password"
                                     placeholder="Password"
+                                    ref={passwordRef}
                                 />
                                 <InputError message={errors.password} />
                             </div>
@@ -88,9 +106,40 @@ export default function Login({
                             </Button>
                         </div>
 
+                        {elsewhere && elsewhere.brokerages.length > 0 && (
+                            <div
+                                role="status"
+                                className="grid gap-2 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950"
+                            >
+                                <p>
+                                    This page is for the RightAlly team. Your
+                                    email signs in here:
+                                </p>
+                                {elsewhere.brokerages.map((b) => (
+                                    <a
+                                        key={b.url}
+                                        href={b.url}
+                                        className="font-semibold underline"
+                                    >
+                                        Continue to {b.name}
+                                    </a>
+                                ))}
+                            </div>
+                        )}
                         <p className="text-center text-sm text-muted-foreground">
-                            New here? Ask your brokerage to send you an
-                            invitation.
+                            {elsewhere ? (
+                                <>
+                                    With a brokerage?{' '}
+                                    <a
+                                        href={elsewhere.finder}
+                                        className="underline"
+                                    >
+                                        Find your log in page
+                                    </a>
+                                </>
+                            ) : (
+                                'New here? Ask your brokerage to send you an invitation.'
+                            )}
                         </p>
                     </>
                 )}

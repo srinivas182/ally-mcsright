@@ -29,7 +29,7 @@ foreach ((array) config('marketing.hosts') as $i => $host) {
         // BR1: "Log in" asks for the brokerage's own address and sends the person there.
         Route::get('login', [SignInController::class, 'show'])->name('marketing.login'.$n);
         Route::get('sign-in', fn () => redirect('/login', 301))->name('marketing.sign-in'.$n);
-        Route::get('login/go', [SignInController::class, 'go'])->middleware('throttle:30,1')->name('marketing.login.go'.$n);
+        Route::get('login/go', [SignInController::class, 'go'])->middleware('throttle:10,1')->name('marketing.login.go'.$n);
         // MK2: "Try it now" with made-up clients (off unless DEMO_ENABLED).
         Route::get('try', [TryController::class, 'start'])->middleware('throttle:5,60')->name('marketing.try'.$n);
         Route::get('/', [SiteController::class, 'page'])->defaults('locale', 'en')->defaults('slug', '')->name('marketing.home'.$n);

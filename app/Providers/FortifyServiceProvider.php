@@ -19,8 +19,11 @@ use Laravel\Fortify\Contracts\TwoFactorLoginResponse;
 use Laravel\Fortify\Features;
 use Laravel\Fortify\Fortify;
 use Modules\Core\Identity\Auth\LoginResponse;
+use Modules\Core\Identity\Directory;
 use Modules\Core\Identity\Security\SingleSignOn;
 use Modules\Core\Identity\Security\SkipTwoFactorOnTrustedDevice;
+use Modules\Core\Tenancy\Host;
+use Modules\Core\Tenancy\Models\Tenant;
 
 class FortifyServiceProvider extends ServiceProvider
 {
@@ -68,6 +71,24 @@ class FortifyServiceProvider extends ServiceProvider
     }
 
     /**
+     * LOGIN1: on HQ's address, someone from a brokerage who tried to sign in is shown where their email signs in.
+     *
+     * @return array{finder: string, brokerages: list<array{name: string, url: string}>}|null
+     */
+    private static function elsewhere(Request $request): ?array
+    {
+        if (Host::normalise($request->getHost()) !== Host::normalise((string) config('core.hq_host'))) {
+            return null;
+        }
+        $old = $request->old('email');
+        $email = is_string($old) ? $old : '';
+        $brokerages = $email !== '' && $request->session()->has('errors') && filter_var($email, FILTER_VALIDATE_EMAIL) !== false
+            ? array_map(fn (Tenant $t): array => ['name' => (string) $t->name, 'url' => Directory::loginUrl($t, $email)], Directory::brokeragesFor($email)) : [];
+
+        return ['finder' => 'https://'.((array) config('marketing.hosts'))[0].'/login', 'brokerages' => $brokerages];
+    }
+
+    /**
      * Configure Fortify views.
      */
     private function configureViews(): void
@@ -76,6 +97,10 @@ class FortifyServiceProvider extends ServiceProvider
             'canResetPassword' => Features::enabled(Features::resetPasswords()),
             'status' => $request->session()->get('status'),
             'ssoProviders' => app(SingleSignOn::class)->configured(),
+            // LOGIN1: arriving from "Log in" on rightally.app, the email is already filled in.
+            'email' => is_string($request->query('email')) && filter_var($request->query('email'), FILTER_VALIDATE_EMAIL) !== false
+                ? mb_substr((string) $request->query('email'), 0, 190) : null,
+            'elsewhere' => self::elsewhere($request),
         ]));
 
         Fortify::resetPasswordView(fn (Request $request) => Inertia::render('auth/reset-password', [
