@@ -5,6 +5,7 @@ import { confirmCredits } from '@/components/credit-consent';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { type DesignCard, DesignPicker } from '@/components/design-picker';
 import { DomainGuide } from '@/components/domain-guide';
 import { PageHeader } from '@/components/ui/page-header';
 import { Textarea } from '@/components/ui/textarea';
@@ -36,7 +37,7 @@ type Props = {
     hosts: { host: string; kind: string; verified: boolean }[];
     live_host: string | null;
     cname_target: string;
-    templates: { key: string; name: string; description: string }[];
+    templates: DesignCard[];
     powered_by: { text: string; url: string } | null;
     menus: {
         main: MenuItem[];
@@ -103,31 +104,7 @@ function TemplatePicker({
     onChange: (k: string) => void;
 }) {
     return (
-        <div
-            className="grid gap-3 sm:grid-cols-2"
-            role="radiogroup"
-            aria-label="Design"
-        >
-            {templates.map((t) => (
-                <button
-                    key={t.key}
-                    type="button"
-                    role="radio"
-                    aria-checked={value === t.key}
-                    onClick={() => onChange(t.key)}
-                    className={`grid gap-1 rounded-lg border p-4 text-left transition ${value === t.key ? 'border-primary ring-2 ring-primary/30' : 'hover:border-foreground/30'}`}
-                >
-                    <span
-                        aria-hidden
-                        className={`h-20 rounded-md ${t.key === 'aurum' ? 'bg-gradient-to-br from-neutral-950 via-neutral-900 to-amber-700' : 'bg-gradient-to-br from-white via-slate-100 to-blue-200'}`}
-                    />
-                    <span className="font-medium">{t.name}</span>
-                    <span className="text-xs text-muted-foreground">
-                        {t.description}
-                    </span>
-                </button>
-            ))}
-        </div>
+        <DesignPicker designs={templates} value={value} onChange={onChange} />
     );
 }
 

@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 use Modules\Core\Security\BotProtection;
+use Modules\Core\Security\ContentSecurityPolicy;
+use Modules\Core\Tenancy\Models\TenantDomain;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Crm\Consent;
 use Modules\Listings\Search\ListingSearch;
@@ -63,7 +65,12 @@ final class SiteController
             app(SiteContext::class)->enterAgent($row->site, '/agents/'.$row->site->slug);
         }
 
-        return $this->render($request, $row->site, $row, $row->draft_sections ?? $row->sections, false)->header('Cache-Control', 'no-store')->header('X-Robots-Tag', 'noindex');
+        $response = $this->render($request, $row->site, $row, $row->draft_sections ?? $row->sections, false)->header('Cache-Control', 'no-store')->header('X-Robots-Tag', 'noindex');
+        // WB1: the editor shows this preview on the brokerage's own back-office address, so that address may frame it.
+        $hosts = TenantDomain::query()->where('tenant_id', app(TenantContext::class)->id())->pluck('host')->map(fn ($h): string => (string) $h)->values()->all();
+        ContentSecurityPolicy::applyFramedBy($request, $response, array_values($hosts));
+
+        return $response;
     }
 
     public function robots(Request $request): Response

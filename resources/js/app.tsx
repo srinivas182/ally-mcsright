@@ -5,6 +5,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { initializeTheme } from '@/hooks/use-appearance';
 import AppLayout from '@/layouts/app-layout';
 import AuthLayout from '@/layouts/auth-layout';
+import EditorLayout from '@/layouts/editor-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import { watchBrowserErrors } from '@/lib/watchtower';
 
@@ -34,6 +35,8 @@ void createInertiaApp({
                 return AuthLayout;
             // Your own account (profile, sign-in, look, your data) keeps the settings side menu; every other
             // settings page is a full page of its own with its own heading.
+            case name === 'settings/website-editor':
+                return EditorLayout;
             case ACCOUNT_PAGES.includes(name):
                 return [AppLayout, SettingsLayout];
             default:

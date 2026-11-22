@@ -65,6 +65,24 @@ final class ContentSecurityPolicy
         $h->set($mode === 'enforce' ? 'Content-Security-Policy' : 'Content-Security-Policy-Report-Only', self::policy((string) Vite::cspNonce(), self::surface($request)));
     }
 
+    /**
+     * WB1: the same policy for a page that its own back office shows inside the website editor (the draft preview):
+     * it may be framed by those exact addresses, and by nothing else.
+     *
+     * @param  list<string>  $hosts
+     */
+    public static function applyFramedBy(Request $request, Response $response, array $hosts): void
+    {
+        $mode = self::mode();
+        if ($mode === 'off') {
+            return;
+        }
+        $allowed = implode(' ', array_map(fn (string $h): string => 'https://'.$h, array_filter($hosts, fn (string $h): bool => preg_match('/^[a-z0-9.-]+(:\d+)?$/', $h) === 1)));
+        $policy = str_replace("frame-ancestors 'self'", "frame-ancestors 'self'".($allowed !== '' ? ' '.$allowed : ''), self::policy((string) Vite::cspNonce(), self::surface($request)));
+        $response->headers->set($mode === 'enforce' ? 'Content-Security-Policy' : 'Content-Security-Policy-Report-Only', $policy);
+        $response->headers->set('X-Allow-Embed', '1'); // tells SecurityHeaders not to add X-Frame-Options: SAMEORIGIN
+    }
+
     public static function policy(string $nonce, string $surface): string
     {
         $dev = Vite::isRunningHot() ? ' '.rtrim((string) preg_replace('#^(https?://[^/]+).*$#', '$1', trim((string) @file_get_contents(public_path('hot')))), '/') : '';

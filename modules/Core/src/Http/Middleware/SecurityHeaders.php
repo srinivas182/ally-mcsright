@@ -33,13 +33,15 @@ final class SecurityHeaders
         $response = $next($request);
         ContentSecurityPolicy::apply($request, $response);
         $h = $response->headers;
+        $embeddable = $h->has('X-Allow-Embed'); // WB1: the website editor's draft preview, framed by its own back office
+        $h->remove('X-Allow-Embed');
         foreach ([
             'X-Content-Type-Options' => 'nosniff',
             'X-Frame-Options' => 'SAMEORIGIN',
             'Referrer-Policy' => 'strict-origin-when-cross-origin',
             'Permissions-Policy' => self::PERMISSIONS,
         ] as $name => $value) {
-            if (! $h->has($name)) {
+            if (! $h->has($name) && ! ($embeddable && $name === 'X-Frame-Options')) {
                 $h->set($name, $value);
             }
         }
