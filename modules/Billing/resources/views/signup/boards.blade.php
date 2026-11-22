@@ -5,7 +5,7 @@
 --}}
 @php
     $usd = fn (int $c) => \Modules\Billing\HealthCheck\HealthScore::usd($c);
-    $picked = array_map('strval', (array) old('boards', []));
+    $picked = array_map('strval', (array) old('boards', $prefillBoards ?? []));
 @endphp
 @if (! empty($idxBoards))
 <fieldset id="idx-boards"><legend>{{ $number }}. Your MLS boards (for listings on your website)</legend>

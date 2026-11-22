@@ -1,5 +1,5 @@
 import { Head, router, useForm } from '@inertiajs/react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -193,15 +193,66 @@ export default function HqIdx({
         state ?? open[0]?.code ?? 'all',
     );
     const [editing, setEditing] = useState<Board | 'new' | null>(null);
+    // IDX1+: filters on each tab, kept after saving a board; the saved board is scrolled to and shown briefly.
+    const [tab, setTab] = useState('queue');
+    const [find, setFind] = useState('');
+    const [connector, setConnector] = useState('any');
+    const [visibility, setVisibility] = useState('any');
+    const [needs, setNeeds] = useState('any');
+    const [queueFind, setQueueFind] = useState('');
+    const [queueStatus, setQueueStatus] = useState('open');
+    const [requestStatus, setRequestStatus] = useState('open');
+    const [saved, setSaved] = useState<string | null>(null);
+    useEffect(() => {
+        if (saved === null) {
+            return;
+        }
+        const row = document.querySelector(
+            `[data-board-code="${CSS.escape(saved)}"]`,
+        );
+        row?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        const done = window.setTimeout(() => setSaved(null), 2500);
+
+        return () => window.clearTimeout(done);
+    }, [saved, boards]);
     const names = useMemo(
         () => Object.fromEntries(connectors.map((c) => [c.key, c.name])),
         [connectors],
     );
+    const words = find.trim().toLowerCase();
     const shown = boards.filter(
         (b) =>
-            filter === 'all' ||
-            b.state === filter ||
-            b.other_states.includes(filter),
+            (filter === 'all' ||
+                b.state === filter ||
+                b.other_states.includes(filter)) &&
+            (words === '' ||
+                `${b.name} ${b.code} ${b.region ?? ''}`
+                    .toLowerCase()
+                    .includes(words)) &&
+            (connector === 'any' ||
+                (connector === 'none'
+                    ? !b.main_connector
+                    : b.main_connector === connector)) &&
+            (visibility === 'any' || b.visibility === visibility) &&
+            (needs === 'any' ||
+                (needs === 'fee' && b.fee_cents === null) ||
+                (needs === 'connector' && !b.main_connector) ||
+                (needs === 'check' && !b.checked)),
+    );
+    const qWords = queueFind.trim().toLowerCase();
+    const queueShown = queue.filter(
+        (q) =>
+            (queueStatus === 'all' ||
+                (queueStatus === 'open'
+                    ? !['live', 'cancelled'].includes(q.status)
+                    : q.status === queueStatus)) &&
+            (qWords === '' ||
+                `${q.brokerage} ${q.board} ${q.board_code}`
+                    .toLowerCase()
+                    .includes(qWords)),
+    );
+    const requestsShown = requests.filter(
+        (r) => requestStatus === 'all' || r.status === requestStatus,
     );
 
     return (
@@ -212,7 +263,7 @@ export default function HqIdx({
                     title="IDX coverage"
                     description="Which states are open, the MLS boards in each, and the data connector behind every board. Brokers and agents see board names and fees only, never connector names."
                 />
-                <Tabs defaultValue="queue">
+                <Tabs value={tab} onValueChange={setTab}>
                     <TabsList>
                         <TabsTrigger value="queue">
                             Brokerage boards (
@@ -244,12 +295,53 @@ export default function HqIdx({
                             along as the paperwork goes; going live turns on its
                             real listings, cancelling hides them at once.
                         </p>
+                        {queue.length > 0 && (
+                            <div className="flex flex-wrap items-end gap-3">
+                                <label className="grid gap-1 text-sm">
+                                    Search
+                                    <Input
+                                        type="search"
+                                        placeholder="Brokerage or board"
+                                        className="w-56"
+                                        value={queueFind}
+                                        onChange={(e) =>
+                                            setQueueFind(e.target.value)
+                                        }
+                                    />
+                                </label>
+                                <label className="grid gap-1 text-sm">
+                                    Status
+                                    <select
+                                        className={selectClass}
+                                        value={queueStatus}
+                                        onChange={(e) =>
+                                            setQueueStatus(e.target.value)
+                                        }
+                                    >
+                                        <option value="open">To do</option>
+                                        <option value="all">All</option>
+                                        {Object.entries(statuses).map(
+                                            ([k, v]) => (
+                                                <option key={k} value={k}>
+                                                    {v}
+                                                </option>
+                                            ),
+                                        )}
+                                    </select>
+                                </label>
+                            </div>
+                        )}
                         {queue.length === 0 && (
                             <p className="rounded-xl border bg-card p-6 text-center text-muted-foreground">
                                 No brokerage has added a board yet.
                             </p>
                         )}
-                        {queue.map((q) => (
+                        {queue.length > 0 && queueShown.length === 0 && (
+                            <p className="rounded-xl border bg-card p-6 text-center text-muted-foreground">
+                                Nothing matches these filters.
+                            </p>
+                        )}
+                        {queueShown.map((q) => (
                             <QueueRow
                                 key={q.ulid}
                                 item={q}
@@ -278,15 +370,80 @@ export default function HqIdx({
                                     <option value="all">All states</option>
                                 </select>
                             </label>
-                            <Button onClick={() => setEditing('new')}>
+                            <label className="grid gap-1 text-sm">
+                                Search
+                                <Input
+                                    type="search"
+                                    placeholder="Board name or code"
+                                    className="w-56"
+                                    value={find}
+                                    onChange={(e) => setFind(e.target.value)}
+                                />
+                            </label>
+                            <label className="grid gap-1 text-sm">
+                                Connector
+                                <select
+                                    className={selectClass}
+                                    value={connector}
+                                    onChange={(e) =>
+                                        setConnector(e.target.value)
+                                    }
+                                >
+                                    <option value="any">Any</option>
+                                    <option value="none">Not chosen</option>
+                                    {connectors.map((c) => (
+                                        <option key={c.key} value={c.key}>
+                                            {c.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+                            <label className="grid gap-1 text-sm">
+                                Shown
+                                <select
+                                    className={selectClass}
+                                    value={visibility}
+                                    onChange={(e) =>
+                                        setVisibility(e.target.value)
+                                    }
+                                >
+                                    <option value="any">Any</option>
+                                    {Object.entries(VISIBILITY).map(
+                                        ([k, v]) => (
+                                            <option key={k} value={k}>
+                                                {v}
+                                            </option>
+                                        ),
+                                    )}
+                                </select>
+                            </label>
+                            <label className="grid gap-1 text-sm">
+                                Needs
+                                <select
+                                    className={selectClass}
+                                    value={needs}
+                                    onChange={(e) => setNeeds(e.target.value)}
+                                >
+                                    <option value="any">Anything</option>
+                                    <option value="fee">A client fee</option>
+                                    <option value="connector">
+                                        A connector
+                                    </option>
+                                    <option value="check">Checking</option>
+                                </select>
+                            </label>
+                            <Button
+                                className="ml-auto"
+                                onClick={() => setEditing('new')}
+                            >
                                 Add a board
                             </Button>
-                            <p className="text-sm text-muted-foreground">
-                                A board is offered at sign-up when its state is
-                                open, it is Public, and it has a connector and a
-                                fee.
-                            </p>
                         </div>
+                        <p className="text-sm text-muted-foreground">
+                            Showing {shown.length} of {boards.length} boards. A
+                            board is offered at sign-up when its state is open,
+                            it is Public, and it has a connector and a fee.
+                        </p>
                         <div className="overflow-x-auto rounded-xl border bg-card">
                             <table className="w-full text-sm">
                                 <thead className="bg-muted/50 text-left">
@@ -301,7 +458,11 @@ export default function HqIdx({
                                 </thead>
                                 <tbody>
                                     {shown.map((b) => (
-                                        <tr key={b.ulid} className="border-t">
+                                        <tr
+                                            key={b.ulid}
+                                            data-board-code={b.code}
+                                            className={`border-t transition-colors ${saved === b.code ? 'bg-primary/10' : ''}`}
+                                        >
                                             <td className="p-3">
                                                 <p className="font-medium">
                                                     {b.name}
@@ -395,8 +556,13 @@ export default function HqIdx({
                                                 colSpan={6}
                                                 className="p-6 text-center text-muted-foreground"
                                             >
-                                                No boards in this state yet. Add
-                                                one with “Add a board”.
+                                                {boards.length === 0 ||
+                                                (words === '' &&
+                                                    connector === 'any' &&
+                                                    visibility === 'any' &&
+                                                    needs === 'any')
+                                                    ? 'No boards in this state yet. Add one with “Add a board”.'
+                                                    : 'No boards match these filters.'}
                                             </td>
                                         </tr>
                                     )}
@@ -417,7 +583,24 @@ export default function HqIdx({
                                 No brokerage has asked for a board yet.
                             </p>
                         )}
-                        {requests.map((r) => (
+                        {requests.length > 0 && (
+                            <label className="grid w-48 gap-1 text-sm">
+                                Show
+                                <select
+                                    className={selectClass}
+                                    value={requestStatus}
+                                    onChange={(e) =>
+                                        setRequestStatus(e.target.value)
+                                    }
+                                >
+                                    <option value="open">Open</option>
+                                    <option value="added">Added</option>
+                                    <option value="closed">Closed</option>
+                                    <option value="all">All</option>
+                                </select>
+                            </label>
+                        )}
+                        {requestsShown.map((r) => (
                             <RequestRow key={r.ulid} item={r} />
                         ))}
                     </TabsContent>
@@ -485,6 +668,7 @@ export default function HqIdx({
                     profiles={profiles}
                     defaultState={filter === 'all' ? 'TX' : filter}
                     onClose={() => setEditing(null)}
+                    onSaved={setSaved}
                 />
             )}
         </>
@@ -941,6 +1125,7 @@ function BoardDialog({
     profiles,
     defaultState,
     onClose,
+    onSaved,
 }: {
     board: Board | null;
     states: State[];
@@ -948,6 +1133,7 @@ function BoardDialog({
     profiles: Option[];
     defaultState: string;
     onClose: () => void;
+    onSaved?: (code: string) => void;
 }) {
     const form = useForm({
         code: board?.code ?? '',
@@ -983,7 +1169,14 @@ function BoardDialog({
             connector_code: d.connector_code || null,
             code: d.code.toUpperCase(),
         }));
-        const opts = { preserveScroll: true, onSuccess: onClose };
+        const opts = {
+            preserveScroll: true,
+            preserveState: true,
+            onSuccess: () => {
+                onSaved?.(form.data.code.toUpperCase());
+                onClose();
+            },
+        };
         if (board) {
             form.put(`/hq/idx/boards/${board.ulid}`, opts);
         } else {

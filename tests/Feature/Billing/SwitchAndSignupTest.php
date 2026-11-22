@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Connection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
@@ -17,6 +18,7 @@ use Modules\Billing\HealthCheck\HealthCopy;
 use Modules\Billing\HealthCheck\HealthReportMail;
 use Modules\Billing\Models\Package;
 use Modules\Billing\Signup\SignupProblemMail;
+use Modules\Billing\Signup\SignupReminderMail;
 use Modules\Core\Identity\Models\Invitation;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\Models\Tenant;
@@ -172,4 +174,69 @@ it('gives HQ a go-live board with late steps and coaches, and emails owners week
     $this->artisan('billing:go-live-weekly')->assertSuccessful(); // not twice in a week
     Notification::assertSentToTimes($owner, GoLiveWeekMail::class, 1);
     Notification::assertSentTo($owner, GoLiveWeekMail::class, fn (GoLiveWeekMail $m): bool => $m->coach === 'Sam Rivera' && $m->url === 'https://acme.rightally.app/switch');
+});
+
+it('checks the address while typing, suggests a free one, and keeps it for the same person starting again (SU1)', function (): void {
+    startSignup();
+    $this->getJson(RA.'/start/address?slug=oak-realty')->assertJson(['ok' => false, 'suggestion' => 'oak-realty-2']);
+    $this->getJson(RA.'/start/address?slug=oak-realty&email=dana@oak.test')->assertJson(['ok' => true]); // their own unpaid signup
+
+    // Starting again (for example after cancelling the payment) replaces the unpaid signup and keeps the address.
+    startSignup();
+    expect(control()->table('signups')->orderBy('id')->pluck('status')->all())->toBe(['replaced', 'pending']);
+});
+
+it('offers only the states RightAlly works in, as a list, and packages as cards with a yearly price (SU1)', function (): void {
+    control()->table('idx_states')->update(['enabled' => false]);
+    control()->table('idx_states')->where('code', 'TX')->update(['enabled' => true]);
+    $html = (string) $this->get(RA.'/start')->assertOk()->getContent();
+    expect($html)->toContain('<select name="state"')->toContain('<option value="TX"')->not->toContain('<option value="CA"')
+        ->toContain('class="plan"')->toContain('data-year="299000"')->toContain('id="pay-today"')->toContain('Save up to');
+});
+
+it('reminds people who did not pay, an hour and a day later, with a link that fills the form back in (SU1)', function (): void {
+    $signup = startSignup();
+    $this->artisan('signups:remind')->expectsOutputToContain('0 reminder(s) sent');
+
+    $this->travel(61)->minutes();
+    $this->artisan('signups:remind')->expectsOutputToContain('1 reminder(s) sent');
+    $this->artisan('signups:remind')->expectsOutputToContain('0 reminder(s) sent'); // not twice
+    $mail = null;
+    Notification::assertSentOnDemand(SignupReminderMail::class, function (SignupReminderMail $m) use (&$mail): bool {
+        $mail = $m;
+
+        return true;
+    });
+    $this->get($mail->resumeUrl)->assertOk()->assertSee('Welcome back')->assertSee('value="Oak Realty"', false)->assertSee('value="oak-realty"', false);
+    $this->get(RA.'/start?resume='.$signup)->assertOk()->assertDontSee('Welcome back'); // only with the signed link
+
+    $this->travel(1)->days();
+    $this->artisan('signups:remind')->expectsOutputToContain('1 reminder(s) sent');
+    $this->travel(2)->days();
+    $this->artisan('signups:remind')->expectsOutputToContain('0 reminder(s) sent'); // two at most
+
+    // "Stop these emails" works, and HQ can still send one by hand.
+    $this->get($mail->stopUrl)->assertOk()->assertSee('won');
+    expect((bool) control()->table('signups')->where('ulid', $signup)->value('no_reminders'))->toBeTrue();
+});
+
+it('sends no reminder once the person has paid (SU1)', function (): void {
+    $signup = startSignup();
+    signupEvent('evt_paid', 'checkout.session.completed', $signup);
+    $this->travel(2)->hours();
+    $this->artisan('signups:remind')->expectsOutputToContain('0 reminder(s) sent');
+});
+
+it('lists sign-ups for HQ with where each stopped, and sends a reminder on request (SU1)', function (): void {
+    $signup = startSignup();
+    $this->actingAs($this->staff)->get(RA.'/hq/signups')->assertOk()->assertInertia(fn (Assert $p) => $p->component('hq/signups')
+        ->where('status', 'pending')->where('counts.pending', 1)->where('signups.0.brokerage', 'Oak Realty')->where('signups.0.price_cents', 29_900)
+        ->where('signups.0.resume_url', fn ($u): bool => str_contains((string) $u, 'resume='.$signup)));
+    $this->actingAs($this->staff)->post(RA.'/hq/signups/'.$signup.'/remind')->assertRedirect();
+    Notification::assertSentOnDemandTimes(SignupReminderMail::class, 1);
+
+    $this->actingAs($this->staff)->get(RA.'/hq/dashboard')->assertInertia(fn (Assert $p) => $p->where('attention', fn ($a): bool => collect($a)->pluck('label')->doesntContain('Sign-ups not finished (not paid)')));
+    $this->travel(2)->hours();
+    Cache::flush();
+    $this->actingAs($this->staff)->get(RA.'/hq/dashboard')->assertInertia(fn (Assert $p) => $p->where('attention', fn ($a): bool => collect($a)->pluck('label')->contains('Sign-ups not finished (not paid)')));
 });

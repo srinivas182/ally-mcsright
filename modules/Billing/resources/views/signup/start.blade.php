@@ -25,13 +25,14 @@
     <h1>Prices and signup</h1>
     <p class="lead">One platform for your brokerage: CRM, websites, deals and compliance, e-signature, commissions and agent payouts. Public prices, no setup fee, live the same day.</p>
     @if ($cancelled)<p class="card" role="status">Payment was cancelled. Nothing was charged; you can try again below.</p>@endif
+    @if ($resumed ?? false)<p class="card" role="status">Welcome back. Everything you typed is filled in below: check it and continue to payment.</p>@endif
 </div></section>
 
 <div class="wrap">
-    <h2>Packages</h2>
     @if ($packages->isEmpty())
         <p class="muted">Prices are being updated. <a href="/health-check">Run the free Health Check</a> and we will email you.</p>
-    @else
+    @elseif (! $open)
+        <h2>Packages</h2>
         <ul class="promises">
             @foreach ($packages as $p)
                 <li>
@@ -41,12 +42,9 @@
                 </li>
             @endforeach
         </ul>
-    @endif
-
-    <h2 id="signup">Sign up</h2>
-    @if (! $open)
         <p class="card">Online signup opens soon. <a href="/health-check">Run the free Health Check</a> and tick "I'd like someone to call" — we'll set you up.</p>
     @else
+        <h2 id="signup">Sign up</h2>
         @if ($errors->any())
             <div class="errors" role="alert"><strong>Please check these:</strong><ul>@foreach ($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul></div>
         @endif
@@ -54,34 +52,24 @@
             @csrf
             <div class="hp" aria-hidden="true"><label>Fax<input type="text" name="fax" tabindex="-1" autocomplete="off"></label></div>
             @if (! empty($prefill['check']))<input type="hidden" name="check" value="{{ $prefill['check'] }}">@endif
-            <fieldset><legend>1. Your brokerage</legend>
+            @if (! empty($prefill['resume']))<input type="hidden" name="resume" value="{{ $prefill['resume'] }}">@endif
+            @include('billing::signup.plans', ['number' => 1, 'label' => 'Package'])
+            <fieldset><legend>2. Your brokerage</legend>
                 <div class="two">
                     <label>Brokerage name<input type="text" name="brokerage" required maxlength="150" value="{{ $v('brokerage') }}" autocomplete="organization"></label>
+                    @include('billing::signup.state', ['value' => $v('state')])
+                    @include('billing::signup.address', ['value' => $v('slug'), 'from' => 'brokerage', 'hint' => 'Letters, numbers and dashes. You can add your own domain later.'])
                     <label>Number of agents (optional)<input type="number" name="agents" min="1" max="20000" value="{{ $v('agents') }}" inputmode="numeric"></label>
-                    <label>Your RightAlly address
-                        <span style="display:flex;align-items:center;gap:6px"><input type="text" name="slug" required maxlength="40" value="{{ $v('slug') }}" pattern="[a-z0-9-]+" autocapitalize="none" aria-describedby="slug-help"> <span class="muted">.{{ config('core.platform_domain') }}</span></span>
-                        <span id="slug-help" class="muted small" style="font-weight:400">Letters, numbers and dashes. You can add your own domain later.</span>
-                    </label>
-                    <label>State (two letters, optional)<input type="text" name="state" maxlength="2" value="{{ $v('state') }}"></label>
                 </div>
             </fieldset>
-            <fieldset><legend>2. The owner</legend>
+            <fieldset><legend>3. The owner</legend>
                 <div class="two">
                     <label>Owner's name<input type="text" name="owner_name" required maxlength="120" value="{{ $v('owner_name') }}" autocomplete="name"></label>
                     <label>Owner's email (the sign-in link goes here)<input type="email" name="owner_email" required maxlength="190" value="{{ $v('owner_email') }}" autocomplete="email"></label>
                 </div>
             </fieldset>
-            @include('billing::signup.boards', ['number' => 3])
-            <fieldset><legend>{{ empty($idxBoards) ? 3 : 4 }}. Package</legend>
-                <div class="choices" role="radiogroup" aria-label="Package">
-                    @foreach ($packages as $i => $p)
-                        <label><input type="radio" name="package" value="{{ $p->ulid }}" @checked(old('package', $chosen ?? $packages->first()->ulid) === $p->ulid)> {{ $p->name }} — {{ $usd((int) $p->monthly_cents) }} a month or {{ $usd((int) $p->yearly_cents) }} a year</label>
-                    @endforeach
-                </div>
-                <div class="choices" role="radiogroup" aria-label="How often to pay">
-                    <label><input type="radio" name="interval" value="month" @checked(old('interval', 'month') === 'month')> Pay monthly</label>
-                    <label><input type="radio" name="interval" value="year" @checked(old('interval') === 'year')> Pay yearly</label>
-                </div>
+            @include('billing::signup.boards', ['number' => 4])
+            <fieldset><legend>{{ empty($idxBoards) ? 4 : 5 }}. Confirm and pay</legend>
                 <label class="check"><input type="checkbox" name="terms" value="1" @checked(old('terms'))> I can sign up this brokerage, and I agree to pay the price shown each month or year until I cancel.</label>
                 @include('core::bot-check', ['bot' => app(\Modules\Core\Security\BotProtection::class)->widget()])
                 <button class="btn" type="submit">Continue to payment</button>

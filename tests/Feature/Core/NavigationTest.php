@@ -42,7 +42,7 @@ it('shows HQ staff the HQ console and people', function (): void {
     expect($groups)->toBe([
         'Overview' => ['Dashboard'],
         'HQ team' => ['People'],
-        'Customers' => ['Brokerages', 'Health checks', 'Go-live', 'Support', 'Help videos'],
+        'Customers' => ['Brokerages', 'Health checks', 'Sign-ups', 'Go-live', 'Support', 'Help videos'],
         'Sales and pricing' => ['Package builder', 'Pricing', 'RightAlly credits', 'Referral programme'],
         'Payments' => ['Payments', 'Payout rails'],
         'Websites and MLS' => ['RightAlly website', 'Content desk', 'Websites', 'MLS connections', 'IDX coverage'],
