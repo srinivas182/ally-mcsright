@@ -88,7 +88,7 @@
                         </span>
                         <span class="design-name">{{ $d['name'] }}@if (in_array($d['key'], $luxury, true)) <span class="tag">Luxury</span>@endif</span>
                         <span class="muted small">{{ $d['description'] }}</span>
-                        <a class="small" href="/start/designs/{{ $d['key'] }}?name={{ urlencode($previewName) }}&amp;area={{ urlencode($previewArea) }}" target="_blank" rel="noopener">Preview {{ $d['name'] }} (opens a new tab)</a>
+                        <a class="small" href="{{ \Modules\Sites\Content\DemoSite::previewUrl($d['key'], $previewName, $previewArea, $marketState ?? null) ?? '/start/designs/'.$d['key'].'?name='.urlencode($previewName).'&area='.urlencode($previewArea) }}" target="_blank" rel="noopener">Preview {{ $d['name'] }} (opens a new tab)</a>
                     </label>
                 @endforeach
             </div>

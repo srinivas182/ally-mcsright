@@ -192,7 +192,8 @@ final class Signups
             try {
                 $this->tenants->runAs($tenant, fn () => app(SiteSetup::class)->launch((string) ($signup->template ?? 'modern'),
                     ['name' => (string) $signup->brokerage, 'email' => (string) $signup->owner_email,
-                        'area' => self::marketArea((string) ($signup->idx_boards ?? '[]'), $signup->state)]));
+                        'area' => self::marketArea((string) ($signup->idx_boards ?? '[]'), $signup->state),
+                        'state' => self::marketState((string) ($signup->idx_boards ?? '[]'), $signup->state)])); // TP2: its Explore cities
             } catch (Throwable $e) {
                 report($e); // the owner can still create it from Settings › Website
             }
@@ -252,6 +253,9 @@ final class Signups
         if (($problem = Slug::problem($slug)) !== null) {
             return $problem;
         }
+        if ($slug === 'demo') { // TP4: the design demo website's address
+            return 'This address is reserved. Please choose another.';
+        }
         $held = DB::connection(Connections::control())->table('signups')->where('slug', $slug)->whereIn('status', ['draft', 'pending'])->where('updated_at', '>', now()->subHour());
         if ($own !== null) {
             $held->where('ulid', '!=', $own);
@@ -284,6 +288,15 @@ final class Signups
     public static function suggest(string $name): string
     {
         return mb_substr(trim((string) preg_replace('/-+/', '-', (string) preg_replace('/[^a-z0-9]+/', '-', mb_strtolower($name))), '-'), 0, 40);
+    }
+
+    /** TP2: the state a new website's listings come from: the first chosen board's, else the office state. */
+    public static function marketState(string $boardsJson, ?string $officeState): ?string
+    {
+        $ids = array_values(array_filter((array) json_decode($boardsJson, true), 'is_string'));
+        $state = $ids !== [] ? DB::connection(Connections::control())->table('idx_boards')->where('ulid', $ids[0])->value('state') : null;
+
+        return is_string($state) && $state !== '' ? $state : $officeState;
     }
 
     /**

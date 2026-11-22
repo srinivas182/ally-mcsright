@@ -228,7 +228,7 @@ it('offers ten website designs, each with its own styles', function (): void {
 
     $this->actingAs($this->owner)->patch('/settings/website', ['template' => 'estate', 'ai_crawlers' => true, 'brand' => ['primary' => '#1f3a33', 'accent' => '#b08d57']])->assertSessionHasNoErrors();
     $html = (string) $this->get($this->web.'/homes')->assertOk()->getContent();
-    expect($html)->toContain('class="theme-estate"')->toContain('Playfair+Display')->toContain('site.css?v=10');
+    expect($html)->toContain('class="theme-estate ')->toContain('Playfair+Display')->toContain('site.css?v=10');
 });
 
 it('tells visitors and brokerage owners when the MLS feed runs late', function (): void {

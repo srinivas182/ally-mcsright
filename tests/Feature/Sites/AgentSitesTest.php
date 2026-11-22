@@ -135,7 +135,7 @@ it('applies the broker brand kit to what agents may change', function (): void {
     $this->actingAs($this->jane)->patch('/settings/my-website', ['template' => 'modern', 'brand' => ['primary' => '#ff0000', 'accent' => '#00ff00']]);
     expect($site->refresh()->template)->toBe('modern');
     $html = (string) $this->get($this->web.'/agents/jane-doe')->getContent();
-    expect($html)->toContain('class="theme-modern"')->toContain('--brand: #ff0000')->toContain('Equal Housing Opportunity');
+    expect($html)->toContain('class="theme-modern ')->toContain('--brand: #ff0000')->toContain('Equal Housing Opportunity');
 
     $this->actingAs($this->owner)->post('/settings/website/agents', ['enabled' => false, 'template' => false, 'colours' => false, 'sections' => false, 'domain' => false]);
     $this->get($this->web.'/agents/jane-doe')->assertNotFound();
