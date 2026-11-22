@@ -56,11 +56,11 @@ export default function TenantsIndex({ tenants, filters }: Props) {
 
     return (
         <>
-            <Head title="Tenants" />
+            <Head title="Brokerages" />
             <div className="flex flex-col gap-6 p-4 md:p-6">
                 <header className="flex flex-wrap items-center justify-between gap-4">
                     <div>
-                        <h1 className="text-2xl font-semibold">Tenants</h1>
+                        <h1 className="text-2xl font-semibold">Brokerages</h1>
                         <p className="text-sm text-muted-foreground">
                             {tenants.total} brokerages and solo workspaces
                         </p>
@@ -210,5 +210,5 @@ export default function TenantsIndex({ tenants, filters }: Props) {
 }
 
 TenantsIndex.layout = {
-    breadcrumbs: [{ title: 'Tenants', href: '/hq/tenants' }],
+    breadcrumbs: [{ title: 'Brokerages', href: '/hq/tenants' }],
 };

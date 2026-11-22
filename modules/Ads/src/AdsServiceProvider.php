@@ -74,7 +74,7 @@ final class AdsServiceProvider extends ServiceProvider
         $this->app->make(NavigationRegistry::class)->add(new NavItem('Grow', 'Marketing check', '/marketing-check', 'shield-check', 31, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent]));
         $this->app->make(NavigationRegistry::class)->add(new NavItem('Grow', 'Social posts', '/social', 'send', 27, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent]));
         $this->app->make(NavigationRegistry::class)->add(new NavItem('Grow', 'Ally Studio', '/studio', 'sparkles', 24, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent]));
-        $this->app->make(NavigationRegistry::class)->add(new NavItem('Platform', 'Ally Studio', '/hq/studio', 'sparkles', 38, kinds: [UserKind::HqStaff]));
+        $this->app->make(NavigationRegistry::class)->add(new NavItem('Products', 'Ally Studio', '/hq/studio', 'sparkles', 11, kinds: [UserKind::HqStaff]));
         $this->app->make(McpToolbox::class)->add(Mcp\SocialPostTool::class);
         $this->app->make(McpToolbox::class)->add(Mcp\StudioQueueTool::class);
         $this->app->make(McpToolbox::class)->add(Mcp\StudioApproveTool::class);

@@ -62,7 +62,7 @@ final class TeamServiceProvider extends ServiceProvider
         $nav = $this->app->make(NavigationRegistry::class);
         $nav->add(new NavItem('Overview', 'Team chat', '/chat', 'message-circle', 27, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant]));
         $nav->add(new NavItem('Settings', 'Help', '/help', 'life-buoy', 99, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant]));
-        $nav->add(new NavItem('HQ', 'Support', '/hq/support', 'life-buoy', 12, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff]));
-        $nav->add(new NavItem('HQ', 'Help videos', '/hq/support/videos', 'video', 13, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff])); // SX5
+        $nav->add(new NavItem('Customers', 'Support', '/hq/support', 'life-buoy', 13, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff]));
+        $nav->add(new NavItem('Customers', 'Help videos', '/hq/support/videos', 'video', 14, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff])); // SX5
     }
 }

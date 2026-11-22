@@ -32,6 +32,6 @@ final class ApiServiceProvider extends ServiceProvider
         Passport::tokensCan($scopes);
         Passport::authorizationView(fn (array $p) => Http\PartnerConsent::wants($p) ? Http\PartnerConsent::render($p) : McpConsentController::render($p));
         $nav = $this->app->make(NavigationRegistry::class);
-        $nav->add(new NavItem('HQ', 'Partner apps', '/hq/partners', 'network', 20, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff]));
+        $nav->add(new NavItem('Connections', 'Partner apps', '/hq/partners', 'network', 14, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff]));
     }
 }

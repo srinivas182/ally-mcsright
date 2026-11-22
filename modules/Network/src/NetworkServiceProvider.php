@@ -37,7 +37,7 @@ final class NetworkServiceProvider extends ServiceProvider
         $nav = $this->app->make(NavigationRegistry::class);
         $nav->add(new NavItem('Grow', 'Referral network', '/network', 'handshake', 30, kinds: [UserKind::Owner, UserKind::Agent]));
         $nav->add(new NavItem('Settings', 'Referral network', '/settings/network', 'handshake', 76, kinds: [UserKind::Owner]));
-        $nav->add(new NavItem('HQ', 'Referral network', '/hq/network', 'handshake', 15, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff])); // AR2
+        $nav->add(new NavItem('Products', 'Referral network', '/hq/network', 'handshake', 10, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff])); // AR2
         if ($this->app->runningInConsole()) {
             $this->commands([Console\ExpireReferrals::class, Console\RefreshTrust::class]);
         }

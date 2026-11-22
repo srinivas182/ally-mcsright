@@ -71,7 +71,7 @@ final class ConnectServiceProvider extends ServiceProvider
         Gate::define('hq.apps.view', fn (User $user): bool => $user->kind === UserKind::HqStaff);
         $nav = $this->app->make(NavigationRegistry::class);
         $nav->add(new NavItem('Settings', 'Apps', '/apps', 'blocks', 61, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent]));
-        $nav->add(new NavItem('HQ', 'App demand', '/hq/apps', 'blocks', 18, ability: 'hq.apps.view', kinds: [UserKind::HqStaff]));
-        $nav->add(new NavItem('HQ', 'Connect setup', '/hq/connect', 'key-round', 19, ability: 'hq.apps.view', kinds: [UserKind::HqStaff]));
+        $nav->add(new NavItem('Connections', 'App demand', '/hq/apps', 'blocks', 13, ability: 'hq.apps.view', kinds: [UserKind::HqStaff]));
+        $nav->add(new NavItem('Connections', 'Connect setup', '/hq/connect', 'key-round', 12, ability: 'hq.apps.view', kinds: [UserKind::HqStaff]));
     }
 }

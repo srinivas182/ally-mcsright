@@ -7,6 +7,7 @@ namespace Modules\Core\Navigation;
 use App\Models\User;
 use Illuminate\Support\Facades\Gate;
 use Modules\Core\Identity\AgentAssistants;
+use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Simple\SimpleMode;
 use Modules\Core\Switches\FeatureSwitches;
 
@@ -17,8 +18,9 @@ use Modules\Core\Switches\FeatureSwitches;
  */
 final class NavigationRegistry
 {
-    /** Group order in the sidebar. */
-    private const GROUPS = ['Overview', 'Grow', 'Run', 'Finance', 'Protect', 'Know', 'Brokerage', 'HQ'];
+    /** Group order in the sidebar: the brokerage's groups, then the HQ console's (HQ1, plain names for what each holds). */
+    private const GROUPS = ['Overview', 'Grow', 'Run', 'Finance', 'Protect', 'Know', 'Brokerage',
+        'HQ team', 'Customers', 'Sales and pricing', 'Payments', 'Websites and MLS', 'AI', 'Connections', 'Products', 'System', 'HQ'];
 
     /** @var list<NavItem> */
     private array $items = [];
@@ -53,7 +55,9 @@ final class NavigationRegistry
 
         $out = [];
         foreach ($groups as $label => $items) {
-            $out[] = ['label' => (string) $label, 'items' => $items];
+            // HQ1: in the HQ console the people page is RightAlly's own team, not a brokerage's.
+            $label = $user->kind === UserKind::HqStaff && $label === 'Brokerage' ? 'HQ team' : (string) $label;
+            $out[] = ['label' => $label, 'items' => $items];
         }
 
         // Simple mode (SM1): a short menu of the pages used most, from the pages this person can open.

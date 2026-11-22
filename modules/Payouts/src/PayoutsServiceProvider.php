@@ -72,7 +72,7 @@ final class PayoutsServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([Console\AgentBillingDaily::class, Console\TrustReminder::class]);
         }
-        $nav->add(new NavItem('Platform', 'Payout rails', '/hq/payout-rails', 'send', 42, kinds: [UserKind::HqStaff]));
+        $nav->add(new NavItem('Payments', 'Payout rails', '/hq/payout-rails', 'send', 11, kinds: [UserKind::HqStaff]));
         $nav->add(new NavItem('Overview', 'My money', '/my-money', 'wallet', 32, kinds: [UserKind::Agent], mobile: true));
     }
 }

@@ -83,6 +83,6 @@ final class SitesServiceProvider extends ServiceProvider
         $nav->add(new NavItem('Settings', 'Website', '/settings/website', 'layout-grid', 64, ability: 'sites.admin', kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant]));
         $nav->add(new NavItem('Settings', 'My website', '/settings/my-website', 'layout-grid', 65, kinds: [UserKind::Agent]));
         $nav->add(new NavItem('Settings', 'AIlly assistant', '/settings/ailly', 'sparkles', 66, ability: 'sites.admin', kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant]));
-        $nav->add(new NavItem('HQ', 'Websites', '/hq/sites', 'layout-grid', 17, ability: 'hq.sites.manage', kinds: [UserKind::HqStaff]));
+        $nav->add(new NavItem('Websites and MLS', 'Websites', '/hq/sites', 'layout-grid', 12, ability: 'hq.sites.manage', kinds: [UserKind::HqStaff]));
     }
 }

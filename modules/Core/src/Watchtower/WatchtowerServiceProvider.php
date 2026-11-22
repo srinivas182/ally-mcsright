@@ -48,7 +48,7 @@ final class WatchtowerServiceProvider extends ServiceProvider
     {
         $this->loadRoutesFrom(__DIR__.'/../../routes/watchtower.php');
         $this->app->make(PromptRegistry::class)->addPath(__DIR__.'/../../prompts');
-        $this->app->make(NavigationRegistry::class)->add(new NavItem('HQ', 'Watchtower', '/hq/watchtower', 'radar', 11, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff]));
+        $this->app->make(NavigationRegistry::class)->add(new NavItem('System', 'System health', '/hq/watchtower', 'radar', 10, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff]));
         if ($this->app->runningInConsole()) {
             $this->commands([Console\CheckCommand::class, Console\ReportCommand::class, Console\SweepCommand::class]);
         }
