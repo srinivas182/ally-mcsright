@@ -98,7 +98,7 @@ final class SampleHomes
     public function install(): array
     {
         $profile = RulesProfile::query()->firstOrCreate(['name' => 'Sample homes'], ['program' => 'idx', 'attribution_template' => 'Sample home: not for sale',
-            'disclaimer' => self::DISCLAIMER, 'sold_allowed' => false, 'sold_delay_days' => 0, 'freshness_minutes' => 525_600, 'index_off_market' => false]);
+            'disclaimer' => self::DISCLAIMER, 'sold_allowed' => false, 'sold_delay_days' => 0, 'freshness_minutes' => 43_200, 'index_off_market' => false]);
         $sources = 0;
         $homes = 0;
         $queued = 0;
