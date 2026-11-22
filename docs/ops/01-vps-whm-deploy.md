@@ -126,10 +126,11 @@ Cloudflare R2 in `.env` if you want it now) and **a separate brokerage database*
 
 1. **Providers:** add Anthropic (Claude), recommended. Add OpenAI too if you want voice notes (speech to text).
 2. **API key:** paste the key. RightAlly checks it with the provider and saves it encrypted; nobody sees it again.
-3. **Edit:** confirm zero retention and no training (check your provider account really gives these), add a note,
-   set **Active**.
-4. **Models:** add the main model (chat, json, vision) and, for voice notes, a speech-to-text model (transcribe), with
-   the provider's prices.
+3. **Edit:** choose what the provider keeps (**Standard retention**, about 30 days for abuse checks, or **Zero
+   retention** if you have a signed agreement), confirm no training, add a note saying where this comes from, set
+   **Active**.
+4. **Models:** **Add a model**, then **Choose a model** fills in the details and prices (Claude Sonnet 5.5 is the main
+   one; for voice notes, OpenAI speech to text). Check the prices against the provider's page before saving.
 5. Run `docker compose -f compose.prod.yaml exec app php artisan ai:sync-features`.
 
 ## Email

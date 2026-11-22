@@ -21,6 +21,7 @@ use Modules\Core\Support\Connections;
  * @property string $base_url
  * @property string|null $credential_config_key
  * @property bool $zero_retention_confirmed
+ * @property bool $standard_retention_accepted HQ accepted the provider's short standard retention (AI2)
  * @property bool $no_training_confirmed
  * @property CarbonImmutable|null $dpa_signed_at
  * @property string $status
@@ -36,7 +37,7 @@ final class AiProvider extends Model
 
     protected $fillable = [
         'key', 'name', 'adapter', 'base_url', 'credential_config_key', 'zero_retention_confirmed',
-        'no_training_confirmed', 'dpa_signed_at', 'status',
+        'standard_retention_accepted', 'no_training_confirmed', 'dpa_signed_at', 'status',
     ];
 
     /** @var list<string> */
@@ -54,6 +55,7 @@ final class AiProvider extends Model
     {
         return [
             'zero_retention_confirmed' => 'boolean',
+            'standard_retention_accepted' => 'boolean',
             'no_training_confirmed' => 'boolean',
             'dpa_signed_at' => 'immutable_date',
             'api_key' => 'encrypted',
@@ -62,9 +64,16 @@ final class AiProvider extends Model
         ];
     }
 
+    /** Active, never trains on customer data, and keeps nothing or only its short standard retention that HQ accepted (AI2). */
     public function isUsable(): bool
     {
-        return $this->status === 'active' && $this->zero_retention_confirmed && $this->no_training_confirmed;
+        return $this->status === 'active' && $this->no_training_confirmed && $this->retention() !== 'unconfirmed';
+    }
+
+    /** What the provider keeps: zero (signed zero retention), standard (short abuse-check retention HQ accepted) or unconfirmed. */
+    public function retention(): string
+    {
+        return $this->zero_retention_confirmed ? 'zero' : ($this->standard_retention_accepted ? 'standard' : 'unconfirmed');
     }
 
     /** The key saved in HQ › AI console; otherwise the server's .env (ANTHROPIC_API_KEY …) as a fallback. */

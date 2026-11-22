@@ -84,13 +84,23 @@ it('shows usage, cost and blocked answers across all brokerages', function (): v
         ->where('usage.0.cost_cents', 300));
 });
 
-it('only activates providers with zero retention and no training confirmed', function (): void {
+it('only activates providers that never train and whose retention HQ has chosen, zero or standard (AI2)', function (): void {
     $url = "http://app.rightally.io/hq/ai/providers/{$this->provider->id}";
-    $base = ['zero_retention_confirmed' => true, 'no_training_confirmed' => false, 'status' => 'active', 'confirmation' => 'DPA signed 2026-11-01'];
+    $base = ['retention' => 'zero', 'no_training_confirmed' => false, 'status' => 'active', 'confirmation' => 'DPA signed 2026-11-01'];
 
     $this->actingAs($this->staff)->put($url, $base)->assertSessionHasErrors('status');
     $this->actingAs($this->staff)->put($url, ['confirmation' => ''] + $base)->assertSessionHasErrors('confirmation');
+    $this->actingAs($this->staff)->put($url, ['retention' => 'unconfirmed', 'no_training_confirmed' => true] + $base)->assertSessionHasErrors('status');
     $this->actingAs($this->staff)->put($url, ['no_training_confirmed' => true] + $base)->assertSessionHasNoErrors();
+    expect($this->provider->refresh()->retention())->toBe('zero')->and($this->provider->isUsable())->toBeTrue();
+
+    // Standard retention (kept a short time for abuse checks) is a choice HQ can make knowingly.
+    $this->actingAs($this->staff)->put($url, ['retention' => 'standard', 'no_training_confirmed' => true, 'confirmation' => 'Anthropic API standard terms, checked 2026-11-22'] + $base)->assertSessionHasNoErrors();
+    expect($this->provider->refresh())->zero_retention_confirmed->toBeFalse()->standard_retention_accepted->toBeTrue()
+        ->and($this->provider->isUsable())->toBeTrue();
+    $this->actingAs($this->staff)->get('http://app.rightally.io/hq/ai')->assertInertia(fn (Assert $p) => $p
+        ->where('providers.0.retention', 'standard')->where('modelPresets.anthropic.0.model_id', 'claude-sonnet-5-5')
+        ->has('modelPresets.openai', 2)->where('modelPresetsChecked', '2026-11-22'));
 });
 
 it('edits routes safely', function (array $payload, ?string $error, bool $lock = false, string $feature = 'assistant.answer'): void {
