@@ -23,6 +23,9 @@ final class BriefController
     public function dashboard(Request $request, DailyBriefs $briefs): Response|RedirectResponse
     {
         $user = self::user($request);
+        if ($user->isKind(UserKind::HqStaff) && $request->user()?->can('hq.tenants.manage')) {
+            return redirect('/hq/dashboard'); // HQ2: HQ staff land on the platform dashboard
+        }
         if (SimpleMode::on($user)) {
             return redirect('/simple');
         }
