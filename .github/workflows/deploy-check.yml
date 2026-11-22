@@ -68,7 +68,8 @@ jobs:
           docker compose -f compose.prod.yaml exec -T app php artisan marketing:starter  # RightAlly's own website pages
           hit() { code=$(curl -s -o /dev/null -w '%{http_code}' -H "Host: $1" "http://127.0.0.1:8100$2"); echo "$1$2 → $code"; [ "$code" = "$3" ]; }
           hit app.rightally.app /up 200
-          hit app.rightally.app /up/scheduler 503      # the scheduler has not run its first minute yet
+          # The scheduler may or may not have run its first minute yet (the deploy also loads sample homes and photos).
+          code=$(curl -s -o /dev/null -w '%{http_code}' -H "Host: app.rightally.app" http://127.0.0.1:8100/up/scheduler); echo "scheduler → $code"; [ "$code" = 200 ] || [ "$code" = 503 ]
           hit app.rightally.app /login 200
           code=$(curl -s -o /dev/null -w "%{http_code}" -H "Host: rightally.app" http://127.0.0.1:8100/); echo "rightally.app/ → $code"; [ "$code" = 200 ] || [ "$code" = 302 ]
           hit nobody.rightally.app / 404              # no such brokerage
