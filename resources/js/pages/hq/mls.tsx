@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { OutLink, SetupGuide } from '@/components/setup-guide';
 import { PageHeader } from '@/components/ui/page-header';
 
 type Source = {
@@ -116,6 +117,66 @@ export default function HqMls({
                 <PageHeader
                     title="MLS connections"
                     description="Each MLS feed is stored once and shared by every brokerage licensed for it. Credentials are write-only."
+                />
+                <SetupGuide
+                    title="How MLS listings get in"
+                    intro="Listings come from each MLS through a data provider. The MLS must approve RightAlly first; that paperwork, not the technical part, takes the longest."
+                    steps={[
+                        {
+                            title: 'Choose the data provider for the MLS',
+                            body: (
+                                <p>
+                                    Many MLSs share data through{' '}
+                                    <OutLink href="https://sparkplatform.com">
+                                        Spark
+                                    </OutLink>{' '}
+                                    (for example MLS United);{' '}
+                                    <OutLink href="https://repliers.com">
+                                        Repliers
+                                    </OutLink>{' '}
+                                    covers many Texas and Florida MLSs. Ask the
+                                    MLS which one it uses.
+                                </p>
+                            ),
+                        },
+                        {
+                            title: 'Sign the data agreement',
+                            body: (
+                                <p>
+                                    Apply through the provider for IDX (and, if
+                                    wanted, back-office) data for that MLS. The
+                                    MLS approves it and the provider sends the
+                                    access token or key.
+                                </p>
+                            ),
+                        },
+                        {
+                            title: 'Save the key',
+                            done: sources.some((s) => s.has_credentials),
+                            body: (
+                                <p>
+                                    Put the provider's key in Connections,
+                                    Outside services (MLS listings: Spark or
+                                    Repliers), or add a feed below with its
+                                    credentials. They are locked away and never
+                                    shown again.
+                                </p>
+                            ),
+                        },
+                        {
+                            title: 'Let brokerages use it',
+                            done: licences.length > 0,
+                            body: (
+                                <p>
+                                    Under Brokerage licences, add each brokerage
+                                    that is a member of that MLS. Its website
+                                    and search then show that MLS's listings.
+                                    IDX coverage shows which boards brokerages
+                                    have asked for.
+                                </p>
+                            ),
+                        },
+                    ]}
                 />
                 <p>
                     <Link href="/hq/mls/search" className="underline">

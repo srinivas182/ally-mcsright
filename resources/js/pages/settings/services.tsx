@@ -1,5 +1,6 @@
 import { Head, router, useForm } from '@inertiajs/react';
 
+import { OutLink, SetupGuide } from '@/components/setup-guide';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,6 +26,7 @@ type Service = {
         label: string;
         note: string | null;
         fields: Field[];
+        guide: { site: string; steps: string[] } | null;
     }[];
     provider: string;
     saved: boolean;
@@ -62,6 +64,71 @@ export default function Services({ services, level }: Props) {
                             : "Use your brokerage's own account for these services, or leave them to RightAlly's account. In Test nothing reaches real people."
                     }
                 />
+                {services.length > 0 && (
+                    <SetupGuide
+                        title="How to connect a service"
+                        intro="Each card below is one outside service. You only need the ones you use; the rest can stay Off. The recommended provider is listed first."
+                        steps={[
+                            {
+                                title: 'Choose the provider',
+                                body: (
+                                    <p>
+                                        Keep the recommended one unless you
+                                        already pay for another.
+                                    </p>
+                                ),
+                            },
+                            {
+                                title: 'Get the keys from the provider',
+                                body: (
+                                    <p>
+                                        Open{' '}
+                                        <strong>Where do I get these?</strong>{' '}
+                                        under the provider: it links to their
+                                        website and says where the keys are.
+                                        Most providers give separate test (or
+                                        sandbox) keys and live keys.
+                                    </p>
+                                ),
+                            },
+                            {
+                                title: 'Paste the Test keys and save',
+                                body: (
+                                    <p>
+                                        Paste them in <strong>Test keys</strong>{' '}
+                                        and click Save. Keys are locked away and
+                                        never shown again; RightAlly may ask for
+                                        your password.
+                                    </p>
+                                ),
+                            },
+                            {
+                                title: 'Check the connection, then try it',
+                                body: (
+                                    <p>
+                                        Click{' '}
+                                        <strong>Check connection (Test)</strong>
+                                        . When it shows a green tick, switch the
+                                        service to <strong>Test</strong> and try
+                                        it: in Test nothing reaches real people
+                                        and no real money moves.
+                                    </p>
+                                ),
+                            },
+                            {
+                                title: 'Go live',
+                                body: (
+                                    <p>
+                                        Paste the <strong>Live keys</strong>,
+                                        save, click{' '}
+                                        <strong>Check connection (Live)</strong>
+                                        , then switch to <strong>Live</strong>.
+                                    </p>
+                                ),
+                            },
+                        ]}
+                    />
+                )}
                 {services.length === 0 && (
                     <p className="text-base text-muted-foreground">
                         RightAlly runs every outside service for you. There is
@@ -79,6 +146,24 @@ export default function Services({ services, level }: Props) {
             </div>
         </>
     );
+}
+
+/** HQ4: where this service is up to, in plain words. */
+function status(service: Service): string {
+    if (service.mode === 'live') {
+        return 'Live';
+    }
+    if (service.mode === 'test') {
+        return 'In Test: try it, then go live';
+    }
+    if (!service.saved) {
+        return 'Not set up';
+    }
+    if (service.check_ok) {
+        return 'Connected: switch to Test to try it';
+    }
+
+    return 'Keys saved: check the connection';
 }
 
 function ServiceCard({
@@ -124,7 +209,7 @@ function ServiceCard({
                     {modeLabel[service.mode]}
                 </Badge>
                 <span className="text-sm text-muted-foreground">
-                    For sprint {service.sprint}
+                    {status(service)}
                 </span>
             </div>
             <p className="text-muted-foreground">{service.about}</p>
@@ -168,6 +253,32 @@ function ServiceCard({
                             </span>
                         </label>
                     ))}
+                    {provider.guide && (
+                        <details
+                            className="rounded-md bg-muted/50 p-3 text-sm"
+                            open={!service.saved}
+                        >
+                            <summary className="cursor-pointer font-medium">
+                                Where do I get these?
+                            </summary>
+                            <ol className="mt-2 grid list-decimal gap-1 pl-5 text-muted-foreground">
+                                {provider.guide.site !== '' && (
+                                    <li>
+                                        Sign in or sign up at{' '}
+                                        <OutLink href={provider.guide.site}>
+                                            {new URL(
+                                                provider.guide.site,
+                                            ).hostname.replace(/^www\./, '')}
+                                        </OutLink>
+                                        .
+                                    </li>
+                                )}
+                                {provider.guide.steps.map((step) => (
+                                    <li key={step}>{step}</li>
+                                ))}
+                            </ol>
+                        </details>
+                    )}
                     {service.saved &&
                         form.data.provider !== service.provider && (
                             <p className="text-sm text-amber-700 dark:text-amber-400">

@@ -196,7 +196,7 @@ final class OutsideServices
                     $fields[] = ['key' => $fk, 'label' => $f['label'], 'secret' => $f['kind'] === 'secret',
                         'test' => $saved ? $this->shown($f['kind'], $test[$fk] ?? null) : null, 'live' => $saved ? $this->shown($f['kind'], $live[$fk] ?? null) : null];
                 }
-                $providers[] = ['key' => $pk, 'label' => $p['label'], 'note' => $p['note'] ?? null, 'fields' => $fields];
+                $providers[] = ['key' => $pk, 'label' => $p['label'], 'note' => $p['note'] ?? null, 'fields' => $fields, 'guide' => ProviderGuides::for($key, $pk)]; // HQ4
             }
             $hq = $hqRows->get($key);
             $out[] = ['key' => $key, 'label' => $def['label'], 'about' => $def['about'], 'level' => $def['level'], 'sprint' => $def['sprint'], 'contacts' => $def['contacts'],

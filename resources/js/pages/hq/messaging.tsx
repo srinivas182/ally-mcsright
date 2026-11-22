@@ -1,5 +1,6 @@
 import { Head, router, useForm } from '@inertiajs/react';
 
+import { CopyText, OutLink, SetupGuide } from '@/components/setup-guide';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,6 +44,96 @@ export default function HqMessaging({ settings, tenants, webhook }: Props) {
                 <PageHeader
                     title="Texts and calls"
                     description="The Twilio account RightAlly uses for text messages and automated voice calls (deadline alerts, signing codes), and which brokerages may use them."
+                />
+                <SetupGuide
+                    title="How to connect Twilio"
+                    intro="Twilio sends RightAlly's texts and automated calls. Allow a few days: US carriers must approve your texting registration first."
+                    steps={[
+                        {
+                            title: 'Open a Twilio account',
+                            done: settings.configured,
+                            body: (
+                                <p>
+                                    Sign up or sign in at{' '}
+                                    <OutLink href="https://console.twilio.com">
+                                        console.twilio.com
+                                    </OutLink>{' '}
+                                    and add a payment card (Upgrade, so texts
+                                    reach any number, not only verified ones).
+                                </p>
+                            ),
+                        },
+                        {
+                            title: 'Register for US texting (A2P 10DLC)',
+                            body: (
+                                <p>
+                                    In Twilio, open Messaging, then Regulatory
+                                    Compliance, and register your business
+                                    (brand) and how you text (campaign: account
+                                    notifications and opted-in contacts). US
+                                    carriers block unregistered texts. Approval
+                                    usually takes a few days.
+                                </p>
+                            ),
+                        },
+                        {
+                            title: 'Buy a phone number',
+                            done: Boolean(settings.sms_from),
+                            body: (
+                                <p>
+                                    In Twilio, open Phone Numbers, then Buy a
+                                    number. Pick a local number that can send
+                                    texts and make calls, and add it to your
+                                    registered campaign.
+                                </p>
+                            ),
+                        },
+                        {
+                            title: 'Copy your account details into RightAlly',
+                            done: settings.configured,
+                            body: (
+                                <p>
+                                    On the Twilio Console home page, under
+                                    Account Info, copy the{' '}
+                                    <strong>Account SID</strong> and{' '}
+                                    <strong>Auth Token</strong>. Paste them
+                                    below with your number (+1…) as the text and
+                                    call number, and save.
+                                </p>
+                            ),
+                        },
+                        {
+                            title: 'Send replies to RightAlly',
+                            body: (
+                                <>
+                                    <p>
+                                        In Twilio, open your number and set{' '}
+                                        <strong>A message comes in</strong> to
+                                        this address (Webhook, HTTP POST), so
+                                        replies and STOP requests reach
+                                        RightAlly:
+                                    </p>
+                                    <CopyText
+                                        value={webhook}
+                                        label="incoming message address"
+                                    />
+                                </>
+                            ),
+                        },
+                        {
+                            title: 'Switch on texts and calls, then choose brokerages',
+                            done:
+                                settings.sms_enabled || settings.voice_enabled,
+                            body: (
+                                <p>
+                                    Tick texts and calls below, then switch them
+                                    on for each brokerage that should use them.
+                                    Texts only go to people who agreed, between
+                                    8am and 9pm their time.
+                                </p>
+                            ),
+                        },
+                    ]}
                 />
                 <form
                     className="grid gap-3 rounded-lg border p-4 text-sm"
