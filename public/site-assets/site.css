@@ -623,7 +623,8 @@ h3 {
     .nav-open #site-nav .nav a {
         display: block;
         padding: 0.85rem 0;
-        border-bottom: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+        border-bottom: 1px solid
+            color-mix(in srgb, currentColor 15%, transparent);
         white-space: normal;
     }
     .nav {
