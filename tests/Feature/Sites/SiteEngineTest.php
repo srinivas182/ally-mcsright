@@ -171,6 +171,30 @@ it('previews drafts with a signed link that expires, even before the site is liv
     $this->get($this->web.$path)->assertForbidden();
 });
 
+it('lets the website editor show the preview in a frame on the brokerage\'s own address, and marks the sections to click', function (): void {
+    $site = makeSite($this, 'modern', false);
+    $page = SitePage::query()->where('site_id', $site->id)->where('path', '/')->sole();
+    $page->forceFill(['draft_sections' => [['type' => 'text', 'id' => 'text-ab12cd', 'props' => ['title' => 'Draft headline', 'body' => 'Not yet live.']]]])->save();
+    $url = (string) app(SiteSetup::class)->previewUrl($page);
+    $path = (string) parse_url($url, PHP_URL_PATH).'?'.parse_url($url, PHP_URL_QUERY);
+
+    $res = $this->get($this->web.$path)->assertOk();
+    $csp = (string) ($res->headers->get('Content-Security-Policy') ?? $res->headers->get('Content-Security-Policy-Report-Only'));
+    expect($res->headers->get('X-Frame-Options'))->toBeNull()->and($res->headers->get('X-Allow-Embed'))->toBeNull()
+        ->and($csp)->toContain("frame-ancestors 'self'");
+    foreach (TenantDomain::query()->where('tenant_id', $this->tenant->id)->pluck('host') as $host) {
+        expect($csp)->toContain('https://'.$host);
+    }
+    expect((string) $res->getContent())->toContain('data-ra-block="text-ab12cd"')->toContain('rightally-builder');
+
+    // The live website is never framed, and has no editing marks.
+    $page->forceFill(['sections' => $page->draft_sections])->save();
+    $site->forceFill(['status' => 'live', 'published_at' => now()])->save();
+    $live = $this->get($this->web.'/')->assertOk();
+    expect((string) $live->getContent())->not->toContain('data-ra-block')->not->toContain('rightally-builder')
+        ->and($live->headers->get('X-Frame-Options'))->toBe('SAMEORIGIN');
+});
+
 it('connects custom domains that serve the site once DNS is verified', function (): void {
     makeSite($this);
     $sites = app(SiteSetup::class);

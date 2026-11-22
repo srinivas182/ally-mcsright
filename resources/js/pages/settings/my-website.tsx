@@ -1,6 +1,7 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 
+import { type DesignCard, DesignPicker } from '@/components/design-picker';
 import { confirmCredits } from '@/components/credit-consent';
 import { MediaPicker, type MediaItem } from '@/components/sites/media-picker';
 import { Badge } from '@/components/ui/badge';
@@ -46,7 +47,7 @@ type Props = {
     brokerage_live: boolean;
     rules: Rules;
     site: Site | null;
-    templates: { key: string; name: string }[];
+    templates: DesignCard[];
     media: MediaItem[];
     cname_target: string;
 };
@@ -352,26 +353,18 @@ function Manage({
                 {bioError && (
                     <p className="text-xs text-destructive">{bioError}</p>
                 )}
-                {(rules.template || rules.colours) && (
+                {rules.template && (
+                    <div className="grid gap-2">
+                        <span className="font-medium">Design</span>
+                        <DesignPicker
+                            designs={templates}
+                            value={form.data.template}
+                            onChange={(k) => form.setData('template', k)}
+                        />
+                    </div>
+                )}
+                {rules.colours && (
                     <div className="flex flex-wrap items-end gap-3">
-                        {rules.template && (
-                            <label className="grid gap-1">
-                                Design
-                                <select
-                                    className="rounded-md border bg-background px-2 py-1.5"
-                                    value={form.data.template}
-                                    onChange={(e) =>
-                                        form.setData('template', e.target.value)
-                                    }
-                                >
-                                    {templates.map((t) => (
-                                        <option key={t.key} value={t.key}>
-                                            {t.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </label>
-                        )}
                         {rules.colours && (
                             <>
                                 <label className="grid gap-1">

@@ -22,6 +22,7 @@ use Modules\Sites\Content\MediaLibrary;
 use Modules\Sites\Models\Site;
 use Modules\Sites\Models\SitePage;
 use Modules\Sites\SiteSetup;
+use Modules\Sites\Support\DesignCards;
 
 /** Settings → My website: an agent's own website, within the brokerage's brand kit (specs/websites/09). */
 final class MyWebsiteController
@@ -74,7 +75,7 @@ final class MyWebsiteController
                 'ailly' => ['name' => (string) (($site->settings ?? [])['ailly']['name'] ?? ''), 'photo' => ($site->settings ?? [])['ailly']['photo'] ?? null,
                     'default_name' => AillySettings::for($brokerage)['name'], 'enabled' => AillySettings::for($brokerage)['enabled']],
             ],
-            'templates' => collect((array) config('sites.templates'))->map(fn (array $t, string $k): array => ['key' => $k, 'name' => $t['name']])->values(),
+            'templates' => DesignCards::all(),
             'media' => $site !== null ? PageEditorController::mediaList($site, $media) : [],
             'cname_target' => (string) config('sites.cname_target'),
         ]);

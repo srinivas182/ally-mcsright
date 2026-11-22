@@ -23,6 +23,7 @@ use Modules\Sites\Models\SitePage;
 use Modules\Sites\PoweredBy;
 use Modules\Sites\SiteAccess;
 use Modules\Sites\SiteSetup;
+use Modules\Sites\Support\DesignCards;
 use Modules\Sites\Tools\HomeCalculators;
 
 /** Settings → Website: create the brokerage site from a template, edit details, SEO and AI visibility, publish, domains. */
@@ -44,7 +45,7 @@ final class WebsiteSettingsController
             'hosts' => $sites->hosts(),
             'live_host' => $sites->liveHost(),
             'cname_target' => (string) config('sites.cname_target'),
-            'templates' => collect((array) config('sites.templates'))->map(fn (array $t, string $k): array => ['key' => $k, 'name' => $t['name'], 'description' => $t['description']])->values(),
+            'templates' => DesignCards::all(),
             'powered_by' => $powered->forTenant($tenants->id()),
             'agent_rules' => AgentSites::rules(),
             'calculators' => HomeCalculators::defaults($site),
