@@ -100,6 +100,7 @@ Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.tenants.manage
     Route::put('billing/plans/{plan}', [BillingController::class, 'hqSavePlan'])->name('billing.plans.update');
     Route::post('billing/tiers', [BillingController::class, 'hqSaveTiers'])->name('billing.tiers');
     Route::get('payments', [PaymentsController::class, 'hq'])->name('payments');
+    Route::post('payments/check', [PaymentsController::class, 'check'])->middleware('throttle:10,1')->name('payments.check'); // HQ3
     Route::get('credits', [HqCreditsController::class, 'index'])->name('credits');
     // PB1: the package builder.
     Route::get('packages', [HqPackageBuilderController::class, 'index'])->name('packages');

@@ -12,11 +12,13 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Modules\AI\FeatureCatalog;
 use Modules\AI\Models\AiFeatureRoute;
 use Modules\AI\Models\AiModel;
 use Modules\AI\Models\AiProvider;
 use Modules\AI\Models\AiRedTeamRun;
 use Modules\AI\Models\AiRequest;
+use Modules\AI\Routing\FeatureRoutes;
 use Modules\AI\Support\CircuitBreaker;
 use Modules\AI\Support\ProviderKeyCheck;
 use Modules\Core\Audit\AuditLogger;
@@ -55,6 +57,7 @@ final class AiConsoleController
             'days' => $days,
             'presets' => collect(self::PROVIDER_PRESETS)->map(fn (array $p, string $k): array => ['key' => $k, 'name' => $p['name']])->values(),
             'capabilities' => self::CAPABILITIES,
+            'unrouted' => count(array_diff(array_keys(app(FeatureCatalog::class)->all()), AiFeatureRoute::query()->pluck('feature_key')->all())), // HQ3
             'modelPresets' => self::MODEL_PRESETS, 'modelPresetsChecked' => self::MODEL_PRESETS_CHECKED,
             'providers' => AiProvider::query()->orderBy('name')->get()->map(fn (AiProvider $p): array => [
                 'id' => $p->id, 'key' => $p->key, 'name' => $p->name, 'adapter' => $p->adapter, 'status' => $p->status,
@@ -107,6 +110,18 @@ final class AiConsoleController
         $after = ['status' => $provider->status, 'retention' => $provider->retention(), 'no_training' => $provider->no_training_confirmed];
         app(AuditLogger::class)->record('ai.provider.terms', $provider, changes: array_map(fn (string $k): array => ['old' => $before[$k], 'new' => $after[$k]], array_combine(array_keys($after), array_keys($after))), metadata: ['provider' => $provider->key, 'basis' => $data['confirmation']], severity: 'notice');
         Inertia::flash('toast', ['type' => 'success', 'message' => "{$provider->name} updated."]);
+
+        return back();
+    }
+
+    /** HQ3: creates the missing routes, with the main model HQ picks for every feature it can serve. */
+    public function syncRoutes(Request $request, FeatureRoutes $routes): RedirectResponse
+    {
+        $data = $request->validate(['main_model_id' => ['required', 'integer', Rule::exists(AiModel::class, 'id')->where('status', 'active')]]);
+        $result = $routes->sync((int) $data['main_model_id']);
+        app(AuditLogger::class)->record('ai.routes.created', metadata: ['created' => count($result['created']), 'main_model_id' => (int) $data['main_model_id']], severity: 'notice');
+        $message = count($result['created']).' route(s) created.'.($result['missing'] === [] ? '' : ' '.count($result['missing']).' feature(s) still need a model that can do '.implode(' or ', array_unique(array_column($result['missing'], 'capability'))).'.');
+        Inertia::flash('toast', ['type' => $result['missing'] === [] ? 'success' : 'warning', 'message' => $message]);
 
         return back();
     }

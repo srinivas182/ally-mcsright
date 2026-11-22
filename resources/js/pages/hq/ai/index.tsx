@@ -23,6 +23,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { StatCard } from '@/components/ui/stat-card';
+import { OutLink, SetupGuide } from '@/components/setup-guide';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
@@ -182,6 +183,7 @@ type Props = {
     presets: { key: string; name: string }[];
     capabilities: string[];
     modelPresets: Record<string, ModelPreset[]>;
+    unrouted: number;
     modelPresetsChecked: string;
     providers: Provider[];
     models: Model[];
@@ -189,6 +191,73 @@ type Props = {
     usage: Usage[];
     redTeam: RedTeamRun[];
 };
+
+/** HQ3: a link in the setup guide that opens a tab of this page. */
+function TabLink({ to, go }: { to: string; go: (tab: string) => void }) {
+    return (
+        <button
+            type="button"
+            className="font-medium text-primary underline underline-offset-2"
+            onClick={() => go(to)}
+        >
+            {to.charAt(0).toUpperCase() + to.slice(1)}
+        </button>
+    );
+}
+
+/** HQ3: creates the missing routes with the main model HQ picks (the most capable chat model is suggested). */
+function CreateRoutes({ models }: { models: Model[] }) {
+    const chat = models
+        .filter((m) => m.status === 'active' && m.capabilities.includes('chat'))
+        .sort((a, b) => b.output_cents - a.output_cents);
+    const form = useForm({ main_model_id: chat[0]?.id ?? 0 });
+
+    if (chat.length === 0) {
+        return (
+            <p className="text-sm text-muted-foreground">
+                Add an active chat model first (step 4).
+            </p>
+        );
+    }
+
+    return (
+        <form
+            className="flex flex-wrap items-center gap-2"
+            onSubmit={(e) => {
+                e.preventDefault();
+                form.post('/hq/ai/routes/sync', { preserveScroll: true });
+            }}
+        >
+            <label className="flex items-center gap-2 text-sm text-foreground">
+                Main model
+                <select
+                    className="h-9 rounded-md border bg-background px-2"
+                    value={form.data.main_model_id}
+                    onChange={(e) =>
+                        form.setData(
+                            'main_model_id',
+                            parseInt(e.target.value, 10),
+                        )
+                    }
+                >
+                    {chat.map((m) => (
+                        <option key={m.id} value={m.id}>
+                            {m.name}
+                        </option>
+                    ))}
+                </select>
+            </label>
+            <Button type="submit" size="sm" disabled={form.processing}>
+                {form.processing ? 'Creating…' : 'Create routes'}
+            </Button>
+            {form.errors.main_model_id && (
+                <p className="text-sm text-destructive">
+                    {form.errors.main_model_id}
+                </p>
+            )}
+        </form>
+    );
+}
 
 /** Add a model or change its prices (US dollars per million tokens, or per audio minute for speech to text). */
 function ModelDialog({
@@ -716,6 +785,7 @@ export default function AiConsole({
     capabilities,
     modelPresets,
     modelPresetsChecked,
+    unrouted,
     providers,
     models,
     routes,
@@ -728,6 +798,11 @@ export default function AiConsole({
         null,
     );
     const [preset, setPreset] = useState('');
+    const [tab, setTab] = useState(
+        providers.some((p) => p.usable) && routes.length > 0
+            ? 'usage'
+            : 'providers',
+    );
     const missingPresets = presets.filter(
         (p) => !providers.some((x) => x.key === p.key),
     );
@@ -787,7 +862,104 @@ export default function AiConsole({
                     />
                 </div>
 
-                <Tabs defaultValue="usage">
+                <SetupGuide
+                    title="How to set up AI"
+                    intro="Do these in order, once. A provider is the AI company (Anthropic makes Claude); a model is one of its AIs; a route says which model each RightAlly feature uses."
+                    steps={[
+                        {
+                            title: 'Add a provider',
+                            done: providers.length > 0,
+                            body: (
+                                <p>
+                                    Open the{' '}
+                                    <TabLink to="providers" go={setTab} /> tab,
+                                    choose <strong>Anthropic (Claude)</strong>{' '}
+                                    and click Add. Add OpenAI too only if you
+                                    want voice notes and smarter search.
+                                </p>
+                            ),
+                        },
+                        {
+                            title: "Get the provider's API key and save it",
+                            done: providers.some(
+                                (p) => p.key_source !== 'none',
+                            ),
+                            body: (
+                                <>
+                                    <p>
+                                        Sign in at{' '}
+                                        <OutLink href="https://console.anthropic.com/settings/keys">
+                                            console.anthropic.com › API keys
+                                        </OutLink>
+                                        , click <strong>Create key</strong>, and
+                                        copy it. Add a payment card and some
+                                        credit under Billing there, or the key
+                                        won't work. For OpenAI:{' '}
+                                        <OutLink href="https://platform.openai.com/api-keys">
+                                            platform.openai.com › API keys
+                                        </OutLink>
+                                        .
+                                    </p>
+                                    <p>
+                                        Back here, on the provider click{' '}
+                                        <strong>API key</strong>, paste it and
+                                        click Check and save.
+                                    </p>
+                                </>
+                            ),
+                        },
+                        {
+                            title: 'Confirm its data terms and switch it on',
+                            done: providers.some((p) => p.usable),
+                            body: (
+                                <p>
+                                    On the provider click <strong>Edit</strong>.
+                                    Choose what it keeps (Standard for
+                                    Anthropic's normal terms, or Zero if you
+                                    have a signed agreement), confirm no
+                                    training, write where this comes from (for
+                                    example "Anthropic commercial terms, checked
+                                    today"), set Status to Active and save.
+                                </p>
+                            ),
+                        },
+                        {
+                            title: 'Add models',
+                            done: models.some(
+                                (m) =>
+                                    m.status === 'active' &&
+                                    m.capabilities.includes('chat'),
+                            ),
+                            body: (
+                                <p>
+                                    Open <TabLink to="models" go={setTab} /> and
+                                    click <strong>Add a model</strong>. Pick the
+                                    provider, then{' '}
+                                    <strong>Choose a model</strong>: Claude
+                                    Sonnet 5.5 is the main one. Check the prices
+                                    and save. Add Claude Haiku 5.5 too if you
+                                    like, as a low-cost backup.
+                                </p>
+                            ),
+                        },
+                        {
+                            title: 'Create the routes',
+                            done: routes.length > 0,
+                            body: (
+                                <>
+                                    <p>
+                                        Pick the model most features should use
+                                        and click Create routes. You can change
+                                        any feature's model later on{' '}
+                                        <TabLink to="routes" go={setTab} />.
+                                    </p>
+                                    <CreateRoutes models={models} />
+                                </>
+                            ),
+                        },
+                    ]}
+                />
+                <Tabs value={tab} onValueChange={setTab}>
                     <TabsList>
                         <TabsTrigger value="usage">Usage</TabsTrigger>
                         <TabsTrigger value="routes">Routes</TabsTrigger>
@@ -862,7 +1034,20 @@ export default function AiConsole({
                         )}
                     </TabsContent>
 
-                    <TabsContent value="routes">
+                    <TabsContent value="routes" className="grid gap-3">
+                        {unrouted > 0 && (
+                            <div className="grid gap-2 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm dark:border-amber-700 dark:bg-amber-950/40">
+                                <p>
+                                    {routes.length === 0
+                                        ? 'No routes yet, so AI features are off. '
+                                        : `${unrouted} AI feature(s) have no model yet. `}
+                                    Pick the main model and create the missing
+                                    routes. Routes you already have are not
+                                    changed.
+                                </p>
+                                <CreateRoutes models={models} />
+                            </div>
+                        )}
                         <ul className="divide-y rounded-lg border">
                             {routes.map((r) => (
                                 <RouteRow

@@ -1,8 +1,11 @@
 import { Head, router, useForm } from '@inertiajs/react';
+import { CheckCircle2, XCircle } from 'lucide-react';
+import { useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CopyText, OutLink, SetupGuide } from '@/components/setup-guide';
 import { PageHeader } from '@/components/ui/page-header';
 
 type Props = {
@@ -16,6 +19,8 @@ type Props = {
         card_fee_cents: number;
     };
     webhookUrl: string;
+    events: Record<string, string>;
+    check: { step: string; ok: boolean; message: string }[] | null;
 };
 
 function Keys({ mode, set }: { mode: 'test' | 'live'; set: boolean }) {
@@ -91,7 +96,20 @@ function Keys({ mode, set }: { mode: 'test' | 'live'; set: boolean }) {
 }
 
 /** HQ payment settings: Stripe keys, test or live, agents-pay default, Stripe Tax. */
-export default function Payments({ settings, webhookUrl }: Props) {
+export default function Payments({
+    settings,
+    webhookUrl,
+    events,
+    check,
+}: Props) {
+    const [checking, setChecking] = useState(false);
+    const passed = (step: string) =>
+        check?.find((c) => c.step === step)?.ok ?? undefined;
+    const stripe =
+        settings.mode === 'live'
+            ? 'https://dashboard.stripe.com'
+            : 'https://dashboard.stripe.com/test';
+
     return (
         <>
             <Head title="Payments" />
@@ -143,6 +161,181 @@ export default function Payments({ settings, webhookUrl }: Props) {
                         Webhook address for Stripe: <code>{webhookUrl}</code>
                     </span>
                 </section>
+                <SetupGuide
+                    title="How to connect Stripe"
+                    intro="About 10 minutes. Start in Test mode: no real money moves, and you can try a sign-up with Stripe's test card 4242 4242 4242 4242. Do the same steps again in Live mode when you are ready."
+                    steps={[
+                        {
+                            title: 'Open your Stripe account',
+                            body: (
+                                <p>
+                                    Sign in at{' '}
+                                    <OutLink href="https://dashboard.stripe.com">
+                                        dashboard.stripe.com
+                                    </OutLink>{' '}
+                                    (or create a free account). Turn on{' '}
+                                    <strong>Test mode</strong> with the switch
+                                    at the top of Stripe.
+                                </p>
+                            ),
+                        },
+
+                        {
+                            title: 'Add the webhook in Stripe',
+                            done:
+                                passed('webhook') === undefined
+                                    ? undefined
+                                    : Boolean(
+                                          passed('webhook') && passed('events'),
+                                      ),
+                            body: (
+                                <>
+                                    <p>
+                                        A webhook is how Stripe tells RightAlly
+                                        that someone paid. In Stripe, open{' '}
+                                        <OutLink href={`${stripe}/webhooks`}>
+                                            Developers › Webhooks
+                                        </OutLink>{' '}
+                                        and click <strong>Add endpoint</strong>.
+                                    </p>
+                                    <p>Endpoint URL: paste this address</p>
+                                    <CopyText
+                                        value={webhookUrl}
+                                        label="webhook address"
+                                    />
+                                    <p>
+                                        Click <strong>Select events</strong> and
+                                        tick these {Object.keys(events).length}{' '}
+                                        (type each name in Stripe's search box):
+                                    </p>
+                                    <ul className="grid gap-1">
+                                        {Object.entries(events).map(
+                                            ([name, why]) => (
+                                                <li
+                                                    key={name}
+                                                    className="grid gap-0.5 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center sm:gap-3"
+                                                >
+                                                    <CopyText value={name} />
+                                                    <span className="text-xs">
+                                                        {why}
+                                                    </span>
+                                                </li>
+                                            ),
+                                        )}
+                                    </ul>
+                                    <p>
+                                        Click <strong>Add endpoint</strong>.
+                                    </p>
+                                </>
+                            ),
+                        },
+                        {
+                            title: 'Copy three values into RightAlly and save',
+                            done: passed('secret'),
+                            body: (
+                                <>
+                                    <p>
+                                        In Stripe, on the new webhook's page,
+                                        click <strong>Reveal</strong> under{' '}
+                                        <strong>Signing secret</strong> (starts
+                                        whsec_). Then open{' '}
+                                        <OutLink href={`${stripe}/apikeys`}>
+                                            Developers › API keys
+                                        </OutLink>{' '}
+                                        for the <strong>Publishable key</strong>{' '}
+                                        (starts pk_test_) and the{' '}
+                                        <strong>Secret key</strong> (starts
+                                        sk_test_; click Reveal).
+                                    </p>
+                                    <p>
+                                        Paste all three in the{' '}
+                                        <strong>test</strong> box below and
+                                        click Save keys. RightAlly asks for your
+                                        password, keeps them locked away, and
+                                        never shows them again.
+                                    </p>
+                                </>
+                            ),
+                        },
+
+                        {
+                            title: 'Check that it works',
+                            done: passed('received'),
+                            body: (
+                                <>
+                                    <p>
+                                        In Stripe, on the webhook's page, click{' '}
+                                        <strong>Send test event</strong>. Then
+                                        click Check my setup. Each line turns
+                                        green when that part is right, or says
+                                        what to fix.
+                                    </p>
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        className="justify-self-start"
+                                        disabled={checking}
+                                        onClick={() =>
+                                            router.post(
+                                                '/hq/payments/check',
+                                                {},
+                                                {
+                                                    preserveScroll: true,
+                                                    onStart: () =>
+                                                        setChecking(true),
+                                                    onFinish: () =>
+                                                        setChecking(false),
+                                                },
+                                            )
+                                        }
+                                    >
+                                        {checking
+                                            ? 'Checking…'
+                                            : 'Check my setup'}
+                                    </Button>
+                                    {check && (
+                                        <ul
+                                            className="grid gap-1"
+                                            aria-live="polite"
+                                        >
+                                            {check.map((c) => (
+                                                <li
+                                                    key={c.step}
+                                                    className="flex items-start gap-2 text-foreground"
+                                                >
+                                                    {c.ok ? (
+                                                        <CheckCircle2
+                                                            aria-label="OK"
+                                                            className="mt-0.5 size-4 shrink-0 text-emerald-600"
+                                                        />
+                                                    ) : (
+                                                        <XCircle
+                                                            aria-label="To fix"
+                                                            className="mt-0.5 size-4 shrink-0 text-destructive"
+                                                        />
+                                                    )}
+                                                    {c.message}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                </>
+                            ),
+                        },
+                        {
+                            title: 'Go live when you are ready',
+                            body: (
+                                <p>
+                                    In Stripe, turn Test mode off and repeat
+                                    steps 2 to 4 with your live keys (pk_live_,
+                                    sk_live_) and a new live webhook, saved in
+                                    the <strong>live</strong> box. Then click Go
+                                    live above.
+                                </p>
+                            ),
+                        },
+                    ]}
+                />
                 <div className="grid gap-3 md:grid-cols-2">
                     <Keys mode="test" set={settings.test_set} />
                     <Keys mode="live" set={settings.live_set} />

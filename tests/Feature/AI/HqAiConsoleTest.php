@@ -12,6 +12,7 @@ use Modules\AI\Contracts\ProviderAdapter;
 use Modules\AI\Data\ProviderRequest;
 use Modules\AI\Data\ProviderResponse;
 use Modules\AI\Events\RedTeamFailed;
+use Modules\AI\FeatureCatalog;
 use Modules\AI\Models\AiFeatureRoute;
 use Modules\AI\Models\AiModel;
 use Modules\AI\Models\AiProvider;
@@ -257,4 +258,18 @@ it('checks and removes a saved key, falling back to the server key', function ()
     $this->actingAs($this->staff)->withSession(['auth.password_confirmed_at' => time()])
         ->delete("http://app.rightally.io/hq/ai/providers/{$provider->id}/key")->assertRedirect();
     expect($provider->refresh()->api_key)->toBeNull()->and($provider->apiKey())->toBe('AIzaSy-server-key-111111111');
+});
+
+it('creates the missing routes with the main model HQ picks, leaving existing routes alone (HQ3)', function (): void {
+    app(FeatureCatalog::class)->declare('test.write', 'ai.answer', 'Writes things');
+    app(FeatureCatalog::class)->declare('test.hear', 'ai.answer', 'Hears things', 'transcribe');
+    $sonnet = AiModel::factory()->for($this->provider, 'provider')->create(['display_name' => 'Big model', 'capabilities' => ['chat', 'json'], 'output_cost_per_mtok_cents' => 1000]);
+    $this->actingAs($this->staff)->get('http://app.rightally.io/hq/ai')->assertInertia(fn (Assert $p) => $p->where('unrouted', fn (int $n): bool => $n >= 2));
+
+    $this->actingAs($this->staff)->post('http://app.rightally.io/hq/ai/routes/sync', ['main_model_id' => $sonnet->id])->assertSessionHasNoErrors();
+
+    expect(AiFeatureRoute::query()->where('feature_key', 'test.write')->value('primary_model_id'))->toBe($sonnet->id)
+        ->and(AiFeatureRoute::query()->where('feature_key', 'test.hear')->exists())->toBeFalse() // no model can hear yet
+        ->and($this->route->refresh()->primary_model_id)->toBe($this->model->id);
+    $this->actingAs($this->staff)->post('http://app.rightally.io/hq/ai/routes/sync', ['main_model_id' => 999])->assertSessionHasErrors('main_model_id');
 });
