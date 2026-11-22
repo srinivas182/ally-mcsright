@@ -16,7 +16,7 @@ final class SiteChrome
     /** The website menu's short words for RightAlly's own pages (BR3). */
     public const MENU = [
         'en' => ['for-brokers' => 'Brokerages', 'for-agents' => 'Agents', 'pricing' => 'Pricing', 'compare' => 'Compare', 'security' => 'Security', 'features' => 'Features'],
-        'es' => ['para-corredurias' => 'Corredurías', 'para-agentes' => 'Agentes', 'pricing' => 'Precios', 'precios' => 'Precios', 'security' => 'Seguridad', 'seguridad' => 'Seguridad', 'funciones' => 'Funciones'],
+        'es' => ['for-brokers' => 'Corredurías', 'for-agents' => 'Agentes', 'compare' => 'Comparar', 'para-corredurias' => 'Corredurías', 'para-agentes' => 'Agentes', 'pricing' => 'Precios', 'precios' => 'Precios', 'security' => 'Seguridad', 'seguridad' => 'Seguridad', 'funciones' => 'Funciones'],
     ];
 
     /**

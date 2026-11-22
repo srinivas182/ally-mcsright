@@ -62,7 +62,7 @@ it('gives search engines and AI answer engines a sitemap, robots rules and llms.
 
 it('lets HQ edit a draft, preview it privately, publish it, and put back an earlier version', function (): void {
     $page = app(Website::class)->page('en', 'pricing');
-    $this->actingAs($this->staff)->get('http://app.rightally.io/hq/website')->assertInertia(fn (Assert $p) => $p->component('hq/website/index')->has('pages', 12)); // SITE1: + privacy and terms in English and Spanish
+    $this->actingAs($this->staff)->get('http://app.rightally.io/hq/website')->assertInertia(fn (Assert $p) => $p->component('hq/website/index')->has('pages', 15)); // SITE1: + privacy and terms in both languages; SITE3: + three Spanish twins
     $this->actingAs($this->staff)->get('http://app.rightally.io/hq/website/pages/'.$page->ulid)->assertInertia(fn (Assert $p) => $p->component('hq/website/page')
         ->where('checks', [])->has('versions', 1)->where('page.preview', fn (string $u): bool => str_contains($u, 'rightally.io/preview/')));
 
@@ -161,4 +161,17 @@ it('always shows agent prices on the pricing page, and what every price includes
     expect($html)->toContain('Agent Pro')->toContain('$49')->toContain('10 agent seats included')->toContain('IDX website with AIlly and 1 MLS board')
         ->toContain('Deals, forms and e-sign')->toContain('500 AIlly conversations a month')
         ->toContain('Own website with AIlly')->toContain('AI blog writer')->not->toContain('(MK4)');
+});
+
+it('gives the Spanish website the same menu as the English one, each page linked to its twin (SITE3)', function (): void {
+    $menu = fn (string $path): string => preg_match('#<span class="links">(.*?)</span>#s', (string) $this->get(site($path))->assertOk()->getContent(), $m) ? $m[1] : '';
+    expect($menu('/'))->toContain('Brokerages')->toContain('Agents')->toContain('Pricing')->toContain('Security');
+    expect($menu('/es'))->toContain('Corredurías')->toContain('Agentes')->toContain('Precios')->toContain('Seguridad')
+        ->toContain('href="https://rightally.io/es/for-brokers"');
+
+    $html = (string) $this->get(site('/es/for-brokers'))->assertOk()->getContent();
+    expect($html)->toContain('<html lang="es">')->toContain('Un sistema para toda su correduría')
+        ->toContain('hreflang="en" href="https://rightally.io/for-brokers"')->toContain('https://app.rightally.io/health-check/es');
+    $this->get(site('/for-agents'))->assertOk()->assertSee('hreflang="es" href="https://rightally.io/es/for-agents"', false);
+    $this->get(site('/es/security'))->assertOk()->assertSee('Sus datos son suyos');
 });
