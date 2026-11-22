@@ -16,18 +16,20 @@
     $licensed = array_map('strval', (array) old('licence_states', array_keys(array_filter($byState, fn ($list) => collect($list)->contains(fn ($b) => in_array($b['ulid'], $picked, true))))));
 @endphp
 @if (! empty($byState))
-<fieldset id="idx-boards"><legend>{{ ($number ?? '') !== '' ? $number.'. ' : '' }}Your MLS boards (for listings on your website)</legend>
-    <p class="muted small">Your website shows homes for sale from the MLS boards you belong to. <strong>One board is included in the price.</strong> Each extra board adds the fee shown, every month. You can skip this and add boards later in Settings › MLS.</p>
-
-    <h3 class="sub">a. Where do you hold a real estate licence?</h3>
-    <div class="choices" role="group" aria-label="States where you hold a licence" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+<div id="idx-boards">
+<fieldset id="idx-licence"><legend>Where do you hold a real estate licence?</legend>
+    <p class="muted small">Tick every state you are licensed in. Only states where we connect to an MLS board are listed; more are added regularly.</p>
+    <div class="choices" role="group" aria-label="States where you hold a licence" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">
         @foreach ($byState as $code => $list)
             <label><input type="checkbox" name="licence_states[]" data-idx-state value="{{ $code }}" @checked(in_array($code, $licensed, true))> {{ $idxStates[$code] }}</label>
         @endforeach
     </div>
+    @error('licence_states')<p class="error" role="alert">{{ $message }}</p>@enderror
+</fieldset>
 
-    <h3 class="sub">b. Choose your board in each state</h3>
-    <p class="muted small" data-idx-none>Tick a state above and its boards appear here.</p>
+<fieldset id="idx-board-list"><legend>{{ ($number ?? '') !== '' ? $number.'. ' : '' }}Your MLS boards (for listings on your website)</legend>
+    <p class="muted small">Choose at least one board in each state you ticked. <strong>One board is included in the price.</strong> Each extra board adds the fee shown, every month. You can skip this and add boards later in Settings › MLS.</p>
+    <p class="card small" data-idx-none>Tick a state above and its MLS boards appear here.</p>
     @foreach ($byState as $code => $list)
         <div class="board-group" data-idx-group="{{ $code }}">
             <p class="board-group-title"><strong>{{ $idxStates[$code] }}</strong> <span class="muted small">choose at least one</span></p>
@@ -41,10 +43,10 @@
             </div>
         </div>
     @endforeach
-    @error('licence_states')<p class="error" role="alert">{{ $message }}</p>@enderror
     <p class="card small" id="idx-total" role="status" aria-live="polite">No boards ticked yet.</p>
     <p class="muted small">Your board is not listed? Sign up without it, then choose "My board isn’t listed" in Settings › MLS and we will add it. After you pay, we prepare each board's paperwork for you to sign. Until the board approves, your website shows sample listings, clearly marked.</p>
 </fieldset>
+</div>
 <script nonce="{{ Vite::cspNonce() }}">
 (function () {
     var box = document.getElementById('idx-boards'); if (!box) return;
@@ -64,6 +66,7 @@
             }); }
         });
         box.querySelector('[data-idx-none]').hidden = states.length > 0;
+        box.querySelector('#idx-total').hidden = states.length === 0;
         var seen = {}, fees = [];
         box.querySelectorAll('input[name="boards[]"]:checked').forEach(function (i) { if (!seen[i.value]) { seen[i.value] = 1; fees.push(+i.getAttribute('data-fee')); } });
         fees.sort(function (a, b) { return b - a; });

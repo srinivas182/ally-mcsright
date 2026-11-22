@@ -81,10 +81,16 @@
                     <label class="design">
                         <input type="radio" name="template" value="{{ $d['key'] }}" @checked($picked === $d['key'])>
                         @php($ink = $dark($d['theme']) ? '#f5f1e8' : '#111827')
-                        <span class="mini" aria-hidden="true" style="background:{{ $d['theme'] }};color:{{ $ink }}">
-                            <span class="mini-nav"><b style="font-family:'{{ $d['font'] }}',serif">{{ $previewName !== '' ? mb_strimwidth($previewName, 0, 22, '…') : 'Your Brokerage' }}</b><i></i><i></i><i></i></span>
-                            <span class="mini-title" style="font-family:'{{ $d['font'] }}',serif">Find your place in {{ $previewArea !== '' ? $previewArea : 'your city' }}</span>
-                            <span class="mini-search"><span></span><span style="background:{{ $d['brand']['primary'] ?? '#1d4ed8' }}"></span></span>
+                        @php($lay = explode(' ', $d['layout']))
+                        <span class="mini {{ collect($lay)->map(fn ($c) => 'm-'.$c)->implode(' ') }}" aria-hidden="true" style="background:{{ $d['theme'] }};color:{{ $ink }};--photo:url('{{ $d['hero'] }}');--brand:{{ $d['brand']['primary'] ?? '#1d4ed8' }}">
+                            <span class="mini-nav"><b style="font-family:'{{ $d['font'] }}',serif">{{ $previewName !== '' ? mb_strimwidth($previewName, 0, 24, '…') : 'Your Brokerage' }}</b><i></i><i></i><i></i></span>
+                            <span class="mini-hero">
+                                <span class="mini-copy">
+                                    <span class="mini-title" style="font-family:'{{ $d['font'] }}',serif">Find your place in {{ $previewArea !== '' ? $previewArea : 'your city' }}</span>
+                                    <span class="mini-search"><span></span><span></span></span>
+                                </span>
+                            </span>
+                            <span class="mini-homes">@foreach ($d['homes'] as $h)<i style="background-image:url('{{ $h }}')"></i>@endforeach</span>
                         </span>
                         <span class="design-name">{{ $d['name'] }}@if (in_array($d['key'], $luxury, true)) <span class="tag">Luxury</span>@endif</span>
                         <span class="muted small">{{ $d['description'] }}</span>
