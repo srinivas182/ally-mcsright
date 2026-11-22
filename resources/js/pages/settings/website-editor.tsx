@@ -615,7 +615,7 @@ export default function WebsiteEditor(props: Props) {
             </header>
 
             <div className="grid flex-1 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]">
-                <aside className="flex max-h-[calc(100svh-3.25rem)] flex-col border-r bg-background lg:sticky lg:top-[3.25rem]">
+                <aside className="flex max-h-[calc(100svh-3.25rem)] min-w-0 flex-col border-r bg-background lg:sticky lg:top-[3.25rem]">
                     <div
                         role="tablist"
                         aria-label="Editor panels"
@@ -641,9 +641,12 @@ export default function WebsiteEditor(props: Props) {
                             </Button>
                         ))}
                     </div>
-                    <div ref={listRef} className="flex-1 overflow-y-auto p-3">
+                    <div
+                        ref={listRef}
+                        className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-3"
+                    >
                         {tab === 'sections' && (
-                            <div className="grid gap-2">
+                            <div className="grid grid-cols-[minmax(0,1fr)] gap-2">
                                 <p className="text-xs text-muted-foreground">
                                     Click a section here or on the page to edit
                                     it. Drag to reorder.
@@ -662,7 +665,7 @@ export default function WebsiteEditor(props: Props) {
                                             setDragging(null);
                                         }}
                                         onDragEnd={() => setDragging(null)}
-                                        className={`rounded-lg border bg-card text-sm transition ${open === s.id ? 'border-primary ring-2 ring-primary/20' : ''} ${s.hidden ? 'opacity-60' : ''} ${dragging === i ? 'opacity-40' : ''}`}
+                                        className={`min-w-0 rounded-lg border bg-card text-sm transition ${open === s.id ? 'border-primary ring-2 ring-primary/20' : ''} ${s.hidden ? 'opacity-60' : ''} ${dragging === i ? 'opacity-40' : ''}`}
                                     >
                                         <div className="flex items-center gap-1 p-1.5">
                                             <GripVertical
@@ -728,7 +731,7 @@ export default function WebsiteEditor(props: Props) {
                                             />
                                         </div>
                                         {open === s.id && (
-                                            <div className="grid gap-3 border-t p-3">
+                                            <div className="grid grid-cols-[minmax(0,1fr)] gap-3 border-t p-3">
                                                 <Fields
                                                     site={props.site.ulid}
                                                     fields={

@@ -552,10 +552,82 @@ h3 {
     letter-spacing: 0.14em;
     font-size: 0.78rem;
 }
+/* WB1: on phones the menu folds behind a "Menu" button, in every design. */
+.nav-toggle {
+    display: none;
+}
 @media (max-width: 720px) {
+    .nav-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-left: auto;
+        padding: 0.6rem 0.9rem;
+        min-height: 44px;
+        border: 1px solid currentColor;
+        border-radius: 999px;
+        background: transparent;
+        color: inherit;
+        font: inherit;
+        font-size: 0.95rem;
+        cursor: pointer;
+    }
+    .nav-toggle span,
+    .nav-toggle span::before,
+    .nav-toggle span::after {
+        display: block;
+        width: 16px;
+        height: 2px;
+        background: currentColor;
+        position: relative;
+    }
+    .nav-toggle span::before,
+    .nav-toggle span::after {
+        content: '';
+        position: absolute;
+        left: 0;
+    }
+    .nav-toggle span::before {
+        top: -5px;
+    }
+    .nav-toggle span::after {
+        top: 5px;
+    }
+    .site-header .brand {
+        flex: 1 1 0;
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+    .site-header .nav-toggle {
+        flex: 0 0 auto;
+    }
+    html:not(.nav-open) #site-nav,
+    html:not(.nav-open) .site-header .header-account {
+        display: none !important;
+    }
+    .nav-open #site-nav {
+        display: block;
+        flex-basis: 100%;
+        order: 10;
+        padding: 0.5rem 0 1rem;
+    }
+    .nav-open .site-header .header-account {
+        display: inline-flex;
+        order: 11;
+    }
+    .nav-open #site-nav .nav {
+        display: grid;
+        gap: 0;
+        overflow: visible;
+    }
+    .nav-open #site-nav .nav a {
+        display: block;
+        padding: 0.85rem 0;
+        border-bottom: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+        white-space: normal;
+    }
     .nav {
         gap: 1rem;
-        overflow-x: auto;
     }
     .header-call {
         display: none;
