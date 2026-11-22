@@ -33,7 +33,7 @@ type Provider = {
     name: string;
     adapter: string;
     status: string;
-    zero_retention_confirmed: boolean;
+    retention: 'zero' | 'standard' | 'unconfirmed';
     no_training_confirmed: boolean;
     dpa_signed_at: string | null;
     usable: boolean;
@@ -167,10 +167,22 @@ type RedTeamRun = {
     cost_cents: number;
     started_at: string;
 };
+type ModelPreset = {
+    model_id: string;
+    display_name: string;
+    note: string;
+    capabilities: string[];
+    input: number;
+    output: number;
+    cache_read: number | null;
+    audio: number | null;
+};
 type Props = {
     days: number;
     presets: { key: string; name: string }[];
     capabilities: string[];
+    modelPresets: Record<string, ModelPreset[]>;
+    modelPresetsChecked: string;
     providers: Provider[];
     models: Model[];
     routes: Route[];
@@ -183,11 +195,17 @@ function ModelDialog({
     model,
     providers,
     capabilities,
+    presets,
+    presetsChecked,
+    existing,
     onClose,
 }: {
     model: Model | null;
     providers: Provider[];
     capabilities: string[];
+    presets: Record<string, ModelPreset[]>;
+    presetsChecked: string;
+    existing: Model[];
     onClose: () => void;
 }) {
     const form = useForm({
@@ -203,6 +221,34 @@ function ModelDialog({
             : '',
         status: model?.status ?? 'active',
     });
+    // AI2: the chosen provider's main models, not yet added, to fill the form in one click.
+    const providerKey =
+        providers.find((p) => p.id === form.data.provider_id)?.key ?? '';
+    const choices = (presets[providerKey] ?? []).filter(
+        (c) =>
+            !existing.some(
+                (m) =>
+                    m.provider_id === form.data.provider_id &&
+                    m.model_id === c.model_id,
+            ),
+    );
+    const usePreset = (id: string) => {
+        const c = choices.find((x) => x.model_id === id);
+        if (!c) {
+            return;
+        }
+        form.setData((d) => ({
+            ...d,
+            model_id: c.model_id,
+            display_name: c.display_name,
+            capabilities: c.capabilities,
+            input_per_mtok: String(c.input),
+            output_per_mtok: String(c.output),
+            cache_read_per_mtok:
+                c.cache_read === null ? '' : String(c.cache_read),
+            audio_per_minute: c.audio === null ? '' : String(c.audio),
+        }));
+    };
     const submit = () => {
         const opts = { preserveScroll: true, onSuccess: onClose };
         if (model) {
@@ -254,6 +300,35 @@ function ModelDialog({
                                     </select>
                                 )}
                             </FormField>
+                            {choices.length > 0 && (
+                                <FormField
+                                    label="Choose a model"
+                                    help={`Fills in the details below. Prices are from the provider's pricing page on ${presetsChecked}: check them before saving.`}
+                                >
+                                    {(control) => (
+                                        <select
+                                            {...control}
+                                            className="h-9 rounded-md border bg-background px-2"
+                                            defaultValue=""
+                                            onChange={(e) =>
+                                                usePreset(e.target.value)
+                                            }
+                                        >
+                                            <option value="">
+                                                Pick one, or type your own below
+                                            </option>
+                                            {choices.map((c) => (
+                                                <option
+                                                    key={c.model_id}
+                                                    value={c.model_id}
+                                                >
+                                                    {c.display_name}: {c.note}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    )}
+                                </FormField>
+                            )}
                             <FormField
                                 label="Model ID (exactly as the provider names it)"
                                 error={form.errors.model_id}
@@ -431,7 +506,7 @@ function ProviderDialog({
 }) {
     const form = useForm({
         status: provider.status,
-        zero_retention_confirmed: provider.zero_retention_confirmed,
+        retention: provider.retention,
         no_training_confirmed: provider.no_training_confirmed,
         dpa_signed_at: provider.dpa_signed_at ?? '',
         confirmation: '',
@@ -443,8 +518,8 @@ function ProviderDialog({
                 <DialogHeader>
                     <DialogTitle>{provider.name}</DialogTitle>
                     <DialogDescription>
-                        Only providers that confirm zero retention and no
-                        training on customer data can be active.
+                        A provider can be active only once it never trains on
+                        customer data and you have chosen what it keeps.
                     </DialogDescription>
                 </DialogHeader>
                 <form
@@ -457,15 +532,39 @@ function ProviderDialog({
                         });
                     }}
                 >
-                    <label className="flex items-center justify-between gap-4 text-sm">
-                        Zero retention confirmed
-                        <Switch
-                            checked={form.data.zero_retention_confirmed}
-                            onCheckedChange={(v) =>
-                                form.setData('zero_retention_confirmed', v)
-                            }
-                        />
-                    </label>
+                    <FormField
+                        label="What the provider keeps"
+                        help="Standard: the provider keeps requests for a short time (about 30 days for Anthropic) to check for abuse, then deletes them. Zero: you have a signed zero-retention agreement."
+                        error={form.errors.retention}
+                    >
+                        {(control) => (
+                            <Select
+                                value={form.data.retention}
+                                onValueChange={(v) =>
+                                    form.setData(
+                                        'retention',
+                                        v as Provider['retention'],
+                                    )
+                                }
+                            >
+                                <SelectTrigger {...control}>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="unconfirmed">
+                                        Not checked yet
+                                    </SelectItem>
+                                    <SelectItem value="standard">
+                                        Standard retention (a short time, for
+                                        abuse checks)
+                                    </SelectItem>
+                                    <SelectItem value="zero">
+                                        Zero retention (signed agreement)
+                                    </SelectItem>
+                                </SelectContent>
+                            </Select>
+                        )}
+                    </FormField>
                     <label className="flex items-center justify-between gap-4 text-sm">
                         No training on customer data confirmed
                         <Switch
@@ -615,6 +714,8 @@ export default function AiConsole({
     days,
     presets,
     capabilities,
+    modelPresets,
+    modelPresetsChecked,
     providers,
     models,
     routes,
@@ -820,10 +921,12 @@ export default function AiConsole({
                                     <div>
                                         <p className="font-medium">{p.name}</p>
                                         <p className="text-sm text-muted-foreground">
-                                            {p.adapter} · zero retention{' '}
-                                            {p.zero_retention_confirmed
-                                                ? 'confirmed'
-                                                : 'not confirmed'}{' '}
+                                            {p.adapter} · retention{' '}
+                                            {p.retention === 'zero'
+                                                ? 'zero'
+                                                : p.retention === 'standard'
+                                                  ? 'standard (accepted)'
+                                                  : 'not checked'}{' '}
                                             · no training{' '}
                                             {p.no_training_confirmed
                                                 ? 'confirmed'
@@ -1016,6 +1119,9 @@ export default function AiConsole({
                     model={modelEditing === 'new' ? null : modelEditing}
                     providers={providers}
                     capabilities={capabilities}
+                    presets={modelPresets}
+                    presetsChecked={modelPresetsChecked}
+                    existing={models}
                     onClose={() => setModelEditing(null)}
                 />
             )}

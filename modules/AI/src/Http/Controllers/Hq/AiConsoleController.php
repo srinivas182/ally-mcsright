@@ -55,9 +55,10 @@ final class AiConsoleController
             'days' => $days,
             'presets' => collect(self::PROVIDER_PRESETS)->map(fn (array $p, string $k): array => ['key' => $k, 'name' => $p['name']])->values(),
             'capabilities' => self::CAPABILITIES,
+            'modelPresets' => self::MODEL_PRESETS, 'modelPresetsChecked' => self::MODEL_PRESETS_CHECKED,
             'providers' => AiProvider::query()->orderBy('name')->get()->map(fn (AiProvider $p): array => [
                 'id' => $p->id, 'key' => $p->key, 'name' => $p->name, 'adapter' => $p->adapter, 'status' => $p->status,
-                'zero_retention_confirmed' => $p->zero_retention_confirmed, 'no_training_confirmed' => $p->no_training_confirmed,
+                'retention' => $p->retention(), 'no_training_confirmed' => $p->no_training_confirmed,
                 'dpa_signed_at' => $p->dpa_signed_at?->toDateString(), 'usable' => $p->isUsable(), 'circuit_open' => $circuit->isOpen($p->key),
                 // AI1: never the key itself, only where it comes from and its last 4 characters.
                 'key_source' => $p->keySource(), 'key_hint' => $p->keySource() === 'hq' ? $p->api_key_hint : null,
@@ -88,17 +89,23 @@ final class AiConsoleController
     {
         $data = $request->validate([
             'status' => ['required', Rule::in(['active', 'disabled'])],
-            'zero_retention_confirmed' => ['required', 'boolean'],
+            'retention' => ['required', Rule::in(['zero', 'standard', 'unconfirmed'])],
             'no_training_confirmed' => ['required', 'boolean'],
             'dpa_signed_at' => ['nullable', 'date'],
             'confirmation' => ['required', 'string', 'min:10', 'max:500'],
         ]);
 
-        if ($data['status'] === 'active' && (! $data['zero_retention_confirmed'] || ! $data['no_training_confirmed'])) {
-            throw ValidationException::withMessages(['status' => 'A provider can only be active once zero retention and no training are confirmed.']);
+        if ($data['status'] === 'active' && ($data['retention'] === 'unconfirmed' || ! $data['no_training_confirmed'])) {
+            throw ValidationException::withMessages(['status' => 'A provider can only be active once no training is confirmed and you have chosen what it keeps (zero or standard retention).']);
         }
 
-        $provider->update(Arr::except($data, ['confirmation']));
+        $before = ['status' => $provider->status, 'retention' => $provider->retention(), 'no_training' => $provider->no_training_confirmed];
+        $provider->update(Arr::except($data, ['confirmation', 'retention']) + [
+            'zero_retention_confirmed' => $data['retention'] === 'zero', 'standard_retention_accepted' => $data['retention'] === 'standard',
+        ]);
+        // AI2: who confirmed which data terms, and on what basis, is kept with the change.
+        $after = ['status' => $provider->status, 'retention' => $provider->retention(), 'no_training' => $provider->no_training_confirmed];
+        app(AuditLogger::class)->record('ai.provider.terms', $provider, changes: array_map(fn (string $k): array => ['old' => $before[$k], 'new' => $after[$k]], array_combine(array_keys($after), array_keys($after))), metadata: ['provider' => $provider->key, 'basis' => $data['confirmation']], severity: 'notice');
         Inertia::flash('toast', ['type' => 'success', 'message' => "{$provider->name} updated."]);
 
         return back();
@@ -197,6 +204,25 @@ final class AiConsoleController
     ];
 
     public const CAPABILITIES = ['chat', 'json', 'vision', 'transcribe', 'embed'];
+
+    /**
+     * AI2: the main models of each provider, to fill the "Add a model" form. Prices are US dollars per million tokens
+     * (or per audio minute) as published on the provider's pricing page on the date shown; HQ checks them before saving,
+     * and saving records that day as the check date. Haiku's price is for prompts up to 100,000 tokens.
+     */
+    public const MODEL_PRESETS_CHECKED = '2026-11-22';
+
+    public const MODEL_PRESETS = [
+        'anthropic' => [
+            ['model_id' => 'claude-sonnet-5-5', 'display_name' => 'Claude Sonnet 5.5', 'note' => 'Main model: recommended for most features', 'capabilities' => ['chat', 'json', 'vision'], 'input' => 2, 'output' => 10, 'cache_read' => 0.10, 'audio' => null],
+            ['model_id' => 'claude-haiku-5-5', 'display_name' => 'Claude Haiku 5.5', 'note' => 'Fast and low cost: short, simple tasks', 'capabilities' => ['chat', 'json', 'vision'], 'input' => 0.10, 'output' => 0.50, 'cache_read' => 0.01, 'audio' => null],
+            ['model_id' => 'claude-opus-5-5', 'display_name' => 'Claude Opus 5.5', 'note' => 'Most capable, higher cost: optional', 'capabilities' => ['chat', 'json', 'vision'], 'input' => 4, 'output' => 20, 'cache_read' => 0.20, 'audio' => null],
+        ],
+        'openai' => [
+            ['model_id' => 'gpt-4o-mini-transcribe', 'display_name' => 'OpenAI speech to text', 'note' => 'Voice notes and the microphone', 'capabilities' => ['transcribe'], 'input' => 0, 'output' => 0, 'cache_read' => null, 'audio' => 0.003],
+            ['model_id' => 'text-embedding-3-small', 'display_name' => 'OpenAI search (embeddings)', 'note' => 'Finding the right help and documents', 'capabilities' => ['embed'], 'input' => 0.02, 'output' => 0, 'cache_read' => null, 'audio' => null],
+        ],
+    ];
 
     /** Adds one of the known providers, switched off until its data-protection terms are confirmed. */
     public function storeProvider(Request $request): RedirectResponse

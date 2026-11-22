@@ -31,7 +31,8 @@ version, `inputs` (typed values), `context` (list of `RetrievedRecord`), `untrus
 ### `ai_providers`
 
 `key (anthropic, openai, google, selfhosted, …), name, base_url, credential_secret_ref,
-zero_retention_confirmed (bool, required to activate), no_training_confirmed (bool, required),
+zero_retention_confirmed (bool), standard_retention_accepted (bool; one of the two is required to activate, AI2),
+no_training_confirmed (bool, required),
 dpa_signed_at, status (active, disabled), circuit_state`.
 
 ### `ai_models`
