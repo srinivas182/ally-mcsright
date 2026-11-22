@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Core\Mail;
 
 use Illuminate\Contracts\Mail\Factory as MailFactory;
+use Illuminate\Support\Facades\Http;
 use Modules\Core\Services\OutsideServices;
 use Symfony\Component\Mailer\Envelope;
 use Symfony\Component\Mailer\SentMessage;
@@ -39,7 +40,10 @@ final class PlatformEmail extends AbstractTransport
 
     private static int $readAt = 0;
 
-    /** @var (\Closure(array{host: string, username: string, password: string}, Message, Envelope): void)|null tests see what would be sent */
+    /** EM2: Brevo's transactional email API. */
+    public const BREVO_API = 'https://api.brevo.com/v3';
+
+    /** @var (\Closure(array<string, string>, Message, Envelope): void)|null tests see what would be sent (an SMTP sign-in, or ['api' => 'brevo']) */
     public static ?\Closure $sender = null;
 
     public function __construct(private readonly string $fallback)
@@ -101,6 +105,9 @@ final class PlatformEmail extends AbstractTransport
      */
     public static function check(string $provider, array $keys): ?string
     {
+        if (self::usesBrevoApi($provider, $keys)) {
+            return self::checkBrevo($keys);
+        }
         $smtp = self::smtp($provider, $keys);
         if ($smtp === null || $smtp['username'] === '' || $smtp['password'] === '') {
             return 'Fill in every field.';
@@ -119,9 +126,10 @@ final class PlatformEmail extends AbstractTransport
     protected function doSend(SentMessage $message): void
     {
         $active = self::active();
-        $smtp = $active === null ? null : self::smtp($active['provider'], $active['keys']);
+        $api = $active !== null && self::usesBrevoApi($active['provider'], $active['keys']);
+        $smtp = $active === null || $api ? null : self::smtp($active['provider'], $active['keys']);
         $original = $message->getOriginalMessage();
-        if ($active === null || $smtp === null || ! $original instanceof Message) {
+        if ($active === null || ($smtp === null && ! $api) || ! $original instanceof Message || ($api && ! $original instanceof Email)) {
             $this->fallback($original, $message->getEnvelope());
 
             return;
@@ -150,11 +158,113 @@ final class PlatformEmail extends AbstractTransport
             $envelope = new Envelope($envelope->getSender(), [new Address($test)]);
         }
         if (self::$sender !== null) {
-            (self::$sender)($smtp, $original, $envelope);
+            (self::$sender)($smtp ?? ['api' => 'brevo'], $original, $envelope);
+
+            return;
+        }
+        if ($api) {
+            self::sendWithBrevo(trim((string) ($active['keys']['api_key'] ?? '')), $original, $envelope);
 
             return;
         }
         self::transport($smtp)->send($original, $envelope);
+    }
+
+    /**
+     * EM2: Brevo goes through its API when an API key is saved. Keys saved before EM2 (SMTP login and key) keep working
+     * over SMTP until HQ saves an API key.
+     *
+     * @param  array<string, mixed>  $keys
+     */
+    public static function usesBrevoApi(string $provider, array $keys): bool
+    {
+        return $provider === 'brevo' && trim((string) ($keys['api_key'] ?? '')) !== '';
+    }
+
+    /**
+     * The Brevo API body for one email: sender, recipients, reply-to, subject, HTML and text, attachments.
+     *
+     * @return array<string, mixed>
+     */
+    public static function brevoPayload(Email $email, Envelope $envelope): array
+    {
+        $body = fn (mixed $b): ?string => is_resource($b) ? (string) stream_get_contents($b) : (is_string($b) ? $b : null);
+        $from = $email->getFrom()[0] ?? $envelope->getSender();
+        $payload = [
+            'sender' => array_filter(['email' => $from->getAddress(), 'name' => $from->getName()]),
+            'to' => array_map(fn (Address $a): array => ['email' => $a->getAddress()], $envelope->getRecipients()),
+            'subject' => (string) $email->getSubject(),
+        ];
+        if (($reply = $email->getReplyTo()[0] ?? null) !== null) {
+            $payload['replyTo'] = array_filter(['email' => $reply->getAddress(), 'name' => $reply->getName()]);
+        }
+        $html = $body($email->getHtmlBody());
+        $text = $body($email->getTextBody());
+        if ($html !== null && $html !== '') {
+            $payload['htmlContent'] = $html;
+        }
+        if ($text !== null && $text !== '') {
+            $payload['textContent'] = $text;
+        }
+        if (! isset($payload['htmlContent']) && ! isset($payload['textContent'])) {
+            $payload['textContent'] = ' ';
+        }
+        $files = [];
+        foreach ($email->getAttachments() as $part) {
+            $files[] = ['name' => $part->getFilename() ?? 'attachment', 'content' => base64_encode($part->getBody())];
+        }
+        if ($files !== []) {
+            $payload['attachment'] = $files;
+        }
+
+        return $payload;
+    }
+
+    private static function sendWithBrevo(string $key, Email $email, Envelope $envelope): void
+    {
+        $response = Http::timeout(20)->withHeaders(['api-key' => $key])->acceptJson()
+            ->post(self::BREVO_API.'/smtp/email', self::brevoPayload($email, $envelope));
+        if (! $response->successful()) {
+            throw new \RuntimeException('Brevo did not send the email ('.$response->status().'): '.mb_substr((string) $response->json('message', $response->body()), 0, 200));
+        }
+    }
+
+    /**
+     * "Check connection" for Brevo's API: the key works, and "Send from" is a verified sender (or on a verified domain).
+     * Reads only; nothing is sent.
+     *
+     * @param  array<string, mixed>  $keys
+     */
+    private static function checkBrevo(array $keys): ?string
+    {
+        $key = trim((string) ($keys['api_key'] ?? ''));
+        $from = strtolower(trim((string) ($keys['from_address'] ?? '')));
+        if ($key === '' || filter_var($from, FILTER_VALIDATE_EMAIL) === false) {
+            return 'Fill in the API key and the "Send from" address.';
+        }
+        $brevo = fn (string $path) => Http::timeout(15)->withHeaders(['api-key' => $key])->acceptJson()->get(self::BREVO_API.$path);
+        try {
+            $account = $brevo('/account');
+            if ($account->status() === 401) {
+                return 'Brevo did not accept the API key, or blocked this server\'s IP address. Copy the key again, or add the server\'s IP under Security, then Authorised IPs, in Brevo.';
+            }
+            if (! $account->successful()) {
+                return 'Brevo answered with an error ('.$account->status().'). Try again in a minute.';
+            }
+            $senders = collect((array) $brevo('/senders')->json('senders'));
+            if ($senders->contains(fn (mixed $s): bool => is_array($s) && strtolower((string) ($s['email'] ?? '')) === $from && ($s['active'] ?? false) === true)) {
+                return null;
+            }
+            $domain = substr($from, strpos($from, '@') + 1);
+            $domains = collect((array) $brevo('/senders/domains')->json('domains'));
+            if ($domains->contains(fn (mixed $d): bool => is_array($d) && strtolower((string) ($d['domain_name'] ?? '')) === $domain && (($d['authenticated'] ?? false) === true || ($d['verified'] ?? false) === true))) {
+                return null;
+            }
+
+            return "The API key works, but {$from} is not a verified sender in Brevo. Add it under Senders, Domains and dedicated IPs and click the link Brevo emails you, or verify the domain {$domain}.";
+        } catch (Throwable) {
+            return 'Could not reach Brevo. Try again in a minute.';
+        }
     }
 
     /** @param array{host: string, username: string, password: string} $smtp */

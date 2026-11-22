@@ -148,10 +148,11 @@ final class Catalog
                 ]],
             'platform_email' => ['label' => 'Platform email', 'about' => 'Sends RightAlly\'s own email: invitations, sign-in codes, notices and Watchtower alerts. Test sends everything only to your first test contact. Off uses the server\'s mail settings.',
                 'level' => 'hq', 'sprint' => 'EM1', 'contacts' => false, 'providers' => [
-                    'brevo' => ['label' => 'Brevo (recommended)', 'fields' => ['smtp_login' => ['label' => 'SMTP login (Settings › SMTP & API › SMTP)', 'kind' => 'text'],
-                        'smtp_key' => ['label' => 'SMTP key', 'kind' => 'secret'], 'from_address' => ['label' => 'Send from (an address on a domain verified in Brevo)', 'kind' => 'text'],
+                    // EM2: Brevo's API (an API key and a verified sender), not SMTP.
+                    'brevo' => ['label' => 'Brevo (recommended)', 'fields' => ['api_key' => ['label' => 'API key (starts xkeysib-)', 'kind' => 'secret'],
+                        'from_address' => ['label' => 'Send from (a sender verified in Brevo)', 'kind' => 'text'],
                         'from_name' => ['label' => 'Sender name', 'kind' => 'text']],
-                        'note' => 'Free plan sends 300 emails a day. Verify your domain in Brevo (Senders, Domains) and add its DNS records first.'],
+                        'note' => 'Free plan sends 300 emails a day. Check connection also checks that the "Send from" address is a verified sender in Brevo.'],
                     'postmark_send' => ['label' => 'Postmark', 'fields' => ['server_token' => ['label' => 'Server API token', 'kind' => 'secret'],
                         'from_address' => ['label' => 'Send from (a verified sender signature or domain)', 'kind' => 'text'], 'from_name' => ['label' => 'Sender name', 'kind' => 'text']],
                         'note' => 'Best inbox delivery for sign-in codes and alerts.'],

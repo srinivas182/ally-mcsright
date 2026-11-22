@@ -78,7 +78,7 @@ final class ConnectionCheck
             'spark' => $this->status($this->http()->withToken($k['access_token'])->acceptJson()->get(rtrim(($k['endpoint'] ?? '') !== '' ? $this->host($k['endpoint']) : 'https://replication.sparkapi.com/Reso/OData', '/').'/Property', ['$top' => 1, '$select' => 'ListingKey'])),
             // EM1: sign in to the provider's mail server (nothing is sent).
             'brevo', 'postmark_send', 'ses' => ($why = PlatformEmail::check($provider, $k)) === null
-                ? ['ok' => true, 'message' => 'Signed in to the mail server. Switch to Test and send yourself an invitation to see it arrive.']
+                ? ['ok' => true, 'message' => 'Connected, and the sender is ready. Switch to Test and send yourself an invitation to see it arrive.']
                 : ['ok' => false, 'message' => $why],
             // OB1: one test event to the project; Bugsnag and Honeybadger keys are checked for shape (the default line).
             'sentry' => ErrorTracking::sentryDsn($k['dsn']) !== null && SendToErrorTracking::sentry($k['dsn'], ErrorTracking::payload('sentry',
