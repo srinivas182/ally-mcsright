@@ -21,6 +21,7 @@ Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.ai.manage'])
         Route::post('providers/{provider}/key', [AiConsoleController::class, 'saveKey'])->middleware(['password.confirm', 'throttle:10,1'])->name('providers.key');
         Route::post('providers/{provider}/key/check', [AiConsoleController::class, 'checkKey'])->middleware('throttle:20,1')->name('providers.key.check');
         Route::delete('providers/{provider}/key', [AiConsoleController::class, 'removeKey'])->middleware('password.confirm')->name('providers.key.remove');
+        Route::post('routes/sync', [AiConsoleController::class, 'syncRoutes'])->name('routes.sync'); // HQ3
         Route::put('routes/{route}', [AiConsoleController::class, 'updateRoute'])->name('routes.update');
         Route::post('routes/{route}/lock', [AiConsoleController::class, 'toggleLock'])->name('routes.lock');
         // AQ1 (specs/ai/08): AI test sets and scores.

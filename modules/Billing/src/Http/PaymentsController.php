@@ -15,6 +15,7 @@ use Modules\Billing\BrokeragePayments;
 use Modules\Billing\Builder\AddOns;
 use Modules\Billing\Catalogue;
 use Modules\Billing\Gateway\PaymentGateway;
+use Modules\Billing\Gateway\StripeSetupCheck;
 use Modules\Billing\Models\AgentPlan;
 use Modules\Billing\Models\Package;
 use Modules\Billing\PartnerEarnings;
@@ -34,7 +35,19 @@ final class PaymentsController
     /** HQ: payment settings. */
     public function hq(PaymentSettings $settings): Response
     {
-        return Inertia::render('hq/payments', ['settings' => $settings->summary(), 'webhookUrl' => 'https://'.config('core.hq_host').'/billing/webhook']);
+        return Inertia::render('hq/payments', ['settings' => $settings->summary(), 'webhookUrl' => self::webhookUrl(), 'events' => StripeSetupCheck::EVENTS,
+            'check' => session('stripe_check')]);
+    }
+
+    /** HQ3: checks the Stripe setup step by step (reads only; nothing is created or charged). */
+    public function check(StripeSetupCheck $check): RedirectResponse
+    {
+        return back()->with('stripe_check', $check->run(self::webhookUrl()));
+    }
+
+    private static function webhookUrl(): string
+    {
+        return 'https://'.config('core.hq_host').'/billing/webhook';
     }
 
     public function saveKeys(Request $request, PaymentSettings $settings): RedirectResponse
@@ -113,6 +126,7 @@ final class PaymentsController
         } catch (Throwable) {
             return response()->json(['message' => 'Invalid signature.'], 400);
         }
+        StripeSetupCheck::received((string) ($event['type'] ?? 'event')); // HQ3: shows HQ that Stripe reaches RightAlly
 
         return response()->json(['processed' => $payments->handle($event)]);
     }
