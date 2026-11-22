@@ -10,6 +10,7 @@ use Modules\Sites\Http\Controllers\AillyLiveController;
 use Modules\Sites\Http\Controllers\AreaPagesController;
 use Modules\Sites\Http\Controllers\BlogAdminController;
 use Modules\Sites\Http\Controllers\DemandController;
+use Modules\Sites\Http\Controllers\DesignPreviewController;
 use Modules\Sites\Http\Controllers\FunnelAdminController;
 use Modules\Sites\Http\Controllers\HomeDashboardController;
 use Modules\Sites\Http\Controllers\HomeReportController;
@@ -136,3 +137,7 @@ Route::middleware(['tenant', EnsureTenantWorkspace::class, 'throttle:30,1,home-r
 // The homeowner dashboard (MK2, specs/crm/21): private, signed, never indexed.
 Route::middleware(['tenant', EnsureTenantWorkspace::class, 'throttle:30,1,home-dashboard'])->match(['get', 'post'], 'my-home/{report}', [HomeDashboardController::class, 'show'])
     ->where('report', '[0-9A-HJKMNP-TV-Z]{26}')->name('sites.home-reports.dashboard');
+
+// SU2: a website design with made-up content, opened from the sign-up's design step (nothing is saved).
+Route::domain((string) config('core.hq_host'))->middleware(['web', 'throttle:60,1'])->get('start/designs/{design}', DesignPreviewController::class)
+    ->where('design', '[a-z]{2,20}')->name('signup.design');

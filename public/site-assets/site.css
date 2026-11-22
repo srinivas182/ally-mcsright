@@ -1650,6 +1650,9 @@ h3 {
     color: var(--on-brand);
     border-color: var(--brand);
 }
+.compare-tray[hidden] {
+    display: none;
+}
 .compare-tray {
     position: fixed;
     left: 50%;
