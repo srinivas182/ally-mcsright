@@ -4,11 +4,17 @@ declare(strict_types=1);
 
 namespace Modules\Billing\Signup;
 
+use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\URL;
+use Modules\Core\Identity\Enums\UserKind;
+use Modules\Core\Identity\Enums\UserStatus;
 use Modules\Core\Support\Connections;
+use Modules\Core\Tenancy\Enums\TenantType;
+use Modules\Core\Tenancy\Models\Tenant;
+use Modules\Core\Tenancy\TenantContext;
 use stdClass;
 
 /**
@@ -27,8 +33,8 @@ final class SignupReminders
         $now ??= CarbonImmutable::now();
 
         return array_values(DB::connection(Connections::control())->table('signups')
-            ->where('status', 'pending')->where('no_reminders', false)->where('created_at', '>=', $now->subDays(7))
-            ->where(fn ($q) => $q->where(fn ($q) => $q->where('reminders_sent', 0)->where('created_at', '<=', $now->subHour()))
+            ->whereIn('status', ['draft', 'pending'])->where('no_reminders', false)->where('updated_at', '>=', $now->subDays(7))
+            ->where(fn ($q) => $q->where(fn ($q) => $q->where('reminders_sent', 0)->where('updated_at', '<=', $now->subHour()))
                 ->orWhere(fn ($q) => $q->where('reminders_sent', 1)->where('created_at', '<=', $now->subDay())->where('reminded_at', '<=', $now->subHours(12))))
             ->orderBy('id')->limit(200)->get()
             ->reject(fn (stdClass $s): bool => $this->finished((string) $s->owner_email))->values()->all());
@@ -37,14 +43,18 @@ final class SignupReminders
     /** Sends the reminder for one signup (from the schedule, or HQ's "Send reminder"). False if there is nothing to remind. */
     public function send(stdClass $signup, bool $byHq = false): bool
     {
-        if ($signup->status !== 'pending' || (! $byHq && (bool) $signup->no_reminders) || $this->finished((string) $signup->owner_email)) {
+        if (! in_array($signup->status, ['draft', 'pending'], true) || (! $byHq && (bool) $signup->no_reminders) || $this->finished((string) $signup->owner_email)) {
             return false;
         }
         Notification::route('mail', (string) $signup->owner_email)->notify(new SignupReminderMail(
             (string) $signup->owner_name, (string) $signup->brokerage, self::resumeUrl($signup), self::stopUrl($signup), (int) $signup->reminders_sent + 1,
         ));
+        // Not updated_at: that is when they last filled in a step, which decides when reminders go.
         DB::connection(Connections::control())->table('signups')->where('id', $signup->id)
-            ->update(['reminders_sent' => (int) $signup->reminders_sent + 1, 'reminded_at' => now(), 'updated_at' => now()]);
+            ->update(['reminders_sent' => (int) $signup->reminders_sent + 1, 'reminded_at' => now()]);
+        if (! $byHq && (int) $signup->reminders_sent === 1) {
+            $this->tellHq($signup); // SU2: still stuck a day later: HQ may want to call
+        }
 
         return true;
     }
@@ -58,6 +68,18 @@ final class SignupReminders
     public static function stopUrl(stdClass $signup): string
     {
         return URL::temporarySignedRoute('signup.reminders.stop', now()->addDays(60), ['signup' => (string) $signup->ulid]);
+    }
+
+    /** SU2: an email to HQ staff about someone stuck for a day, with where they stopped. */
+    private function tellHq(stdClass $signup): void
+    {
+        $hq = Tenant::query()->where('type', TenantType::Hq)->first();
+        if ($hq === null) {
+            return;
+        }
+        $staff = app(TenantContext::class)->runAs($hq, fn () => User::query()->where('kind', UserKind::HqStaff)->where('status', UserStatus::Active)->get());
+        Notification::send($staff, new SignupStuckMail((string) $signup->brokerage, (string) $signup->owner_name, (string) $signup->owner_email,
+            $signup->status === 'pending' ? 'At the payment page' : 'Step '.(int) $signup->step.': '.(Signups::STEPS[(int) $signup->step] ?? '')));
     }
 
     /** They already have a RightAlly from another signup with the same email. */

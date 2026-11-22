@@ -21,7 +21,10 @@ type Signup = {
     interval: string;
     price_cents: number;
     boards: number;
-    status: 'pending' | 'live' | 'failed' | 'replaced';
+    status: 'unfinished' | 'live' | 'failed' | 'replaced';
+    stopped: string | null;
+    design: string | null;
+    last_at: string;
     error: string | null;
     started_at: string;
     reminders: number;
@@ -42,7 +45,7 @@ const tone: Record<
     Signup['status'],
     'default' | 'secondary' | 'outline' | 'destructive'
 > = {
-    pending: 'outline',
+    unfinished: 'outline',
     live: 'default',
     failed: 'destructive',
     replaced: 'secondary',
@@ -120,7 +123,7 @@ export default function HqSignups({
 
                 {signups.length === 0 ? (
                     <p className="rounded-xl border bg-card p-6 text-center text-muted-foreground">
-                        {status === 'pending'
+                        {status === 'unfinished'
                             ? 'Nobody is part-way through signing up.'
                             : 'No sign-ups match.'}
                     </p>
@@ -131,7 +134,7 @@ export default function HqSignups({
                                 <tr>
                                     <th className="p-3">Who</th>
                                     <th className="p-3">Chose</th>
-                                    <th className="p-3">Started</th>
+                                    <th className="p-3">Last step</th>
                                     <th className="p-3">Status</th>
                                     <th className="p-3" />
                                 </tr>
@@ -162,21 +165,30 @@ export default function HqSignups({
                                                 {s.package ?? 'Unknown package'}
                                             </p>
                                             <p className="text-muted-foreground">
-                                                {usd(s.price_cents)} a{' '}
-                                                {s.interval}
+                                                {s.package
+                                                    ? `${usd(s.price_cents)} a ${s.interval}`
+                                                    : 'Package not chosen yet'}
+                                                {s.design
+                                                    ? ` · ${s.design} design`
+                                                    : ''}
                                                 {s.boards > 0
                                                     ? ` · ${s.boards} MLS board${s.boards > 1 ? 's' : ''}`
                                                     : ''}
                                             </p>
                                         </td>
                                         <td className="p-3 whitespace-nowrap">
-                                            {when(s.started_at)}
+                                            {when(s.last_at)}
                                         </td>
                                         <td className="p-3">
                                             <Badge variant={tone[s.status]}>
                                                 {statuses[s.status] ?? s.status}
                                             </Badge>
-                                            {s.status === 'pending' && (
+                                            {s.stopped && (
+                                                <p className="mt-1 text-xs font-medium">
+                                                    {s.stopped}
+                                                </p>
+                                            )}
+                                            {s.status === 'unfinished' && (
                                                 <p className="mt-1 text-xs text-muted-foreground">
                                                     {s.no_reminders
                                                         ? 'Asked for no reminders'
@@ -192,7 +204,7 @@ export default function HqSignups({
                                             )}
                                         </td>
                                         <td className="p-3">
-                                            {s.status === 'pending' && (
+                                            {s.status === 'unfinished' && (
                                                 <div className="grid justify-items-end gap-2">
                                                     <Button
                                                         size="sm"

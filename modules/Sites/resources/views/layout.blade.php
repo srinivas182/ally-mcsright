@@ -80,7 +80,19 @@
         </div>
         <div class="footer-legal">
             <p class="eho"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2 1 11h3v11h16V11h3L12 2zm-5 12h10v2H7v-2zm0 4h10v2H7v-2z"/></svg> Equal Housing Opportunity</p>
-            @foreach ($chrome['disclaimers'] as $d)<p class="disclaimer">{{ $d }}</p>@endforeach
+            {{-- SU2: the MLS disclosure, set by RightAlly from each live board's display rules; not editable by the brokerage. --}}
+            @php($mlsText = array_column($chrome['mls']['boards'] ?? [], 'disclaimer'))
+            <section class="mls-disclosure" aria-label="MLS information">
+                @forelse ($chrome['mls']['boards'] ?? [] as $b)
+                    <div class="mls-board">
+                        @if ($b['logo'])<img src="{{ $b['logo'] }}" alt="{{ $b['name'] }}" loading="lazy" height="28">@endif
+                        <p class="disclaimer">{{ $b['disclaimer'] }}</p>
+                    </div>
+                @empty
+                    <p class="disclaimer">Homes shown on this website are samples while our MLS listings are being connected. They are not for sale.</p>
+                @endforelse
+            </section>
+            @foreach ($chrome['disclaimers'] as $d)@if (! in_array($d, $mlsText, true))<p class="disclaimer">{{ $d }}</p>@endif @endforeach
             <p class="privacy">We keep a note of the homes you view here so our agents can help you better. No third-party trackers; your browser's Global Privacy Control is honored. <a href="/privacy">Privacy policy</a> · <a href="/accessibility">Accessibility</a></p>
             <p>&copy; {{ $chrome['year'] }} {{ $site->displayName() }}</p>
             @if ($chrome['powered'])<p class="powered"><a href="{{ $chrome['powered']['url'] }}" rel="noopener" target="_blank">{{ $chrome['powered']['text'] }}</a></p>@endif
