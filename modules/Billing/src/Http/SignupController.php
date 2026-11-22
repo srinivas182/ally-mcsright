@@ -88,9 +88,12 @@ final class SignupController
         try {
             $coverage = app(Coverage::class);
             $open = $coverage->enabledStates();
-            $names = collect($coverage->states())->pluck('name', 'code')->only($open)->all();
+            $boards = $coverage->offered($open);
+            // SU3: a state only shows when at least one board there can be chosen; without a board there is no IDX.
+            $withBoards = array_values(array_unique(array_merge(...array_map(fn (array $b): array => (array) ($b['states'] ?? [$b['state']]), $boards ?: [[]]))));
+            $names = collect($coverage->states())->pluck('name', 'code')->only($withBoards)->sort()->all();
 
-            return ['idxStates' => $names, 'idxBoards' => $coverage->offered($open)];
+            return ['idxStates' => $names, 'idxBoards' => $boards];
         } catch (\Throwable) {
             return ['idxStates' => [], 'idxBoards' => []]; // before the IDX tables exist
         }

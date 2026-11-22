@@ -10,7 +10,7 @@
     $designs = collect($designs)->sortBy(fn ($d) => in_array($d['key'], $luxury, true) ? array_search($d['key'], $luxury, true) : 10)->values();
     $picked = old('template', $template ?? 'modern');
     $previewName = $solo ? ($prefill['business'] ?? '') ?: ($prefill['name'] ?? '') : ($prefill['brokerage'] ?? '');
-    $previewArea = (string) ($signupStates[$prefill['state'] ?? ''] ?? '');
+    $previewArea = ($marketArea ?? '') !== '' ? $marketArea : (string) ($signupStates[$prefill['state'] ?? ''] ?? '');
     // The designs' own heading fonts, so each card looks like the website it makes.
     $fontCss = collect($designs)->pluck('css')->flatMap(fn ($c) => explode('&', (string) $c))->filter(fn ($f) => str_starts_with($f, 'family='))->unique()->implode('&');
     $dark = fn (string $hex): bool => strlen(ltrim($hex, '#')) === 6 && (hexdec(substr(ltrim($hex, '#'), 0, 2)) * 299 + hexdec(substr(ltrim($hex, '#'), 2, 2)) * 587 + hexdec(substr(ltrim($hex, '#'), 4, 2)) * 114) / 1000 < 128;

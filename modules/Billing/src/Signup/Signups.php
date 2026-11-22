@@ -192,7 +192,7 @@ final class Signups
             try {
                 $this->tenants->runAs($tenant, fn () => app(SiteSetup::class)->launch((string) ($signup->template ?? 'modern'),
                     ['name' => (string) $signup->brokerage, 'email' => (string) $signup->owner_email,
-                        'area' => (string) ($db->table('idx_states')->where('code', (string) ($signup->state ?? ''))->value('name') ?? '')]));
+                        'area' => self::marketArea((string) ($signup->idx_boards ?? '[]'), $signup->state)]));
             } catch (Throwable $e) {
                 report($e); // the owner can still create it from Settings › Website
             }
@@ -284,5 +284,29 @@ final class Signups
     public static function suggest(string $name): string
     {
         return mb_substr(trim((string) preg_replace('/-+/', '-', (string) preg_replace('/[^a-z0-9]+/', '-', mb_strtolower($name))), '-'), 0, 40);
+    }
+
+    /**
+     * SU3: the area a new website talks about ("Find your place in Greater Houston"): where the first MLS board they
+     * chose covers (its region, or its state), or the office state when they chose no board.
+     */
+    public static function marketArea(string $boardsJson, ?string $officeState): string
+    {
+        $db = DB::connection(Connections::control());
+        $ids = array_values(array_filter((array) json_decode($boardsJson, true), 'is_string'));
+        try {
+            if ($ids !== []) {
+                $board = $db->table('idx_boards')->where('ulid', $ids[0])->first(['region', 'state']);
+                if ($board !== null) {
+                    $region = trim((string) ($board->region ?? ''));
+
+                    return $region !== '' ? $region : (string) ($db->table('idx_states')->where('code', (string) $board->state)->value('name') ?? '');
+                }
+            }
+
+            return (string) ($db->table('idx_states')->where('code', (string) ($officeState ?? ''))->value('name') ?? '');
+        } catch (Throwable) {
+            return '';
+        }
     }
 }

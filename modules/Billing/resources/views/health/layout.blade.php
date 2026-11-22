@@ -35,7 +35,7 @@
         .lead{color:var(--muted);font-size:20px;max-width:62ch}.muted{color:var(--muted)}.small{font-size:15px}
         .hero{padding:44px 0 28px;background:linear-gradient(180deg,var(--brand-2),transparent)}
         .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px}
-        fieldset{border:1px solid var(--line);border-radius:var(--radius);background:var(--card);padding:18px 20px 20px;margin:0 0 18px}legend{font-weight:800;font-size:20px;padding:0 6px}
+        fieldset{border:1px solid var(--line);border-radius:var(--radius);background:var(--card);padding:22px 24px 24px;margin:0 0 18px;min-width:0}legend{float:left;width:100%;font-weight:800;font-size:21px;line-height:1.3;padding:0 0 14px;margin:0 0 16px;border-bottom:1px solid var(--line)}legend+*{clear:both}h3.sub{font-size:17px;margin:18px 0 8px}.board-group{border-left:3px solid var(--brand,#1d4ed8);padding:2px 0 2px 14px;margin:0 0 12px}.board-group-title{margin:4px 0 6px}.board-group[hidden],[data-idx-none][hidden]{display:none}
         label{display:grid;align-content:start;gap:4px;font-weight:600;margin:10px 0}
         input[type=text],input[type=email],input[type=number],input[type=url],select{min-height:52px;border:1px solid var(--line);border-radius:12px;padding:0 14px;font:inherit;background:var(--bg);color:var(--ink);width:100%}
         input[type=color]{width:72px;height:52px;border:1px solid var(--line);border-radius:12px;background:var(--bg)}

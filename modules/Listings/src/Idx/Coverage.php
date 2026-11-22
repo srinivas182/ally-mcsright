@@ -119,7 +119,7 @@ final class Coverage
      * Boards a broker or agent can choose: public, in an open state, with a fee. Never shows connector names.
      *
      * @param  list<string>  $states
-     * @return list<array{ulid: string, code: string, name: string, state: string, region: string|null, fee_cents: int, setup_fee_cents: int, approval: string}>
+     * @return list<array{ulid: string, code: string, name: string, state: string, region: string|null, fee_cents: int, setup_fee_cents: int, approval: string, states: list<string>}>
      */
     public function offered(array $states): array
     {
@@ -131,6 +131,7 @@ final class Coverage
                 continue;
             }
             $out[] = ['ulid' => $b['ulid'], 'code' => $b['code'], 'name' => $b['name'], 'state' => $b['state'], 'region' => $b['region'], 'fee_cents' => $b['fee_cents'],
+                'states' => array_values(array_intersect($covers, $open)), // SU3: every open state this board serves
                 'setup_fee_cents' => $b['setup_fee_cents'], 'approval' => $b['approval_days_min'].'–'.$b['approval_days_max'].' business days'];
         }
 
