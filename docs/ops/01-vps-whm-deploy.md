@@ -173,6 +173,10 @@ It backs up, builds while the running release keeps serving, runs the database u
 the bad release changed the database, restore the backup the deploy took just before it:
 `scripts/ops/restore.sh /var/backups/rightally/db-….sql.gz /var/backups/rightally/files-….tar.gz`.
 
+**Restarting without new code** (after changing `.env`, say): `scripts/ops/restart.sh`. It restarts the app, web,
+queue and scheduler on the release that is live now. Do not run `docker compose up` by hand without `APP_RELEASE`
+set: parts would start on an older build and the site shows a 502.
+
 ## 7 · How much of the server it uses
 
 Set in `.env`; the defaults leave room for other sites on an 8 GB / 4-core VPS:

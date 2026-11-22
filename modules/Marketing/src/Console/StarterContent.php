@@ -174,6 +174,51 @@ final class StarterContent extends Command
                 ]],
                 $startEn,
             ], true],
-        ], LegalDefaults::starterPages());
+        ], self::spanishPages($startEs), LegalDefaults::starterPages());
+    }
+
+    /**
+     * SITE3: the Spanish twins of the brokerage, agent and security pages. They use the same addresses as the English
+     * pages (/es/for-brokers and /for-brokers), like pricing does, so each pair is linked for search engines (hreflang)
+     * and the language selector lands on the same page in the other language.
+     *
+     * @param  array<string, mixed>  $startEs
+     * @return list<array{0: string, 1: string, 2: string, 3: string, 4: list<array<string, mixed>>, 5: bool}>
+     */
+    private static function spanishPages(array $startEs): array
+    {
+        return [
+            ['es', 'for-brokers', 'RightAlly para corredurías: un sistema, una factura', 'Para dueños de corredurías: agentes, operaciones, cumplimiento, comisiones, contabilidad y su sitio web en un solo sistema.', [
+                ['type' => 'hero', 'heading' => 'Un sistema para toda su correduría', 'text' => 'Agentes, operaciones y cumplimiento, comisiones y pagos, contabilidad, reclutamiento y su sitio web, en una sola factura. Nosotros hacemos la mudanza.',
+                    'cta_label' => 'Elegir un paquete', 'cta_href' => '/es/pricing', 'second_label' => 'Chequeo gratuito', 'second_href' => '/health-check'],
+                ['type' => 'answer', 'question' => '¿Por qué las corredurías eligen RightAlly?', 'answer' => 'Porque reemplaza muchas herramientas separadas con un solo sistema, un solo inicio de sesión y una sola factura; es fácil para agentes de todas las edades; los datos de los clientes se mantienen seguros y separados; y RightAlly traslada a su gente, sus agentes y sus operaciones por usted.'],
+                ['type' => 'modules', 'heading' => 'Lo que recibe su correduría', 'audience' => 'brokerage'],
+                ['type' => 'savings', 'heading' => '¿Cuánto paga hoy?', 'text' => 'Sume lo que su correduría paga hoy por herramientas separadas.', 'audience' => 'brokerage'],
+                ['type' => 'pricing', 'heading' => 'Paquetes para corredurías', 'note' => 'Precios en dólares estadounidenses, mensuales o anuales. ¿Necesita más mensajes de texto o un módulo adicional? Agréguelo por separado.', 'audience' => 'brokerage'],
+                $startEs,
+            ], true],
+            ['es', 'for-agents', 'RightAlly para agentes: su negocio en su teléfono', 'Para agentes: contactos, seguimiento, operaciones y comisiones en su teléfono, con IA que redacta y le recuerda.', [
+                ['type' => 'hero', 'heading' => 'Su negocio, en su teléfono', 'text' => 'Vea a quién llamar hoy, haga seguimiento con un toque, siga sus operaciones y sepa cuánto le van a pagar.', 'cta_label' => 'Empezar', 'cta_href' => '/start',
+                    'second_label' => '', 'second_href' => ''],
+                ['type' => 'modules', 'heading' => 'Lo que recibe', 'audience' => 'agent'],
+                ['type' => 'savings', 'heading' => '¿Cuánto paga hoy?', 'text' => 'Sume las herramientas que hoy paga usted mismo.', 'audience' => 'agent'],
+                ['type' => 'pricing', 'heading' => 'Planes para agentes', 'note' => 'Precios en dólares estadounidenses, mensuales o anuales.', 'audience' => 'agent'],
+                ['type' => 'answer', 'question' => '¿Un agente independiente puede usar RightAlly?', 'answer' => 'Sí. Los agentes independientes pueden registrarse en su propio plan, usar el CRM, el seguimiento, el sitio web y las herramientas de operaciones en su teléfono, y conservar sus contactos si cambian de correduría. Las corredurías también pueden dar acceso a todos sus agentes como parte de su paquete.'],
+                $startEs,
+            ], true],
+            ['es', 'security', 'Seguridad y privacidad en RightAlly', 'Cómo RightAlly protege sus datos: bases de datos separadas, cifrado, inicio de sesión en dos pasos, registros de auditoría y consentimiento.', [
+                ['type' => 'hero', 'heading' => 'Sus datos son suyos', 'text' => 'Los datos de cada correduría se mantienen separados, cifrados y nunca se venden.', 'cta_label' => '', 'cta_href' => '', 'second_label' => '', 'second_href' => ''],
+                ['type' => 'features', 'heading' => 'Cómo los protegemos', 'items' => [
+                    ['title' => 'Inicio de sesión seguro', 'text' => 'Inicio de sesión con huella o rostro (llaves de acceso) y un segundo paso para todos.'],
+                    ['title' => 'Registro de auditoría', 'text' => 'Se registra quién hizo qué y cuándo, y se puede exportar.'],
+                    ['title' => 'Soporte pide permiso', 'text' => 'Las corredurías pueden exigir que el soporte de RightAlly pida permiso antes de ver su cuenta, y ver cada visita.'],
+                    ['title' => 'Consentimiento para textos', 'text' => 'Solo se envían textos a quienes aceptaron, entre las 8 a. m. y las 9 p. m. de su hora local.'],
+                ]],
+                ['type' => 'faq', 'heading' => '', 'items' => [
+                    ['q' => '¿Puedo exportar todos mis datos?', 'a' => 'Sí. El dueño puede descargar en cualquier momento todo lo que la correduría tiene en RightAlly.'],
+                ]],
+                $startEs,
+            ], true],
+        ];
     }
 }
