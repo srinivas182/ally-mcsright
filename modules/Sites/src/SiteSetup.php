@@ -14,6 +14,7 @@ use Modules\Core\Tenancy\Enums\SslStatus;
 use Modules\Core\Tenancy\Enums\VerificationStatus;
 use Modules\Core\Tenancy\Models\TenantDomain;
 use Modules\Core\Tenancy\TenantContext;
+use Modules\Sites\Content\StarterSite;
 use Modules\Sites\Models\Site;
 use Modules\Sites\Models\SitePage;
 use Modules\Sites\Models\SitePost;
@@ -81,20 +82,47 @@ final class SiteSetup
         $site = Site::query()->create(['kind' => 'brokerage', 'template' => $template, 'info' => $info, 'status' => $status,
             'brand' => (array) config("sites.templates.{$template}.brand", ['primary' => '#1d4ed8', 'accent' => '#0f172a']),
             'seo' => ['title_suffix' => $info['name'], 'description' => (string) ($info['tagline'] ?? '')]]);
-        $position = 0;
-        foreach (Sections::starterPages($info) as $path => $sections) {
-            SitePage::query()->create(['site_id' => $site->id, 'path' => $path, 'title' => match ($path) {
-                '/' => 'Home', '/about' => 'About', default => 'Contact'
-            },
-                'meta_description' => $path === '/' ? mb_substr((string) ($info['tagline'] ?? "Homes for sale with {$info['name']}."), 0, 300) : null,
-                'sections' => $sections, 'position' => $position++, 'status' => 'published', 'published_at' => CarbonImmutable::now(), 'updated_by' => $by?->id]);
-        }
+        $this->addStarterPages($site, $by);
         $host = Str::slug($tenant->slug).'.'.config('sites.platform_domain');
         TenantDomain::query()->firstOrCreate(['host' => $host], ['tenant_id' => $tenant->id, 'kind' => DomainKind::Platform, 'is_primary' => false,
             'verification_status' => VerificationStatus::Verified, 'ssl_status' => SslStatus::Active, 'verified_at' => now(), 'purpose' => 'website']);
         app(AuditLogger::class)->record('sites.created', $site, metadata: ['template' => $template, 'from' => $by === null ? 'signup' : 'settings'], severity: 'notice');
 
         return $site;
+    }
+
+    /**
+     * TP2: adds the starter pages a website doesn't have yet (Home, Buy, Sell, Communities, About, Contact) and, when
+     * it has no blog posts, the three starter posts. Pages the brokerage already has are never touched.
+     *
+     * @return list<string> the paths added
+     */
+    public function addStarterPages(Site $site, ?User $by = null): array
+    {
+        $info = (array) $site->info;
+        $have = SitePage::query()->where('site_id', $site->id)->pluck('path')->all();
+        $position = (int) SitePage::query()->where('site_id', $site->id)->max('position');
+        $added = [];
+        foreach (StarterSite::pages($info) as $i => $page) {
+            if (in_array($page['path'], $have, true)) {
+                continue;
+            }
+            SitePage::query()->create(['site_id' => $site->id, 'path' => $page['path'], 'title' => $page['title'], 'in_menu' => $page['in_menu'],
+                'meta_description' => $page['meta'], 'sections' => $page['sections'], 'position' => $have === [] ? $i : ++$position, 'status' => 'published',
+                'published_at' => CarbonImmutable::now(), 'updated_by' => $by?->id]);
+            $added[] = $page['path'];
+        }
+        if (! SitePost::query()->where('site_id', $site->id)->exists()) {
+            foreach (StarterSite::posts($info) as $n => $post) {
+                SitePost::query()->create(['site_id' => $site->id, 'slug' => $post['slug'], 'title' => $post['title'], 'excerpt' => $post['excerpt'], 'body' => $post['body'],
+                    'category' => $post['category'], 'cover_media' => $post['cover'], 'status' => 'published', 'published_at' => CarbonImmutable::now()->subDays(3 * $n + 1)]);
+            }
+        }
+        if ($added !== [] && $by !== null) {
+            app(AuditLogger::class)->record('sites.starter_pages_added', $site, metadata: ['paths' => $added], severity: 'notice');
+        }
+
+        return $added;
     }
 
     /**

@@ -1,10 +1,16 @@
-import { useRef, useState } from 'react';
+import { Fragment, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { postForm } from '@/lib/http';
 
-export type MediaItem = { ulid: string; url: string; alt: string };
+export type MediaItem = {
+    ulid: string;
+    url: string;
+    alt: string;
+    /** TP2: a licensed demo photo from the design, to be replaced with your own. */
+    demo?: boolean;
+};
 
 /**
  * Pick an image from the media library, upload a new one (alt text required), or paste an https link.
@@ -70,11 +76,18 @@ export function MediaPicker({
             <span className="text-xs font-medium">{label}</span>
             <div className="flex flex-wrap items-center gap-2">
                 {current ? (
-                    <img
-                        src={current}
-                        alt=""
-                        className="h-14 w-20 rounded object-cover"
-                    />
+                    <span className="relative">
+                        <img
+                            src={current}
+                            alt=""
+                            className="h-14 w-20 rounded object-cover"
+                        />
+                        {value?.startsWith('demo:') && (
+                            <span className="absolute -top-2 -left-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900 shadow-sm">
+                                Demo
+                            </span>
+                        )}
+                    </span>
                 ) : (
                     <span className="text-xs text-muted-foreground">
                         No image
@@ -99,26 +112,39 @@ export function MediaPicker({
                     </Button>
                 )}
             </div>
+            {value?.startsWith('demo:') && (
+                <p className="text-xs text-muted-foreground">
+                    A demo photo from your design. Replace it with one of your
+                    own when you can.
+                </p>
+            )}
             {open && (
                 <div className="grid gap-2 rounded-md border p-2">
                     <div className="grid max-h-48 grid-cols-4 gap-1 overflow-y-auto sm:grid-cols-6">
-                        {media.map((m) => (
-                            <button
-                                key={m.ulid}
-                                type="button"
-                                title={m.alt}
-                                onClick={() => {
-                                    onChange(m.ulid);
-                                    setOpen(false);
-                                }}
-                                className={`overflow-hidden rounded border-2 ${value === m.ulid ? 'border-primary' : 'border-transparent'}`}
-                            >
-                                <img
-                                    src={m.url}
-                                    alt={m.alt}
-                                    className="aspect-[4/3] w-full object-cover"
-                                />
-                            </button>
+                        {media.map((m, i) => (
+                            <Fragment key={m.ulid}>
+                                {m.demo && !media[i - 1]?.demo && (
+                                    <p className="col-span-full pt-1 text-xs font-medium text-muted-foreground">
+                                        Demo photos (free to use)
+                                    </p>
+                                )}
+                                <button
+                                    type="button"
+                                    title={m.alt}
+                                    onClick={() => {
+                                        onChange(m.ulid);
+                                        setOpen(false);
+                                    }}
+                                    className={`overflow-hidden rounded border-2 ${value === m.ulid ? 'border-primary' : 'border-transparent'}`}
+                                >
+                                    <img
+                                        src={m.url}
+                                        alt={m.alt}
+                                        loading="lazy"
+                                        className="aspect-[4/3] w-full object-cover"
+                                    />
+                                </button>
+                            </Fragment>
                         ))}
                     </div>
                     <div className="flex flex-wrap items-center gap-2">

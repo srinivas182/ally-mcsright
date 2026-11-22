@@ -3,6 +3,7 @@ import {
     AlignLeft,
     ArrowLeft,
     BarChart3,
+    Columns2,
     ChevronDown,
     ChevronUp,
     Copy,
@@ -10,6 +11,7 @@ import {
     EyeOff,
     GripVertical,
     HelpCircle,
+    Image as ImageIcon,
     Home,
     Images,
     LayoutTemplate,
@@ -191,6 +193,33 @@ const SCHEMA: Record<string, Field[]> = {
     contact: [
         { key: 'title', label: 'Heading', kind: 'text' },
         { key: 'body', label: 'Text', kind: 'textarea' },
+    ],
+    banner: [
+        { key: 'image', label: 'Photo', kind: 'image' },
+        { key: 'title', label: 'Heading', kind: 'text' },
+        { key: 'body', label: 'Text', kind: 'textarea' },
+        { key: 'button', label: 'Button', kind: 'text' },
+        { key: 'link', label: 'Button link (/page or https)', kind: 'text' },
+    ],
+    split: [
+        { key: 'image', label: 'Photo', kind: 'image' },
+        {
+            key: 'side',
+            label: 'Photo on the',
+            kind: 'select',
+            options: [
+                ['left', 'Left'],
+                ['right', 'Right'],
+            ],
+        },
+        { key: 'title', label: 'Heading', kind: 'text' },
+        {
+            key: 'body',
+            label: 'Text (a blank line starts a new paragraph)',
+            kind: 'textarea',
+        },
+        { key: 'button', label: 'Button (leave empty for none)', kind: 'text' },
+        { key: 'link', label: 'Button link (/page or https)', kind: 'text' },
     ],
     testimonials: [
         { key: 'title', label: 'Heading', kind: 'text' },
@@ -1070,6 +1099,8 @@ const SECTION_HINTS: Record<string, string> = {
     gallery: 'A grid of photos.',
     video: 'A YouTube or Vimeo video with a caption.',
     neighbourhoods: 'Areas you serve, with live market figures.',
+    banner: 'A full-width photo with a line over it and a button.',
+    split: 'A photo beside a heading, text and a button.',
 };
 
 const SECTION_ICONS: Record<string, LucideIcon> = {
@@ -1086,6 +1117,8 @@ const SECTION_ICONS: Record<string, LucideIcon> = {
     gallery: Images,
     video: Video,
     neighbourhoods: MapPin,
+    banner: ImageIcon,
+    split: Columns2,
 };
 
 /** The small menu on each section: move, hide, copy, delete. */

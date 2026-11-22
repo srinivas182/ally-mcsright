@@ -53,6 +53,8 @@ say "6. Starting the new release"
 "${COMPOSE[@]}" exec -T app php artisan queue:restart >/dev/null
 # TP1: sample homes for websites without a live MLS board (photos download in the background; safe to re-run).
 "${COMPOSE[@]}" exec -T app php artisan listings:sample-homes || echo "  Sample homes could not be refreshed; websites keep the ones they have."
+# TP2: the website designs' demo photos (downloaded once; safe to re-run).
+"${COMPOSE[@]}" exec -T app php artisan sites:demo-photos || echo "  Demo photos could not all be fetched; they show from Pexels until the next deploy."
 
 say "7. Checking it answers"
 ok=0
