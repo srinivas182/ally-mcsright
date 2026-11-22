@@ -116,7 +116,11 @@ final class SampleHomes
         return ['sources' => $sources, 'homes' => $homes, 'photos' => $queued];
     }
 
-    /** The sample sources, one per state. */
+    /**
+     * The sample sources, one per state (or the one for a state).
+     *
+     * @return list<int>
+     */
     public static function sourceIds(?string $state = null): array
     {
         $q = MlsSource::query()->where('key', 'like', self::SOURCE_PREFIX.'%')->where('is_demo', true)->where('status', 'active');
@@ -224,7 +228,7 @@ final class SampleHomes
                     ['kitchen', $next('kitchen'), 'Kitchen'],
                     ['bedroom', $next('bedroom'), 'Primary bedroom'],
                     ['bathroom', $next('bathroom'), 'Primary bathroom'],
-                    $pool && $kind !== 'condo' ? ['backyard', $next('backyard'), 'Backyard and pool'] : ['dining_room', $next('dining'), 'Dining room'],
+                    $pool ? ['backyard', $next('backyard'), 'Backyard and pool'] : ['dining_room', $next('dining'), 'Dining room'],
                 ];
                 $media = [];
                 foreach ($rooms as $p => [$room, $photo, $caption]) {
