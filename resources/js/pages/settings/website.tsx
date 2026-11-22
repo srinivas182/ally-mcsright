@@ -36,6 +36,7 @@ type Props = {
     site: Site | null;
     hosts: { host: string; kind: string; verified: boolean }[];
     live_host: string | null;
+    starter_missing: string[];
     cname_target: string;
     templates: DesignCard[];
     powered_by: { text: string; url: string } | null;
@@ -193,6 +194,7 @@ function Manage({
     site,
     hosts,
     live_host,
+    starter_missing,
     cname_target,
     templates,
     powered_by,
@@ -237,6 +239,35 @@ function Manage({
 
     return (
         <>
+            {starter_missing.length > 0 && (
+                <section className="flex flex-wrap items-center gap-3 rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm">
+                    <div className="grid gap-1">
+                        <p className="font-medium">
+                            Your website is missing some standard pages
+                        </p>
+                        <p className="text-muted-foreground">
+                            Add {starter_missing.join(', ')} with ready-made
+                            sections and photos
+                            {starter_missing.length > 2
+                                ? ', plus three starter blog posts if you have none'
+                                : ''}
+                            . Your existing pages stay as they are.
+                        </p>
+                    </div>
+                    <Button
+                        className="ml-auto"
+                        onClick={() =>
+                            router.post(
+                                '/settings/website/starter-pages',
+                                {},
+                                opts,
+                            )
+                        }
+                    >
+                        Add the standard pages
+                    </Button>
+                </section>
+            )}
             <section className="flex flex-wrap items-center gap-3 rounded-lg border p-4 text-sm">
                 <Badge
                     variant={site.status === 'live' ? 'default' : 'secondary'}

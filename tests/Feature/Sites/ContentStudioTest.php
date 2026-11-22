@@ -33,6 +33,7 @@ beforeEach(function (): void {
     $this->web = 'http://acme.rightally.site';
     $sites = app(SiteSetup::class);
     $this->site = $sites->create('modern', ['name' => 'Acme Realty', 'area' => 'Austin'], $this->owner);
+    SitePost::query()->delete(); // these tests start with an empty blog (TP2 adds three starter posts)
     $sites->publish($this->site, true, $this->owner);
 
     app()->instance(ResoFeed::class, $feed = new FakeResoFeed);
@@ -120,8 +121,9 @@ it('drafts a page as sections and helps edit with rewrite, FAQ, meta and agent b
 
 it('explains when AI writing is not available', function (): void {
     AiFeatureRoute::query()->where('feature_key', ContentStudio::POST)->delete();
+    $before = SitePost::query()->count(); // TP2: a new website starts with three posts
     $this->actingAs($this->owner)->post('/settings/website/ai/post', ['topic' => 'Anything'])->assertSessionHasErrors(['ai' => 'AI writing is not set up for your account yet. Ask RightAlly support to turn it on.']);
-    expect(SitePost::query()->count())->toBe(0);
+    expect(SitePost::query()->count())->toBe($before);
 });
 
 it('drafts monthly market updates for the chosen areas, once per month, and emails owners to review', function (): void {

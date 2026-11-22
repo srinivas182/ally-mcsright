@@ -105,6 +105,9 @@ final class MediaLibrary
         if (str_starts_with($value, 'https://')) {
             return $value;
         }
+        if (str_starts_with($value, DemoPhotos::PREFIX)) {
+            return DemoPhotos::url($value, $size);
+        }
         $media = $this->find($value);
 
         return $media !== null ? self::urlFor($media, $size) : null;
@@ -112,6 +115,10 @@ final class MediaLibrary
 
     public function alt(?string $value, string $fallback = ''): string
     {
+        if ($value !== null && str_starts_with($value, DemoPhotos::PREFIX)) {
+            return $fallback !== '' ? $fallback : DemoPhotos::alt($value);
+        }
+
         return $value !== null && ! str_starts_with($value, 'https://') ? ($this->find($value)->alt ?? $fallback) : $fallback;
     }
 

@@ -51,8 +51,11 @@ final class Chrome
             if (! in_array('/homes', array_column($menu, 'path'), true)) {
                 array_unshift($menu, ['path' => '/homes', 'title' => 'Homes for sale']);
             }
-            $at = array_search('/homes', array_column($menu, 'path'), true);
-            array_splice($menu, (int) $at + 1, 0, [['path' => '/home-value', 'title' => 'Home value']]);
+            // "Home value" sits after "Homes for sale", unless the site has a Sell page in the menu (TP2), which leads to it.
+            if (! in_array('/sell', array_column($menu, 'path'), true)) {
+                $at = array_search('/homes', array_column($menu, 'path'), true);
+                array_splice($menu, (int) $at + 1, 0, [['path' => '/home-value', 'title' => 'Home value']]);
+            }
             if (SitePost::query()->where('site_id', $site->id)->live()->exists()) {
                 $menu[] = ['path' => '/blog', 'title' => 'Blog'];
             }

@@ -219,7 +219,7 @@ it('writes the summary with AI when the brokerage has AI, and falls back to the 
 
 it('gives home owners a price range from comparable homes and sends the agent a seller lead', function (): void {
     $html = (string) $this->get($this->web.'/home-value')->assertOk()->getContent();
-    expect($html)->toContain('What is my home worth?')->toContain('content="index, follow, max-image-preview:large"')->toContain('"@type":"FAQPage"')->toContain('>Home value</a>');
+    expect($html)->toContain('What is my home worth?')->toContain('content="index, follow, max-image-preview:large"')->toContain('"@type":"FAQPage"')->toContain('href="/sell"'); // TP2: the Sell page leads to it
 
     $form = ['address' => '12 Oak Ln', 'zip' => '78704', 'beds' => 3, 'sqft' => 1750, 'name' => 'Sue Seller', 'email' => 'sue@x.test', 'vid' => $this->vid,
         't' => Crypt::encryptString((string) (time() - 30))];

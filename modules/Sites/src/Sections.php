@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Modules\Sites;
 
+use Modules\Sites\Content\DemoPhotos;
+use Modules\Sites\Content\StarterSite;
+
 /**
  * The section types a page is built from (specs/websites/05). Each section is {type, id, props}; props are cleaned
  * here so a page can never carry markup or scripts — text is escaped when rendered and links must be site paths or
@@ -11,12 +14,12 @@ namespace Modules\Sites;
  */
 final class Sections
 {
-    public const TYPES = ['hero', 'listings', 'features', 'text', 'faq', 'cta', 'contact', 'testimonials', 'team', 'stats', 'gallery', 'video', 'neighbourhoods'];
+    public const TYPES = ['hero', 'listings', 'features', 'text', 'faq', 'cta', 'contact', 'testimonials', 'team', 'stats', 'gallery', 'video', 'neighbourhoods', 'banner', 'split'];
 
     /** What the page builder shows for each type. */
     public const LABELS = ['hero' => 'Hero with search', 'listings' => 'Homes for sale', 'features' => 'Features', 'text' => 'Text', 'faq' => 'Questions and answers',
         'cta' => 'Call to action', 'contact' => 'Contact form', 'testimonials' => 'Testimonials', 'team' => 'Team', 'stats' => 'Numbers', 'gallery' => 'Photo gallery',
-        'video' => 'Video', 'neighbourhoods' => 'Neighborhoods'];
+        'video' => 'Video', 'neighbourhoods' => 'Neighborhoods', 'banner' => 'Photo banner', 'split' => 'Photo and text'];
 
     /**
      * Cleans untrusted section data (from the builder, a stored version or AI): unknown types and malformed values
@@ -59,6 +62,11 @@ final class Sections
                 'stats' => ['title' => $t('title', 120), 'items' => array_map(fn (array $it): array => ['value' => $s2($it, 'value', 20), 'label' => $s2($it, 'label', 60)], $items(6))],
                 'gallery' => ['title' => $t('title', 120), 'images' => array_values(array_filter(array_map(fn ($v): ?string => self::image($v), array_slice((array) ($p['images'] ?? []), 0, 24))))],
                 'video' => ['title' => $t('title', 120), 'url' => self::video($p['url'] ?? null), 'caption' => $t('caption', 200)],
+                // TP2: a full-width photo with a line over it, and a photo beside a heading and text.
+                'banner' => ['title' => $t('title', 120), 'body' => $t('body', 300), 'button' => $t('button', 40), 'link' => self::link($p['link'] ?? '/contact'),
+                    'image' => self::image($p['image'] ?? null)],
+                'split' => ['title' => $t('title', 120), 'body' => $t('body', 2000), 'button' => $t('button', 40), 'link' => self::link($p['link'] ?? '/contact'),
+                    'image' => self::image($p['image'] ?? null), 'side' => ($p['side'] ?? 'left') === 'right' ? 'right' : 'left'],
                 'neighbourhoods' => ['title' => $t('title', 120), 'places' => array_values(array_filter(array_map(fn ($v): ?string => is_string($v) && preg_match('/^[a-z0-9-]{2,80}$/', $v) === 1 ? $v : null,
                     array_slice((array) ($p['places'] ?? []), 0, 12))))],
             };
@@ -75,33 +83,13 @@ final class Sections
      */
     public static function starterPages(array $info): array
     {
-        $name = (string) ($info['name'] ?? 'Our brokerage');
-        $area = trim((string) ($info['area'] ?? '')) ?: 'your area';
+        // TP2: the full starter website lives in StarterSite; this keeps the path => sections view.
+        $out = [];
+        foreach (StarterSite::pages($info) as $page) {
+            $out[$page['path']] = $page['sections'];
+        }
 
-        return [
-            '/' => self::clean([
-                ['type' => 'hero', 'id' => 'hero', 'props' => ['headline' => "Find your place in {$area}", 'subhead' => (string) ($info['tagline'] ?? "Every home for sale, updated every few minutes, with local experts from {$name}."), 'search' => true]],
-                ['type' => 'listings', 'id' => 'new', 'props' => ['title' => 'New on the market', 'sort' => 'newest', 'limit' => 6]],
-                ['type' => 'features', 'id' => 'why', 'props' => ['title' => "Why {$name}", 'items' => [
-                    ['title' => 'Local experts', 'body' => "Agents who know {$area} street by street."],
-                    ['title' => 'Always up to date', 'body' => 'Listings refresh from the MLS every few minutes, with price changes the moment they happen.'],
-                    ['title' => 'Answers any time', 'body' => 'Ask our assistant about any home, day or night, and book a call when you are ready.'],
-                ]]],
-                ['type' => 'faq', 'id' => 'faq', 'props' => ['title' => 'Questions buyers and sellers ask', 'items' => [
-                    ['q' => 'How do I book a showing?', 'a' => 'Open any home and send us a message, or call us. An agent confirms a time that suits you, usually within the hour.'],
-                    ['q' => "Which areas does {$name} serve?", 'a' => "We help buyers and sellers across {$area}. Tell us where you are looking and we will match you with an agent who knows it well."],
-                    ['q' => 'What is my home worth?', 'a' => 'Request a free valuation and one of our agents will prepare a price range from recent nearby sales, usually within one business day.'],
-                ]]],
-                ['type' => 'cta', 'id' => 'sell', 'props' => ['title' => 'Thinking of selling?', 'body' => 'Get a free, no-pressure valuation from a local agent.', 'button' => 'Talk to an agent', 'link' => '/contact']],
-            ]),
-            '/about' => self::clean([
-                ['type' => 'text', 'id' => 'about', 'props' => ['title' => "About {$name}", 'body' => (string) ($info['about'] ?? "{$name} helps people buy and sell homes in {$area}.")]],
-                ['type' => 'cta', 'id' => 'talk', 'props' => ['title' => 'Talk to us', 'body' => 'Questions about buying or selling? We are here to help.', 'button' => 'Contact us', 'link' => '/contact']],
-            ]),
-            '/contact' => self::clean([
-                ['type' => 'contact', 'id' => 'contact', 'props' => ['title' => 'Contact us', 'body' => 'Send a message and an agent will get back to you shortly.']],
-            ]),
-        ];
+        return $out;
     }
 
     /**
@@ -123,6 +111,8 @@ final class Sections
             'team' => ['title' => 'Our team', 'items' => [['name' => 'Name', 'role' => 'Agent']]],
             'stats' => ['title' => '', 'items' => [['value' => '25+', 'label' => 'Years in the area']]],
             'gallery' => ['title' => '', 'images' => []],
+            'banner' => ['title' => 'A line that says what you do best', 'body' => '', 'button' => 'Talk to an agent', 'link' => '/contact', 'image' => DemoPhotos::pick('exterior_luxury')],
+            'split' => ['title' => 'A heading', 'body' => 'A few sentences about this.', 'button' => '', 'link' => '/contact', 'image' => DemoPhotos::pick('living'), 'side' => 'left'],
             'video' => ['title' => '', 'url' => null, 'caption' => ''],
             'neighbourhoods' => ['title' => 'Neighborhoods we know', 'places' => []],
             default => [],
@@ -132,7 +122,7 @@ final class Sections
     /** An image: a media-library id (26 characters) or an https link. */
     private static function image(mixed $v): ?string
     {
-        if (is_string($v) && preg_match('/^[0-9A-HJKMNP-TV-Z]{26}$/', $v) === 1) {
+        if (is_string($v) && (preg_match('/^[0-9A-HJKMNP-TV-Z]{26}$/', $v) === 1 || DemoPhotos::isRef($v))) {
             return $v;
         }
 
