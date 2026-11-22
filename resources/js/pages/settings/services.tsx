@@ -214,7 +214,7 @@ export default function Services({ services, level }: Props) {
                         <div
                             role="group"
                             aria-label="Category"
-                            className="flex flex-wrap gap-2"
+                            className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible"
                         >
                             {['all', ...categories].map((c) => {
                                 const count =

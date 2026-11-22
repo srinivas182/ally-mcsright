@@ -101,8 +101,13 @@ export function ChooseView() {
  * simple view it is the big "Talk" button; in full view a round button with the same job.
  */
 export function TalkButton() {
-    const simple = usePage().props.simple;
+    const { simple, tenant } = usePage().props;
     const listen = () => window.dispatchEvent(new Event('assistant:listen'));
+
+    // UI3: HQ staff talk to the assistant from inside it; one floating button is enough there.
+    if (tenant?.isHq) {
+        return null;
+    }
 
     if (simple?.mode !== 'simple') {
         return (

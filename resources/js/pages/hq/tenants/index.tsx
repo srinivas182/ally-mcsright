@@ -40,6 +40,12 @@ type Props = {
 
 const ALL = 'all';
 
+const TYPE_LABEL: Record<string, string> = {
+    brokerage: 'Brokerage',
+    solo: 'Solo agent',
+    hq: 'HQ',
+};
+
 export default function TenantsIndex({ tenants, filters }: Props) {
     const [search, setSearch] = useState(filters.search);
 
@@ -66,7 +72,7 @@ export default function TenantsIndex({ tenants, filters }: Props) {
                         </p>
                     </div>
                     <Button asChild>
-                        <Link href="/hq/tenants/create">New tenant</Link>
+                        <Link href="/hq/tenants/create">Add a brokerage</Link>
                     </Button>
                 </header>
 
@@ -175,7 +181,7 @@ export default function TenantsIndex({ tenants, filters }: Props) {
                                         {tenant.slug}
                                     </td>
                                     <td className="p-3 capitalize">
-                                        {tenant.type}
+                                        {TYPE_LABEL[tenant.type] ?? tenant.type}
                                     </td>
                                     <td className="p-3">
                                         <StatusBadge status={tenant.status} />

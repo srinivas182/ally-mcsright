@@ -30,8 +30,10 @@ type PageHelp = {
  * SX5: "Help" on every page — for this page: a 60-second video (when HQ has added one), the how-to and a printable
  * cheat sheet, "call me back", and practice with made-up clients.
  */
-export function HelpMe() {
+export function HelpMe({ inHeader = false }: { inHeader?: boolean }) {
     const page = usePage();
+    // UI3: the HQ console shows Help as a quiet button in the top bar; brokerages and agents keep the big round one.
+    const hq = Boolean(page.props.tenant?.isHq);
     const [open, setOpen] = useState(false);
     const [help, setHelp] = useState<PageHelp | null>(null);
     const [watching, setWatching] = useState(false);
@@ -59,16 +61,26 @@ export function HelpMe() {
 
     const big = 'h-16 w-full justify-start gap-3 text-lg';
 
+    if (hq !== inHeader) {
+        return null;
+    }
+
     return (
         <>
-            <Button
-                variant="outline"
-                size="lg"
-                className="fixed bottom-40 left-4 z-40 h-14 rounded-full bg-background px-5 text-base shadow-lg md:right-4 md:bottom-[8.75rem] md:left-auto"
-                onClick={show}
-            >
-                <LifeBuoyIcon className="size-6" aria-hidden="true" /> Help
-            </Button>
+            {inHeader ? (
+                <Button variant="ghost" onClick={show}>
+                    <LifeBuoyIcon aria-hidden="true" /> Help
+                </Button>
+            ) : (
+                <Button
+                    variant="outline"
+                    size="lg"
+                    className="fixed bottom-40 left-4 z-40 h-14 rounded-full bg-background px-5 text-base shadow-lg md:right-4 md:bottom-[8.75rem] md:left-auto"
+                    onClick={show}
+                >
+                    <LifeBuoyIcon className="size-6" aria-hidden="true" /> Help
+                </Button>
+            )}
             <Dialog open={open} onOpenChange={setOpen}>
                 <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
                     <DialogHeader>

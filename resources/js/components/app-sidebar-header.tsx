@@ -1,4 +1,5 @@
 import { Breadcrumbs } from '@/components/breadcrumbs';
+import { HelpMe } from '@/components/help-me';
 import { CommandBar } from '@/components/command-bar';
 import { NotificationBell } from '@/components/notification-bell';
 import { TextSizeButton } from '@/components/reading/easier-reading';
@@ -28,6 +29,7 @@ export function AppSidebarHeader({
                 <TextSizeButton />
                 <ViewSwitch />
                 <CommandBar />
+                <HelpMe inHeader />
                 <NotificationBell />
             </div>
         </header>

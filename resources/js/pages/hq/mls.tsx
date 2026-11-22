@@ -733,7 +733,9 @@ function ProfileForm({
 
     return (
         <section className="grid gap-3 text-sm">
-            <h2 className="font-semibold">Display rules</h2>
+            <h2 id="display-rules" className="scroll-mt-20 font-semibold">
+                Display rules
+            </h2>
             <div className="flex flex-wrap gap-2">
                 {profiles.map((p) => (
                     <Button
