@@ -65,7 +65,7 @@ final class ListingsServiceProvider extends ServiceProvider
                         'href' => '/listings/'.$l->ulid])->all());
             });
         if ($this->app->runningInConsole()) {
-            $this->commands([Console\SyncListings::class, Console\ReconcileListings::class, Console\RebuildSearch::class, Console\TagPhotosAndPlaces::class, Console\RemindIdxSignatures::class, Console\IdxComplianceWatch::class, Console\IdxAgreementWatch::class]);
+            $this->commands([Console\SyncListings::class, Console\ReconcileListings::class, Console\RebuildSearch::class, Console\TagPhotosAndPlaces::class, Console\RemindIdxSignatures::class, Console\IdxComplianceWatch::class, Console\IdxAgreementWatch::class, Console\InstallSampleHomes::class]);
         }
 
         // IDX6: a signed MLS agreement is kept and sent on.

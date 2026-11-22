@@ -41,5 +41,6 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <env name="LISTINGS_SAMPLE_HOMES" value="false"/>
     </php>
 </phpunit>
