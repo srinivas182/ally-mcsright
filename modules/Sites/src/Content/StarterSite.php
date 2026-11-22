@@ -20,9 +20,10 @@ final class StarterSite
      * The pages, in menu order.
      *
      * @param  array<string, mixed>  $info  name, area, state, tagline, about
+     * @param  string|null  $template  the design (TP3: each starts with its own banner photo)
      * @return list<array{path: string, title: string, in_menu: bool, meta: string, sections: list<array<string, mixed>>}>
      */
-    public static function pages(array $info): array
+    public static function pages(array $info, ?string $template = null): array
     {
         $name = trim((string) ($info['name'] ?? '')) ?: 'Our brokerage';
         $area = trim((string) ($info['area'] ?? '')) ?: 'your area';
@@ -50,7 +51,7 @@ final class StarterSite
             ['path' => '/', 'title' => 'Home', 'in_menu' => true, 'meta' => mb_substr((string) ($info['tagline'] ?? '') ?: "Homes for sale in {$area}, updated every few minutes, with local agents from {$name}.", 0, 300),
                 'sections' => Sections::clean([
                     ['type' => 'hero', 'id' => 'hero', 'props' => ['headline' => "Find your place in {$area}", 'subhead' => (string) ($info['tagline'] ?? '') ?: "Every home for sale, updated every few minutes, with local experts from {$name}.",
-                        'image' => $p('exterior_luxury', 0), 'search' => true]],
+                        'image' => self::heroPhoto($template), 'search' => true]],
                     ['type' => 'listings', 'id' => 'featured', 'props' => ['title' => 'Featured homes', 'sort' => 'price_desc', 'limit' => 6]],
                     ['type' => 'split', 'id' => 'sell', 'props' => ['title' => 'Selling? Start with what your home is worth', 'side' => 'left',
                         'body' => "Get a free price range from an agent who knows {$area}, based on what nearby homes have sold for. No pressure and no obligation.\n\nWhen you are ready, we price it right, present it beautifully and put it in front of serious buyers.",
@@ -134,6 +135,14 @@ final class StarterSite
                     ['type' => 'faq', 'id' => 'faq', 'props' => ['title' => 'Before you write', 'items' => [$faqBuy[0], $faqSell[0]]]],
                 ])],
         ];
+    }
+
+    /** TP3: the design's own banner photo (sites.templates.*.hero_photo), else a luxury exterior. */
+    public static function heroPhoto(?string $template): string
+    {
+        $pick = $template !== null ? config("sites.templates.{$template}.hero_photo") : null;
+
+        return is_array($pick) && isset($pick[0], $pick[1]) ? DemoPhotos::pick((string) $pick[0], (int) $pick[1]) : DemoPhotos::pick('exterior_luxury', 0);
     }
 
     /**

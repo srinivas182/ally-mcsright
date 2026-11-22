@@ -31,7 +31,7 @@ final class DesignPreviewController
         $response = $tenants->runAs($hq, function () use ($request, $design, $info, $renderer): Response {
             $site = new Site(['kind' => 'brokerage', 'template' => $design, 'info' => $info, 'status' => 'live',
                 'brand' => (array) config("sites.templates.{$design}.brand", []), 'seo' => ['title_suffix' => $info['name']]]);
-            $sections = Sections::starterPages($info)['/'] ?? [];
+            $sections = Sections::starterPages($info, $design)['/'] ?? [];
             $page = new SitePage(['path' => '/', 'title' => 'Home', 'sections' => $sections, 'status' => 'published']);
 
             return $renderer->render($request, $site, $site, $page, $sections, false);

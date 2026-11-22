@@ -103,7 +103,7 @@ final class SiteSetup
         $have = SitePage::query()->where('site_id', $site->id)->pluck('path')->all();
         $position = (int) SitePage::query()->where('site_id', $site->id)->max('position');
         $added = [];
-        foreach (StarterSite::pages($info) as $i => $page) {
+        foreach (StarterSite::pages($info, $site->template) as $i => $page) {
             if (in_array($page['path'], $have, true)) {
                 continue;
             }
