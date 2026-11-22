@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="theme-{{ $chrome['template'] }}">
+<html lang="en" class="theme-{{ $chrome['template'] }} {{ (string) config('sites.templates.'.$chrome['template'].'.layout', 'hdr-solid hero-full cards-classic shape-soft btn-solid title-left') }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">

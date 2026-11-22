@@ -81,11 +81,11 @@ final class Sections
      * @param  array<string, mixed>  $info
      * @return array<string, list<array<string, mixed>>>
      */
-    public static function starterPages(array $info): array
+    public static function starterPages(array $info, ?string $template = null): array
     {
         // TP2: the full starter website lives in StarterSite; this keeps the path => sections view.
         $out = [];
-        foreach (StarterSite::pages($info) as $page) {
+        foreach (StarterSite::pages($info, $template) as $page) {
             $out[$page['path']] = $page['sections'];
         }
 
