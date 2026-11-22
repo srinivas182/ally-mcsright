@@ -174,7 +174,7 @@ function money(cents: number | null): string {
 }
 
 const selectClass =
-    'h-10 w-full rounded-md border bg-background px-3 text-base';
+    'h-9 w-full rounded-md border border-input bg-transparent px-3 text-base shadow-xs md:text-sm';
 
 /** IDX1: HQ › IDX coverage: open states, the MLS board directory, and the data connectors behind each board. */
 export default function HqIdx({
@@ -1188,7 +1188,23 @@ function BoardDialog({
                     </FormField>
                     <FormField
                         label="IDX display template"
-                        help="Logo, disclaimer and attribution (HQ › MLS connections)"
+                        help={
+                            profiles.length === 0 ? (
+                                <>
+                                    The MLS's logo, disclaimer and attribution
+                                    rules. None made yet: add one under{' '}
+                                    <a
+                                        href="/hq/mls#display-rules"
+                                        className="underline"
+                                    >
+                                        MLS connections › Display rules
+                                    </a>
+                                    . Needed before a brokerage goes live.
+                                </>
+                            ) : (
+                                "The MLS's logo, disclaimer and attribution rules. Needed before a brokerage goes live."
+                            )
+                        }
                         error={form.errors.rules_profile_id}
                     >
                         {(control) => (
