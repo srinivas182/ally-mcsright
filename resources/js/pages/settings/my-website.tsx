@@ -6,6 +6,7 @@ import { MediaPicker, type MediaItem } from '@/components/sites/media-picker';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DomainGuide } from '@/components/domain-guide';
 import { PageHeader } from '@/components/ui/page-header';
 import { Textarea } from '@/components/ui/textarea';
 import { postJson } from '@/lib/http';
@@ -495,6 +496,11 @@ function Manage({
             {rules.domain && (
                 <section className="grid gap-2 rounded-lg border p-4 text-sm">
                     <h2 className="font-semibold">Your own domain</h2>
+                    <DomainGuide
+                        cnameTarget={cnameTarget}
+                        example="www.yourname.com"
+                        connected={site.domains.some((d) => d.verified)}
+                    />
                     {site.domains.map((d) => (
                         <p key={d.host}>
                             <span className="font-medium">{d.host}</span>{' '}
