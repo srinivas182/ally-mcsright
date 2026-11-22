@@ -137,7 +137,8 @@ Cloudflare R2 in `.env` if you want it now) and **a separate brokerage database*
 
 RightAlly's own email (invitations, sign-in codes, notices, Watchtower) is set up in **HQ › Outside services ›
 Platform email**: Brevo (recommended), Postmark or Amazon SES. Verify the sending domain with the provider and add its
-DNS records in Cloudflare (DNS only), paste the keys, put your own address in **Test contacts**, run **Check
+DNS records in Cloudflare (DNS only), paste the keys (for Brevo: an API key and a verified sender address; Check
+connection confirms both), put your own address in **Test contacts**, run **Check
 connection**, and switch to **Test**: every email then goes only to you, with the real recipient in the subject. Switch
 to **Live** when it works. Until then nothing is really sent: `tenants:bootstrap-hq` prints the HQ invitation link
 for you to open.
