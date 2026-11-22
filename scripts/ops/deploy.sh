@@ -51,6 +51,8 @@ say "6. Starting the new release"
 "${COMPOSE[@]}" up -d --wait --remove-orphans app web
 "${COMPOSE[@]}" up -d --remove-orphans queue scheduler
 "${COMPOSE[@]}" exec -T app php artisan queue:restart >/dev/null
+# TP1: sample homes for websites without a live MLS board (photos download in the background; safe to re-run).
+"${COMPOSE[@]}" exec -T app php artisan listings:sample-homes || echo "  Sample homes could not be refreshed; websites keep the ones they have."
 
 say "7. Checking it answers"
 ok=0
