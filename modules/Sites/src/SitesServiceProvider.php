@@ -43,18 +43,21 @@ final class SitesServiceProvider extends ServiceProvider
             return $host !== null ? 'https://'.$host.Rendering\Urls::listing($ulid, $label) : null;
         });
         $this->app->scoped(Http\SiteRouter::class);
+        $this->app->scoped(Content\DemoView::class); // TP4: one demo visitor's choices, per request
         $this->app->singleton(Http\SiteExtensions::class);
     }
 
     public function boot(): void
     {
         Brief\ChatBriefItems::register($this->app->make(DailyBriefs::class));
+        // TP4: on the demo website, the site shows in the design the visitor is looking at.
+        Models\Site::retrieved(fn (Models\Site $site) => $this->app->make(Content\DemoView::class)->apply($site));
         Privacy\WebsitePrivacy::register($this->app->make(PrivacyRegistry::class)); // TR1
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'sites');
         if ($this->app->runningInConsole()) {
-            $this->commands([Console\WriteMarketUpdates::class, Console\AillyWeekly::class, Console\SendHomeReports::class, Console\ContactHealth::class, Console\InstallDemoPhotos::class]);
+            $this->commands([Console\WriteMarketUpdates::class, Console\AillyWeekly::class, Console\SendHomeReports::class, Console\ContactHealth::class, Console\InstallDemoPhotos::class, Console\InstallDemoSite::class]);
         }
         $this->app->make(PromptRegistry::class)->addPath(__DIR__.'/../prompts');
         // AW1: the calculators in the sitemap and llms.txt (specs/websites/18).

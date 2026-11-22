@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Modules\Sites\Support;
 
+use Modules\Sites\Content\DemoSite;
+
 /**
  * WB1: the website designs as cards, with what a small preview needs (background, colours, heading font), so the
  * design picker in Settings › Website and on the sign-up page show what each design really looks like.
@@ -27,7 +29,7 @@ final class DesignCards
             $cards[] = ['key' => (string) $key, 'name' => (string) ($t['name'] ?? $key), 'description' => (string) ($t['description'] ?? ''),
                 'theme' => (string) ($t['theme'] ?? '#ffffff'), 'primary' => (string) ($brand['primary'] ?? '#1d4ed8'), 'accent' => (string) ($brand['accent'] ?? '#0f172a'),
                 'font' => trim((string) strtok((string) ($t['fonts'] ?? 'Inter'), '+')), 'luxury' => in_array($key, self::LUXURY, true),
-                'preview' => 'https://'.config('core.hq_host').'/start/designs/'.$key];
+                'preview' => DemoSite::previewUrl((string) $key, '', '', null) ?? 'https://'.config('core.hq_host').'/start/designs/'.$key];
         }
         $rank = fn (array $c): int => $c['luxury'] ? (int) array_search($c['key'], self::LUXURY, true) : 99;
         usort($cards, fn (array $a, array $b): int => $rank($a) <=> $rank($b));
