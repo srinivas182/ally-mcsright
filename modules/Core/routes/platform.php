@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
+use Modules\Core\Hq\HqDashboardController;
 use Modules\Core\Http\Middleware\EnsureHqConsole;
 use Modules\Core\Identity\Http\Middleware\EnsureTenantHost;
 use Modules\Core\Privacy\Http\PrivacyController;
@@ -38,6 +39,7 @@ Route::middleware(['web', EnsureTenantHost::class, 'auth'])->prefix('settings')-
 });
 
 Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.tenants.manage'])->prefix('hq')->name('hq.')->group(function (): void {
+    Route::get('dashboard', HqDashboardController::class)->name('dashboard'); // HQ2
     Route::get('controls', [ControlsController::class, 'index'])->name('controls'); // TR1: SOC 2 evidence
     Route::get('controls/download', [ControlsController::class, 'download'])->name('controls.download');
     Route::get('switches', [HqPlatformController::class, 'switches'])->name('switches');

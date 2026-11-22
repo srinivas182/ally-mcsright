@@ -40,6 +40,7 @@ it('shows HQ staff the HQ console and people', function (): void {
     // HQ1: grouped under plain headings, in the order HQ works.
     $groups = collect(app(NavigationRegistry::class)->for($staff))->mapWithKeys(fn (array $g): array => [$g['label'] => array_column($g['items'], 'title')])->all();
     expect($groups)->toBe([
+        'Overview' => ['Dashboard'],
         'HQ team' => ['People'],
         'Customers' => ['Brokerages', 'Health checks', 'Go-live', 'Support', 'Help videos'],
         'Sales and pricing' => ['Package builder', 'Pricing', 'RightAlly credits', 'Referral programme'],
