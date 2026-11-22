@@ -23,6 +23,7 @@ use Modules\Core\Identity\Models\Invitation;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\Models\Tenant;
 use Modules\Core\Tenancy\TenantContext;
+use Modules\Sites\Models\Site;
 
 const RA = 'http://app.rightally.io';
 
@@ -247,7 +248,6 @@ it('lists sign-ups for HQ with where each stopped, and sends a reminder on reque
     $this->actingAs($this->staff)->get(RA.'/hq/dashboard')->assertInertia(fn (Assert $p) => $p->where('attention', fn ($a): bool => collect($a)->pluck('label')->contains('Sign-ups not finished (not paid)')));
 });
 
-
 function signupStep1(array $over = []): void
 {
     test()->post(RA.'/start/step/about', array_replace(['brokerage' => 'Oak Realty', 'slug' => 'oak-realty', 'owner_name' => 'Dana Smith', 'owner_email' => 'dana@oak.test',
@@ -287,7 +287,7 @@ it('puts the new website live in the chosen design the moment they pay (SU2)', f
     signupEvent('evt_paid', 'checkout.session.completed', $signup);
 
     $tenant = Tenant::query()->where('slug', 'oak-realty')->sole();
-    $site = app(TenantContext::class)->runAs($tenant, fn () => \Modules\Sites\Models\Site::query()->where('kind', 'brokerage')->sole());
+    $site = app(TenantContext::class)->runAs($tenant, fn () => Site::query()->where('kind', 'brokerage')->sole());
     expect($site)->template->toBe('ember')->status->toBe('live')
         ->and($site->info['name'])->toBe('Oak Realty');
 });
