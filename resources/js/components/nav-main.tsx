@@ -15,6 +15,20 @@ import { useCurrentUrl } from '@/hooks/use-current-url';
 
 const OPEN_KEY = 'hq-menu-open';
 
+/** HQ1: an icon for each HQ heading, so the headings read as main menu items. */
+const GROUP_ICONS: Record<string, string> = {
+    Overview: 'layout-grid',
+    'HQ team': 'users',
+    Customers: 'building-2',
+    'Sales and pricing': 'badge-dollar-sign',
+    Payments: 'credit-card',
+    'Websites and MLS': 'house',
+    AI: 'sparkles',
+    Connections: 'plug',
+    Products: 'blocks',
+    System: 'shield',
+};
+
 function readOpen(): string[] {
     try {
         const raw = window.localStorage.getItem(OPEN_KEY);
@@ -56,62 +70,104 @@ export function NavMain() {
         saveOpen(next);
     };
 
-    return (
-        <>
-            {navigation.map((group) => {
-                const here = group.items.some((item) =>
-                    isCurrentUrl(item.href),
-                );
-                const shown =
-                    !folding ||
-                    here ||
-                    open.includes(group.label) ||
-                    navigation.length === 1;
-                const id = `nav-${group.label.replace(/\W+/g, '-').toLowerCase()}`;
+    if (folding) {
+        return (
+            <SidebarGroup className="px-2 py-1">
+                <SidebarMenu className="gap-1">
+                    {navigation.map((group) => {
+                        const here = group.items.some((item) =>
+                            isCurrentUrl(item.href),
+                        );
+                        const shown =
+                            here ||
+                            open.includes(group.label) ||
+                            navigation.length === 1;
+                        const id = `nav-${group.label.replace(/\W+/g, '-').toLowerCase()}`;
 
-                return (
-                    <SidebarGroup key={group.label} className="px-2 py-0">
-                        {folding ? (
-                            <SidebarGroupLabel asChild>
-                                <button
+                        return (
+                            <SidebarMenuItem key={group.label}>
+                                <SidebarMenuButton
                                     type="button"
-                                    className="flex w-full items-center justify-between"
                                     aria-expanded={shown}
                                     aria-controls={id}
-                                    onClick={() => toggle(group.label)}
-                                    disabled={here}
+                                    onClick={() => !here && toggle(group.label)}
+                                    className="font-medium"
                                 >
+                                    <NavIcon
+                                        name={
+                                            GROUP_ICONS[group.label] ??
+                                            'layout-grid'
+                                        }
+                                    />
                                     <span>{group.label}</span>
                                     <ChevronRight
                                         aria-hidden="true"
-                                        className={`size-3.5 transition-transform ${shown ? 'rotate-90' : ''}`}
+                                        className={`ml-auto size-4 opacity-70 transition-transform ${shown ? 'rotate-90' : ''}`}
                                     />
-                                </button>
-                            </SidebarGroupLabel>
-                        ) : (
-                            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
-                        )}
-                        {shown && (
-                            <SidebarMenu id={id}>
-                                {group.items.map((item) => (
-                                    <SidebarMenuItem key={item.href}>
-                                        <SidebarMenuButton
-                                            asChild
-                                            isActive={isCurrentUrl(item.href)}
-                                            tooltip={{ children: item.title }}
-                                        >
-                                            <Link href={item.href} prefetch>
-                                                <NavIcon name={item.icon} />
-                                                <span>{item.title}</span>
-                                            </Link>
-                                        </SidebarMenuButton>
-                                    </SidebarMenuItem>
-                                ))}
-                            </SidebarMenu>
-                        )}
-                    </SidebarGroup>
-                );
-            })}
+                                </SidebarMenuButton>
+                                {shown && (
+                                    <ul
+                                        id={id}
+                                        className="mt-1 ml-[1.1rem] grid gap-0.5 border-l border-sidebar-border/60 pl-2"
+                                    >
+                                        {group.items.map((item) => (
+                                            <SidebarMenuItem key={item.href}>
+                                                <SidebarMenuButton
+                                                    asChild
+                                                    isActive={isCurrentUrl(
+                                                        item.href,
+                                                    )}
+                                                    tooltip={{
+                                                        children: item.title,
+                                                    }}
+                                                >
+                                                    <Link
+                                                        href={item.href}
+                                                        prefetch
+                                                    >
+                                                        <NavIcon
+                                                            name={item.icon}
+                                                        />
+                                                        <span>
+                                                            {item.title}
+                                                        </span>
+                                                    </Link>
+                                                </SidebarMenuButton>
+                                            </SidebarMenuItem>
+                                        ))}
+                                    </ul>
+                                )}
+                            </SidebarMenuItem>
+                        );
+                    })}
+                </SidebarMenu>
+            </SidebarGroup>
+        );
+    }
+
+    return (
+        <>
+            {navigation.map((group) => (
+                <SidebarGroup key={group.label} className="px-2 py-0">
+                    <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+                    <SidebarMenu>
+                        {group.items.map((item) => (
+                            <SidebarMenuItem key={item.href}>
+                                <SidebarMenuButton
+                                    asChild
+                                    isActive={isCurrentUrl(item.href)}
+                                    tooltip={{ children: item.title }}
+                                >
+                                    <Link href={item.href} prefetch>
+                                        <NavIcon name={item.icon} />
+                                        <span>{item.title}</span>
+                                    </Link>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                        ))}
+                    </SidebarMenu>
+                </SidebarGroup>
+            ))}
         </>
     );
 }

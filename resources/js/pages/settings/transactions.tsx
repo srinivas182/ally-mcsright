@@ -96,7 +96,7 @@ export default function TransactionsSettings({
     return (
         <>
             <Head title="Transactions" />
-            <div className="flex flex-col gap-5">
+            <div className="flex flex-col gap-5 p-4 md:p-6">
                 <PageHeader
                     title="Transactions"
                     description="Title companies, the brokerage's receiving account, and referral fees paid."
