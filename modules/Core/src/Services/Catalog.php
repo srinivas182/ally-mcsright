@@ -189,6 +189,27 @@ final class Catalog
     }
 
     /** The recommended (first) provider. */
+    /** SVC1: the groups shown on Outside services, in this order, so a long list can be filtered. */
+    public const CATEGORIES = [
+        'MLS and listings' => ['idx_repliers', 'idx_spark', 'search', 'nearby_places', 'photo_tags', 'staging', 'floor_plans'],
+        'Calls, texts and email' => ['platform_email', 'inbound_email', 'voice_calls', 'transcripts', 'phone_check', 'email_check'],
+        'Payments and banking' => ['payments', 'bank_feed'],
+        'Website and marketing' => ['bot_protection', 'search_console', 'social_share', 'video'],
+        'Agents' => ['licence_lookup'],
+        'System' => ['error_tracking'],
+    ];
+
+    public static function category(string $service): string
+    {
+        foreach (self::CATEGORIES as $name => $services) {
+            if (in_array($service, $services, true)) {
+                return $name;
+            }
+        }
+
+        return 'Other';
+    }
+
     public static function recommended(string $service): ?string
     {
         $providers = array_keys(self::get($service)['providers'] ?? []);

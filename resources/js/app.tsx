@@ -16,6 +16,13 @@ registerServiceWorker();
 // OB1: crashes in the browser reach Watchtower with the other problems.
 watchBrowserErrors();
 
+const ACCOUNT_PAGES = [
+    'settings/profile',
+    'settings/security',
+    'settings/appearance',
+    'settings/data-export',
+];
+
 void createInertiaApp({
     title: (title) => (title ? `${title} - ${appName}` : appName),
     layout: (name) => {
@@ -25,7 +32,9 @@ void createInertiaApp({
                 return null;
             case name.startsWith('auth/'):
                 return AuthLayout;
-            case name.startsWith('settings/'):
+            // Your own account (profile, sign-in, look, your data) keeps the settings side menu; every other
+            // settings page is a full page of its own with its own heading.
+            case ACCOUNT_PAGES.includes(name):
                 return [AppLayout, SettingsLayout];
             default:
                 return AppLayout;

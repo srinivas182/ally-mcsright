@@ -199,12 +199,16 @@ final class OutsideServices
                 $providers[] = ['key' => $pk, 'label' => $p['label'], 'note' => $p['note'] ?? null, 'fields' => $fields, 'guide' => ProviderGuides::for($key, $pk)]; // HQ4
             }
             $hq = $hqRows->get($key);
-            $out[] = ['key' => $key, 'label' => $def['label'], 'about' => $def['about'], 'level' => $def['level'], 'sprint' => $def['sprint'], 'contacts' => $def['contacts'],
+            $out[] = ['key' => $key, 'category' => Catalog::category($key), 'label' => $def['label'], 'about' => $def['about'], 'level' => $def['level'], 'sprint' => $def['sprint'], 'contacts' => $def['contacts'],
                 'providers' => $providers, 'provider' => $row->provider ?? Catalog::recommended($key), 'saved' => $row !== null, 'mode' => $row->mode ?? 'off',
                 'test_contacts' => $row->test_contacts ?? '', 'checked_at' => $row?->checked_at, 'check_ok' => $row !== null && $row->check_ok !== null ? (bool) $row->check_ok : null,
                 'check_mode' => $row?->check_mode, 'check_message' => $row?->check_message, 'live_blocker' => $this->liveBlocker($tenantId, $key),
                 'hq_mode' => $level === 'brokerage' ? ($hq->mode ?? 'off') : null];
         }
+
+        // SVC1: grouped by category, in the order Catalog::CATEGORIES lists them.
+        $order = array_flip(array_merge(...array_values(Catalog::CATEGORIES)));
+        usort($out, fn (array $a, array $b): int => ($order[$a['key']] ?? 999) <=> ($order[$b['key']] ?? 999));
 
         return $out;
     }

@@ -19,9 +19,12 @@ export function SetupGuide({
     title = 'How to set this up',
     intro,
     steps,
+    defaultOpen,
     className,
 }: {
     title?: string;
+    /** Open at first? By default, open until every step is done. */
+    defaultOpen?: boolean;
     intro?: React.ReactNode;
     steps: GuideStep[];
     className?: string;
@@ -32,7 +35,7 @@ export function SetupGuide({
 
     return (
         <details
-            open={!allDone}
+            open={defaultOpen ?? !allDone}
             className={cn(
                 'group rounded-xl border border-primary/25 bg-primary/5 p-4 text-sm',
                 className,

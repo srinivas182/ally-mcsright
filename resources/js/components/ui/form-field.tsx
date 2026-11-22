@@ -43,7 +43,10 @@ function FormField({
         [helpId, errorId].filter(Boolean).join(' ') || undefined;
 
     return (
-        <div data-slot="form-field" className={cn('grid gap-2', className)}>
+        <div
+            data-slot="form-field"
+            className={cn('grid content-start gap-2', className)}
+        >
             <Label htmlFor={id}>
                 {label}
                 {required && (

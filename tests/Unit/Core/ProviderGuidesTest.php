@@ -23,3 +23,11 @@ it('has a plain-words guide for every provider of every outside service', functi
     expect($missing)->toBe([])
         ->and(array_diff(array_keys(ProviderGuides::ALL), collect(Catalog::all())->flatMap(fn (array $d, string $s): array => array_map(fn (string $p): string => "{$s}.{$p}", array_keys($d['providers'])))->all()))->toBe([]);
 });
+
+it('puts every outside service in a category, in a fixed order (SVC1)', function (): void {
+    $placed = array_merge(...array_values(Catalog::CATEGORIES));
+    expect(array_diff(array_keys(Catalog::all()), $placed))->toBe([])
+        ->and(array_diff($placed, array_keys(Catalog::all())))->toBe([])
+        ->and(count($placed))->toBe(count(array_unique($placed)))
+        ->and(Catalog::category('idx_repliers'))->toBe('MLS and listings');
+});
