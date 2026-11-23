@@ -18,7 +18,7 @@
     <meta name="theme-color" content="{{ $design['theme'] ?? '#ffffff' }}">
     <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?{{ $design['css'] ?? 'family=Inter:wght@400;500;600;700' }}&display=swap">
-    <link rel="stylesheet" href="/site-assets/site.css?v=12">
+    <link rel="stylesheet" href="/site-assets/site.css?v=13">
     @stack('head')
     <style>:root{--brand: {{ $chrome['brand']['primary'] ?? '#1d4ed8' }};--accent: {{ $chrome['brand']['accent'] ?? '#0f172a' }};}</style>
     <script type="application/ld+json">{!! $seo['jsonld'] !!}</script>
@@ -46,40 +46,65 @@
                 @endforeach
             </ul>
         </nav>
-        @unless ($chrome['landing'] ?? false)<button type="button" class="btn btn-ghost header-account" data-account>Sign in</button>@endunless
         @endif
+        {{-- FT1: the phone number (or "Contact us" until there is one) and, on full websites, visitor sign-in, on the right. --}}
         @php($callPhone = ($chrome['agent']['phone'] ?? '') !== '' ? $chrome['agent']['phone'] : (string) ($site->info['phone'] ?? ''))
-        @if (! empty($callPhone))<a class="btn btn-ghost header-call" href="tel:{{ preg_replace('/[^0-9+]/', '', $callPhone) }}">{{ $callPhone }}</a>@endif
+        <div class="header-actions">
+            @if (! empty($callPhone))
+                <a class="btn btn-ghost header-call" href="tel:{{ preg_replace('/[^0-9+]/', '', $callPhone) }}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24"><path fill="currentColor" d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.6a1 1 0 0 1-.25 1z"/></svg><span>{{ $callPhone }}</span></a>
+            @else
+                <a class="btn btn-ghost header-call" href="/contact">Contact us</a>
+            @endif
+            @unless (($chrome['landing'] ?? false) || ($landing ?? false))<button type="button" class="btn btn-ghost header-account" data-account>Sign in</button>@endunless
+        </div>
     </div>
 </header>
 @yield('content')
 <footer class="site-footer">
-    <div class="wrap footer-grid">
-        <div>
+    {{-- FT1: who they are and how to reach them, the pages, then the legal notices and the small print. --}}
+    @php($footerPhone = (string) ($site->info['phone'] ?? ''))
+    <div class="wrap footer-top">
+        <div class="footer-brand">
             @if ($chrome['agent'])
                 <p class="footer-name">{{ $chrome['agent']['name'] }}</p>
-                @if ($chrome['agent']['licence'])<p>{{ $chrome['agent']['licence']['state'] ? $chrome['agent']['licence']['state'].' ' : '' }}licence {{ $chrome['agent']['licence']['number'] }}</p>@endif
-                @if ($chrome['agent']['phone'])<p><a href="tel:{{ preg_replace('/[^0-9+]/', '', $chrome['agent']['phone']) }}">{{ $chrome['agent']['phone'] }}</a></p>@endif
-                @if ($chrome['agent']['email'])<p><a href="mailto:{{ $chrome['agent']['email'] }}">{{ $chrome['agent']['email'] }}</a></p>@endif
-                <p class="brokered">Brokered by</p>
+                @if ($chrome['agent']['licence'])<p class="footer-meta">{{ $chrome['agent']['licence']['state'] ? $chrome['agent']['licence']['state'].' ' : '' }}licence {{ $chrome['agent']['licence']['number'] }}</p>@endif
+                <p class="brokered">Brokered by {{ $site->displayName() }}</p>
+            @else
+                @if (! empty($site->brand['logo_url']))<img class="footer-logo" src="{{ $site->brand['logo_url'] }}" alt="{{ $site->displayName() }}" height="44" loading="lazy">@else<p class="footer-name">{{ $site->displayName() }}</p>@endif
             @endif
-            <p class="footer-name">{{ $site->displayName() }}</p>
-            @if (! empty($site->info['street']))<p>{{ $site->info['street'] }}, {{ $site->info['city'] ?? '' }}, {{ $site->info['state'] ?? '' }} {{ $site->info['zip'] ?? '' }}</p>@endif
-            @if (! empty($site->info['phone']))<p><a href="tel:{{ preg_replace('/[^0-9+]/', '', $site->info['phone']) }}">{{ $site->info['phone'] }}</a></p>@endif
-            @if (! empty($site->info['email']))<p><a href="mailto:{{ $site->info['email'] }}">{{ $site->info['email'] }}</a></p>@endif
-            @if (! empty($site->info['licence']))<p>Licence {{ $site->info['licence'] }}</p>@endif
-        </div>
-        <div>
-            <ul class="footer-links">
-                @foreach ($chrome['footer'] as $item)<li><a href="{{ $item['path'] }}">{{ $item['title'] }}</a></li>@endforeach
-            </ul>
+            <p class="footer-about">{{ mb_strimwidth((string) (($site->info['tagline'] ?? '') ?: 'Local real estate professionals helping people buy and sell homes'.(! empty($site->info['area']) ? ' in '.$site->info['area'] : '').'.'), 0, 180, '…') }}</p>
             @if (! empty($site->info['social']))
-                <ul class="social">
-                    @foreach ($site->info['social'] as $network => $url)<li><a href="{{ $url }}" rel="me noopener" target="_blank">{{ ucfirst($network) }}</a></li>@endforeach
+                <ul class="social" aria-label="Follow us">
+                    @foreach ($site->info['social'] as $network => $url)<li><a href="{{ $url }}" rel="me noopener" target="_blank">{{ $network === 'x' ? 'X' : ucfirst($network) }}</a></li>@endforeach
                 </ul>
             @endif
         </div>
-        <div class="footer-legal">
+        <nav class="footer-col" aria-label="Footer">
+            <p class="footer-head">Explore</p>
+            <ul class="footer-links">
+                @foreach ($chrome['footer'] as $item)@if (! in_array($item['path'], ['/market', '/home-value', '/blog'], true))<li><a href="{{ $item['path'] }}">{{ $item['title'] }}</a></li>@endif @endforeach
+            </ul>
+        </nav>
+        <div class="footer-col">
+            <p class="footer-head">Resources</p>
+            <ul class="footer-links">
+                <li><a href="/home-value">What's my home worth?</a></li>
+                @unless ($chrome['landing'] ?? false)<li><a href="/market">Market reports</a></li><li><a href="/calculators">Mortgage calculator</a></li>@endunless
+                @if (in_array('/blog', array_column($chrome['menu'], 'path'), true))<li><a href="/blog">Blog</a></li>@endif
+            </ul>
+        </div>
+        <div class="footer-col footer-contact">
+            <p class="footer-head">Contact</p>
+            @if ($chrome['agent'] && $chrome['agent']['phone'])<p><a href="tel:{{ preg_replace('/[^0-9+]/', '', $chrome['agent']['phone']) }}">{{ $chrome['agent']['phone'] }}</a></p>
+            @elseif ($footerPhone !== '')<p><a href="tel:{{ preg_replace('/[^0-9+]/', '', $footerPhone) }}">{{ $footerPhone }}</a></p>@endif
+            @if ($chrome['agent'] && $chrome['agent']['email'])<p><a href="mailto:{{ $chrome['agent']['email'] }}">{{ $chrome['agent']['email'] }}</a></p>
+            @elseif (! empty($site->info['email']))<p><a href="mailto:{{ $site->info['email'] }}">{{ $site->info['email'] }}</a></p>@endif
+            @if (! empty($site->info['street']))<p>{{ $site->info['street'] }}<br>{{ $site->info['city'] ?? '' }}, {{ $site->info['state'] ?? '' }} {{ $site->info['zip'] ?? '' }}</p>@endif
+            @if (! empty($site->info['licence']))<p class="footer-meta">Licence {{ $site->info['licence'] }}</p>@endif
+            <p><a class="btn btn-primary footer-cta" href="/contact">Talk to an agent</a></p>
+        </div>
+    </div>
+    <div class="wrap footer-legal">
             <p class="eho"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2 1 11h3v11h16V11h3L12 2zm-5 12h10v2H7v-2zm0 4h10v2H7v-2z"/></svg> Equal Housing Opportunity</p>
             {{-- SU2: the MLS disclosure, set by RightAlly from each live board's display rules; not editable by the brokerage. --}}
             @php($mlsText = array_column($chrome['mls']['boards'] ?? [], 'disclaimer'))
@@ -100,10 +125,11 @@
             </section>
             @endunless
             @foreach ($chrome['disclaimers'] as $d)@if (! in_array($d, $mlsText, true))<p class="disclaimer">{{ $d }}</p>@endif @endforeach
-            <p class="privacy">We keep a note of the homes you view here so our agents can help you better. No third-party trackers; your browser's Global Privacy Control is honored. <a href="/privacy">Privacy policy</a> · <a href="/accessibility">Accessibility</a></p>
-            <p>&copy; {{ $chrome['year'] }} {{ $site->displayName() }} · <a href="/backoffice" rel="nofollow">Agent login</a></p>
-            @if ($chrome['powered'])<p class="powered"><a href="{{ $chrome['powered']['url'] }}" rel="noopener" target="_blank">{{ $chrome['powered']['text'] }}</a></p>@endif
-        </div>
+        <p class="privacy">We keep a note of the homes you view here so our agents can help you better. No third-party trackers; your browser's Global Privacy Control is honored.</p>
+    </div>
+    <div class="wrap footer-bottom">
+        <p>&copy; {{ $chrome['year'] }} {{ $site->displayName() }}. All rights reserved.</p>
+        <p class="footer-bottom-links"><a href="/privacy">Privacy policy</a><a href="/accessibility">Accessibility</a><a href="/backoffice" rel="nofollow">Agent login</a>@if ($chrome['powered'])<a class="powered" href="{{ $chrome['powered']['url'] }}" rel="noopener" target="_blank">{{ $chrome['powered']['text'] }}</a>@endif</p>
     </div>
 </footer>
 <dialog class="auth" data-auth aria-labelledby="auth-title">

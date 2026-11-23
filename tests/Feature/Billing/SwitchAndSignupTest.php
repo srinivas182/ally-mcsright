@@ -254,7 +254,7 @@ it('lists sign-ups for HQ with where each stopped, and sends a reminder on reque
 function signupStep1(array $over = []): void
 {
     test()->post(RA.'/start/step/about', array_replace(['brokerage' => 'Oak Realty', 'slug' => 'oak-realty', 'owner_name' => 'Dana Smith', 'owner_email' => 'dana@oak.test',
-        'state' => 'TX', 'agents' => 12, 'licence_states' => ['TX'], 'licence_numbers' => ['TX' => 'test']], $over))->assertRedirect('/start?step=2#signup');
+        'state' => 'TX', 'agents' => 12, 'phone' => '(713) 555-0142', 'licence_states' => ['TX'], 'licence_numbers' => ['TX' => 'test']], $over))->assertRedirect('/start?step=2#signup');
 }
 
 it('signs up in four saved steps, and HQ sees where someone stopped (SU2)', function (): void {
@@ -295,7 +295,7 @@ it('puts the new website live in the chosen design the moment they pay (SU2)', f
     $tenant = Tenant::query()->where('slug', 'oak-realty')->sole();
     $site = app(TenantContext::class)->runAs($tenant, fn () => Site::query()->where('kind', 'brokerage')->sole());
     expect($site)->template->toBe('signature')->status->toBe('live')
-        ->and($site->info['name'])->toBe('Oak Realty')
+        ->and($site->info['name'])->toBe('Oak Realty')->and($site->info['phone'])->toBe('(713) 555-0142') // FT1: in the header and footer
         // LP1: a landing page: Home, About and Contact, no home search.
         ->and(app(TenantContext::class)->runAs($tenant, fn () => SitePage::query()->where('site_id', $site->id)->orderBy('position')->pluck('path')->all()))->toBe(['/', '/about', '/contact']);
 });
@@ -317,7 +317,7 @@ it('needs an active licence checked in the state\'s records, and offers boards u
         ->toContain('name="licence_states[]" data-idx-state value="FL"') // licensed in Florida: offered, with a landing page until a board is there
         ->toContain('name="licence_numbers[TX]"')->toContain('connect to an MLS board in Florida yet');
 
-    $base = ['brokerage' => 'Oak Realty', 'slug' => 'oak-realty', 'owner_name' => 'Dana Smith', 'owner_email' => 'dana@oak.test', 'state' => 'TX'];
+    $base = ['brokerage' => 'Oak Realty', 'slug' => 'oak-realty', 'owner_name' => 'Dana Smith', 'owner_email' => 'dana@oak.test', 'state' => 'TX', 'phone' => '(713) 555-0142'];
     $this->post(RA.'/start/step/about', $base)->assertSessionHasErrors('licence_states');
     $this->post(RA.'/start/step/about', $base + ['licence_states' => ['TX']])->assertSessionHasErrors(['licence_numbers.TX' => 'Type your Texas licence number.']);
     $this->post(RA.'/start/step/about', $base + ['licence_states' => ['TX'], 'licence_numbers' => ['TX' => '0123999']])->assertSessionHasErrors('licence_numbers.TX');

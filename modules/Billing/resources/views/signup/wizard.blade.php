@@ -44,11 +44,15 @@
                 @if ($solo)
                     <label>Your name<input type="text" name="name" required maxlength="120" value="{{ $v('name') }}" autocomplete="name"></label>
                     <label>Your email (your sign-in link goes here)<input type="email" name="email" required maxlength="190" value="{{ $v('email') }}" autocomplete="email"></label>
+                    <label>Your phone (shown on your website)<input type="tel" name="phone" required maxlength="30" value="{{ $v('phone') }}" autocomplete="tel" inputmode="tel"></label>
+                    @error('phone')<p class="error" role="alert">{{ $message }}</p>@enderror
                     <label>Team or business name (optional)<input type="text" name="business" maxlength="150" value="{{ $v('business') }}" autocomplete="organization"></label>
                     @include('billing::signup.state', ['value' => $v('state')])
                     @include('billing::signup.address', ['value' => $v('slug'), 'from' => 'name', 'hint' => 'Letters, numbers and dashes, for example jane-smith-homes.'])
                 @else
                     <label>Brokerage name<input type="text" name="brokerage" required maxlength="150" value="{{ $v('brokerage') }}" autocomplete="organization"></label>
+                    <label>Office phone (shown on your website)<input type="tel" name="phone" required maxlength="30" value="{{ $v('phone') }}" autocomplete="tel" inputmode="tel"></label>
+                    @error('phone')<p class="error" role="alert">{{ $message }}</p>@enderror
                     @include('billing::signup.state', ['value' => $v('state')])
                     @include('billing::signup.address', ['value' => $v('slug'), 'from' => 'brokerage', 'hint' => 'Letters, numbers and dashes. You can add your own domain later.'])
                     <label>Number of agents (optional)<input type="number" name="agents" min="1" max="20000" value="{{ $v('agents') }}" inputmode="numeric"></label>

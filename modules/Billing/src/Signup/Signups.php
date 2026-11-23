@@ -59,7 +59,7 @@ final class Signups
      * SU2 step 1: who they are, their address and their MLS boards. Starts a draft (replacing any earlier unfinished
      * signup with the same email) or updates the one they are filling in.
      *
-     * @param  array{brokerage: string, slug: string, owner_name: string, owner_email: string, state?: string|null, agents?: int|null, boards?: list<string>, licences?: list<array<string, mixed>>, health_check_id?: int|null, ref?: string|null}  $in
+     * @param  array{brokerage: string, slug: string, owner_name: string, owner_email: string, state?: string|null, agents?: int|null, boards?: list<string>, licences?: list<array<string, mixed>>, phone?: string, health_check_id?: int|null, ref?: string|null}  $in
      */
     public function saveAbout(?string $draft, array $in, string $type = 'brokerage'): string
     {
@@ -74,7 +74,8 @@ final class Signups
         $values = ['type' => $type, 'brokerage' => mb_substr(trim($in['brokerage']), 0, 150), 'slug' => $slug, 'owner_name' => mb_substr(trim($in['owner_name']), 0, 120),
             'owner_email' => $email, 'state' => isset($in['state']) && $in['state'] !== '' ? strtoupper($in['state']) : null, 'agents' => $in['agents'] ?? null,
             'idx_boards' => self::chosenBoards($in['boards'] ?? []), 'updated_at' => now()]
-            + (isset($in['licences']) ? ['licences' => json_encode($in['licences'])] : []);
+            + (isset($in['licences']) ? ['licences' => json_encode($in['licences'])] : [])
+            + (isset($in['phone']) && $in['phone'] !== '' ? ['phone' => mb_substr($in['phone'], 0, 30)] : []);
         if ($row !== null) {
             $db->table('signups')->where('id', $row->id)->update($values + ['status' => 'draft', 'step' => max(2, (int) $row->step)]);
 
@@ -277,7 +278,7 @@ final class Signups
         if (class_exists(SiteSetup::class)) {
             try {
                 $this->tenants->runAs($tenant, fn () => app(SiteSetup::class)->launch((string) ($signup->template ?? 'modern'),
-                    ['name' => (string) $signup->brokerage, 'email' => (string) $signup->owner_email, 'licence' => self::licenceLine($signup),
+                    ['name' => (string) $signup->brokerage, 'email' => (string) $signup->owner_email, 'licence' => self::licenceLine($signup), 'phone' => (string) ($signup->phone ?? ''),
                         'area' => self::marketArea((string) ($signup->idx_boards ?? '[]'), $signup->state),
                         'state' => self::marketState((string) ($signup->idx_boards ?? '[]'), $signup->state)])); // TP2: its Explore cities
             } catch (Throwable $e) {
