@@ -135,6 +135,8 @@ function BrokerageAside({
     logo: string | null;
     photo: string | null;
 }) {
+    const { platformUrl } = usePage().props;
+
     return (
         <aside className="relative hidden overflow-hidden bg-sidebar text-white lg:flex lg:flex-col lg:justify-between lg:p-12 xl:p-16">
             {photo && (
@@ -182,7 +184,15 @@ function BrokerageAside({
             <p className="relative flex items-center gap-2 text-sm text-white/80">
                 <ShieldCheck className="size-4" />
                 Protected by two-step sign-in and encryption. Powered by{' '}
-                <Logo className="text-[0.95rem] text-white" />
+                <a
+                    href={platformUrl}
+                    target="_blank"
+                    rel="noopener"
+                    aria-label="RightAlly (opens in a new tab)"
+                    className="rounded-sm focus-visible:outline-2 focus-visible:outline-white"
+                >
+                    <Logo className="text-[0.95rem] text-white" />
+                </a>
             </p>
         </aside>
     );

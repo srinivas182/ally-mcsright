@@ -59,6 +59,7 @@ say "6. Starting the new release"
 "${COMPOSE[@]}" exec -T app php artisan sites:one-domain || echo "  Could not move brokerages to one domain; they keep their current addresses."
 # TP4: the demo website used to preview designs at sign-up (created once).
 "${COMPOSE[@]}" exec -T app php artisan sites:demo-site || echo "  The design demo website could not be set up; previews use a single page until the next deploy."
+"${COMPOSE[@]}" exec -T app php artisan sites:refresh-starter || echo "  Could not refresh starter website content; websites keep their current wording."
 
 say "7. Checking it answers"
 ok=0

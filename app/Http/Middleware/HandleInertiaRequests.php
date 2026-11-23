@@ -96,6 +96,8 @@ class HandleInertiaRequests extends Middleware
             ],
             // The brokerage (or HQ) this page belongs to, and the menu this user may see.
             'tenant' => fn (): ?array => $this->tenant(),
+            // The RightAlly site itself ("Powered by RightAlly" links here).
+            'platformUrl' => 'https://'.config('core.platform_domain'),
             'security' => fn (): ?array => $this->security($request),
             'paymentsTestMode' => fn (): bool => app(PaymentSettings::class)->summary()['mode'] === 'test'
                 && app(PaymentSettings::class)->summary()['test_set'],

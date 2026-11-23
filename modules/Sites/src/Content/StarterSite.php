@@ -56,10 +56,7 @@ final class StarterSite
                     ['type' => 'split', 'id' => 'sell', 'props' => ['title' => 'Selling? Start with what your home is worth', 'side' => 'left',
                         'body' => "Get a free price range from an agent who knows {$area}, based on what nearby homes have sold for. No pressure and no obligation.\n\nWhen you are ready, we price it right, present it beautifully and put it in front of serious buyers.",
                         'button' => "What's my home worth?", 'link' => '/home-value', 'image' => $p('exterior_family', 3)]],
-                    ['type' => 'stats', 'id' => 'promise', 'props' => ['title' => '', 'items' => [
-                        ['value' => '1 search', 'label' => 'for every home on the MLS'], ['value' => 'Minutes', 'label' => 'from a new listing to your alert'],
-                        ['value' => 'Free', 'label' => 'home value report'], ['value' => '24/7', 'label' => 'answers about any home'],
-                    ]]],
+                    self::promise($name),
                     ['type' => 'neighbourhoods', 'id' => 'areas', 'props' => ['title' => "Explore {$area}", 'places' => $places]],
                     ['type' => 'banner', 'id' => 'banner', 'props' => ['title' => 'Find the home that fits your life', 'body' => 'Save your favorite homes, get alerts the moment something new comes on the market, and tour with a local agent.',
                         'button' => 'Search homes', 'link' => '/homes', 'image' => $p('living', 3)]],
@@ -135,6 +132,21 @@ final class StarterSite
                     ['type' => 'faq', 'id' => 'faq', 'props' => ['title' => 'Before you write', 'items' => [$faqBuy[0], $faqSell[0]]]],
                 ])],
         ];
+    }
+
+    /**
+     * The home page's "why us" section: what working with the brokerage means, in plain words (no made-up numbers).
+     *
+     * @return array{type: string, id: string, props: array<string, mixed>}
+     */
+    public static function promise(string $name): array
+    {
+        return ['type' => 'features', 'id' => 'promise', 'props' => ['title' => "Why clients choose {$name}", 'items' => [
+            ['title' => 'Every home in one search', 'body' => 'Every home for sale on the MLS, with new listings added within minutes of going live.'],
+            ['title' => 'First to hear about new homes', 'body' => 'Save a search and get an alert the moment a matching home comes on the market or drops in price.'],
+            ['title' => 'An honest price for your home', 'body' => 'A free home value from a local agent, based on what nearby homes have actually sold for.'],
+            ['title' => 'Local agents who answer', 'body' => 'Questions about a home or a neighborhood get a quick, straight answer from someone who knows the area.'],
+        ]]];
     }
 
     /** TP3: the design's own banner photo (sites.templates.*.hero_photo), else a luxury exterior. */

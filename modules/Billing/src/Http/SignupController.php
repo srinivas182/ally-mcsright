@@ -141,6 +141,15 @@ final class SignupController
         }
     }
 
+    /** QW1: "Send it again" on the welcome page, for an owner whose sign-in email did not arrive. */
+    public function resend(string $signup, Signups $signups): RedirectResponse
+    {
+        $row = Signups::find($signup) ?? abort(404);
+        $result = $signups->resendWelcome($row);
+
+        return redirect()->route('signup.welcome', $signup)->with('resent', $result);
+    }
+
     public function welcome(string $signup): HttpResponse
     {
         $row = Signups::find($signup) ?? abort(404);

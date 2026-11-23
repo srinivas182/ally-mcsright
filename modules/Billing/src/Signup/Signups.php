@@ -19,6 +19,7 @@ use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Identity\Actions\ManageInvitations;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Identity\Enums\UserStatus;
+use Modules\Core\Identity\Models\Invitation;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\Actions\ProvisionTenant;
 use Modules\Core\Tenancy\Data\ProvisionTenantData;
@@ -151,6 +152,31 @@ final class Signups
         $this->saveDesign($draft, $in['template'] ?? ($type === 'solo' ? 'modern' : 'modern'));
 
         return $this->checkout($draft, $returnBase);
+    }
+
+    /**
+     * QW1: sends the owner of a paid sign-up their sign-in email again (a fresh link; the old one stops working).
+     * 'sent', 'signed-in' when they already set a password (they use "Forgot your password?"), or 'none' when the
+     * brokerage is not set up yet.
+     */
+    public function resendWelcome(stdClass $signup): string
+    {
+        $tenant = $signup->status === 'live' ? Tenant::query()->where('slug', (string) $signup->slug)->first() : null;
+        if ($tenant === null) {
+            return 'none';
+        }
+
+        return $this->tenants->runAs($tenant, function () use ($signup): string {
+            $email = mb_strtolower((string) $signup->owner_email);
+            $open = Invitation::query()->whereRaw('lower(email) = ?', [$email])->whereNull('accepted_at')->latest('id')->first();
+            if ($open !== null) {
+                app(ManageInvitations::class)->resend($open, null);
+
+                return 'sent';
+            }
+
+            return User::query()->whereRaw('lower(email) = ?', [$email])->exists() ? 'signed-in' : 'none';
+        });
     }
 
     /**

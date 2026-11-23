@@ -69,7 +69,17 @@
         .actions{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
     </style>
     @include('marketing::partials.chrome-css')
-    <style>footer.site{margin-top:56px}</style>
+    <style>footer.site{margin-top:56px}
+        .busy{position:fixed;inset:0;z-index:50;display:grid;place-items:center;background:rgb(10 19 48/.55);backdrop-filter:blur(3px);padding:16px}.busy[hidden]{display:none}
+        .busy-card{display:flex;gap:16px;align-items:flex-start;max-width:440px;background:var(--card);border-radius:var(--radius);padding:24px;box-shadow:0 30px 80px -20px rgb(0 0 0/.45)}.busy-card p{margin:0}
+        .spinner{flex:none;width:28px;height:28px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--brand);animation:spin .8s linear infinite}
+        .progress{height:6px;border-radius:3px;background:var(--line);overflow:hidden;max-width:520px;margin:20px 0}.progress span{display:block;height:100%;width:35%;background:var(--brand);border-radius:3px;animation:slide 1.6s ease-in-out infinite}
+        .setup-steps{list-style:none;padding:0;margin:0;display:grid;gap:10px;max-width:520px}.setup-steps li{display:flex;gap:10px;align-items:center;color:var(--muted)}
+        .setup-steps li::before{content:"";flex:none;width:18px;height:18px;border-radius:50%;border:2px solid var(--line)}.setup-steps li.doing{color:var(--ink);font-weight:600}.setup-steps li.doing::before{border-color:var(--line);border-top-color:var(--brand);animation:spin .8s linear infinite}
+        button.link{background:none;border:0;padding:0;color:var(--brand);font:inherit;text-decoration:underline;cursor:pointer}
+        @keyframes spin{to{transform:rotate(360deg)}}@keyframes slide{0%{transform:translateX(-100%)}100%{transform:translateX(300%)}}
+        @media (prefers-reduced-motion:reduce){.spinner,.progress span,.setup-steps li.doing::before{animation:none}}
+    </style>
     @stack('head')
 </head>
 <body>

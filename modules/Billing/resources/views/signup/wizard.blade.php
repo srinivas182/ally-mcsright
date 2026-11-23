@@ -106,7 +106,7 @@
     </form>
 
 @else
-    <form method="post" action="{{ $base }}" novalidate>
+    <form method="post" action="{{ $base }}" novalidate data-pay>
         @csrf
         <div class="hp" aria-hidden="true"><label>Fax<input type="text" name="fax" tabindex="-1" autocomplete="off"></label></div>
         <fieldset><legend>4. Review and pay</legend>
@@ -127,4 +127,13 @@
             <p class="muted small">You pay on our payment provider's secure page. Your RightAlly and your website are created the moment the payment goes through.</p>
         </fieldset>
     </form>
+    {{-- QW1: while the secure payment page loads, say so, so nobody presses twice or thinks it stopped. --}}
+    <div class="busy" data-pay-busy hidden role="status" aria-live="polite">
+        <div class="busy-card"><span class="spinner" aria-hidden="true"></span><p><strong>Taking you to secure payment…</strong><br>This takes a few seconds. After you pay, you come straight back here while we set up {{ $draft->brokerage }}.</p></div>
+    </div>
+    <script nonce="{{ Vite::cspNonce() }}">
+    (function(){var f=document.querySelector('[data-pay]'),b=document.querySelector('[data-pay-busy]');if(!f||!b)return;
+    f.addEventListener('submit',function(){if(f.terms&&!f.terms.checked)return;b.hidden=false;var s=f.querySelector('[type=submit]');if(s){s.disabled=true;}});
+    window.addEventListener('pageshow',function(e){if(e.persisted){b.hidden=true;var s=f.querySelector('[type=submit]');if(s)s.disabled=false;}});})();
+    </script>
 @endif

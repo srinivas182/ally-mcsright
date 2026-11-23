@@ -31,6 +31,7 @@ type Signup = {
     reminded_at: string | null;
     no_reminders: boolean;
     resume_url: string | null;
+    can_resend: boolean;
 };
 
 type Props = {
@@ -204,6 +205,25 @@ export default function HqSignups({
                                             )}
                                         </td>
                                         <td className="p-3">
+                                            {s.can_resend && (
+                                                <div className="grid justify-items-end">
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        onClick={() =>
+                                                            router.post(
+                                                                `/hq/signups/${s.ulid}/resend`,
+                                                                {},
+                                                                {
+                                                                    preserveScroll: true,
+                                                                },
+                                                            )
+                                                        }
+                                                    >
+                                                        Resend sign-in email
+                                                    </Button>
+                                                </div>
+                                            )}
                                             {s.status === 'unfinished' && (
                                                 <div className="grid justify-items-end gap-2">
                                                     <Button
