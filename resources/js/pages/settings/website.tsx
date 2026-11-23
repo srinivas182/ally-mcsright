@@ -223,6 +223,7 @@ function Manage({
             accent: site.brand.accent ?? '#0f172a',
             logo_url: site.brand.logo_url ?? '',
             hero_image: site.brand.hero_image ?? '',
+            office: site.brand.office ?? 'full',
         },
         seo: {
             title_suffix: site.seo.title_suffix ?? '',
@@ -314,6 +315,7 @@ function Manage({
                             ...d.brand,
                             logo_url: d.brand.logo_url || null,
                             hero_image: d.brand.hero_image || null,
+                            office: d.brand.office || 'full',
                         },
                     }));
                     form.patch('/settings/website', opts);
@@ -354,6 +356,28 @@ function Manage({
                         value={form.data.brand.hero_image}
                         onChange={(e) => brand('hero_image', e.target.value)}
                     />
+                    <label className="grid gap-1 sm:col-span-2">
+                        Back office colours
+                        <select
+                            className="h-9 rounded-md border bg-background px-3 text-sm"
+                            value={form.data.brand.office}
+                            onChange={(e) => brand('office', e.target.value)}
+                        >
+                            <option value="full">
+                                Your brand everywhere (menu, buttons, sign-in
+                                page)
+                            </option>
+                            <option value="accent">
+                                Your brand on buttons and highlights only
+                            </option>
+                            <option value="off">RightAlly's own colours</option>
+                        </select>
+                        <span className="text-xs text-muted-foreground">
+                            Your logo and website photo also show on your team's
+                            sign-in page. Colours that are hard to read on are
+                            darkened automatically.
+                        </span>
+                    </label>
                 </div>
 
                 <h2 className="font-semibold">Details</h2>

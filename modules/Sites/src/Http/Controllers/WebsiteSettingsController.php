@@ -82,7 +82,7 @@ final class WebsiteSettingsController
             'info.email' => ['nullable', 'email', 'max:150'], 'info.phone' => ['nullable', 'string', 'max:30'], 'info.social' => ['nullable', 'array'], 'info.social.*' => ['nullable', 'url:https', 'max:290'],
             'info.privacy' => ['nullable', 'string', 'max:20000'],
             'brand' => ['nullable', 'array'], 'brand.primary' => ['nullable', 'regex:/^#[0-9a-fA-F]{6}$/'], 'brand.accent' => ['nullable', 'regex:/^#[0-9a-fA-F]{6}$/'],
-            'brand.logo_url' => ['nullable', 'url:https', 'max:490'], 'brand.hero_image' => ['nullable', 'url:https', 'max:490'],
+            'brand.logo_url' => ['nullable', 'url:https', 'max:490'], 'brand.hero_image' => ['nullable', 'url:https', 'max:490'], 'brand.office' => ['nullable', 'in:full,accent,off'],
             'settings' => ['nullable', 'array'], 'settings.signup_after' => ['nullable', 'integer', 'min:0', 'max:20'],
             'seo' => ['nullable', 'array'], 'seo.title_suffix' => ['nullable', 'string', 'max:60'], 'seo.description' => ['nullable', 'string', 'max:300']]);
         $sites->update($site, $data, $user);

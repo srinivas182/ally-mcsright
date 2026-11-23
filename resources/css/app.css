@@ -205,7 +205,7 @@ html[data-motion='reduce'] *::after {
     border-radius: 0.625rem;
     box-shadow:
         0 1px 0 rgb(255 255 255 / 0.15) inset,
-        0 8px 20px -8px rgb(21 93 252 / 0.6);
+        0 8px 20px -8px color-mix(in oklab, var(--primary) 60%, transparent);
 }
 
 /* ---------------------------------------------------------------------------------------------------------------
@@ -240,25 +240,31 @@ html[data-motion='reduce'] *::after {
 [data-slot='sidebar-wrapper']:has([data-variant='inset']) {
     background-image: radial-gradient(
         70rem 40rem at -10% -10%,
-        rgb(21 93 252 / 0.28),
+        color-mix(in oklab, var(--sidebar-primary) 28%, transparent),
         transparent 60%
     );
 }
 
 [data-sidebar='group-label'] {
-    color: rgb(195 205 234 / 0.6);
+    color: color-mix(in oklab, var(--sidebar-foreground) 70%, transparent);
     font-size: 0.7rem;
     font-weight: 600;
     letter-spacing: 0.04em;
 }
 
 [data-sidebar='menu-button'][data-active='true'] {
-    background: linear-gradient(180deg, #2a6bff, #155dfc);
-    color: #ffffff;
+    /* BR2: the brokerage's colour when it uses its own brand (RightAlly blue otherwise). */
+    background: linear-gradient(
+        180deg,
+        color-mix(in oklab, var(--sidebar-primary) 82%, white),
+        var(--sidebar-primary)
+    );
+    color: var(--sidebar-primary-foreground);
     font-weight: 600;
     box-shadow:
         0 1px 0 rgb(255 255 255 / 0.18) inset,
-        0 6px 16px -6px rgb(21 93 252 / 0.7);
+        0 6px 16px -6px
+            color-mix(in oklab, var(--sidebar-primary) 70%, transparent);
 }
 
 [data-sidebar='menu-button']:not([data-active='true']):hover {
