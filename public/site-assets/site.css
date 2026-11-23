@@ -3299,6 +3299,7 @@ body:not(:has(main > .hero:first-child, main > .ra-block:first-child > .hero))
     }
 }
 /* WP1: no glow on header text when the page has no banner photo behind it. */
-body:not(:has(main > .hero:first-child, main > .ra-block:first-child > .hero)) .site-header:not(.scrolled) {
+body:not(:has(main > .hero:first-child, main > .ra-block:first-child > .hero))
+    .site-header:not(.scrolled) {
     text-shadow: none;
 }
