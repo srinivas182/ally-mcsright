@@ -82,6 +82,26 @@ final class HqSignupsController
         return back();
     }
 
+    /** EM1: correct the owner's email (typed wrong, or never arrived) and, once paid, send the sign-in email there. */
+    public function email(Request $request, string $signup, Signups $signups): RedirectResponse
+    {
+        $data = $request->validate(['email' => ['required', 'email:rfc', 'max:190']], ['email.*' => 'Type a valid email address.']);
+        $row = DB::connection(Connections::control())->table('signups')->where('ulid', $signup)->first() ?? abort(404);
+        $old = (string) $row->owner_email;
+        $result = $signups->changeEmail($row, (string) $data['email']);
+        if (in_array($result, ['changed', 'sent'], true)) {
+            app(AuditLogger::class)->record('billing.signup.email_changed', metadata: ['signup' => $signup, 'from' => $old, 'to' => mb_strtolower((string) $data['email'])], severity: 'warning');
+        }
+        Inertia::flash('toast', match ($result) {
+            'sent' => ['type' => 'success', 'message' => 'Email changed. The sign-in email went to '.mb_strtolower((string) $data['email']).'; the link sent to '.$old.' no longer works.'],
+            'changed' => ['type' => 'success', 'message' => 'Email changed. Reminders now go to '.mb_strtolower((string) $data['email']).'.'],
+            'signed-in' => ['type' => 'info', 'message' => 'Not changed: the owner has already signed in with '.$old.'. They can change their email in their profile.'],
+            default => ['type' => 'error', 'message' => 'Not changed: someone at this brokerage already uses that email.'],
+        });
+
+        return back();
+    }
+
     /** QW1: a paid brokerage's owner did not get (or lost) their sign-in email: send a fresh one. */
     public function resend(string $signup, Signups $signups): RedirectResponse
     {

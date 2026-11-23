@@ -172,6 +172,49 @@ final class Signups
     }
 
     /**
+     * EM1: HQ corrects the owner's email on a sign-up (typed wrong, or the email never arrived). Before payment only the
+     * sign-up changes. After payment the sign-in email goes to the new address (the link sent to the old one stops
+     * working), as long as the owner has not signed in yet; once they have, they change it themselves in their profile.
+     * Returns 'changed', 'sent', 'signed-in' or 'taken'.
+     */
+    public function changeEmail(stdClass $signup, string $email): string
+    {
+        $email = mb_strtolower(trim($email));
+        $old = mb_strtolower((string) $signup->owner_email);
+        $db = DB::connection(Connections::control());
+        if ($signup->status !== 'live') {
+            $db->table('signups')->where('id', $signup->id)->update(['owner_email' => $email, 'updated_at' => now()]);
+
+            return 'changed';
+        }
+        $tenant = Tenant::query()->where('slug', (string) $signup->slug)->first();
+        if ($tenant === null) {
+            return 'taken';
+        }
+        $result = $this->tenants->runAs($tenant, function () use ($old, $email, $signup): string {
+            if (User::query()->whereRaw('lower(email) = ?', [$old])->exists()) {
+                return 'signed-in';
+            }
+            if (User::query()->whereRaw('lower(email) = ?', [$email])->exists()) {
+                return 'taken';
+            }
+            $open = Invitation::query()->whereRaw('lower(email) = ?', [$old])->whereNull('accepted_at')->latest('id')->first();
+            if ($open !== null && $open->revoked_at === null) {
+                app(ManageInvitations::class)->revoke($open, null);
+            }
+            [$first, $last] = array_pad(explode(' ', trim((string) $signup->owner_name), 2), 2, '');
+            app(ManageInvitations::class)->invite($email, $first, $last, UserKind::Owner, null);
+
+            return 'sent';
+        });
+        if ($result === 'sent') {
+            $db->table('signups')->where('id', $signup->id)->update(['owner_email' => $email, 'updated_at' => now()]);
+        }
+
+        return $result;
+    }
+
+    /**
      * QW1: sends the owner of a paid sign-up their sign-in email again (a fresh link; the old one stops working).
      * 'sent', 'signed-in' when they already set a password (they use "Forgot your password?"), or 'none' when the
      * brokerage is not set up yet.
