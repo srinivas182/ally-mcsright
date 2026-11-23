@@ -112,7 +112,7 @@
         <fieldset><legend>4. Review and pay</legend>
             <dl class="review">
                 <div><dt>{{ $solo ? 'You' : 'Brokerage' }}</dt><dd>{{ $draft->brokerage }}<br><span class="muted small">{{ $draft->owner_name }} · {{ $draft->owner_email }}{{ $draft->state ? ' · '.($signupStates[$draft->state] ?? $draft->state) : '' }}</span></dd><a href="{{ $base }}?step=1#signup">Change</a></div>
-                <div><dt>Address</dt><dd>{{ \Modules\Core\Tenancy\Host::platformHostFor((string) $draft->slug) }}</dd><a href="{{ $base }}?step=1#signup">Change</a></div>
+                <div><dt>Address</dt><dd>{{ \Modules\Billing\Signup\Signups::websiteHost((string) $draft->slug) }}</dd><a href="{{ $base }}?step=1#signup">Change</a></div>
                 <div><dt>MLS boards</dt><dd>@if ($review['boards'] === []) None yet: you can add boards later in Settings › MLS. @else {{ implode(', ', array_column($review['boards'], 'name')) }} @endif</dd><a href="{{ $base }}?step=1#signup">Change</a></div>
                 <div><dt>{{ $solo ? 'Plan' : 'Package' }}</dt><dd>{{ $review['package'] }}: {{ $usd($review['price_cents']) }} a {{ $review['interval'] }}</dd><a href="{{ $base }}?step=2#signup">Change</a></div>
                 <div><dt>Website design</dt><dd>{{ $review['design'] }}</dd><a href="{{ $base }}?step=3#signup">Change</a></div>

@@ -109,7 +109,7 @@ final class SignupController
         $email = is_string($request->query('email')) ? $request->query('email') : null;
         $problem = Signups::slugProblem($slug, $email);
 
-        return response()->json(['ok' => $problem === null, 'message' => $problem, 'host' => Host::platformHostFor($slug),
+        return response()->json(['ok' => $problem === null, 'message' => $problem, 'host' => Signups::websiteHost($slug),
             'suggestion' => $problem !== null && $slug !== '' ? Signups::freeNear($slug, $email) : null]);
     }
 
@@ -144,7 +144,7 @@ final class SignupController
     public function welcome(string $signup): HttpResponse
     {
         $row = Signups::find($signup) ?? abort(404);
-        $response = response()->view('billing::signup.welcome', ['s' => $row, 'host' => Host::platformHostFor((string) $row->slug)]);
+        $response = response()->view('billing::signup.welcome', ['s' => $row, 'host' => Host::platformHostFor((string) $row->slug), 'website' => Signups::websiteHost((string) $row->slug)]);
         $response->headers->add(['X-Robots-Tag' => 'noindex, nofollow', 'Cache-Control' => 'private, no-store']);
 
         return $response;

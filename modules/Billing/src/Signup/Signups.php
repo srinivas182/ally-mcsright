@@ -263,9 +263,15 @@ final class Signups
         if ($email !== null && trim($email) !== '') {
             $held->where('owner_email', '!=', mb_strtolower(trim($email)));
         }
-        $taken = Tenant::withTrashed()->where('slug', $slug)->exists() || TenantDomain::query()->where('host', Host::platformHostFor($slug))->exists() || $held->exists();
+        $taken = Tenant::withTrashed()->where('slug', $slug)->exists() || TenantDomain::query()->whereIn('host', [Host::platformHostFor($slug), self::websiteHost($slug)])->exists() || $held->exists();
 
         return $taken ? 'This address is already in use. Please choose another.' : null;
+    }
+
+    /** DM1: the brokerage's public website address (name.rightally.app), the one it tells clients. */
+    public static function websiteHost(string $slug): string
+    {
+        return Host::normalise($slug.'.'.(string) config('sites.platform_domain'));
     }
 
     /** SU1: a free address close to the one asked for (name-2, name-3 …), or null. */

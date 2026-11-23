@@ -55,6 +55,8 @@ say "6. Starting the new release"
 "${COMPOSE[@]}" exec -T app php artisan listings:sample-homes || echo "  Sample homes could not be refreshed; websites keep the ones they have."
 # TP2: the website designs' demo photos (downloaded once; safe to re-run).
 "${COMPOSE[@]}" exec -T app php artisan sites:demo-photos || echo "  Demo photos could not all be fetched; they show from Pexels until the next deploy."
+# DM1: websites at name.<domain> and back offices at name-office.<domain> (only when CORE_OFFICE_SUFFIX is set; once).
+"${COMPOSE[@]}" exec -T app php artisan sites:one-domain || echo "  Could not move brokerages to one domain; they keep their current addresses."
 # TP4: the demo website used to preview designs at sign-up (created once).
 "${COMPOSE[@]}" exec -T app php artisan sites:demo-site || echo "  The design demo website could not be set up; previews use a single page until the next deploy."
 

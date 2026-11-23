@@ -37,6 +37,11 @@ final class Slug
         /** @var list<string> $reserved */
         $reserved = (array) config('core.slug.reserved', []);
 
+        $suffix = Host::officeSuffix();
+        if ($suffix !== '' && str_ends_with($slug, $suffix)) { // DM1: those are back-office addresses
+            return 'Addresses ending in "'.$suffix.'" are reserved. Please choose another.';
+        }
+
         if (in_array($slug, $reserved, true)) {
             return 'This address is reserved. Please choose another.';
         }

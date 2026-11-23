@@ -15,6 +15,7 @@ use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Identity\Enums\UserStatus;
 use Modules\Core\Identity\Notifications\SupportAccessRequested;
 use Modules\Core\Support\Connections;
+use Modules\Core\Tenancy\Host;
 use Modules\Core\Tenancy\Models\Tenant;
 use Modules\Core\Tenancy\TenantContext;
 use stdClass;
@@ -67,7 +68,7 @@ final class SupportAccess
         $control->clone()->insert(['ulid' => (string) Str::ulid(), 'tenant_id' => $tenant->id, 'by_user_id' => $staff->id, 'by_name' => mb_substr($staff->name, 0, 160),
             'reason' => mb_substr(trim($reason), 0, 300), 'status' => 'waiting', 'created_at' => now(), 'updated_at' => now()]);
         $domain = $tenant->primaryDomain();
-        $link = 'https://'.($domain !== null ? $domain->host : $tenant->slug.'.'.config('core.platform_domain')).'/settings/support-access';
+        $link = 'https://'.($domain !== null ? $domain->host : Host::platformHostFor($tenant->slug)).'/settings/support-access';
         $this->tenants->runAs($tenant, function () use ($staff, $reason, $link): void {
             $owners = User::query()->where('kind', UserKind::Owner)->where('status', UserStatus::Active)->get();
             Notification::send($owners, new SupportAccessRequested($staff->name, trim($reason), $link));
