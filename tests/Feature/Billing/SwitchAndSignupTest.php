@@ -367,3 +367,26 @@ it('sends the owner\'s sign-in email again from the welcome page and from HQ, an
     $this->actingAs($this->staff)->post(RA.'/hq/signups/'.$signup.'/resend')->assertRedirect();
     expect($hash())->not->toBe($second);
 });
+
+it('lets HQ correct the owner\'s email and sends the sign-in email to the new address (EM1)', function (): void {
+    $signup = startSignup();
+    $as = fn () => $this->actingAs($this->staff)->withSession(['auth.password_confirmed_at' => time()]);
+    // Before payment: only the sign-up changes.
+    $as()->post(RA.'/hq/signups/'.$signup.'/email', ['email' => 'Dana@Oak-Realty.test'])->assertRedirect();
+    expect(control()->table('signups')->where('ulid', $signup)->value('owner_email'))->toBe('dana@oak-realty.test');
+
+    signupEvent('evt_1', 'checkout.session.completed', $signup);
+    $tenant = Tenant::query()->where('slug', 'oak-realty')->sole();
+    $as()->post(RA.'/hq/signups/'.$signup.'/email', ['email' => 'not-an-email'])->assertSessionHasErrors('email');
+    $as()->post(RA.'/hq/signups/'.$signup.'/email', ['email' => 'owner@oakrealty.test'])->assertRedirect();
+    app(TenantContext::class)->runAs($tenant, function (): void {
+        expect(Invitation::query()->where('email', 'owner@oakrealty.test')->whereNull('revoked_at')->exists())->toBeTrue()
+            ->and(Invitation::query()->where('email', 'dana@oak-realty.test')->value('revoked_at'))->not->toBeNull();
+    });
+    expect(control()->table('signups')->where('ulid', $signup)->value('owner_email'))->toBe('owner@oakrealty.test');
+
+    // It needs the HQ person's password.
+    $this->flushSession();
+    $this->actingAs($this->staff)->post(RA.'/hq/signups/'.$signup.'/email', ['email' => 'x@oak.test'])->assertRedirect();
+    expect(control()->table('signups')->where('ulid', $signup)->value('owner_email'))->toBe('owner@oakrealty.test');
+});

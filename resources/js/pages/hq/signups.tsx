@@ -73,6 +73,15 @@ export default function HqSignups({
 }: Props) {
     const [search, setSearch] = useState(q);
     const [open, setOpen] = useState<string | null>(null);
+    // EM1: correcting an owner's email.
+    const [editing, setEditing] = useState<string | null>(null);
+    const [newEmail, setNewEmail] = useState('');
+    const saveEmail = (ulid: string) =>
+        router.post(
+            `/hq/signups/${ulid}/email`,
+            { email: newEmail },
+            { preserveScroll: true, onSuccess: () => setEditing(null) },
+        );
     const go = (next: { status?: string; q?: string }) =>
         router.get(
             '/hq/signups',
@@ -215,6 +224,70 @@ export default function HqSignups({
                                             )}
                                         </td>
                                         <td className="p-3">
+                                            {s.status !== 'replaced' && (
+                                                <div className="mb-2 grid justify-items-end gap-2">
+                                                    {editing === s.ulid ? (
+                                                        <form
+                                                            className="flex flex-wrap justify-end gap-2"
+                                                            onSubmit={(e) => {
+                                                                e.preventDefault();
+                                                                saveEmail(
+                                                                    s.ulid,
+                                                                );
+                                                            }}
+                                                        >
+                                                            <Input
+                                                                type="email"
+                                                                aria-label={`New email for ${s.brokerage}`}
+                                                                className="h-8 w-56"
+                                                                value={newEmail}
+                                                                onChange={(e) =>
+                                                                    setNewEmail(
+                                                                        e.target
+                                                                            .value,
+                                                                    )
+                                                                }
+                                                            />
+                                                            <Button
+                                                                size="sm"
+                                                                type="submit"
+                                                            >
+                                                                {s.status ===
+                                                                'live'
+                                                                    ? 'Save and send'
+                                                                    : 'Save'}
+                                                            </Button>
+                                                            <Button
+                                                                size="sm"
+                                                                variant="ghost"
+                                                                type="button"
+                                                                onClick={() =>
+                                                                    setEditing(
+                                                                        null,
+                                                                    )
+                                                                }
+                                                            >
+                                                                Cancel
+                                                            </Button>
+                                                        </form>
+                                                    ) : (
+                                                        <Button
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            onClick={() => {
+                                                                setEditing(
+                                                                    s.ulid,
+                                                                );
+                                                                setNewEmail(
+                                                                    s.email,
+                                                                );
+                                                            }}
+                                                        >
+                                                            Change email
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            )}
                                             {s.can_resend && (
                                                 <div className="grid justify-items-end">
                                                     <Button

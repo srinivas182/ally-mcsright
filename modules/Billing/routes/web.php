@@ -101,6 +101,7 @@ Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.tenants.manage
     Route::get('signups', [HqSignupsController::class, 'index'])->name('signups'); // SU1
     Route::post('signups/{signup}/remind', [HqSignupsController::class, 'remind'])->where('signup', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->middleware('throttle:20,1')->name('signups.remind');
     Route::post('signups/{signup}/resend', [HqSignupsController::class, 'resend'])->where('signup', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->middleware('throttle:20,1')->name('signups.resend'); // QW1
+    Route::post('signups/{signup}/email', [HqSignupsController::class, 'email'])->where('signup', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->middleware(['password.confirm', 'throttle:20,1'])->name('signups.email'); // EM1
     Route::get('go-live', [GoLiveController::class, 'hq'])->name('go-live');
     Route::get('affiliates', [AffiliateController::class, 'hq'])->name('affiliates');
     Route::post('affiliates/rewards', [AffiliateController::class, 'saveRewards'])->middleware('password.confirm')->name('affiliates.rewards');
