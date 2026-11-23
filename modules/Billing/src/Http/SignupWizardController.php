@@ -100,7 +100,7 @@ final class SignupWizardController
         ] : [
             'brokerage' => ['required', 'string', 'max:150'], 'owner_name' => ['required', 'string', 'max:120'], 'owner_email' => ['required', 'email:rfc', 'max:190'],
             'agents' => ['nullable', 'integer', 'min:1', 'max:20000'], 'check' => ['nullable', 'string', 'size:40'],
-        ] + ['slug' => ['required', 'string', 'max:40'], 'state' => ['nullable', 'string', 'size:2', 'alpha'], 'boards' => ['nullable', 'array', 'max:20'], 'boards.*' => ['string', 'size:26']]);
+        ] + ['phone' => ['required', 'string', 'max:30', 'regex:/^[0-9 ()+.\-]{7,30}$/'], 'slug' => ['required', 'string', 'max:40'], 'state' => ['nullable', 'string', 'size:2', 'alpha'], 'boards' => ['nullable', 'array', 'max:20'], 'boards.*' => ['string', 'size:26']]);
         // LV1: at least one state where they hold an active licence, with its number, checked in the state's records.
         // LP1: boards are optional; without one the website is a landing page until a board is added.
         $states = SignupController::boardsAndStates()['signupStates'];
@@ -136,7 +136,7 @@ final class SignupWizardController
         $draft = $signups->saveAbout(self::current($request, $type)?->ulid, [
             'brokerage' => $solo ? (trim((string) ($data['business'] ?? '')) !== '' ? trim((string) $data['business']) : $name) : (string) $data['brokerage'],
             'slug' => (string) $data['slug'], 'owner_name' => $name, 'owner_email' => (string) ($solo ? $data['email'] : $data['owner_email']),
-            'state' => $data['state'] ?? null, 'agents' => $solo ? 1 : (isset($data['agents']) ? (int) $data['agents'] : null), 'boards' => $chosen, 'licences' => $licences,
+            'state' => $data['state'] ?? null, 'agents' => $solo ? 1 : (isset($data['agents']) ? (int) $data['agents'] : null), 'boards' => $chosen, 'licences' => $licences, 'phone' => trim((string) $data['phone']),
             'health_check_id' => $check !== null ? (int) $check->id : null, 'ref' => is_string($request->cookie(Affiliates::COOKIE)) ? $request->cookie(Affiliates::COOKIE) : null,
         ], $type);
         $request->session()->put(self::key($type), $draft);
@@ -182,9 +182,9 @@ final class SignupWizardController
     {
         if ($draft !== null) {
             return $type === 'solo'
-                ? ['name' => (string) $draft->owner_name, 'email' => (string) $draft->owner_email, 'state' => (string) ($draft->state ?? ''), 'slug' => (string) $draft->slug,
+                ? ['name' => (string) $draft->owner_name, 'email' => (string) $draft->owner_email, 'phone' => (string) ($draft->phone ?? ''), 'state' => (string) ($draft->state ?? ''), 'slug' => (string) $draft->slug,
                     'business' => $draft->brokerage !== $draft->owner_name ? (string) $draft->brokerage : '']
-                : ['brokerage' => (string) $draft->brokerage, 'owner_name' => (string) $draft->owner_name, 'owner_email' => (string) $draft->owner_email,
+                : ['brokerage' => (string) $draft->brokerage, 'owner_name' => (string) $draft->owner_name, 'owner_email' => (string) $draft->owner_email, 'phone' => (string) ($draft->phone ?? ''),
                     'state' => (string) ($draft->state ?? ''), 'agents' => (string) ($draft->agents ?? ''), 'slug' => (string) $draft->slug];
         }
         if ($check !== null) {

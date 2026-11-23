@@ -631,9 +631,6 @@ h3 {
     .nav {
         gap: 1rem;
     }
-    .header-call {
-        display: none;
-    }
     .header-row {
         flex-wrap: wrap;
         min-height: 64px;
@@ -3110,9 +3107,16 @@ body:not(:has(main > .hero:first-child, main > .ra-block:first-child > .hero))
 }
 
 @media (max-width: 720px) {
-    /* The phone number is in the menu and the banner on phones; the bar keeps just the name and Menu. */
-    .site-header .header-call {
-        display: none !important;
+    /* FT1: on phones the bar keeps the name, a call button (just the phone icon) and Menu. */
+    .site-header .header-actions {
+        margin-left: 0;
+        order: 1;
+    }
+    .site-header .nav-toggle {
+        order: 2;
+    }
+    .site-header .brand {
+        margin-right: auto;
     }
     .site-header .brand {
         font-size: 1.02rem;
@@ -3302,4 +3306,212 @@ body:not(:has(main > .hero:first-child, main > .ra-block:first-child > .hero))
 body:not(:has(main > .hero:first-child, main > .ra-block:first-child > .hero))
     .site-header:not(.scrolled) {
     text-shadow: none;
+}
+/* FT1: header — brand on the left, the menu in the middle, phone and sign-in on the right. */
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-left: auto;
+}
+.header-call {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    white-space: nowrap;
+    padding: 0.6rem 1rem;
+}
+@media (min-width: 1100px) {
+    html:not(.hdr-centered) #site-nav {
+        flex: 1 1 auto;
+    }
+    html:not(.hdr-centered) .nav {
+        justify-content: center;
+        margin: 0;
+    }
+    html:not(.hdr-centered) .header-actions {
+        margin-left: 0;
+    }
+}
+@media (max-width: 720px) {
+    .header-call span {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+    }
+    .header-call {
+        padding: 0.55rem;
+    }
+}
+.hdr-centered .header-actions {
+    position: absolute;
+    inset: 1rem max(1rem, calc((100% - 1200px) / 2)) auto;
+    justify-content: space-between;
+    pointer-events: none;
+}
+.hdr-centered .header-actions > * {
+    position: static;
+    pointer-events: auto;
+}
+.hdr-centered .header-account {
+    margin-left: auto;
+}
+
+/* FT1: footer — a deep band in the brand's own tone, four columns, then the legal notices and the small print. */
+.site-footer {
+    --footer-bg: color-mix(in oklab, var(--brand) 16%, #0b0e12);
+    background: var(--footer-bg);
+    color: rgb(255 255 255 / 0.72);
+    border-top: 0;
+    padding: 4.5rem 0 2rem;
+    font-size: 0.95rem;
+}
+.site-footer a {
+    color: rgb(255 255 255 / 0.82);
+}
+.site-footer a:hover {
+    color: #fff;
+}
+.footer-top {
+    display: grid;
+    gap: 2.5rem 3rem;
+    grid-template-columns: minmax(0, 1.6fr) repeat(3, minmax(0, 1fr));
+    padding-bottom: 3rem;
+}
+@media (max-width: 900px) {
+    .footer-top {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .footer-brand {
+        grid-column: 1 / -1;
+    }
+}
+@media (max-width: 520px) {
+    .footer-top {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+.site-footer .footer-name {
+    color: #fff;
+    font: var(--head-weight) 1.5rem/1.2 var(--font-head);
+    margin: 0 0 0.9rem;
+}
+.footer-logo {
+    display: block;
+    height: 44px;
+    width: auto;
+    margin-bottom: 1rem;
+}
+.footer-about {
+    max-width: 38ch;
+    line-height: 1.6;
+    margin: 0 0 1.25rem;
+}
+.footer-head {
+    color: #fff;
+    font-weight: 600;
+    font-size: 1rem;
+    margin: 0 0 1rem;
+}
+.site-footer .footer-links {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.65rem;
+    margin: 0;
+}
+.footer-contact p {
+    margin: 0 0 0.6rem;
+}
+.footer-meta {
+    font-size: 0.85rem;
+    color: rgb(255 255 255 / 0.55);
+}
+.site-footer .footer-cta {
+    margin-top: 0.6rem;
+    background: var(--brand);
+    color: var(--on-brand);
+    border-color: transparent;
+}
+.site-footer .social {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+.site-footer .social a {
+    display: inline-block;
+    border: 1px solid rgb(255 255 255 / 0.22);
+    border-radius: 999px;
+    padding: 0.3rem 0.85rem;
+    font-size: 0.85rem;
+}
+.site-footer .footer-legal {
+    border-top: 1px solid rgb(255 255 255 / 0.12);
+    padding-top: 1.75rem;
+    color: rgb(255 255 255 / 0.6);
+}
+.site-footer .disclaimer,
+.site-footer .privacy {
+    color: rgb(255 255 255 / 0.55);
+}
+.footer-bottom {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.75rem 2rem;
+    border-top: 1px solid rgb(255 255 255 / 0.12);
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    font-size: 0.85rem;
+}
+.footer-bottom p {
+    margin: 0;
+}
+.footer-bottom-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.5rem;
+}
+.site-footer .powered {
+    color: rgb(255 255 255 / 0.5);
+}
+@media (max-width: 1099px) {
+    .hdr-centered .header-actions {
+        position: static;
+        inset: auto;
+        pointer-events: auto;
+    }
+}
+@media (max-width: 720px) {
+    .site-header .header-call {
+        padding: 0.55rem 0.7rem;
+        min-width: 0;
+    }
+}
+
+/* FT1: the banner's search button is a round search icon, matching the search box's shape in every design. */
+.hero-search {
+    align-items: center;
+}
+.hero .hero-search .search-go {
+    flex: 0 0 auto;
+    display: inline-grid;
+    place-items: center;
+    width: 3rem;
+    height: 3rem;
+    padding: 0;
+    border-radius: 999px;
+    letter-spacing: 0;
+}
+.shape-square .hero-search,
+.shape-square .hero .hero-search .search-go {
+    border-radius: 0;
+}
+@media (max-width: 720px) {
+    .hero .hero-search .search-go {
+        width: 2.75rem;
+        height: 2.75rem;
+        padding: 0;
+    }
 }

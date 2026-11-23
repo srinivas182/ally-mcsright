@@ -9,7 +9,7 @@
             <form class="hero-search" action="/homes" method="get" role="search">
                 <label class="sr-only" for="hero-q">City, ZIP, neighborhood or address</label>
                 <input id="hero-q" name="q" placeholder="City, ZIP or address" autocomplete="off" enterkeyhint="search">
-                <button class="btn btn-primary" type="submit">Search homes</button>
+                <button class="btn btn-primary search-go" type="submit" aria-label="Search homes"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg></button>
             </form>
         @endif
         <div class="hero-actions">

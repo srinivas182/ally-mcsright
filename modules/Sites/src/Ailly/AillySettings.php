@@ -21,7 +21,7 @@ final class AillySettings
 {
     public const DEFAULT_NAME = 'Ask Ally';
 
-    public const DEFAULTS = ['enabled' => false, 'name' => self::DEFAULT_NAME, 'photo' => null, 'greeting' => '', 'gate' => 'after', 'gate_after' => 2, 'visitor_daily' => 20, 'daily_cap' => 300,
+    public const DEFAULTS = ['enabled' => true, 'name' => self::DEFAULT_NAME, 'photo' => null, 'greeting' => '', 'gate' => 'after', 'gate_after' => 2, 'visitor_daily' => 20, 'daily_cap' => 300,
         'team' => [], 'nudge' => true];
 
     /**
@@ -34,7 +34,8 @@ final class AillySettings
     {
         $s = (array) (($brokerage !== null ? ($brokerage->settings ?? []) : [])['ailly'] ?? []);
 
-        return ['enabled' => (bool) ($s['enabled'] ?? false), 'name' => (string) ($s['name'] ?? self::DEFAULT_NAME) ?: self::DEFAULT_NAME,
+        // FT1: on for every website unless the brokerage turns it off (within its daily limits).
+        return ['enabled' => (bool) ($s['enabled'] ?? true), 'name' => (string) ($s['name'] ?? self::DEFAULT_NAME) ?: self::DEFAULT_NAME,
             'photo' => is_string($s['photo'] ?? null) && $s['photo'] !== '' ? $s['photo'] : null, 'greeting' => (string) ($s['greeting'] ?? ''),
             'gate' => in_array($s['gate'] ?? null, ['before', 'after', 'booking'], true) ? (string) $s['gate'] : 'after',
             'gate_after' => max(1, min(10, (int) ($s['gate_after'] ?? 2))), 'visitor_daily' => max(5, min(100, (int) ($s['visitor_daily'] ?? 20))),
