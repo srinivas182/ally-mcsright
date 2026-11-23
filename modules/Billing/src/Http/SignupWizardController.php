@@ -8,16 +8,19 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Modules\Billing\Affiliates\Affiliates;
 use Modules\Billing\HealthCheck\HealthChecks;
 use Modules\Billing\Models\Package;
 use Modules\Billing\ProductFeatures;
+use Modules\Billing\Signup\LicenceCheck;
 use Modules\Billing\Signup\Signups;
 use Modules\Core\Security\BotProtection;
 use Modules\Core\Support\Connections;
 use Modules\Sites\Content\DemoPhotos;
 use Modules\Sites\Content\StarterSite;
+use Modules\Sites\Support\Designs;
 use stdClass;
 
 /**
@@ -69,12 +72,15 @@ final class SignupWizardController
             'prefill' => self::prefill($draft, $check, $type, is_string($request->query('check')) ? $request->query('check') : ''),
             'prefillBoards' => $draft !== null ? array_values(array_filter((array) json_decode((string) ($draft->idx_boards ?? '[]'), true), 'is_string')) : [],
             'chosen' => is_string($chosenPackage) ? $chosenPackage : null, 'interval' => $draft?->interval,
-            'designs' => collect((array) config('sites.templates'))->map(fn (array $t, string $k): array => ['key' => $k, 'name' => (string) $t['name'],
-                'description' => (string) ($t['description'] ?? ''), 'theme' => (string) ($t['theme'] ?? '#ffffff'), 'brand' => (array) ($t['brand'] ?? []),
-                'font' => trim((string) strtok((string) ($t['fonts'] ?? 'Inter'), '+')), 'css' => (string) ($t['css'] ?? ''),
-                // SU4: a real thumbnail of the design: its banner photo, its layout and three sample homes.
-                'layout' => (string) ($t['layout'] ?? 'hdr-solid hero-full'), 'hero' => DemoPhotos::url(StarterSite::heroPhoto($k), 'card'),
-                'homes' => [DemoPhotos::url(DemoPhotos::pick('exterior_luxury', 2), 'thumb'), DemoPhotos::url(DemoPhotos::pick('exterior_family', 3), 'thumb'), DemoPhotos::url(DemoPhotos::pick('exterior_coastal', 5), 'thumb')]])->values()->all(),
+            // LP1: full website designs with an MLS board; landing page designs without one.
+            'landingOnly' => $draft !== null && Signups::landingOnly($draft),
+            'designs' => collect((array) config('sites.templates'))->filter(fn (array $t, string $k): bool => Designs::isLanding($k) === ($draft !== null && Signups::landingOnly($draft)))
+                ->map(fn (array $t, string $k): array => ['key' => $k, 'name' => (string) $t['name'], 'landing' => Designs::isLanding($k),
+                    'description' => (string) ($t['description'] ?? ''), 'theme' => (string) ($t['theme'] ?? '#ffffff'), 'brand' => (array) ($t['brand'] ?? []),
+                    'font' => trim((string) strtok((string) ($t['fonts'] ?? 'Inter'), '+')), 'css' => (string) ($t['css'] ?? ''),
+                    // SU4: a real thumbnail of the design: its banner photo, its layout and three sample homes.
+                    'layout' => (string) ($t['layout'] ?? 'hdr-solid hero-full'), 'hero' => DemoPhotos::url(StarterSite::heroPhoto($k), 'card'),
+                    'homes' => [DemoPhotos::url(DemoPhotos::pick('exterior_luxury', 2), 'thumb'), DemoPhotos::url(DemoPhotos::pick('exterior_family', 3), 'thumb'), DemoPhotos::url(DemoPhotos::pick('exterior_coastal', 5), 'thumb')]])->values()->all(),
             'template' => $draft?->template,
             'marketArea' => $draft !== null ? Signups::marketArea((string) ($draft->idx_boards ?? '[]'), $draft->state) : '',
             'marketState' => $draft !== null ? Signups::marketState((string) ($draft->idx_boards ?? '[]'), $draft->state) : null,
@@ -95,24 +101,42 @@ final class SignupWizardController
             'brokerage' => ['required', 'string', 'max:150'], 'owner_name' => ['required', 'string', 'max:120'], 'owner_email' => ['required', 'email:rfc', 'max:190'],
             'agents' => ['nullable', 'integer', 'min:1', 'max:20000'], 'check' => ['nullable', 'string', 'size:40'],
         ] + ['slug' => ['required', 'string', 'max:40'], 'state' => ['nullable', 'string', 'size:2', 'alpha'], 'boards' => ['nullable', 'array', 'max:20'], 'boards.*' => ['string', 'size:26']]);
-        // SU3: each state they hold a licence in needs at least one board there; without a board there are no listings.
-        $request->validate(['licence_states' => ['nullable', 'array', 'max:60'], 'licence_states.*' => ['string', 'size:2', 'alpha']]);
+        // LV1: at least one state where they hold an active licence, with its number, checked in the state's records.
+        // LP1: boards are optional; without one the website is a landing page until a board is added.
+        $states = SignupController::boardsAndStates()['signupStates'];
+        $request->validate(['licence_states' => ['required', 'array', 'min:1', 'max:60'], 'licence_states.*' => ['string', 'size:2', Rule::in(array_keys($states))],
+            'licence_numbers' => ['nullable', 'array'], 'licence_numbers.*' => ['nullable', 'string', 'max:40']],
+            ['licence_states.required' => 'Tick at least one state where you hold an active real estate licence.', 'licence_states.min' => 'Tick at least one state where you hold an active real estate licence.']);
         $chosen = array_values(array_unique($data['boards'] ?? []));
         $data['boards'] = $chosen;
-        $offered = collect(SignupController::boardsAndStates()['idxBoards']);
-        $states = SignupController::boardsAndStates()['idxStates'];
-        foreach ((array) $request->input('licence_states', []) as $st) {
-            $has = $offered->contains(fn (array $b): bool => in_array($b['ulid'], $chosen, true) && in_array($st, (array) ($b['states'] ?? [$b['state']]), true));
-            if (is_string($st) && isset($states[$st]) && ! $has) {
-                throw ValidationException::withMessages(['licence_states' => 'Choose at least one MLS board in '.$states[$st].', or untick '.$states[$st].'.']);
+        $owner = $solo ? (string) $data['name'] : (string) $data['owner_name'];
+        $licences = [];
+        $errors = [];
+        foreach (array_values(array_unique((array) $request->input('licence_states'))) as $st) {
+            $number = trim((string) ($request->input('licence_numbers.'.$st) ?? ''));
+            if ($number === '') {
+                $errors['licence_numbers.'.$st] = 'Type your '.$states[$st].' licence number.';
+
+                continue;
             }
+            $result = app(LicenceCheck::class)->check($st, $states[$st], $number, $owner);
+            if ($result['error'] !== null) {
+                $errors['licence_numbers.'.$st] = $result['error'];
+
+                continue;
+            }
+            unset($result['error']);
+            $licences[] = $result;
+        }
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
         }
         $name = $solo ? trim((string) $data['name']) : trim((string) $data['owner_name']);
         $check = ! $solo && isset($data['check']) ? HealthChecks::byToken($data['check']) : null;
         $draft = $signups->saveAbout(self::current($request, $type)?->ulid, [
             'brokerage' => $solo ? (trim((string) ($data['business'] ?? '')) !== '' ? trim((string) $data['business']) : $name) : (string) $data['brokerage'],
             'slug' => (string) $data['slug'], 'owner_name' => $name, 'owner_email' => (string) ($solo ? $data['email'] : $data['owner_email']),
-            'state' => $data['state'] ?? null, 'agents' => $solo ? 1 : (isset($data['agents']) ? (int) $data['agents'] : null), 'boards' => $chosen,
+            'state' => $data['state'] ?? null, 'agents' => $solo ? 1 : (isset($data['agents']) ? (int) $data['agents'] : null), 'boards' => $chosen, 'licences' => $licences,
             'health_check_id' => $check !== null ? (int) $check->id : null, 'ref' => is_string($request->cookie(Affiliates::COOKIE)) ? $request->cookie(Affiliates::COOKIE) : null,
         ], $type);
         $request->session()->put(self::key($type), $draft);

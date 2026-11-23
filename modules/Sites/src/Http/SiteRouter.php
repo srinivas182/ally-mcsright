@@ -24,6 +24,7 @@ use Modules\Sites\Http\Controllers\SiteController;
 use Modules\Sites\Http\Controllers\ValuationController;
 use Modules\Sites\Http\Controllers\VisitorController;
 use Modules\Sites\Models\Site;
+use Modules\Sites\Support\Designs;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -87,6 +88,11 @@ final class SiteRouter
 
     public function dispatch(Request $request): Response
     {
+        // LP1: a landing page website has no home search, property pages or market reports: those addresses go home.
+        if ($request->isMethod('GET') && preg_match('#^(homes|market)(/|$)#', ltrim($request->path(), '/')) === 1
+            && Designs::isLanding(Site::query()->where('kind', 'brokerage')->first()?->template)) {
+            return redirect('/', 302)->header('Cache-Control', 'no-store');
+        }
         try {
             $response = $this->router->dispatch($request);
         } catch (NotFoundHttpException|MethodNotAllowedHttpException) {

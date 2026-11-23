@@ -1,4 +1,4 @@
-/* RightAlly websites — shared markup, fifteen templates (Aurum, Modern, Hearth, Coastal, Metro; IX1: Estate, Nordic, Heritage, Summit, Atrium; IX2: Villa, Loft, Meadow, Mesa, Ember). Brand colours come from --brand and --accent. */
+/* RightAlly websites — shared markup, fifteen website and five landing page templates (Aurum, Modern, Hearth, Coastal, Metro; IX1: Estate, Nordic, Heritage, Summit, Atrium; IX2: Villa, Loft, Meadow, Mesa, Ember; LP1: Signature, Advisor, Shoreline, Legacy, Studio). Brand colours come from --brand and --accent. */
 :root {
     --bg: #ffffff;
     --surface: #f6f7f9;
@@ -957,7 +957,7 @@ h3 {
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 }
 .feature {
-    border-top: 2px solid var(--accent, var(--primary));
+    border-top: 2px solid var(--brand);
     padding-top: 1.25rem;
 }
 .feature h3 {
@@ -3170,4 +3170,121 @@ body:not(:has(main > .hero:first-child, main > .ra-block:first-child > .hero))
 }
 .hero-center .hero-inner {
     grid-template-columns: minmax(0, 1fr);
+}
+
+/* LP1: landing page designs (Signature, Advisor, Shoreline, Legacy, Studio): one page about the brokerage or agent. */
+.theme-signature {
+    --bg: #0d0d0f;
+    --surface: #16161a;
+    --text: #f2ede3;
+    --muted: #a9a39a;
+    --line: #2a2a30;
+    --on-brand: #0d0d0f;
+    --font-head: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+    --radius: 2px;
+    --radius-sm: 2px;
+    --shadow: 0 30px 60px -30px rgb(0 0 0 / 0.85);
+    --head-weight: 500;
+    --head-tracking: 0;
+}
+.theme-signature .hero h1 {
+    font-size: clamp(2.8rem, 7vw, 5.4rem);
+    font-weight: 500;
+}
+.theme-signature .feature {
+    border-top-width: 1px;
+}
+.theme-advisor {
+    --bg: #ffffff;
+    --surface: #f2f5f9;
+    --text: #0b1a33;
+    --muted: #4a5873;
+    --line: #dde3ec;
+    --font-head:
+        'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-body:
+        'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --radius: 8px;
+    --radius-sm: 6px;
+    --head-weight: 600;
+    --head-tracking: -0.015em;
+}
+.theme-shoreline {
+    --bg: #f7fbfc;
+    --surface: #e8f2f5;
+    --text: #0c3140;
+    --muted: #4b6b76;
+    --line: #d2e3e9;
+    --font-head: 'Figtree', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-body: 'Figtree', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --radius: 24px;
+    --radius-sm: 14px;
+    --head-weight: 800;
+    --head-tracking: -0.02em;
+}
+.theme-legacy {
+    --bg: #fcfaf6;
+    --surface: #f4eee4;
+    --text: #2a1d1f;
+    --muted: #6a5a55;
+    --line: #e7ddcf;
+    --font-head: 'Libre Caslon Text', Georgia, 'Times New Roman', serif;
+    --font-body: 'Lato', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --radius: 6px;
+    --radius-sm: 4px;
+    --head-weight: 700;
+    --head-tracking: -0.005em;
+}
+.theme-studio {
+    --bg: #ffffff;
+    --surface: #f4f4f2;
+    --text: #111111;
+    --muted: #5c5c5c;
+    --line: #e5e5e2;
+    --font-head: 'Syne', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --radius: 0;
+    --radius-sm: 0;
+    --head-weight: 800;
+    --head-tracking: -0.03em;
+}
+.theme-studio .hero h1 {
+    font-size: clamp(2.8rem, 8vw, 6rem);
+    line-height: 0.98;
+}
+.theme-studio .feature {
+    border-top-color: var(--accent);
+}
+.theme-signature .brand {
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    font-size: 1.05rem;
+}
+.theme-signature .nav a {
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 0.78rem;
+}
+.theme-signature .btn {
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    font-size: 0.75rem;
+    padding: 1rem 1.6rem;
+}
+.theme-signature .feature,
+.theme-signature .section-title::after {
+    border-color: var(--brand);
+}
+.theme-signature .cta {
+    background: var(--surface);
+    color: var(--text);
+    border-block: 1px solid var(--line);
+}
+.theme-signature .cta .btn-primary {
+    background: var(--brand);
+    color: #0d0d0f;
+}
+.theme-legacy .section-title,
+.theme-signature .section-title {
+    font-weight: 500;
 }

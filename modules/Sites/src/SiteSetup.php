@@ -18,6 +18,7 @@ use Modules\Sites\Content\StarterSite;
 use Modules\Sites\Models\Site;
 use Modules\Sites\Models\SitePage;
 use Modules\Sites\Models\SitePost;
+use Modules\Sites\Support\Designs;
 
 /**
  * Creating and managing the brokerage website (specs/websites/05): a starter site with home, about and contact pages
@@ -112,7 +113,7 @@ final class SiteSetup
                 'published_at' => CarbonImmutable::now(), 'updated_by' => $by?->id]);
             $added[] = $page['path'];
         }
-        if (! SitePost::query()->where('site_id', $site->id)->exists()) {
+        if (! Designs::isLanding($site->template) && ! SitePost::query()->where('site_id', $site->id)->exists()) {
             foreach (StarterSite::posts($info) as $n => $post) {
                 SitePost::query()->create(['site_id' => $site->id, 'slug' => $post['slug'], 'title' => $post['title'], 'excerpt' => $post['excerpt'], 'body' => $post['body'],
                     'category' => $post['category'], 'cover_media' => $post['cover'], 'status' => 'published', 'published_at' => CarbonImmutable::now()->subDays(3 * $n + 1)]);

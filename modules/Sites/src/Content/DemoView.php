@@ -7,6 +7,8 @@ namespace Modules\Sites\Content;
 use Illuminate\Http\Request;
 use Modules\Listings\Samples\SampleHomes;
 use Modules\Sites\Models\Site;
+use Modules\Sites\Models\SitePage;
+use Modules\Sites\Support\Designs;
 use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -62,6 +64,34 @@ final class DemoView
     public function design(): ?string
     {
         return $this->active ? $this->design : null;
+    }
+
+    /** LP1: the visitor is looking at a landing page design (one page about the brokerage, no home search). */
+    public function landing(): bool
+    {
+        return $this->active && Designs::isLanding($this->design);
+    }
+
+    /**
+     * LP1: the landing page design's own pages, shown instead of the demo's full website pages.
+     *
+     * @return list<array{path: string, title: string, in_menu: bool, meta: string, sections: list<array<string, mixed>>}>
+     */
+    public function landingPages(): array
+    {
+        return $this->landing() ? StarterSite::landingPages(['name' => self::NAME, 'area' => self::AREA, 'state' => $this->state], $this->design) : [];
+    }
+
+    /** LP1: the landing design's page at this path, as an unsaved page, or null. */
+    public function landingPage(string $path): ?SitePage
+    {
+        foreach ($this->landingPages() as $p) {
+            if ($p['path'] === $path) {
+                return (new SitePage)->forceFill(['path' => $p['path'], 'title' => $p['title'], 'meta_description' => $p['meta'], 'sections' => $p['sections'], 'status' => 'published', 'in_menu' => $p['in_menu']]);
+            }
+        }
+
+        return null;
     }
 
     /** Called when the demo's website is loaded: it shows in the chosen design, with that design's colours and banner photo. */

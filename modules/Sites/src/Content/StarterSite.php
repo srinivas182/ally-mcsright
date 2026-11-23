@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Modules\Sites\Content;
 
+use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 use Modules\Listings\Samples\SampleHomes;
 use Modules\Sites\Sections;
+use Modules\Sites\Support\Designs;
 
 /**
  * TP2: the website a brokerage starts with, like a finished template: Home, Buy, Sell, Communities, About and Contact,
@@ -25,6 +27,9 @@ final class StarterSite
      */
     public static function pages(array $info, ?string $template = null): array
     {
+        if (Designs::isLanding($template)) {
+            return self::landingPages($info, $template);
+        }
         $name = trim((string) ($info['name'] ?? '')) ?: 'Our brokerage';
         $area = trim((string) ($info['area'] ?? '')) ?: 'your area';
         $places = self::places($info);
@@ -130,6 +135,78 @@ final class StarterSite
                 'sections' => Sections::clean([
                     ['type' => 'contact', 'id' => 'contact', 'props' => ['title' => 'Contact us', 'body' => 'Send a message and an agent will get back to you shortly, usually within the hour during the day.']],
                     ['type' => 'faq', 'id' => 'faq', 'props' => ['title' => 'Before you write', 'items' => [$faqBuy[0], $faqSell[0]]]],
+                ])],
+        ];
+    }
+
+    /**
+     * LP1: a landing page website, for a brokerage or agent without an MLS board yet: Home (who they are, how they
+     * help, the areas they serve, a home value request and reviews), About and Contact. No home search or listings.
+     *
+     * @param  array<string, mixed>  $info
+     * @return list<array{path: string, title: string, in_menu: bool, meta: string, sections: list<array<string, mixed>>}>
+     */
+    public static function landingPages(array $info, ?string $template): array
+    {
+        $name = trim((string) ($info['name'] ?? '')) ?: 'Our brokerage';
+        $area = trim((string) ($info['area'] ?? '')) ?: 'your area';
+        // Each design shows its own set of photos.
+        $seed = array_search($template, Designs::landing(), true);
+        $seed = is_int($seed) ? $seed * 2 : 0;
+        $p = fn (string $group, int $n = 0): string => DemoPhotos::pick($group, $n + $seed);
+        $state = self::state($info);
+        $cities = array_map(fn (array $m): string => (string) $m[0], $state !== null ? (SampleHomes::MARKETS[$state] ?? []) : []);
+        $served = $cities !== [] ? Arr::join($cities, ', ', ' and ') : $area;
+        $cta = ['type' => 'cta', 'id' => 'talk', 'props' => ['title' => 'Let\'s talk about your plans', 'body' => "Buying, selling or just thinking ahead in {$area}? A short conversation is the best place to start.",
+            'button' => 'Get in touch', 'link' => '/contact']];
+        $reviews = ['type' => 'testimonials', 'id' => 'reviews', 'props' => ['title' => 'What our clients say', 'from_reviews' => true, 'items' => []]];
+        $licence = trim((string) ($info['licence'] ?? ''));
+
+        return [
+            ['path' => '/', 'title' => 'Home', 'in_menu' => true, 'meta' => mb_substr((string) ($info['tagline'] ?? '') ?: "{$name}: real estate advice for buyers and sellers in {$area}.", 0, 300),
+                'sections' => Sections::clean([
+                    ['type' => 'hero', 'id' => 'hero', 'props' => ['headline' => $name, 'subhead' => (string) ($info['tagline'] ?? '') ?: "Trusted real estate advice in {$area}. Whether you are buying, selling or planning ahead, we are here to help.",
+                        'image' => self::heroPhoto($template), 'search' => false]],
+                    ['type' => 'split', 'id' => 'about', 'props' => ['title' => 'Local knowledge, personal service', 'side' => 'left',
+                        'body' => (string) ($info['about'] ?? '') ?: "{$name} helps people buy and sell homes across {$area}. We take the time to understand what you want, tell you honestly what the market is doing, and stay with you from the first conversation to the day you get the keys.".($licence !== '' ? "\n\nLicensed real estate professionals: {$licence}." : ''),
+                        'button' => 'About us', 'link' => '/about', 'image' => $p('living', 5)]],
+                    ['type' => 'features', 'id' => 'services', 'props' => ['title' => 'How we can help', 'items' => [
+                        ['title' => 'Buying a home', 'body' => 'From your first viewing to closing day: finding the right home, writing a strong offer and negotiating the details.'],
+                        ['title' => 'Selling your home', 'body' => 'An honest price, advice on getting your home ready, professional marketing and a steady hand through every offer.'],
+                        ['title' => "Moving to {$area}", 'body' => 'Neighborhoods, schools and commutes explained, so you can choose where to live with confidence.'],
+                        ['title' => 'Investing in property', 'body' => 'Rental and investment homes, with clear numbers on price, rent and the costs of owning.'],
+                    ]]],
+                    ['type' => 'banner', 'id' => 'value', 'props' => ['title' => 'What is your home worth today?', 'body' => 'Get a free, no-obligation price range prepared by a local agent, based on recent sales near you.',
+                        'button' => 'Get my home value', 'link' => '/home-value', 'image' => $p('exterior_luxury', 4)]],
+                    ['type' => 'split', 'id' => 'areas', 'props' => ['title' => 'Areas we serve', 'side' => 'right',
+                        'body' => "We help buyers and sellers across {$served}.\n\nTell us where you are looking and we will tell you what homes cost there, how quickly they sell and what everyday life is like.",
+                        'button' => 'Ask about an area', 'link' => '/contact', 'image' => self::cityPhoto($info)]],
+                    $reviews,
+                    ['type' => 'faq', 'id' => 'faq', 'props' => ['title' => 'Questions people ask us', 'items' => [
+                        ['q' => 'What is my home worth?', 'a' => 'Request a free home value and we will prepare a price range from recent nearby sales, usually within one business day.'],
+                        ['q' => 'How do we get started?', 'a' => 'Call or send us a message. We will set up a short conversation about what you want, your timing and your budget, with no obligation.'],
+                        ['q' => "Which areas does {$name} serve?", 'a' => "We help buyers and sellers across {$served}. If you are looking somewhere else, ask us: we will tell you honestly whether we are the right fit."],
+                    ]]],
+                    $cta,
+                ])],
+            ['path' => '/about', 'title' => 'About', 'in_menu' => true, 'meta' => "About {$name}: real estate professionals helping people buy and sell homes in {$area}.",
+                'sections' => Sections::clean([
+                    ['type' => 'hero', 'id' => 'hero', 'props' => ['headline' => "About {$name}", 'subhead' => "Real estate professionals helping people buy and sell homes in {$area}.", 'image' => $p('neighbourhood', 1), 'search' => false]],
+                    ['type' => 'split', 'id' => 'story', 'props' => ['title' => 'Our story', 'side' => 'left',
+                        'body' => (string) ($info['about'] ?? '') ?: "{$name} helps people buy and sell homes across {$area}. We know the neighborhoods, we answer quickly, and we tell you the truth about the market, even when it is not what you hoped to hear.\n\nTell your story here: when you started, who you help and what makes you different.",
+                        'button' => 'Get in touch', 'link' => '/contact', 'image' => $p('living', 1)]],
+                    ['type' => 'features', 'id' => 'values', 'props' => ['title' => 'What you can expect from us', 'items' => [
+                        ['title' => 'Straight answers', 'body' => 'Honest advice on price, timing and condition, in plain words.'],
+                        ['title' => 'Quick replies', 'body' => 'Calls and messages answered the same day.'],
+                        ['title' => 'Local knowledge', 'body' => "Years of buying and selling homes across {$area}."],
+                        ['title' => 'Here after closing', 'body' => 'Questions about your home, your taxes or your next move? Just ask.'],
+                    ]]],
+                    $reviews,
+                    $cta,
+                ])],
+            ['path' => '/contact', 'title' => 'Contact', 'in_menu' => true, 'meta' => "Contact {$name}: talk to a real estate professional about buying or selling in {$area}.",
+                'sections' => Sections::clean([
+                    ['type' => 'contact', 'id' => 'contact', 'props' => ['title' => 'Contact us', 'body' => 'Send a message and we will get back to you shortly, usually the same day.']],
                 ])],
         ];
     }

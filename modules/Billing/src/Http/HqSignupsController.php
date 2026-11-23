@@ -57,6 +57,14 @@ final class HqSignupsController
                 'no_reminders' => (bool) ($s->no_reminders ?? false),
                 'resume_url' => in_array($s->status, ['draft', 'pending'], true) ? SignupReminders::resumeUrl($s) : null,
                 'can_resend' => $s->status === 'live',
+                // LV1: each licence and what the state's records said ("check by hand" when the state's records are not loaded).
+                'licences' => collect((array) json_decode((string) ($s->licences ?? '[]'), true))->filter(fn ($l): bool => is_array($l))->map(fn (array $l): array => [
+                    'label' => ($l['state'] ?? '').' '.($l['number'] ?? ''),
+                    'status' => match ($l['status'] ?? '') {
+                        'active' => ($l['review'] ?? false) ? 'Active, name differs: check' : 'Confirmed active', 'test' => 'Test licence', default => 'Check by hand'
+                    },
+                    'review' => (bool) ($l['review'] ?? false),
+                ])->values()->all(),
             ])->values(),
         ]);
     }

@@ -19,6 +19,7 @@ use Modules\Listings\Search\ListingSearch;
 use Modules\Listings\Search\MarketStats;
 use Modules\Sites\AgentSites;
 use Modules\Sites\Content\AreaPages;
+use Modules\Sites\Content\DemoView;
 use Modules\Sites\Http\SiteExtensions;
 use Modules\Sites\Models\Site;
 use Modules\Sites\Models\SitePage;
@@ -47,7 +48,9 @@ final class SiteController
             return response()->view('sites::coming-soon', ['site' => $site], 200)->header('Cache-Control', 'no-store')->header('X-Robots-Tag', 'noindex');
         }
         $owner = app(SiteContext::class)->agent() ?? $site;
-        $page = SitePage::query()->where('site_id', $owner->id)->where('path', '/'.trim((string) $path, '/'))->where('status', 'published')->first();
+        $demo = app(DemoView::class);
+        $page = $demo->landing() ? $demo->landingPage('/'.trim((string) $path, '/')) // LP1: a landing design on the demo website
+            : SitePage::query()->where('site_id', $owner->id)->where('path', '/'.trim((string) $path, '/'))->where('status', 'published')->first();
         if ($page === null) {
             return $this->missing($site);
         }

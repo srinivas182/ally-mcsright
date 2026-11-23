@@ -60,6 +60,8 @@ say "6. Starting the new release"
 # TP4: the demo website used to preview designs at sign-up (created once).
 "${COMPOSE[@]}" exec -T app php artisan sites:demo-site || echo "  The design demo website could not be set up; previews use a single page until the next deploy."
 "${COMPOSE[@]}" exec -T app php artisan sites:refresh-starter || echo "  Could not refresh starter website content; websites keep their current wording."
+# LV1: the Texas and Florida public licence lists, for licence checks at sign-up (then daily at 05:20).
+"${COMPOSE[@]}" exec -T app php artisan roster:licence-sync || echo "  Could not download every state licence list; those licences are marked for checking by hand until the next daily run."
 
 say "7. Checking it answers"
 ok=0
