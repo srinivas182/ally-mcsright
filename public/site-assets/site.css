@@ -3306,6 +3306,7 @@ body:not(:has(main > .hero:first-child, main > .ra-block:first-child > .hero))
 body:not(:has(main > .hero:first-child, main > .ra-block:first-child > .hero))
     .site-header:not(.scrolled) {
     text-shadow: none;
+}
 /* FT1: header — brand on the left, the menu in the middle, phone and sign-in on the right. */
 .header-actions {
     display: flex;
@@ -3486,5 +3487,31 @@ body:not(:has(main > .hero:first-child, main > .ra-block:first-child > .hero))
     .site-header .header-call {
         padding: 0.55rem 0.7rem;
         min-width: 0;
+    }
+}
+
+/* FT1: the banner's search button is a round search icon, matching the search box's shape in every design. */
+.hero-search {
+    align-items: center;
+}
+.hero .hero-search .search-go {
+    flex: 0 0 auto;
+    display: inline-grid;
+    place-items: center;
+    width: 3rem;
+    height: 3rem;
+    padding: 0;
+    border-radius: 999px;
+    letter-spacing: 0;
+}
+.shape-square .hero-search,
+.shape-square .hero .hero-search .search-go {
+    border-radius: 0;
+}
+@media (max-width: 720px) {
+    .hero .hero-search .search-go {
+        width: 2.75rem;
+        height: 2.75rem;
+        padding: 0;
     }
 }
