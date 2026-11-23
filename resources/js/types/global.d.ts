@@ -24,6 +24,7 @@ declare module '@inertiajs/core' {
             } | null;
             reading: Reading;
             paymentsTestMode: boolean;
+            platformUrl: string;
             impersonation: {
                 by: string;
                 target: string;

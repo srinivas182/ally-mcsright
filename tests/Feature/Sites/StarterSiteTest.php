@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
+use Modules\Sites\Console\RefreshStarterContent;
 use Modules\Sites\Content\DemoPhotos;
 use Modules\Sites\Content\StarterSite;
 use Modules\Sites\Models\SitePage;
@@ -38,7 +39,7 @@ it('starts a website with six pages full of sections and photos, and three blog 
     expect($pages->pluck('path')->all())->toBe(['/', '/buy', '/sell', '/communities', '/about', '/contact'])
         ->and($pages->every(fn (SitePage $p): bool => $p->in_menu && $p->meta_description !== null))->toBeTrue();
     $home = $pages->first();
-    expect(array_column($home->sections, 'type'))->toBe(['hero', 'listings', 'split', 'stats', 'neighbourhoods', 'banner', 'testimonials', 'faq', 'cta'])
+    expect(array_column($home->sections, 'type'))->toBe(['hero', 'listings', 'split', 'features', 'neighbourhoods', 'banner', 'testimonials', 'faq', 'cta'])
         ->and($home->sections[0]['props']['image'])->toStartWith('demo:')
         ->and($home->sections[4]['props']['places'])->toContain('houston-tx');
     expect(SitePost::query()->where('site_id', $site->id)->count())->toBe(3);
@@ -107,4 +108,19 @@ it('uses the brokerage\'s own cities for Explore, and its city skyline when ther
     $communities = collect(StarterSite::pages(['area' => 'Greater Austin']))->firstWhere('path', '/communities');
     $hero = $communities['sections'][0]['props']['image'];
     expect(DemoPhotos::find((int) substr($hero, 5))['group'])->toBe('city_austin');
+});
+
+it('replaces the old number strip on websites that still show it unchanged, and leaves edited ones alone (QW1)', function (): void {
+    $site = app(SiteSetup::class)->create('estate', ['area' => 'Austin'], $this->owner);
+    $page = SitePage::query()->where('site_id', $site->id)->where('path', '/')->firstOrFail();
+    $sections = (array) $page->sections;
+    foreach ($sections as $i => $s) {
+        if (($s['id'] ?? '') === 'promise') {
+            $sections[$i] = ['type' => 'stats', 'id' => 'promise', 'props' => ['title' => '', 'items' => [['value' => '1 search', 'label' => 'for every home on the MLS']]]];
+        }
+    }
+    $page->forceFill(['sections' => $sections])->save();
+    expect(RefreshStarterContent::refresh())->toBe(1)
+        ->and(collect($page->fresh()->sections)->firstWhere('id', 'promise')['type'])->toBe('features')
+        ->and(RefreshStarterContent::refresh())->toBe(0);
 });

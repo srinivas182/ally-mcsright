@@ -18,7 +18,7 @@
     <meta name="theme-color" content="{{ $design['theme'] ?? '#ffffff' }}">
     <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?{{ $design['css'] ?? 'family=Inter:wght@400;500;600;700' }}&display=swap">
-    <link rel="stylesheet" href="/site-assets/site.css?v=10">
+    <link rel="stylesheet" href="/site-assets/site.css?v=11">
     @stack('head')
     <style>:root{--brand: {{ $chrome['brand']['primary'] ?? '#1d4ed8' }};--accent: {{ $chrome['brand']['accent'] ?? '#0f172a' }};}</style>
     <script type="application/ld+json">{!! $seo['jsonld'] !!}</script>
@@ -90,7 +90,11 @@
                         <p class="disclaimer">{{ $b['disclaimer'] }}</p>
                     </div>
                 @empty
-                    <p class="disclaimer">Homes shown on this website are samples while our MLS listings are being connected. They are not for sale.</p>
+                    {{-- Before a board is live: the shape of the board's disclosure, so the brokerage sees where it goes. Read-only. --}}
+                    <div class="mls-board mls-board-sample">
+                        <span class="mls-badge" aria-hidden="true">MLS</span>
+                        <p class="disclaimer"><strong>Sample MLS disclaimer.</strong> Listing information is provided by your MLS board for consumers' personal, non-commercial use and may not be used for any purpose other than to identify prospective properties consumers may be interested in purchasing. Information is deemed reliable but not guaranteed. Once this website's MLS listings are connected, the board's logo and required wording replace this sample.</p>
+                    </div>
                 @endforelse
             </section>
             @foreach ($chrome['disclaimers'] as $d)@if (! in_array($d, $mlsText, true))<p class="disclaimer">{{ $d }}</p>@endif @endforeach
@@ -102,7 +106,7 @@
 </footer>
 <dialog class="auth" data-auth aria-labelledby="auth-title">
     <form method="dialog" class="auth-close"><button aria-label="Close">×</button></form>
-    <h2 id="auth-title" data-auth-title>Save homes and get price-drop alerts</h2>
+    <h2 id="auth-title" data-auth-title>Save homes and get price alerts</h2>
     <p class="lead-muted" data-auth-lead>Create a free account to save homes, compare them, and hear first when prices change.</p>
     <form data-auth-start>
         <label>Name <input name="name" autocomplete="name" required></label>
@@ -132,7 +136,7 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'&&t.getAttrib
 try{var k='ra_first_touch',st=window.localStorage,v=JSON.parse(st.getItem(k)||'null');if(!v){v={r:document.referrer,l:location.href};st.setItem(k,JSON.stringify(v));}
 document.querySelectorAll('form[data-lead]').forEach(function(f){f.first_referrer.value=v.r;f.landing_url.value=v.l;});}catch(e){}})();
 </script>
-<script src="/site-assets/visitor.js?v=1" defer></script>
+<script src="/site-assets/visitor.js?v=2" defer></script>
 @if (! empty($chrome['ailly']))
 @php($ally = $chrome['ailly'])
 <div class="ailly" data-ailly="{{ $ally['name'] }}" data-consent="{{ $chrome['consent'] }}"@if ($ally['nudge']) data-nudge @endif>

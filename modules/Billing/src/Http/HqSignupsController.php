@@ -56,6 +56,7 @@ final class HqSignupsController
                 'started_at' => (string) $s->created_at, 'last_at' => (string) $s->updated_at, 'reminders' => (int) ($s->reminders_sent ?? 0), 'reminded_at' => $s->reminded_at ?? null,
                 'no_reminders' => (bool) ($s->no_reminders ?? false),
                 'resume_url' => in_array($s->status, ['draft', 'pending'], true) ? SignupReminders::resumeUrl($s) : null,
+                'can_resend' => $s->status === 'live',
             ])->values(),
         ]);
     }
@@ -69,6 +70,23 @@ final class HqSignupsController
         }
         Inertia::flash('toast', $sent ? ['type' => 'success', 'message' => 'Reminder sent to '.$row->owner_email.'.']
             : ['type' => 'info', 'message' => 'No reminder sent: this sign-up is already paid, or that person has since signed up.']);
+
+        return back();
+    }
+
+    /** QW1: a paid brokerage's owner did not get (or lost) their sign-in email: send a fresh one. */
+    public function resend(string $signup, Signups $signups): RedirectResponse
+    {
+        $row = DB::connection(Connections::control())->table('signups')->where('ulid', $signup)->first() ?? abort(404);
+        $result = $signups->resendWelcome($row);
+        if ($result === 'sent') {
+            app(AuditLogger::class)->record('billing.signup.welcome_resent', metadata: ['signup' => $signup], severity: 'info');
+        }
+        Inertia::flash('toast', match ($result) {
+            'sent' => ['type' => 'success', 'message' => 'Sign-in email sent again to '.$row->owner_email.'. If it does not arrive, check HQ › Outside services › Platform email.'],
+            'signed-in' => ['type' => 'info', 'message' => $row->owner_email.' has already set a password. They can use "Forgot your password?" on their sign-in page.'],
+            default => ['type' => 'info', 'message' => 'This brokerage is not set up yet, so there is no sign-in email to send.'],
+        });
 
         return back();
     }

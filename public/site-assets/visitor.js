@@ -179,7 +179,7 @@
         if (!dlg) return;
         $('[data-auth-title]').textContent = me
             ? 'Your account'
-            : title || 'Save homes and get price-drop alerts';
+            : title || 'Save homes and get price alerts';
         $('[data-auth-lead]').textContent = me
             ? ''
             : lead ||

@@ -22,7 +22,7 @@ beforeEach(function (): void {
 });
 
 it('says the homes are samples until a board is live, then shows each live board\'s disclosure', function (): void {
-    $this->get($this->web.'/')->assertOk()->assertSee('class="mls-disclosure"', false)->assertSee('are samples while our MLS listings are being connected');
+    $this->get($this->web.'/')->assertOk()->assertSee('class="mls-disclosure"', false)->assertSee('Sample MLS disclaimer.');
 
     $control = DB::connection(Connections::control());
     $profile = DB::connection(Connections::listings())->table('mls_rules_profiles')->insertGetId(['name' => 'HAR IDX', 'program' => 'idx',
@@ -35,5 +35,5 @@ it('says the homes are samples until a board is live, then shows each live board
     FooterDisclosures::forget($this->tenant->id);
 
     $this->get($this->web.'/')->assertOk()->assertSee('HAR.com data is deemed reliable but not guaranteed. © 2026 HAR.')
-        ->assertSee('src="https://www.har.com/logo.png"', false)->assertDontSee('are samples while our MLS listings');
+        ->assertSee('src="https://www.har.com/logo.png"', false)->assertDontSee('Sample MLS disclaimer');
 });

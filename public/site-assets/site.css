@@ -956,15 +956,20 @@ h3 {
     gap: 2rem;
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 }
+.feature {
+    border-top: 2px solid var(--accent, var(--primary));
+    padding-top: 1.25rem;
+}
 .feature h3 {
-    font-size: 1.35rem;
+    font-size: 1.2rem;
+    margin: 0 0 0.5rem;
 }
 .feature p {
     color: var(--muted);
     margin: 0;
 }
 .theme-aurum .feature {
-    border-top: 1px solid var(--line);
+    border-top-width: 1px;
     padding-top: 1.5rem;
 }
 .faq details {
@@ -1123,6 +1128,21 @@ h3 {
 .site-footer a:hover {
     color: var(--text);
 }
+/* Legal notices: a full-width band under the brand and links, in two columns on wide screens. */
+.footer-legal {
+    grid-column: 1 / -1;
+    border-top: 1px solid var(--line);
+    padding-top: 1.75rem;
+    columns: 2 340px;
+    column-gap: 3rem;
+}
+.footer-legal > * {
+    break-inside: avoid;
+}
+.footer-links {
+    grid-template-columns: repeat(2, minmax(0, max-content));
+    column-gap: 2.5rem;
+}
 .eho {
     display: flex;
     align-items: center;
@@ -1137,6 +1157,18 @@ h3 {
     display: flex;
     gap: 0.75rem;
     align-items: flex-start;
+}
+.mls-badge {
+    flex: none;
+    display: inline-grid;
+    place-items: center;
+    height: 28px;
+    padding: 0 0.5rem;
+    border: 1px solid currentColor;
+    border-radius: 4px;
+    font: 700 0.7rem/1 var(--font-body, sans-serif);
+    letter-spacing: 0.04em;
+    opacity: 0.7;
 }
 .mls-board img {
     flex: none;
@@ -1842,6 +1874,11 @@ h3 {
 }
 .auth {
     width: min(440px, calc(100vw - 2rem));
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: var(--line) transparent;
     border: 1px solid var(--line);
     border-radius: var(--radius);
     padding: 1.75rem;
@@ -1856,6 +1893,17 @@ h3 {
 .auth form {
     display: grid;
     gap: 0.8rem;
+}
+/* Only one step of signing in shows at a time. */
+.auth [hidden] {
+    display: none !important;
+}
+.auth::-webkit-scrollbar {
+    width: 6px;
+}
+.auth::-webkit-scrollbar-thumb {
+    background: var(--line);
+    border-radius: 3px;
 }
 .auth label {
     display: grid;

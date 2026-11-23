@@ -330,3 +330,22 @@ it('opens design previews on the demo website in the chosen board\'s state, and 
 
     $this->getJson(RA.'/start/address?slug=demo')->assertJson(['ok' => false, 'message' => 'This address is reserved. Please choose another.']);
 });
+
+it('sends the owner\'s sign-in email again from the welcome page and from HQ, and shows progress while setting up (QW1)', function (): void {
+    $signup = startSignup();
+    $this->get(RA.'/start/welcome/'.$signup)->assertSee('Confirming your payment')->assertSee('Emailing you a link to sign in');
+    signupEvent('evt_1', 'checkout.session.completed', $signup);
+    $tenant = Tenant::query()->where('slug', 'oak-realty')->sole();
+    $hash = fn (): string => (string) app(TenantContext::class)->runAs($tenant, fn () => Invitation::query()->where('email', 'dana@oak.test')->value('token_hash'));
+    $first = $hash();
+
+    $this->get(RA.'/start/welcome/'.$signup)->assertSee('Send it again');
+    $this->post(RA.'/start/welcome/'.$signup.'/resend')->assertRedirect(RA.'/start/welcome/'.$signup);
+    expect($hash())->not->toBe($first);
+    $this->get(RA.'/start/welcome/'.$signup)->assertSee('sent the email again', false);
+
+    $second = $hash();
+    $this->actingAs($this->staff)->get(RA.'/hq/signups?status=live')->assertInertia(fn (Assert $p) => $p->where('signups.0.can_resend', true));
+    $this->actingAs($this->staff)->post(RA.'/hq/signups/'.$signup.'/resend')->assertRedirect();
+    expect($hash())->not->toBe($second);
+});
