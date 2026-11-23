@@ -4,7 +4,7 @@
 <section class="section split split-{{ $p['side'] ?? 'left' }}" id="{{ $block['id'] }}">
     <div class="wrap split-inner">
         @if ($img)
-            <figure class="split-photo"><img src="{{ $img }}" alt="{{ $media->alt($p['image'] ?? null, $p['title']) }}" loading="lazy" decoding="async" width="1600" height="1100"></figure>
+            <figure class="split-photo"><img src="{{ $img }}" srcset="{{ $media->url($p['image'] ?? null, 'card') }} 800w, {{ $img }} 1600w" sizes="(max-width: 800px) 100vw, 50vw" alt="{{ $media->alt($p['image'] ?? null, $p['title']) }}" loading="lazy" decoding="async" width="1600" height="1100"></figure>
         @endif
         <div class="split-text">
             <h2 class="section-title">{{ $p['title'] }}</h2>
