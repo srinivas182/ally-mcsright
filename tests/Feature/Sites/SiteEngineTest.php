@@ -113,8 +113,9 @@ it('welcomes AI crawlers in robots.txt unless the brokerage opts out, and publis
 it('keeps website hosts and the back office apart', function (): void {
     makeSite($this);
 
-    $this->actingAs($this->owner)->get($this->web.'/settings/website')->assertNotFound(); // a site path, not the back office
-    $this->actingAs($this->owner)->get($this->web.'/login')->assertNotFound();
+    // The website never serves the back office; DM1: it sends back-office addresses on to it.
+    $this->actingAs($this->owner)->get($this->web.'/settings/website')->assertRedirect('https://acme.rightally.app/settings/website');
+    $this->actingAs($this->owner)->get($this->web.'/login')->assertRedirect('https://acme.rightally.app/login');
     $this->actingAs($this->owner)->get('/settings/website')->assertOk(); // back office unaffected
     expect(app(DomainResolver::class)->isWebsite('acme.rightally.site'))->toBeTrue()->and(app(DomainResolver::class)->isWebsite('acme.rightally.app'))->toBeFalse();
 

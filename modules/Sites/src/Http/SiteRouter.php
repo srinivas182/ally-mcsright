@@ -8,6 +8,7 @@ use Illuminate\Container\Container;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Router;
+use Modules\Core\Tenancy\TenantContext;
 use Modules\Marketing\Content\Publisher;
 use Modules\Sites\Content\Redirects;
 use Modules\Sites\Http\Controllers\AccessibilityController;
@@ -99,6 +100,12 @@ final class SiteRouter
             if ($to !== null) {
                 return redirect(str_starts_with($to['to'], '/') ? $request->getSchemeAndHttpHost().$to['to'] : $to['to'], $to['code'])->header('Cache-Control', 'public, max-age=3600');
             }
+        }
+
+        // DM1: a back-office address (/backoffice, /login, an old /settings/… link): on to the back office.
+        if ($response->getStatusCode() === 404 && $request->isMethod('GET') && app(TenantContext::class)->check()
+            && ($office = BackOfficeLinks::target($request, app(TenantContext::class)->current())) !== null) {
+            return redirect()->away($office)->header('Cache-Control', 'no-store');
         }
 
         return $response;

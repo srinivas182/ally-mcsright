@@ -95,7 +95,7 @@
             </section>
             @foreach ($chrome['disclaimers'] as $d)@if (! in_array($d, $mlsText, true))<p class="disclaimer">{{ $d }}</p>@endif @endforeach
             <p class="privacy">We keep a note of the homes you view here so our agents can help you better. No third-party trackers; your browser's Global Privacy Control is honored. <a href="/privacy">Privacy policy</a> · <a href="/accessibility">Accessibility</a></p>
-            <p>&copy; {{ $chrome['year'] }} {{ $site->displayName() }}</p>
+            <p>&copy; {{ $chrome['year'] }} {{ $site->displayName() }} · <a href="/backoffice" rel="nofollow">Agent login</a></p>
             @if ($chrome['powered'])<p class="powered"><a href="{{ $chrome['powered']['url'] }}" rel="noopener" target="_blank">{{ $chrome['powered']['text'] }}</a></p>@endif
         </div>
     </div>

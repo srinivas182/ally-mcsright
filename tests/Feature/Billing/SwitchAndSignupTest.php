@@ -88,7 +88,7 @@ it('wears the same header and footer as rightally.app on the sign-up and Health 
 
 it('shows public prices with offer markup, checks the address, and sends the broker to payment', function (): void {
     $this->get(RA.'/start')->assertOk()->assertSee('$299')->assertSee('"@type":"Offer"', false)->assertSee('<meta name="robots" content="index, follow">', false);
-    $this->getJson(RA.'/start/address?slug=oak-realty')->assertJson(['ok' => true, 'host' => 'oak-realty.rightally.app']);
+    $this->getJson(RA.'/start/address?slug=oak-realty')->assertJson(['ok' => true, 'host' => 'oak-realty.rightally.site']); // DM1: the website address
     $this->getJson(RA.'/start/address?slug=www')->assertJson(['ok' => false]);
 
     $this->post(RA.'/start', ['brokerage' => 'Oak', 'slug' => 'oak', 'owner_name' => 'Dana', 'owner_email' => 'dana@oak.test', 'package' => $this->package->ulid, 'interval' => 'month'])
@@ -114,7 +114,7 @@ it('creates the brokerage when the payment comes through, once, and its later pa
         ->and(control()->table('billing_tenant_subscriptions')->where('tenant_id', $tenant->id)->value('status'))->toBe('active')
         ->and(control()->table('go_live_plans')->where('tenant_id', $tenant->id)->exists())->toBeTrue();
     app(TenantContext::class)->runAs($tenant, fn () => expect(Invitation::query()->where('email', 'dana@oak.test')->exists())->toBeTrue());
-    $this->get(RA.'/start/welcome/'.$signup)->assertSee('Oak Realty is live')->assertSee('https://oak-realty.rightally.app');
+    $this->get(RA.'/start/welcome/'.$signup)->assertSee('Oak Realty is live')->assertSee('https://oak-realty.rightally.site')->assertSee('https://oak-realty.rightally.app/login', false);
 
     signupEvent('evt_3', 'invoice.payment_failed', $signup, ['subscription' => 'sub_1']);
     expect(control()->table('billing_tenant_subscriptions')->where('tenant_id', $tenant->id)->value('status'))->toBe('grace');
@@ -268,7 +268,7 @@ it('signs up in four saved steps, and HQ sees where someone stopped (SU2)', func
     $this->get(RA.'/start?step=3')->assertOk()->assertSee('Choose your website design')->assertSee('value="aurum"', false)->assertSee('/start/designs/estate', false);
     $this->post(RA.'/start/step/design', ['template' => 'nope'])->assertSessionHasErrors('template');
     $this->post(RA.'/start/step/design', ['template' => 'estate'])->assertRedirect('/start?step=4#signup');
-    $this->get(RA.'/start?step=4')->assertOk()->assertSee('Review and pay')->assertSee('Estate')->assertSee('$2,990 a year')->assertSee('oak-realty.rightally.app');
+    $this->get(RA.'/start?step=4')->assertOk()->assertSee('Review and pay')->assertSee('Estate')->assertSee('$2,990 a year')->assertSee('oak-realty.rightally.site');
 
     $this->post(RA.'/start', [])->assertSessionHasErrors('terms');
     $this->post(RA.'/start', ['terms' => '1'])->assertRedirect('https://checkout.example/session/1');

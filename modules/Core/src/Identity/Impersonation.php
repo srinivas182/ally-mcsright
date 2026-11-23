@@ -18,6 +18,7 @@ use Modules\Core\Identity\Enums\UserStatus;
 use Modules\Core\Identity\Events\ImpersonationStarted;
 use Modules\Core\Identity\Events\ImpersonationStopped;
 use Modules\Core\Identity\Notifications\AccountViewed;
+use Modules\Core\Tenancy\Host;
 use Modules\Core\Tenancy\Models\Tenant;
 use Modules\Core\Tenancy\TenantContext;
 
@@ -77,7 +78,7 @@ final class Impersonation
             'tenant' => $tenant->id, 'target' => $target->id, 'by_id' => $hqStaff->id, 'by_name' => $hqStaff->name.' (RightAlly support)', 'reason' => $reason,
         ], 60);
         $domain = $tenant->primaryDomain();
-        $host = $domain !== null ? $domain->host : $tenant->slug.'.'.config('core.platform_domain');
+        $host = $domain !== null ? $domain->host : Host::platformHostFor($tenant->slug);
         app(AuditLogger::class)->record('core.impersonation.ticket_issued', $target,
             metadata: ['by_user_id' => $hqStaff->id, 'by_name' => $hqStaff->name, 'reason' => $reason], severity: 'warning', tenantId: $tenant->id);
 

@@ -8,6 +8,11 @@ return [
     */
     'platform_domain' => env('CORE_PLATFORM_DOMAIN', 'rightally.app'),
 
+    // DM1: added to a brokerage's name for its back-office address ("-office": acme-office.rightally.app), so its public
+    // website can have acme.rightally.app on the same domain (SITES_PLATFORM_DOMAIN set to the same domain). Empty keeps
+    // the back office at acme.rightally.app.
+    'office_suffix' => (string) env('CORE_OFFICE_SUFFIX', ''),
+
     /*
     | Host serving the RightAlly HQ console (resolves to the HQ tenant).
     */
@@ -74,7 +79,7 @@ return [
         'max' => 40,
         'reserved' => [
             'www', 'app', 'api', 'admin', 'hq', 'mail', 'support', 'help', 'status', 'docs',
-            'blog', 'cdn', 'static', 'assets', 'auth', 'login', 'billing', 'rightally', 'mcp',
+            'blog', 'cdn', 'static', 'assets', 'auth', 'login', 'billing', 'rightally', 'mcp', 'sites',
         ],
     ],
 

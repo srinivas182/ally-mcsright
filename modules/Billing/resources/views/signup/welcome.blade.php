@@ -8,13 +8,13 @@
 <section class="hero"><div class="wrap">
     @if ($s->status === 'live')
         <h1>{{ $s->brokerage }} is live</h1>
-        <p class="lead">Your RightAlly is at <strong>https://{{ $host }}</strong>. We've emailed {{ $s->owner_email }} a link to sign in and set a password.</p>
+        <p class="lead">Your website is at <strong>https://{{ $website ?? $host }}</strong>. You and your agents sign in at <strong>{{ $website ?? $host }}/backoffice</strong>. We've emailed {{ $s->owner_email }} a link to sign in and set a password.</p>
         <ol class="lead">
             <li>Open the email and sign in.</li>
             <li>Go to <strong>Switch to RightAlly</strong> to bring your contacts and deals.</li>
             <li>Follow your 30-day go-live plan; your coach's name and contact details appear there once assigned.</li>
         </ol>
-        <p><a class="btn" href="https://{{ $host }}/login">Go to my RightAlly</a></p>
+        <p><a class="btn" href="https://{{ $host }}/login">Go to my back office</a></p>
     @elseif ($s->status === 'failed')
         <h1>Payment received — we'll finish your setup</h1>
         <p class="lead">Something stopped us creating {{ $s->brokerage }} automatically. Your payment is safe. Our team has been told and will email {{ $s->owner_email }} to finish it.</p>

@@ -8,6 +8,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Modules\Core\Identity\Directory;
+use Modules\Core\Tenancy\Host;
 use Modules\Core\Tenancy\Models\Tenant;
 
 /**
@@ -31,7 +32,7 @@ final class SignInController
         }
         $typed = mb_strtolower(trim((string) $request->query('address', '')));
         // Accept "acme", "acme.rightally.app" or a pasted "https://acme.rightally.app/…".
-        $slug = (string) preg_replace(['#^https?://#', '#/.*$#', '#\.'.preg_quote((string) config('core.platform_domain'), '#').'$#'], '', $typed);
+        $slug = Host::slugFromTyped($typed); // also "acme-office.rightally.app" (DM1)
         $tenant = preg_match('/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/', $slug) === 1
             ? Tenant::query()->where('slug', $slug)->where('status', 'active')->where('type', '!=', 'hq')->first()
             : null;
