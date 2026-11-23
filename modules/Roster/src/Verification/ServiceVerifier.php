@@ -8,6 +8,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Modules\Core\Services\OutsideServices;
 use Modules\Core\Support\Connections;
+use RuntimeException;
 
 /**
  * Licence look-up through the provider HQ chose in Outside services → Agent licence look-up (LN4):
@@ -49,67 +50,131 @@ final class ServiceVerifier implements LicenceVerifier
     }
 
     /**
-     * Loads a state's published licence list (CSV). Columns are found by name: licence/license number, last name (or
-     * name), status, expiration. Returns how many licences were loaded. The state's earlier list is replaced.
+     * Loads a state's published licence list (CSV text). See loadFile().
      */
     public static function load(string $state, string $csv): int
     {
-        $rows = array_values(array_filter(array_map('str_getcsv', preg_split('/\r\n|\n/', trim($csv)) ?: []), fn ($r) => count($r) > 1));
-        if (count($rows) < 2) {
+        $tmp = tempnam(sys_get_temp_dir(), 'lic');
+        file_put_contents($tmp, $csv);
+        try {
+            return self::loadFile($state, $tmp);
+        } finally {
+            @unlink($tmp);
+        }
+    }
+
+    /**
+     * Loads a state's published licence list from a CSV file, read a row at a time (the Texas list has hundreds of
+     * thousands of licences). Columns are found by name (licence number, last name or name, status, expiration), or
+     * given by position for files without a header row ($columns: number, name, status, expires). The state's earlier
+     * list is replaced only when the new one loads. Returns how many licences were loaded.
+     *
+     * @param  array{number: int, name: int, status: int, expires: int|null}|null  $columns
+     */
+    public static function loadFile(string $state, string $path, ?array $columns = null): int
+    {
+        $fh = fopen($path, 'r');
+        if ($fh === false) {
             return 0;
         }
-        $head = array_map(fn ($h) => mb_strtolower(trim((string) $h)), $rows[0]);
-        $col = function (array $names) use ($head): ?int {
-            foreach ($head as $i => $h) {
+        $first = fgetcsv($fh, 0, ',', '"', '');
+        if (! is_array($first)) {
+            fclose($fh);
+
+            return 0;
+        }
+        $num = $last = $name = $status = $exp = null;
+        $header = true;
+        if ($columns !== null) {
+            ['number' => $num, 'name' => $name, 'status' => $status, 'expires' => $exp] = $columns;
+            // A file given by position may still start with a header row: skip it when its number column is not a number.
+            $header = preg_match('/\d/', (string) ($first[$num] ?? '')) !== 1;
+        } else {
+            $head = array_map(fn ($h) => mb_strtolower(trim((string) $h)), $first);
+            // Each name is tried across all columns before the next, so "license number" wins over "phone number".
+            $col = function (array $names) use ($head): ?int {
                 foreach ($names as $n) {
-                    if (str_contains($h, $n)) {
-                        return $i;
+                    foreach ($head as $i => $h) {
+                        if ($h === $n || str_contains($h, $n)) {
+                            return $i;
+                        }
                     }
                 }
-            }
 
-            return null;
-        };
-        $num = $col(['license number', 'licence number', 'license #', 'lic #', 'license_number', 'number']);
-        $last = $col(['last name', 'last_name', 'surname']);
-        $name = $col(['full name', 'licensee', 'name']);
-        $status = $col(['status']);
-        $exp = $col(['expir']);
+                return null;
+            };
+            $num = $col(['license number', 'licence number', 'license_number', 'licensenumber', 'license #', 'lic #', 'license no', 'number']);
+            $last = $col(['last name', 'last_name', 'lastname', 'surname']);
+            $name = $col(['full name', 'full_name', 'licensee name', 'licensee', 'name']);
+            $status = $col(['primary status', 'license status', 'status']);
+            $exp = $col(['expiration', 'expiry', 'expire']);
+        }
         if ($num === null || $status === null) {
+            fclose($fh);
+
             return 0;
         }
         $state = strtoupper($state);
         $now = now();
         $db = DB::connection(Connections::control());
-        $db->transaction(function () use ($db, $rows, $num, $last, $name, $status, $exp, $state, $now): void {
-            $db->table('licence_records')->where('state', $state)->delete();
-            foreach (array_chunk(array_slice($rows, 1), 1000) as $chunk) {
-                $insert = [];
-                foreach ($chunk as $r) {
-                    $n = ltrim(strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', (string) ($r[$num] ?? ''))), '0');
-                    if ($n === '') {
-                        continue;
+        try {
+            $db->transaction(function () use ($db, $fh, $first, $header, $num, $last, $name, $status, $exp, $state, $now): void {
+                $db->table('licence_records')->where('state', $state)->delete();
+                $batch = [];
+                $total = 0;
+                $row = $header ? fgetcsv($fh, 0, ',', '"', '') : $first;
+                while (is_array($row)) {
+                    $record = self::record($row, $num, $last, $name, $status, $exp, $state, $now);
+                    if ($record !== null) {
+                        $batch[$record['number']] = $record;
                     }
-                    $full = $name !== null ? trim((string) ($r[$name] ?? '')) : '';
-                    $lastName = $last !== null ? trim((string) ($r[$last] ?? '')) : (str_contains($full, ',') ? trim(explode(',', $full)[0]) : (string) collect(explode(' ', $full))->last());
-                    $s = mb_strtolower(trim((string) ($r[$status] ?? '')));
-                    $expires = null;
-                    if ($exp !== null && trim((string) ($r[$exp] ?? '')) !== '') {
-                        $expires = rescue(fn (): string => CarbonImmutable::parse((string) $r[$exp])->toDateString(), null, false);
+                    $row = fgetcsv($fh, 0, ',', '"', '');
+                    if (count($batch) >= 1000 || ($row === false && $batch !== [])) {
+                        $db->table('licence_records')->insertOrIgnore(array_values($batch));
+                        $total += count($batch);
+                        $batch = [];
                     }
-                    $insert[$n] = ['state' => $state, 'number' => mb_substr($n, 0, 40), 'last_name' => $lastName !== '' ? mb_substr($lastName, 0, 80) : null,
-                        'full_name' => $full !== '' ? mb_substr($full, 0, 160) : null,
-                        'status' => match (true) {
-                            str_contains($s, 'suspend') || str_contains($s, 'revok') => 'suspended', str_contains($s, 'expir') => 'expired',
-                            str_contains($s, 'inactive') || str_contains($s, 'cancel') => 'inactive', default => 'active',
-                        }, 'expires_on' => $expires, 'loaded_at' => $now];
                 }
-                if ($insert !== []) {
-                    $db->table('licence_records')->insert(array_values($insert));
+                if ($total === 0) {
+                    throw new RuntimeException('No licences in the file.'); // keep the state's last list
                 }
-            }
-        });
+            });
+        } catch (RuntimeException) {
+            fclose($fh);
+
+            return 0;
+        }
+        fclose($fh);
 
         return $db->table('licence_records')->where('state', $state)->count();
+    }
+
+    /**
+     * One licence from a row of a state's list, or null when the row has no licence number.
+     *
+     * @param  array<int, string|null>  $row
+     * @return array{state: string, number: string, last_name: string|null, full_name: string|null, status: string, expires_on: string|null, loaded_at: \DateTimeInterface}|null
+     */
+    private static function record(array $row, int $num, ?int $last, ?int $name, int $status, ?int $exp, string $state, \DateTimeInterface $now): ?array
+    {
+        $n = ltrim(strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', (string) ($row[$num] ?? ''))), '0');
+        if ($n === '') {
+            return null;
+        }
+        $full = $name !== null ? trim((string) ($row[$name] ?? '')) : '';
+        $lastName = $last !== null ? trim((string) ($row[$last] ?? '')) : (str_contains($full, ',') ? trim(explode(',', $full)[0]) : (string) collect(explode(' ', $full))->last());
+        $s = mb_strtolower(trim((string) ($row[$status] ?? '')));
+        $expires = null;
+        if ($exp !== null && trim((string) ($row[$exp] ?? '')) !== '') {
+            $expires = rescue(fn (): string => CarbonImmutable::parse((string) $row[$exp])->toDateString(), null, false);
+        }
+
+        return ['state' => $state, 'number' => mb_substr($n, 0, 40), 'last_name' => $lastName !== '' ? mb_substr($lastName, 0, 80) : null,
+            'full_name' => $full !== '' ? mb_substr($full, 0, 160) : null,
+            'status' => match (true) {
+                str_contains($s, 'suspend') || str_contains($s, 'revok') => 'suspended', str_contains($s, 'expir') => 'expired',
+                str_contains($s, 'inactive') || str_contains($s, 'cancel') || str_contains($s, 'null') || str_contains($s, 'void') || str_contains($s, 'deceas') || str_contains($s, 'relinq') => 'inactive',
+                default => 'active',
+            }, 'expires_on' => $expires, 'loaded_at' => $now];
     }
 }

@@ -16,7 +16,7 @@ final class DesignCards
     public const LUXURY = ['aurum', 'estate', 'ember', 'heritage', 'atrium'];
 
     /**
-     * @return list<array{key: string, name: string, description: string, theme: string, primary: string, accent: string, font: string, luxury: bool, preview: string}>
+     * @return list<array{key: string, name: string, description: string, theme: string, primary: string, accent: string, font: string, luxury: bool, landing: bool, preview: string}>
      */
     public static function all(): array
     {
@@ -28,10 +28,11 @@ final class DesignCards
             $brand = (array) ($t['brand'] ?? []);
             $cards[] = ['key' => (string) $key, 'name' => (string) ($t['name'] ?? $key), 'description' => (string) ($t['description'] ?? ''),
                 'theme' => (string) ($t['theme'] ?? '#ffffff'), 'primary' => (string) ($brand['primary'] ?? '#1d4ed8'), 'accent' => (string) ($brand['accent'] ?? '#0f172a'),
-                'font' => trim((string) strtok((string) ($t['fonts'] ?? 'Inter'), '+')), 'luxury' => in_array($key, self::LUXURY, true),
+                'font' => trim((string) strtok((string) ($t['fonts'] ?? 'Inter'), '+')), 'luxury' => in_array($key, self::LUXURY, true), 'landing' => Designs::isLanding((string) $key),
                 'preview' => DemoSite::previewUrl((string) $key, '', '', null) ?? 'https://'.config('core.hq_host').'/start/designs/'.$key];
         }
-        $rank = fn (array $c): int => $c['luxury'] ? (int) array_search($c['key'], self::LUXURY, true) : 99;
+        // Luxury designs first, then the other website designs, then the landing page designs (LP1).
+        $rank = fn (array $c): int => $c['luxury'] ? (int) array_search($c['key'], self::LUXURY, true) : ($c['landing'] ? 200 : 99);
         usort($cards, fn (array $a, array $b): int => $rank($a) <=> $rank($b));
 
         return $cards;

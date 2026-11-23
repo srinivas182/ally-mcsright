@@ -12,6 +12,8 @@ export type DesignCard = {
     accent?: string;
     font?: string;
     luxury?: boolean;
+    /** LP1: a one-page landing design, without home search or listings. */
+    landing?: boolean;
     /** A demo of the design with made-up content, in a new tab. */
     preview?: string;
 };
@@ -128,6 +130,11 @@ export function DesignPicker({
                                 <span className="font-medium">{d.name}</span>
                                 {d.luxury && (
                                     <Badge variant="outline">Luxury</Badge>
+                                )}
+                                {d.landing && (
+                                    <Badge variant="secondary">
+                                        Landing page, no listings
+                                    </Badge>
                                 )}
                                 {chosen && (
                                     <Badge className="ml-auto">Chosen</Badge>

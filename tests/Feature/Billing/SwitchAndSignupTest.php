@@ -23,8 +23,10 @@ use Modules\Core\Identity\Models\Invitation;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\Models\Tenant;
 use Modules\Core\Tenancy\TenantContext;
+use Modules\Roster\Verification\ServiceVerifier;
 use Modules\Sites\Content\DemoSite;
 use Modules\Sites\Models\Site;
+use Modules\Sites\Models\SitePage;
 
 const RA = 'http://app.rightally.io';
 
@@ -252,7 +254,7 @@ it('lists sign-ups for HQ with where each stopped, and sends a reminder on reque
 function signupStep1(array $over = []): void
 {
     test()->post(RA.'/start/step/about', array_replace(['brokerage' => 'Oak Realty', 'slug' => 'oak-realty', 'owner_name' => 'Dana Smith', 'owner_email' => 'dana@oak.test',
-        'state' => 'TX', 'agents' => 12], $over))->assertRedirect('/start?step=2#signup');
+        'state' => 'TX', 'agents' => 12, 'licence_states' => ['TX'], 'licence_numbers' => ['TX' => 'test']], $over))->assertRedirect('/start?step=2#signup');
 }
 
 it('signs up in four saved steps, and HQ sees where someone stopped (SU2)', function (): void {
@@ -265,14 +267,17 @@ it('signs up in four saved steps, and HQ sees where someone stopped (SU2)', func
     auth()->logout();
 
     $this->post(RA.'/start/step/package', ['package' => $this->package->ulid, 'interval' => 'year'])->assertRedirect('/start?step=3#signup');
-    $this->get(RA.'/start?step=3')->assertOk()->assertSee('Choose your website design')->assertSee('value="aurum"', false)->assertSee('/start/designs/estate', false);
+    // LP1: no MLS board, so the landing page designs.
+    $this->get(RA.'/start?step=3')->assertOk()->assertSee('Choose your website design')->assertSee('value="signature"', false)->assertDontSee('value="aurum"', false)
+        ->assertSee('/start/designs/legacy', false)->assertSee('professional landing page');
     $this->post(RA.'/start/step/design', ['template' => 'nope'])->assertSessionHasErrors('template');
-    $this->post(RA.'/start/step/design', ['template' => 'estate'])->assertRedirect('/start?step=4#signup');
-    $this->get(RA.'/start?step=4')->assertOk()->assertSee('Review and pay')->assertSee('Estate')->assertSee('$2,990 a year')->assertSee('oak-realty.rightally.site');
+    $this->post(RA.'/start/step/design', ['template' => 'estate'])->assertSessionHasErrors('template'); // a full website needs a board
+    $this->post(RA.'/start/step/design', ['template' => 'legacy'])->assertRedirect('/start?step=4#signup');
+    $this->get(RA.'/start?step=4')->assertOk()->assertSee('Review and pay')->assertSee('Landing page: Legacy')->assertSee('Texas test')->assertSee('$2,990 a year')->assertSee('oak-realty.rightally.site');
 
     $this->post(RA.'/start', [])->assertSessionHasErrors('terms');
     $this->post(RA.'/start', ['terms' => '1'])->assertRedirect('https://checkout.example/session/1');
-    expect(control()->table('signups')->sole())->status->toBe('pending')->template->toBe('estate')
+    expect(control()->table('signups')->sole())->status->toBe('pending')->template->toBe('legacy')
         ->and($this->gateway->checkouts[0])->toMatchArray(['email' => 'dana@oak.test', 'unitCents' => 299_000, 'interval' => 'year']);
 
     // Going back to change something keeps the rest.
@@ -282,15 +287,17 @@ it('signs up in four saved steps, and HQ sees where someone stopped (SU2)', func
 it('puts the new website live in the chosen design the moment they pay (SU2)', function (): void {
     signupStep1();
     $this->post(RA.'/start/step/package', ['package' => $this->package->ulid, 'interval' => 'month']);
-    $this->post(RA.'/start/step/design', ['template' => 'ember']);
+    $this->post(RA.'/start/step/design', ['template' => 'signature']);
     $this->post(RA.'/start', ['terms' => '1']);
     $signup = (string) control()->table('signups')->value('ulid');
     signupEvent('evt_paid', 'checkout.session.completed', $signup);
 
     $tenant = Tenant::query()->where('slug', 'oak-realty')->sole();
     $site = app(TenantContext::class)->runAs($tenant, fn () => Site::query()->where('kind', 'brokerage')->sole());
-    expect($site)->template->toBe('ember')->status->toBe('live')
-        ->and($site->info['name'])->toBe('Oak Realty');
+    expect($site)->template->toBe('signature')->status->toBe('live')
+        ->and($site->info['name'])->toBe('Oak Realty')
+        // LP1: a landing page: Home, About and Contact, no home search.
+        ->and(app(TenantContext::class)->runAs($tenant, fn () => SitePage::query()->where('site_id', $site->id)->orderBy('position')->pluck('path')->all()))->toBe(['/', '/about', '/contact']);
 });
 
 it('shows each design with made-up content for choosing, never indexed (SU2)', function (): void {
@@ -298,25 +305,36 @@ it('shows each design with made-up content for choosing, never indexed (SU2)', f
     $this->get(RA.'/start/designs/nope')->assertNotFound();
 });
 
-it('asks for licence states first, shows only states that have a board, and needs a board in each ticked state (SU3)', function (): void {
+it('needs an active licence checked in the state\'s records, and offers boards under each licence state (LV1, LP1)', function (): void {
     control()->table('idx_states')->whereIn('code', ['TX', 'FL'])->update(['enabled' => true]);
     control()->table('idx_boards')->update(['visibility' => 'private']);
     control()->table('idx_boards')->where('code', 'HAR')->update(['visibility' => 'public', 'monthly_fee_cents' => 12_900, 'region' => 'Greater Houston']);
     $har = (string) control()->table('idx_boards')->where('code', 'HAR')->value('ulid');
+    ServiceVerifier::load('TX', "License Number,Last Name,Full Name,License Status,Expiration Date\n0654321,Smith,Dana Smith,Active,2028-01-31\n0777777,Jones,Pat Jones,Expired,2025-01-31\n");
 
     $page = (string) $this->get(RA.'/start')->assertOk()->getContent();
-    expect($page)->toContain('Where do you hold a real estate licence?')->toContain('name="licence_states[]" data-idx-state value="TX"')
-        ->not->toContain('name="licence_states[]" data-idx-state value="FL"') // Florida has no board yet, so it is not offered
-        ->toContain('data-idx-group="TX"');
+    expect($page)->toContain('Your real estate licence')->toContain('name="licence_states[]" data-idx-state value="TX"')
+        ->toContain('name="licence_states[]" data-idx-state value="FL"') // licensed in Florida: offered, with a landing page until a board is there
+        ->toContain('name="licence_numbers[TX]"')->toContain('connect to an MLS board in Florida yet');
 
-    $this->post(RA.'/start/step/about', ['brokerage' => 'Oak Realty', 'slug' => 'oak-realty', 'owner_name' => 'Dana Smith', 'owner_email' => 'dana@oak.test',
-        'state' => 'FL', 'licence_states' => ['TX']])->assertSessionHasErrors(['licence_states' => 'Choose at least one MLS board in Texas, or untick Texas.']);
-    signupStep1(['state' => 'FL', 'licence_states' => ['TX'], 'boards' => [$har, $har]]);
-    expect(json_decode((string) control()->table('signups')->sole()->idx_boards, true))->toBe([$har]);
+    $base = ['brokerage' => 'Oak Realty', 'slug' => 'oak-realty', 'owner_name' => 'Dana Smith', 'owner_email' => 'dana@oak.test', 'state' => 'TX'];
+    $this->post(RA.'/start/step/about', $base)->assertSessionHasErrors('licence_states');
+    $this->post(RA.'/start/step/about', $base + ['licence_states' => ['TX']])->assertSessionHasErrors(['licence_numbers.TX' => 'Type your Texas licence number.']);
+    $this->post(RA.'/start/step/about', $base + ['licence_states' => ['TX'], 'licence_numbers' => ['TX' => '0123999']])->assertSessionHasErrors('licence_numbers.TX');
+    $this->post(RA.'/start/step/about', $base + ['licence_states' => ['TX'], 'licence_numbers' => ['TX' => '777777']])
+        ->assertSessionHasErrors(['licence_numbers.TX' => 'Texas licence 777777 is not active in the state\'s records (it shows as expired). An active licence is needed to sign up.']);
+    // Florida's records are not loaded here: let through, marked for HQ to check.
+    signupStep1(['licence_states' => ['TX', 'FL'], 'licence_numbers' => ['TX' => '0654321', 'FL' => 'SL3456789'], 'boards' => [$har, $har]]);
+    $row = control()->table('signups')->sole();
+    expect(json_decode((string) $row->idx_boards, true))->toBe([$har])
+        ->and(collect(json_decode((string) $row->licences, true))->pluck('status', 'state')->all())->toBe(['TX' => 'active', 'FL' => 'unchecked']);
 
-    // The website talks about where the board is, not the office state.
+    // With a board: the full website designs, talking about where the board is.
     $this->post(RA.'/start/step/package', ['package' => $this->package->ulid, 'interval' => 'month']);
-    $this->get(RA.'/start?step=3')->assertOk()->assertSee('Find your place in Greater Houston')->assertDontSee('Find your place in Florida');
+    $this->get(RA.'/start?step=3')->assertOk()->assertSee('value="aurum"', false)->assertDontSee('value="signature"', false)
+        ->assertSee('Find your place in Greater Houston');
+    $this->actingAs($this->staff)->get(RA.'/hq/signups')->assertInertia(fn (Assert $p) => $p->where('signups.0.licences.0.status', 'Confirmed active')
+        ->where('signups.0.licences.1.status', 'Check by hand')->where('signups.0.licences.1.review', true));
 });
 
 it('opens design previews on the demo website in the chosen board\'s state, and keeps its address for it (TP4)', function (): void {

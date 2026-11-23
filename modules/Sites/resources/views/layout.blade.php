@@ -46,7 +46,7 @@
                 @endforeach
             </ul>
         </nav>
-        <button type="button" class="btn btn-ghost header-account" data-account>Sign in</button>
+        @unless ($chrome['landing'] ?? false)<button type="button" class="btn btn-ghost header-account" data-account>Sign in</button>@endunless
         @endif
         @php($callPhone = ($chrome['agent']['phone'] ?? '') !== '' ? $chrome['agent']['phone'] : (string) ($site->info['phone'] ?? ''))
         @if (! empty($callPhone))<a class="btn btn-ghost header-call" href="tel:{{ preg_replace('/[^0-9+]/', '', $callPhone) }}">{{ $callPhone }}</a>@endif
@@ -83,6 +83,7 @@
             <p class="eho"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2 1 11h3v11h16V11h3L12 2zm-5 12h10v2H7v-2zm0 4h10v2H7v-2z"/></svg> Equal Housing Opportunity</p>
             {{-- SU2: the MLS disclosure, set by RightAlly from each live board's display rules; not editable by the brokerage. --}}
             @php($mlsText = array_column($chrome['mls']['boards'] ?? [], 'disclaimer'))
+            @unless ($chrome['landing'] ?? false)
             <section class="mls-disclosure" aria-label="MLS information">
                 @forelse ($chrome['mls']['boards'] ?? [] as $b)
                     <div class="mls-board">
@@ -97,6 +98,7 @@
                     </div>
                 @endforelse
             </section>
+            @endunless
             @foreach ($chrome['disclaimers'] as $d)@if (! in_array($d, $mlsText, true))<p class="disclaimer">{{ $d }}</p>@endif @endforeach
             <p class="privacy">We keep a note of the homes you view here so our agents can help you better. No third-party trackers; your browser's Global Privacy Control is honored. <a href="/privacy">Privacy policy</a> · <a href="/accessibility">Accessibility</a></p>
             <p>&copy; {{ $chrome['year'] }} {{ $site->displayName() }} · <a href="/backoffice" rel="nofollow">Agent login</a></p>

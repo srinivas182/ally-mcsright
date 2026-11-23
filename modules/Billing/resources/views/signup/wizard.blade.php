@@ -9,6 +9,7 @@
     $luxury = ['aurum', 'estate', 'ember', 'heritage', 'atrium'];
     $designs = collect($designs)->sortBy(fn ($d) => in_array($d['key'], $luxury, true) ? array_search($d['key'], $luxury, true) : 10)->values();
     $picked = old('template', $template ?? 'modern');
+    if (! collect($designs ?? [])->contains('key', $picked)) { $picked = $designs[0]['key'] ?? 'modern'; } // LP1: a design of the right kind
     $previewName = $solo ? ($prefill['business'] ?? '') ?: ($prefill['name'] ?? '') : ($prefill['brokerage'] ?? '');
     $previewArea = ($marketArea ?? '') !== '' ? $marketArea : (string) ($signupStates[$prefill['state'] ?? ''] ?? '');
     // The designs' own heading fonts, so each card looks like the website it makes.
@@ -75,7 +76,11 @@
         @csrf
         @if ($fontCss !== '')<link rel="stylesheet" href="https://fonts.googleapis.com/css2?{{ $fontCss }}&amp;display=swap">@endif
         <fieldset><legend>3. Choose your website design</legend>
-            <p class="muted small" style="margin-top:0">Your website goes live in this design the moment you pay, at your RightAlly address, with your name and sample listings until your MLS board is approved. You can change the design any time later.</p>
+            @if ($landingOnly ?? false)
+                <p class="muted small" style="margin-top:0">You chose no MLS board, so your website starts as a professional landing page: who you are, how you help, the areas you serve, a home value request and your contact details. It goes live in this design the moment you pay. When you add an MLS board, you can switch to a full website with home search and listings.</p>
+            @else
+                <p class="muted small" style="margin-top:0">Your website goes live in this design the moment you pay, at your RightAlly address, with your name and sample listings until your MLS board is approved. You can change the design any time later.</p>
+            @endif
             <div class="designs" role="radiogroup" aria-label="Website design">
                 @foreach ($designs as $d)
                     <label class="design">
@@ -86,11 +91,20 @@
                             <span class="mini-nav"><b style="font-family:'{{ $d['font'] }}',serif">{{ $previewName !== '' ? mb_strimwidth($previewName, 0, 24, '…') : 'Your Brokerage' }}</b><i></i><i></i><i></i></span>
                             <span class="mini-hero">
                                 <span class="mini-copy">
-                                    <span class="mini-title" style="font-family:'{{ $d['font'] }}',serif">Find your place in {{ $previewArea !== '' ? $previewArea : 'your city' }}</span>
-                                    <span class="mini-search"><span></span><span></span></span>
+                                    @if ($d['landing'])
+                                        <span class="mini-title" style="font-family:'{{ $d['font'] }}',serif">{{ $previewName !== '' ? mb_strimwidth($previewName, 0, 30, '…') : 'Your Brokerage' }}</span>
+                                        <span class="mini-buttons"><span></span><span></span></span>
+                                    @else
+                                        <span class="mini-title" style="font-family:'{{ $d['font'] }}',serif">Find your place in {{ $previewArea !== '' ? $previewArea : 'your city' }}</span>
+                                        <span class="mini-search"><span></span><span></span></span>
+                                    @endif
                                 </span>
                             </span>
-                            <span class="mini-homes">@foreach ($d['homes'] as $h)<i style="background-image:url('{{ $h }}')"></i>@endforeach</span>
+                            @if ($d['landing'])
+                                <span class="mini-services"><i></i><i></i><i></i><i></i></span>
+                            @else
+                                <span class="mini-homes">@foreach ($d['homes'] as $h)<i style="background-image:url('{{ $h }}')"></i>@endforeach</span>
+                            @endif
                         </span>
                         <span class="design-name">{{ $d['name'] }}@if (in_array($d['key'], $luxury, true)) <span class="tag">Luxury</span>@endif</span>
                         <span class="muted small">{{ $d['description'] }}</span>
@@ -113,9 +127,10 @@
             <dl class="review">
                 <div><dt>{{ $solo ? 'You' : 'Brokerage' }}</dt><dd>{{ $draft->brokerage }}<br><span class="muted small">{{ $draft->owner_name }} · {{ $draft->owner_email }}{{ $draft->state ? ' · '.($signupStates[$draft->state] ?? $draft->state) : '' }}</span></dd><a href="{{ $base }}?step=1#signup">Change</a></div>
                 <div><dt>Address</dt><dd>{{ \Modules\Billing\Signup\Signups::websiteHost((string) $draft->slug) }}</dd><a href="{{ $base }}?step=1#signup">Change</a></div>
-                <div><dt>MLS boards</dt><dd>@if ($review['boards'] === []) None yet: you can add boards later in Settings › MLS. @else {{ implode(', ', array_column($review['boards'], 'name')) }} @endif</dd><a href="{{ $base }}?step=1#signup">Change</a></div>
+                <div><dt>Licence</dt><dd>{{ collect((array) json_decode((string) ($draft->licences ?? '[]'), true))->map(fn ($l) => ($signupStates[$l['state']] ?? $l['state']).' '.$l['number'].(($l['status'] ?? '') === 'active' ? ' (confirmed)' : ''))->implode(', ') ?: 'Not given yet' }}</dd><a href="{{ $base }}?step=1#signup">Change</a></div>
+                <div><dt>MLS boards</dt><dd>@if ($review['boards'] === []) None: your website starts as a landing page, without listings. Add a board any time in Settings › MLS. @else {{ implode(', ', array_column($review['boards'], 'name')) }} @endif</dd><a href="{{ $base }}?step=1#signup">Change</a></div>
                 <div><dt>{{ $solo ? 'Plan' : 'Package' }}</dt><dd>{{ $review['package'] }}: {{ $usd($review['price_cents']) }} a {{ $review['interval'] }}</dd><a href="{{ $base }}?step=2#signup">Change</a></div>
-                <div><dt>Website design</dt><dd>{{ $review['design'] }}</dd><a href="{{ $base }}?step=3#signup">Change</a></div>
+                <div><dt>Website design</dt><dd>{{ $review['boards'] === [] ? 'Landing page: ' : '' }}{{ $review['design'] }}</dd><a href="{{ $base }}?step=3#signup">Change</a></div>
             </dl>
             <p class="card pay-today">You pay today: {{ $usd($review['price_cents']) }}@if ($review['extra_cents'] > 0) + {{ $usd($review['extra_cents']) }} a month for {{ count($review['boards']) - 1 }} extra MLS board{{ count($review['boards']) > 2 ? 's' : '' }}@endif. Taxes may apply.</p>
             <label class="check"><input type="checkbox" name="terms" value="1" @checked(old('terms'))> <span>{{ $solo ? 'I agree to pay the price shown each month or year until I cancel.' : 'I can sign up this brokerage, and I agree to pay the price shown each month or year until I cancel.' }} Read the <a href="https://{{ ((array) config('marketing.hosts'))[0] ?? 'rightally.app' }}/terms" target="_blank" rel="noopener">terms of use</a>.</span></label>

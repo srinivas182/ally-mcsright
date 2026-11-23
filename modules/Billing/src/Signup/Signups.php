@@ -32,6 +32,7 @@ use Modules\Core\Tenancy\TenantContext;
 use Modules\Listings\Idx\Coverage;
 use Modules\Listings\Idx\Subscriptions;
 use Modules\Sites\SiteSetup;
+use Modules\Sites\Support\Designs;
 use stdClass;
 use Throwable;
 
@@ -58,7 +59,7 @@ final class Signups
      * SU2 step 1: who they are, their address and their MLS boards. Starts a draft (replacing any earlier unfinished
      * signup with the same email) or updates the one they are filling in.
      *
-     * @param  array{brokerage: string, slug: string, owner_name: string, owner_email: string, state?: string|null, agents?: int|null, boards?: list<string>, health_check_id?: int|null, ref?: string|null}  $in
+     * @param  array{brokerage: string, slug: string, owner_name: string, owner_email: string, state?: string|null, agents?: int|null, boards?: list<string>, licences?: list<array<string, mixed>>, health_check_id?: int|null, ref?: string|null}  $in
      */
     public function saveAbout(?string $draft, array $in, string $type = 'brokerage'): string
     {
@@ -72,7 +73,8 @@ final class Signups
         }
         $values = ['type' => $type, 'brokerage' => mb_substr(trim($in['brokerage']), 0, 150), 'slug' => $slug, 'owner_name' => mb_substr(trim($in['owner_name']), 0, 120),
             'owner_email' => $email, 'state' => isset($in['state']) && $in['state'] !== '' ? strtoupper($in['state']) : null, 'agents' => $in['agents'] ?? null,
-            'idx_boards' => self::chosenBoards($in['boards'] ?? []), 'updated_at' => now()];
+            'idx_boards' => self::chosenBoards($in['boards'] ?? []), 'updated_at' => now()]
+            + (isset($in['licences']) ? ['licences' => json_encode($in['licences'])] : []);
         if ($row !== null) {
             $db->table('signups')->where('id', $row->id)->update($values + ['status' => 'draft', 'step' => max(2, (int) $row->step)]);
 
@@ -97,11 +99,26 @@ final class Signups
             'status' => 'draft', 'step' => max(3, (int) $row->step), 'updated_at' => now()]);
     }
 
+    /** LV1: the licences given at sign-up as the website shows them ("TX 0123456"); test licences are left out. */
+    public static function licenceLine(stdClass $signup): string
+    {
+        return collect((array) json_decode((string) ($signup->licences ?? '[]'), true))->reject(fn ($l): bool => ! is_array($l) || ($l['status'] ?? '') === 'test')
+            ->map(fn (array $l): string => $l['state'].' '.$l['number'])->implode(', ');
+    }
+
+    /** LP1: no MLS board chosen, so the website is a landing page (no listings) until a board is added. */
+    public static function landingOnly(stdClass $signup): bool
+    {
+        return array_filter((array) json_decode((string) ($signup->idx_boards ?? '[]'), true), 'is_string') === [];
+    }
+
     /** SU2 step 3: the website design their RightAlly website starts in. */
-    public function saveDesign(string $draft, string $template): void
+    public function saveDesign(string $draft, string $template, bool $matchBoards = true): void
     {
         $row = $this->draft($draft);
-        if (! array_key_exists($template, (array) config('sites.templates'))) {
+        // LP1: with an MLS board, a full website design; without one, a landing page design.
+        $landing = self::landingOnly($row);
+        if (! Designs::exists($template) || ($matchBoards && Designs::isLanding($template) !== $landing)) {
             throw ValidationException::withMessages(['template' => 'Choose a design.']);
         }
         DB::connection(Connections::control())->table('signups')->where('id', $row->id)->update(['template' => $template, 'status' => 'draft',
@@ -149,7 +166,7 @@ final class Signups
     {
         $draft = $this->saveAbout(null, $in, $type);
         $this->savePackage($draft, $in['package'], $in['interval']);
-        $this->saveDesign($draft, $in['template'] ?? ($type === 'solo' ? 'modern' : 'modern'));
+        $this->saveDesign($draft, $in['template'] ?? 'modern', false);
 
         return $this->checkout($draft, $returnBase);
     }
@@ -217,7 +234,7 @@ final class Signups
         if (class_exists(SiteSetup::class)) {
             try {
                 $this->tenants->runAs($tenant, fn () => app(SiteSetup::class)->launch((string) ($signup->template ?? 'modern'),
-                    ['name' => (string) $signup->brokerage, 'email' => (string) $signup->owner_email,
+                    ['name' => (string) $signup->brokerage, 'email' => (string) $signup->owner_email, 'licence' => self::licenceLine($signup),
                         'area' => self::marketArea((string) ($signup->idx_boards ?? '[]'), $signup->state),
                         'state' => self::marketState((string) ($signup->idx_boards ?? '[]'), $signup->state)])); // TP2: its Explore cities
             } catch (Throwable $e) {

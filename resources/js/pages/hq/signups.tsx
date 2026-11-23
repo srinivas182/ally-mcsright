@@ -32,6 +32,7 @@ type Signup = {
     no_reminders: boolean;
     resume_url: string | null;
     can_resend: boolean;
+    licences: { label: string; status: string; review: boolean }[];
 };
 
 type Props = {
@@ -174,8 +175,17 @@ export default function HqSignups({
                                                     : ''}
                                                 {s.boards > 0
                                                     ? ` · ${s.boards} MLS board${s.boards > 1 ? 's' : ''}`
-                                                    : ''}
+                                                    : ' · No board (landing page)'}
                                             </p>
+                                            {s.licences.map((l) => (
+                                                <p
+                                                    key={l.label}
+                                                    className={`text-xs ${l.review ? 'font-medium text-amber-700 dark:text-amber-400' : 'text-muted-foreground'}`}
+                                                >
+                                                    Licence {l.label}:{' '}
+                                                    {l.status}
+                                                </p>
+                                            ))}
                                         </td>
                                         <td className="p-3 whitespace-nowrap">
                                             {when(s.last_at)}
