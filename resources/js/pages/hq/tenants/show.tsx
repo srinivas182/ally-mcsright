@@ -88,7 +88,11 @@ export default function ShowTenant({
     domains,
     redirects,
     billing,
-}: Props & { billing: { exception: boolean; reason: string | null } }) {
+    assistant,
+}: Props & {
+    billing: { exception: boolean; reason: string | null };
+    assistant: Allowance | null;
+}) {
     const [action, setAction] = useState<Action>(null);
     const reasonForm = useForm({ reason: '' });
     const slugForm = useForm({ slug: tenant.slug });
@@ -485,6 +489,9 @@ export default function ShowTenant({
                     onClose={() => setSupport(null)}
                 />
             )}
+            {assistant && (
+                <AssistantLimit ulid={tenant.ulid} allowance={assistant} />
+            )}
             <BillingException ulid={tenant.ulid} billing={billing} />
         </>
     );
@@ -535,6 +542,72 @@ function BillingException({
                     ? 'Return to agents pay'
                     : 'This brokerage pays for its agents'}
             </button>
+        </section>
+    );
+}
+
+type Allowance = { package: number; override: number | null; monthly: number };
+
+/** AO1: the website assistant's monthly conversations for this brokerage: its package's, or its own number. */
+function AssistantLimit({
+    ulid,
+    allowance,
+}: {
+    ulid: string;
+    allowance: Allowance;
+}) {
+    const [value, setValue] = useState(
+        allowance.override !== null ? String(allowance.override) : '',
+    );
+    const save = (monthly: string) =>
+        router.post(
+            `/hq/tenants/${ulid}/assistant-limit`,
+            { monthly: monthly === '' ? null : Number(monthly) },
+            { preserveScroll: true },
+        );
+
+    return (
+        <section className="mx-4 mb-6 grid max-w-xl gap-2 rounded-lg border p-4 text-sm md:mx-6">
+            <h2 className="font-semibold">Website assistant</h2>
+            <p className="text-muted-foreground">
+                {allowance.override !== null
+                    ? `This brokerage has its own number: ${allowance.override.toLocaleString()} conversations a month (its package includes ${allowance.package.toLocaleString()}).`
+                    : `Uses its package's number: ${allowance.package.toLocaleString()} conversations a month. The brokerage sets its own daily limits within this.`}
+            </p>
+            <form
+                className="flex flex-wrap items-center gap-2"
+                onSubmit={(e) => {
+                    e.preventDefault();
+                    save(value);
+                }}
+            >
+                <Input
+                    type="number"
+                    min={0}
+                    inputMode="numeric"
+                    aria-label="Conversations a month for this brokerage"
+                    placeholder={String(allowance.package)}
+                    className="w-40"
+                    value={value}
+                    onChange={(e) => setValue(e.target.value)}
+                />
+                <Button type="submit" variant="outline" size="sm">
+                    Save
+                </Button>
+                {allowance.override !== null && (
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                            setValue('');
+                            save('');
+                        }}
+                    >
+                        Use the package&apos;s number
+                    </Button>
+                )}
+            </form>
         </section>
     );
 }

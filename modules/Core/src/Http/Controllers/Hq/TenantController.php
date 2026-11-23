@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
+use Modules\Billing\Usage\AssistantAllowance;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Http\Requests\Hq\ChangeSlugRequest;
 use Modules\Core\Http\Requests\Hq\ProvisionTenantRequest;
@@ -90,6 +91,8 @@ final class TenantController
     {
         return Inertia::render('hq/tenants/show', [
             'billing' => ['exception' => (bool) $tenant->getAttribute('billing_exception'), 'reason' => $tenant->getAttribute('billing_exception_reason')],
+            // AO1: the website assistant's monthly conversations (the package's, or this brokerage's own number).
+            'assistant' => ! $tenant->isHq() && class_exists(AssistantAllowance::class) ? AssistantAllowance::for($tenant->id) : null,
             'tenant' => [
                 'ulid' => $tenant->ulid,
                 'name' => $tenant->name,
