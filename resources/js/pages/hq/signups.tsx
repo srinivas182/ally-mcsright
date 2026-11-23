@@ -247,7 +247,6 @@ export default function HqSignups({
                                                                             .value,
                                                                     )
                                                                 }
-                                                                autoFocus
                                                             />
                                                             <Button
                                                                 size="sm"
