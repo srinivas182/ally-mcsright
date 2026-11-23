@@ -23,6 +23,9 @@ final class BackOfficeLinks
     /** Sign-in pages that come from the authentication package rather than our own routes. */
     private const AUTH = ['logout', 'forgot-password', 'reset-password', 'two-factor-challenge', 'user', 'email', 'register', 'invitations'];
 
+    /** Never sent on: HQ's own pages, the API, health checks and system files. */
+    private const NEVER = ['hq', 'api', 'up', '.well-known', 'manifest.webmanifest', 'watchtower', 'impersonate'];
+
     /** @var list<string>|null */
     private static ?array $segments = null;
 
@@ -69,7 +72,7 @@ final class BackOfficeLinks
                     $found[] = $first;
                 }
             }
-            self::$segments = array_values(array_unique($found));
+            self::$segments = array_values(array_diff(array_unique($found), self::NEVER));
         }
 
         return self::$segments;
