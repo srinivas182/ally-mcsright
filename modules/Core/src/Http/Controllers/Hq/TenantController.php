@@ -6,6 +6,7 @@ namespace Modules\Core\Http\Controllers\Hq;
 
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Core\Audit\AuditLogger;
@@ -14,6 +15,7 @@ use Modules\Core\Http\Requests\Hq\ProvisionTenantRequest;
 use Modules\Core\Http\Requests\Hq\TenantReasonRequest;
 use Modules\Core\Tenancy\Actions\ChangeTenantSlug;
 use Modules\Core\Tenancy\Actions\ProvisionTenant;
+use Modules\Core\Tenancy\Actions\PurgeTenant;
 use Modules\Core\Tenancy\Actions\TenantLifecycle;
 use Modules\Core\Tenancy\Data\ProvisionTenantData;
 use Modules\Core\Tenancy\Enums\TenantStatus;
@@ -132,6 +134,17 @@ final class TenantController
     {
         return $this->transition(fn () => $lifecycle->close($tenant, $request->string('reason')->toString(), $this->userId($request)), $tenant, 'Closing started. It can be reversed for 30 days.',
             'core.tenant.closing', ['reason' => $request->string('reason')->toString()]);
+    }
+
+    /** TD1: deletes a closed brokerage for good, after HQ types its address to confirm. */
+    public function purge(Request $request, Tenant $tenant, PurgeTenant $purge): RedirectResponse
+    {
+        $request->validate(['confirm' => ['required', 'string', Rule::in([$tenant->slug])]], ['confirm.in' => 'Type the brokerage\'s address exactly to confirm.', 'confirm.required' => 'Type the brokerage\'s address exactly to confirm.']);
+        $name = $tenant->name;
+        $done = $purge->handle($tenant, $this->userId($request));
+        Inertia::flash('toast', ['type' => 'success', 'message' => "{$name} was deleted permanently ({$done['rows']} records, {$done['files']} files)."]);
+
+        return to_route('hq.tenants.index');
     }
 
     public function changeSlug(ChangeSlugRequest $request, Tenant $tenant, ChangeTenantSlug $change): RedirectResponse

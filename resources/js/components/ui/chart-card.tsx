@@ -27,7 +27,9 @@ function ChartCard({ title, description, children, table, height = 260, classNam
                     {children}
                 </ResponsiveContainer>
             </div>
-            <table className="sr-only">
+            {/* The numbers for screen readers. The hiding sits on a wrapper: a table never shrinks below its rows, so hiding the table itself left a tall empty gap under the page (HQ dashboard). */}
+            <div className="sr-only">
+            <table>
                 <caption>{title}</caption>
                 <thead>
                     <tr>
@@ -48,6 +50,7 @@ function ChartCard({ title, description, children, table, height = 260, classNam
                     ))}
                 </tbody>
             </table>
+            </div>
         </figure>
     );
 }

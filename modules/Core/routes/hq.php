@@ -31,6 +31,7 @@ Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.tenants.manage
         Route::post('tenants/{tenant}/suspend', [TenantController::class, 'suspend'])->name('tenants.suspend');
         Route::post('tenants/{tenant}/reactivate', [TenantController::class, 'reactivate'])->name('tenants.reactivate');
         Route::post('tenants/{tenant}/close', [TenantController::class, 'close'])->name('tenants.close');
+        Route::post('tenants/{tenant}/purge', [TenantController::class, 'purge'])->middleware(['password.confirm', 'throttle:5,1'])->name('tenants.purge'); // TD1
         Route::post('tenants/{tenant}/slug', [TenantController::class, 'changeSlug'])->name('tenants.slug');
         // DS1: backups and two-person restores (specs/core/12).
         Route::get('tenants/{tenant}/data', [HqDataController::class, 'show'])->name('tenants.data');
