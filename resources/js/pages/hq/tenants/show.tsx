@@ -69,7 +69,7 @@ const actionCopy = {
     close: {
         title: 'Close tenant',
         description:
-            'Starts a 30-day closing period that can be reversed. After that the tenant is closed and its data is kept for 90 more days.',
+            'Starts a 30-day closing period that can be reversed. After that the tenant is closed and its data is kept for 90 more days. A closed tenant can then be deleted permanently.',
         button: 'Start closing',
     },
 };
@@ -100,6 +100,11 @@ export default function ShowTenant({
     const canClose =
         !tenant.is_hq && ['active', 'suspended'].includes(tenant.status);
     const canReactivate = ['suspended', 'closing'].includes(tenant.status);
+    // TD1: a closed (or closing) brokerage can be deleted for good.
+    const canPurge =
+        !tenant.is_hq && ['closing', 'closed'].includes(tenant.status);
+    const [purging, setPurging] = useState(false);
+    const purgeForm = useForm({ confirm: '' });
 
     return (
         <>
@@ -146,6 +151,14 @@ export default function ShowTenant({
                                 onClick={() => setAction('close')}
                             >
                                 Close
+                            </Button>
+                        )}
+                        {canPurge && (
+                            <Button
+                                variant="destructive"
+                                onClick={() => setPurging(true)}
+                            >
+                                Delete permanently
                             </Button>
                         )}
                     </div>
@@ -289,6 +302,78 @@ export default function ShowTenant({
                     )}
                 </div>
             </div>
+
+            <Dialog
+                open={purging}
+                onOpenChange={(open) => {
+                    setPurging(open);
+                    if (!open) {
+                        purgeForm.reset();
+                        purgeForm.clearErrors();
+                    }
+                }}
+            >
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>
+                            Delete {tenant.name} permanently?
+                        </DialogTitle>
+                        <DialogDescription>
+                            This deletes all of its data: people, contacts,
+                            deals, messages, files, its website and its
+                            addresses. It cannot be undone. Download a copy
+                            first under Data and backups if it may be needed.
+                            The audit log is kept.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <form
+                        id="purge-form"
+                        onSubmit={(event) => {
+                            event.preventDefault();
+                            purgeForm.post(`${base}/purge`);
+                        }}
+                    >
+                        <FormField
+                            label={`Type the address "${tenant.slug}" to confirm`}
+                            error={purgeForm.errors.confirm}
+                            required
+                        >
+                            {(control) => (
+                                <Input
+                                    {...control}
+                                    autoComplete="off"
+                                    value={purgeForm.data.confirm}
+                                    onChange={(event) =>
+                                        purgeForm.setData(
+                                            'confirm',
+                                            event.target.value,
+                                        )
+                                    }
+                                />
+                            )}
+                        </FormField>
+                    </form>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => setPurging(false)}
+                        >
+                            Keep it
+                        </Button>
+                        <Button
+                            type="submit"
+                            form="purge-form"
+                            variant="destructive"
+                            disabled={
+                                purgeForm.processing ||
+                                purgeForm.data.confirm !== tenant.slug
+                            }
+                        >
+                            Delete permanently
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             <Dialog
                 open={action !== null}
