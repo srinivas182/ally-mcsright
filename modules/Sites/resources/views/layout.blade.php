@@ -174,7 +174,7 @@ document.querySelectorAll('form[data-lead]').forEach(function(f){f.first_referre
             <button type="button" class="ailly-x" data-ailly-close aria-label="Close chat">&times;</button></header>
         <div class="ailly-log" data-ailly-log aria-live="polite"></div>
         <form class="ailly-form" data-ailly-form>
-            <input type="text" name="website" class="ailly-hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+            <label class="ailly-hp" aria-hidden="true">Leave empty <input type="text" name="website" tabindex="-1" autocomplete="off"></label>
             <label class="sr-only" for="ailly-input">Message</label>
             <input id="ailly-input" name="message" maxlength="800" autocomplete="off" placeholder="Ask about homes, the area or selling…">
             <button type="submit" class="btn btn-primary">Send</button>
