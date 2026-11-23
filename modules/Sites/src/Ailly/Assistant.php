@@ -31,6 +31,7 @@ use Modules\Sites\Models\SiteEvent;
 use Modules\Sites\Models\SiteVisitor;
 use Modules\Sites\Visitors\JourneySummary;
 use Modules\Sites\Visitors\SiteLeads;
+use Modules\Billing\Usage\AssistantAllowance;
 use Modules\Sites\Visitors\Valuation;
 use Modules\Sites\Visitors\Visitors;
 use Throwable;
@@ -432,13 +433,10 @@ final class Assistant
     }
 
     /** The package's monthly conversations (HQ sets them per package); 500 without a package. */
+    /** The brokerage's monthly conversations: its package's, or HQ's own number for it (AO1). */
     private function monthlyCap(): int
     {
-        $cap = DB::connection(Connections::control())->table('billing_tenant_subscriptions')->join('billing_packages', 'billing_packages.id', '=', 'billing_tenant_subscriptions.package_id')
-            ->where('billing_tenant_subscriptions.tenant_id', $this->tenants->id())->whereIn('billing_tenant_subscriptions.status', ['active', 'grace'])
-            ->orderByDesc('billing_tenant_subscriptions.id')->value('billing_packages.ailly_conversations');
-
-        return $cap !== null ? (int) $cap : 500;
+        return AssistantAllowance::for($this->tenants->id())['monthly'];
     }
 
     private function visitorMessagesToday(\stdClass $c): int

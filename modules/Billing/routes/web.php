@@ -11,6 +11,7 @@ use Modules\Billing\Http\Credits\HqCreditsController;
 use Modules\Billing\Http\GoLiveController;
 use Modules\Billing\Http\HealthCheckController;
 use Modules\Billing\Http\HqPackageBuilderController;
+use Modules\Billing\Http\HqAssistantLimitController;
 use Modules\Billing\Http\HqSignupsController;
 use Modules\Billing\Http\PaymentsController;
 use Modules\Billing\Http\SetupController;
@@ -103,6 +104,7 @@ Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.tenants.manage
     Route::post('signups/{signup}/resend', [HqSignupsController::class, 'resend'])->where('signup', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->middleware('throttle:20,1')->name('signups.resend'); // QW1
     Route::post('signups/{signup}/email', [HqSignupsController::class, 'email'])->where('signup', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->middleware(['password.confirm', 'throttle:20,1'])->name('signups.email'); // EM1
     Route::get('go-live', [GoLiveController::class, 'hq'])->name('go-live');
+    Route::post('tenants/{tenant}/assistant-limit', HqAssistantLimitController::class)->middleware('throttle:30,1')->name('tenants.assistant-limit'); // AO1
     Route::get('affiliates', [AffiliateController::class, 'hq'])->name('affiliates');
     Route::post('affiliates/rewards', [AffiliateController::class, 'saveRewards'])->middleware('password.confirm')->name('affiliates.rewards');
     Route::post('affiliates', [AffiliateController::class, 'addPerson'])->middleware('throttle:20,1')->name('affiliates.store');
