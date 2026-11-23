@@ -29,7 +29,7 @@ export function WelcomeHero({
     });
 
     return (
-        <section className="relative overflow-hidden rounded-2xl bg-[#061536] px-6 py-7 text-white shadow-[0_24px_50px_-28px_rgb(6_22_63/0.8)] md:px-9 md:py-9">
+        <section className="relative overflow-hidden rounded-2xl bg-sidebar px-6 py-7 text-white shadow-[0_24px_50px_-28px_rgb(6_22_63/0.8)] md:px-9 md:py-9">
             <div
                 aria-hidden="true"
                 className="pointer-events-none absolute inset-0 opacity-[0.12]"
@@ -43,7 +43,7 @@ export function WelcomeHero({
             />
             <div
                 aria-hidden="true"
-                className="pointer-events-none absolute -top-32 -right-24 size-[28rem] rounded-full bg-[#155DFC] opacity-50 blur-[110px]"
+                className="pointer-events-none absolute -top-32 -right-24 size-[28rem] rounded-full bg-sidebar-primary opacity-50 blur-[110px]"
             />
             <div className="relative">
                 <p className="text-sm font-medium text-[#9FB2DE]">{today}</p>

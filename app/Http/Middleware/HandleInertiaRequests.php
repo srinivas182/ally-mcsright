@@ -9,6 +9,7 @@ use Laravel\Fortify\Features;
 use Modules\Billing\Credits\CreditLedger;
 use Modules\Billing\PaymentSettings;
 use Modules\Billing\Usage\UsageMeter;
+use Modules\Core\Branding\OfficeBrandSource;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Identity\Impersonation;
 use Modules\Core\Identity\Security\TwoFactorPolicy;
@@ -47,13 +48,21 @@ class HandleInertiaRequests extends Middleware
      * @return array<string, mixed>
      */
     /**
-     * @return array{name: string, isHq: bool}|null
+     * @return array{name: string, isHq: bool, logo: string|null, photo: string|null, branded: bool}|null
      */
     private function tenant(): ?array
     {
         $context = app(TenantContext::class);
+        if (! $context->check()) {
+            return null;
+        }
+        $hq = $context->current()->isHq();
+        // BR2: the brokerage's logo and sign-in photo (from its website settings), unless it chose RightAlly's look.
+        $brand = $hq ? null : app(OfficeBrandSource::class)->forCurrentTenant();
+        $on = $brand !== null && $brand->mode !== 'off';
 
-        return $context->check() ? ['name' => $context->current()->name, 'isHq' => $context->current()->isHq()] : null;
+        return ['name' => $context->current()->name, 'isHq' => $hq, 'logo' => $on ? $brand->logo : null, 'photo' => $on ? $brand->photo : null,
+            'branded' => $on && $brand->primary !== null];
     }
 
     /**

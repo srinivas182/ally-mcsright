@@ -116,6 +116,29 @@ final class ThemeBuilder
      * Back-office accent only (logo + brand accent): primary, ring and sidebar primary.
      * The rest of the back office stays on RightAlly neutrals for consistent usability.
      */
+    /**
+     * BR2: the whole back office in a brokerage's colours: its palette everywhere (buttons, highlights, charts, a light
+     * tint on the page), with the menu bar a deep shade of its colour, as RightAlly's own is deep navy. Text stays
+     * readable on every surface (the same checks as the full theme).
+     */
+    public function backOfficeFull(string $brandHex): Theme
+    {
+        $full = $this->full($brandHex);
+        $brand = $this->palettes->scale($brandHex);
+        $neutral = $this->palettes->neutral($brandHex);
+        $bar = $brand[950];
+        $barText = $this->readableOn($brand[200], $bar, darken: false);
+        [$barPrimary, $barPrimaryFg] = $this->onColor($brand[400], $neutral[950], 'dark');
+        $sidebar = [
+            'sidebar' => $bar->css(), 'sidebar-foreground' => $barText->css(), 'sidebar-primary' => $barPrimary->css(), 'sidebar-primary-foreground' => $barPrimaryFg->css(),
+            'sidebar-accent' => 'rgb(255 255 255 / 0.08)', 'sidebar-accent-foreground' => '#ffffff', 'sidebar-border' => 'rgb(255 255 255 / 0.1)', 'sidebar-ring' => $brand[400]->css(),
+        ];
+        $light = array_merge($full->light, $sidebar, ['background' => $neutral[50]->css()]);
+        $dark = array_merge($full->dark, $sidebar, ['sidebar' => $brand[950]->withLightness(max(0.16, $brand[950]->l - 0.04))->css()]);
+
+        return new Theme($light, $dark, $full->adjustments);
+    }
+
     public function backOfficeAccent(string $brandHex): Theme
     {
         $full = $this->full($brandHex);

@@ -146,7 +146,9 @@ final class SiteSetup
             $hex = static fn ($v, string $d): string => is_string($v) && preg_match('/^#[0-9a-fA-F]{6}$/', $v) === 1 ? strtolower($v) : $d;
             $url = static fn ($v): ?string => is_string($v) && preg_match('#^https://[^\s"<>]{1,490}$#', $v) === 1 ? $v : null;
             $changes['brand'] = ['primary' => $hex($b['primary'] ?? null, (string) ($site->brand['primary'] ?? '#1d4ed8')), 'accent' => $hex($b['accent'] ?? null, (string) ($site->brand['accent'] ?? '#0f172a')),
-                'logo_url' => $url($b['logo_url'] ?? null), 'hero_image' => $url($b['hero_image'] ?? null)];
+                'logo_url' => $url($b['logo_url'] ?? null), 'hero_image' => $url($b['hero_image'] ?? null),
+                // BR2: how far the brand colour goes in the back office.
+                'office' => in_array($b['office'] ?? null, ['full', 'accent', 'off'], true) ? $b['office'] : (string) ($site->brand['office'] ?? 'full')];
         }
         if (isset($in['settings']) && is_array($in['settings']) && array_key_exists('signup_after', $in['settings'])) {
             $changes['settings'] = ['signup_after' => max(0, min(20, (int) $in['settings']['signup_after']))] + ($site->settings ?? []);

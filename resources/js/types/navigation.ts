@@ -23,4 +23,11 @@ export type ServerNavItem = {
 
 export type NavGroup = { label: string; items: ServerNavItem[] };
 
-export type TenantInfo = { name: string; isHq: boolean };
+export type TenantInfo = {
+    name: string;
+    isHq: boolean;
+    /** BR2: the brokerage's logo and sign-in photo, when it uses its own brand in the back office. */
+    logo?: string | null;
+    photo?: string | null;
+    branded?: boolean;
+};

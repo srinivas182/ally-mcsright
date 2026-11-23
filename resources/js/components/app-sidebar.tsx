@@ -50,17 +50,25 @@ export function AppSidebar() {
                                     </>
                                 ) : (
                                     <>
-                                        <span
-                                            aria-hidden="true"
-                                            className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-b from-[#2A6BFF] to-[#0B3FB8] text-sm font-semibold text-white shadow-[0_1px_0_rgb(255_255_255/0.2)_inset,0_4px_10px_-4px_rgb(21_93_252/0.8)]"
-                                        >
-                                            {initials(name)}
-                                        </span>
+                                        {tenant?.logo ? (
+                                            <img
+                                                src={tenant.logo}
+                                                alt=""
+                                                className="size-8 shrink-0 rounded-lg bg-white object-contain p-0.5"
+                                            />
+                                        ) : (
+                                            <span
+                                                aria-hidden="true"
+                                                className={`flex size-8 shrink-0 items-center justify-center rounded-lg text-sm font-semibold ${tenant?.branded ? 'bg-sidebar-primary text-sidebar-primary-foreground' : 'bg-gradient-to-b from-[#2A6BFF] to-[#0B3FB8] text-white shadow-[0_1px_0_rgb(255_255_255/0.2)_inset,0_4px_10px_-4px_rgb(21_93_252/0.8)]'}`}
+                                            >
+                                                {initials(name)}
+                                            </span>
+                                        )}
                                         <span className="grid min-w-0 leading-tight">
                                             <span className="truncate font-semibold text-white">
                                                 {name}
                                             </span>
-                                            <span className="truncate text-xs text-[#9FB0DA]">
+                                            <span className="truncate text-xs text-sidebar-foreground/80">
                                                 on RightAlly
                                             </span>
                                         </span>

@@ -10,6 +10,7 @@ use Illuminate\Support\ServiceProvider;
 use Modules\AI\FeatureCatalog;
 use Modules\AI\Support\PromptRegistry;
 use Modules\Core\Access\PermissionRegistry;
+use Modules\Core\Branding\OfficeBrandSource;
 use Modules\Core\Brief\DailyBriefs;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Leads\VisitorJourneys;
@@ -44,6 +45,7 @@ final class SitesServiceProvider extends ServiceProvider
         });
         $this->app->scoped(Http\SiteRouter::class);
         $this->app->scoped(Content\DemoView::class); // TP4: one demo visitor's choices, per request
+        $this->app->bind(OfficeBrandSource::class, Content\SiteOfficeBrand::class); // BR2
         $this->app->singleton(Http\SiteExtensions::class);
     }
 
@@ -52,6 +54,9 @@ final class SitesServiceProvider extends ServiceProvider
         Brief\ChatBriefItems::register($this->app->make(DailyBriefs::class));
         // TP4: on the demo website, the site shows in the design the visitor is looking at.
         Models\Site::retrieved(fn (Models\Site $site) => $this->app->make(Content\DemoView::class)->apply($site));
+        // BR2: a change to the website's brand shows in the back office straight away.
+        Models\Site::saved(fn (Models\Site $site) => Content\SiteOfficeBrand::forget((int) $site->tenant_id));
+        Models\SitePage::saved(fn (Models\SitePage $page) => $page->path === '/' ? Content\SiteOfficeBrand::forget((int) $page->tenant_id) : null);
         Privacy\WebsitePrivacy::register($this->app->make(PrivacyRegistry::class)); // TR1
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');

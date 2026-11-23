@@ -164,6 +164,7 @@ final class CoreServiceProvider extends ServiceProvider
         $this->app->scoped(TenantCache::class);
         $this->app->singleton(DomainResolver::class);
         $this->app->bind(BrandColourSource::class, NullBrandColourSource::class);
+        $this->app->bindIf(Branding\OfficeBrandSource::class, Branding\NullOfficeBrandSource::class); // BR2: Sites supplies the real one
     }
 
     /**

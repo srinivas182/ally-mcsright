@@ -46,7 +46,7 @@ export default function Dashboard({
                                     />
                                 </span>
                             </span>
-                            <span className="rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-[#0B3FB8]">
+                            <span className="rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-primary">
                                 Continue
                             </span>
                         </Link>
