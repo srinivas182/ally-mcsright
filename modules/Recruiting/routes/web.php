@@ -6,7 +6,15 @@ use Illuminate\Support\Facades\Route;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
 use Modules\Recruiting\Http\AttractionController;
 use Modules\Recruiting\Http\GrowthController;
+use Modules\Recruiting\Http\JoinController;
 use Modules\Recruiting\Http\RecruitingController;
+
+// CM4: join through an agent's link; licence checked, pack paid, placed under the sponsor (no approval).
+Route::middleware(['web', EnsureTenantWorkspace::class])->group(function (): void {
+    Route::get('join/done', [JoinController::class, 'done'])->name('join.done');
+    Route::get('join/{code?}', [JoinController::class, 'show'])->where('code', '[a-z0-9]{6,12}')->middleware('throttle:60,1')->name('join');
+    Route::post('join/{code?}', [JoinController::class, 'store'])->where('code', '[a-z0-9]{6,12}')->middleware('throttle:6,60')->name('join.store');
+});
 
 // Recruiting (specs/grow/17).
 Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('recruiting')->name('recruiting.')->group(function (): void {

@@ -13,6 +13,7 @@ use Modules\Billing\Onboarding\Setup;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Simple\SimpleMode;
 use Modules\Crm\Brief\MorningList;
+use Modules\Recruiting\SelfJoin;
 
 /**
  * The daily brief on the home pages (specs/core/09): Dashboard for owners and staff, Today for agents and their
@@ -48,7 +49,9 @@ final class BriefController
         return Inertia::render('agent/home', ['firstName' => $user->first_name, 'assisting' => $user->assistedAgent?->name, 'brief' => $briefs->for($for),
             'briefEmail' => self::emailOn($briefs, $user),
             // SX6: the morning text with today's list (the CRM's; the agent's own opt-in).
-            'morningText' => class_exists(MorningList::class) && $user->assistedAgent === null ? app(MorningList::class)->textOn($user) : null]);
+            'morningText' => class_exists(MorningList::class) && $user->assistedAgent === null ? app(MorningList::class)->textOn($user) : null,
+            // CM4: the agent's own link for bringing in other agents (they become the sponsor).
+            'joinLink' => class_exists(SelfJoin::class) && $user->isKind(UserKind::Agent) ? $request->getSchemeAndHttpHost().'/join/'.app(SelfJoin::class)->codeFor($user) : null]);
     }
 
     public function email(Request $request, DailyBriefs $briefs): RedirectResponse

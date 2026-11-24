@@ -2,6 +2,7 @@ import { Head, Link, usePage } from '@inertiajs/react';
 import { ChevronRight } from 'lucide-react';
 
 import { type BriefItem, DailyBrief } from '@/components/brief/daily-brief';
+import { SponsorLink } from '@/components/recruiting/sponsor-link';
 import { WelcomeHero } from '@/components/welcome-hero';
 
 type Props = {
@@ -10,6 +11,7 @@ type Props = {
     brief: BriefItem[];
     briefEmail: boolean;
     morningText?: boolean | null;
+    joinLink?: string | null;
 };
 
 /** MN3: an agent's numbers, one click from the dashboard (they also have their own Reports menu). */
@@ -67,6 +69,7 @@ export default function AgentHome({
     brief,
     briefEmail,
     morningText = null,
+    joinLink = null,
 }: Props) {
     return (
         <>
@@ -85,6 +88,7 @@ export default function AgentHome({
                     email={briefEmail}
                     morningText={morningText}
                 />
+                {joinLink && <SponsorLink url={joinLink} />}
                 <YourNumbers />
             </div>
         </>
