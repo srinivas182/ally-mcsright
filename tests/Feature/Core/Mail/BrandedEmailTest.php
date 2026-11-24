@@ -42,7 +42,8 @@ it('greets the person by first name and sends in the brokerage\'s name', functio
 
     $html = em3Sent();
     expect($html)->toContain('Hello Maria')
-        ->and($html)->toContain('The '.e($tenant->name).' team')
+        // Compare as text: a generated brokerage name can hold an apostrophe the mail template encodes its own way.
+        ->and(html_entity_decode($html, ENT_QUOTES | ENT_HTML5))->toContain('The '.$tenant->name.' team')
         ->and($html)->toContain('Sent with RightAlly on behalf of')
         ->and($html)->not->toContain('Hello!')
         ->and($html)->not->toContain('Regards,');

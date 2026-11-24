@@ -40,14 +40,14 @@ beforeEach(function (): void {
 
 function joinForm(array $over = []): array
 {
-    return $over + ['first_name' => 'Nina', 'last_name' => 'Ortiz', 'email' => 'nina@example.test', 'phone' => '+1 512 555 0101',
+    return $over + ['first_name' => 'Nina', 'last_name' => 'Ortiz', 'email' => 'nina@example.test', 'phone' => '+15125550101',
         'password' => 'a-strong-password-1', 'password_confirmation' => 'a-strong-password-1', 'licence_state' => 'TX', 'licence_number' => 'test',
         'pack' => test()->pro->ulid, 'agree' => true];
 }
 
 it('shows the join page with the sponsor and the packs', function (): void {
     $this->get("/join/{$this->code}")->assertOk()->assertHeader('X-Robots-Tag', 'noindex, nofollow')->assertInertia(fn (Assert $page) => $page
-        ->component('public/join')->where('sponsor', 'James Smith')->where('packs.0.name', 'Pro')->where('packs.0.price_cents', 15_000));
+        ->component('public/join')->where('sponsor.name', 'James Smith')->where('packs.0.name', 'Pro')->where('packs.0.price_cents', 15_000));
     $this->get('/join/zzzzzzzz')->assertInertia(fn (Assert $page) => $page->where('sponsor', null)->where('unknownCode', true));
 });
 
@@ -72,9 +72,23 @@ it('refuses missing details, a used email and an unchosen pack', function (): vo
     $this->post("/join/{$this->code}", joinForm(['agree' => false, 'password_confirmation' => 'different-one-xx']))->assertSessionHasErrors(['agree', 'password']);
     $this->post("/join/{$this->code}", joinForm(['email' => $this->sponsor->email]))->assertSessionHasErrors('email');
     $this->post("/join/{$this->code}", joinForm(['pack' => null]))->assertSessionHasErrors('pack');
+    $this->post("/join/{$this->code}", joinForm(['email' => 'nina@', 'phone' => '555-01']))->assertSessionHasErrors(['email', 'phone']);
     expect(User::query()->where('email', 'nina@example.test')->exists())->toBeFalse();
 });
 
 it('gives agents their link on their dashboard', function (): void {
     $this->actingAs($this->sponsor)->get('/agent')->assertInertia(fn (Assert $page) => $page->where('joinLink', fn ($l) => str_ends_with((string) $l, "/join/{$this->code}")));
+});
+
+it('lets the owner set the join page: words, video and extra states', function (): void {
+    DB::connection(Connections::control())->table('idx_states')->insertOrIgnore(['code' => 'FL', 'name' => 'Florida', 'enabled' => false, 'created_at' => now(), 'updated_at' => now()]);
+    $this->actingAs($this->owner)->post('/recruiting/join-page', ['headline' => 'Grow with us', 'pitch' => 'Top split.', 'reasons' => "Great tools\nGreat team",
+        'video' => 'javascript:alert(1)', 'extra_states' => ['FL']])->assertSessionHasErrors('video');
+    $this->actingAs($this->owner)->post('/recruiting/join-page', ['headline' => 'Grow with us', 'pitch' => 'Top split.', 'reasons' => "Great tools\nGreat team",
+        'video' => 'https://youtu.be/dQw4w9WgXcQ', 'extra_states' => ['FL']])->assertRedirect();
+
+    $this->get("/join/{$this->code}")->assertInertia(fn (Assert $page) => $page
+        ->where('page.headline', 'Grow with us')->where('page.reasons', ['Great tools', 'Great team'])
+        ->where('page.video', 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ')->where('states', ['FL' => 'Florida']));
+    $this->actingAs($this->sponsor)->get('/recruiting/join-page')->assertForbidden();
 });

@@ -29,6 +29,8 @@ final class CompensationServiceProvider extends ServiceProvider
         $this->app->singleton(CommissionCalculator::class);
         $this->app->scoped(CapPeriods::class);
         $this->app->scoped(Ranks::class);
+        $this->app->scoped(Recruiters\Recruiters::class);
+        $this->app->tag([Recruiters\RecruiterGuard::class], 'transactions.deal_guards');
         $this->app->scoped(CommissionService::class);
     }
 
@@ -58,10 +60,12 @@ final class CompensationServiceProvider extends ServiceProvider
         $nav->add(new NavItem('Compensation', 'Revenue share', '/compensation/revenue-share', 'network', 45, ability: 'compensation.calculations.manage'));
         $nav->add(new NavItem('Compensation', 'Ranks', '/compensation/ranks', 'award', 46, ability: 'compensation.plans.view'));
         $nav->add(new NavItem('Compensation', 'Network tree', '/compensation/network', 'git-fork', 47, ability: 'compensation.plans.view'));
+        $nav->add(new NavItem('Compensation', 'Recruiters', '/compensation/recruiters', 'user-plus', 48, ability: 'compensation.plans.view'));
 
         // Plan changes recalculate pending deals automatically (best-in-class review, addition 7).
         // Revenue share attribution and vesting follow people joining and leaving.
         Event::listen(UserActivated::class, [RevenueShare\Attribution::class, 'onActivated']);
+        Event::listen(UserActivated::class, [Recruiters\Recruiters::class, 'activated']);
         Event::listen(UserDeactivated::class, [RevenueShare\Attribution::class, 'onDeactivated']);
 
         Event::listen(PlansChanged::class, fn (PlansChanged $e) => $this->app->make(CommissionService::class)->recalculatePending($e->agentUserIds, $e->reason));

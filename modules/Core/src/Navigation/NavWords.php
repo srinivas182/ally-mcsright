@@ -58,7 +58,7 @@ final class NavWords
         'Prospector' => 'Buscador de vendedores', 'Ready-made library' => 'Biblioteca lista', 'Recruiting' => 'Reclutamiento', 'Refer a brokerage' => 'Recomendar una correduría',
         'Refer an agent' => 'Recomendar un agente', 'Referral network' => 'Red de referidos', 'Reports' => 'Informes', 'Revenue share' => 'Participación de ingresos',
         'Review queue' => 'Cola de revisión', 'Reviews' => 'Reseñas', 'RightAlly credits' => 'Créditos RightAlly', 'Risk' => 'Riesgo', 'Roles' => 'Funciones',
-        'Roster and compliance' => 'Plantilla y cumplimiento', 'Simulator' => 'Simulador', 'Ranks' => 'Rangos', 'Pipeline' => 'Embudo de ventas', 'Network tree' => 'Árbol de la red', 'My network' => 'Mi red', 'Social posts' => 'Redes sociales', 'Support access' => 'Acceso de soporte',
+        'Roster and compliance' => 'Plantilla y cumplimiento', 'Simulator' => 'Simulador', 'Ranks' => 'Rangos', 'Join page' => 'Página para unirse', 'Recruiters' => 'Reclutadores', 'Pipeline' => 'Embudo de ventas', 'Network tree' => 'Árbol de la red', 'My network' => 'Mi red', 'Social posts' => 'Redes sociales', 'Support access' => 'Acceso de soporte',
         'Switch to RightAlly' => 'Cambiar a RightAlly', 'Tasks' => 'Tareas', 'Tax (1099)' => 'Impuestos (1099)', 'Team chat' => 'Chat del equipo', 'Today' => 'Hoy',
         'Transactions' => 'Transacciones', 'Trust reconciliation' => 'Conciliación de fideicomiso', 'Website' => 'Sitio web',
     ];

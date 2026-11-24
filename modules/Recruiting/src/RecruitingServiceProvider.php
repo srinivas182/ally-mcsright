@@ -62,6 +62,7 @@ final class RecruitingServiceProvider extends ServiceProvider
         }
         $nav = $this->app->make(NavigationRegistry::class);
         $nav->add(new NavItem('People', 'Recruiting', '/recruiting', 'user-plus', 13, ability: 'recruiting.manage'));
+        $nav->add(new NavItem('People', 'Join page', '/recruiting/join-page', 'link', 13, kinds: [UserKind::Owner]));
         $nav->add(new NavItem('People', 'Agent database', '/recruiting/agents', 'user-search', 14, ability: 'recruiting.manage'));
         $nav->add(new NavItem('People', 'Keeping agents', '/recruiting/retention', 'heart-handshake', 15, ability: 'recruiting.manage'));
         $nav->add(new NavItem('Grow', 'Refer an agent', '/recruiting/refer', 'user-plus', 36, kinds: [UserKind::Agent]));
