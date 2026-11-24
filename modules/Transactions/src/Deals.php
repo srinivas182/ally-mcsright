@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Modules\Transactions;
 
 use App\Models\User;
+use Brick\Math\BigDecimal;
+use Brick\Math\RoundingMode;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -15,6 +17,7 @@ use Modules\Compensation\Enums\DealClass;
 use Modules\Compensation\Enums\Side;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\CustomFields\CustomFields;
+use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Support\Connections;
 use Modules\Crm\Models\Contact;
 use Modules\Ledger\Money\Money;
@@ -170,12 +173,86 @@ final class Deals
         $deal->update(['status' => 'fell_through', 'cancel_reason' => trim($reason)]);
     }
 
+    /**
+     * CM5: the agents on a deal and their share of the commission (the deal's agent with 100% when none are set).
+     *
+     * @return list<array{user_id: int, share_percent: string}>
+     */
+    public function agents(Deal $deal): array
+    {
+        $rows = DB::connection(Connections::cell())->table('tx_deal_agents')->where('deal_id', $deal->id)->orderBy('id')->get(['user_id', 'share_percent']);
+
+        return $rows->isEmpty() ? [['user_id' => $deal->agent_user_id, 'share_percent' => '100']]
+            : array_values($rows->map(fn (object $r): array => ['user_id' => (int) $r->user_id, 'share_percent' => rtrim(rtrim((string) BigDecimal::of((string) $r->share_percent)->toScale(4), '0'), '.')])->all());
+    }
+
+    /**
+     * CM5: sets who is on the deal and their share (they must add up to 100%; the deal's agent stays on it). Before
+     * closing only; a deal under contract is recalculated straight away.
+     *
+     * @param  list<array{user: string, share: string|float|int}>  $agents  user ulid and percent
+     */
+    public function setAgents(Deal $deal, array $agents, User $by): void
+    {
+        if (! in_array($deal->status, ['pre_contract', 'under_contract'], true) || $deal->locked_at !== null) {
+            throw ValidationException::withMessages(['agents' => 'The agents can only change before the deal closes.']);
+        }
+        $rows = [];
+        $total = BigDecimal::zero();
+        foreach ($agents as $i => $a) {
+            $user = User::query()->where('ulid', $a['user'])->whereIn('kind', [UserKind::Agent, UserKind::Owner])->where('status', 'active')->first();
+            $share = (string) $a['share'];
+            if (! $user instanceof User) {
+                throw ValidationException::withMessages(["agents.{$i}.user" => 'Choose an active agent.']);
+            }
+            if (! is_numeric($share) || BigDecimal::of($share)->isLessThanOrEqualTo(0) || BigDecimal::of($share)->isGreaterThan(100)) {
+                throw ValidationException::withMessages(["agents.{$i}.share" => 'Give each agent a share above 0 and up to 100%.']);
+            }
+            if (isset($rows[$user->id])) {
+                throw ValidationException::withMessages(["agents.{$i}.user" => "{$user->name} is on the list twice."]);
+            }
+            $rows[$user->id] = (string) BigDecimal::of($share)->toScale(4, RoundingMode::HalfUp);
+            $total = $total->plus(BigDecimal::of($share));
+        }
+        if (! isset($rows[$deal->agent_user_id])) {
+            throw ValidationException::withMessages(['agents' => 'The deal\'s agent must stay on the deal.']);
+        }
+        if ($total->minus(100)->abs()->isGreaterThan(BigDecimal::of('0.01'))) {
+            throw ValidationException::withMessages(['agents' => "The shares must add up to 100%, not {$total}%."]);
+        }
+        $db = DB::connection(Connections::cell());
+        $db->transaction(function () use ($db, $deal, $rows, $by): void {
+            $db->table('tx_deal_agents')->where('deal_id', $deal->id)->delete();
+            if (count($rows) > 1) {
+                foreach ($rows as $userId => $share) {
+                    $db->table('tx_deal_agents')->insert(['tenant_id' => $deal->tenant_id, 'deal_id' => $deal->id, 'user_id' => $userId, 'share_percent' => $share,
+                        'set_by' => $by->id, 'created_at' => now(), 'updated_at' => now()]);
+                }
+            }
+        });
+        $this->audit->record('transactions.deal.agents', $deal, metadata: ['agents' => array_map(fn ($id, $s) => ['user_id' => $id, 'share' => $s], array_keys($rows), $rows)],
+            severity: 'notice', label: $deal->street);
+        if ($deal->status === 'under_contract' && $deal->gci_cents > 0 && $deal->closing_date !== null) {
+            $calc = $this->commissions->calculate($this->input($deal, $deal->gci_cents, $deal->price_cents, CarbonImmutable::parse($deal->closing_date->toDateString())),
+                $deal->ulid, $by->id, 'Agents on the deal changed');
+            $deal->update(['calculation_id' => $calc->id]);
+        }
+    }
+
+    /**
+     * @return list<AgentShare>
+     */
+    private function agentShares(Deal $deal): array
+    {
+        return array_map(fn (array $a): AgentShare => new AgentShare($a['user_id'], $a['share_percent']), $this->agents($deal));
+    }
+
     /** The commission engine's input for a deal, with the broker's overrides for it (specs/connect/12). */
     public function input(Deal $deal, int $gci, int $price, CarbonImmutable $closing): DealSideInput
     {
         $o = $deal->pay_overrides ?? [];
 
-        return new DealSideInput(Money::of($gci), $price, $closing, [new AgentShare($deal->agent_user_id)],
+        return new DealSideInput(Money::of($gci), $price, $closing, $this->agentShares($deal),
             $deal->type === 'buyer' ? Side::Buying : Side::Listing,
             match ($deal->type) {
                 'lease' => DealClass::Lease, 'referral' => DealClass::ReferralOnly, 'new_construction' => DealClass::NewConstruction, default => DealClass::Sale,

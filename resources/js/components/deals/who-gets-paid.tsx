@@ -6,6 +6,7 @@ import { usd } from '@/lib/cents';
 
 export type WhoGetsPaidData = {
     status: 'final' | 'estimate';
+    side?: string;
     version: number;
     gci_cents: number | null;
     outside_referral_cents: number | null;
@@ -21,8 +22,20 @@ export type WhoGetsPaidData = {
               company_cents: number;
               capped: boolean;
               hidden: false;
+              share_percent?: string;
+              plan_type?: string;
+              split?: string | null;
+              cap_cents?: number | null;
+              cap_before_cents?: number | null;
+              cap_after_cents?: number | null;
+              post_cap_fee_cents?: number;
           }
-        | { name: string; plan: string | null; hidden: true }
+        | {
+              name: string;
+              plan: string | null;
+              hidden: true;
+              share_percent?: string;
+          }
     )[];
     company_cents: number | null;
     revenue_share_cents: number;
@@ -143,12 +156,45 @@ export function WhoGetsPaid({ data }: { data: WhoGetsPaidData }) {
                                         </Badge>
                                     )}
                                 </p>
+                                {a.share_percent &&
+                                    a.share_percent !== '100' && (
+                                        <p className="text-muted-foreground">
+                                            {a.share_percent}% of this deal
+                                        </p>
+                                    )}
                                 {a.hidden ? (
                                     <p className="text-muted-foreground">
                                         Amounts hidden
                                     </p>
                                 ) : (
                                     <>
+                                        {(a.plan_type || a.cap_cents) && (
+                                            <dl className="my-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 rounded bg-muted/40 px-2 py-1.5 text-xs">
+                                                {a.plan_type && (
+                                                    <>
+                                                        <dt className="text-muted-foreground">
+                                                            Plan type
+                                                        </dt>
+                                                        <dd>
+                                                            {a.plan_type}
+                                                            {a.split
+                                                                ? ` · ${a.split}`
+                                                                : ''}
+                                                        </dd>
+                                                    </>
+                                                )}
+                                                <dt className="text-muted-foreground">
+                                                    Cap
+                                                </dt>
+                                                <dd>
+                                                    {a.cap_cents
+                                                        ? a.capped
+                                                            ? `Capped (${usd(a.cap_cents)}); pays the fee after cap`
+                                                            : `${usd(a.cap_after_cents ?? 0)} of ${usd(a.cap_cents)} after this deal`
+                                                        : 'No cap'}
+                                                </dd>
+                                            </dl>
+                                        )}
                                         <Row
                                             label="Their part of the commission"
                                             value={a.share_cents}
@@ -162,6 +208,15 @@ export function WhoGetsPaid({ data }: { data: WhoGetsPaidData }) {
                                             <Row
                                                 label="Team leader's split"
                                                 value={a.team_split_cents}
+                                                minus
+                                            />
+                                        )}
+                                        {(a.post_cap_fee_cents ?? 0) > 0 && (
+                                            <Row
+                                                label="Fee after cap"
+                                                value={
+                                                    a.post_cap_fee_cents ?? 0
+                                                }
                                                 minus
                                             />
                                         )}
@@ -198,11 +253,14 @@ export function WhoGetsPaid({ data }: { data: WhoGetsPaidData }) {
                                 label="Company dollar"
                                 value={data.company_cents}
                             />
-                            <Row
-                                label="Revenue share paid out"
-                                value={data.revenue_share_cents}
-                                minus
-                            />
+                            {(data.revenue_share_cents > 0 ||
+                                data.levels.length > 0) && (
+                                <Row
+                                    label="Revenue share paid out"
+                                    value={data.revenue_share_cents}
+                                    minus
+                                />
+                            )}
                             <div className="mt-1 border-t pt-1">
                                 <Row
                                     label="Brokerage keeps"

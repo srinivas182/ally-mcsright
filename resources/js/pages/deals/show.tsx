@@ -34,6 +34,7 @@ import {
     CompliancePanel,
     type Compliance,
 } from '@/components/deals/compliance-panel';
+import { DealAgents, type DealAgent } from '@/components/deals/deal-agents';
 import {
     WhoGetsPaid,
     type WhoGetsPaidData,
@@ -102,6 +103,8 @@ type Props = {
     reasons: string[];
     risk: { score: number; level: string; reasons: string[] };
     whoGetsPaid?: WhoGetsPaidData | null;
+    dealAgents?: DealAgent[];
+    agentChoices?: { ulid: string; name: string }[] | null;
     customFields: CustomFieldValue[];
     dealIq: DealIqProps;
     portal: PortalProps;
@@ -319,6 +322,8 @@ export default function ShowDeal({
     reasons,
     risk,
     whoGetsPaid = null,
+    dealAgents = [],
+    agentChoices = null,
     deposits,
     referrals,
     winCard,
@@ -678,6 +683,12 @@ export default function ShowDeal({
                     )}
                     {tab === 'money' && (
                         <>
+                            <DealAgents
+                                deal={deal.ulid}
+                                agents={dealAgents}
+                                choices={agentChoices}
+                                locked={deal.locked}
+                            />
                             {whoGetsPaid && <WhoGetsPaid data={whoGetsPaid} />}
                             {deal.status === 'closed' && can.managePay && (
                                 <DealPay
