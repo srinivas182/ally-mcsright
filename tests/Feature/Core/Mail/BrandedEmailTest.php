@@ -57,10 +57,12 @@ it('welcomes a new brokerage owner with first steps', function (): void {
     $mail = (new InvitationNotification('https://x.test/invitations/t', 'MCS Realty', null, 'Dec 1, 2026', 'Srinivas', 'owner', 'mcs-realty-office.rightally.app'))
         ->toMail(new stdClass);
 
-    expect($mail->subject)->toBe('Welcome to RightAlly: MCS Realty is ready')
+    expect($mail->subject)->toBe('Welcome to the RightAlly family, Srinivas')
         ->and($mail->greeting)->toBe('Hello Srinivas,')
         ->and($mail->actionText)->toBe('Set my password')
-        ->and(implode(' ', $mail->introLines))->toContain('Add your licence');
+        ->and(implode(' ', $mail->outroLines))->toContain('Add your licence and your MLS board')
+        ->and($mail->salutation)->toContain('Sunil')->toContain('CEO, RightAlly')
+        ->and((new InvitationNotification('https://x.test/invitations/t', 'MCS Realty', null, 'Dec 1, 2026', 'Srinivas', 'owner'))->fromRightAlly)->toBeTrue();
 });
 
 it('tells an invited agent who invited them and to which brokerage', function (): void {

@@ -44,15 +44,15 @@
                 @if ($solo)
                     <label>Your name<input type="text" name="name" required maxlength="120" value="{{ $v('name') }}" autocomplete="name"></label>
                     <label>Your email (your sign-in link goes here)<input type="email" name="email" required maxlength="190" value="{{ $v('email') }}" autocomplete="email"></label>
-                    <label>Your phone (shown on your website)<input type="tel" name="phone" required maxlength="30" value="{{ $v('phone') }}" autocomplete="tel" inputmode="tel"></label>
-                    @error('phone')<p class="error" role="alert">{{ $message }}</p>@enderror
+                    <label>Your phone (shown on your website)<input type="tel" name="phone" required maxlength="20" value="{{ $v('phone') }}" autocomplete="tel" inputmode="tel" placeholder="(713) 555-0142" data-us-phone @error('phone') aria-invalid="true" @enderror>
+                        @error('phone')<span class="error" role="alert">{{ $message }}</span>@enderror</label>
                     <label>Team or business name (optional)<input type="text" name="business" maxlength="150" value="{{ $v('business') }}" autocomplete="organization"></label>
                     @include('billing::signup.state', ['value' => $v('state')])
                     @include('billing::signup.address', ['value' => $v('slug'), 'from' => 'name', 'hint' => 'Letters, numbers and dashes, for example jane-smith-homes.'])
                 @else
                     <label>Brokerage name<input type="text" name="brokerage" required maxlength="150" value="{{ $v('brokerage') }}" autocomplete="organization"></label>
-                    <label>Office phone (shown on your website)<input type="tel" name="phone" required maxlength="30" value="{{ $v('phone') }}" autocomplete="tel" inputmode="tel"></label>
-                    @error('phone')<p class="error" role="alert">{{ $message }}</p>@enderror
+                    <label>Office phone (shown on your website)<input type="tel" name="phone" required maxlength="20" value="{{ $v('phone') }}" autocomplete="tel" inputmode="tel" placeholder="(713) 555-0142" data-us-phone @error('phone') aria-invalid="true" @enderror>
+                        @error('phone')<span class="error" role="alert">{{ $message }}</span>@enderror</label>
                     @include('billing::signup.state', ['value' => $v('state')])
                     @include('billing::signup.address', ['value' => $v('slug'), 'from' => 'brokerage', 'hint' => 'Letters, numbers and dashes. You can add your own domain later.'])
                     <label>Number of agents (optional)<input type="number" name="agents" min="1" max="20000" value="{{ $v('agents') }}" inputmode="numeric"></label>
@@ -154,6 +154,15 @@
         <div class="busy-card"><span class="spinner" aria-hidden="true"></span><p><strong>Taking you to secure payment…</strong><br>This takes a few seconds. After you pay, you come straight back here while we set up {{ $draft->brokerage }}.</p></div>
     </div>
     <script nonce="{{ Vite::cspNonce() }}">
+    // EM5: US phone numbers format as they are typed: (713) 555-0142.
+    document.querySelectorAll('[data-us-phone]').forEach(function (el) {
+        el.addEventListener('input', function () {
+            var d = el.value.replace(/\D/g, '');
+            if (d.length === 11 && d[0] === '1') { d = d.slice(1); }
+            if (d.length > 10 || el.value.trim().charAt(0) === '+') { return; }
+            el.value = d.length < 4 ? d : d.length < 7 ? '(' + d.slice(0, 3) + ') ' + d.slice(3) : '(' + d.slice(0, 3) + ') ' + d.slice(3, 6) + '-' + d.slice(6);
+        });
+    });
     (function(){var f=document.querySelector('[data-pay]'),b=document.querySelector('[data-pay-busy]');if(!f||!b)return;
     f.addEventListener('submit',function(){if(f.terms&&!f.terms.checked)return;b.hidden=false;var s=f.querySelector('[type=submit]');if(s){s.disabled=true;}});
     window.addEventListener('pageshow',function(e){if(e.persisted){b.hidden=true;var s=f.querySelector('[type=submit]');if(s)s.disabled=false;}});})();

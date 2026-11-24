@@ -38,7 +38,7 @@
         fieldset{border:1px solid var(--line);border-radius:var(--radius);background:var(--card);padding:22px 24px 24px;margin:0 0 18px;min-width:0}legend{float:left;width:100%;font-weight:800;font-size:21px;line-height:1.3;padding:0 0 14px;margin:0 0 16px;border-bottom:1px solid var(--line)}legend+*{clear:both}h3.sub{font-size:17px;margin:18px 0 8px}.board-group{border-left:3px solid var(--brand,#1d4ed8);padding:2px 0 2px 14px;margin:0 0 12px}.board-group-title{margin:4px 0 6px}.board-group[hidden],[data-idx-none][hidden]{display:none}
         label{display:grid;align-content:start;gap:4px;font-weight:600;margin:10px 0}
         input[type=file]{font:inherit;font-size:15px;font-weight:400;color:var(--muted);max-width:100%;cursor:pointer}input[type=file]::file-selector-button{margin-right:12px;min-height:44px;padding:0 18px;border:1.5px solid var(--brand);border-radius:10px;background:var(--card);color:var(--brand);font:inherit;font-weight:700;cursor:pointer}input[type=file]:hover::file-selector-button{background:var(--brand);color:#fff}
-        input[type=text],input[type=email],input[type=number],input[type=url],select{min-height:52px;border:1px solid var(--line);border-radius:12px;padding:0 14px;font:inherit;background:var(--bg);color:var(--ink);width:100%}
+        input[type=text],input[type=email],input[type=number],input[type=url],input[type=tel],input[type=password],input[type=search],input[type=date],select{min-height:52px;border:1px solid var(--line);border-radius:12px;padding:0 14px;font:inherit;background:var(--bg);color:var(--ink);width:100%}
         input[type=color]{width:72px;height:52px;border:1px solid var(--line);border-radius:12px;background:var(--bg)}
         .check{display:flex;gap:10px;align-items:flex-start;font-weight:400}.check input{width:24px;height:24px;margin-top:3px;flex:none}
         .choices{display:grid;gap:8px;margin:6px 0 14px}.choices label{display:flex;gap:10px;align-items:center;margin:0;font-weight:400;border:1px solid var(--line);border-radius:12px;padding:10px 14px;background:var(--bg);min-height:52px}
@@ -79,7 +79,17 @@
         .setup-steps li::before{content:"";flex:none;width:18px;height:18px;border-radius:50%;border:2px solid var(--line)}.setup-steps li.doing{color:var(--ink);font-weight:600}.setup-steps li.doing::before{border-color:var(--line);border-top-color:var(--brand);animation:spin .8s linear infinite}
         button.link{background:none;border:0;padding:0;color:var(--brand);font:inherit;text-decoration:underline;cursor:pointer}
         @keyframes spin{to{transform:rotate(360deg)}}@keyframes slide{0%{transform:translateX(-100%)}100%{transform:translateX(300%)}}
-        @media (prefers-reduced-motion:reduce){.spinner,.progress span,.setup-steps li.doing::before{animation:none}}
+        .setup-bar{height:10px;border-radius:999px;background:var(--line);overflow:hidden;max-width:560px;margin:22px 0}.setup-bar span{display:block;height:100%;background:var(--brand);border-radius:999px;transition:width .5s ease}
+        .setup-steps li.done{color:var(--ink)}.setup-steps li.done::before{border-color:var(--ok);background:var(--ok) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23fff' d='m9 16.2-4.2-4.2L3.4 13.4 9 19 21 7l-1.4-1.4z'/%3E%3C/svg%3E") center/12px no-repeat}
+        .welcome h1{max-width:22ch}.welcome-kicker{color:var(--brand);font-weight:700;margin:0 0 8px}
+        .welcome-next{display:flex;gap:16px;align-items:flex-start;max-width:720px;margin:26px 0;border:2px solid var(--brand);background:var(--card)}.welcome-next h2{margin:0 0 6px;font-size:22px}.welcome-next p{margin:0 0 8px}
+        .welcome-icon{flex:none;display:grid;place-items:center;width:48px;height:48px;border-radius:50%;background:var(--brand-2);color:var(--brand)}
+        .welcome-note{color:var(--ok);font-weight:600}
+        .welcome-places{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));max-width:720px}.welcome-places .card p{margin:0 0 6px}.welcome-places .btn{margin-top:8px}
+        .welcome-h2{margin-top:36px}.welcome-steps{max-width:720px;line-height:1.7}
+        .welcome-letter{max-width:720px;margin-top:32px;padding:24px 28px;border-left:4px solid var(--brand);background:var(--card);border-radius:0 var(--radius) var(--radius) 0}
+        .welcome-sign{margin-top:18px;line-height:1.5}
+        @media (prefers-reduced-motion:reduce){.spinner,.progress span,.setup-steps li.doing::before,.setup-bar span{animation:none;transition:none}}
     </style>
     @stack('head')
 </head>

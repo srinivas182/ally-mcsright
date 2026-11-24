@@ -26,7 +26,12 @@ final class InvitationNotification extends Notification
         public readonly string $firstName = '',
         public readonly string $kind = '',
         public readonly string $officeHost = '',
-    ) {}
+    ) {
+        $this->fromRightAlly = $this->kind === 'owner' && $this->inviterName === null;
+    }
+
+    /** EM5: a new brokerage's welcome comes from RightAlly itself (its look, signed by the founder). */
+    public bool $fromRightAlly = false;
 
     /**
      * @return list<string>
@@ -41,19 +46,24 @@ final class InvitationNotification extends Notification
         $hello = trim($this->firstName) !== '' ? 'Hello '.trim($this->firstName).',' : 'Hello,';
         $where = $this->officeHost !== '' ? $this->officeHost : 'your back office';
         // A new brokerage's owner, straight after signing up: nobody invited them, they bought it.
-        if ($this->kind === 'owner' && $this->inviterName === null) {
+        if ($this->fromRightAlly) {
+            $signer = (array) config('core.welcome_signer');
+            $first = trim($this->firstName) !== '' ? trim($this->firstName) : 'there';
+
             return (new MailMessage)
-                ->subject("Welcome to RightAlly: {$this->tenantName} is ready")
+                ->subject("Welcome to the RightAlly family, {$first}")
                 ->greeting($hello)
-                ->line("Thank you for choosing RightAlly. **{$this->tenantName}** is set up and waiting for you.")
-                ->line('Set your password to open your back office. After that, these are the best first steps:')
-                ->line('**1. Add your licence** under Settings › Licences, so you can connect your MLS board.')
-                ->line('**2. Check your website**: your name, phone number and photos under Settings › Website.')
-                ->line('**3. Invite your agents** under People, so they can start using it today.')
+                ->line("Thank you for choosing RightAlly for **{$this->tenantName}**. It means a great deal that you trusted us with a business you have worked so hard to build, and we will look after it as if it were our own.")
+                ->line('Your back office and your website are ready. The one thing to do now is set your password:')
                 ->action('Set my password', $this->url)
-                ->line("Your back office is at **{$where}**, so bookmark it once you're in.")
-                ->line("For your security, this link works once and expires on {$this->expiresOn}. If it has expired, ask us for a new one by replying to this email.")
-                ->salutation("Welcome aboard,  \nThe RightAlly team");
+                ->line("Your back office lives at **{$where}**. Bookmark it: it is where you and your agents will sign in every day.")
+                ->line('When you are in, these three steps make the biggest difference in your first week:')
+                ->line('**1. Add your licence and your MLS board** under Settings, so your real listings replace the samples on your website.')
+                ->line('**2. Bring your contacts and deals** with Switch to RightAlly. We do the heavy lifting.')
+                ->line('**3. Invite your agents** under Team › People whenever you are ready.')
+                ->line("{$first}, our whole team is here for you, from today and for as long as you are with us. If anything is unclear, simply reply to this email and a real person will answer.")
+                ->line("For your security, the button above works once and expires on {$this->expiresOn}. If it has expired, reply to this email and we will send a new one.")
+                ->salutation("Warm regards,  \n**".($signer['name'] ?? 'Sunil')."**  \n".($signer['title'] ?? 'CEO, RightAlly'));
         }
         $role = match ($this->kind) {
             'owner' => 'an owner', 'staff' => 'a member of staff', 'assistant' => 'an assistant', default => 'an agent',

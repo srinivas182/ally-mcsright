@@ -150,10 +150,19 @@ final class SignupController
         return redirect()->route('signup.welcome', $signup)->with('resent', $result);
     }
 
+    /** EM5: the welcome page asks whether setup has finished, so it can move on without reloading. */
+    public function welcomeStatus(string $signup): JsonResponse
+    {
+        $row = Signups::find($signup) ?? abort(404);
+
+        return response()->json(['status' => (string) $row->status])->header('Cache-Control', 'no-store');
+    }
+
     public function welcome(string $signup): HttpResponse
     {
         $row = Signups::find($signup) ?? abort(404);
-        $response = response()->view('billing::signup.welcome', ['s' => $row, 'host' => Host::platformHostFor((string) $row->slug), 'website' => Signups::websiteHost((string) $row->slug)]);
+        $response = response()->view('billing::signup.welcome', ['s' => $row, 'host' => Host::platformHostFor((string) $row->slug), 'website' => Signups::websiteHost((string) $row->slug),
+            'signer' => (array) config('core.welcome_signer')]);
         $response->headers->add(['X-Robots-Tag' => 'noindex, nofollow', 'Cache-Control' => 'private, no-store']);
 
         return $response;

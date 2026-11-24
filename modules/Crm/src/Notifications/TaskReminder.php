@@ -28,6 +28,6 @@ final class TaskReminder extends Notification
             ->subject('Reminder: '.$this->title)
             ->line($this->contactName !== null ? "{$this->title} — {$this->contactName}" : $this->title)
             ->line("Due {$this->dueText}.")
-            ->action('Open', $this->url);
+            ->action('Open the task', $this->url);
     }
 }

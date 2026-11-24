@@ -30,7 +30,7 @@ final class DailyBriefMail extends Notification
     {
         $now = count(array_filter($this->items, fn (array $i): bool => $i['urgency'] === 3));
         $mail = (new MailMessage)->subject(($now > 0 ? "{$now} thing".($now === 1 ? '' : 's').' need you today' : 'Your day').' · '.$this->brokerage)
-            ->greeting('Good morning, '.$this->firstName);
+            ->greeting('Good morning, '.$this->firstName.',');
         if ($this->people !== []) {
             $mail->line('**Call today:**');
             foreach ($this->people as $p) {

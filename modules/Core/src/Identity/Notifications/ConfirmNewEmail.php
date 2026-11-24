@@ -26,6 +26,6 @@ final class ConfirmNewEmail extends Notification
     {
         return (new MailMessage)
             ->subject('Confirm your new email for RightAlly')
-            ->line("Hi {$this->name}, please confirm this is your new sign-in email. The link works for one hour.")->action('Confirm my new email', $this->url);
+            ->greeting("Hello {$this->name},")->line('Please confirm this is your new sign-in email. The link works for one hour.')->action('Confirm my new email', $this->url);
     }
 }

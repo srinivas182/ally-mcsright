@@ -23,8 +23,8 @@ final class PrivacyDueMail extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
-        return (new MailMessage)->subject($this->count.' privacy request(s) due soon')
-            ->line('The law gives 45 days to answer a privacy request. '.$this->count.' request(s) are due within a week or are late.')
+        return (new MailMessage)->subject($this->count.($this->count === 1 ? ' privacy request is' : ' privacy requests are').' due soon')
+            ->line('The law gives 45 days to answer a privacy request. '.$this->count.($this->count === 1 ? ' request is' : ' requests are').' due within a week or already late.')
             ->action('Answer them now', url('/settings/privacy'));
     }
 }
