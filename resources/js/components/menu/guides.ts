@@ -642,6 +642,21 @@ const OWNER: Record<string, Guide> = {
                 try: { label: 'Open Recruiting', href: '/recruiting' },
             },
             {
+                id: 'join-page',
+                title: 'Your join page',
+                why: 'Every agent has a link that brings new agents in under them, automatically.',
+                steps: [
+                    'Open the Join page tab.',
+                    'Write your headline, your opportunity and the reasons to join; add a short video if you have one.',
+                    'Tick any extra states where you work through a managing broker. Your licensed states are always included.',
+                    'New agents who use a link check their licence, pay their pack and are placed straight away.',
+                ],
+                try: {
+                    label: 'Open the Join page',
+                    href: '/recruiting/join-page',
+                },
+            },
+            {
                 id: 'retention',
                 title: 'Keep your best agents',
                 why: 'It costs far less to keep a good agent than to find a new one.',
@@ -729,6 +744,21 @@ const OWNER: Record<string, Guide> = {
                 try: {
                     label: 'Open the Network tree',
                     href: '/compensation/network',
+                },
+            },
+            {
+                id: 'recruiters',
+                title: 'Recruiters',
+                why: 'People who bring agents to you without holding a licence or deals.',
+                steps: [
+                    'Open the Recruiters tab and press "Add a recruiter". They get an email to set up their account and their own join link.',
+                    'Set the flat bonus they earn when someone they brought in closes their first deal.',
+                    'Revenue share for recruiters is off. Turn on level 1 or 2 only if your state allows paying people without a licence (ask your lawyer).',
+                ],
+                tips: ['Recruiters can never be the agent on a deal.'],
+                try: {
+                    label: 'Open Recruiters',
+                    href: '/compensation/recruiters',
                 },
             },
             {

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Route;
 use Modules\Compensation\Http\CompensationController;
 use Modules\Compensation\Http\RanksController;
+use Modules\Compensation\Http\RecruitersController;
 use Modules\Compensation\Http\RevenueShareController;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
 
@@ -30,6 +31,11 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function
         Route::get('ranks', [RanksController::class, 'index'])->name('ranks');
         Route::post('ranks', [RanksController::class, 'save'])->name('ranks.save');
         Route::get('network', [RanksController::class, 'network'])->name('network');
+        // CM4b: recruiters (no licence, no deals; a flat bonus, revenue share only when the owner allows it).
+        Route::get('recruiters', [RecruitersController::class, 'index'])->name('recruiters');
+        Route::post('recruiters', [RecruitersController::class, 'store'])->middleware('throttle:30,1')->name('recruiters.store');
+        Route::delete('recruiters/{recruiter}', [RecruitersController::class, 'destroy'])->whereNumber('recruiter')->name('recruiters.destroy');
+        Route::post('recruiters/settings', [RecruitersController::class, 'settings'])->middleware('password.confirm')->name('recruiters.settings');
         Route::post('network/{user:ulid}/sponsor', [RanksController::class, 'sponsor'])->middleware(['password.confirm', 'throttle:20,1'])->name('network.sponsor');
     });
     Route::get('my-plan', [CompensationController::class, 'myPlan'])->name('compensation.my-plan');

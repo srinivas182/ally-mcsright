@@ -34,6 +34,7 @@ final class Insights
         'locked_level' => 'This level was not unlocked yet',
         'recipient_limit' => 'Your yearly maximum was reached',
         'level_limit' => 'The yearly maximum for this level was reached',
+        'recruiter_limit' => 'Recruiters are paid a flat bonus, not this level',
         'budget' => "The brokerage's yearly budget was reached",
         'fallback_cap' => 'Above the root account limit',
         'rejected' => 'Rejected after review',

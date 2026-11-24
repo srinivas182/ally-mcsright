@@ -16,6 +16,11 @@ Route::middleware(['web', EnsureTenantWorkspace::class])->group(function (): voi
     Route::post('join/{code?}', [JoinController::class, 'store'])->where('code', '[a-z0-9]{6,12}')->middleware('throttle:6,60')->name('join.store');
 });
 
+Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function (): void {
+    Route::get('recruiting/join-page', [JoinController::class, 'edit'])->name('join.page');
+    Route::post('recruiting/join-page', [JoinController::class, 'save'])->name('join.page.save');
+});
+
 // Recruiting (specs/grow/17).
 Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('recruiting')->name('recruiting.')->group(function (): void {
     Route::get('/', [RecruitingController::class, 'index'])->name('index');

@@ -21,6 +21,7 @@ use Modules\Core\Identity\Events\UserActivated;
 use Modules\Core\Identity\Models\Invitation;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
+use Modules\Roster\Brokerage\BrokerageLicences;
 
 /**
  * CM4: joining through an agent's link. The new agent gives a licence that the state's records accept, picks one of
@@ -31,6 +32,84 @@ use Modules\Core\Tenancy\TenantContext;
 final class SelfJoin
 {
     public function __construct(private readonly TenantContext $tenants) {}
+
+    private const VIDEO = '#^https://(www\.)?(youtube\.com/watch\?v=|youtu\.be/|youtube-nocookie\.com/embed/|vimeo\.com/|player\.vimeo\.com/video/)[\w\-?=&/]+$|^https://[\w.\-]+/[\w\-./]+\.mp4$#i';
+
+    /**
+     * The join page's words, video and extra states, with the careers page's words as the starting point.
+     *
+     * @return array{headline: string, pitch: string, reasons: list<string>, video: string|null, extra_states: list<string>}
+     */
+    public function page(): array
+    {
+        $raw = DB::connection(Connections::cell())->table('rec_settings')->value('join_page');
+        $p = is_string($raw) ? (array) json_decode($raw, true) : [];
+        $careers = app(Careers::class)->settings();
+
+        return [
+            'headline' => (string) ($p['headline'] ?? $careers['headline']),
+            'pitch' => (string) ($p['pitch'] ?? $careers['intro']),
+            'reasons' => array_values(array_map('strval', (array) ($p['reasons'] ?? $careers['reasons']))),
+            'video' => isset($p['video']) && is_string($p['video']) && $p['video'] !== '' ? $p['video'] : null,
+            'extra_states' => array_values(array_map('strval', (array) ($p['extra_states'] ?? []))),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $in
+     */
+    public function savePage(array $in, User $by): void
+    {
+        $headline = trim((string) ($in['headline'] ?? ''));
+        $pitch = trim((string) ($in['pitch'] ?? ''));
+        $video = trim((string) ($in['video'] ?? ''));
+        $reasons = array_values(array_filter(array_map(fn ($l): string => mb_substr(trim((string) $l), 0, 140), preg_split('/\R/', (string) ($in['reasons'] ?? '')) ?: []), fn (string $l): bool => $l !== ''));
+        $states = array_values(array_unique(array_filter(array_map(fn ($s): string => strtoupper(trim((string) $s)), (array) ($in['extra_states'] ?? [])), fn (string $s): bool => preg_match('/^[A-Z]{2}$/', $s) === 1)));
+        if ($headline === '' || mb_strlen($headline) > 90) {
+            throw ValidationException::withMessages(['headline' => 'A headline of up to 90 characters.']);
+        }
+        if (mb_strlen($pitch) > 600) {
+            throw ValidationException::withMessages(['pitch' => 'Up to 600 characters.']);
+        }
+        if ($video !== '' && preg_match(self::VIDEO, $video) !== 1) {
+            throw ValidationException::withMessages(['video' => 'Use a YouTube or Vimeo link, or an https link to an MP4 file.']);
+        }
+        DB::connection(Connections::cell())->table('rec_settings')->updateOrInsert(['tenant_id' => $this->tenants->id()], [
+            'join_page' => json_encode(['headline' => $headline, 'pitch' => $pitch, 'reasons' => array_slice($reasons, 0, 6), 'video' => $video !== '' ? $video : null,
+                'extra_states' => $states]), 'updated_at' => now(),
+        ]);
+        app(AuditLogger::class)->record('recruiting.join_page.saved', metadata: ['states' => $states, 'video' => $video !== ''], label: $by->name);
+    }
+
+    /**
+     * The states a new agent can join from: where the brokerage holds a good licence, plus the states the owner added
+     * (they work there through a managing broker). Every state while none is set.
+     *
+     * @param  array<string, string>  $all  code => name
+     * @return array<string, string>
+     */
+    public function states(array $all): array
+    {
+        $codes = [...app(BrokerageLicences::class)->goodStates(), ...$this->page()['extra_states']];
+
+        return $codes === [] ? $all : array_intersect_key($all, array_flip($codes));
+    }
+
+    /** The video's player address (YouTube and Vimeo play privacy-friendly; MP4 files as they are). */
+    public static function player(?string $url): ?string
+    {
+        if ($url === null) {
+            return null;
+        }
+        if (preg_match('#(?:youtube\.com/watch\?v=|youtu\.be/|youtube-nocookie\.com/embed/)([\w\-]{6,20})#', $url, $m) === 1) {
+            return 'https://www.youtube-nocookie.com/embed/'.$m[1];
+        }
+        if (preg_match('#vimeo\.com/(?:video/)?(\d{5,12})#', $url, $m) === 1) {
+            return 'https://player.vimeo.com/video/'.$m[1].'?dnt=1';
+        }
+
+        return $url;
+    }
 
     /** The agent's own join code (made the first time it is needed). */
     public function codeFor(User $user): string
