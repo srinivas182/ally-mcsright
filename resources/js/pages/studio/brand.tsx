@@ -1,4 +1,5 @@
 import { Head, useForm } from '@inertiajs/react';
+import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -327,41 +328,42 @@ export default function StudioBrand({
                         }}
                     >
                         <h2 className="font-medium">The brokerage</h2>
-                        <div className="grid gap-3 sm:grid-cols-2">
+                        <p className="text-sm text-muted-foreground">
+                            Your logo shows on your website, your back office,
+                            your emails and your designs. Use a wide logo, about
+                            600 × 200 pixels (at least 200 pixels wide), as a
+                            PNG with a see-through background (best), JPG or
+                            WebP, up to 10 MB. Empty space around it is trimmed
+                            and it is sized to fit each place automatically.
+                        </p>
+                        <div className="grid gap-4 sm:grid-cols-2">
                             {(
                                 [
                                     [
                                         'logo',
-                                        'Logo (for light backgrounds)',
+                                        'Main logo',
+                                        'For white or light backgrounds: your website header, emails and documents. Usually your full-colour logo.',
                                         brokerage.logo,
+                                        'bg-white',
                                     ],
                                     [
                                         'logo_dark',
-                                        'Logo (for dark backgrounds)',
+                                        'Logo for dark backgrounds (optional)',
+                                        'A white or light version, for dark photos, dark website designs and video endings.',
                                         brokerage.logo_dark,
+                                        'bg-slate-900',
                                     ],
                                 ] as const
-                            ).map(([k, label, url]) => (
-                                <label key={k} className="grid gap-1">
-                                    {label}
-                                    {url && (
-                                        <img
-                                            src={url}
-                                            alt={label}
-                                            className="h-12 w-fit"
-                                        />
-                                    )}
-                                    <input
-                                        type="file"
-                                        accept="image/png,image/jpeg,image/webp"
-                                        onChange={(e) =>
-                                            firm.setData(
-                                                k,
-                                                e.target.files?.[0] ?? null,
-                                            )
-                                        }
-                                    />
-                                </label>
+                            ).map(([k, label, hint, url, backdrop]) => (
+                                <LogoPicker
+                                    key={k}
+                                    label={label}
+                                    hint={hint}
+                                    current={url}
+                                    backdrop={backdrop}
+                                    error={firm.errors[k]}
+                                    onPick={(file) => firm.setData(k, file)}
+                                />
                             ))}
                         </div>
                         {look(
@@ -440,5 +442,117 @@ export default function StudioBrand({
                 )}
             </div>
         </>
+    );
+}
+
+const LOGO_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
+const LOGO_MAX_BYTES = 10 * 1024 * 1024;
+
+/**
+ * UX1: a logo upload that says what works, shows the logo on the background it is for, and turns away the wrong kind
+ * of file at once (before saving), with the reason in plain words.
+ */
+function LogoPicker({
+    label,
+    hint,
+    current,
+    backdrop,
+    error,
+    onPick,
+}: {
+    label: string;
+    hint: string;
+    current: string | null;
+    backdrop: string;
+    error?: string;
+    onPick: (file: File | null) => void;
+}) {
+    const [preview, setPreview] = useState<string | null>(null);
+    const [problem, setProblem] = useState<string | null>(null);
+    const shown = preview ?? current;
+
+    const pick = (input: HTMLInputElement) => {
+        const file = input.files?.[0] ?? null;
+        setProblem(null);
+        if (!file) {
+            onPick(null);
+            setPreview(null);
+            return;
+        }
+        const reject = (why: string) => {
+            setProblem(why);
+            input.value = '';
+            onPick(null);
+            setPreview(null);
+        };
+        if (!LOGO_TYPES.includes(file.type)) {
+            reject(
+                `"${file.name}" is not a PNG, JPG or WebP image. Save your logo as a PNG (best) and try again.`,
+            );
+            return;
+        }
+        if (file.size > LOGO_MAX_BYTES) {
+            reject('That file is larger than 10 MB. Use a smaller version.');
+            return;
+        }
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => {
+            if (img.naturalWidth < 200) {
+                URL.revokeObjectURL(url);
+                reject(
+                    `That logo is only ${img.naturalWidth} pixels wide. Use one at least 200 pixels wide (about 600 × 200 works best).`,
+                );
+                return;
+            }
+            setPreview(url);
+            onPick(file);
+        };
+        img.onerror = () => {
+            URL.revokeObjectURL(url);
+            reject(
+                'That image could not be opened. Try saving it again as a PNG.',
+            );
+        };
+        img.src = url;
+    };
+
+    return (
+        <div className="grid gap-2 rounded-lg border p-3">
+            <p className="font-medium">{label}</p>
+            <p className="text-sm text-muted-foreground">{hint}</p>
+            <div
+                className={`flex h-20 items-center justify-center rounded-md border ${backdrop}`}
+            >
+                {shown ? (
+                    <img
+                        src={shown}
+                        alt={label}
+                        className="max-h-14 max-w-[85%] object-contain"
+                    />
+                ) : (
+                    <span
+                        className={
+                            backdrop === 'bg-white'
+                                ? 'text-sm text-slate-500'
+                                : 'text-sm text-slate-300'
+                        }
+                    >
+                        No logo yet
+                    </span>
+                )}
+            </div>
+            <input
+                type="file"
+                aria-label={label}
+                accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
+                onChange={(e) => pick(e.currentTarget)}
+            />
+            {(problem ?? error) && (
+                <p className="text-sm text-destructive" role="alert">
+                    {problem ?? error}
+                </p>
+            )}
+        </div>
     );
 }

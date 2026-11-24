@@ -18,7 +18,7 @@
     <meta name="theme-color" content="{{ $design['theme'] ?? '#ffffff' }}">
     <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?{{ $design['css'] ?? 'family=Inter:wght@400;500;600;700' }}&display=swap">
-    <link rel="stylesheet" href="/site-assets/site.css?v=14">
+    <link rel="stylesheet" href="/site-assets/site.css?v=15">
     @stack('head')
     <style>:root{--brand: {{ $chrome['brand']['primary'] ?? '#1d4ed8' }};--accent: {{ $chrome['brand']['accent'] ?? '#0f172a' }};}</style>
     <script type="application/ld+json">{!! $seo['jsonld'] !!}</script>
@@ -91,6 +91,7 @@
                 <li><a href="/home-value">What's my home worth?</a></li>
                 @unless ($chrome['landing'] ?? false)<li><a href="/market">Market reports</a></li><li><a href="/calculators">Mortgage calculator</a></li>@endunless
                 @if (in_array('/blog', array_column($chrome['menu'], 'path'), true))<li><a href="/blog">Blog</a></li>@endif
+                <li><a href="/backoffice" rel="nofollow">Agent login</a></li>
             </ul>
         </div>
         <div class="footer-col footer-contact">
@@ -129,7 +130,7 @@
     </div>
     <div class="wrap footer-bottom">
         <p>&copy; {{ $chrome['year'] }} {{ $site->displayName() }}. All rights reserved.</p>
-        <p class="footer-bottom-links"><a href="/privacy">Privacy policy</a><a href="/accessibility">Accessibility</a><a href="/backoffice" rel="nofollow">Agent login</a>@if ($chrome['powered'])<a class="powered" href="{{ $chrome['powered']['url'] }}" rel="noopener" target="_blank">{{ $chrome['powered']['text'] }}</a>@endif</p>
+        <p class="footer-bottom-links"><a href="/privacy">Privacy policy</a><a href="/accessibility">Accessibility</a>@if ($chrome['powered'])<a class="powered" href="{{ $chrome['powered']['url'] }}" rel="noopener" target="_blank">{{ $chrome['powered']['text'] }}</a>@endif</p>
     </div>
 </footer>
 <dialog class="auth" data-auth aria-labelledby="auth-title">
@@ -182,6 +183,8 @@ document.querySelectorAll('form[data-lead]').forEach(function(f){f.first_referre
             <button type="submit" class="btn btn-primary">Send</button>
         </form>
         <p class="ailly-note">Answers are AI-generated and may be wrong. Don't share financial details here.</p>
+        {{-- UX1: always shown; not a brokerage setting. --}}
+        <p class="ailly-powered">Powered by <a href="https://{{ config('core.platform_domain') }}" target="_blank" rel="noopener">RightAlly</a></p>
     </section>
     <button type="button" class="ailly-open" data-ailly-open aria-expanded="false"><span class="ailly-face" data-ailly-face></span><span>{{ $ally['name'] }}</span></button>
 </div>

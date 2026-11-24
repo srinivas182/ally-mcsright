@@ -14,6 +14,9 @@ final class NavWords
     public const GROUPS = [
         'Overview' => 'Inicio', 'Grow' => 'Crecer', 'Run' => 'Operar', 'Finance' => 'Finanzas', 'Protect' => 'Proteger', 'Know' => 'Aprender',
         'Brokerage' => 'Correduría', 'People' => 'Personas', 'Compensation' => 'Compensación', 'Settings' => 'Ajustes',
+        // UX1: the brokerage's main menus.
+        'Home' => 'Inicio', 'Leads and clients' => 'Prospectos y clientes', 'Listings' => 'Propiedades', 'Marketing' => 'Mercadeo', 'Deals' => 'Operaciones',
+        'Money' => 'Dinero', 'Reports' => 'Informes', 'Team' => 'Equipo',
     ];
 
     public const ES = [

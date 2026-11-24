@@ -19,6 +19,7 @@ use Modules\Core\Connect\AppCatalog;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
+use Modules\Sites\Models\Site;
 use Throwable;
 
 /**
@@ -165,6 +166,14 @@ final class BrandKits
         $row !== null ? (clone $db)->where('tenant_id', $key['tenant_id'])->where(fn ($q) => $for === null ? $q->whereNull('user_id') : $q->where('user_id', $for->id))
             ->update($values + ['updated_at' => now()]) : $db->insert($key + $values + ['created_at' => now(), 'updated_at' => now()]);
         app(AuditLogger::class)->record('studio.brand_kit_saved', metadata: ['for' => $for === null ? 'brokerage' : 'agent', 'images' => array_keys(array_filter($files))]);
+        // UX1: one logo for the brokerage. A new logo here also becomes the website's logo (and so the back office's).
+        if ($for === null && isset($values['logo_path'])) {
+            $site = Site::query()->where('kind', 'brokerage')->first();
+            if ($site !== null) {
+                $site->brand = ['logo_url' => $this->url((string) $values['logo_path'])] + (array) $site->brand;
+                $site->save();
+            }
+        }
     }
 
     /**
@@ -350,6 +359,18 @@ final class BrandKits
         [$w, $h] = [imagesx($img), imagesy($img)];
         if ($kind === 'headshot' && min($w, $h) < 400) {
             throw ValidationException::withMessages([$kind => 'Use a headshot at least 400 pixels wide, so it stays sharp in posts.']);
+        }
+        if (in_array($kind, ['logo', 'logo_dark'], true)) {
+            if ($w < 200) {
+                throw ValidationException::withMessages([$kind => 'Use a logo at least 200 pixels wide (about 600 × 200 works best), so it stays sharp.']);
+            }
+            // UX1: empty margins around a logo are trimmed, so it fits its space everywhere it is shown.
+            imagesavealpha($img, true);
+            $trimmed = @imagecropauto($img, IMG_CROP_SIDES);
+            if ($trimmed !== false && imagesx($trimmed) >= 40 && imagesy($trimmed) >= 20) {
+                $img = $trimmed;
+                [$w, $h] = [imagesx($img), imagesy($img)];
+            }
         }
         $scale = min(1, 2000 / max($w, $h));
         if ($scale < 1) {
