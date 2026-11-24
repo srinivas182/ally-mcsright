@@ -1,8 +1,18 @@
 import { Head, Link, useForm } from '@inertiajs/react';
+import {
+    ArrowLeft,
+    Bath,
+    BedDouble,
+    Home,
+    Ruler,
+    Send,
+    Video,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { money } from '@/pages/listings/index';
 
 type Listing = {
@@ -79,43 +89,69 @@ export default function ListingShow({ listing: l }: { listing: Listing }) {
         ['MLS #', l.mls_number],
     ];
 
+    const reduced =
+        l.original_price !== null &&
+        l.price !== null &&
+        l.price < l.original_price;
+    const place = [l.city, l.state, l.postal_code].filter(Boolean).join(', ');
+
     return (
         <>
             <Head title={l.address ?? 'Listing'} />
-            <div className="mx-auto grid w-full max-w-5xl gap-6 p-4 md:p-6">
-                <Link href="/listings" className="text-sm underline">
-                    ← Back to listings
+            <div className="mx-auto grid w-full max-w-7xl gap-5 p-4 md:p-6">
+                <Link
+                    href="/listings"
+                    className="inline-flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+                >
+                    <ArrowLeft aria-hidden="true" className="size-4" /> Back to
+                    MLS search
                 </Link>
                 {l.stale && (
-                    <p className="rounded border p-2 text-sm">
+                    <p
+                        role="status"
+                        className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100"
+                    >
                         MLS data is updating; details may be out of date.
                     </p>
                 )}
                 {photo ? (
                     <figure className="grid gap-2">
-                        <img
-                            src={photo.hero ?? photo.url ?? ''}
-                            alt={
-                                photo.alt ??
-                                photo.caption ??
-                                l.address ??
-                                'Home photo'
-                            }
-                            className="max-h-[32rem] w-full rounded-lg object-cover"
-                        />
-                        <div className="flex gap-2 overflow-x-auto" role="list">
+                        <div className="relative overflow-hidden rounded-xl">
+                            <img
+                                src={photo.hero ?? photo.url ?? ''}
+                                alt={
+                                    photo.alt ??
+                                    photo.caption ??
+                                    l.address ??
+                                    'Home photo'
+                                }
+                                className="aspect-[16/9] max-h-[34rem] w-full object-cover"
+                            />
+                            <span className="absolute right-3 bottom-3 rounded-full bg-black/60 px-3 py-1 text-xs font-medium text-white">
+                                {i + 1} of {l.photos.length}
+                            </span>
+                        </div>
+                        <div
+                            className="flex gap-2 overflow-x-auto pb-1"
+                            role="list"
+                        >
                             {l.photos.map((p, n) => (
                                 <button
                                     key={n}
                                     type="button"
                                     onClick={() => setI(n)}
                                     aria-label={`Photo ${n + 1}`}
-                                    className={`shrink-0 rounded ${n === i ? 'ring-2 ring-primary' : ''}`}
+                                    aria-current={n === i}
+                                    className={cn(
+                                        'shrink-0 overflow-hidden rounded-md opacity-80 hover:opacity-100',
+                                        n === i &&
+                                            'opacity-100 ring-2 ring-primary',
+                                    )}
                                 >
                                     <img
                                         src={p.thumb ?? ''}
                                         alt=""
-                                        className="h-16 w-24 rounded object-cover"
+                                        className="h-16 w-24 object-cover"
                                         loading="lazy"
                                     />
                                 </button>
@@ -123,97 +159,203 @@ export default function ListingShow({ listing: l }: { listing: Listing }) {
                         </div>
                     </figure>
                 ) : (
-                    <div className="grid h-64 place-items-center rounded-lg bg-muted text-muted-foreground">
-                        Photos coming
+                    <div className="grid aspect-[16/6] place-items-center rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 text-slate-400 dark:from-slate-800 dark:to-slate-900 dark:text-slate-500">
+                        <span className="grid justify-items-center gap-1">
+                            <Home aria-hidden="true" className="size-12" />
+                            Photos coming
+                        </span>
                     </div>
                 )}
-                <div className="flex flex-wrap items-baseline gap-3">
-                    <h1 className="text-2xl font-semibold">{money(l.price)}</h1>
-                    <Badge variant="outline">{l.status}</Badge>
-                    {l.original_price !== null &&
-                        l.price !== null &&
-                        l.price < l.original_price && (
-                            <Badge variant="outline">
-                                Reduced from {money(l.original_price)}
-                            </Badge>
-                        )}
-                </div>
-                <p className="text-lg">
-                    {[l.address, l.city, l.state, l.postal_code]
-                        .filter(Boolean)
-                        .join(', ')}
-                </p>
-                <dl className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
-                    {facts
-                        .filter(([, v]) => v !== null && v !== '')
-                        .map(([k, v]) => (
-                            <div key={k} className="rounded border p-2">
-                                <dt className="text-xs text-muted-foreground">
-                                    {k}
-                                </dt>
-                                <dd className="font-medium">{v}</dd>
+
+                <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
+                    <div className="grid content-start gap-6">
+                        <header className="grid gap-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <Badge
+                                    className={cn(
+                                        l.status === 'Active'
+                                            ? 'bg-emerald-600 hover:bg-emerald-600'
+                                            : 'bg-amber-500 hover:bg-amber-500',
+                                        'text-white',
+                                    )}
+                                >
+                                    {l.status}
+                                </Badge>
+                                {reduced && (
+                                    <Badge className="bg-rose-600 text-white hover:bg-rose-600">
+                                        Price cut from {money(l.original_price)}
+                                    </Badge>
+                                )}
+                                {l.days_on_market !== null && (
+                                    <span className="text-sm text-muted-foreground">
+                                        {l.days_on_market} days on market
+                                    </span>
+                                )}
                             </div>
-                        ))}
-                </dl>
-                {l.remarks && (
-                    <p className="whitespace-pre-line">{l.remarks}</p>
-                )}
-                {l.virtual_tour && (
-                    <Button
-                        variant="outline"
-                        asChild
-                        className="justify-self-start"
-                    >
-                        <a
-                            href={l.virtual_tour}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                        >
-                            Virtual tour
-                        </a>
-                    </Button>
-                )}
-                {l.features.length > 0 && (
-                    <section className="grid gap-2 text-sm">
-                        <h2 className="font-semibold">Seen in the photos</h2>
-                        <ul className="flex flex-wrap gap-2">
-                            {l.features.map((f) => (
-                                <li key={f}>
-                                    <Badge variant="outline">{f}</Badge>
-                                </li>
-                            ))}
-                        </ul>
-                        <p className="text-muted-foreground">
-                            Spotted in the listing photos by AI. Check before
-                            you promise a feature.
-                        </p>
-                    </section>
-                )}
-                {l.nearby && <NearbyPlaces nearby={l.nearby} />}
-                <SendToClient listing={l.ulid} />
-                {l.price_history.length > 0 && (
-                    <section className="grid gap-1 text-sm">
-                        <h2 className="font-semibold">Price history</h2>
-                        <ul>
-                            {l.price_history.map((h, n) => (
-                                <li key={n}>
-                                    {h.date}:{' '}
-                                    {h.from !== null
-                                        ? `${money(h.from)} → `
-                                        : ''}
-                                    {money(h.to)}
-                                </li>
-                            ))}
-                        </ul>
-                    </section>
-                )}
-                <footer className="grid gap-2 border-t pt-3 text-xs text-muted-foreground">
-                    {l.logo && (
-                        <img src={l.logo} alt="MLS" className="h-8 w-auto" />
-                    )}
-                    <p>{l.attribution}</p>
-                    {l.disclaimer && <p>{l.disclaimer}</p>}
-                </footer>
+                            <h1 className="text-3xl font-semibold tracking-tight tabular-nums md:text-4xl">
+                                {money(l.price)}
+                            </h1>
+                            <p className="text-lg">
+                                <span className="font-medium">
+                                    {l.address ?? 'Address withheld'}
+                                </span>
+                                {place && (
+                                    <span className="text-muted-foreground">
+                                        , {place}
+                                    </span>
+                                )}
+                            </p>
+                            <div className="flex flex-wrap gap-x-6 gap-y-2 text-base [&_svg]:size-5 [&_svg]:text-muted-foreground">
+                                <span className="inline-flex items-center gap-2">
+                                    <BedDouble aria-hidden="true" />
+                                    <strong>{l.beds ?? '—'}</strong> beds
+                                </span>
+                                <span className="inline-flex items-center gap-2">
+                                    <Bath aria-hidden="true" />
+                                    <strong>
+                                        {l.baths_full !== null
+                                            ? l.baths_full +
+                                              (l.baths_half ? 0.5 : 0)
+                                            : '—'}
+                                    </strong>{' '}
+                                    baths
+                                </span>
+                                <span className="inline-flex items-center gap-2">
+                                    <Ruler aria-hidden="true" />
+                                    <strong>
+                                        {l.sqft ? l.sqft.toLocaleString() : '—'}
+                                    </strong>{' '}
+                                    sq ft
+                                </span>
+                            </div>
+                        </header>
+
+                        {l.remarks && (
+                            <section className="grid gap-2">
+                                <h2 className="text-lg font-semibold">
+                                    About this home
+                                </h2>
+                                <p className="leading-relaxed whitespace-pre-line">
+                                    {l.remarks}
+                                </p>
+                            </section>
+                        )}
+
+                        <section className="grid gap-2">
+                            <h2 className="text-lg font-semibold">
+                                Home facts
+                            </h2>
+                            <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border bg-border text-sm sm:grid-cols-3">
+                                {facts
+                                    .filter(([, v]) => v !== null && v !== '')
+                                    .map(([k, v]) => (
+                                        <div
+                                            key={k}
+                                            className="grid gap-0.5 bg-card p-3"
+                                        >
+                                            <dt className="text-muted-foreground">
+                                                {k}
+                                            </dt>
+                                            <dd className="font-medium">{v}</dd>
+                                        </div>
+                                    ))}
+                            </dl>
+                        </section>
+
+                        {l.features.length > 0 && (
+                            <section className="grid gap-2 text-sm">
+                                <h2 className="text-lg font-semibold">
+                                    Seen in the photos
+                                </h2>
+                                <ul className="flex flex-wrap gap-2">
+                                    {l.features.map((f) => (
+                                        <li key={f}>
+                                            <Badge variant="outline">{f}</Badge>
+                                        </li>
+                                    ))}
+                                </ul>
+                                <p className="text-muted-foreground">
+                                    Spotted in the listing photos by AI. Check
+                                    before you promise a feature.
+                                </p>
+                            </section>
+                        )}
+                        {l.nearby && <NearbyPlaces nearby={l.nearby} />}
+                        {l.price_history.length > 0 && (
+                            <section className="grid gap-2 text-sm">
+                                <h2 className="text-lg font-semibold">
+                                    Price history
+                                </h2>
+                                <table className="w-full overflow-hidden rounded-xl border text-left">
+                                    <thead className="bg-muted/50 text-muted-foreground">
+                                        <tr>
+                                            <th className="px-3 py-2 font-medium">
+                                                Date
+                                            </th>
+                                            <th className="px-3 py-2 font-medium">
+                                                Change
+                                            </th>
+                                            <th className="px-3 py-2 text-right font-medium">
+                                                Price
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {l.price_history.map((h, n) => (
+                                            <tr key={n} className="border-t">
+                                                <td className="px-3 py-2">
+                                                    {h.date}
+                                                </td>
+                                                <td className="px-3 py-2">
+                                                    {h.from === null
+                                                        ? 'Listed'
+                                                        : h.to < h.from
+                                                          ? `Down ${money(h.from - h.to)}`
+                                                          : `Up ${money(h.to - h.from)}`}
+                                                </td>
+                                                <td className="px-3 py-2 text-right tabular-nums">
+                                                    {money(h.to)}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </section>
+                        )}
+                        <footer className="grid gap-2 border-t pt-3 text-xs text-muted-foreground">
+                            {l.logo && (
+                                <img
+                                    src={l.logo}
+                                    alt="MLS"
+                                    className="h-8 w-auto"
+                                />
+                            )}
+                            <p>{l.attribution}</p>
+                            {l.disclaimer && <p>{l.disclaimer}</p>}
+                        </footer>
+                    </div>
+
+                    <aside className="grid content-start gap-4 lg:sticky lg:top-20 lg:self-start">
+                        <SendToClient listing={l.ulid} />
+                        {l.virtual_tour && (
+                            <Button variant="outline" asChild>
+                                <a
+                                    href={l.virtual_tour}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                >
+                                    <Video aria-hidden="true" /> Virtual tour
+                                </a>
+                            </Button>
+                        )}
+                        {l.mls_number && (
+                            <p className="text-center text-sm text-muted-foreground">
+                                MLS {l.mls_number}
+                                {l.listed && ` · Listed ${l.listed}`}
+                            </p>
+                        )}
+                    </aside>
+                </div>
             </div>
         </>
     );
@@ -223,7 +365,7 @@ export default function ListingShow({ listing: l }: { listing: Listing }) {
 function NearbyPlaces({ nearby }: { nearby: Nearby }) {
     return (
         <section className="grid gap-2 text-sm">
-            <h2 className="font-semibold">What's nearby</h2>
+            <h2 className="text-lg font-semibold">What's nearby</h2>
             <p>{nearby.summary}</p>
             {(
                 [
@@ -297,8 +439,13 @@ function SendToClient({ listing }: { listing: string }) {
     }, [q, to]);
 
     return (
-        <section className="grid gap-2 rounded-lg border p-3 text-sm">
-            <h2 className="font-semibold">Send to a client</h2>
+        <section className="grid gap-3 rounded-xl border bg-card p-4 text-sm shadow-xs">
+            <h2 className="flex items-center gap-2 text-base font-semibold">
+                <Send aria-hidden="true" className="size-4" /> Send to a client
+            </h2>
+            <p className="-mt-1 text-muted-foreground">
+                Email this home to one of your contacts, with a note.
+            </p>
             {to ? (
                 <form
                     className="grid gap-2"
@@ -349,7 +496,7 @@ function SendToClient({ listing }: { listing: string }) {
                     <input
                         aria-label="Find a contact"
                         placeholder="Find a contact"
-                        className="rounded border bg-background px-2 py-1.5"
+                        className="h-10 rounded-md border bg-background px-3"
                         value={q}
                         onChange={(e) => setQ(e.target.value)}
                     />

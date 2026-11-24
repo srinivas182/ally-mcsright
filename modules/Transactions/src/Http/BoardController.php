@@ -12,6 +12,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Core\Access\Fields;
 use Modules\Core\Audit\AuditLogger;
+use Modules\Core\Identity\Enums\UserKind;
 use Modules\Transactions\DealAccess;
 use Modules\Transactions\Forecast;
 use Modules\Transactions\Models\Deal;
@@ -28,7 +29,10 @@ final class BoardController
         $mine = ! DealAccess::reviewer($user) || $request->query('mine') === '1';
         $agent = $mine ? (User::query()->find(DealAccess::actingFor($user)) ?? $user) : null;
 
-        return Inertia::render('deals/listings', ['board' => $board->build($agent), 'columns' => ListingBoard::COLUMNS, 'mine' => $mine, 'reviewer' => DealAccess::reviewer($user)]);
+        return Inertia::render('deals/listings', ['board' => $board->build($agent), 'columns' => ListingBoard::COLUMNS, 'mine' => $mine, 'reviewer' => DealAccess::reviewer($user),
+            // PG3: "Add a listing" on the board (a reviewer picks the agent; an agent adds their own).
+            'canCreateFor' => DealAccess::reviewer($user) ? User::query()->where('kind', UserKind::Agent)->where('status', 'active')->orderBy('first_name')->get()
+                ->map(fn (User $u): array => ['ulid' => $u->ulid, 'name' => $u->name])->values()->all() : []]);
     }
 
     /** The listing agreement's end date and the MLS number, from the board. */
