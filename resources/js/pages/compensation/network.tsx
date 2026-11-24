@@ -62,7 +62,8 @@ function Avatar({ name }: { name: string }) {
         .join('');
     const color =
         COLORS[
-            [...name].reduce((s, c) => s + c.charCodeAt(0), 0) % COLORS.length
+            Array.from(name).reduce((s, c) => s + c.charCodeAt(0), 0) %
+                COLORS.length
         ];
 
     return (

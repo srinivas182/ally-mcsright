@@ -9,6 +9,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Modules\Billing\Credits\CreditPurchases;
+use Modules\Billing\Events\AgentPlanStarted;
 use Modules\Billing\Gateway\PaymentGateway;
 use Modules\Billing\Models\AgentPlan;
 use Modules\Billing\Models\AgentSubscription;
@@ -36,7 +37,10 @@ final class AgentPayments
         private readonly TenantContext $tenants,
     ) {}
 
-    public function checkout(User $agent, AgentPlan $plan, string $returnBase): string
+    /**
+     * @param  string  $successPath  CM4: where the gateway sends the agent back (a new agent joining goes to /join/done)
+     */
+    public function checkout(User $agent, AgentPlan $plan, string $returnBase, string $successPath = '/plans?checkout=success', string $cancelPath = '/plans?checkout=cancelled'): string
     {
         if (! $agent->isKind(UserKind::Agent) || ! $plan->active || ! $this->pricing->offered($plan)) {
             throw ValidationException::withMessages(['plan' => 'Choose a plan your brokerage offers.']);
@@ -48,7 +52,7 @@ final class AgentPayments
         app(AuditLogger::class)->record('billing.checkout.started', metadata: ['plan' => $plan->key, 'price_cents' => $price], label: $agent->name);
 
         return $this->gateway->subscriptionCheckout($agent->email, "RightAlly {$plan->name} — ".$this->tenants->current()->name, $price, 'month',
-            $returnBase.'/plans?checkout=success', $returnBase.'/plans?checkout=cancelled',
+            $returnBase.$successPath, $returnBase.$cancelPath,
             ['tenant_id' => (string) $this->tenants->id(), 'user_id' => (string) $agent->id, 'agent_plan_id' => (string) $plan->id, 'price_cents' => (string) $price],
             $this->settings->automaticTax());
     }
@@ -210,6 +214,7 @@ final class AgentPayments
             'gateway_ref' => $subRef, 'customer_ref' => $customer, 'current_period_end' => CarbonImmutable::now()->addMonth()]);
         app(AuditLogger::class)->record('billing.subscription.started', User::query()->find($userId), metadata: ['plan_id' => $planId, 'price_cents' => $priceCents], severity: 'notice');
         app(Entitlements::class)->forget();
+        AgentPlanStarted::dispatch($this->tenants->id(), $userId); // CM4: a new agent who joined through a link is placed now
     }
 
     /**
