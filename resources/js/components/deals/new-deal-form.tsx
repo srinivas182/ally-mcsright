@@ -16,12 +16,15 @@ export const typeLabel: Record<string, string> = {
 export function NewDealForm({
     canCreateFor,
     contact = '',
+    type = 'buyer',
 }: {
     canCreateFor: { ulid: string; name: string }[];
     contact?: string;
+    /** The kind of deal picked to start with (PG3: "Add a listing" starts on Listing). */
+    type?: string;
 }) {
     const form = useForm({
-        type: 'buyer',
+        type,
         street: '',
         city: '',
         state_code: '',
