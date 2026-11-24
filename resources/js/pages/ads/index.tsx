@@ -1,4 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
+import { FeatureOff } from '@/components/feature-off/feature-off';
+import { Megaphone } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -66,10 +68,16 @@ export default function Ads({
                     description="Make a Facebook and Instagram, Google search or YouTube ad for one of your listings in a minute. From your own ad account RightAlly never adds a fee."
                 />
                 {!ready && !boost ? (
-                    <p className="rounded-lg border p-5">
-                        Listing ads aren't switched on yet. Please ask RightAlly
-                        support.
-                    </p>
+                    <FeatureOff
+                        feature="ads"
+                        icon={Megaphone}
+                        title="Listing ads"
+                        does="A Facebook and Instagram, Google search or YouTube ad for one of your listings, made in a minute."
+                        points={[
+                            'Written and designed from the listing for you',
+                            'Paid from your own ad account; RightAlly never adds a fee',
+                        ]}
+                    />
                 ) : !connected && !google_connected && !boost ? (
                     <section className="grid gap-3 rounded-lg border p-5">
                         <h2 className="font-medium">

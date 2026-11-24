@@ -53,6 +53,29 @@ final class SupportTickets
         return $ulid;
     }
 
+    /** Features a brokerage can ask RightAlly to switch on (PG4), keyed as the pages send them. */
+    public const SWITCH_ON = ['studio' => 'Ally Studio', 'social' => 'Social posting', 'ads' => 'Listing ads', 'postcards' => 'Postcards', 'voice' => 'AI voice-overs',
+        'property_lookup' => 'Property lookups'];
+
+    /**
+     * PG4: "Ask RightAlly to switch it on". One open request per feature per brokerage; asking again does not add another.
+     *
+     * @return bool true when a new request was sent
+     */
+    public function askToSwitchOn(User $by, string $feature, ?string $page): bool
+    {
+        $name = self::SWITCH_ON[$feature] ?? throw ValidationException::withMessages(['feature' => 'Unknown feature.']);
+        $subject = "Please switch on {$name}";
+        $open = DB::connection(Connections::control())->table('support_tickets')->where('tenant_id', $this->tenants->id())->where('subject', $subject)
+            ->where('status', 'open')->exists();
+        if ($open) {
+            return false;
+        }
+        $this->open($by, 'idea', $subject, "{$by->name} asked to switch on {$name} for this brokerage.", $page);
+
+        return true;
+    }
+
     /**
      * This person's requests in this brokerage, newest first.
      *
