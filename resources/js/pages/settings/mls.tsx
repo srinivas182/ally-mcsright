@@ -155,7 +155,9 @@ export default function MlsSettings({
                 />
                 {current.length === 0 && (
                     <p className="rounded-xl border bg-card p-5 text-base">
-                        You have no MLS boards yet. Add the first one below.
+                        {available.length > 0
+                            ? 'You have no MLS boards yet. Add the first one below.'
+                            : 'You have no MLS boards yet, and none are offered in your states yet. Press "Ask for a board" and tell us its name; we add it and email you the day it is ready.'}
                     </p>
                 )}
                 {current.length > 0 && (

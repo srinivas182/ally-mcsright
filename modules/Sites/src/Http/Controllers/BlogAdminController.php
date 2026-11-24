@@ -26,9 +26,12 @@ final class BlogAdminController
 {
     public function __construct(private readonly SiteSetup $sites, private readonly Posts $posts) {}
 
-    public function index(Request $request, MarketStats $stats): Response
+    public function index(Request $request, MarketStats $stats): Response|RedirectResponse
     {
         self::manager($request);
+        if ($this->sites->brokerageSite() === null) {
+            return self::needsWebsite('blog posts');
+        }
         $site = $this->site();
         $places = array_map(fn (array $p): array => ['slug' => $p['slug'], 'name' => $p['name']], $stats->places($site->tenant_id, 60));
         $authors = User::query()->whereIn('id', SitePost::query()->where('site_id', $site->id)->pluck('author_user_id')->filter())->get()->keyBy('id');
@@ -114,6 +117,14 @@ final class BlogAdminController
     private static function saved(SitePost $post): string
     {
         return $post->status === 'draft' ? 'Draft saved.' : ($post->isLive() ? 'Published.' : 'Scheduled for '.$post->published_at?->format('M j, g:i A').'.');
+    }
+
+    /** PG5: no website yet; send the person to set it up instead of a "page not found". */
+    private static function needsWebsite(string $what): RedirectResponse
+    {
+        Inertia::flash('toast', ['type' => 'info', 'message' => "Choose a design for your website first. Then you can add {$what}."]);
+
+        return redirect('/settings/website');
     }
 
     private function site(): Site
