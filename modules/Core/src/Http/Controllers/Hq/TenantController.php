@@ -114,6 +114,7 @@ final class TenantController
                 'purge_after' => $tenant->purge_after?->toIso8601String(),
                 'created_at' => $tenant->created_at?->toIso8601String(),
                 'is_hq' => $tenant->isHq(),
+                'is_protected' => $tenant->isProtected(), // DP1: no suspend, close or delete
             ],
             'domains' => $tenant->domains()->orderByDesc('is_primary')->get()->map(fn (TenantDomain $d): array => [
                 'host' => $d->host,

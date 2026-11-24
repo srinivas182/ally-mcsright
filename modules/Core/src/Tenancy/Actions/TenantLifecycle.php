@@ -104,6 +104,9 @@ final class TenantLifecycle
         if ($tenant->isHq()) {
             throw new InvalidTenantTransition('RightAlly HQ cannot be suspended or closed.');
         }
+        if ($tenant->isProtected()) {
+            throw new InvalidTenantTransition('The design demo website is run by RightAlly and cannot be suspended or closed.');
+        }
     }
 
     private function requireReason(string $reason): string

@@ -68,3 +68,13 @@ it('asks for the password and never deletes HQ', function (): void {
     $this->actingAs($this->admin)->withSession(['auth.password_confirmed_at' => time()])
         ->post($this->hq.'/hq/tenants/'.$this->hqTenant->ulid.'/purge', ['confirm' => $this->hqTenant->slug])->assertSessionHasErrors('tenant');
 });
+
+it('never suspends, closes or deletes the design demo website (DP1)', function (): void {
+    $demo = Tenant::factory()->withPlatformDomain()->create(['slug' => 'demo', 'name' => 'Your Brokerage']);
+    $as = fn () => $this->actingAs($this->admin)->withSession(['auth.password_confirmed_at' => time()]);
+    $this->actingAs($this->admin)->get($this->hq.'/hq/tenants/'.$demo->ulid)->assertInertia(fn ($p) => $p->where('tenant.is_protected', true));
+    $as()->post($this->hq.'/hq/tenants/'.$demo->ulid.'/close', ['reason' => 'Testing the guard here'])->assertSessionHasErrors();
+    $demo->forceFill(['status' => TenantStatus::Closed])->save(); // even if it were closed somehow
+    $as()->post($this->hq.'/hq/tenants/'.$demo->ulid.'/purge', ['confirm' => 'demo'])->assertSessionHasErrors('tenant');
+    expect(Tenant::query()->where('slug', 'demo')->exists())->toBeTrue();
+});

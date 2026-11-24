@@ -15,7 +15,6 @@ use Modules\Core\Safeguards\Structure;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\DomainResolver;
 use Modules\Core\Tenancy\Enums\TenantStatus;
-use Modules\Core\Tenancy\Enums\TenantType;
 use Modules\Core\Tenancy\Models\Tenant;
 use Modules\Core\Tenancy\Models\TenantDomain;
 use Modules\Core\Tenancy\TenantContext;
@@ -39,8 +38,8 @@ final class PurgeTenant
     /** @return array{rows: int, files: int} what was deleted */
     public function handle(Tenant $tenant, ?int $byUserId = null): array
     {
-        if ($tenant->type === TenantType::Hq) {
-            throw ValidationException::withMessages(['tenant' => 'HQ cannot be deleted.']);
+        if ($tenant->isProtected()) {
+            throw ValidationException::withMessages(['tenant' => $tenant->isHq() ? 'HQ cannot be deleted.' : 'The design demo website is run by RightAlly and cannot be deleted.']);
         }
         if (! in_array($tenant->status, [TenantStatus::Closing, TenantStatus::Closed], true)) {
             throw ValidationException::withMessages(['tenant' => 'Close this brokerage first. Only a closed brokerage can be deleted.']);

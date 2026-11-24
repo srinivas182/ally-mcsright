@@ -97,6 +97,12 @@ final class Tenant extends Model
         return $this->type === TenantType::Hq;
     }
 
+    /** DP1: HQ, or a workspace RightAlly runs itself (core.slug.protected, e.g. the design demo website). */
+    public function isProtected(): bool
+    {
+        return $this->isHq() || in_array($this->slug, (array) config('core.slug.protected', []), true);
+    }
+
     protected static function newFactory(): TenantFactory
     {
         return TenantFactory::new();

@@ -41,6 +41,7 @@ type Tenant = {
     purge_after: string | null;
     created_at: string | null;
     is_hq: boolean;
+    is_protected: boolean;
 };
 
 type Domain = {
@@ -102,13 +103,13 @@ export default function ShowTenant({
     const base = `/hq/tenants/${tenant.ulid}`;
     const [support, setSupport] = useState<string | null>(null);
 
-    const canSuspend = !tenant.is_hq && tenant.status === 'active';
+    const canSuspend = !tenant.is_protected && tenant.status === 'active';
     const canClose =
-        !tenant.is_hq && ['active', 'suspended'].includes(tenant.status);
+        !tenant.is_protected && ['active', 'suspended'].includes(tenant.status);
     const canReactivate = ['suspended', 'closing'].includes(tenant.status);
     // TD1: a closed (or closing) brokerage can be deleted for good.
     const canPurge =
-        !tenant.is_hq && ['closing', 'closed'].includes(tenant.status);
+        !tenant.is_protected && ['closing', 'closed'].includes(tenant.status);
     const [purging, setPurging] = useState(false);
     const purgeForm = useForm({ confirm: '' });
 
