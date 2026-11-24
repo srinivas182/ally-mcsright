@@ -33,6 +33,7 @@ final class Insights
         'ineligible_upline' => 'Not active at the time',
         'locked_level' => 'This level was not unlocked yet',
         'recipient_limit' => 'Your yearly maximum was reached',
+        'level_limit' => 'The yearly maximum for this level was reached',
         'budget' => "The brokerage's yearly budget was reached",
         'fallback_cap' => 'Above the root account limit',
         'rejected' => 'Rejected after review',

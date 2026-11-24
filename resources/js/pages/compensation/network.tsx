@@ -1,11 +1,16 @@
 import { Head, router } from '@inertiajs/react';
-import { ChevronRight } from 'lucide-react';
+import { Info, Minus, Plus } from 'lucide-react';
 import { createContext, useContext, useMemo, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/ui/page-header';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
 
 type Node = {
     ulid: string;
@@ -16,6 +21,10 @@ type Node = {
     closings: number;
     recruits: number;
     team: number;
+    sponsor: string | null;
+    co_sponsor: { name: string | null; share: string } | null;
+    joined: string | null;
+    kind: string;
     children: Node[];
 };
 
@@ -23,6 +32,7 @@ type Person = { ulid: string; name: string };
 
 type Props = {
     tree: Node[];
+    brokerage: string;
     totals: { people: number; sponsored: number; ranks: number };
     canChange: boolean;
     people: Person[];
@@ -34,19 +44,66 @@ const Change = createContext<{ can: boolean; people: Person[] }>({
     people: [],
 });
 
+const COLORS = [
+    'bg-sky-100 text-sky-800',
+    'bg-emerald-100 text-emerald-800',
+    'bg-amber-100 text-amber-800',
+    'bg-rose-100 text-rose-800',
+    'bg-violet-100 text-violet-800',
+    'bg-teal-100 text-teal-800',
+];
+
+function Avatar({ name }: { name: string }) {
+    const initials = name
+        .split(' ')
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((p) => p[0]?.toUpperCase())
+        .join('');
+    const color =
+        COLORS[
+            Array.from(name).reduce((s, c) => s + c.charCodeAt(0), 0) %
+                COLORS.length
+        ];
+
+    return (
+        <span
+            aria-hidden="true"
+            className={`grid size-11 shrink-0 place-items-center rounded-full text-sm font-bold ${color}`}
+        >
+            {initials}
+        </span>
+    );
+}
+
+function matches(node: Node, q: string): boolean {
+    return (
+        node.name.toLowerCase().includes(q) ||
+        node.children.some((c) => matches(c, q))
+    );
+}
+
 function ChangeSponsor({ node, onDone }: { node: Node; onDone: () => void }) {
     const { people } = useContext(Change);
     const [sponsor, setSponsor] = useState('');
+    const [co, setCo] = useState('');
+    const [share, setShare] = useState('50');
     const [reason, setReason] = useState('');
+    const others = people.filter((p) => p.ulid !== node.ulid);
 
     return (
         <form
-            className="grid gap-2 rounded-lg border bg-muted/40 p-3 text-sm"
+            className="ml-14 grid gap-3 rounded-lg border bg-muted/40 p-4 text-sm"
             onSubmit={(e) => {
                 e.preventDefault();
                 router.post(
                     `/compensation/network/${node.ulid}/sponsor`,
-                    { sponsor: sponsor || null, reason },
+                    {
+                        sponsor: sponsor || null,
+                        co_sponsor: co || null,
+                        co_share: co ? share : null,
+                        reason,
+                    },
                     { preserveScroll: true, onSuccess: onDone },
                 );
             }}
@@ -56,23 +113,57 @@ function ChangeSponsor({ node, onDone }: { node: Node; onDone: () => void }) {
                 from today; deals already closed keep the revenue share they
                 paid.
             </p>
-            <label className="grid gap-1">
-                Brought in by
-                <select
-                    className="h-10 rounded-md border bg-background px-3"
-                    value={sponsor}
-                    onChange={(e) => setSponsor(e.target.value)}
-                >
-                    <option value="">Nobody (top of the tree)</option>
-                    {people
-                        .filter((p) => p.ulid !== node.ulid)
-                        .map((p) => (
+            <div className="grid gap-3 sm:grid-cols-2">
+                <label className="grid gap-1">
+                    Sponsor (brought them in)
+                    <select
+                        className="h-10 rounded-md border bg-background px-3"
+                        value={sponsor}
+                        onChange={(e) => setSponsor(e.target.value)}
+                    >
+                        <option value="">Nobody (top of the tree)</option>
+                        {others.map((p) => (
                             <option key={p.ulid} value={p.ulid}>
                                 {p.name}
                             </option>
                         ))}
-                </select>
-            </label>
+                    </select>
+                </label>
+                <label className="grid gap-1">
+                    Co-sponsor (optional)
+                    <select
+                        className="h-10 rounded-md border bg-background px-3"
+                        value={co}
+                        disabled={!sponsor}
+                        onChange={(e) => setCo(e.target.value)}
+                    >
+                        <option value="">No co-sponsor</option>
+                        {others
+                            .filter((p) => p.ulid !== sponsor)
+                            .map((p) => (
+                                <option key={p.ulid} value={p.ulid}>
+                                    {p.name}
+                                </option>
+                            ))}
+                    </select>
+                </label>
+            </div>
+            {co && (
+                <label className="flex flex-wrap items-center gap-2">
+                    The co-sponsor gets
+                    <Input
+                        type="number"
+                        min={1}
+                        max={99}
+                        className="h-9 w-20"
+                        value={share}
+                        onChange={(e) => setShare(e.target.value)}
+                        aria-label="Co-sponsor share of level 1 (%)"
+                    />
+                    % of level 1; the sponsor gets the rest. Deeper levels
+                    follow the sponsor.
+                </label>
+            )}
             <label className="grid gap-1">
                 Why (kept in the audit log)
                 <Input
@@ -105,10 +196,52 @@ function ChangeSponsor({ node, onDone }: { node: Node; onDone: () => void }) {
     );
 }
 
-function matches(node: Node, q: string): boolean {
+function Details({ node }: { node: Node }) {
     return (
-        node.name.toLowerCase().includes(q) ||
-        node.children.some((c) => matches(c, q))
+        <Popover>
+            <PopoverTrigger
+                aria-label={`About ${node.name}`}
+                className="grid size-8 place-items-center rounded-full bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground"
+            >
+                <Info className="size-4" aria-hidden="true" />
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-72 text-sm">
+                <p className="mb-2 text-base font-semibold">{node.name}</p>
+                <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+                    <dt className="text-muted-foreground">Rank</dt>
+                    <dd>{node.rank ?? '—'}</dd>
+                    <dt className="text-muted-foreground">Closed this year</dt>
+                    <dd>{node.closings}</dd>
+                    <dt className="text-muted-foreground">Brought in</dt>
+                    <dd>{node.recruits}</dd>
+                    <dt className="text-muted-foreground">Whole team</dt>
+                    <dd>{node.team}</dd>
+                    <dt className="text-muted-foreground">Sponsor</dt>
+                    <dd>{node.sponsor ?? 'None (top)'}</dd>
+                    {node.co_sponsor && (
+                        <>
+                            <dt className="text-muted-foreground">
+                                Co-sponsor
+                            </dt>
+                            <dd>
+                                {node.co_sponsor.name} ({node.co_sponsor.share}%
+                                of level 1)
+                            </dd>
+                        </>
+                    )}
+                    <dt className="text-muted-foreground">Joined</dt>
+                    <dd>
+                        {node.joined
+                            ? new Date(
+                                  `${node.joined}T00:00:00`,
+                              ).toLocaleDateString()
+                            : '—'}
+                    </dd>
+                    <dt className="text-muted-foreground">Status</dt>
+                    <dd>{node.active ? 'Active' : 'Left'}</dd>
+                </dl>
+            </PopoverContent>
+        </Popover>
     );
 }
 
@@ -121,7 +254,7 @@ function Branch({
     query: string;
     openAll: boolean | null;
 }) {
-    const [open, setOpen] = useState(node.level === 0);
+    const [open, setOpen] = useState(node.level <= 1);
     const [changing, setChanging] = useState(false);
     const change = useContext(Change);
     const hasKids = node.children.length > 0;
@@ -130,65 +263,80 @@ function Branch({
         query !== ''
             ? node.children.filter((c) => matches(c, query))
             : node.children;
+    const hit = query !== '' && node.name.toLowerCase().includes(query);
 
     return (
-        <li className="grid gap-1">
-            <div
-                className={`flex flex-wrap items-center gap-2 rounded-lg border bg-card px-3 py-2 ${
-                    query !== '' && node.name.toLowerCase().includes(query)
-                        ? 'border-primary'
-                        : ''
-                }`}
-            >
+        <li className="relative grid gap-2 pl-6">
+            {/* The line from the parent's column to this card. */}
+            <span
+                aria-hidden="true"
+                className="absolute top-8 left-0 w-6 border-t-2 border-dashed border-border"
+            />
+            <div className="relative flex items-center gap-3 rounded-xl border bg-card px-4 py-3 shadow-xs">
                 <button
                     type="button"
                     aria-expanded={hasKids ? shown : undefined}
                     aria-label={
                         hasKids
                             ? `${shown ? 'Hide' : 'Show'} the people ${node.name} brought in`
-                            : undefined
+                            : `${node.name} has not brought anyone in yet`
                     }
                     disabled={!hasKids}
                     onClick={() => setOpen(!shown)}
-                    className="grid size-7 place-items-center rounded-md hover:bg-muted disabled:invisible"
+                    className="absolute top-1/2 -left-3.5 grid size-7 -translate-y-1/2 place-items-center rounded-full bg-foreground text-background disabled:bg-muted disabled:text-muted-foreground"
                 >
-                    <ChevronRight
-                        aria-hidden="true"
-                        className={`size-4 transition-transform ${shown ? 'rotate-90' : ''}`}
-                    />
+                    {shown && hasKids ? (
+                        <Minus className="size-4" aria-hidden="true" />
+                    ) : (
+                        <Plus className="size-4" aria-hidden="true" />
+                    )}
                 </button>
-                <span
-                    className={`font-semibold ${node.active ? '' : 'text-muted-foreground line-through'}`}
-                >
-                    {node.name}
-                </span>
-                {node.rank && <Badge variant="secondary">{node.rank}</Badge>}
-                {!node.active && <Badge variant="outline">Left</Badge>}
-                <span className="ml-auto flex flex-wrap gap-x-4 text-sm text-muted-foreground">
-                    <span>{node.closings} closed this year</span>
-                    <span>
-                        {node.recruits} brought in
-                        {node.team > node.recruits
-                            ? ` · ${node.team} in their team`
-                            : ''}
-                    </span>
-                </span>
+                <Avatar name={node.name} />
+                <div className="min-w-0 flex-1">
+                    <p
+                        className={`truncate font-semibold ${hit ? 'text-primary' : ''} ${node.active ? '' : 'text-muted-foreground line-through'}`}
+                    >
+                        {node.name}
+                    </p>
+                    <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                        {node.rank && (
+                            <Badge variant="secondary">{node.rank}</Badge>
+                        )}
+                        <span>{node.closings} closed this year</span>
+                        <span>
+                            {node.recruits} brought in
+                            {node.team > node.recruits
+                                ? ` · ${node.team} in team`
+                                : ''}
+                        </span>
+                        {node.co_sponsor && (
+                            <span>Co-sponsored by {node.co_sponsor.name}</span>
+                        )}
+                    </p>
+                </div>
                 {change.can && node.active && (
                     <Button
                         size="sm"
                         variant="ghost"
+                        className="hidden md:inline-flex"
                         onClick={() => setChanging(!changing)}
                         aria-expanded={changing}
                     >
-                        Change who brought them in
+                        Change sponsor
                     </Button>
                 )}
+                <span className="grid size-12 shrink-0 place-items-center rounded-full bg-muted text-center text-xs leading-tight font-semibold">
+                    Level
+                    <br />
+                    {node.level}
+                </span>
+                <Details node={node} />
             </div>
             {changing && (
                 <ChangeSponsor node={node} onDone={() => setChanging(false)} />
             )}
             {shown && kids.length > 0 && (
-                <ul className="ml-5 grid gap-1 border-l pl-4">
+                <ul className="ml-6 grid gap-2 border-l-2 border-dashed border-border pl-2">
                     {kids.map((c) => (
                         <Branch
                             key={c.ulid}
@@ -204,11 +352,13 @@ function Branch({
 }
 
 /**
- * CM1: the brokerage's network tree (genealogy): everyone who joined without a sponsor at the top, and the people
- * each agent brought in below them, with rank, production and team size.
+ * CM1/CM3: the brokerage's network tree (genealogy): the brokerage at the root, everyone who joined without a
+ * sponsor at level 1, and the people each agent brought in below them, with rank, production, team size, sponsor
+ * and co-sponsor. Money managers can change a sponsor or add a co-sponsor.
  */
 export default function NetworkTree({
     tree,
+    brokerage,
     totals,
     canChange,
     people,
@@ -270,19 +420,36 @@ export default function NetworkTree({
                     <p className="rounded-lg border border-dashed p-6 text-center text-muted-foreground">
                         {query
                             ? 'Nobody by that name.'
-                            : "Nobody here yet. Agents appear as they join. When an agent accepts another agent's invitation, they are placed under that agent."}
+                            : "Nobody here yet. Agents appear as they join. When an agent joins through another agent's link, they are placed under that agent."}
                     </p>
                 ) : (
-                    <ul className="grid gap-1">
-                        {top.map((n) => (
-                            <Branch
-                                key={n.ulid}
-                                node={n}
-                                query={query}
-                                openAll={openAll}
-                            />
-                        ))}
-                    </ul>
+                    <div className="grid gap-2">
+                        <div className="flex items-center gap-3 rounded-xl border bg-card px-4 py-3 shadow-xs">
+                            <Avatar name={brokerage} />
+                            <div className="flex-1">
+                                <p className="font-semibold text-primary">
+                                    {brokerage}
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                    The brokerage (top of the tree)
+                                </p>
+                            </div>
+                            <span className="grid size-12 place-items-center rounded-full bg-muted text-center text-xs leading-tight font-semibold">
+                                Level
+                                <br />0
+                            </span>
+                        </div>
+                        <ul className="ml-6 grid gap-2 border-l-2 border-dashed border-border pl-2">
+                            {top.map((n) => (
+                                <Branch
+                                    key={n.ulid}
+                                    node={n}
+                                    query={query}
+                                    openAll={openAll}
+                                />
+                            ))}
+                        </ul>
+                    </div>
                 )}
             </div>
         </Change.Provider>
