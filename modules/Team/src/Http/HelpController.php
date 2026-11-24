@@ -82,6 +82,27 @@ final class HelpController
         return response()->json($pages->for($data['path'], Chat::leads($user)) + ['phone' => $user->phone, 'practice' => $practice]);
     }
 
+    /** MN3: the 60-second lesson videos HQ has added to the menu guides ("guide:{menu}:{lesson}" => address). */
+    public function guideVideos(): JsonResponse
+    {
+        // MN3: the videos HQ added for help-panel lessons (guide:<menu>:<lesson>), as player addresses.
+        return response()->json(DB::connection(Connections::control())->table('help_videos')->where('path', 'like', 'guide:%')->pluck('url', 'path')
+            ->map(fn (mixed $url): string => PageHelp::embed((string) $url)));
+    }
+
+    /** MN3: a menu guide was closed; it no longer opens by itself for this person. */
+    public function guideSeen(Request $request): RedirectResponse
+    {
+        $key = mb_substr(trim((string) $request->input('key', '')), 0, 40);
+        $user = self::user($request);
+        if ($key !== '') {
+            $seen = array_values(array_unique([...(array) ($user->ui_guides_seen ?? []), $key]));
+            $user->forceFill(['ui_guides_seen' => array_slice($seen, -50)])->save();
+        }
+
+        return back();
+    }
+
     /** SX5: "Call me back" — a request to RightAlly support with the number and the best time. */
     public function callback(Request $request, SupportTickets $tickets): RedirectResponse
     {

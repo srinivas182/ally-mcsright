@@ -88,7 +88,11 @@ final class SitesServiceProvider extends ServiceProvider
         $nav->add(new NavItem('Grow', 'Buyer demand', '/listings/demand', 'trending-up', 9, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent]));
         $nav->add(new NavItem('Grow', 'Funnels', '/funnels', 'filter', 25, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent]));
         $nav->add(new NavItem('Grow', 'Reviews', '/reviews', 'star', 26, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent]));
-        $nav->add(new NavItem('Settings', 'Website', '/settings/website', 'layout-grid', 64, ability: 'sites.admin', kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant]));
+        $nav->add(new NavItem('Settings', 'Website builder', '/settings/website', 'layout-grid', 64, ability: 'sites.admin', kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant]));
+        // MN2: the website's own pages, in the Website menu.
+        $nav->add(new NavItem('Settings', 'Blog', '/settings/website/blog', 'newspaper', 64, ability: 'sites.admin', kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant]));
+        $nav->add(new NavItem('Settings', 'Photos and videos', '/settings/website/media', 'camera', 64, ability: 'sites.admin', kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant]));
+        $nav->add(new NavItem('Settings', 'Communities', '/settings/website/areas', 'map', 64, ability: 'sites.admin', kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant]));
         $nav->add(new NavItem('Settings', 'My website', '/settings/my-website', 'layout-grid', 65, kinds: [UserKind::Agent]));
         $nav->add(new NavItem('Settings', 'AIlly assistant', '/settings/ailly', 'sparkles', 66, ability: 'sites.admin', kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant]));
         $nav->add(new NavItem('Websites and MLS', 'Websites', '/hq/sites', 'layout-grid', 12, ability: 'hq.sites.manage', kinds: [UserKind::HqStaff]));

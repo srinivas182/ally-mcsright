@@ -19,16 +19,16 @@ function menuFor(User $user): array
 }
 
 it('shows owners the dashboard, people and finance', function (): void {
-    expect(menuFor(User::factory()->owner()->create()))->toBe(['Dashboard', 'Game plan', "Today's 10", 'Tasks', 'Team chat', 'Leads', 'Inbox', 'Contacts', 'Appointments', 'Funnels', 'Reviews', 'Prospector', 'Referral network', 'Database', 'Outreach', 'Listings', 'Buyer demand', 'CMA and estimates', 'List-IQ', 'Movewise', 'Ally Studio', 'Postcards', 'Social posts', 'Ads', 'Marketing check', 'Deals', 'Review queue', 'Risk', 'Policies', 'Numbers', 'Reports', 'People', 'Directory', 'Roster and compliance', 'Recruiting', 'Agent database', 'Keeping agents', 'Learn', 'Agent activity', 'Money received', 'Payouts', 'Agent billing', 'Tax (1099)', 'Trust reconciliation', 'Chart of accounts', 'Journals', 'Adjustments', 'Month-end close', 'Books (QuickBooks, Xero)', 'Bills', 'Invoices', 'Bank reconciliation', 'Profit and loss', 'Audit pack', 'Plans', 'Fees', 'Credits', 'Simulator', 'Revenue share', 'Profitability', 'Apps', 'Licences', 'Website', 'Switch to RightAlly', 'AIlly assistant', 'Guided setup', 'MLS', 'Bring your old files', 'My availability', 'Ready-made library', 'Agent plans', 'RightAlly credits', 'Billing', 'Partner earnings', 'Refer a brokerage', 'Referral network', 'Transactions', 'Brand voice', 'Forms', 'AI blog writer', 'Automations', 'Custom fields', 'Roles', 'Access review', 'Features and seats', 'Outside services', 'Approvals', 'Offices and teams', 'Support access', 'Privacy requests', 'Fair Housing', 'Audit log', 'Help']);
+    expect(menuFor(User::factory()->owner()->create()))->toBe(['Dashboard', "Today's 10", 'Game plan', 'Tasks', 'Team chat', 'Leads', 'Contacts', 'Inbox', 'Appointments', 'Campaigns', 'Movewise leads', 'Automations', 'Prospector', 'Database health', 'Referral network', 'MLS search', 'My listings', 'CMA and estimates', 'Buyer demand', 'List-IQ', 'All transactions', 'Compliance review', 'Risk', 'Checklists', 'Forms and e-sign', 'Vendors', 'Money coming in', 'Playbooks', 'Bring over old files', 'Policies', 'Transaction settings', 'Ally Studio', 'Social posts', 'Ads', 'Postcards', 'Funnels', 'Reviews', 'Marketing check', 'Brand voice', 'Website builder', 'Blog', 'AI blog writer', 'Photos and videos', 'Communities', 'Website assistant', 'MLS / IDX', 'People', 'Licences and onboarding', 'Recruiting', 'Agent database', 'Retention', 'Agent activity', 'Training', 'Directory', 'Commission plans', 'Revenue share', 'Fees', 'Credits', 'Simulator', 'Payouts', 'Money received', 'Agent billing', 'Invoices', 'Bills', 'Chart of accounts', 'Journals', 'Adjustments', 'Bank reconciliation', 'Month-end close', 'Books (QuickBooks, Xero)', 'Trust reconciliation', 'Tax (1099)', 'Profit and loss', 'Audit pack', 'Numbers', 'Reports', 'Profitability', 'Licences', 'Offices and teams', 'Roles', 'Features and seats', 'Custom fields', 'Referral network settings', 'Billing', 'RightAlly credits', 'Agent plans', 'Partner earnings', 'Refer a brokerage', 'Fair Housing', 'Privacy requests', 'Approvals', 'Access review', 'Audit log', 'Support access', 'Apps', 'Outside services', 'Guided setup', 'Switch to RightAlly', 'Bring your old files', 'Ready-made library', 'My availability', 'Help']);
 });
 
 it('shows agents only their own pages', function (): void {
-    expect(menuFor(User::factory()->create()))->toBe(['Today', 'Game plan', "Today's 10", 'Tasks', 'Team chat', 'Leads', 'Inbox', 'Contacts', 'Appointments', 'Funnels', 'Reviews', 'Prospector', 'Referral network', 'Database', 'Outreach', 'Listings', 'Buyer demand', 'CMA and estimates', 'List-IQ', 'Movewise', 'Ally Studio', 'Postcards', 'Social posts', 'Ads', 'Marketing check', 'Deals', 'Policies', 'My plan', 'My money', 'Revenue share', 'My numbers', 'Reports', 'Business planner', 'Directory', 'Learn', 'My licences and onboarding', 'Refer an agent', 'Apps', 'My website', 'My availability', 'RightAlly credits', 'AI blog writer', 'My assistants', 'Help'])
-        ->and(menuFor(User::factory()->assistantOf(User::factory()->create())->create()))->toBe(['Today', "Today's 10", 'Tasks', 'Team chat', 'Inbox', 'Contacts', 'Outreach', 'Listings', 'Deals', 'Policies', 'Learn', 'Help']);
+    expect(menuFor(User::factory()->create()))->toBe(['Today', "Today's 10", 'Game plan', 'Tasks', 'Team chat', 'Leads', 'Contacts', 'Inbox', 'Appointments', 'Campaigns', 'Movewise leads', 'Prospector', 'Database health', 'Referral network', 'MLS search', 'My listings', 'CMA and estimates', 'Buyer demand', 'List-IQ', 'My transactions', 'Vendors', 'Money coming in', 'Playbooks', 'Ally Studio', 'Social posts', 'Ads', 'Postcards', 'Funnels', 'Reviews', 'Marketing check', 'AI blog writer', 'My website', 'My money', 'My plan', 'Revenue share', 'Refer an agent', 'My numbers', 'Reports', 'Business planner', 'Training', 'My licences and onboarding', 'Policies', 'Directory', 'RightAlly credits', 'Apps', 'My availability', 'My assistants', 'Help'])
+        ->and(menuFor(User::factory()->assistantOf(User::factory()->create())->create()))->toBe(['Today', "Today's 10", 'Tasks', 'Team chat', 'Contacts', 'Inbox', 'Campaigns', 'MLS search', 'My transactions', 'Training', 'Policies', 'Help']);
 });
 
 it('shows staff the dashboard but not owner-only pages', function (): void {
-    expect(menuFor(User::factory()->staff()->create()))->toBe(['Dashboard', "Today's 10", 'Tasks', 'Team chat', 'Leads', 'Inbox', 'Contacts', 'Funnels', 'Reviews', 'Outreach', 'Listings', 'Buyer demand', 'Ally Studio', 'Postcards', 'Social posts', 'Ads', 'Marketing check', 'Deals', 'Review queue', 'Risk', 'Policies', 'Numbers', 'Reports', 'Directory', 'Roster and compliance', 'Learn', 'Agent activity', 'Apps', 'Website', 'Switch to RightAlly', 'AIlly assistant', 'My availability', 'Ready-made library', 'RightAlly credits', 'Transactions', 'Forms', 'AI blog writer', 'Automations', 'Custom fields', 'Approvals', 'Help']);
+    expect(menuFor(User::factory()->staff()->create()))->toBe(['Dashboard', "Today's 10", 'Tasks', 'Team chat', 'Leads', 'Contacts', 'Inbox', 'Campaigns', 'Automations', 'MLS search', 'My listings', 'Buyer demand', 'All transactions', 'Compliance review', 'Risk', 'Checklists', 'Forms and e-sign', 'Vendors', 'Money coming in', 'Playbooks', 'Bring over old files', 'Policies', 'Transaction settings', 'Ally Studio', 'Social posts', 'Ads', 'Postcards', 'Funnels', 'Reviews', 'Marketing check', 'Website builder', 'Blog', 'AI blog writer', 'Photos and videos', 'Communities', 'Website assistant', 'Licences and onboarding', 'Agent activity', 'Training', 'Directory', 'Numbers', 'Reports', 'Custom fields', 'RightAlly credits', 'Approvals', 'Apps', 'Switch to RightAlly', 'Ready-made library', 'My availability', 'Help']);
 });
 
 it('shows HQ staff the HQ console and people', function (): void {
@@ -58,10 +58,10 @@ it('lets modules add items, grouped and ordered', function (): void {
 
     $groups = app(NavigationRegistry::class)->for(User::factory()->create());
 
-    // UX1: a brokerage's menu is grouped into plain main menus; an item a module adds to its own group keeps that group.
-    expect(array_column($groups, 'label'))->toBe(['Home', 'Leads and clients', 'Listings', 'Marketing', 'Deals', 'Money', 'Reports', 'Team', 'Grow', 'Settings'])
+    // MN3: a brokerage's menu is its main menus; a page not placed yet goes to Settings › More, so nothing disappears.
+    expect(array_column($groups, 'label'))->toBe(['Dashboard', 'CRM', 'Listings', 'Transactions', 'Marketing', 'My commissions', 'Reports', 'Training', 'Settings'])
         ->and($groups[1]['items'][0]['title'])->toBe('Leads')
-        ->and($groups[8]['items'][0]['title'])->toBe('Open houses');
+        ->and(end($groups)['items'])->toContain(['title' => 'Open houses', 'href' => '/open-houses', 'icon' => 'users', 'mobile' => false, 'section' => 'More']);
 });
 
 it('shares the brokerage name and the menu with every page', function (): void {
@@ -70,7 +70,8 @@ it('shares the brokerage name and the menu with every page', function (): void {
     $this->actingAs($owner)->get('/users')->assertInertia(fn (Assert $page) => $page
         ->where('tenant.name', $this->hostTenant?->name)
         ->where('tenant.isHq', false)
-        ->where('navigation.0.label', 'Home')
+        ->where('navigation.0.label', 'Dashboard')
+        ->where('navigation.0.key', 'Dashboard')
         ->where('navigation.0.items.0.href', '/dashboard'));
 });
 

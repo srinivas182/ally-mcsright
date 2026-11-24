@@ -19,9 +19,12 @@ export type ServerNavItem = {
     href: string;
     icon: string;
     mobile: boolean;
+    /** MN3: a section inside a main menu (Accounting, Settings). */
+    section?: string;
 };
 
-export type NavGroup = { label: string; items: ServerNavItem[] };
+/** `key` is the menu's English name (guides and icons use it); `label` may be translated. */
+export type NavGroup = { key?: string; label: string; items: ServerNavItem[] };
 
 export type TenantInfo = {
     name: string;

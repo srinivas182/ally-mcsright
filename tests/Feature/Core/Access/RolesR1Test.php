@@ -111,7 +111,7 @@ it('previews the menu and hidden fields for a role before saving', function (): 
     $this->actingAs($this->owner)->postJson('/settings/roles/preview-as', ['permissions' => ['sites.manage' => null, 'crm.contacts.view' => 'team']])
         ->assertOk()
         ->assertJson(fn ($json) => $json
-            ->where('menu', fn ($menu) => collect($menu)->flatMap(fn ($g) => $g['items'])->contains('Website')
+            ->where('menu', fn ($menu) => collect($menu)->flatMap(fn ($g) => $g['items'])->contains('Website builder')
                 && ! collect($menu)->flatMap(fn ($g) => $g['items'])->contains('Roles'))
             ->where('hidden', fn ($h) => collect($h)->contains('Commission amounts and earnings'))
             ->etc());
