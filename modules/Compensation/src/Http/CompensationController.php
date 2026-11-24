@@ -46,7 +46,8 @@ final class CompensationController
         $user = $this->can($request, 'compensation.plans.view');
 
         return Inertia::render('compensation/plans', [
-            'plans' => Plan::query()->with('versions')->orderByDesc('is_default')->orderBy('name')->get()->map(fn (Plan $p): array => [
+            // CM1: onboarding plans are gone (archived); only commission plans are shown.
+            'plans' => Plan::query()->where('type', PlanType::Commission)->with('versions')->orderByDesc('is_default')->orderBy('name')->get()->map(fn (Plan $p): array => [
                 'ulid' => $p->ulid, 'name' => $p->name, 'type' => $p->type->value, 'default' => $p->is_default, 'status' => $p->status->value, 'description' => $p->description,
                 'agents' => PlanAssignment::query()->where('plan_id', $p->id)->whereNull('effective_to')->count(),
                 'versions' => $p->versions->sortByDesc('version')->map(fn (PlanVersion $v): array => [
@@ -76,9 +77,9 @@ final class CompensationController
     public function store(Request $request): RedirectResponse
     {
         $user = $this->can($request, 'compensation.plans.manage');
-        $data = $request->validate(['name' => ['required', 'string', 'max:80'], 'type' => ['required', Rule::enum(PlanType::class)], 'rules' => ['required', 'array'], 'description' => ['nullable', 'string', 'max:300']]);
+        $data = $request->validate(['name' => ['required', 'string', 'max:80'], 'type' => ['nullable', Rule::in([PlanType::Commission->value])], 'rules' => ['required', 'array'], 'description' => ['nullable', 'string', 'max:300']]);
 
-        return $this->attempt(fn () => $this->plans->create(PlanType::from($data['type']), $data['name'], $data['rules'], $user->id, $data['description'] ?? null), 'Plan saved as a draft.');
+        return $this->attempt(fn () => $this->plans->create(PlanType::Commission, $data['name'], $data['rules'], $user->id, $data['description'] ?? null), 'Plan saved as a draft.');
     }
 
     public function saveDraft(Request $request, Plan $plan): RedirectResponse

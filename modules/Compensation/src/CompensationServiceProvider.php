@@ -12,6 +12,7 @@ use Modules\Compensation\Actions\ManagePlans;
 use Modules\Compensation\Calculator\CommissionCalculator;
 use Modules\Compensation\Console\CheckCapPeriods;
 use Modules\Compensation\Events\PlansChanged;
+use Modules\Compensation\Ranks\Ranks;
 use Modules\Core\Access\PermissionRegistry;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Identity\Events\UserActivated;
@@ -27,6 +28,7 @@ final class CompensationServiceProvider extends ServiceProvider
         $this->app->scoped(PlanResolver::class);
         $this->app->singleton(CommissionCalculator::class);
         $this->app->scoped(CapPeriods::class);
+        $this->app->scoped(Ranks::class);
         $this->app->scoped(CommissionService::class);
     }
 
@@ -54,6 +56,8 @@ final class CompensationServiceProvider extends ServiceProvider
         $nav->add(new NavItem('Overview', 'My plan', '/my-plan', 'badge-dollar-sign', 30, kinds: [UserKind::Agent], mobile: true));
         $nav->add(new NavItem('Overview', 'Revenue share', '/revenue-share', 'network', 35, kinds: [UserKind::Agent]));
         $nav->add(new NavItem('Compensation', 'Revenue share', '/compensation/revenue-share', 'network', 45, ability: 'compensation.calculations.manage'));
+        $nav->add(new NavItem('Compensation', 'Ranks', '/compensation/ranks', 'award', 46, ability: 'compensation.plans.view'));
+        $nav->add(new NavItem('Compensation', 'Network tree', '/compensation/network', 'git-fork', 47, ability: 'compensation.plans.view'));
 
         // Plan changes recalculate pending deals automatically (best-in-class review, addition 7).
         // Revenue share attribution and vesting follow people joining and leaving.

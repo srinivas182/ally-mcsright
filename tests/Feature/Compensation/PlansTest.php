@@ -34,27 +34,22 @@ function publishedPlan(array $rules = SPLIT_80, string $from = '2026-01-01', str
     return $plan->fresh();
 }
 
-it('has onboarding and commission plans, each with valid rules (legacy rule 1)', function (): void {
-    $onboarding = $this->plans->create(PlanType::Onboarding, 'Joining fees', ['fees' => [
+it('has commission plans only, each with valid rules (CM1: onboarding plans are gone)', function (): void {
+    expect(fn () => $this->plans->create(PlanType::Onboarding, 'Joining fees', ['fees' => [
         ['code' => 'joining_fee', 'name' => 'Joining fee', 'calc' => 'flat', 'amount' => 25_000, 'payable_to' => 'brokerage'],
-    ]]);
-
-    expect($onboarding->type)->toBe(PlanType::Onboarding)
-        ->and(fn () => $this->plans->create(PlanType::Onboarding, 'Bad', SPLIT_80))->toThrow(ValidationException::class)
+    ]]))->toThrow(ValidationException::class, 'Fees')
         ->and(fn () => $this->plans->create(PlanType::Commission, 'Bad', ['fees' => []]))->toThrow(ValidationException::class);
 });
 
 it('keeps exactly one default commission plan (legacy rule 2)', function (): void {
     $a = publishedPlan(name: 'A');
     $b = publishedPlan(SPLIT_90, name: 'B');
-    $onboarding = $this->plans->create(PlanType::Onboarding, 'Joining', ['fees' => []]);
     $unpublished = $this->plans->create(PlanType::Commission, 'Draft only', SPLIT_80);
 
     $this->plans->setDefault($a);
     $this->plans->setDefault($b);
 
     expect(Plan::query()->where('is_default', true)->pluck('name')->all())->toBe(['B'])
-        ->and(fn () => $this->plans->setDefault($onboarding))->toThrow(ValidationException::class)
         ->and(fn () => $this->plans->setDefault($unpublished))->toThrow(ValidationException::class)
         ->and(fn () => $this->plans->archive($b->fresh()))->toThrow(ValidationException::class);
 });

@@ -27,6 +27,14 @@ type Props = {
         needed?: number | null;
         monthly_estimate_cents?: number;
     } | null;
+    /** CM1: the agent's rank and what the next one needs (null when the brokerage has no ranks). */
+    rank?: {
+        name: string | null;
+        next: string | null;
+        needs: string[];
+        closings: number;
+        recruits: number;
+    } | null;
     network: Node[];
     statement: {
         date: string;
@@ -102,6 +110,7 @@ export default function RevenueShare({
     wallet_cents,
     year_cents,
     coaching,
+    rank = null,
     network,
     statement,
     missed,
@@ -139,6 +148,34 @@ export default function RevenueShare({
                         </p>
                     </div>
                 </section>
+                {rank && (
+                    <section
+                        aria-label="Your rank"
+                        className="rounded-lg border p-4 text-base"
+                    >
+                        <p>
+                            Your rank:{' '}
+                            <span className="font-semibold">
+                                {rank.name ?? 'Not ranked yet'}
+                            </span>
+                            <span className="text-sm text-muted-foreground">
+                                {' '}
+                                ({rank.closings} closed in the last year,{' '}
+                                {rank.recruits} active{' '}
+                                {rank.recruits === 1 ? 'recruit' : 'recruits'})
+                            </span>
+                        </p>
+                        {rank.next && rank.needs.length > 0 && (
+                            <p className="mt-1">
+                                To reach{' '}
+                                <span className="font-semibold">
+                                    {rank.next}
+                                </span>
+                                : {rank.needs.join(', and ')}.
+                            </p>
+                        )}
+                    </section>
+                )}
                 {coaching && !coaching.all_open && (
                     <section className="rounded-lg border border-primary/40 bg-primary/5 p-4 text-sm">
                         <p className="font-medium">

@@ -644,10 +644,10 @@ const OWNER: Record<string, Guide> = {
 
     Commissions: {
         title: 'Pay agents right, on time',
-        intro: 'Set up how each agent is paid, from simple splits to caps, fees and revenue share, then pay everyone correctly when a deal closes. Agents see the same numbers you do.',
+        intro: 'Set up how each agent is paid, from simple splits to caps, fees, ranks and revenue share, then pay everyone correctly when a deal closes. Agents see the same numbers you do.',
         start: [
-            'Create your commission plans in the Commission plans tab.',
-            'Give each agent a plan.',
+            'Create your commission plans in the Commission plans tab, and give each agent a plan.',
+            'Set up your ranks so agents can move up by what they close and who they bring in.',
             'When a deal closes, check the payout and press Pay.',
         ],
         lessons: [
@@ -665,6 +665,40 @@ const OWNER: Record<string, Guide> = {
                 try: {
                     label: 'Open Commission plans',
                     href: '/compensation/plans',
+                },
+            },
+            {
+                id: 'ranks',
+                title: 'Ranks: let agents move up',
+                why: 'Agents earn a higher rank by what they close and the agents they bring in.',
+                steps: [
+                    'Open the Ranks tab.',
+                    'Press "Start from suggested ranks", then change the names and numbers to fit your brokerage.',
+                    'For each rank, set what it takes (closed deals or GCI, and recruits who closed a deal) and what it gives (revenue-share levels, and a better commission plan if you like).',
+                    'Press "Save ranks". Each agent\'s rank and what they still need appear at the bottom of the page.',
+                    'When an agent reaches a rank with a better plan, they appear under "Ready to move up". Press "Move to" when you agree. Nothing changes by itself.',
+                ],
+                tips: [
+                    'Agents see their own rank and what the next one needs on their Revenue share page, which keeps them motivated.',
+                ],
+                try: { label: 'Open Ranks', href: '/compensation/ranks' },
+            },
+            {
+                id: 'network',
+                title: 'Your network tree',
+                why: "See who brought in whom, with each agent's rank, deals and team size.",
+                steps: [
+                    'Open the Network tree tab.',
+                    'People who joined on their own are at the top; the agents they brought in sit below them.',
+                    'Press the arrow next to a name to open their team, or type a name to find someone.',
+                    'To correct who brought someone in, press "Change who brought them in", choose the person and write why. It applies from today.',
+                ],
+                tips: [
+                    'Revenue share follows this tree, level by level. Deals already closed keep the revenue share they paid.',
+                ],
+                try: {
+                    label: 'Open the Network tree',
+                    href: '/compensation/network',
                 },
             },
             {

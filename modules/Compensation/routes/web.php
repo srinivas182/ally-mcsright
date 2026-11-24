@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use Modules\Compensation\Http\CompensationController;
+use Modules\Compensation\Http\RanksController;
 use Modules\Compensation\Http\RevenueShareController;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
 
@@ -25,6 +26,11 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function
         Route::post('simulate', [CompensationController::class, 'simulate'])->middleware('throttle:60,1')->name('simulate');
         Route::get('profitability', [CompensationController::class, 'profitability'])->name('profitability');
         Route::post('what-if', [CompensationController::class, 'whatIf'])->middleware('throttle:20,1')->name('what-if');
+        // CM1: ranks and the network tree.
+        Route::get('ranks', [RanksController::class, 'index'])->name('ranks');
+        Route::post('ranks', [RanksController::class, 'save'])->name('ranks.save');
+        Route::get('network', [RanksController::class, 'network'])->name('network');
+        Route::post('network/{user:ulid}/sponsor', [RanksController::class, 'sponsor'])->middleware(['password.confirm', 'throttle:20,1'])->name('network.sponsor');
     });
     Route::get('my-plan', [CompensationController::class, 'myPlan'])->name('compensation.my-plan');
 

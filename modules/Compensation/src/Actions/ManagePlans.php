@@ -17,7 +17,6 @@ use Modules\Compensation\Models\Plan;
 use Modules\Compensation\Models\PlanAssignment;
 use Modules\Compensation\Models\PlanVersion;
 use Modules\Compensation\Rules\CommissionRules;
-use Modules\Compensation\Rules\Deduction;
 
 /**
  * Plans, versions, the default plan and assignments (specs/compensation/01; legacy rules 1–5).
@@ -193,22 +192,12 @@ final class ManagePlans
      */
     private function validateRules(PlanType $type, array $rules): void
     {
+        // CM1: onboarding plans are gone; joining, monthly and annual fees are set up under Fees.
+        if ($type !== PlanType::Commission) {
+            throw ValidationException::withMessages(['type' => ['Plans are commission plans. Set up joining and monthly fees under Commissions › Fees.']]);
+        }
         try {
-            if ($type === PlanType::Commission) {
-                CommissionRules::fromArray($rules);
-
-                return;
-            }
-
-            // Onboarding plans hold fees (joining, monthly, annual), billed by Finance.
-            $errors = [];
-            foreach (array_diff(array_keys($rules), ['fees']) as $unknown) {
-                $errors[(string) $unknown] = 'Unknown rule for an onboarding plan.';
-            }
-            Deduction::parseList($rules['fees'] ?? [], 'fees', $errors);
-            if ($errors !== []) {
-                throw new InvalidRules($errors);
-            }
+            CommissionRules::fromArray($rules);
         } catch (InvalidRules $e) {
             throw ValidationException::withMessages(array_map(fn (string $m): array => [$m], $e->errors));
         }

@@ -40,7 +40,7 @@ final class NavigationRegistry
         'Website & IDX' => ['' => ['/settings/website', '/settings/my-website', '/settings/website/blog', '/settings/blog-writer', '/settings/website/media', '/settings/website/areas',
             '/settings/ailly', '/settings/mls']],
         'Agents' => ['' => ['/users', '/roster', '/recruiting', '/recruiting/agents', '/recruiting/retention', '/engage/activity', '/learn', '/directory']],
-        'Commissions' => ['' => ['/compensation/plans', '/compensation/revenue-share', '/compensation/fees', '/compensation/credits', '/compensation/simulator', '/finance/payouts']],
+        'Commissions' => ['' => ['/compensation/plans', '/compensation/ranks', '/compensation/network', '/compensation/revenue-share', '/finance/payouts', '/compensation/fees', '/compensation/simulator', '/compensation/credits']],
         'My commissions' => ['' => ['/my-money', '/my-plan', '/revenue-share', '/plans', '/recruiting/refer']],
         'Accounting' => [
             'Money in and out' => ['/finance/receipts', '/finance/agent-billing', '/finance/invoices', '/finance/bills'],
