@@ -16,7 +16,7 @@ use Modules\Core\Http\Middleware\ConfirmPasswordInline;
 use Modules\Core\Http\Middleware\EnsureHqConsole;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
 use Modules\Core\Http\Middleware\SecurityHeaders;
-use Modules\Core\Http\Middleware\ThrottlePerRoute;
+use Modules\Core\Http\Middleware\ThrottleRequestsPerRoute;
 use Modules\Core\Http\Middleware\TrustLoadBalancer;
 use Modules\Core\Identity\Http\Middleware\EnsureSecondFactor;
 use Modules\Core\Identity\Http\Middleware\EnsureTenantHost;
@@ -67,7 +67,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         // UX1: 'password.confirm' opens a password check over the page instead of losing what was typed.
-        $middleware->alias(['tenant' => ResolveTenant::class, 'password.confirm' => ConfirmPasswordInline::class, 'throttle' => ThrottlePerRoute::class]); // EM4: each route counts its own tries
+        $middleware->alias(['tenant' => ResolveTenant::class, 'password.confirm' => ConfirmPasswordInline::class, 'throttle' => ThrottleRequestsPerRoute::class]); // EM4: each route counts its own tries
 
         // "Does this page exist on this host?" runs before "are you signed in?", so HQ and
         // back-office pages return a neutral 404 on other hosts instead of a login redirect.

@@ -38,7 +38,7 @@ use Modules\AI\Providers\ProviderRegistry;
 use Modules\Billing\Credits\CreditLedger;
 use Modules\Connect\AppRegistry;
 use Modules\Core\Connect\AppCatalog;
-use Modules\Core\Http\Middleware\ThrottlePerRoute;
+use Modules\Core\Http\Middleware\ThrottleRequestsPerRoute;
 use Modules\Core\Identity\Enums\UserStatus;
 use Modules\Core\Support\Connections;
 use Modules\Listings\Access\MlsAccess;
@@ -255,7 +255,7 @@ it('keeps the video and gives the narration back when the voice service fails', 
 
 it('makes an agent\'s own voice only with their signed and spoken consent, uses it only for them, and deletes it on request', function (): void {
     $reel = voiceReady($this);
-    $this->withoutMiddleware([ThrottleRequests::class, ThrottlePerRoute::class]); // this test makes many attempts on purpose
+    $this->withoutMiddleware([ThrottleRequests::class, ThrottleRequestsPerRoute::class]); // this test makes many attempts on purpose
     $this->actingAs($this->jane)->get('/studio/voice')->assertInertia(fn (Assert $p) => $p->component('studio/voice')->where('own', null)
         ->where('consent', fn ($c): bool => str_starts_with((string) $c, 'I, Jane Agent, agree') && str_contains((string) $c, '12 months')));
     $clip = fn (): UploadedFile => UploadedFile::fake()->create('voice.webm', 300, 'audio/webm');

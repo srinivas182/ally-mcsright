@@ -12,7 +12,7 @@ use Illuminate\Routing\Middleware\ThrottleRequests;
  * together for a person (or an address), so a few ordinary saves could use up a small limit elsewhere and show "Too
  * many tries" on a first click. Each route now keeps its own count; routes that give their own name keep it as before.
  */
-final class ThrottlePerRoute extends ThrottleRequests
+final class ThrottleRequestsPerRoute extends ThrottleRequests
 {
     /**
      * @param  Request  $request
