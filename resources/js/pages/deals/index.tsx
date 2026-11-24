@@ -446,7 +446,7 @@ export default function Deals({
                                             <td className="px-4 py-3">
                                                 {d.closing_date
                                                     ? new Date(
-                                                          d.closing_date,
+                                                          `${d.closing_date}T00:00:00`,
                                                       ).toLocaleDateString()
                                                     : '—'}
                                             </td>
