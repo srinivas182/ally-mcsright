@@ -29,6 +29,7 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('help')
     Route::get('guides/videos', [HelpController::class, 'guideVideos'])->name('guides.videos'); // MN3
     Route::post('guides/seen', [HelpController::class, 'guideSeen'])->middleware('throttle:60,1')->name('guides.seen'); // MN3
     Route::post('callback', [HelpController::class, 'callback'])->middleware('throttle:3,60')->name('callback');
+    Route::post('switch-on', [HelpController::class, 'switchOn'])->middleware('throttle:10,60')->name('switch-on'); // PG4
     Route::post('concierge', [HelpController::class, 'concierge'])->middleware('throttle:5,60')->name('concierge'); // SX6
     Route::get('{slug}/print', [HelpController::class, 'print'])->where('slug', '[a-z0-9-]{2,80}')->name('print');
     Route::post('requests/{ticket}/close', [HelpController::class, 'close'])->where('ticket', '[0-9A-HJKMNP-TV-Z]{26}')->name('close');

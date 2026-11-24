@@ -1,4 +1,6 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
+import { FeatureOff } from '@/components/feature-off/feature-off';
+import { Share2 } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -92,14 +94,21 @@ export default function Social({
                     description="Write once and post to your Facebook Pages, Instagram, LinkedIn and Google Business Profile, now or later."
                 />
 
-                {places.length === 0 ? (
+                {places.length === 0 && toConnect.length === 0 ? (
+                    <FeatureOff
+                        feature="social"
+                        icon={Share2}
+                        title="Social posting"
+                        does="Write once and post to your Facebook Pages, Instagram, LinkedIn and Google Business Profile, now or later."
+                        points={[
+                            'One post, every place you are seen',
+                            'Post now, or choose a day and time for later',
+                        ]}
+                    />
+                ) : places.length === 0 ? (
                     <EmptyState
                         title="Connect where you post"
-                        description={
-                            toConnect.length > 0
-                                ? 'Connect Facebook Pages and Instagram, LinkedIn or Google Business Profile to start.'
-                                : "Social posting isn't switched on yet. RightAlly support switches it on for your brokerage."
-                        }
+                        description="Connect Facebook Pages and Instagram, LinkedIn or Google Business Profile to start."
                     />
                 ) : (
                     <form

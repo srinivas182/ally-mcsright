@@ -1,4 +1,5 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Globe } from 'lucide-react';
 import { useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
@@ -62,10 +63,26 @@ export default function Funnels({
                     }
                 />
                 {!site_live && (
-                    <p className="rounded-lg border p-4">
-                        Funnels live on your brokerage website. Publish the
-                        website first under Settings → Website.
-                    </p>
+                    <section className="flex flex-wrap items-center gap-4 rounded-xl border bg-card p-5 shadow-xs">
+                        <span className="grid size-12 place-items-center rounded-xl bg-primary/10 text-primary">
+                            <Globe aria-hidden="true" className="size-6" />
+                        </span>
+                        <div className="grid flex-1 gap-1">
+                            <h2 className="font-semibold">
+                                First, publish your brokerage website
+                            </h2>
+                            <p className="text-muted-foreground">
+                                Funnels are pages on your brokerage website.
+                                Once it is live, you can make your first funnel
+                                here.
+                            </p>
+                        </div>
+                        <Button asChild>
+                            <Link href="/settings/website">
+                                Set up the website
+                            </Link>
+                        </Button>
+                    </section>
                 )}
                 {creating && site_live && (
                     <form

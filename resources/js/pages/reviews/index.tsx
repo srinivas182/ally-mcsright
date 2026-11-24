@@ -1,3 +1,4 @@
+import { Star } from 'lucide-react';
 import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 
@@ -180,7 +181,7 @@ export default function ReviewsPage({
     return (
         <>
             <Head title="Reviews" />
-            <div className="grid max-w-3xl gap-6 p-4 text-base">
+            <div className="mx-auto grid w-full max-w-4xl gap-6 p-4 text-base md:p-6">
                 <PageHeader
                     title={
                         brokerage ? "The brokerage's reviews" : 'Your reviews'
@@ -213,24 +214,24 @@ export default function ReviewsPage({
                         </Link>
                     )}
                 </div>
-                {!connected.includes('google_business') && (
-                    <p className="text-sm">
-                        <Link
-                            href="/apps/google_business"
-                            className="underline"
-                        >
-                            Connect Google Business Profile
-                        </Link>{' '}
-                        to bring in your Google reviews.
-                    </p>
-                )}
-                {!brokerage && !connected.includes('realsatisfied') && (
-                    <p className="text-sm">
-                        <Link href="/apps/realsatisfied" className="underline">
-                            Connect RealSatisfied
-                        </Link>{' '}
-                        to bring in your RealSatisfied reviews.
-                    </p>
+                {(!connected.includes('google_business') ||
+                    (!brokerage && !connected.includes('realsatisfied'))) && (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                        {!connected.includes('google_business') && (
+                            <ConnectCard
+                                href="/apps/google_business"
+                                name="Google Business Profile"
+                                does="Bring in your Google reviews and answer them from here."
+                            />
+                        )}
+                        {!brokerage && !connected.includes('realsatisfied') && (
+                            <ConnectCard
+                                href="/apps/realsatisfied"
+                                name="RealSatisfied"
+                                does="Bring in your RealSatisfied reviews from past clients."
+                            />
+                        )}
+                    </div>
                 )}
                 {reviews.length === 0 ? (
                     <EmptyState
@@ -251,5 +252,31 @@ export default function ReviewsPage({
                 )}
             </div>
         </>
+    );
+}
+
+/** A source of reviews not connected yet: what it brings and one button to connect it. */
+function ConnectCard({
+    href,
+    name,
+    does,
+}: {
+    href: string;
+    name: string;
+    does: string;
+}) {
+    return (
+        <div className="flex items-start gap-3 rounded-xl border bg-card p-4 shadow-xs">
+            <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                <Star aria-hidden="true" className="size-5" />
+            </span>
+            <div className="grid gap-2">
+                <p className="font-medium">{name}</p>
+                <p className="text-sm text-muted-foreground">{does}</p>
+                <Button size="sm" variant="outline" className="w-fit" asChild>
+                    <Link href={href}>Connect {name}</Link>
+                </Button>
+            </div>
+        </div>
     );
 }

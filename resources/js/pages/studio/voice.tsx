@@ -1,4 +1,6 @@
+import { FeatureOff } from '@/components/feature-off/feature-off';
 import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Mic } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -78,7 +80,24 @@ export default function StudioVoice({
         setRecording(false);
     };
 
-    if (!ready || !on) {
+    if (!on) {
+        return (
+            <div className="mx-auto grid w-full max-w-6xl gap-5 p-4 md:p-6">
+                <Head title="My voice" />
+                <FeatureOff
+                    feature="voice"
+                    icon={Mic}
+                    title="AI voice-overs"
+                    does="Your own voice, read by AI, on your Reels and home tours."
+                    points={[
+                        'Record a short sample of your voice',
+                        'Your Reels and home tours narrated in your voice',
+                    ]}
+                />
+            </div>
+        );
+    }
+    if (!ready) {
         return (
             <div className="p-4">
                 <Head title="My voice" />
