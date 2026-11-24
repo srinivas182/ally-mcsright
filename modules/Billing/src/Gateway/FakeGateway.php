@@ -75,7 +75,7 @@ final class FakeGateway implements PaymentGateway
 
     public function subscriptionCheckout(string $email, string $productName, int $unitCents, string $interval, string $successUrl, string $cancelUrl, array $metadata, bool $automaticTax): string
     {
-        $this->checkouts[] = compact('email', 'productName', 'unitCents', 'interval', 'metadata', 'automaticTax');
+        $this->checkouts[] = compact('email', 'productName', 'unitCents', 'interval', 'metadata', 'automaticTax', 'successUrl', 'cancelUrl');
 
         return 'https://checkout.example/session/'.count($this->checkouts);
     }

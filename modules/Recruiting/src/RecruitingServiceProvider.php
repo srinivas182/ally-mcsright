@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Modules\AI\FeatureCatalog;
 use Modules\AI\Support\PromptRegistry;
+use Modules\Billing\Events\AgentPlanStarted;
 use Modules\Core\Access\PermissionRegistry;
 use Modules\Core\Brief\DailyBriefs;
 use Modules\Core\Identity\Enums\UserKind;
@@ -30,6 +31,7 @@ final class RecruitingServiceProvider extends ServiceProvider
         $this->app->scoped(Referrals::class);
         $this->app->scoped(Retention::class);
         $this->app->scoped(Results::class);
+        $this->app->scoped(SelfJoin::class);
     }
 
     public function boot(): void
@@ -42,6 +44,8 @@ final class RecruitingServiceProvider extends ServiceProvider
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'recruiting');
         Event::listen(UserActivated::class, fn (UserActivated $e) => app(Joining::class)->activated($e));
+        // CM4: an agent who joined through a link and paid for their pack is placed under their sponsor.
+        Event::listen(AgentPlanStarted::class, fn (AgentPlanStarted $e) => app(SelfJoin::class)->paid($e));
         $this->app->make(PromptRegistry::class)->addPath(__DIR__.'/../prompts');
         $this->app->make(FeatureCatalog::class)->declare(Referrals::FEATURE, 'ai.recruit_note', 'Personal recruiting note draft for an agent to send');
         Event::listen(SmsKeywordReceived::class, fn (SmsKeywordReceived $e) => app(Campaigns::class)->keyword($e));
