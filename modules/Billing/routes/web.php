@@ -21,6 +21,7 @@ use Modules\Billing\Http\TryController;
 use Modules\Core\Http\Middleware\EnsureHqConsole;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
 use Modules\Core\Identity\Http\Middleware\EnsureTenantHost;
+use Modules\Roster\Http\BrokerageLicencesController;
 
 Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function (): void {
     Route::get('plans', [BillingController::class, 'plans'])->name('billing.plans');
@@ -104,6 +105,7 @@ Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.tenants.manage
     Route::post('signups/{signup}/resend', [HqSignupsController::class, 'resend'])->where('signup', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->middleware('throttle:20,1')->name('signups.resend'); // QW1
     Route::post('signups/{signup}/email', [HqSignupsController::class, 'email'])->where('signup', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->middleware(['password.confirm', 'throttle:20,1'])->name('signups.email'); // EM1
     Route::get('go-live', [GoLiveController::class, 'hq'])->name('go-live');
+    Route::post('tenants/{tenant}/licences/{licence}/checked', [BrokerageLicencesController::class, 'hqVerify'])->whereNumber('licence')->middleware('throttle:30,1')->name('tenants.licence-checked'); // LV2
     Route::post('tenants/{tenant}/assistant-limit', HqAssistantLimitController::class)->middleware('throttle:30,1')->name('tenants.assistant-limit'); // AO1
     Route::get('affiliates', [AffiliateController::class, 'hq'])->name('affiliates');
     Route::post('affiliates/rewards', [AffiliateController::class, 'saveRewards'])->middleware('password.confirm')->name('affiliates.rewards');

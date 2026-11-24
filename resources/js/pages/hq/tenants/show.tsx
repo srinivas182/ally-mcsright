@@ -89,9 +89,11 @@ export default function ShowTenant({
     redirects,
     billing,
     assistant,
+    licences,
 }: Props & {
     billing: { exception: boolean; reason: string | null };
     assistant: Allowance | null;
+    licences: HqLicence[];
 }) {
     const [action, setAction] = useState<Action>(null);
     const reasonForm = useForm({ reason: '' });
@@ -489,6 +491,9 @@ export default function ShowTenant({
                     onClose={() => setSupport(null)}
                 />
             )}
+            {licences.length > 0 && (
+                <Licences ulid={tenant.ulid} licences={licences} />
+            )}
             {assistant && (
                 <AssistantLimit ulid={tenant.ulid} allowance={assistant} />
             )}
@@ -608,6 +613,55 @@ function AssistantLimit({
                     </Button>
                 )}
             </form>
+        </section>
+    );
+}
+
+type HqLicence = {
+    id: number;
+    state: string;
+    number: string;
+    status: string;
+    expires_on: string | null;
+    hq_checked: boolean;
+    good: boolean;
+};
+
+/** LV2: the brokerage's licences; HQ marks one as checked by hand with the state (new licences, states without records). */
+function Licences({ ulid, licences }: { ulid: string; licences: HqLicence[] }) {
+    return (
+        <section className="mx-4 mb-6 grid max-w-xl gap-2 rounded-lg border p-4 text-sm md:mx-6">
+            <h2 className="font-semibold">Licences</h2>
+            {licences.map((l) => (
+                <div
+                    key={l.id}
+                    className="flex flex-wrap items-center justify-between gap-2"
+                >
+                    <span>
+                        {l.state} {l.number}: {l.status.replace('_', ' ')}
+                        {l.expires_on ? `, expires ${l.expires_on}` : ''}
+                        {l.hq_checked ? ', checked by HQ' : ''}
+                    </span>
+                    {!l.hq_checked &&
+                        ['unchecked', 'new', 'not_found'].includes(
+                            l.status,
+                        ) && (
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
+                                    router.post(
+                                        `/hq/tenants/${ulid}/licences/${l.id}/checked`,
+                                        {},
+                                        { preserveScroll: true },
+                                    )
+                                }
+                            >
+                                Mark as checked with the state
+                            </Button>
+                        )}
+                </div>
+            ))}
         </section>
     );
 }

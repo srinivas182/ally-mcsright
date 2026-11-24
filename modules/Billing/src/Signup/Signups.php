@@ -31,6 +31,7 @@ use Modules\Core\Tenancy\Slug;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Listings\Idx\Coverage;
 use Modules\Listings\Idx\Subscriptions;
+use Modules\Roster\Brokerage\BrokerageLicences;
 use Modules\Sites\SiteSetup;
 use Modules\Sites\Support\Designs;
 use stdClass;
@@ -100,10 +101,10 @@ final class Signups
             'status' => 'draft', 'step' => max(3, (int) $row->step), 'updated_at' => now()]);
     }
 
-    /** LV1: the licences given at sign-up as the website shows them ("TX 0123456"); test licences are left out. */
+    /** LV1: the licences given at sign-up as the website shows them ("TX 0123456"): active ones (and ones HQ is checking). */
     public static function licenceLine(stdClass $signup): string
     {
-        return collect((array) json_decode((string) ($signup->licences ?? '[]'), true))->reject(fn ($l): bool => ! is_array($l) || ($l['status'] ?? '') === 'test')
+        return collect((array) json_decode((string) ($signup->licences ?? '[]'), true))->filter(fn ($l): bool => is_array($l) && in_array($l['status'] ?? '', ['active', 'unchecked'], true))
             ->map(fn (array $l): string => $l['state'].' '.$l['number'])->implode(', ');
     }
 
@@ -274,13 +275,23 @@ final class Signups
             app(ManageInvitations::class)->invite((string) $signup->owner_email, $first, $last, UserKind::Owner, null);
         });
         app(GoLive::class)->start($tenant);
+        // LV2: the licences become the brokerage's own (Settings › Licences); without a good one the website waits.
+        $licences = array_values(array_filter((array) json_decode((string) ($signup->licences ?? '[]'), true), 'is_array'));
+        $holdWebsite = $licences !== [] && array_filter($licences, [LicenceCheck::class, 'allowsBoards']) === [];
+        if ($licences !== [] && class_exists(BrokerageLicences::class)) {
+            $this->tenants->runAs($tenant, function () use ($licences, $signup): void {
+                foreach ($licences as $l) {
+                    app(BrokerageLicences::class)->save((string) $l['state'], (string) $l['number'], (string) $signup->owner_name, (string) $l['status'], isset($l['expires_on']) ? (string) $l['expires_on'] : null);
+                }
+            });
+        }
         // SU2: the website goes live at once in the design chosen while signing up (sample listings until a board is approved).
         if (class_exists(SiteSetup::class)) {
             try {
                 $this->tenants->runAs($tenant, fn () => app(SiteSetup::class)->launch((string) ($signup->template ?? 'modern'),
                     ['name' => (string) $signup->brokerage, 'email' => (string) $signup->owner_email, 'licence' => self::licenceLine($signup), 'phone' => (string) ($signup->phone ?? ''),
                         'area' => self::marketArea((string) ($signup->idx_boards ?? '[]'), $signup->state),
-                        'state' => self::marketState((string) ($signup->idx_boards ?? '[]'), $signup->state)])); // TP2: its Explore cities
+                        'state' => self::marketState((string) ($signup->idx_boards ?? '[]'), $signup->state)], $holdWebsite ? 'draft' : 'live')); // TP2: its Explore cities; LV2: "coming soon" without a good licence
             } catch (Throwable $e) {
                 report($e); // the owner can still create it from Settings › Website
             }

@@ -82,6 +82,7 @@ it('shows agents the boards their brokerage has, read-only, on My website', func
     $this->db->table('idx_boards')->where('code', 'HAR')->update(['visibility' => 'public', 'main_connector' => 'repliers', 'main_cost_cents' => 4_000]);
     $this->db->table('idx_states')->where('code', 'TX')->update(['enabled' => true]);
     $har = (string) $this->db->table('idx_boards')->where('code', 'HAR')->value('ulid');
+    giveLicence(Tenant::query()->where('slug', 'acme')->sole());
     $this->actingAs($this->owner)->post('http://acme.rightally.app/settings/mls/boards', ['board' => $har])->assertSessionHasNoErrors();
 
     $agent = app(TenantContext::class)->runAs($this->acme, fn () => User::factory()->create());

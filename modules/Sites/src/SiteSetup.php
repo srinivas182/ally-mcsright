@@ -14,6 +14,7 @@ use Modules\Core\Tenancy\Enums\SslStatus;
 use Modules\Core\Tenancy\Enums\VerificationStatus;
 use Modules\Core\Tenancy\Models\TenantDomain;
 use Modules\Core\Tenancy\TenantContext;
+use Modules\Roster\Brokerage\BrokerageLicences;
 use Modules\Sites\Content\StarterSite;
 use Modules\Sites\Models\Site;
 use Modules\Sites\Models\SitePage;
@@ -64,9 +65,9 @@ final class SiteSetup
      *
      * @param  array<string, mixed>  $info
      */
-    public function launch(string $template, array $info): Site
+    public function launch(string $template, array $info, string $status = 'live'): Site
     {
-        return $this->build(array_key_exists($template, (array) config('sites.templates')) ? $template : 'modern', $info, null, 'live');
+        return $this->build(array_key_exists($template, (array) config('sites.templates')) ? $template : 'modern', $info, null, $status === 'draft' ? 'draft' : 'live');
     }
 
     /** @param  array<string, mixed>  $info */
@@ -170,6 +171,10 @@ final class SiteSetup
     public function publish(Site $site, bool $live, User $by): void
     {
         self::guard($by);
+        // LV2: a brokerage that keeps its licences here needs one active licence before its website is public.
+        if ($live && class_exists(BrokerageLicences::class) && ! app(BrokerageLicences::class)->mayPublish()) {
+            throw ValidationException::withMessages(['status' => 'Your website can go live once one of your licences is active. Add or renew it in Settings › Licences; if the state has not updated its records yet, contact us and we will check it.']);
+        }
         $this->publicHosts = [];
         $site->forceFill(['status' => $live ? 'live' : 'draft', 'published_at' => $live ? ($site->published_at ?? CarbonImmutable::now()) : $site->published_at])->save();
         app(AuditLogger::class)->record($live ? 'sites.published' : 'sites.unpublished', $site, severity: 'notice');

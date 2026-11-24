@@ -44,6 +44,7 @@ beforeEach(function (): void {
     $this->artisan('tenants:bootstrap-hq');
     $this->staff = app(TenantContext::class)->runAs(Tenant::query()->where('type', 'hq')->sole(), fn () => User::factory()->hqStaff()->create());
     $this->acme = Tenant::factory()->withPlatformDomain()->create(['slug' => 'acme', 'name' => 'Acme Realty']);
+    giveLicence($this->acme); // LV2: boards need an active licence in their state
     TenantDomain::query()->create(['tenant_id' => $this->acme->id, 'host' => 'acme.rightally.site', 'kind' => DomainKind::Platform, 'is_primary' => false,
         'verification_status' => VerificationStatus::Verified, 'ssl_status' => SslStatus::Active, 'purpose' => 'website']);
     $this->owner = app(TenantContext::class)->runAs($this->acme, fn () => User::factory()->owner()->create(['email' => 'owner@acme.test', 'first_name' => 'Pat', 'last_name' => 'Owner']));

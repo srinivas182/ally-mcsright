@@ -25,7 +25,7 @@
 @if (! empty($allStates))
 <div id="idx-boards">
 <fieldset id="idx-licence"><legend>Your real estate licence</legend>
-    <p class="muted small">Tick every state you hold an active licence in, and type the licence number. We check it in the state's public records before you pay.</p>
+    <p class="muted small">Tick every state you hold a licence in, and type the licence number. We check it in the state's public records before you pay. MLS boards can be added in states where your licence is active.</p>
     <div class="choices" role="group" aria-label="States where you hold a licence" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">
         @foreach ($allStates as $code => $stateName)
             <label><input type="checkbox" name="licence_states[]" data-idx-state value="{{ $code }}" @checked(in_array($code, $licensed, true))> {{ $stateName }}</label>
@@ -38,6 +38,7 @@
                 <input type="text" name="licence_numbers[{{ $code }}]" value="{{ $numbers[$code] ?? '' }}" maxlength="40" autocomplete="off" spellcheck="false" style="max-width:280px" @error('licence_numbers.'.$code) aria-invalid="true" @enderror>
             </label>
             @error('licence_numbers.'.$code)<p class="error" role="alert">{{ $message }}</p>@enderror
+            <label class="small" style="display:flex;gap:8px;align-items:center;font-weight:400"><input type="checkbox" name="licence_new[{{ $code }}]" value="1" @checked(old('licence_new.'.$code))> My licence is new (issued in the last few days)</label>
         </div>
     @endforeach
 </fieldset>

@@ -23,7 +23,13 @@ final class ServiceVerifier implements LicenceVerifier
 {
     public function configured(): bool
     {
-        return (app(OutsideServices::class)->active('licence_lookup')['provider'] ?? null) === 'state_data';
+        $active = app(OutsideServices::class)->active('licence_lookup');
+        if ($active !== null) {
+            return $active['provider'] === 'state_data';
+        }
+
+        // LV2: the free state records are used until HQ sets up licence look-up itself (and switching it off stops it).
+        return ! DB::connection(Connections::control())->table('outside_services')->where('tenant_id', 0)->where('service', 'licence_lookup')->exists();
     }
 
     public function method(): string

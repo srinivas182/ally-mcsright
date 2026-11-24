@@ -66,6 +66,9 @@
     </form>
 
 @elseif ($step === 2)
+    @foreach ((array) session('licence_notes', []) as $note)
+        <p class="card small" role="status">{{ $note }}</p>
+    @endforeach
     <form method="post" action="{{ $base }}/step/package" novalidate>
         @csrf
         @include('billing::signup.plans', ['number' => 2, 'label' => $solo ? 'Plan' : 'Package'])
@@ -131,7 +134,7 @@
             <dl class="review">
                 <div><dt>{{ $solo ? 'You' : 'Brokerage' }}</dt><dd>{{ $draft->brokerage }}<br><span class="muted small">{{ $draft->owner_name }} · {{ $draft->owner_email }}{{ $draft->state ? ' · '.($signupStates[$draft->state] ?? $draft->state) : '' }}</span></dd><a href="{{ $base }}?step=1#signup">Change</a></div>
                 <div><dt>Address</dt><dd>{{ \Modules\Billing\Signup\Signups::websiteHost((string) $draft->slug) }}</dd><a href="{{ $base }}?step=1#signup">Change</a></div>
-                <div><dt>Licence</dt><dd>{{ collect((array) json_decode((string) ($draft->licences ?? '[]'), true))->map(fn ($l) => ($signupStates[$l['state']] ?? $l['state']).' '.$l['number'].(($l['status'] ?? '') === 'active' ? ' (confirmed)' : ''))->implode(', ') ?: 'Not given yet' }}</dd><a href="{{ $base }}?step=1#signup">Change</a></div>
+                <div><dt>Licence</dt><dd>{{ collect((array) json_decode((string) ($draft->licences ?? '[]'), true))->map(fn ($l) => ($signupStates[$l['state']] ?? $l['state']).' '.$l['number'].match ($l['status'] ?? '') { 'active' => ' (confirmed)', 'expired' => ' (expired: no listings in this state until renewed)', 'inactive' => ' (inactive: no listings in this state until active)', 'new' => ' (new: we will check it with the state)', 'unchecked' => ' (we will check it with the state)', default => '' })->implode(', ') ?: 'Not given yet' }}</dd><a href="{{ $base }}?step=1#signup">Change</a></div>
                 <div><dt>MLS boards</dt><dd>@if ($review['boards'] === []) None: your website starts as a landing page, without listings. Add a board any time in Settings › MLS. @else {{ implode(', ', array_column($review['boards'], 'name')) }} @endif</dd><a href="{{ $base }}?step=1#signup">Change</a></div>
                 <div><dt>{{ $solo ? 'Plan' : 'Package' }}</dt><dd>{{ $review['package'] }}: {{ $usd($review['price_cents']) }} a {{ $review['interval'] }}</dd><a href="{{ $base }}?step=2#signup">Change</a></div>
                 <div><dt>Website design</dt><dd>{{ $review['boards'] === [] ? 'Landing page: ' : '' }}{{ $review['design'] }}</dd><a href="{{ $base }}?step=3#signup">Change</a></div>

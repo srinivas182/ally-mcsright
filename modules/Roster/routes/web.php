@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
+use Modules\Roster\Http\BrokerageLicencesController;
 use Modules\Roster\Http\RosterController;
 
 Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('roster')->name('roster.')->group(function (): void {
@@ -31,3 +32,10 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('roster
 });
 
 Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->get('directory', [RosterController::class, 'directory'])->name('directory');
+
+// LV2: the brokerage's own licences (owners), and HQ's check by hand.
+Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('settings/licences')->name('settings.licences')->group(function (): void {
+    Route::get('/', [BrokerageLicencesController::class, 'index']);
+    Route::post('/', [BrokerageLicencesController::class, 'add'])->middleware('throttle:20,1')->name('.add');
+    Route::post('{licence}/remove', [BrokerageLicencesController::class, 'remove'])->whereNumber('licence')->middleware('password.confirm')->name('.remove');
+});

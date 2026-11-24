@@ -101,17 +101,17 @@ final class SignupWizardController
             'brokerage' => ['required', 'string', 'max:150'], 'owner_name' => ['required', 'string', 'max:120'], 'owner_email' => ['required', 'email:rfc', 'max:190'],
             'agents' => ['nullable', 'integer', 'min:1', 'max:20000'], 'check' => ['nullable', 'string', 'size:40'],
         ] + ['phone' => ['required', 'string', 'max:30', 'regex:/^[0-9 ()+.\-]{7,30}$/'], 'slug' => ['required', 'string', 'max:40'], 'state' => ['nullable', 'string', 'size:2', 'alpha'], 'boards' => ['nullable', 'array', 'max:20'], 'boards.*' => ['string', 'size:26']]);
-        // LV1: at least one state where they hold an active licence, with its number, checked in the state's records.
-        // LP1: boards are optional; without one the website is a landing page until a board is added.
+        // LV1/LV2: at least one state where they hold a licence, with its number, checked in the state's records
+        // (LicenceCheck says what each result means). LP1: boards are optional, and only in states with a good licence;
+        // without one the website is a landing page until a board is added.
         $states = SignupController::boardsAndStates()['signupStates'];
         $request->validate(['licence_states' => ['required', 'array', 'min:1', 'max:60'], 'licence_states.*' => ['string', 'size:2', Rule::in(array_keys($states))],
-            'licence_numbers' => ['nullable', 'array'], 'licence_numbers.*' => ['nullable', 'string', 'max:40']],
-            ['licence_states.required' => 'Tick at least one state where you hold an active real estate licence.', 'licence_states.min' => 'Tick at least one state where you hold an active real estate licence.']);
-        $chosen = array_values(array_unique($data['boards'] ?? []));
-        $data['boards'] = $chosen;
+            'licence_numbers' => ['nullable', 'array'], 'licence_numbers.*' => ['nullable', 'string', 'max:40'], 'licence_new' => ['nullable', 'array']],
+            ['licence_states.required' => 'Tick at least one state where you hold a real estate licence.', 'licence_states.min' => 'Tick at least one state where you hold a real estate licence.']);
         $owner = $solo ? (string) $data['name'] : (string) $data['owner_name'];
         $licences = [];
         $errors = [];
+        $notes = [];
         foreach (array_values(array_unique((array) $request->input('licence_states'))) as $st) {
             $number = trim((string) ($request->input('licence_numbers.'.$st) ?? ''));
             if ($number === '') {
@@ -119,18 +119,37 @@ final class SignupWizardController
 
                 continue;
             }
-            $result = app(LicenceCheck::class)->check($st, $states[$st], $number, $owner);
+            $result = app(LicenceCheck::class)->check($st, $states[$st], $number, $owner, (bool) $request->boolean('licence_new.'.$st));
             if ($result['error'] !== null) {
                 $errors['licence_numbers.'.$st] = $result['error'];
 
                 continue;
             }
-            unset($result['error']);
+            if ($result['notice'] !== null) {
+                $notes[] = $result['notice'];
+            }
+            unset($result['error'], $result['notice']);
             $licences[] = $result;
         }
         if ($errors !== []) {
             throw ValidationException::withMessages($errors);
         }
+        // Boards only in states with a good licence.
+        $goodStates = array_column(array_filter($licences, [LicenceCheck::class, 'allowsBoards']), 'state');
+        $boardStates = collect(SignupController::boardsAndStates()['idxBoards'])->mapWithKeys(fn (array $b): array => [$b['ulid'] => (array) ($b['states'] ?? [$b['state']])]);
+        $chosen = [];
+        foreach (array_values(array_unique($data['boards'] ?? [])) as $board) {
+            if (array_intersect((array) ($boardStates[$board] ?? []), $goodStates) !== []) {
+                $chosen[] = $board;
+            } else {
+                $notes[] = 'We left out an MLS board in a state where your licence isn\'t active yet. Add it in Settings › MLS once it is.';
+            }
+        }
+        $data['boards'] = $chosen;
+        if ($goodStates === []) {
+            $notes[] = 'None of your licences is active yet, so your website stays as a "coming soon" page until one is (or until we have checked it with the state). You can set everything else up in the meantime.';
+        }
+        $request->session()->flash('licence_notes', array_values(array_unique($notes)));
         $name = $solo ? trim((string) $data['name']) : trim((string) $data['owner_name']);
         $check = ! $solo && isset($data['check']) ? HealthChecks::byToken($data['check']) : null;
         $draft = $signups->saveAbout(self::current($request, $type)?->ulid, [
