@@ -20,7 +20,56 @@ type Line = {
     status: string;
     reason: string | null;
     check: number | null;
+    /** CM2: what the payment is made of, by deal and level (newest runs only). */
+    items?:
+        | {
+              kind: string;
+              deal: string;
+              level: number | null;
+              from: string | null;
+              cents: number;
+          }[]
+        | null;
 };
+
+const itemText = (it: NonNullable<Line['items']>[number]) =>
+    it.kind === 'commission'
+        ? `Commission: ${it.deal}`
+        : it.kind === 'bonus'
+          ? `Recruit's first closing bonus: ${it.deal}`
+          : `${it.kind === 'reversal' ? 'Reversed revenue share' : 'Revenue share'}, level ${it.level} from ${it.from ?? 'an agent'}: ${it.deal}`;
+
+function Breakdown({ items }: { items: NonNullable<Line['items']> }) {
+    const [open, setOpen] = useState(false);
+    if (items.length === 0) {
+        return null;
+    }
+
+    return (
+        <div className="mt-1">
+            <button
+                type="button"
+                className="text-xs text-primary underline-offset-2 hover:underline"
+                aria-expanded={open}
+                onClick={() => setOpen(!open)}
+            >
+                {open ? 'Hide' : 'Show'} what this pays for ({items.length})
+            </button>
+            {open && (
+                <ul className="mt-1 grid gap-0.5 text-xs">
+                    {items.map((it, i) => (
+                        <li key={i} className="flex justify-between gap-3">
+                            <span>{itemText(it)}</span>
+                            <span className="tabular-nums">
+                                {usd(it.cents)}
+                            </span>
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </div>
+    );
+}
 type Run = {
     ulid: string;
     kind?: string;
@@ -113,6 +162,7 @@ function RunCard({ run, canApprove }: { run: Run; canApprove: boolean }) {
                                             Skipped: {l.reason}
                                         </span>
                                     ) : null}
+                                    {l.items && <Breakdown items={l.items} />}
                                 </td>
                                 <td className="p-1">
                                     {l.commission_cents

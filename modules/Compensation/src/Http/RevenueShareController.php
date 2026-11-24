@@ -23,6 +23,7 @@ use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Revenue share trust actions (specs/compensation/02, additions 4, 12, 14). Full screens come with
@@ -156,9 +157,61 @@ final class RevenueShareController
             'settings' => ['budget_percent' => $settings?->budget_percent, 'root' => $settings?->root_user_id !== null ? User::query()->whereKey((int) $settings->root_user_id)->value('ulid') : null],
             'budget' => ['paid_cents' => $engine->paidYtd(CarbonImmutable::now()), 'room_cents' => $engine->budgetRoom(CarbonImmutable::now())],
             'disclosure' => $insights->disclosure($year),
+            'report' => $insights->report(...self::period($request)),
             'people' => User::query()->where('status', 'active')->whereIn('kind', [UserKind::Owner, UserKind::Agent, UserKind::Staff])->orderBy('first_name')->get()
                 ->map(fn (User $u): array => ['ulid' => $u->ulid, 'name' => $u->name]),
         ]);
+    }
+
+    /** CM2: the revenue share report as a spreadsheet (CSV). */
+    public function reportCsv(Request $request, Insights $insights): StreamedResponse
+    {
+        self::manager($request);
+        $r = $insights->report(...self::period($request));
+        app(AuditLogger::class)->record('compensation.revenue_share.report_exported', metadata: ['from' => $r['from'], 'to' => $r['to']], severity: 'notice');
+
+        return response()->streamDownload(function () use ($r): void {
+            $out = fopen('php://output', 'w');
+            if ($out === false) {
+                return;
+            }
+            $levels = range(1, max(1, $r['levels']));
+            fputcsv($out, ['Person', 'Total received', ...array_map(fn (int $l): string => "Level {$l}", $levels), 'Deals', 'Missed'], escape: '');
+            foreach ($r['people'] as $p) {
+                fputcsv($out, [self::cell($p['name']), self::money($p['total_cents']), ...array_map(fn (int $l): string => self::money($p['by_level'][$l] ?? 0), $levels),
+                    (string) $p['deals'], self::money($p['missed_cents'])], escape: '');
+            }
+            fputcsv($out, ['Total', self::money($r['total_cents']), ...array_map(fn (int $l): string => self::money($r['by_level'][$l] ?? 0), $levels), (string) $r['deals'], self::money($r['missed_cents'])], escape: '');
+            fclose($out);
+        }, "revenue-share-{$r['from']}-to-{$r['to']}.csv", ['Content-Type' => 'text/csv']);
+    }
+
+    /**
+     * The report's period from the address (?from=&to=), this year by default, at most 5 years.
+     *
+     * @return array{0: CarbonImmutable, 1: CarbonImmutable}
+     */
+    private static function period(Request $request): array
+    {
+        $valid = fn (mixed $v): bool => is_string($v) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $v) === 1;
+        $from = $valid($request->query('from')) ? CarbonImmutable::parse((string) $request->query('from')) : CarbonImmutable::now()->startOfYear();
+        $to = $valid($request->query('to')) ? CarbonImmutable::parse((string) $request->query('to')) : CarbonImmutable::now();
+        if ($to->lt($from)) {
+            [$from, $to] = [$to, $from];
+        }
+
+        return [$from->max($to->subYears(5)), $to];
+    }
+
+    private static function money(int $cents): string
+    {
+        return number_format($cents / 100, 2, '.', '');
+    }
+
+    /** Spreadsheet-safe text: a leading = + - @ never runs as a formula. */
+    private static function cell(string $text): string
+    {
+        return preg_match('/^[=+\-@\t\r]/', $text) === 1 ? "'".$text : $text;
     }
 
     public function settings(Request $request): RedirectResponse

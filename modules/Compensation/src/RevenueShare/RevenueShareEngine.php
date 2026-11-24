@@ -96,6 +96,66 @@ final class RevenueShareEngine
     }
 
     /**
+     * CM2: who would receive revenue share on a deal that is not final yet, level by level (nothing is written). It
+     * follows the same tree, unlocking and eligibility as distribute(); yearly maximums, the budget and review holds
+     * are only known at closing, so the result is an estimate.
+     *
+     * @return list<array{level: int, percent: string, source_user_id: int, recipient_user_id: int|null, missed_user_id: int|null, kind: string, reason: string|null, amount_cents: int}>
+     */
+    public function preview(Calculation $calculation): array
+    {
+        $input = DealSideInput::fromArray($calculation->inputs);
+        if ($input->noRevenueShare) {
+            return [];
+        }
+        $date = $input->closingDate;
+        $out = [];
+        foreach ((array) ($calculation->result['agents'] ?? []) as $row) {
+            /** @var array<string, mixed> $row */
+            $rules = $this->rulesFor($row);
+            if ($rules === null || $rules->levels === []) {
+                continue;
+            }
+            $base = $this->base($rules->basis, $row);
+            $companyTotal = (int) $row['company_cents'] + (int) ($row['post_cap_fee_cents'] ?? 0);
+            $distributable = min($this->distributable(max(0, $base), $rules), max(0, $companyTotal), $rules->perDealMaxCents ?? PHP_INT_MAX);
+            if ($distributable <= 0) {
+                continue;
+            }
+            $agentId = (int) $row['user_id'];
+            $chain = $this->sponsorships->chain($agentId, $date, count($rules->levels));
+            $co = $this->sponsorships->coSponsorOf($agentId, $date);
+            foreach (Money::of($distributable)->allocate($rules->levels) as $i => $part) {
+                if ($part->cents === 0) {
+                    continue;
+                }
+                $level = $i + 1;
+                $slots = $level === 1 && $co !== null && isset($chain[0])
+                    ? array_map(null, [$chain[0], $co[0]], array_values(array_map(fn (Money $m): int => $m->cents, $part->allocate([(string) BigDecimal::of(100)->minus($co[1]), $co[1]]))))
+                    : [[$chain[$i] ?? null, $part->cents]];
+                foreach ($slots as [$payee, $amount]) {
+                    $reason = $payee === null ? 'missing_upline' : null;
+                    $resolved = null;
+                    if ($payee !== null) {
+                        [$resolved, $why] = $this->members->payee((int) $payee, $rules, $date);
+                        $reason = $resolved === null ? $why : (! $this->unlocking->open((int) $payee, $level, $rules, $date) ? 'locked_level' : null);
+                    }
+                    $line = ['level' => $level, 'percent' => $rules->levels[$i], 'source_user_id' => $agentId, 'amount_cents' => (int) $amount];
+                    if ($reason === null && $resolved !== null) {
+                        $out[] = $line + ['recipient_user_id' => $resolved, 'missed_user_id' => null, 'kind' => 'share', 'reason' => null];
+
+                        continue;
+                    }
+                    $root = ($payee === null ? $rules->missingUpline : $rules->ineligibleUpline) === 'root' ? $this->rootUserId() : null;
+                    $out[] = $line + ['recipient_user_id' => $root, 'missed_user_id' => $payee !== null ? (int) $payee : null, 'kind' => $root !== null ? 'root' : 'missed', 'reason' => $reason];
+                }
+            }
+        }
+
+        return $out;
+    }
+
+    /**
      * Pays one level (or one co-sponsor's part of level 1), or records why it was missed.
      *
      * @param  array<string, mixed>  $row

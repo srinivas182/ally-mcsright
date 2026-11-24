@@ -15,6 +15,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Modules\Compensation\WhoGetsPaid;
 use Modules\Core\Access\Fields;
 use Modules\Core\Access\Permissions;
 use Modules\Core\CustomFields\CustomFields;
@@ -184,6 +185,8 @@ final class DealController
             'reviewer' => self::reviewer($user),
             'reasons' => self::reviewer($user) ? $reviews->reasons() : [],
             'risk' => DealRisk::forDeals([$deal->id])[$deal->id], // RD1
+            // CM2: who gets paid, tier by tier (amounts hidden from people who may not see commission).
+            'whoGetsPaid' => Fields::visible($user, 'commission', $deal->agent_user_id) ? app(WhoGetsPaid::class)->for($deal->ulid, $user) : null,
         ]);
     }
 

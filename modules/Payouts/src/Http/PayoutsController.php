@@ -31,6 +31,7 @@ use Modules\Payouts\PayoutRuns;
 use Modules\Payouts\Rails\RailPlatform;
 use Modules\Payouts\Rails\Rails;
 use Modules\Payouts\Receipts;
+use Modules\Payouts\RunBreakdown;
 use Modules\Payouts\Statements;
 use Modules\Payouts\Tax1099;
 use Modules\Payouts\TrustReconciliation;
@@ -122,14 +123,16 @@ final class PayoutsController
     }
 
     /** Finance: payout runs. */
-    public function runs(Request $request, PayoutRuns $runs): Response
+    public function runs(Request $request, PayoutRuns $runs, RunBreakdown $breakdown): Response
     {
         $user = $this->finance($request);
         $db = DB::connection(Connections::cell());
         $settings = $runs->settings();
+        // CM2: the five newest runs explain each payment by deal and level.
+        $runRows = $db->table('pay_runs')->orderByDesc('id')->limit(30)->get();
 
         return Inertia::render('finance/payouts', [
-            'runs' => $db->table('pay_runs')->orderByDesc('id')->limit(30)->get()->map(fn ($r): array => [
+            'runs' => $runRows->map(fn ($r): array => [
                 'ulid' => $r->ulid, 'kind' => $r->kind, 'rail' => $r->rail, 'failed' => $db->table('pay_run_lines')->where('run_id', $r->id)->where('rail_status', 'failed')->whereNull('reversal_journal_id')->count(),
                 'status' => $r->status, 'pay_on' => $r->pay_on, 'same_day' => (bool) $r->same_day, 'total_cents' => (int) $r->total_cents,
                 'approved_by' => $r->approved_by !== null ? User::query()->find((int) $r->approved_by)?->name : null, 'sent_at' => $r->sent_at,
@@ -137,7 +140,8 @@ final class PayoutsController
                 'lines' => $db->table('pay_run_lines')->where('run_id', $r->id)->orderBy('id')->get()->map(fn ($l): array => [
                     'name' => $l->name, 'type' => $l->payee_type, 'commission_cents' => (int) $l->commission_cents, 'revenue_share_cents' => (int) $l->revenue_share_cents,
                     'referral_cents' => (int) $l->referral_cents, 'amount_cents' => (int) $l->amount_cents, 'method' => $l->method, 'status' => $l->status,
-                    'reason' => $l->skip_reason, 'check' => $l->check_number])->values(),
+                    'reason' => $l->skip_reason, 'check' => $l->check_number,
+                    'items' => $l->user_id !== null && $runRows->take(5)->contains('id', $r->id) ? $breakdown->forLine((int) $l->user_id, (int) $r->id) : null])->values(),
             ]),
             'settings' => ['company_name' => $settings['company_name'], 'company_id' => $settings['company_id'], 'bank_name' => $settings['bank_name'],
                 'odfi_last4' => $settings['odfi_routing'] !== null ? substr($settings['odfi_routing'], -4) : null,

@@ -173,6 +173,54 @@ final class Insights
     }
 
     /**
+     * CM2: the revenue share report for a period: per person, what they received at each level, from how many deals,
+     * and what they missed; plus totals per level.
+     *
+     * @return array{from: string, to: string, levels: int, people: list<array{name: string, total_cents: int, by_level: array<int, int>, deals: int, missed_cents: int}>, by_level: array<int, int>, total_cents: int, missed_cents: int, deals: int}
+     */
+    public function report(CarbonImmutable $from, CarbonImmutable $to): array
+    {
+        $db = DB::connection(Connections::cell());
+        $reversed = $db->table('rs_entries')->whereNotNull('reversal_of')->pluck('reversal_of')->map(fn ($v): int => (int) $v)->all();
+        $rows = $db->table('rs_entries')->whereNull('reversal_of')->whereNotIn('id', $reversed)
+            ->whereBetween('closing_date', [$from->toDateString(), $to->toDateString()])
+            ->get(['recipient_user_id', 'missed_user_id', 'kind', 'level', 'amount_cents', 'calculation_id']);
+        $people = [];
+        $byLevel = [];
+        $missed = 0;
+        $max = 0;
+        foreach ($rows as $r) {
+            $level = (int) $r->level;
+            $max = max($max, $level);
+            if (in_array($r->kind, ['share', 'root', 'bonus'], true) && $r->recipient_user_id !== null) {
+                $id = (int) $r->recipient_user_id;
+                $people[$id] ??= ['total_cents' => 0, 'by_level' => [], 'deals' => [], 'missed_cents' => 0];
+                $people[$id]['total_cents'] += (int) $r->amount_cents;
+                $people[$id]['by_level'][$level] = ($people[$id]['by_level'][$level] ?? 0) + (int) $r->amount_cents;
+                $people[$id]['deals'][(int) $r->calculation_id] = true;
+                $byLevel[$level] = ($byLevel[$level] ?? 0) + (int) $r->amount_cents;
+            } elseif ($r->kind === 'missed') {
+                $missed += (int) $r->amount_cents;
+                if ($r->missed_user_id !== null) {
+                    $id = (int) $r->missed_user_id;
+                    $people[$id] ??= ['total_cents' => 0, 'by_level' => [], 'deals' => [], 'missed_cents' => 0];
+                    $people[$id]['missed_cents'] += (int) $r->amount_cents;
+                }
+            }
+        }
+        $names = User::query()->whereKey(array_keys($people))->get()->mapWithKeys(fn (User $u): array => [$u->id => $u->name]);
+        $list = [];
+        foreach ($people as $id => $p) {
+            $list[] = ['name' => $names[$id] ?? 'A former agent', 'total_cents' => $p['total_cents'], 'by_level' => $p['by_level'], 'deals' => count($p['deals']), 'missed_cents' => $p['missed_cents']];
+        }
+        usort($list, fn (array $a, array $b): int => [$b['total_cents'], $a['name']] <=> [$a['total_cents'], $b['name']]);
+        ksort($byLevel);
+
+        return ['from' => $from->toDateString(), 'to' => $to->toDateString(), 'levels' => $max, 'people' => $list, 'by_level' => $byLevel,
+            'total_cents' => array_sum($byLevel), 'missed_cents' => $missed, 'deals' => $rows->pluck('calculation_id')->unique()->count()];
+    }
+
+    /**
      * Yearly income disclosure: revenue share received by every agent in the brokerage.
      *
      * @return array<string, mixed>
