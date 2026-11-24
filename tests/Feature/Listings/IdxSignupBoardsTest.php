@@ -92,6 +92,7 @@ it('bills each extra board once a month and nothing for the included board', fun
 it('shows the brokerage which board is included and what the others add', function (): void {
     $tenant = Tenant::factory()->withPlatformDomain()->create(['slug' => 'acme']);
     $owner = app(TenantContext::class)->runAs($tenant, fn () => User::factory()->owner()->create());
+    giveLicence($tenant);
     $this->actingAs($owner)->post('http://acme.rightally.app/settings/mls/boards', ['board' => $this->har])->assertSessionHasNoErrors();
     $this->actingAs($owner)->post('http://acme.rightally.app/settings/mls/boards', ['board' => $this->ntreis])->assertSessionHasNoErrors();
 

@@ -113,9 +113,9 @@ it('flags past clients whose home sold on the MLS as maybe moved', function (): 
     $this->actingAs($this->agent)->get('/contacts?list=may-have-moved')->assertOk();
 });
 
-it('checks licences against a state\'s public licence list once HQ loads it', function (): void {
+it('checks licences against a state\'s public licence list once HQ loads it (on by default)', function (): void {
     $licence = app(Roster::class)->add($this->agent, 'licence', ['state_code' => 'TX', 'number' => '0612345', 'expires_on' => '2026-12-31'], $this->owner);
-    expect(app(Verification::class)->available())->toBeFalse();
+    expect(app(Verification::class)->available())->toBeTrue(); // LV2: state records by default until HQ sets licence look-up up
     lnService('licence_lookup', 'state_data', []);
     expect(app(Verification::class)->available())->toBeTrue()
         ->and(fn () => app(Verification::class)->check($licence))->toThrow(ValidationException::class, 'no state records for TX');

@@ -10,6 +10,7 @@ use Illuminate\Validation\ValidationException;
 use Inertia\Testing\AssertableInertia as Assert;
 use Modules\Compensation\Actions\ManagePlans;
 use Modules\Compensation\Enums\PlanType;
+use Modules\Core\Support\Connections;
 use Modules\Roster\CeIncomplete;
 use Modules\Roster\ContinuingEducation;
 use Modules\Roster\LicenceProblem;
@@ -67,7 +68,11 @@ it('reminds agents with unfinished CE at 90 and 60 days before renewal, and not 
     Notification::assertSentToTimes($this->agent, CeIncomplete::class, 2);
 });
 
-it('checks licences against state records once switched on, and blocks deals for a licence the state shows as suspended', function (): void {
+it('checks licences against state records unless HQ switches it off, and blocks deals for a licence the state shows as suspended', function (): void {
+    // LV2: the free state records are used until HQ sets up licence look-up itself; switched off, nothing is checked.
+    expect(app(Verification::class)->available())->toBeTrue();
+    DB::connection(Connections::control())->table('outside_services')
+        ->insert(['tenant_id' => 0, 'service' => 'licence_lookup', 'provider' => 'state_data', 'mode' => 'off', 'created_at' => now(), 'updated_at' => now()]);
     expect(app(Verification::class)->available())->toBeFalse()->and(app(Verification::class)->recheckDue())->toBe(0)
         ->and(fn () => app(Verification::class)->check($this->licence))->toThrow(ValidationException::class, 'not switched on');
 

@@ -43,7 +43,7 @@ final class RosterServiceProvider extends ServiceProvider
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
         if ($this->app->runningInConsole()) {
-            $this->commands([Console\RosterReminders::class, Console\RosterVerify::class, Console\LoadLicenceData::class, Console\SyncLicenceData::class]);
+            $this->commands([Console\RosterReminders::class, Console\RosterVerify::class, Console\LoadLicenceData::class, Console\SyncLicenceData::class, Console\RecheckBrokerageLicences::class]);
         }
 
         $this->app->make(PermissionRegistry::class)->register('People', [
@@ -54,5 +54,6 @@ final class RosterServiceProvider extends ServiceProvider
         $nav->add(new NavItem('People', 'Roster and compliance', '/roster', 'id-card', 12, ability: 'roster.view'));
         $nav->add(new NavItem('Overview', 'My licences and onboarding', '/roster/me', 'id-card', 33, kinds: [UserKind::Agent]));
         $nav->add(new NavItem('People', 'Directory', '/directory', 'users', 11, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent]));
+        $nav->add(new NavItem('Settings', 'Licences', '/settings/licences', 'badge-check', 64, kinds: [UserKind::Owner])); // LV2
     }
 }

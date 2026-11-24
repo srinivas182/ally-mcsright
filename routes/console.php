@@ -13,6 +13,7 @@ Artisan::command('inspire', function () {
 // Platform jobs (specs/core/01, specs/finance/01)
 Schedule::command('tenants:lifecycle')->dailyAt('03:00')->onOneServer();
 Schedule::command('roster:licence-sync')->dailyAt('05:20')->onOneServer()->runInBackground(); // LV1: state licence lists
+Schedule::command('roster:brokerage-licences')->dailyAt('06:10')->onOneServer(); // LV2: brokerage licences checked, expiry warnings
 Schedule::command('ledger:reconcile')->dailyAt('04:00')->onOneServer();
 // Month-end checklist for finished months still open; owners hear once about anything that must be fixed (specs/finance/22).
 Schedule::command('ledger:close-check')->dailyAt('04:15')->onOneServer();

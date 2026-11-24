@@ -29,6 +29,7 @@ beforeEach(function (): void {
     $this->travelTo(CarbonImmutable::parse('2026-06-01 15:00', 'UTC'));
     Notification::fake();
     $this->tenant = $this->onTenantHost('acme');
+    giveLicence($this->tenant); // LV2: boards need an active licence in their state
     $this->owner = User::factory()->owner()->create();
     $this->web = 'http://acme.rightally.site';
     $sites = app(SiteSetup::class);

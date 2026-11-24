@@ -27,6 +27,7 @@ beforeEach(function (): void {
     $this->artisan('tenants:bootstrap-hq');
     $this->staff = app(TenantContext::class)->runAs(Tenant::query()->where('type', 'hq')->sole(), fn () => User::factory()->hqStaff()->create());
     $this->acme = Tenant::factory()->withPlatformDomain()->create(['slug' => 'acme']);
+    giveLicence($this->acme); // LV2: boards need an active licence in their state
     $this->owner = app(TenantContext::class)->runAs($this->acme, fn () => User::factory()->owner()->create());
     $this->rules = RulesProfile::query()->create(['name' => 'Sample', 'program' => 'idx', 'attribution_template' => 'Listing courtesy of {ListOfficeName}',
         'disclaimer' => 'Sample data from Repliers. Not real listings.', 'sold_allowed' => false, 'sold_delay_days' => 0, 'freshness_minutes' => 1440, 'index_off_market' => false]);

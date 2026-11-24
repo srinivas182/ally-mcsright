@@ -24,6 +24,7 @@ use Modules\Listings\Access\MlsAccess;
 use Modules\Listings\Idx\Mail\IdxUpdateMail;
 use Modules\Listings\Models\MlsAuthorization;
 use Modules\Listings\Models\MlsSource;
+use Modules\Roster\Brokerage\BrokerageLicences;
 use stdClass;
 use Throwable;
 
@@ -110,6 +111,16 @@ final class Subscriptions
         $offered = collect($this->coverage->offered($this->coverage->enabledStates()))->firstWhere('ulid', $boardUlid);
         if ($board === null || $offered === null) {
             throw ValidationException::withMessages(['board' => 'That board is not available yet. Ask RightAlly to add it.']);
+        }
+        // LV2: a board a brokerage adds itself needs an active licence in the board's state (as at sign-up).
+        // (HQ adding a board for a brokerage, and the board chosen at sign-up, were checked already.)
+        $tenant = Tenant::query()->find($tenantId);
+        if ($by !== null && ! $by->isKind(UserKind::HqStaff) && $tenant !== null && class_exists(BrokerageLicences::class)) {
+            $states = (array) ($offered['states'] ?? [$offered['state'] ?? '']);
+            $good = app(TenantContext::class)->runAs($tenant, fn (): array => app(BrokerageLicences::class)->goodStates());
+            if (array_intersect($states, $good) === []) {
+                throw ValidationException::withMessages(['board' => 'Add your active '.implode(' or ', array_filter($states)).' licence in Settings › Licences first: an MLS board needs an active licence in its state.']);
+            }
         }
         $existing = $this->db()->table('idx_subscriptions')->where('tenant_id', $tenantId)->where('board_id', $board->id)->first();
         if ($existing !== null && $existing->status !== 'cancelled') {

@@ -310,7 +310,7 @@ it('needs an active licence checked in the state\'s records, and offers boards u
     control()->table('idx_boards')->update(['visibility' => 'private']);
     control()->table('idx_boards')->where('code', 'HAR')->update(['visibility' => 'public', 'monthly_fee_cents' => 12_900, 'region' => 'Greater Houston']);
     $har = (string) control()->table('idx_boards')->where('code', 'HAR')->value('ulid');
-    ServiceVerifier::load('TX', "License Number,Last Name,Full Name,License Status,Expiration Date\n0654321,Smith,Dana Smith,Active,2028-01-31\n0777777,Jones,Pat Jones,Expired,2025-01-31\n");
+    ServiceVerifier::load('TX', "License Number,Last Name,Full Name,License Status,Expiration Date\n0654321,Smith,Dana Smith,Active,2028-01-31\n0777777,Jones,Pat Jones,Expired,2025-01-31\n0888888,Ray,Sam Ray,Suspended,2028-01-31\n");
 
     $page = (string) $this->get(RA.'/start')->assertOk()->getContent();
     expect($page)->toContain('Your real estate licence')->toContain('name="licence_states[]" data-idx-state value="TX"')
@@ -321,8 +321,16 @@ it('needs an active licence checked in the state\'s records, and offers boards u
     $this->post(RA.'/start/step/about', $base)->assertSessionHasErrors('licence_states');
     $this->post(RA.'/start/step/about', $base + ['licence_states' => ['TX']])->assertSessionHasErrors(['licence_numbers.TX' => 'Type your Texas licence number.']);
     $this->post(RA.'/start/step/about', $base + ['licence_states' => ['TX'], 'licence_numbers' => ['TX' => '0123999']])->assertSessionHasErrors('licence_numbers.TX');
-    $this->post(RA.'/start/step/about', $base + ['licence_states' => ['TX'], 'licence_numbers' => ['TX' => '777777']])
-        ->assertSessionHasErrors(['licence_numbers.TX' => 'Texas licence 777777 is not active in the state\'s records (it shows as expired). An active licence is needed to sign up.']);
+    // LV2: suspended is stopped; not found can go ahead as a new licence; expired goes ahead without boards there.
+    $this->post(RA.'/start/step/about', $base + ['licence_states' => ['TX'], 'licence_numbers' => ['TX' => '888888']])
+        ->assertSessionHasErrors(['licence_numbers.TX' => 'The state\'s records show Texas licence 888888 as suspended, so we can\'t accept it. If this is wrong, please contact us.']);
+    $this->post(RA.'/start/step/about', $base + ['licence_states' => ['TX'], 'licence_numbers' => ['TX' => '0123999'], 'licence_new' => ['TX' => '1'], 'boards' => [$har]])
+        ->assertSessionHasNoErrors()->assertRedirect('/start?step=2#signup');
+    expect(json_decode((string) control()->table('signups')->value('idx_boards') ?: '[]', true))->toBe([]) // no board until the new licence shows as active
+        ->and(json_decode((string) control()->table('signups')->value('licences'), true)[0]['status'])->toBe('new');
+    $this->post(RA.'/start/step/about', $base + ['licence_states' => ['TX'], 'licence_numbers' => ['TX' => '777777'], 'boards' => [$har]])->assertSessionHasNoErrors();
+    $this->get(RA.'/start?step=2')->assertSee('Your Texas licence shows as expired')->assertSee('We left out an MLS board')->assertSee('coming soon');
+    expect(json_decode((string) control()->table('signups')->value('idx_boards') ?: '[]', true))->toBe([]);
     // Florida's records are not loaded here: let through, marked for HQ to check.
     signupStep1(['licence_states' => ['TX', 'FL'], 'licence_numbers' => ['TX' => '0654321', 'FL' => 'SL3456789'], 'boards' => [$har, $har]]);
     $row = control()->table('signups')->sole();

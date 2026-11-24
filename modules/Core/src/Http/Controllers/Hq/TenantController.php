@@ -25,6 +25,8 @@ use Modules\Core\Tenancy\Exceptions\InvalidTenantTransition;
 use Modules\Core\Tenancy\Models\Tenant;
 use Modules\Core\Tenancy\Models\TenantDomain;
 use Modules\Core\Tenancy\Models\TenantHostRedirect;
+use Modules\Core\Tenancy\TenantContext;
+use Modules\Roster\Brokerage\BrokerageLicences;
 
 /**
  * HQ console: tenants list, detail and lifecycle actions (specs/core/01).
@@ -91,6 +93,9 @@ final class TenantController
     {
         return Inertia::render('hq/tenants/show', [
             'billing' => ['exception' => (bool) $tenant->getAttribute('billing_exception'), 'reason' => $tenant->getAttribute('billing_exception_reason')],
+            // LV2: the brokerage's licences and what the state's records say, for HQ to check by hand where needed.
+            'licences' => ! $tenant->isHq() && class_exists(BrokerageLicences::class)
+                ? app(TenantContext::class)->runAs($tenant, fn (): array => app(BrokerageLicences::class)->all()) : [],
             // AO1: the website assistant's monthly conversations (the package's, or this brokerage's own number).
             'assistant' => ! $tenant->isHq() && class_exists(AssistantAllowance::class) ? AssistantAllowance::for($tenant->id) : null,
             'tenant' => [
