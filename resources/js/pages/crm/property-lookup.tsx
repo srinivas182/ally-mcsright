@@ -1,7 +1,8 @@
 import { Head, useForm } from '@inertiajs/react';
+import { FeatureOff } from '@/components/feature-off/feature-off';
+import { SearchCheck } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { EmptyState } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/ui/page-header';
 
@@ -55,11 +56,18 @@ export default function PropertyLookup({
     });
     if (!available.attom && !available.batchdata) {
         return (
-            <div className="p-4">
+            <div className="mx-auto grid w-full max-w-6xl gap-5 p-4 md:p-6">
                 <Head title="Property lookup" />
-                <EmptyState
-                    title="Property lookups aren't switched on yet"
-                    description="Please ask RightAlly support."
+                <FeatureOff
+                    feature="property_lookup"
+                    icon={SearchCheck}
+                    title="Property lookups"
+                    does="Owners, last sale and a value range for any address."
+                    points={[
+                        'Who owns the home',
+                        'When it last sold, and for how much',
+                        'A value range, paid with credits',
+                    ]}
                 />
             </div>
         );

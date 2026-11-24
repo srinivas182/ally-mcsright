@@ -1,4 +1,6 @@
 import { Head, Link } from '@inertiajs/react';
+import { FeatureOff } from '@/components/feature-off/feature-off';
+import { Sparkles } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -195,10 +197,17 @@ export default function StudioIndex({
                         </p>
                     </section>
                 ) : offers.length === 0 ? (
-                    <section className="rounded-lg border p-4">
-                        Ally Studio isn't on sale for your brokerage yet.
-                        RightAlly support switches it on.
-                    </section>
+                    <FeatureOff
+                        feature="studio"
+                        icon={Sparkles}
+                        title="Ally Studio"
+                        does="Your AI social team: designed posts with your photo and brand, Reels and Shorts, a calendar and Autopilot."
+                        points={[
+                            'Posts designed for every new listing and sale',
+                            'Short videos with your voice and your brand',
+                            'A posting calendar that fills itself, which you approve',
+                        ]}
+                    />
                 ) : null}
 
                 {offers.length > 0 && (

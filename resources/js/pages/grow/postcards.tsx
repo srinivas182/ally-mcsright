@@ -1,8 +1,9 @@
 import { Head, router, useForm, usePage } from '@inertiajs/react';
+import { FeatureOff } from '@/components/feature-off/feature-off';
+import { Mail } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { EmptyState } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/ui/page-header';
 
@@ -81,11 +82,18 @@ export default function Postcards({
 
     if (!ready) {
         return (
-            <div className="p-4">
+            <div className="mx-auto grid w-full max-w-6xl gap-5 p-4 md:p-6">
                 <Head title="Postcards" />
-                <EmptyState
-                    title="Postcards aren't switched on yet"
-                    description="RightAlly support switches them on for your brokerage."
+                <FeatureOff
+                    feature="postcards"
+                    icon={Mail}
+                    title="Postcards"
+                    does="Just listed, just sold, open house and neighbourhood postcards, printed and mailed for you."
+                    points={[
+                        'Sent to a smart list of your contacts',
+                        'Printed and mailed for you',
+                        'Paid with credits, only when you send',
+                    ]}
                 />
             </div>
         );

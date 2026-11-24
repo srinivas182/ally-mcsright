@@ -117,6 +117,18 @@ final class HelpController
         return back();
     }
 
+    /** PG4: a page whose feature is off asks RightAlly to switch it on (once per brokerage while open). */
+    public function switchOn(Request $request, SupportTickets $tickets): RedirectResponse
+    {
+        $data = $request->validate(['feature' => ['required', 'string', 'in:'.implode(',', array_keys(SupportTickets::SWITCH_ON))], 'page' => ['nullable', 'string', 'max:200']]);
+        $new = $tickets->askToSwitchOn(self::user($request), $data['feature'], $data['page'] ?? null);
+        Inertia::flash('toast', ['type' => 'success', 'message' => $new
+            ? 'Thanks. We have asked RightAlly to switch it on. RightAlly will reply by email.'
+            : 'Your brokerage has already asked for this. RightAlly will reply by email.']);
+
+        return back();
+    }
+
     /** SX6: concierge setup — send us your spreadsheet and we set it up for you. */
     public function concierge(Request $request, Concierge $concierge): RedirectResponse
     {
