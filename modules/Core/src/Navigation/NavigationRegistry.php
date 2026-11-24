@@ -22,6 +22,25 @@ final class NavigationRegistry
     private const GROUPS = ['Overview', 'Grow', 'Run', 'Finance', 'Protect', 'Know', 'Brokerage',
         'HQ team', 'Customers', 'Sales and pricing', 'Payments', 'Websites and MLS', 'AI', 'Connections', 'Products', 'System', 'HQ'];
 
+    /**
+     * UX1: a brokerage's menu in a few plain main menus, each opening to its pages (like the leading real estate
+     * platforms): pages are moved here by their address, so modules keep registering items as before. Anything not
+     * listed stays in its own group.
+     */
+    private const TENANT_GROUPS = [
+        'Home' => ['/dashboard', '/agent', '/today', '/engage', '/tasks', '/chat'],
+        'Leads and clients' => ['/leads', '/contacts', '/inbox', '/appointments', '/funnels', '/outreach', '/prospector', '/insights/database', '/reviews', '/network'],
+        'Listings' => ['/listings', '/listings/demand', '/pricing', '/list-iq', '/movewise'],
+        'Marketing' => ['/studio', '/social', '/ads', '/postcards', '/marketing-check'],
+        'Deals' => ['/deals', '/deals/review', '/deals/risk', '/policies'],
+        'Money' => ['/my-money', '/my-plan', '/revenue-share', '/plans'],
+        'Reports' => ['/insights', '/insights/me', '/insights/reports', '/insights/plan'],
+        'Team' => ['/users', '/directory', '/roster', '/roster/me', '/learn', '/recruiting', '/recruiting/agents', '/recruiting/retention', '/recruiting/refer', '/engage/activity'],
+    ];
+
+    /** UX1: the order of a brokerage's main menus. */
+    private const TENANT_ORDER = ['Home', 'Leads and clients', 'Listings', 'Marketing', 'Deals', 'Money', 'Reports', 'Team', 'Finance', 'Compensation'];
+
     /** @var list<NavItem> */
     private array $items = [];
 
@@ -46,11 +65,14 @@ final class NavigationRegistry
             && $switches->allowsPath($user, $item->href) // FL1: switched-off areas and seats
             && $assistants->allowsPath($user, $item->href)); // AG1: an assistant's preset
 
-        usort($visible, fn (NavItem $a, NavItem $b): int => [$this->groupIndex($a->group), $a->order, $a->title] <=> [$this->groupIndex($b->group), $b->order, $b->title]);
+        $hq = $user->kind === UserKind::HqStaff;
+        $group = fn (NavItem $item): string => $hq ? $item->group : self::tenantGroup($item);
+        $index = fn (NavItem $item): int => $hq ? $this->groupIndex($item->group) : self::tenantIndex($group($item));
+        usort($visible, fn (NavItem $a, NavItem $b): int => [$index($a), $a->order, $a->title] <=> [$index($b), $b->order, $b->title]);
 
         $groups = [];
         foreach ($visible as $item) {
-            $groups[$item->group][] = ['title' => $item->title, 'href' => $item->href, 'icon' => $item->icon, 'mobile' => $item->mobile];
+            $groups[$group($item)][] = ['title' => $item->title, 'href' => $item->href, 'icon' => $item->icon, 'mobile' => $item->mobile];
         }
 
         $out = [];
@@ -63,6 +85,24 @@ final class NavigationRegistry
         // Simple mode (SM1): a short menu of the pages used most, from the pages this person can open.
         // Otherwise the full menu, in Spanish for people who chose it (PW1).
         return SimpleMode::on($user) ? SimpleMode::menu($out, SimpleMode::locale($user)) : NavWords::translate($out, SimpleMode::locale($user));
+    }
+
+    private static function tenantGroup(NavItem $item): string
+    {
+        foreach (self::TENANT_GROUPS as $label => $paths) {
+            if (in_array($item->href, $paths, true)) {
+                return $label;
+            }
+        }
+
+        return $item->group;
+    }
+
+    private static function tenantIndex(string $group): int
+    {
+        $index = array_search($group, self::TENANT_ORDER, true);
+
+        return $index === false ? count(self::TENANT_ORDER) : $index;
     }
 
     private function groupIndex(string $group): int

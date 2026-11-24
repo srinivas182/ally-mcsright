@@ -344,12 +344,41 @@ function Manage({
                             onChange={(e) => brand('accent', e.target.value)}
                         />
                     </label>
-                    <Input
-                        aria-label="Logo link"
-                        placeholder="Logo image link (https)"
-                        value={form.data.brand.logo_url}
-                        onChange={(e) => brand('logo_url', e.target.value)}
-                    />
+                    <div className="grid gap-2 sm:col-span-2">
+                        <span className="text-sm font-medium">Logo</span>
+                        <div className="flex flex-wrap items-center gap-3">
+                            <div className="flex h-16 w-56 items-center justify-center rounded-md border bg-white">
+                                {form.data.brand.logo_url ? (
+                                    <img
+                                        src={form.data.brand.logo_url}
+                                        alt="Your logo"
+                                        className="max-h-12 max-w-[90%] object-contain"
+                                    />
+                                ) : (
+                                    <span className="text-sm text-slate-500">
+                                        No logo yet
+                                    </span>
+                                )}
+                            </div>
+                            <a
+                                href="/studio/brand"
+                                className="text-sm font-medium text-primary underline underline-offset-4"
+                            >
+                                Upload or change your logo
+                            </a>
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                            Upload it once under Brand kit and it is used
+                            everywhere: your website, back office, emails and
+                            designs.
+                        </span>
+                        <Input
+                            aria-label="Logo link"
+                            placeholder="Or paste a link to your logo (https)"
+                            value={form.data.brand.logo_url}
+                            onChange={(e) => brand('logo_url', e.target.value)}
+                        />
+                    </div>
                     <Input
                         aria-label="Hero image link"
                         placeholder="Hero photo link (https)"

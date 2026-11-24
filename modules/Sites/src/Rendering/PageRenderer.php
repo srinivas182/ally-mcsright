@@ -8,8 +8,8 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Listings\Search\ListingSearch;
-use Modules\Listings\Search\MarketStats;
 use Modules\Sites\AgentSites;
+use Modules\Sites\Content\AreaTiles;
 use Modules\Sites\Http\Controllers\SiteController;
 use Modules\Sites\Models\Site;
 use Modules\Sites\Models\SitePage;
@@ -39,8 +39,8 @@ final class PageRenderer
                 continue;
             }
             if ($s['type'] === 'neighbourhoods') {
-                $stats = app(MarketStats::class);
-                $s['markets'] = array_values(array_filter(array_map(fn (string $slug): ?array => $stats->forPlace($tenantId, $slug), $s['props']['places'])));
+                // UX1: photo tiles for each area, including every state the brokerage has an MLS board in.
+                $s['areas'] = AreaTiles::build($tenantId, array_values(array_map('strval', (array) $s['props']['places'])));
             }
             if ($s['type'] === 'listings') {
                 $p = $s['props'];

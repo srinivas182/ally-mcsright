@@ -11,6 +11,7 @@ use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
 use Modules\Billing\Http\BrokerageReadOnly;
 use Modules\Billing\Http\EnsureNotBlocked;
+use Modules\Core\Http\Middleware\ConfirmPasswordInline;
 use Modules\Core\Http\Middleware\EnsureHqConsole;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
 use Modules\Core\Http\Middleware\SecurityHeaders;
@@ -62,7 +63,8 @@ return Application::configure(basePath: dirname(__DIR__))
             AddLinkHeadersForPreloadedAssets::class,
         ]);
 
-        $middleware->alias(['tenant' => ResolveTenant::class]);
+        // UX1: 'password.confirm' opens a password check over the page instead of losing what was typed.
+        $middleware->alias(['tenant' => ResolveTenant::class, 'password.confirm' => ConfirmPasswordInline::class]);
 
         // "Does this page exist on this host?" runs before "are you signed in?", so HQ and
         // back-office pages return a neutral 404 on other hosts instead of a login redirect.

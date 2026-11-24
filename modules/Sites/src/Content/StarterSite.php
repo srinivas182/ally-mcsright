@@ -329,7 +329,7 @@ final class StarterSite
      *
      * @param  array<string, mixed>  $info
      */
-    private static function cityPhoto(array $info): string
+    public static function cityPhoto(array $info): string
     {
         $area = strtolower((string) ($info['area'] ?? ''));
         $groups = SampleHomes::photoGroups();

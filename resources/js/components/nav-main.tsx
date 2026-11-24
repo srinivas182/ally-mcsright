@@ -14,6 +14,7 @@ import {
 import { useCurrentUrl } from '@/hooks/use-current-url';
 
 const OPEN_KEY = 'hq-menu-open';
+const TENANT_OPEN_KEY = 'menu-open';
 
 /** HQ1: an icon for each HQ heading, so the headings read as main menu items. */
 const GROUP_ICONS: Record<string, string> = {
@@ -27,11 +28,36 @@ const GROUP_ICONS: Record<string, string> = {
     Connections: 'plug',
     Products: 'blocks',
     System: 'shield',
+    // UX1: a brokerage's main menus.
+    Home: 'house',
+    'Leads and clients': 'users',
+    Listings: 'building-2',
+    Marketing: 'megaphone',
+    Deals: 'handshake',
+    Money: 'wallet',
+    Reports: 'chart-column',
+    Team: 'id-card',
+    Finance: 'landmark',
+    Compensation: 'coins',
+    Brokerage: 'briefcase',
+    People: 'users',
+    Settings: 'toggle-right',
+    // The same menus in Spanish.
+    Inicio: 'house',
+    'Prospectos y clientes': 'users',
+    Propiedades: 'building-2',
+    Operaciones: 'handshake',
+    Mercadeo: 'megaphone',
+    Dinero: 'wallet',
+    Informes: 'chart-column',
+    Equipo: 'id-card',
+    Finanzas: 'landmark',
+    Compensación: 'coins',
 };
 
-function readOpen(): string[] {
+function readOpen(key: string): string[] {
     try {
-        const raw = window.localStorage.getItem(OPEN_KEY);
+        const raw = window.localStorage.getItem(key);
         const list: unknown = raw ? JSON.parse(raw) : [];
         return Array.isArray(list)
             ? list.filter((v): v is string => typeof v === 'string')
@@ -41,9 +67,9 @@ function readOpen(): string[] {
     }
 }
 
-function saveOpen(list: string[]): void {
+function saveOpen(key: string, list: string[]): void {
     try {
-        window.localStorage.setItem(OPEN_KEY, JSON.stringify(list));
+        window.localStorage.setItem(key, JSON.stringify(list));
     } catch {
         // Private windows can refuse storage; the menu still works.
     }
@@ -58,16 +84,19 @@ export function NavMain() {
     const { navigation, tenant } = usePage().props;
     const { isCurrentUrl } = useCurrentUrl();
     const { state, isMobile } = useSidebar();
-    const folding = Boolean(tenant?.isHq) && (state === 'expanded' || isMobile);
+    // UX1: brokerages get the same opening main menus as HQ (the short simple-view menu stays flat).
+    const simpleMenu = usePage().props.simple?.mode === 'simple';
+    const folding = !simpleMenu && (state === 'expanded' || isMobile);
+    const key = tenant?.isHq ? OPEN_KEY : TENANT_OPEN_KEY;
     const [open, setOpen] = useState<string[]>(() =>
-        typeof window === 'undefined' ? [] : readOpen(),
+        typeof window === 'undefined' ? [] : readOpen(key),
     );
     const toggle = (label: string) => {
         const next = open.includes(label)
             ? open.filter((l) => l !== label)
             : [...open, label];
         setOpen(next);
-        saveOpen(next);
+        saveOpen(key, next);
     };
 
     if (folding) {
