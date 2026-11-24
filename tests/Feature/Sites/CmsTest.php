@@ -13,6 +13,7 @@ use Modules\Sites\Content\MediaLibrary;
 use Modules\Sites\Content\Pages;
 use Modules\Sites\Content\Posts;
 use Modules\Sites\Content\SeoCheck;
+use Modules\Sites\Models\Site;
 use Modules\Sites\Models\SiteMedia;
 use Modules\Sites\Models\SitePage;
 use Modules\Sites\Models\SitePost;
@@ -196,4 +197,10 @@ it('lets the brokerage set the main and footer menus', function (): void {
         'footer' => [['label' => 'Instagram', 'url' => 'https://instagram.com/acme']]])->assertSessionHasNoErrors();
     $html = (string) $this->get($this->web.'/')->getContent();
     expect($html)->toMatch('#<a href="/homes"\s*>Search homes</a>#')->toContain('href="https://instagram.com/acme">Instagram</a>')->not->toContain('>Home value</a>');
+});
+
+it('sends the owner to set up the website first when there is none, instead of "page not found"', function (): void {
+    Site::query()->delete();
+    $this->actingAs($this->owner)->get('/settings/website/blog')->assertRedirect('/settings/website');
+    $this->actingAs($this->owner)->get('/settings/website/media')->assertRedirect('/settings/website');
 });

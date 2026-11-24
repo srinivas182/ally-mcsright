@@ -1,4 +1,4 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -52,11 +52,6 @@ export default function WebsiteAreas({
                     title="Area pages"
                     description="Your website makes a page for every city, neighborhood and ZIP code with homes for sale: live prices, the newest homes and common questions. Add a few words of your own to the areas you know best; pages with local knowledge do better on Google."
                 />
-                <p className="text-sm">
-                    <Link href="/settings/website" className="underline">
-                        Back to Website
-                    </Link>
-                </p>
                 {sample && (
                     <p className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-base text-amber-900 dark:bg-amber-950 dark:text-amber-100">
                         Your website shows sample listings for now, so these

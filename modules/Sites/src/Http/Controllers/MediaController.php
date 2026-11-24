@@ -6,6 +6,7 @@ namespace Modules\Sites\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -20,9 +21,12 @@ final class MediaController
 {
     public function __construct(private readonly SiteSetup $sites, private readonly MediaLibrary $media) {}
 
-    public function index(Request $request): Response
+    public function index(Request $request): Response|RedirectResponse
     {
         self::manager($request);
+        if ($this->sites->brokerageSite() === null) {
+            return self::needsWebsite('photos and videos');
+        }
         $site = $this->site();
 
         return Inertia::render('settings/website-media', [
@@ -61,6 +65,14 @@ final class MediaController
         $this->media->delete($media);
 
         return response()->json(['ok' => true]);
+    }
+
+    /** PG5: no website yet; send the person to set it up instead of a "page not found". */
+    private static function needsWebsite(string $what): RedirectResponse
+    {
+        Inertia::flash('toast', ['type' => 'info', 'message' => "Choose a design for your website first. Then you can add {$what}."]);
+
+        return redirect('/settings/website');
     }
 
     private function site(): Site
