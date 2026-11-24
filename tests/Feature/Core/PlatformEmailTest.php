@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Modules\Core\Mail\PlatformEmail;
+use Modules\Core\Services\Catalog;
 use Modules\Core\Services\OutsideServices;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\Models\Tenant;
@@ -85,8 +86,9 @@ it('knows each provider\'s mail server, and refuses incomplete sign-ins', functi
         ->and(PlatformEmail::smtp('brevo', ['smtp_login' => 'abc@smtp-brevo.com', 'smtp_key' => 'k'])['host'] ?? null)->toBe('smtp-relay.brevo.com'); // keys saved before EM2
 });
 
-it('is listed for HQ in Outside services', function (): void {
+it('is listed for HQ in Outside services, with Test contacts for the address Test mode sends to (SU5)', function (): void {
     $this->actingAs($this->staff)->get('http://app.rightally.io/hq/services')->assertOk()->assertSee('Platform email');
+    expect(Catalog::get('platform_email')['contacts'])->toBeTrue();
 });
 
 it('gives the HQ invitation link on screen while email is not set up yet', function (): void {

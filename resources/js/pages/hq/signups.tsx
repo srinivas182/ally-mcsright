@@ -21,7 +21,7 @@ type Signup = {
     interval: string;
     price_cents: number;
     boards: number;
-    status: 'unfinished' | 'live' | 'failed' | 'replaced';
+    status: 'unfinished' | 'live' | 'failed' | 'replaced' | 'replaced_paid';
     stopped: string | null;
     design: string | null;
     last_at: string;
@@ -51,6 +51,7 @@ const tone: Record<
     live: 'default',
     failed: 'destructive',
     replaced: 'secondary',
+    replaced_paid: 'secondary',
 };
 
 const when = (iso: string) =>
@@ -98,20 +99,23 @@ export default function HqSignups({
                     description="Everyone who started signing up online. People who didn't finish paying get a reminder about an hour later and again a day later, with a link that brings their form back filled in."
                 />
                 <div className="flex flex-wrap items-center gap-2">
-                    {[...Object.entries(statuses), ['all', 'All']].map(
-                        ([key, label]) => (
-                            <Button
-                                key={key}
-                                size="sm"
-                                variant={status === key ? 'default' : 'outline'}
-                                aria-pressed={status === key}
-                                onClick={() => go({ status: key })}
-                            >
-                                {label}
-                                {key !== 'all' && ` (${counts[key] ?? 0})`}
-                            </Button>
+                    {[
+                        ...Object.entries(statuses).filter(
+                            ([key]) => key !== 'replaced_paid',
                         ),
-                    )}
+                        ['all', 'All'],
+                    ].map(([key, label]) => (
+                        <Button
+                            key={key}
+                            size="sm"
+                            variant={status === key ? 'default' : 'outline'}
+                            aria-pressed={status === key}
+                            onClick={() => go({ status: key })}
+                        >
+                            {label}
+                            {key !== 'all' && ` (${counts[key] ?? 0})`}
+                        </Button>
+                    ))}
                     <form
                         className="ml-auto flex gap-2"
                         onSubmit={(e) => {

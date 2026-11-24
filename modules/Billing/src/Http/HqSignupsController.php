@@ -28,18 +28,24 @@ final class HqSignupsController
         $status = in_array($request->query('status'), [...array_keys(self::STATUSES), 'all'], true) ? (string) $request->query('status') : 'unfinished';
         $search = mb_substr(trim((string) $request->query('q', '')), 0, 80);
         $db = DB::connection(Connections::control());
+        // SU5: earlier attempts by someone who has since paid: kept under "All", labelled, but not under "Started again".
+        $paidEmails = fn () => $db->table('signups as paid')->where('paid.status', 'live')->select(DB::raw('lower(paid.owner_email)'));
         $rows = $db->table('signups')->leftJoin('billing_packages', 'billing_packages.id', '=', 'signups.package_id')
             ->when($status === 'unfinished', fn ($q) => $q->whereIn('signups.status', ['draft', 'pending']))
             ->when(! in_array($status, ['all', 'unfinished'], true), fn ($q) => $q->where('signups.status', $status))
+            ->when($status === 'replaced', fn ($q) => $q->whereNotIn(DB::raw('lower(signups.owner_email)'), $paidEmails()))
             ->when($search !== '', fn ($q) => $q->where(fn ($q) => $q->where('signups.brokerage', 'like', "%{$search}%")->orWhere('signups.owner_email', 'like', "%{$search}%")
                 ->orWhere('signups.owner_name', 'like', "%{$search}%")->orWhere('signups.slug', 'like', "%{$search}%")))
             ->orderByDesc('signups.updated_at')->limit(200)
             ->get(['signups.*', 'billing_packages.name as package_name', 'billing_packages.monthly_cents', 'billing_packages.yearly_cents']);
 
+        $paid = $db->table('signups')->where('status', 'live')->pluck('owner_email')->map(fn ($e): string => mb_strtolower((string) $e))->all();
+
         return Inertia::render('hq/signups', [
-            'status' => $status, 'q' => $search, 'statuses' => self::STATUSES,
-            'counts' => (function () use ($db): array {
+            'status' => $status, 'q' => $search, 'statuses' => self::STATUSES + ['replaced_paid' => 'Replaced by a paid sign-up'],
+            'counts' => (function () use ($db, $paidEmails): array {
                 $n = $db->table('signups')->selectRaw('status, count(*) as n')->groupBy('status')->pluck('n', 'status')->map(fn ($v): int => (int) $v)->all();
+                $n['replaced'] = $db->table('signups')->where('status', 'replaced')->whereNotIn(DB::raw('lower(owner_email)'), $paidEmails())->count();
 
                 return ['unfinished' => ($n['draft'] ?? 0) + ($n['pending'] ?? 0)] + $n;
             })(),
@@ -52,7 +58,8 @@ final class HqSignupsController
                 },
                 'price_cents' => (int) ($s->interval === 'year' ? ($s->yearly_cents ?? 0) : ($s->monthly_cents ?? 0)),
                 'boards' => count((array) json_decode((string) ($s->idx_boards ?? '[]'), true)),
-                'status' => in_array($s->status, ['draft', 'pending'], true) ? 'unfinished' : (string) $s->status, 'error' => $s->status === 'failed' ? $s->error : null,
+                'status' => in_array($s->status, ['draft', 'pending'], true) ? 'unfinished' : ($s->status === 'replaced' && in_array(mb_strtolower((string) $s->owner_email), $paid, true) ? 'replaced_paid' : (string) $s->status),
+                'error' => $s->status === 'failed' ? $s->error : null,
                 'started_at' => (string) $s->created_at, 'last_at' => (string) $s->updated_at, 'reminders' => (int) ($s->reminders_sent ?? 0), 'reminded_at' => $s->reminded_at ?? null,
                 'no_reminders' => (bool) ($s->no_reminders ?? false),
                 'resume_url' => in_array($s->status, ['draft', 'pending'], true) ? SignupReminders::resumeUrl($s) : null,

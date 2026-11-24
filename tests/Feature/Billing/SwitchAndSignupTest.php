@@ -413,3 +413,15 @@ it('keeps the website "coming soon" after payment when no licence is active, and
             ->and(app(BrokerageLicences::class)->all()[0])->toMatchArray(['state' => 'TX', 'status' => 'expired', 'good' => false]);
     });
 });
+
+it('keeps earlier attempts of someone who later paid out of "Started again", labelled under All (SU5)', function (): void {
+    control()->table('signups')->insert([
+        ['ulid' => (string) Str::ulid(), 'type' => 'brokerage', 'brokerage' => 'Old try', 'slug' => 'old-try', 'owner_name' => 'Dana', 'owner_email' => 'Dana@oak.test', 'status' => 'replaced', 'created_at' => now(), 'updated_at' => now()],
+        ['ulid' => (string) Str::ulid(), 'type' => 'brokerage', 'brokerage' => 'Other try', 'slug' => 'other-try', 'owner_name' => 'Pat', 'owner_email' => 'pat@x.test', 'status' => 'replaced', 'created_at' => now(), 'updated_at' => now()],
+        ['ulid' => (string) Str::ulid(), 'type' => 'brokerage', 'brokerage' => 'Oak', 'slug' => 'oak-paid', 'owner_name' => 'Dana', 'owner_email' => 'dana@oak.test', 'status' => 'live', 'created_at' => now(), 'updated_at' => now()],
+    ]);
+    $this->actingAs($this->staff)->get(RA.'/hq/signups?status=replaced')->assertInertia(fn (Assert $p) => $p->has('signups', 1)
+        ->where('signups.0.email', 'pat@x.test')->where('counts.replaced', 1));
+    $this->actingAs($this->staff)->get(RA.'/hq/signups?status=all')->assertInertia(fn (Assert $p) => $p->where('statuses.replaced_paid', 'Replaced by a paid sign-up')
+        ->where('signups', fn ($rows): bool => collect($rows)->firstWhere('brokerage', 'Old try')['status'] === 'replaced_paid'));
+});

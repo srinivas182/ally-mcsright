@@ -146,8 +146,8 @@ final class Catalog
                     'repliers' => ['label' => 'Repliers (recommended for Texas and Florida)', 'fields' => ['api_key' => ['label' => 'API key (REPLIERS-API-KEY)', 'kind' => 'secret']],
                         'note' => 'A test key reads Repliers\' sample data (about 1 request a second). Each board\'s feed is set in HQ › MLS connections with the provider "Repliers" and its board ID.'],
                 ]],
-            'platform_email' => ['label' => 'Platform email', 'about' => 'Sends RightAlly\'s own email: invitations, sign-in codes, notices and Watchtower alerts. Test sends everything only to your first test contact. Off uses the server\'s mail settings.',
-                'level' => 'hq', 'sprint' => 'EM1', 'contacts' => false, 'providers' => [
+            'platform_email' => ['label' => 'Platform email', 'about' => 'Sends RightAlly\'s own email: invitations, sign-in codes, notices and Watchtower alerts. Test sends everything only to your first test contact (type your own email under Test contacts). Off uses the server\'s mail settings.',
+                'level' => 'hq', 'sprint' => 'EM1', 'contacts' => true, /* SU5: Test mode needs an address to send to */ 'providers' => [
                     // EM2: Brevo's API (an API key and a verified sender), not SMTP.
                     'brevo' => ['label' => 'Brevo (recommended)', 'fields' => ['api_key' => ['label' => 'API key (starts xkeysib-)', 'kind' => 'secret'],
                         'from_address' => ['label' => 'Send from (a sender verified in Brevo)', 'kind' => 'text'],
