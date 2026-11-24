@@ -1,11 +1,28 @@
 import { Head, Link, useForm } from '@inertiajs/react';
+import { Plus } from 'lucide-react';
 import { useState } from 'react';
 
+import { NewDealForm } from '@/components/deals/new-deal-form';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/ui/page-header';
 import { usd } from '@/lib/cents';
+import { cn } from '@/lib/utils';
+
+/** One colour per stage, on the column dot and each card's edge. */
+const DOT: Record<string, string> = {
+    getting_ready: 'bg-slate-400',
+    active: 'bg-emerald-500',
+    under_contract: 'bg-amber-500',
+    sold: 'bg-blue-600',
+};
+const BORDER: Record<string, string> = {
+    getting_ready: 'border-l-slate-400',
+    active: 'border-l-emerald-500',
+    under_contract: 'border-l-amber-500',
+    sold: 'border-l-blue-600',
+};
 
 type Card = {
     ulid: string;
@@ -28,6 +45,7 @@ type Props = {
     columns: Record<string, string>;
     mine: boolean;
     reviewer: boolean;
+    canCreateFor: { ulid: string; name: string }[];
 };
 
 /** LM1: the listing inventory board, from getting ready to sold, with listing agreements about to end. */
@@ -36,32 +54,53 @@ export default function ListingsBoard({
     columns,
     mine,
     reviewer,
+    canCreateFor,
 }: Props) {
+    const [adding, setAdding] = useState(false);
+
     return (
         <>
-            <Head title="Listings board" />
+            <Head title="My listings" />
             <div className="mx-auto grid w-full max-w-7xl gap-6 p-4 md:p-6">
                 <PageHeader
-                    title="Listings board"
-                    description="Every listing from getting ready to sold. Set the listing agreement's end date so nothing expires without a conversation."
+                    title="My listings"
+                    description="Every listing from getting ready to sold. Add each listing agreement's end date so none expires without a talk with the seller."
                     actions={
-                        reviewer ? (
-                            <Button variant="outline" asChild>
-                                <Link
-                                    href={
-                                        mine
-                                            ? '/deals/listings'
-                                            : '/deals/listings?mine=1'
-                                    }
-                                >
-                                    {mine
-                                        ? 'Show the whole brokerage'
-                                        : 'Show only mine'}
-                                </Link>
+                        <div className="flex flex-wrap gap-2">
+                            {reviewer && (
+                                <Button variant="outline" asChild>
+                                    <Link
+                                        href={
+                                            mine
+                                                ? '/deals/listings'
+                                                : '/deals/listings?mine=1'
+                                        }
+                                    >
+                                        {mine
+                                            ? 'Show the whole brokerage'
+                                            : 'Show only mine'}
+                                    </Link>
+                                </Button>
+                            )}
+                            <Button onClick={() => setAdding(!adding)}>
+                                <Plus aria-hidden="true" /> Add a listing
                             </Button>
-                        ) : undefined
+                        </div>
                     }
                 />
+                {adding && (
+                    <div className="grid gap-2">
+                        <p className="text-sm text-muted-foreground">
+                            A new listing starts in Getting ready. Add its MLS
+                            number when it goes live and it moves to On the
+                            market.
+                        </p>
+                        <NewDealForm
+                            canCreateFor={canCreateFor}
+                            type="listing"
+                        />
+                    </div>
+                )}
                 {board.expiring > 0 && (
                     <p
                         role="status"
@@ -78,20 +117,30 @@ export default function ListingsBoard({
                         <section
                             key={key}
                             aria-labelledby={`col-${key}`}
-                            className="grid content-start gap-2 rounded-lg border bg-muted/30 p-3"
+                            className="grid content-start gap-3 rounded-xl border bg-muted/40 p-3"
                         >
                             <h2
                                 id={`col-${key}`}
-                                className="flex items-baseline justify-between font-semibold"
+                                className="flex items-center gap-2 px-1 font-semibold"
                             >
-                                <span>{label}</span>
-                                <span className="text-sm font-normal text-muted-foreground">
-                                    {board.totals[key]?.count ?? 0} ·{' '}
-                                    {usd(board.totals[key]?.volume_cents ?? 0)}
+                                <span
+                                    aria-hidden="true"
+                                    className={cn(
+                                        'size-2.5 rounded-full',
+                                        DOT[key],
+                                    )}
+                                />
+                                {label}
+                                <span className="ml-auto rounded-full bg-background px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                                    {board.totals[key]?.count ?? 0}
                                 </span>
                             </h2>
+                            <p className="-mt-2 px-1 text-sm text-muted-foreground tabular-nums">
+                                {usd(board.totals[key]?.volume_cents ?? 0)} in
+                                prices
+                            </p>
                             {(board.columns[key] ?? []).length === 0 && (
-                                <p className="text-sm text-muted-foreground">
+                                <p className="rounded-lg border border-dashed bg-background/60 px-3 py-6 text-center text-sm text-muted-foreground">
                                     None right now.
                                 </p>
                             )}
@@ -118,7 +167,12 @@ function ListingCard({ card, column }: { card: Card; column: string }) {
     });
 
     return (
-        <article className="grid gap-1 rounded-md border bg-background p-3 text-sm">
+        <article
+            className={cn(
+                'grid gap-1.5 rounded-lg border border-l-4 bg-background p-3 text-sm shadow-xs',
+                BORDER[column],
+            )}
+        >
             <Link
                 href={`/deals/${card.ulid}`}
                 className="text-base font-medium underline-offset-2 hover:underline"
@@ -129,7 +183,9 @@ function ListingCard({ card, column }: { card: Card; column: string }) {
                 {[card.city, card.agent].filter(Boolean).join(' · ')}
             </p>
             <p>
-                <span className="font-semibold">{usd(card.price_cents)}</span>
+                <span className="text-base font-semibold tabular-nums">
+                    {usd(card.price_cents)}
+                </span>
                 {card.days !== null && (
                     <span className="text-muted-foreground">
                         {' '}
