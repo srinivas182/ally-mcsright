@@ -8,6 +8,7 @@ use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\Concerns\BelongsToTenant;
 use Modules\Core\Tenancy\Concerns\BindsForViewer;
@@ -68,9 +69,17 @@ final class Deal extends Model
         return ['pay_overrides' => 'array', 'agent_paid_outside' => 'boolean', 'contract_date' => 'immutable_date', 'closing_date' => 'immutable_date', 'closed_on' => 'immutable_date', 'locked_at' => 'immutable_datetime'];
     }
 
-    /** SX1: as DealAccess (the agent's own deals, or every deal for a reviewer). */
+    /** SX1: as DealAccess (the agent's own deals and deals they share, or every deal for a reviewer). */
     public static function viewable(Builder $query, User $user): Builder
     {
-        return DealAccess::reviewer($user) ? $query : $query->where($query->getModel()->qualifyColumn('agent_user_id'), DealAccess::actingFor($user));
+        if (DealAccess::reviewer($user)) {
+            return $query;
+        }
+        $me = DealAccess::actingFor($user);
+        $model = $query->getModel();
+
+        // CM5: co-agents on the deal too.
+        return $query->where(fn (Builder $w) => $w->where($model->qualifyColumn('agent_user_id'), $me)
+            ->orWhereIn($model->qualifyColumn('id'), DB::connection(Connections::cell())->table('tx_deal_agents')->where('user_id', $me)->select('deal_id')));
     }
 }

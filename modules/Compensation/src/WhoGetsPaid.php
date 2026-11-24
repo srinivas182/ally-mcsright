@@ -7,6 +7,7 @@ namespace Modules\Compensation;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Modules\Compensation\Models\Calculation;
+use Modules\Compensation\Models\PlanVersion;
 use Modules\Compensation\RevenueShare\Insights;
 use Modules\Compensation\RevenueShare\RevenueShareEngine;
 use Modules\Core\Identity\Enums\UserKind;
@@ -47,6 +48,10 @@ final class WhoGetsPaid
 
         $agents = [];
         $company = 0;
+        $shares = [];
+        foreach ((array) ($calc->inputs['agents'] ?? []) as $a) {
+            $shares[(int) ($a['user_id'] ?? 0)] = self::percent((string) ($a['share_percent'] ?? '100'));
+        }
         foreach ($rows as $r) {
             /** @var array<string, mixed> $r */
             $id = (int) $r['user_id'];
@@ -55,9 +60,15 @@ final class WhoGetsPaid
                 'name' => $names[$id] ?? 'Agent', 'plan' => $r['plan'] ?? null, 'share_cents' => (int) $r['share_cents'],
                 'fees' => array_map(fn (array $f): array => ['name' => (string) $f['name'], 'cents' => (int) $f['cents']], (array) ($r['fees'] ?? [])),
                 'team_split_cents' => (int) ($r['team_split_cents'] ?? 0), 'credit_cents' => (int) ($r['credit_used_cents'] ?? 0),
-                'net_cents' => (int) $r['agent_net_cents'], 'company_cents' => (int) $r['company_cents'] + (int) ($r['post_cap_fee_cents'] ?? 0),
+                'net_cents' => (int) $r['agent_net_cents'], 'company_cents' => (int) $r['company_cents'],
                 'capped' => (bool) ($r['capped'] ?? false), 'hidden' => false,
-            ] : ['name' => $names[$id] ?? 'Agent', 'plan' => $r['plan'] ?? null, 'hidden' => true];
+                // CM5: the commission sheet: the share of the deal, the plan type and split, and the cap.
+                'share_percent' => $shares[$id] ?? '100', 'plan_type' => self::planType($r), 'split' => self::split($r),
+                'cap_cents' => isset($r['cap_amount_cents']) ? (int) $r['cap_amount_cents'] : null,
+                'cap_before_cents' => isset($r['cap_before_cents']) ? (int) $r['cap_before_cents'] : null,
+                'cap_after_cents' => isset($r['cap_after_cents']) ? (int) $r['cap_after_cents'] : null,
+                'post_cap_fee_cents' => (int) ($r['post_cap_fee_cents'] ?? 0),
+            ] : ['name' => $names[$id] ?? 'Agent', 'plan' => $r['plan'] ?? null, 'share_percent' => $shares[$id] ?? '100', 'hidden' => true];
         }
 
         $paid = array_sum(array_map(fn (array $l): int => in_array($l['kind'], ['share', 'root', 'bonus', 'held'], true) ? (int) $l['amount_cents'] : 0, $levels));
@@ -83,6 +94,7 @@ final class WhoGetsPaid
 
         return [
             'status' => $final ? 'final' : 'estimate',
+            'side' => $calc->side === 'buying' ? 'Buyer side' : 'Seller (listing) side',
             'version' => $calc->version,
             'gci_cents' => $full || in_array($viewer->id, array_map(fn (array $r): int => (int) $r['user_id'], $rows), true) ? (int) ($calc->result['gci_cents'] ?? 0) : null,
             'outside_referral_cents' => $full ? (int) ($calc->result['outside_referral_cents'] ?? 0) : null,
@@ -98,6 +110,61 @@ final class WhoGetsPaid
                 'from' => $names[(int) $l['source_user_id']] ?? 'Agent',
             ], $levels) : [],
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    private static function planType(array $row): string
+    {
+        $mode = self::rules($row)['split']['mode'] ?? 'percentage';
+
+        return match ($mode) {
+            'flat_fee' => 'Flat fee',
+            'tiered' => 'Tiered',
+            default => isset(self::rules($row)['revenue_share']) ? 'Revenue share' : 'Percentage split',
+        };
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    /** "60.0000" or 60 → "60"; "12.5000" → "12.5". */
+    private static function percent(string $value): string
+    {
+        $fixed = number_format((float) $value, 4, '.', '');
+
+        return rtrim(rtrim($fixed, '0'), '.');
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    private static function split(array $row): ?string
+    {
+        $split = (array) (self::rules($row)['split'] ?? []);
+        if (($split['mode'] ?? '') === 'percentage' && isset($split['agent_percent'])) {
+            $agent = (float) $split['agent_percent'];
+
+            return rtrim(rtrim(number_format($agent, 2, '.', ''), '0'), '.').' / '.rtrim(rtrim(number_format(100 - $agent, 2, '.', ''), '0'), '.');
+        }
+        if (($split['mode'] ?? '') === 'flat_fee') {
+            $fee = (int) ($split['bands'][0]['fee_cents'] ?? 0);
+
+            return '$'.number_format($fee / 100, 2).' per deal';
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     * @return array<string, mixed>
+     */
+    private static function rules(array $row): array
+    {
+        // No static cache: under Octane it would outlive the request (and the tenant).
+        return (array) (PlanVersion::query()->find((int) ($row['plan_version_id'] ?? 0))->rules ?? []);
     }
 
     /**
