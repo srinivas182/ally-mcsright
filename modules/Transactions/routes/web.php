@@ -16,6 +16,7 @@ use Modules\Transactions\Http\FileReviewController;
 use Modules\Transactions\Http\MoneyDeskController;
 use Modules\Transactions\Http\OffersController;
 use Modules\Transactions\Http\PayController;
+use Modules\Transactions\Http\PipelineController;
 use Modules\Transactions\Http\PlaybooksController;
 use Modules\Transactions\Http\PoliciesController;
 use Modules\Transactions\Http\PortalAdminController;
@@ -23,6 +24,12 @@ use Modules\Transactions\Http\PortalController;
 use Modules\Transactions\Http\PublicOfferController;
 use Modules\Transactions\Http\RepairsController;
 use Modules\Transactions\Http\WinCardController;
+
+// PG1: the CRM pipeline (deals not under contract yet).
+Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoffice.minimal'])->group(function (): void {
+    Route::get('pipeline', [PipelineController::class, 'index'])->name('pipeline');
+    Route::post('pipeline/{deal}/stage', [PipelineController::class, 'stage'])->middleware('throttle:120,1')->name('pipeline.stage');
+});
 
 Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoffice.minimal'])->prefix('deals')->name('deals.')->group(function (): void {
     Route::get('/', [DealController::class, 'index'])->name('index');

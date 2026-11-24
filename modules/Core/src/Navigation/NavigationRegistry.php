@@ -32,7 +32,7 @@ final class NavigationRegistry
      */
     private const TENANT_MENUS = [
         'Dashboard' => ['' => ['/dashboard', '/agent', '/today', '/engage', '/tasks', '/chat']],
-        'CRM' => ['' => ['/leads', '/contacts', '/inbox', '/appointments', '/outreach', '/movewise', '/automations', '/prospector', '/insights/database', '/network']],
+        'CRM' => ['' => ['/leads', '/contacts', '/pipeline', '/inbox', '/appointments', '/outreach', '/movewise', '/automations', '/prospector', '/insights/database', '/network']],
         'Listings' => ['' => ['/listings', '/deals/listings', '/pricing', '/listings/demand', '/list-iq']],
         'Transactions' => ['' => ['/deals', '/deals/review', '/deals/risk', '/deals/compliance', '/forms/templates', '/deals/vendors', '/deals/money', '/deals/playbooks',
             '/deals/bring-over-files', '/policies', '/settings/transactions']],

@@ -164,6 +164,21 @@ const OWNER: Record<string, Guide> = {
                 try: { label: 'Open Contacts', href: '/contacts' },
             },
             {
+                id: 'pipeline',
+                title: 'Your pipeline: deals before the contract',
+                why: 'See every deal you are working on, from first showing to signed contract, so none go quiet.',
+                steps: [
+                    'Open the Pipeline tab.',
+                    'Press "Add a deal" for a buyer you are showing homes to, or a seller you are meeting.',
+                    'Drag the card to the next stage as things move, or press the arrow on the card.',
+                    'When the contract is signed, open the deal and put it under contract. It moves to Transactions by itself.',
+                ],
+                tips: [
+                    'A card shows how many days it has been in its stage. Old cards need a call.',
+                ],
+                try: { label: 'Open the Pipeline', href: '/pipeline' },
+            },
+            {
                 id: 'inbox',
                 title: 'Every message in one inbox',
                 why: 'Texts, emails and website chats in one list, so nobody waits for an answer.',
@@ -311,7 +326,7 @@ const OWNER: Record<string, Guide> = {
         title: 'Close error-free files',
         intro: 'Transactions is every deal from the signed contract to the closing table and the commission check. RightAlly reads the contract, sets the dates, builds the checklist and reminds everyone, so files are complete and nothing is missed.',
         start: [
-            'Start a deal from the contract: press "Start from a contract" and upload the signed file or a photo.',
+            'Press "New transaction" and upload the signed contract (a file or a phone photo).',
             'Check the dates RightAlly found and press "Set it up".',
             'Look at "At risk today" each morning and clear anything red.',
         ],
@@ -322,7 +337,7 @@ const OWNER: Record<string, Guide> = {
                 why: 'No more typing in names, prices and dates by hand.',
                 steps: [
                     'Open the All transactions tab.',
-                    'Press "Start from a contract" and choose the signed contract (a file or a phone photo). You can also describe it out loud, or forward the contract by email.',
+                    'Press "New transaction", then "Upload the contract" and choose the signed contract (a file or a phone photo). You can also describe it out loud, or forward the contract by email.',
                     'RightAlly fills in the buyers, sellers, price, closing date and every deadline.',
                     'Check each one, change anything that is wrong, and press "Set it up".',
                 ],

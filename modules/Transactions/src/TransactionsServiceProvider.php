@@ -132,6 +132,7 @@ final class TransactionsServiceProvider extends ServiceProvider
         $this->app->make(McpToolbox::class)->brief('deal_deadlines', Mcp\DealDeadlines::forBrief(...));
         Gate::define('transactions.queue', fn (User $user): bool => Can::manage($user, 'transactions.review'));
         $nav->add(new NavItem('Overview', 'Deals', '/deals', 'briefcase', 25, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant], mobile: true));
+        $nav->add(new NavItem('Grow', 'Pipeline', '/pipeline', 'kanban', 26, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant]));
         $nav->add(new NavItem('Overview', 'Review queue', '/deals/review', 'clipboard-check', 26, ability: 'transactions.queue'));
         $nav->add(new NavItem('Overview', 'Policies', '/policies', 'book-open', 28, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant]));
         $nav->add(new NavItem('Overview', 'Risk', '/deals/risk', 'shield-alert', 27, ability: 'transactions.queue'));
