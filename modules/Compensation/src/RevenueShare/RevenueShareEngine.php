@@ -37,6 +37,9 @@ final class RevenueShareEngine
 
     private ?string $limitReason = null;
 
+    /** @var array<string, int> CM3: paid in this run per "recipient:level", for the yearly cap per level */
+    private array $levelCredits = [];
+
     public function __construct(private readonly Sponsorships $sponsorships, private readonly Unlocking $unlocking, private readonly Members $members, private readonly Holds $holds) {}
 
     public function distribute(Calculation $final): void
@@ -47,6 +50,7 @@ final class RevenueShareEngine
         }
         $date = $input->closingDate;
         $this->credits = [];
+        $this->levelCredits = [];
         $this->unlocking->forget();
         $budget = $this->budgetRoom($date);
 
@@ -174,7 +178,7 @@ final class RevenueShareEngine
         }
 
         if ($reason === null && $resolved !== null) {
-            $pay = $this->limit($resolved, $amount, $rules, $date, $budget);
+            $pay = $this->limit($resolved, $amount, $rules, $date, $budget, level: (int) $entry['level']);
             $cutReason = $this->limitReason;
             if ($pay > 0) {
                 $signals = $this->holds->signals((int) $row['user_id'], $resolved, $row, $rules, $date);
@@ -185,6 +189,7 @@ final class RevenueShareEngine
                 } else {
                     $this->insert($final, $row, $date, $entry + ['kind' => 'share', 'amount_cents' => $pay, 'recipient_user_id' => $resolved]);
                     $this->credits[$resolved] = ($this->credits[$resolved] ?? 0) + $pay;
+                    $this->levelCredits[$resolved.':'.$entry['level']] = ($this->levelCredits[$resolved.':'.$entry['level']] ?? 0) + $pay;
                 }
             }
             $this->limitReason = $cutReason;
@@ -216,10 +221,22 @@ final class RevenueShareEngine
     /**
      * Applies the per-recipient yearly maximum and the brokerage budget; sets limitReason when it cuts.
      */
-    private function limit(int $recipient, int $amount, RevenueShareRules $rules, CarbonImmutable $date, ?int &$budget, bool $recipientCap = true): int
+    private function limit(int $recipient, int $amount, RevenueShareRules $rules, CarbonImmutable $date, ?int &$budget, bool $recipientCap = true, int $level = 0): int
     {
         $this->limitReason = null;
         $pay = $amount;
+        // CM3: the plan's yearly cap for one person at this level.
+        $levelCap = $level > 0 ? ($rules->levelCapsCents[$level - 1] ?? null) : null;
+        if ($recipientCap && $levelCap !== null) {
+            $key = "{$recipient}:{$level}";
+            $received = (int) DB::connection(Connections::cell())->table('rs_entries')->where('recipient_user_id', $recipient)->where('kind', 'share')
+                ->where('level', $level)->whereYear('closing_date', $date->year)->sum('amount_cents') + ($this->levelCredits[$key] ?? 0);
+            $room = max(0, $levelCap - $received);
+            if ($pay > $room) {
+                $pay = $room;
+                $this->limitReason = 'level_limit';
+            }
+        }
         if ($recipientCap && $rules->perRecipientYearlyMaxCents !== null) {
             $received = (int) DB::connection(Connections::cell())->table('rs_entries')->where('recipient_user_id', $recipient)->where('kind', 'share')
                 ->whereYear('closing_date', $date->year)->sum('amount_cents') + ($this->credits[$recipient] ?? 0);
