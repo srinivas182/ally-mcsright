@@ -11,7 +11,7 @@ import {
 } from '@/components/deals/money-desk';
 import { Head, router, useForm } from '@inertiajs/react';
 import { CameraIcon, UploadIcon } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import {
     DocIqPanel,
@@ -42,6 +42,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/ui/page-header';
+import { StatCard } from '@/components/ui/stat-card';
 import { usd } from '@/lib/cents';
 import { WhyCanISee } from '@/components/why-can-i-see';
 import { CustomFieldsPanel } from '@/components/custom-fields-panel';
@@ -284,6 +285,20 @@ function ChecklistItem({
     );
 }
 
+/** PG2: which part of the deal page the address points at (#documents, #money…). */
+function dealTab(): string {
+    const h =
+        typeof window === 'undefined'
+            ? ''
+            : window.location.hash.replace('#', '');
+
+    return h === 'money-desk'
+        ? 'money'
+        : ['overview', 'documents', 'people', 'closing', 'money'].includes(h)
+          ? h
+          : 'overview';
+}
+
 /** One deal: overview, status, checklist with uploads and review, parties. */
 export default function ShowDeal({
     deal,
@@ -332,14 +347,81 @@ export default function ShowDeal({
     });
     const [reason, setReason] = useState('');
 
+    // PG2: the deal in parts (Overview, Documents, People and portal, Closing, Money); the part is kept in the
+    // address (#documents) so links and the back button land on it.
+    const [tab, setTab] = useState(dealTab);
+    useEffect(() => {
+        const onHash = () => setTab(dealTab());
+        window.addEventListener('hashchange', onHash);
+
+        return () => window.removeEventListener('hashchange', onHash);
+    }, []);
+    const choose = (key: string) => {
+        setTab(key);
+        try {
+            window.history.replaceState(window.history.state, '', `#${key}`);
+        } catch {
+            // Some browsers refuse; the tab still changes.
+        }
+    };
+    const todo = items.filter(
+        (i) => i.required && !['approved', 'waived'].includes(i.status),
+    ).length;
+    const tabs: [string, string][] = [
+        ['overview', 'Overview'],
+        ['documents', todo > 0 ? `Documents (${todo} to do)` : 'Documents'],
+        ['people', 'People and portal'],
+        ['closing', 'Closing'],
+        ['money', 'Money'],
+    ];
+
     return (
         <>
             <Head title={deal.street} />
-            <div className="flex max-w-4xl flex-col gap-4 p-4 md:p-6">
+            <div className="flex max-w-5xl flex-col gap-4 p-4 md:p-6">
                 <PageHeader
                     title={deal.street}
                     description={`${[deal.city, deal.state_code, deal.postal_code].filter(Boolean).join(', ')} · ${deal.agent ?? ''}${deal.locked ? ' · Closed and locked' : ''}${deal.imported_from ? ` · Brought over from ${deal.imported_from}` : ''}`}
                 />
+                <section
+                    aria-label="This deal at a glance"
+                    className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+                >
+                    <StatCard
+                        label="Status"
+                        value={
+                            <span className="capitalize">
+                                {deal.status.replace('_', ' ')}
+                            </span>
+                        }
+                    />
+                    <StatCard label="Price" value={usd(deal.price_cents)} />
+                    <StatCard
+                        label="Commission (GCI)"
+                        value={
+                            deal.commission_hidden
+                                ? 'Hidden'
+                                : deal.gci_cents
+                                  ? usd(deal.gci_cents)
+                                  : '—'
+                        }
+                    />
+                    <StatCard
+                        label={deal.closed_on ? 'Closed on' : 'Closing'}
+                        value={
+                            (deal.closed_on ?? deal.closing_date)
+                                ? new Date(
+                                      `${deal.closed_on ?? deal.closing_date}T00:00:00`,
+                                  ).toLocaleDateString()
+                                : '—'
+                        }
+                    />
+                    {deal.cancel_reason && (
+                        <p className="rounded-lg border p-3 text-sm sm:col-span-2 lg:col-span-4">
+                            Fell through: {deal.cancel_reason}
+                        </p>
+                    )}
+                </section>
                 {risk.level !== 'low' && (
                     <p
                         role="status"
@@ -348,71 +430,6 @@ export default function ShowDeal({
                         <strong>Risk {risk.score} of 100</strong> ({risk.level}
                         ): {risk.reasons.join(', ')}. Fix these and it drops.
                     </p>
-                )}
-                <WhyCanISee url={`/deals/${deal.ulid}/why`} />
-                <DealIqPanel
-                    dealUlid={deal.ulid}
-                    locked={deal.locked}
-                    iq={dealIq}
-                    parties={parties}
-                />
-                <PlaybookPanel
-                    dealUlid={deal.ulid}
-                    locked={deal.locked}
-                    playbook={playbook}
-                />
-                <ClosingPanel
-                    dealUlid={deal.ulid}
-                    locked={deal.locked}
-                    closing={closing}
-                />
-                <PortalPanel
-                    dealUlid={deal.ulid}
-                    portal={portal}
-                    parties={parties}
-                    roles={dealIq.roles}
-                />
-                <section className="grid gap-2 rounded-lg border p-4 text-sm md:grid-cols-4">
-                    <span>
-                        Status:{' '}
-                        <strong className="capitalize">
-                            {deal.status.replace('_', ' ')}
-                        </strong>
-                    </span>
-                    <span>Price: {usd(deal.price_cents)}</span>
-                    <span>
-                        Commission (GCI):{' '}
-                        {deal.commission_hidden
-                            ? 'Hidden for your role'
-                            : deal.gci_cents
-                              ? usd(deal.gci_cents)
-                              : '—'}
-                    </span>
-                    <span>
-                        Closing: {deal.closed_on ?? deal.closing_date ?? '—'}
-                    </span>
-                    {deal.cancel_reason && (
-                        <span className="md:col-span-4">
-                            Fell through: {deal.cancel_reason}
-                        </span>
-                    )}
-                </section>
-                {whoGetsPaid && <WhoGetsPaid data={whoGetsPaid} />}
-                <CustomFieldsPanel
-                    fields={customFields}
-                    action={`/deals/${deal.ulid}/fields`}
-                    canEdit={!deal.locked}
-                />
-                {winCard && <WinCardPanel ulid={deal.ulid} win={winCard} />}
-                {deal.status === 'closed' && can.managePay && (
-                    <DealPay
-                        ulid={deal.ulid}
-                        status={deal.money_status}
-                        note={deal.money_note}
-                        overrides={deal.pay_overrides}
-                        importedFrom={deal.imported_from}
-                        paidOutside={deal.agent_paid_outside}
-                    />
                 )}
                 {deal.status === 'pre_contract' && (
                     <form
@@ -525,66 +542,166 @@ export default function ShowDeal({
                         </Button>
                     </section>
                 )}
-                <CompliancePanel
-                    deal={deal.ulid}
-                    compliance={compliance}
-                    reviewer={reviewer}
-                    locked={deal.locked}
-                />
-                <EmailIn address={emailIn} />
-                <DocIqPanel
-                    deal={deal.ulid}
-                    locked={deal.locked}
-                    unsorted={unsorted}
-                    facts={facts}
-                />
-                <KeyDates deal={deal.ulid} dates={dates} />
-                <section className="grid gap-2">
-                    <h2 className="font-semibold" data-tour="checklist">
-                        Checklist
-                    </h2>
-                    <ul className="divide-y rounded-lg border">
-                        {items.map((i) => (
-                            <ChecklistItem
-                                key={i.ulid}
-                                item={i}
-                                deal={deal}
-                                reviewer={reviewer}
-                                reasons={reasons}
+                <div
+                    role="tablist"
+                    aria-label="Parts of this deal"
+                    className="sticky top-0 z-10 -mx-1 flex gap-1 overflow-x-auto border-b bg-background px-1"
+                >
+                    {tabs.map(([key, label]) => (
+                        <button
+                            key={key}
+                            type="button"
+                            role="tab"
+                            id={`deal-tab-${key}`}
+                            aria-selected={tab === key}
+                            aria-controls={`deal-panel-${key}`}
+                            onClick={() => choose(key)}
+                            className={`-mb-px shrink-0 border-b-[3px] px-3 py-2.5 text-[15px] font-medium whitespace-nowrap ${
+                                tab === key
+                                    ? 'border-primary text-foreground'
+                                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                            }`}
+                        >
+                            {label}
+                        </button>
+                    ))}
+                </div>
+                <div
+                    role="tabpanel"
+                    id={`deal-panel-${tab}`}
+                    aria-labelledby={`deal-tab-${tab}`}
+                    className="flex flex-col gap-4"
+                >
+                    {tab === 'overview' && (
+                        <>
+                            <DealIqPanel
+                                dealUlid={deal.ulid}
+                                locked={deal.locked}
+                                iq={dealIq}
+                                parties={parties}
                             />
-                        ))}
-                    </ul>
-                </section>
-                <section className="grid gap-2">
-                    <h2 className="font-semibold">People on this deal</h2>
-                    <ul className="divide-y rounded-lg border text-sm">
-                        {parties.length === 0 && (
-                            <li className="p-3 text-muted-foreground">
-                                No one added yet.
-                            </li>
-                        )}
-                        {parties.map((p, i) => (
-                            <li key={i} className="p-3">
-                                <span className="capitalize">
-                                    {p.role.replace('_', ' ')}
-                                </span>
-                                : {p.name}
-                                {p.company ? ` (${p.company})` : ''}{' '}
-                                {p.email ?? ''} {p.phone ?? ''}
-                            </li>
-                        ))}
-                    </ul>
-                </section>
-                <div id="money-desk" />
-                <MoneyDesk
-                    deal={deal}
-                    deposits={deposits}
-                    referrals={referrals}
-                    cdas={cdas}
-                    titles={titles}
-                    reviewer={reviewer}
-                    can={can}
-                />
+                            <KeyDates deal={deal.ulid} dates={dates} />
+                            <CustomFieldsPanel
+                                fields={customFields}
+                                action={`/deals/${deal.ulid}/fields`}
+                                canEdit={!deal.locked}
+                            />
+                            {winCard && (
+                                <WinCardPanel ulid={deal.ulid} win={winCard} />
+                            )}
+                            <WhyCanISee url={`/deals/${deal.ulid}/why`} />
+                        </>
+                    )}
+                    {tab === 'documents' && (
+                        <>
+                            <section className="grid gap-2">
+                                <h2
+                                    className="font-semibold"
+                                    data-tour="checklist"
+                                >
+                                    Checklist
+                                </h2>
+                                <ul className="divide-y rounded-lg border">
+                                    {items.map((i) => (
+                                        <ChecklistItem
+                                            key={i.ulid}
+                                            item={i}
+                                            deal={deal}
+                                            reviewer={reviewer}
+                                            reasons={reasons}
+                                        />
+                                    ))}
+                                </ul>
+                            </section>
+                            <CompliancePanel
+                                deal={deal.ulid}
+                                compliance={compliance}
+                                reviewer={reviewer}
+                                locked={deal.locked}
+                            />
+                            <DocIqPanel
+                                deal={deal.ulid}
+                                locked={deal.locked}
+                                unsorted={unsorted}
+                                facts={facts}
+                            />
+                            <EmailIn address={emailIn} />
+                        </>
+                    )}
+                    {tab === 'people' && (
+                        <>
+                            <section className="grid gap-2">
+                                <h2 className="font-semibold">
+                                    People on this deal
+                                </h2>
+                                <ul className="divide-y rounded-lg border text-sm">
+                                    {parties.length === 0 && (
+                                        <li className="p-3 text-muted-foreground">
+                                            No one added yet.
+                                        </li>
+                                    )}
+                                    {parties.map((p, i) => (
+                                        <li key={i} className="p-3">
+                                            <span className="capitalize">
+                                                {p.role.replace('_', ' ')}
+                                            </span>
+                                            : {p.name}
+                                            {p.company
+                                                ? ` (${p.company})`
+                                                : ''}{' '}
+                                            {p.email ?? ''} {p.phone ?? ''}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </section>
+                            <PortalPanel
+                                dealUlid={deal.ulid}
+                                portal={portal}
+                                parties={parties}
+                                roles={dealIq.roles}
+                            />
+                        </>
+                    )}
+                    {tab === 'closing' && (
+                        <>
+                            <ClosingPanel
+                                dealUlid={deal.ulid}
+                                locked={deal.locked}
+                                closing={closing}
+                            />
+                            <PlaybookPanel
+                                dealUlid={deal.ulid}
+                                locked={deal.locked}
+                                playbook={playbook}
+                            />
+                        </>
+                    )}
+                    {tab === 'money' && (
+                        <>
+                            {whoGetsPaid && <WhoGetsPaid data={whoGetsPaid} />}
+                            {deal.status === 'closed' && can.managePay && (
+                                <DealPay
+                                    ulid={deal.ulid}
+                                    status={deal.money_status}
+                                    note={deal.money_note}
+                                    overrides={deal.pay_overrides}
+                                    importedFrom={deal.imported_from}
+                                    paidOutside={deal.agent_paid_outside}
+                                />
+                            )}
+                            <div id="money-desk" />
+                            <MoneyDesk
+                                deal={deal}
+                                deposits={deposits}
+                                referrals={referrals}
+                                cdas={cdas}
+                                titles={titles}
+                                reviewer={reviewer}
+                                can={can}
+                            />
+                        </>
+                    )}
+                </div>
             </div>
         </>
     );

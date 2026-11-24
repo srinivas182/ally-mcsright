@@ -90,6 +90,9 @@ export const PAGE_HINTS: Record<string, PageHint> = {
         },
         tip: 'Past clients and your sphere bring most repeat and referral business. Keep them all here.',
     },
+    '/pipeline': {
+        tip: 'Drag a card to move it. When the contract is signed, open the deal and put it under contract.',
+    },
     '/inbox': {
         ai: {
             name: ASSISTANT,
