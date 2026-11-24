@@ -32,8 +32,8 @@ type PageHelp = {
  */
 export function HelpMe({ inHeader = false }: { inHeader?: boolean }) {
     const page = usePage();
-    // UI3: the HQ console shows Help as a quiet button in the top bar; brokerages and agents keep the big round one.
-    const hq = Boolean(page.props.tenant?.isHq);
+    // UI3/MN3: Help is a quiet button in the top bar, next to Search; only the simple view keeps the big round one.
+    const inTopBar = page.props.simple?.mode !== 'simple';
     const [open, setOpen] = useState(false);
     const [help, setHelp] = useState<PageHelp | null>(null);
     const [watching, setWatching] = useState(false);
@@ -61,15 +61,16 @@ export function HelpMe({ inHeader = false }: { inHeader?: boolean }) {
 
     const big = 'h-16 w-full justify-start gap-3 text-lg';
 
-    if (hq !== inHeader) {
+    if (inTopBar !== inHeader) {
         return null;
     }
 
     return (
         <>
             {inHeader ? (
-                <Button variant="ghost" onClick={show}>
-                    <LifeBuoyIcon aria-hidden="true" /> Help
+                <Button variant="ghost" onClick={show} aria-label="Help">
+                    <LifeBuoyIcon aria-hidden="true" />
+                    <span className="hidden sm:inline">Help</span>
                 </Button>
             ) : (
                 <Button

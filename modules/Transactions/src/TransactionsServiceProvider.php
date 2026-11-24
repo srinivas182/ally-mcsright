@@ -135,7 +135,14 @@ final class TransactionsServiceProvider extends ServiceProvider
         $nav->add(new NavItem('Overview', 'Review queue', '/deals/review', 'clipboard-check', 26, ability: 'transactions.queue'));
         $nav->add(new NavItem('Overview', 'Policies', '/policies', 'book-open', 28, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant]));
         $nav->add(new NavItem('Overview', 'Risk', '/deals/risk', 'shield-alert', 27, ability: 'transactions.queue'));
-        $nav->add(new NavItem('Settings', 'Transactions', '/settings/transactions', 'briefcase', 76, ability: 'transactions.queue'));
+        $nav->add(new NavItem('Settings', 'Transaction settings', '/settings/transactions', 'briefcase', 76, ability: 'transactions.queue'));
+        // MN2: every transaction page in the menu (they were only reachable from inside Deals).
+        $nav->add(new NavItem('Overview', 'Listings board', '/deals/listings', 'house', 29, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent]));
+        $nav->add(new NavItem('Overview', 'Money coming in', '/deals/money', 'banknote', 30, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent]));
+        $nav->add(new NavItem('Overview', 'Playbooks', '/deals/playbooks', 'list-checks', 31, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent]));
+        $nav->add(new NavItem('Overview', 'Vendors', '/deals/vendors', 'contact', 32, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent]));
+        $nav->add(new NavItem('Overview', 'Compliance checklists', '/deals/compliance', 'clipboard-check', 33, ability: 'transactions.queue'));
+        $nav->add(new NavItem('Overview', 'Bring over old files', '/deals/bring-over-files', 'list-plus', 34, kinds: [UserKind::Owner, UserKind::Staff]));
     }
 
     /** How to put back the deal actions that offer "Undo" (SM1). Each checks the deal is still visible to the person. */

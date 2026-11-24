@@ -102,8 +102,8 @@ final class SimpleMode
     /**
      * The short menu from the person's full menu (never a page they could not open).
      *
-     * @param  list<array{label: string, items: list<array{title: string, href: string, icon: string, mobile: bool}>}>  $full
-     * @return list<array{label: string, items: list<array{title: string, href: string, icon: string, mobile: bool}>}>
+     * @param  list<array{key: string, label: string, items: list<array{title: string, href: string, icon: string, mobile: bool, section?: string}>}>  $full
+     * @return list<array{key: string, label: string, items: list<array{title: string, href: string, icon: string, mobile: bool, section?: string}>}>
      */
     public static function menu(array $full, string $locale): array
     {
@@ -121,7 +121,7 @@ final class SimpleMode
             }
         }
 
-        return [['label' => 'RightAlly', 'items' => $items]];
+        return [['key' => 'RightAlly', 'label' => 'RightAlly', 'items' => $items]];
     }
 
     public function set(User $user, ?string $mode, ?string $locale): void

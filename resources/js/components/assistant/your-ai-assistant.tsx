@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { SendIcon, SparklesIcon, XIcon } from 'lucide-react';
+import { MicIcon, SendIcon, SparklesIcon, XIcon } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { VoiceButton } from '@/components/crm/voice-button';
@@ -169,15 +169,30 @@ export function YourAiAssistant() {
         );
 
     if (!open) {
+        // MN3: one button for typing and talking: the left part opens the assistant, the microphone starts listening.
         return (
-            <Button
-                className="fixed right-4 bottom-20 z-40 gap-2 rounded-full shadow-lg md:bottom-4"
-                onClick={() => setOpen(true)}
-                aria-label="Open Your AI Assistant (Ctrl J)"
-            >
-                <SparklesIcon aria-hidden="true" />
-                <span className="hidden sm:inline">Your AI Assistant</span>
-            </Button>
+            <div className="fixed right-4 bottom-20 z-40 flex items-center overflow-hidden rounded-full bg-primary text-primary-foreground shadow-lg md:bottom-4">
+                <button
+                    type="button"
+                    className="flex h-11 items-center gap-2 pr-3 pl-4 font-medium hover:bg-primary-foreground/10"
+                    onClick={() => setOpen(true)}
+                    aria-label="Open Your AI Assistant (Ctrl J)"
+                >
+                    <SparklesIcon aria-hidden="true" className="size-4" />
+                    <span className="hidden sm:inline">Your AI Assistant</span>
+                </button>
+                <button
+                    type="button"
+                    className="flex h-11 items-center border-l border-primary-foreground/25 pr-4 pl-3 hover:bg-primary-foreground/10"
+                    onClick={() =>
+                        window.dispatchEvent(new Event('assistant:listen'))
+                    }
+                    aria-label="Talk to Your AI Assistant"
+                    title="Talk to Your AI Assistant"
+                >
+                    <MicIcon aria-hidden="true" className="size-5" />
+                </button>
+            </div>
         );
     }
 

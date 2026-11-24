@@ -5,6 +5,7 @@ export type User = {
     first_name: string;
     last_name: string;
     kind: 'hq_staff' | 'owner' | 'staff' | 'agent' | 'assistant';
+    ui_guides_seen?: string[] | null;
     email: string;
     avatar?: string;
     email_verified_at: string | null;

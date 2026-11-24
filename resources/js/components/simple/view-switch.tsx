@@ -109,18 +109,9 @@ export function TalkButton() {
         return null;
     }
 
+    // MN3: in the full view, talking and typing share one button (Your AI Assistant, with its microphone).
     if (simple?.mode !== 'simple') {
-        return (
-            <Button
-                size="icon"
-                aria-label="Speak to Your AI Assistant"
-                title="Speak to Your AI Assistant"
-                className="fixed bottom-24 left-4 z-40 size-14 rounded-full shadow-lg md:right-4 md:bottom-[4.25rem] md:left-auto"
-                onClick={listen}
-            >
-                <MicIcon className="size-6" aria-hidden="true" />
-            </Button>
-        );
+        return null;
     }
 
     return (

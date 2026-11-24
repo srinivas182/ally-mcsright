@@ -3,7 +3,7 @@ import { Link, usePage } from '@inertiajs/react';
 import AppLogoIcon from '@/components/app-logo-icon';
 import { Wordmark } from '@/components/app-logo';
 import { CreditMeter } from '@/components/credit-meter';
-import { NavMain } from '@/components/nav-main';
+import { NavMain, NavSettings } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
 import {
     Sidebar,
@@ -85,6 +85,7 @@ export function AppSidebar() {
             </SidebarContent>
 
             <SidebarFooter>
+                <NavSettings />
                 <CreditMeter />
                 <NavUser />
             </SidebarFooter>

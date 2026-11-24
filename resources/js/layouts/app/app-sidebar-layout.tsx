@@ -7,6 +7,7 @@ import { CreditConsentHost } from '@/components/credit-consent';
 import { CreditsBanner } from '@/components/credits-banner';
 import { HelpMe } from '@/components/help-me';
 import { SecondFactorReminder } from '@/components/second-factor-reminder';
+import { MenuTabs } from '@/components/menu/menu-tabs';
 import { ImpersonationBanner } from '@/components/impersonation-banner';
 import { MobileNav } from '@/components/mobile-nav';
 import { PaymentsTestBanner } from '@/components/payments-test-banner';
@@ -47,6 +48,7 @@ export default function AppSidebarLayout({
                 <CreditsBanner />
                 <SecondFactorReminder />
                 <AppSidebarHeader breadcrumbs={breadcrumbs} />
+                <MenuTabs />
                 <ChooseView />
                 <div className="pb-20 md:pb-0">{children}</div>
             </AppContent>

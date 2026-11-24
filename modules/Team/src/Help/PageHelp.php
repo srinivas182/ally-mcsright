@@ -53,9 +53,12 @@ final class PageHelp
     /** HQ: set (or, with an empty address, remove) the video for a page. */
     public static function setVideo(string $path, string $title, string $url, int $by): void
     {
-        $path = '/'.trim(strtolower($path), '/ ');
-        if (preg_match('#^/[a-z0-9\-/]*$#', $path) !== 1) {
-            throw ValidationException::withMessages(['path' => 'Use the start of the page\'s address, such as /contacts.']);
+        $path = trim(strtolower($path));
+        // MN3: a lesson in a menu's help panel has its own address, such as guide:crm:new-leads.
+        $guide = preg_match('#^guide:[a-z0-9\-]{1,40}:[a-z0-9\-]{1,40}$#', $path) === 1;
+        $path = $guide ? $path : '/'.trim($path, '/ ');
+        if (! $guide && preg_match('#^/[a-z0-9\-/]*$#', $path) !== 1) {
+            throw ValidationException::withMessages(['path' => 'Use the start of the page\'s address, such as /contacts, or a help-panel lesson, such as guide:crm:new-leads.']);
         }
         $db = DB::connection(Connections::control())->table('help_videos');
         if (trim($url) === '') {

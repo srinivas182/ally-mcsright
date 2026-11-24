@@ -89,11 +89,11 @@ it('shows the whole menu in Spanish to people who chose Spanish', function (stri
         default => User::factory()->create(['ui_locale' => 'es', 'ui_mode' => 'full']),
     };
     $menu = app(NavigationRegistry::class)->for($user);
-    $sameInBoth = ['Ally Studio', 'List-IQ', 'MLS', 'Movewise'];
+    $sameInBoth = ['Ally Studio', 'List-IQ', 'MLS', 'MLS / IDX', 'Movewise', 'Blog'];
     $untranslated = collect($menu)->flatMap(fn ($g) => array_column($g['items'], 'title'))
         ->filter(fn (string $t): bool => ! in_array($t, $sameInBoth, true) && array_key_exists($t, NavWords::ES))->values()->all();
     expect($untranslated)->toBe([])
-        ->and(collect($menu)->pluck('label')->intersect(array_keys(NavWords::GROUPS))->values()->all())->toBe([]);
+        ->and(collect($menu)->pluck('label')->intersect(array_keys(NavWords::GROUPS))->diff(['CRM'])->values()->all())->toBe([]); // CRM is CRM in Spanish too
 
     $english = collect(app(NavigationRegistry::class)->for($user->forceFill(['ui_locale' => 'en'])))->flatMap(fn ($g) => array_column($g['items'], 'title'));
     expect($english->reject(fn (string $t): bool => array_key_exists($t, NavWords::ES))->values()->all())->toBe([]); // every item has a Spanish word

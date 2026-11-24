@@ -23,23 +23,58 @@ final class NavigationRegistry
         'HQ team', 'Customers', 'Sales and pricing', 'Payments', 'Websites and MLS', 'AI', 'Connections', 'Products', 'System', 'HQ'];
 
     /**
-     * UX1: a brokerage's menu in a few plain main menus, each opening to its pages (like the leading real estate
-     * platforms): pages are moved here by their address, so modules keep registering items as before. Anything not
-     * listed stays in its own group.
+     * MN3: a brokerage's main menus, in the words brokers already use (CRM, Transactions, Commissions, Accounting…)
+     * and in the order they are used, daily first. Each main menu opens a page whose tabs are its pages; a section
+     * label groups tabs where a menu holds many (Accounting, Settings). Pages are placed by their address, so modules
+     * keep registering items as before; the order here is the order of the tabs.
+     *
+     * @var array<string, array<string, list<string>>> menu => section ('' for none) => addresses
      */
-    private const TENANT_GROUPS = [
-        'Home' => ['/dashboard', '/agent', '/today', '/engage', '/tasks', '/chat'],
-        'Leads and clients' => ['/leads', '/contacts', '/inbox', '/appointments', '/funnels', '/outreach', '/prospector', '/insights/database', '/reviews', '/network'],
-        'Listings' => ['/listings', '/listings/demand', '/pricing', '/list-iq', '/movewise'],
-        'Marketing' => ['/studio', '/social', '/ads', '/postcards', '/marketing-check'],
-        'Deals' => ['/deals', '/deals/review', '/deals/risk', '/policies'],
-        'Money' => ['/my-money', '/my-plan', '/revenue-share', '/plans'],
-        'Reports' => ['/insights', '/insights/me', '/insights/reports', '/insights/plan'],
-        'Team' => ['/users', '/directory', '/roster', '/roster/me', '/learn', '/recruiting', '/recruiting/agents', '/recruiting/retention', '/recruiting/refer', '/engage/activity'],
+    private const TENANT_MENUS = [
+        'Dashboard' => ['' => ['/dashboard', '/agent', '/today', '/engage', '/tasks', '/chat']],
+        'CRM' => ['' => ['/leads', '/contacts', '/inbox', '/appointments', '/outreach', '/movewise', '/automations', '/prospector', '/insights/database', '/network']],
+        'Listings' => ['' => ['/listings', '/deals/listings', '/pricing', '/listings/demand', '/list-iq']],
+        'Transactions' => ['' => ['/deals', '/deals/review', '/deals/risk', '/deals/compliance', '/forms/templates', '/deals/vendors', '/deals/money', '/deals/playbooks',
+            '/deals/bring-over-files', '/policies', '/settings/transactions']],
+        'Marketing' => ['' => ['/studio', '/social', '/ads', '/postcards', '/funnels', '/reviews', '/marketing-check', '/settings/brand-voice']],
+        'Website & IDX' => ['' => ['/settings/website', '/settings/my-website', '/settings/website/blog', '/settings/blog-writer', '/settings/website/media', '/settings/website/areas',
+            '/settings/ailly', '/settings/mls']],
+        'Agents' => ['' => ['/users', '/roster', '/recruiting', '/recruiting/agents', '/recruiting/retention', '/engage/activity', '/learn', '/directory']],
+        'Commissions' => ['' => ['/compensation/plans', '/compensation/revenue-share', '/compensation/fees', '/compensation/credits', '/compensation/simulator', '/finance/payouts']],
+        'My commissions' => ['' => ['/my-money', '/my-plan', '/revenue-share', '/plans', '/recruiting/refer']],
+        'Accounting' => [
+            'Money in and out' => ['/finance/receipts', '/finance/agent-billing', '/finance/invoices', '/finance/bills'],
+            'Books' => ['/finance/accounts', '/finance/journals', '/finance/adjustments', '/finance/bank', '/finance/periods', '/finance/books'],
+            'Trust, tax and audit' => ['/finance/trust', '/finance/tax', '/finance/statements', '/finance/audit'],
+        ],
+        'Reports' => ['' => ['/insights', '/insights/me', '/insights/reports', '/compensation/profitability', '/insights/plan']],
+        'Training' => ['' => ['/learn', '/roster/me', '/policies', '/directory']],
+        'Settings' => [
+            'Brokerage' => ['/settings/licences', '/settings/organisation', '/settings/roles', '/settings/features', '/settings/custom-fields', '/settings/network'],
+            'Billing' => ['/settings/billing', '/settings/credits', '/settings/agent-plans', '/settings/partner', '/settings/refer'],
+            'Compliance' => ['/settings/fair-housing', '/settings/privacy', '/settings/approvals', '/settings/access-review', '/audit', '/settings/support-access'],
+            'Apps' => ['/apps', '/settings/services'],
+            'Getting started' => ['/setup/guide', '/switch', '/setup/import', '/setup/library'],
+            'My account' => ['/settings/availability', '/my-assistants', '/help'],
+        ],
     ];
 
-    /** UX1: the order of a brokerage's main menus. */
-    private const TENANT_ORDER = ['Home', 'Leads and clients', 'Listings', 'Marketing', 'Deals', 'Money', 'Reports', 'Team', 'Finance', 'Compensation'];
+    /** MN3: agents learn and earn in their own main menus (owners find these pages under Agents and Transactions). */
+    private const AGENT_MENUS = ['/learn' => 'Training', '/directory' => 'Training', '/policies' => 'Training', '/roster/me' => 'Training',
+        '/settings/my-website' => 'Marketing', '/settings/blog-writer' => 'Marketing'];
+
+    /** MN3: tab names in the words brokers use (the page itself is unchanged). */
+    private const TENANT_TITLES = ['/deals' => 'All transactions', '/deals/review' => 'Compliance review', '/deals/compliance' => 'Checklists', '/forms/templates' => 'Forms and e-sign',
+        '/outreach' => 'Campaigns', '/movewise' => 'Movewise leads', '/insights/database' => 'Database health', '/listings' => 'MLS search', '/deals/listings' => 'My listings',
+        '/roster' => 'Licences and onboarding', '/recruiting/retention' => 'Retention', '/learn' => 'Training', '/compensation/plans' => 'Commission plans', '/settings/ailly' => 'Website assistant',
+        '/settings/mls' => 'MLS / IDX', '/settings/network' => 'Referral network settings', '/plans' => 'Plans and fees'];
+
+    /** MN3: an agent's own wording. */
+    private const AGENT_TITLES = ['/deals' => 'My transactions', '/deals/listings' => 'My listings'];
+
+    /** MN3: the order of the main menus. */
+    private const TENANT_ORDER = ['Dashboard', 'CRM', 'Listings', 'Transactions', 'Marketing', 'Website & IDX', 'Agents', 'Commissions', 'My commissions', 'Accounting',
+        'Reports', 'Training', 'Settings'];
 
     /** @var list<NavItem> */
     private array $items = [];
@@ -50,7 +85,7 @@ final class NavigationRegistry
     }
 
     /**
-     * @return list<array{label: string, items: list<array{title: string, href: string, icon: string, mobile: bool}>}>
+     * @return list<array{key: string, label: string, items: list<array{title: string, href: string, icon: string, mobile: bool, section?: string}>}>
      */
     public function for(?User $user): array
     {
@@ -66,20 +101,23 @@ final class NavigationRegistry
             && $assistants->allowsPath($user, $item->href)); // AG1: an assistant's preset
 
         $hq = $user->kind === UserKind::HqStaff;
-        $group = fn (NavItem $item): string => $hq ? $item->group : self::tenantGroup($item);
-        $index = fn (NavItem $item): int => $hq ? $this->groupIndex($item->group) : self::tenantIndex($group($item));
-        usort($visible, fn (NavItem $a, NavItem $b): int => [$index($a), $a->order, $a->title] <=> [$index($b), $b->order, $b->title]);
+        $agent = in_array($user->kind, [UserKind::Agent, UserKind::Assistant], true);
+        $place = fn (NavItem $item): array => $hq ? [$item->group, '', $this->groupIndex($item->group), $item->order] : self::tenantPlace($item, $agent);
+        usort($visible, fn (NavItem $a, NavItem $b): int => [$place($a)[2], $place($a)[3], $a->title] <=> [$place($b)[2], $place($b)[3], $b->title]);
 
         $groups = [];
         foreach ($visible as $item) {
-            $groups[$group($item)][] = ['title' => $item->title, 'href' => $item->href, 'icon' => $item->icon, 'mobile' => $item->mobile];
+            [$menu, $section] = $place($item);
+            $title = $hq ? $item->title : ($agent ? (self::AGENT_TITLES[$item->href] ?? self::TENANT_TITLES[$item->href] ?? $item->title) : (self::TENANT_TITLES[$item->href] ?? $item->title));
+            $groups[$menu][] = ['title' => $title, 'href' => $item->href, 'icon' => $item->icon, 'mobile' => $item->mobile] + ($section !== '' ? ['section' => $section] : []);
         }
 
         $out = [];
         foreach ($groups as $label => $items) {
             // HQ1: in the HQ console the people page is RightAlly's own team, not a brokerage's.
             $label = $user->kind === UserKind::HqStaff && $label === 'Brokerage' ? 'HQ team' : (string) $label;
-            $out[] = ['label' => $label, 'items' => $items];
+            // MN3: `key` stays in English (the help guide and icons use it); `label` may be translated.
+            $out[] = ['key' => $label, 'label' => $label, 'items' => $items];
         }
 
         // Simple mode (SM1): a short menu of the pages used most, from the pages this person can open.
@@ -87,22 +125,36 @@ final class NavigationRegistry
         return SimpleMode::on($user) ? SimpleMode::menu($out, SimpleMode::locale($user)) : NavWords::translate($out, SimpleMode::locale($user));
     }
 
-    private static function tenantGroup(NavItem $item): string
+    /**
+     * Where a brokerage's page goes: [menu, section, menu position, position within the menu].
+     *
+     * @return array{0: string, 1: string, 2: int, 3: int}
+     */
+    private static function tenantPlace(NavItem $item, bool $agent): array
     {
-        foreach (self::TENANT_GROUPS as $label => $paths) {
-            if (in_array($item->href, $paths, true)) {
-                return $label;
+        if ($agent && isset(self::AGENT_MENUS[$item->href])) {
+            $menu = self::AGENT_MENUS[$item->href];
+            $at = array_search($item->href, self::TENANT_MENUS[$menu][''], true);
+
+            return [$menu, '', (int) array_search($menu, self::TENANT_ORDER, true), $at === false ? 999 : (int) $at];
+        }
+        $n = 0;
+        foreach (self::TENANT_MENUS as $menu => $sections) {
+            if ($menu === 'Training' || ($agent && $menu === 'Agents' && in_array($item->href, ['/learn', '/directory'], true))) {
+                continue;
+            }
+            foreach ($sections as $section => $paths) {
+                foreach ($paths as $path) {
+                    if ($path === $item->href) {
+                        return [$menu, $section, (int) array_search($menu, self::TENANT_ORDER, true), $n];
+                    }
+                    $n++;
+                }
             }
         }
 
-        return $item->group;
-    }
-
-    private static function tenantIndex(string $group): int
-    {
-        $index = array_search($group, self::TENANT_ORDER, true);
-
-        return $index === false ? count(self::TENANT_ORDER) : $index;
+        // Not placed yet: Settings › More, so nothing ever disappears from the menu.
+        return ['Settings', 'More', (int) array_search('Settings', self::TENANT_ORDER, true), 10_000 + $item->order];
     }
 
     private function groupIndex(string $group): int

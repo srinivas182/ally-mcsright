@@ -2,6 +2,7 @@ import { Link, usePage } from '@inertiajs/react';
 import { ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 
+import { MENU_ICONS, useCurrentMenu } from '@/components/menu/current-menu';
 import { NavIcon } from '@/components/nav-icon';
 import {
     SidebarGroup,
@@ -12,8 +13,51 @@ import {
     useSidebar,
 } from '@/components/ui/sidebar';
 import { useCurrentUrl } from '@/hooks/use-current-url';
+import type { NavGroup } from '@/types';
 
 const OPEN_KEY = 'hq-menu-open';
+
+/** MN3: one main menu in a brokerage's sidebar: a single link to the menu's first page. */
+function MainMenuLink({ group }: { group: NavGroup }) {
+    const current = useCurrentMenu();
+    const key = group.key ?? group.label;
+    const active =
+        current.group !== null &&
+        (current.group.key ?? current.group.label) === key;
+
+    return (
+        <SidebarMenuItem>
+            <SidebarMenuButton
+                asChild
+                isActive={active}
+                tooltip={{ children: group.label }}
+                className="h-10 text-[15px]"
+            >
+                <Link href={group.items[0].href} prefetch>
+                    <NavIcon name={MENU_ICONS[key] ?? group.items[0].icon} />
+                    <span>{group.label}</span>
+                </Link>
+            </SidebarMenuButton>
+        </SidebarMenuItem>
+    );
+}
+
+/** MN3: Settings, pinned to the bottom of a brokerage's sidebar, just above the AI credits. */
+export function NavSettings() {
+    const { navigation, tenant, simple } = usePage().props;
+    const settings = navigation.find(
+        (g) => (g.key ?? g.label) === 'Settings' && g.items.length > 0,
+    );
+    if (tenant?.isHq || simple?.mode === 'simple' || !settings) {
+        return null;
+    }
+
+    return (
+        <SidebarMenu>
+            <MainMenuLink group={settings} />
+        </SidebarMenu>
+    );
+}
 const TENANT_OPEN_KEY = 'menu-open';
 
 /** HQ1: an icon for each HQ heading, so the headings read as main menu items. */
@@ -40,6 +84,19 @@ const GROUP_ICONS: Record<string, string> = {
     Finance: 'landmark',
     Compensation: 'coins',
     Brokerage: 'briefcase',
+    // MN2
+    Transactions: 'briefcase',
+    Website: 'layout-grid',
+    'Brokerage setup': 'building-2',
+    Compliance: 'shield-check',
+    'Getting started': 'rocket',
+    'My account': 'id-card',
+    Transacciones: 'briefcase',
+    'Sitio web': 'layout-grid',
+    'Configuración de la correduría': 'building-2',
+    Cumplimiento: 'shield-check',
+    'Primeros pasos': 'rocket',
+    'Mi cuenta': 'id-card',
     People: 'users',
     Settings: 'toggle-right',
     // The same menus in Spanish.
@@ -98,6 +155,30 @@ export function NavMain() {
         setOpen(next);
         saveOpen(key, next);
     };
+
+    // MN3: a brokerage's sidebar is its main menus only; each opens a page whose tabs are that menu's pages.
+    // Settings sits at the bottom, above the AI credits (NavSettings).
+    const flat = !tenant?.isHq && !simpleMenu;
+    if (flat) {
+        return (
+            <SidebarGroup className="px-2 py-1">
+                <SidebarMenu className="gap-1">
+                    {navigation
+                        .filter(
+                            (g) =>
+                                g.items.length > 0 &&
+                                (g.key ?? g.label) !== 'Settings',
+                        )
+                        .map((group) => (
+                            <MainMenuLink
+                                key={group.key ?? group.label}
+                                group={group}
+                            />
+                        ))}
+                </SidebarMenu>
+            </SidebarGroup>
+        );
+    }
 
     if (folding) {
         return (

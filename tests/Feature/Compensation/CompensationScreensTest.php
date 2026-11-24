@@ -112,5 +112,5 @@ it('shows agents My plan and owners the Compensation menu', function (): void {
     $menu = fn (User $u) => collect($this->actingAs($u)->get('/contacts')->viewData('page')['props']['navigation'])->flatMap(fn ($g) => collect($g['items'])->pluck('title'))->all();
 
     expect($menu($this->agent))->toContain('My plan')->not->toContain('Simulator')
-        ->and($menu($this->owner))->toContain('Plans', 'Fees', 'Credits', 'Simulator', 'Profitability')->not->toContain('My plan');
+        ->and($menu($this->owner))->toContain('Commission plans', 'Fees', 'Credits', 'Simulator', 'Profitability')->not->toContain('My plan');
 });
