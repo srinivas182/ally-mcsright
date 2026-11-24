@@ -1,4 +1,4 @@
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
@@ -55,6 +55,15 @@ type Board = {
     agreement: string | null;
     has_copy: boolean;
     form?: FormRow[] | null;
+    /** IDX13: who the agreement is waiting on. */
+    signing: {
+        names: string[];
+        emails: string[];
+        sent_at: string | null;
+        mine: boolean;
+    } | null;
+    by_hand: boolean;
+    overdue: boolean;
 };
 type Available = {
     ulid: string;
@@ -487,11 +496,12 @@ function BoardCard({
             {b.status === 'review' && b.form && (
                 <ReviewForm board={b} rows={b.form} />
             )}
-            {b.status === 'awaiting_signature' && (
+            {b.status === 'awaiting_signature' && <Signing board={b} />}
+            {b.overdue && (
                 <p className="text-sm text-muted-foreground">
-                    The IDX agreement is being prepared for signing. We will
-                    email you and your managing broker when it is ready, and
-                    remind you if it waits.
+                    The MLS is taking a little longer than usual. RightAlly is
+                    following it up for you; your demo listings keep showing
+                    meanwhile.
                 </p>
             )}
 
@@ -868,5 +878,88 @@ function ReviewForm({ board: b, rows }: { board: Board; rows: FormRow[] }) {
                 </Button>
             </div>
         </section>
+    );
+}
+
+/** IDX13: who the agreement is waiting on, with a way to sign here or get the email again. */
+function Signing({ board: b }: { board: Board }) {
+    const [busy, setBusy] = useState(false);
+    const problem = (usePage().props.errors as Record<string, string>).signing;
+    const post = (path: string) => {
+        setBusy(true);
+        router.post(
+            `/settings/mls/boards/${b.ulid}/${path}`,
+            {},
+            { preserveScroll: true, onFinish: () => setBusy(false) },
+        );
+    };
+
+    if (!b.signing) {
+        return (
+            <div className="grid gap-2 text-sm text-muted-foreground">
+                <p>
+                    {b.by_hand
+                        ? 'RightAlly is preparing this agreement with the MLS. We will email you when there is something to sign.'
+                        : 'The agreement is not out for signature yet.'}
+                </p>
+                {!b.by_hand && (
+                    <div>
+                        <Button
+                            variant="outline"
+                            disabled={busy}
+                            onClick={() => post('resend')}
+                        >
+                            Send me the agreement to sign
+                        </Button>
+                    </div>
+                )}
+                {problem && (
+                    <p className="text-destructive" role="alert">
+                        {problem}
+                    </p>
+                )}
+            </div>
+        );
+    }
+    const when = b.signing.sent_at
+        ? new Date(b.signing.sent_at).toLocaleDateString(undefined, {
+              day: 'numeric',
+              month: 'short',
+          })
+        : null;
+
+    return (
+        <div className="grid gap-3 rounded-lg border bg-muted/40 p-4">
+            <p className="text-base">
+                {b.signing.mine
+                    ? 'Your MLS agreement is ready for you to sign.'
+                    : `Waiting for ${b.signing.names.join(' and ')} to sign.`}
+            </p>
+            <p className="text-sm text-muted-foreground">
+                {when
+                    ? `We emailed the signing link to ${b.signing.emails.join(', ')} on ${when}.`
+                    : `The signing link goes to ${b.signing.emails.join(', ')}.`}{' '}
+                Can&apos;t find it? Check the spam folder, or send it again.
+            </p>
+            <div className="flex flex-wrap gap-2">
+                {b.signing.mine && (
+                    <Button disabled={busy} onClick={() => post('sign')}>
+                        Sign now
+                    </Button>
+                )}
+                <Button
+                    variant="outline"
+                    disabled={busy}
+                    onClick={() => post('resend')}
+                >
+                    Email the link again
+                </Button>
+            </div>
+            {problem && (
+                <p className="text-sm text-destructive" role="alert">
+                    {problem}
+                </p>
+            )}
+        </div>
     );
 }

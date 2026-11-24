@@ -20,6 +20,7 @@ use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\Host;
 use Modules\Core\Tenancy\Models\Tenant;
 use Modules\Core\Tenancy\TenantContext;
+use Modules\Forms\Signing;
 use Modules\Listings\Access\MlsAccess;
 use Modules\Listings\Idx\Mail\IdxUpdateMail;
 use Modules\Listings\Models\MlsAuthorization;
@@ -290,6 +291,118 @@ final class Subscriptions
             'Demo listings for this board are switched off.'], 'See your MLS boards');
     }
 
+    /**
+     * IDX13: emails the signing link again to whoever's turn it is (the brokerage owner from Settings › MLS, or HQ).
+     * Returns how many people were emailed.
+     */
+    public function resendSigning(string $ulid, ?int $tenantId, User $by): int
+    {
+        $sub = $tenantId !== null ? $this->own($tenantId, $ulid) : $this->find($ulid);
+        $tenant = Tenant::query()->whereKey((int) $sub->tenant_id)->first();
+        if ($sub->status !== 'awaiting_signature' || $tenant === null) {
+            throw ValidationException::withMessages(['signing' => 'This agreement is not waiting for a signature.']);
+        }
+        // Not prepared yet (for example the board's "Send to" address was added afterwards): prepare and send it now.
+        if ($sub->packet_ulid === null) {
+            if (! app(Agreements::class)->prepare($sub)) {
+                throw ValidationException::withMessages(['signing' => 'This board has no "Send the signed agreement to" address yet, so RightAlly handles its paperwork by hand. Add the address in HQ › IDX coverage first.']);
+            }
+            $this->audit->record('idx.agreement.resent', metadata: ['subscription' => $ulid, 'by' => $by->id, 'prepared' => true], severity: 'notice', tenantId: (int) $sub->tenant_id);
+
+            return 1;
+        }
+        $sent = (int) $this->tenants->runAs($tenant, function () use ($sub, $tenant): int {
+            $packetId = (int) DB::connection(Connections::cell())->table('form_packets')->where('ulid', $sub->packet_ulid)->value('id');
+
+            return $packetId > 0 ? app(Signing::class)->resend($packetId, 'https://'.Host::platformHostFor($tenant->slug)) : 0;
+        });
+        if ($sent === 0) {
+            throw ValidationException::withMessages(['signing' => 'Nobody is waiting to sign this agreement right now.']);
+        }
+        $this->audit->record('idx.agreement.resent', metadata: ['subscription' => $ulid, 'by' => $by->id, 'signers' => $sent], severity: 'notice', tenantId: (int) $sub->tenant_id);
+
+        return $sent;
+    }
+
+    /**
+     * IDX13: the signed-in owner signs straight from Settings › MLS when it is their turn (no need to find the email).
+     */
+    public function signNow(int $tenantId, string $ulid, User $by): string
+    {
+        $sub = $this->own($tenantId, $ulid);
+        if ($sub->status !== 'awaiting_signature' || $sub->packet_ulid === null) {
+            throw ValidationException::withMessages(['signing' => 'This agreement is not waiting for a signature.']);
+        }
+        $packetId = (int) DB::connection(Connections::cell())->table('form_packets')->where('ulid', $sub->packet_ulid)->value('id');
+        $tenant = $this->tenants->current();
+        $url = $packetId > 0 ? app(Signing::class)->linkFor($packetId, (string) $by->email, 'https://'.Host::platformHostFor($tenant->slug)) : null;
+        if ($url === null) {
+            throw ValidationException::withMessages(['signing' => 'It is not your turn to sign. We emailed the link to the person who signs next.']);
+        }
+
+        return $url;
+    }
+
+    /**
+     * IDX13: boards sent to the MLS that are past the board's usual approval time (in business days), for HQ to chase.
+     *
+     * @return list<array{ulid: string, tenant_id: int, board: string, days: int}>
+     */
+    public function overdue(): array
+    {
+        $boards = $this->db()->table('idx_boards')->get()->keyBy('id');
+        $out = [];
+        foreach ($this->db()->table('idx_subscriptions')->whereIn('status', ['sent', 'mls_review'])->get() as $sub) {
+            $board = $boards[$sub->board_id] ?? null;
+            if ($board !== null && self::isOverdue($sub, $board)) {
+                $out[] = ['ulid' => (string) $sub->ulid, 'tenant_id' => (int) $sub->tenant_id, 'board' => (string) $board->name,
+                    'days' => (int) CarbonImmutable::parse((string) ($sub->sent_to_mls_at ?? $sub->status_at))->diffInWeekdays(now())];
+            }
+        }
+
+        return $out;
+    }
+
+    private static function isOverdue(stdClass $sub, stdClass $board): bool
+    {
+        if (! in_array($sub->status, ['sent', 'mls_review'], true)) {
+            return false;
+        }
+        $from = $sub->sent_to_mls_at ?? $sub->status_at;
+
+        return $from !== null && CarbonImmutable::parse((string) $from)->diffInWeekdays(now()) > (int) $board->approval_days_max;
+    }
+
+    /**
+     * IDX13: who the agreement is waiting on, for the brokerage's page and HQ's queue.
+     *
+     * @return array{names: list<string>, emails: list<string>, sent_at: string|null, mine: bool}|null
+     */
+    private function signing(stdClass $s, ?User $viewer): ?array
+    {
+        if ($s->status !== 'awaiting_signature' || ($s->packet_ulid ?? null) === null) {
+            return null;
+        }
+        $tenant = Tenant::query()->whereKey((int) $s->tenant_id)->first();
+        if ($tenant === null) {
+            return null;
+        }
+
+        return $this->tenants->runAs($tenant, function () use ($s, $viewer): ?array {
+            $packetId = (int) DB::connection(Connections::cell())->table('form_packets')->where('ulid', $s->packet_ulid)->where('status', 'sent')->value('id');
+            if ($packetId === 0) {
+                return null;
+            }
+            $waiting = app(Signing::class)->waiting($packetId);
+            $emails = array_map(fn (stdClass $w): string => mb_strtolower((string) $w->email), $waiting);
+            $sentAt = collect($waiting)->pluck('sent_at')->filter()->max();
+
+            return ['names' => array_map(fn (stdClass $w): string => (string) $w->name, $waiting), 'emails' => $emails,
+                'sent_at' => $sentAt !== null ? CarbonImmutable::parse((string) $sentAt)->toIso8601String() : null,
+                'mine' => $viewer !== null && in_array(mb_strtolower((string) $viewer->email), $emails, true)];
+        });
+    }
+
     /** Cancel a board: its listings disappear from the brokerage's website at once. */
     public function cancel(string $ulid, ?int $tenantId, User $by): void
     {
@@ -367,6 +480,13 @@ final class Subscriptions
         }
     }
 
+    private function viewer(): ?User
+    {
+        $user = auth()->user();
+
+        return $user instanceof User ? $user : null;
+    }
+
     private function find(string $ulid): stdClass
     {
         $sub = $this->db()->table('idx_subscriptions')->where('ulid', $ulid)->first();
@@ -422,6 +542,10 @@ final class Subscriptions
             },
             'has_copy' => ($s->signed_path ?? null) !== null, 'website' => $s->website ?? null,
             'compliance_ok' => isset($s->compliance_ok) ? (bool) $s->compliance_ok : null, 'compliance_note' => $s->compliance_note ?? null];
+        // IDX13: who it is waiting on, and whether the MLS is taking longer than usual.
+        $out['signing'] = $this->signing($s, $hq ? null : $this->viewer());
+        $out['overdue'] = $board !== null && self::isOverdue($s, $board);
+        $out['by_hand'] = $board !== null && ! Agreements::automatic($board);
         // IDX12: the board's own form, filled in, for the brokerage to review (signature lines are signed later).
         $out['form'] = $board !== null && BoardForm::inUse($board) ? self::formRows($board, $s) : null;
         if ($hq) {

@@ -52,6 +52,15 @@ final class HqIdxController
         return back();
     }
 
+    /** IDX13: email the signing link again to whoever signs next. */
+    public function resendSigning(Request $request, Subscriptions $subs, string $subscription): RedirectResponse
+    {
+        $n = $subs->resendSigning($subscription, null, self::user($request));
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Signing email sent again to '.$n.($n === 1 ? ' person.' : ' people.')]);
+
+        return back();
+    }
+
     public function sendNow(Request $request, Agreements $agreements, string $subscription): RedirectResponse
     {
         $sent = $agreements->deliver($subscription, true, self::user($request));

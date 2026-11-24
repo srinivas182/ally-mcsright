@@ -51,6 +51,7 @@ Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.mls.manage'])
         Route::post('subscriptions/{subscription}/connector', [HqIdxController::class, 'override'])->where('subscription', $sub)->name('subscriptions.connector');
         Route::post('subscriptions/{subscription}/live', [HqIdxController::class, 'live'])->where('subscription', $sub)->middleware('password.confirm')->name('subscriptions.live');
         Route::post('boards/{board}/agreement', [HqIdxController::class, 'agreementPdf'])->where('board', $sub)->name('boards.agreement'); // IDX6
+        Route::post('subscriptions/{subscription}/resend', [HqIdxController::class, 'resendSigning'])->where('subscription', $sub)->middleware('throttle:6,10')->name('subscriptions.resend'); // IDX13
         Route::post('subscriptions/{subscription}/send', [HqIdxController::class, 'sendNow'])->where('subscription', $sub)->middleware('password.confirm')->name('subscriptions.send');
         Route::get('subscriptions/{subscription}/agreement.pdf', [HqIdxController::class, 'copy'])->where('subscription', $sub)->name('subscriptions.copy');
         Route::post('subscriptions/{subscription}/cancel', [HqIdxController::class, 'cancel'])->where('subscription', $sub)->middleware('password.confirm')->name('subscriptions.cancel');
@@ -80,6 +81,9 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])
         // IDX12: review the board's form filled in, then send it for signature.
         Route::get('boards/{subscription}/preview.pdf', [MlsSettingsController::class, 'preview'])->where('subscription', '[0-9A-HJKMNP-TV-Z]{26}')->middleware('throttle:30,1')->name('boards.preview');
         Route::put('boards/{subscription}/review', [MlsSettingsController::class, 'review'])->where('subscription', '[0-9A-HJKMNP-TV-Z]{26}')->middleware(['password.confirm', 'throttle:20,1'])->name('boards.review');
+        // IDX13: the signing email again, or sign straight from here.
+        Route::post('boards/{subscription}/resend', [MlsSettingsController::class, 'resendSigning'])->where('subscription', '[0-9A-HJKMNP-TV-Z]{26}')->middleware('throttle:3,10')->name('boards.resend');
+        Route::post('boards/{subscription}/sign', [MlsSettingsController::class, 'signNow'])->where('subscription', '[0-9A-HJKMNP-TV-Z]{26}')->middleware('throttle:10,10')->name('boards.sign');
         Route::delete('boards/{subscription}', [MlsSettingsController::class, 'cancelBoard'])->where('subscription', '[0-9A-HJKMNP-TV-Z]{26}')->middleware('password.confirm')->name('boards.destroy');
     });
 
