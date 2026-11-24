@@ -49,7 +49,11 @@ final class LicenceCheck
             'expires_on' => $found['expires_on'], 'checked_at' => now()->toIso8601String()];
     }
 
-    /** Whether boards in the licence's state can be chosen. */
+    /**
+     * Whether boards in the licence's state can be chosen.
+     *
+     * @param  array<string, mixed>  $licence
+     */
     public static function allowsBoards(array $licence): bool
     {
         return in_array((string) ($licence['status'] ?? ''), ['active', 'test', 'unchecked'], true);

@@ -22,7 +22,11 @@ use Modules\Roster\Brokerage\BrokerageLicences;
  */
 final class BrokerageLicencesController
 {
-    /** The states RightAlly works in, by name. */
+    /**
+     * The states RightAlly works in, by name.
+     *
+     * @return array<string, string>
+     */
     private static function states(): array
     {
         return class_exists(SignupController::class) ? SignupController::boardsAndStates()['signupStates'] : [];
@@ -67,7 +71,8 @@ final class BrokerageLicencesController
     /** HQ: a licence checked by hand with the state. */
     public function hqVerify(Request $request, Tenant $tenant, int $licence, TenantContext $tenants): RedirectResponse
     {
-        $tenants->runAs($tenant, fn () => app(BrokerageLicences::class)->hqVerify($licence, $request->user()));
+        $by = $request->user() ?? abort(403);
+        $tenants->runAs($tenant, fn () => app(BrokerageLicences::class)->hqVerify($licence, $by));
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Marked as checked with the state.']);
 
         return back();

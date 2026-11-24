@@ -203,7 +203,9 @@ final class BrokerageLicences
 
     private static function isGood(object $r): bool
     {
-        return in_array((string) $r->status, self::GOOD, true) || ($r->hq_verified_at !== null && ! in_array((string) $r->status, ['suspended', 'expired', 'inactive'], true));
+        $status = (string) ($r->status ?? '');
+
+        return in_array($status, self::GOOD, true) || (($r->hq_verified_at ?? null) !== null && ! in_array($status, ['suspended', 'expired', 'inactive'], true));
     }
 
     /** This brokerage's licences only. */

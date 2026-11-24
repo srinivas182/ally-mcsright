@@ -116,7 +116,7 @@ final class Subscriptions
         // (HQ adding a board for a brokerage, and the board chosen at sign-up, were checked already.)
         $tenant = Tenant::query()->find($tenantId);
         if ($by !== null && ! $by->isKind(UserKind::HqStaff) && $tenant !== null && class_exists(BrokerageLicences::class)) {
-            $states = (array) ($offered['states'] ?? [$offered['state'] ?? '']);
+            $states = $offered['states'];
             $good = app(TenantContext::class)->runAs($tenant, fn (): array => app(BrokerageLicences::class)->goodStates());
             if (array_intersect($states, $good) === []) {
                 throw ValidationException::withMessages(['board' => 'Add your active '.implode(' or ', array_filter($states)).' licence in Settings › Licences first: an MLS board needs an active licence in its state.']);

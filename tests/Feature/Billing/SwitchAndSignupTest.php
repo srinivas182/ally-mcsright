@@ -23,6 +23,7 @@ use Modules\Core\Identity\Models\Invitation;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\Models\Tenant;
 use Modules\Core\Tenancy\TenantContext;
+use Modules\Roster\Brokerage\BrokerageLicences;
 use Modules\Roster\Verification\ServiceVerifier;
 use Modules\Sites\Content\DemoSite;
 use Modules\Sites\Models\Site;
@@ -397,4 +398,18 @@ it('lets HQ correct the owner\'s email and sends the sign-in email to the new ad
     $this->flushSession();
     $this->actingAs($this->staff)->post(RA.'/hq/signups/'.$signup.'/email', ['email' => 'x@oak.test'])->assertRedirect();
     expect(control()->table('signups')->where('ulid', $signup)->value('owner_email'))->toBe('owner@oakrealty.test');
+});
+
+it('keeps the website "coming soon" after payment when no licence is active, and saves the licences to the brokerage (LV2)', function (): void {
+    ServiceVerifier::load('TX', "License Number,Last Name,License Status,Expiration Date\n0777777,Jones,Expired,2025-01-31\n");
+    signupStep1(['licence_numbers' => ['TX' => '0777777']]);
+    $this->post(RA.'/start/step/package', ['package' => $this->package->ulid, 'interval' => 'month']);
+    $this->post(RA.'/start/step/design', ['template' => 'signature']);
+    $this->post(RA.'/start', ['terms' => '1']);
+    signupEvent('evt_lv2', 'checkout.session.completed', (string) control()->table('signups')->value('ulid'));
+    $tenant = Tenant::query()->where('slug', 'oak-realty')->sole();
+    app(TenantContext::class)->runAs($tenant, function (): void {
+        expect(Site::query()->where('kind', 'brokerage')->value('status'))->toBe('draft')
+            ->and(app(BrokerageLicences::class)->all()[0])->toMatchArray(['state' => 'TX', 'status' => 'expired', 'good' => false]);
+    });
 });

@@ -291,7 +291,7 @@ final class Signups
                 $this->tenants->runAs($tenant, fn () => app(SiteSetup::class)->launch((string) ($signup->template ?? 'modern'),
                     ['name' => (string) $signup->brokerage, 'email' => (string) $signup->owner_email, 'licence' => self::licenceLine($signup), 'phone' => (string) ($signup->phone ?? ''),
                         'area' => self::marketArea((string) ($signup->idx_boards ?? '[]'), $signup->state),
-                        'state' => self::marketState((string) ($signup->idx_boards ?? '[]'), $signup->state)]), $holdWebsite ? 'draft' : 'live'); // TP2: its Explore cities; LV2: "coming soon" without a good licence
+                        'state' => self::marketState((string) ($signup->idx_boards ?? '[]'), $signup->state)], $holdWebsite ? 'draft' : 'live')); // TP2: its Explore cities; LV2: "coming soon" without a good licence
             } catch (Throwable $e) {
                 report($e); // the owner can still create it from Settings › Website
             }
