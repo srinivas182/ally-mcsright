@@ -67,7 +67,7 @@ final class HealthChecks
         }
         $row = self::find($ulid);
         if ($row !== null) {
-            Notification::route('mail', (string) $row->email)->notify(new HealthReportMail((string) $row->brokerage, (string) $row->contact_name, self::reportUrl($token), $lang));
+            Notification::route('mail', (string) $row->email)->route('name', (string) ($row->contact_name ?? ''))->notify(new HealthReportMail((string) $row->brokerage, (string) $row->contact_name, self::reportUrl($token), $lang));
         }
 
         return ['ulid' => $ulid, 'token' => $token];

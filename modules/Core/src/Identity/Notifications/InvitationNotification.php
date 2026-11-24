@@ -38,7 +38,7 @@ final class InvitationNotification extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
-        $hello = trim($this->firstName) !== '' ? 'Hi '.trim($this->firstName).',' : 'Hello,';
+        $hello = trim($this->firstName) !== '' ? 'Hello '.trim($this->firstName).',' : 'Hello,';
         $where = $this->officeHost !== '' ? $this->officeHost : 'your back office';
         // A new brokerage's owner, straight after signing up: nobody invited them, they bought it.
         if ($this->kind === 'owner' && $this->inviterName === null) {
