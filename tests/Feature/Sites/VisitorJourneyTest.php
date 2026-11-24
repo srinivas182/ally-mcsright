@@ -269,3 +269,22 @@ it('lets a visitor ask for texts about a saved search, recording their number an
         ->and($contact->sms_consent_text)->toContain('Reply STOP to stop')->and(app(Consent::class)->canAutoText($contact))->toBeTrue();
     $this->postJson($this->web.'/_me/searches/text', ['name' => 'Not mine', 'phone' => '5125550199', 'agree' => true], $auth)->assertNotFound();
 });
+
+it('signs returning visitors in on a new device with just their email, greeting them by name only after the code (VS1)', function (): void {
+    $first = vjSignIn($this);
+    expect($first['returning'])->toBeFalse();
+    // A new phone: a new browser id, only the email and the code (no name).
+    Mail::fake();
+    $this->postJson($this->web.'/_auth/start', ['email' => 'jane@x.test'])->assertStatus(202)->assertJsonMissingPath('name');
+    $code = null;
+    Mail::assertSent(SignInCodeMail::class, function (SignInCodeMail $m) use (&$code): bool {
+        $code = $m->code;
+
+        return true;
+    });
+    $again = $this->postJson($this->web.'/_auth/verify', ['email' => 'jane@x.test', 'code' => (string) $code, 'vid' => 'v'.str_repeat('b', 31)])->assertOk()->json();
+    expect($again['returning'])->toBeTrue()->and($again['name'])->toBe('Jane Doe');
+
+    $page = (string) $this->get($this->web.'/')->getContent();
+    expect($page)->toContain('data-auth-switch')->toContain('Already have an account?');
+});

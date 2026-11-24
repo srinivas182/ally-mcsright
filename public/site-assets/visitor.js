@@ -175,6 +175,33 @@
         err.textContent = m;
         err.hidden = !m;
     }
+    // VS1: "returning" asks only for the email; this browser remembers that someone signed in here before.
+    var returning = !!store.get('ra_known', null);
+    function setMode(r) {
+        returning = r;
+        var f = $('[data-auth-start]');
+        Array.prototype.forEach.call(
+            f.querySelectorAll('[data-auth-new]'),
+            function (el) {
+                el.hidden = r;
+            },
+        );
+        f.name.required = !r;
+        $('[data-auth-switch-text]').textContent = r
+            ? 'New here?'
+            : 'Already have an account?';
+        $('[data-auth-switch]').textContent = r
+            ? 'Create a free account'
+            : 'Sign in with your email';
+        if (!me) {
+            $('[data-auth-title]').textContent = r
+                ? 'Welcome back'
+                : 'Save homes and get price alerts';
+            $('[data-auth-lead]').textContent = r
+                ? "Enter your email and we'll send you a 6-digit code to sign in."
+                : 'Create a free account to save homes, compare them, and hear first when prices change.';
+        }
+    }
     function openAuth(title, lead) {
         if (!dlg) return;
         $('[data-auth-title]').textContent = me
@@ -189,11 +216,16 @@
         $('[data-auth-verify]').hidden = true;
         $('[data-auth-me]').hidden = !me;
         showError('');
+        if (!me && returning) setMode(true);
         if (me) {
             $('[data-auth-hello]').textContent =
-                'Signed in as ' +
-                (me.name || me.email) +
+                (me.welcome
+                    ? 'Welcome back, ' +
+                      (me.name || me.email).split(' ')[0] +
+                      '! '
+                    : 'Signed in as ' + (me.name || me.email) + '. ') +
                 '. ' +
+                (me.welcome ? 'You have ' : '') +
                 me.favourites.length +
                 ' saved ' +
                 (me.favourites.length === 1 ? 'home' : 'homes') +
@@ -205,11 +237,20 @@
         if (!dlg.open) dlg.showModal();
     }
     if (dlg) {
+        $('[data-auth-switch]').addEventListener('click', function () {
+            setMode(!returning);
+            showError('');
+            $(
+                '[data-auth-start] input[name="' +
+                    (returning ? 'email' : 'name') +
+                    '"]',
+            ).focus();
+        });
         $('[data-auth-start]').addEventListener('submit', function (e) {
             e.preventDefault();
             var f = e.target;
             emailForCode = f.email.value;
-            nameForCode = f.name.value;
+            nameForCode = returning ? '' : f.name.value;
             phone = f.phone.value;
             consent = f.sms_consent.checked;
             api('POST', '/_auth/start', { email: emailForCode })
@@ -237,12 +278,20 @@
                 .then(function (j) {
                     me = j;
                     store.set('ra_me', me);
-                    dlg.close();
+                    store.set('ra_known', 1);
                     paint();
                     if (pending) {
+                        dlg.close();
                         var p = pending;
                         pending = null;
                         p();
+                    } else if (j.returning) {
+                        // VS1: "Welcome back, Dana", once the code shows it is really them.
+                        me.welcome = true;
+                        openAuth();
+                        me.welcome = false;
+                    } else {
+                        dlg.close();
                     }
                 })
                 .catch(function (x) {
