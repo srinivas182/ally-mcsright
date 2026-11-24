@@ -135,6 +135,9 @@ final class ManageInvitations
             $tenant->name,
             $by?->name,
             $invitation->expires_at->toFormattedDateString(),
+            (string) $invitation->first_name,
+            $invitation->kind->value,
+            (string) ($host ?? ''),
         ));
     }
 }
