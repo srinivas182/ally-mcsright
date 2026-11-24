@@ -4,6 +4,8 @@ import { useState } from 'react';
 
 import { GuidePanel, useGuide } from '@/components/menu/guide-panel';
 import { useCurrentMenu } from '@/components/menu/current-menu';
+import { AiMarker, PageTip } from '@/components/menu/page-hint';
+import { PAGE_HINTS } from '@/components/menu/page-hints';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -42,6 +44,9 @@ export function MenuTabs() {
     const { group, item } = useCurrentMenu();
     const guide = useGuide(group?.key ?? null);
     const [open, setOpen] = useState<boolean | null>(null);
+    const [start, setStart] = useState<{ lesson?: string; calling?: boolean }>(
+        {},
+    );
 
     if (tenant?.isHq || simple?.mode === 'simple' || group === null) {
         return null;
@@ -62,6 +67,7 @@ export function MenuTabs() {
         more = row.filter((i) => !shown.includes(i));
     }
     const panelOpen = open ?? guide.autoOpen;
+    const hint = item ? PAGE_HINTS[item.href] : undefined;
 
     return (
         <div className="border-b bg-background px-4 md:px-6">
@@ -114,10 +120,26 @@ export function MenuTabs() {
                         </DropdownMenu>
                     )}
                 </nav>
+                {hint?.ai && (
+                    <AiMarker
+                        ai={hint.ai}
+                        onWatch={() => {
+                            setStart({ lesson: hint.ai?.lesson });
+                            setOpen(true);
+                        }}
+                        onCall={() => {
+                            setStart({ calling: true });
+                            setOpen(true);
+                        }}
+                    />
+                )}
                 {guide.guide && (
                     <button
                         type="button"
-                        onClick={() => setOpen(true)}
+                        onClick={() => {
+                            setStart({});
+                            setOpen(true);
+                        }}
                         aria-label={guide.guide.title}
                         className="my-2 inline-flex shrink-0 items-center gap-2 rounded-full border border-primary/30 bg-primary/5 px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/10"
                     >
@@ -133,11 +155,13 @@ export function MenuTabs() {
                     </button>
                 )}
             </div>
+            {hint?.tip && item && <PageTip id={item.href} text={hint.tip} />}
             {guide.guide && (
                 <GuidePanel
                     guide={guide.guide}
                     menuKey={group.key ?? group.label}
                     open={panelOpen}
+                    start={start}
                     onOpenChange={(o) => {
                         setOpen(o);
                         if (!o) {

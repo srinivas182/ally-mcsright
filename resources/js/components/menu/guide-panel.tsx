@@ -136,11 +136,14 @@ export function GuidePanel({
     menuKey,
     open,
     onOpenChange,
+    start = {},
 }: {
     guide: Guide;
     menuKey: string;
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    /** Open at a lesson (from a page's AI marker) or straight at "Book a call". */
+    start?: { lesson?: string; calling?: boolean };
 }) {
     const page = usePage();
     const [lesson, setLesson] = useState<string | null>(null);
@@ -155,6 +158,10 @@ export function GuidePanel({
         if (!open) {
             return;
         }
+        if (start.lesson && guide.lessons.some((l) => l.id === start.lesson)) {
+            setLesson(start.lesson);
+        }
+        setCalling(Boolean(start.calling));
         setOpened(readOpened());
         fetch('/help/guides/videos', {
             headers: { Accept: 'application/json' },

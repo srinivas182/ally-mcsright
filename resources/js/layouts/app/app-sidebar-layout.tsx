@@ -50,7 +50,7 @@ export default function AppSidebarLayout({
                 <AppSidebarHeader breadcrumbs={breadcrumbs} />
                 <MenuTabs />
                 <ChooseView />
-                <div className="pb-20 md:pb-0">{children}</div>
+                <div className="pb-20">{children}</div>
             </AppContent>
             <MobileNav />
             <PasskeyPrompt />
