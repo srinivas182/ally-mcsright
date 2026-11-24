@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { RulesForm, type Rules } from '@/components/compensation/rules-form';
 import { confirmCredits } from '@/components/credit-consent';
 import { Badge } from '@/components/ui/badge';
+import { usd } from '@/lib/cents';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/ui/page-header';
@@ -40,6 +41,102 @@ type Props = {
     fees: { code: string; name: string }[];
     canManage: boolean;
 };
+
+/** CM3: every plan at a glance, like a plan list: type, split or fee, cap, fee after cap, levels, agents. */
+function PlanTable({ plans }: { plans: Plan[] }) {
+    const money = (c: unknown) => (typeof c === 'number' ? usd(c) : '—');
+
+    return (
+        <div className="overflow-x-auto rounded-xl border bg-card">
+            <table className="w-full text-left text-sm">
+                <thead className="bg-muted/50 text-muted-foreground">
+                    <tr>
+                        <th className="px-4 py-3 font-medium">Plan</th>
+                        <th className="px-4 py-3 font-medium">Type</th>
+                        <th className="px-4 py-3 font-medium">
+                            Agent split or fee
+                        </th>
+                        <th className="px-4 py-3 font-medium">Cap</th>
+                        <th className="px-4 py-3 font-medium">Fee after cap</th>
+                        <th className="px-4 py-3 font-medium">Revenue share</th>
+                        <th className="px-4 py-3 text-right font-medium">
+                            Agents
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {plans.map((p) => {
+                        const v =
+                            p.versions.find((x) => x.status === 'published') ??
+                            p.versions[0];
+                        const r = (v?.rules ?? {}) as Record<string, unknown>;
+                        const split = (r.split ?? {}) as {
+                            mode?: string;
+                            agent_percent?: string;
+                            bands?: { fee_cents: number }[];
+                        };
+                        const cap = r.cap as
+                            | { amount_cents?: number }
+                            | undefined;
+                        const post = r.post_cap as
+                            | { fee?: { amount?: number } }
+                            | undefined;
+                        const rs = r.revenue_share as
+                            | { levels?: string[] }
+                            | undefined;
+
+                        return (
+                            <tr key={p.ulid} className="border-t">
+                                <td className="px-4 py-3 font-semibold">
+                                    {p.name}
+                                    {p.default && (
+                                        <Badge className="ml-2">Default</Badge>
+                                    )}
+                                    {!v || v.status !== 'published' ? (
+                                        <Badge
+                                            variant="outline"
+                                            className="ml-2"
+                                        >
+                                            Draft
+                                        </Badge>
+                                    ) : null}
+                                </td>
+                                <td className="px-4 py-3">
+                                    {split.mode === 'flat_fee'
+                                        ? 'Flat fee'
+                                        : split.mode === 'tiered'
+                                          ? 'Tiered'
+                                          : 'Revenue share'}
+                                </td>
+                                <td className="px-4 py-3">
+                                    {split.mode === 'flat_fee'
+                                        ? `${money(split.bands?.[0]?.fee_cents)} per deal`
+                                        : split.agent_percent
+                                          ? `${split.agent_percent}% / ${100 - Number(split.agent_percent)}%`
+                                          : '—'}
+                                </td>
+                                <td className="px-4 py-3">
+                                    {cap ? money(cap.amount_cents) : 'No cap'}
+                                </td>
+                                <td className="px-4 py-3">
+                                    {cap ? money(post?.fee?.amount) : '—'}
+                                </td>
+                                <td className="px-4 py-3">
+                                    {rs?.levels?.length
+                                        ? `${rs.levels.length} levels (${rs.levels.join(' / ')}%)`
+                                        : 'None'}
+                                </td>
+                                <td className="px-4 py-3 text-right">
+                                    {p.agents}
+                                </td>
+                            </tr>
+                        );
+                    })}
+                </tbody>
+            </table>
+        </div>
+    );
+}
 
 function Errors() {
     const errors = usePage().props.errors as Record<string, string>;
@@ -92,7 +189,7 @@ function PlanCard({
                     <li key={v.ulid}>
                         Version {v.version} · {v.status}
                         {v.effective_from
-                            ? ` from ${new Date(v.effective_from).toLocaleDateString()}`
+                            ? ` from ${new Date(`${v.effective_from}T00:00:00`).toLocaleDateString()}`
                             : ''}
                         {v.note ? ` · ${v.note}` : ''}
                     </li>
@@ -281,6 +378,7 @@ export default function Plans({
                         </Button>
                     </section>
                 )}
+                {plans.length > 0 && <PlanTable plans={plans} />}
                 <ul className="grid gap-3 md:grid-cols-2">
                     {plans.map((p) => (
                         <PlanCard

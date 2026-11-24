@@ -114,6 +114,15 @@ it('shows the whole network tree, and lets money managers move someone with a re
         ->assertRedirect();
     expect(app(Sponsorships::class)->sponsorOf($this->recruit->id, CarbonImmutable::today()))->toBe($this->other->id);
 
+    // CM3: a co-sponsor shares level 1 (50/50 unless the broker says otherwise).
+    $this->actingAs($this->owner)->post("/compensation/network/{$this->recruit->ulid}/sponsor", ['sponsor' => $this->other->ulid, 'co_sponsor' => $this->leader->ulid, 'reason' => 'Both of them recruited Rae together'])
+        ->assertRedirect();
+    $co = app(Sponsorships::class)->coSponsorOf($this->recruit->id, CarbonImmutable::today());
+    expect($co[0] ?? null)->toBe($this->leader->id)->and((float) ($co[1] ?? 0))->toBe(50.0);
+    $this->actingAs($this->owner)->get('/compensation/network')->assertInertia(fn (Assert $page) => $page
+        ->where('tree', fn ($tree) => collect($tree)->firstWhere('name', $this->other->name)['children'][0]['co_sponsor']['share'] === '50'));
+    // MySQL keeps decimals as 50.0000; the page shows "50" either way.
+
     // A cycle is refused: Otto cannot sit under his own recruit.
     $this->actingAs($this->owner)->post("/compensation/network/{$this->other->ulid}/sponsor", ['sponsor' => $this->recruit->ulid, 'reason' => 'Trying to make a loop here'])
         ->assertSessionHasErrors('sponsor');

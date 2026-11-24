@@ -15,6 +15,7 @@ use Brick\Math\BigDecimal;
  *   distributed), for gci they total the company revenue % (100 − agent %) — within 0.01 points
  * - missing_upline / ineligible_upline: root (credit the root account) or forfeit (missed earning)
  * - fallback_cap_cents: most the root account receives from one deal (the rest is missed)
+ * - level_caps_cents: most one person receives at each level per calendar year (CM3)
  */
 final readonly class RevenueShareRules
 {
@@ -43,6 +44,8 @@ final readonly class RevenueShareRules
         public ?int $milestoneFirstClosingCents = null, // bonus to the sponsor on a recruit's first closing
         public int $tinyDealGciCents = 50_000,          // abuse control: deals below this are held for review
         public int $recentSponsorChangeDays = 30,       // abuse control: sponsor changed this recently → held
+        /** @var list<int|null> CM3: most one person receives at each level per calendar year (null: no limit) */
+        public array $levelCapsCents = [],
     ) {}
 
     /**
@@ -124,6 +127,20 @@ final readonly class RevenueShareRules
         }
         ksort($thresholds);
 
+        // CM3: a yearly cap per level (one entry per level; empty or null means no limit).
+        $levelCaps = [];
+        foreach (array_values((array) ($data['level_caps_cents'] ?? [])) as $i => $c) {
+            if ($c !== null && (! is_int($c) || $c < 0)) {
+                $errors["revenue_share.level_caps_cents.{$i}"] = 'A level cap is an amount in cents, or empty for no limit.';
+
+                continue;
+            }
+            $levelCaps[] = $c;
+        }
+        if (count($levelCaps) > count($levels)) {
+            $levelCaps = array_slice($levelCaps, 0, count($levels));
+        }
+
         // Funding limits (addition 2).
         $funding = is_array($data['funding'] ?? null) ? $data['funding'] : [];
 
@@ -140,6 +157,7 @@ final readonly class RevenueShareRules
             $int($data['vesting']['years'] ?? null, 'vesting.years', 1, $errors),
             $int($data['milestone']['first_closing_cents'] ?? null, 'milestone.first_closing_cents', 1, $errors),
             $int($data['controls']['tiny_deal_gci_cents'] ?? 50_000, 'controls.tiny_deal_gci_cents', 0, $errors) ?? 50_000,
-            $int($data['controls']['recent_sponsor_change_days'] ?? 30, 'controls.recent_sponsor_change_days', 0, $errors) ?? 30);
+            $int($data['controls']['recent_sponsor_change_days'] ?? 30, 'controls.recent_sponsor_change_days', 0, $errors) ?? 30,
+            $levelCaps);
     }
 }

@@ -21,6 +21,7 @@ use Modules\Compensation\RevenueShare\Unlocking;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Identity\Enums\UserStatus;
 use Modules\Core\Support\Connections;
+use Modules\Core\Tenancy\TenantContext;
 
 /**
  * CM1: ranks (how agents move up, by production and recruits) and the brokerage's whole network tree (who
@@ -83,10 +84,12 @@ final class RanksController
         $people = User::query()->whereIn('kind', [UserKind::Agent, UserKind::Owner])->whereIn('status', [UserStatus::Active, UserStatus::Deactivated, UserStatus::Suspended])
             ->orderBy('first_name')->get()->keyBy('id');
         $sponsorOf = [];
+        $coOf = [];
         foreach (DB::connection(Connections::cell())->table('rs_sponsorships')->where('effective_from', '<=', $now->toDateString())
             ->where(fn ($q) => $q->whereNull('effective_to')->orWhere('effective_to', '>=', $now->toDateString()))
-            ->orderBy('effective_from')->get(['agent_user_id', 'sponsor_user_id']) as $s) {
+            ->orderBy('effective_from')->get(['agent_user_id', 'sponsor_user_id', 'co_sponsor_user_id', 'co_share_percent']) as $s) {
             $sponsorOf[(int) $s->agent_user_id] = $s->sponsor_user_id !== null ? (int) $s->sponsor_user_id : null; // the latest start wins
+            $coOf[(int) $s->agent_user_id] = $s->co_sponsor_user_id !== null ? [(int) $s->co_sponsor_user_id, (string) $s->co_share_percent] : null;
         }
         $children = [];
         foreach ($people as $id => $p) {
@@ -94,7 +97,7 @@ final class RanksController
             $children[$sponsor !== null && $people->has($sponsor) ? $sponsor : 0][] = (int) $id;
         }
         $from = $now->subMonths(12);
-        $build = function (int $id, int $level, array $seen) use (&$build, $people, $children, $ranks, $unlocking, $now, $from): ?array {
+        $build = function (int $id, int $level, array $seen) use (&$build, $people, $children, $ranks, $unlocking, $now, $from, $sponsorOf, $coOf): ?array {
             $u = $people->get($id);
             if (! $u instanceof User) {
                 return null;
@@ -104,13 +107,17 @@ final class RanksController
 
             return ['ulid' => $u->ulid, 'name' => $u->name, 'active' => $u->status === UserStatus::Active, 'level' => $level,
                 'rank' => $ranks->progress($id, $now, $unlocking)['rank']['name'] ?? null,
-                'closings' => $unlocking->production($id, $from, $now)['closings'], 'recruits' => count($children[$id] ?? []), 'team' => $size, 'children' => $kids];
+                'closings' => $unlocking->production($id, $from, $now)['closings'], 'recruits' => count($children[$id] ?? []), 'team' => $size,
+                'sponsor' => isset($sponsorOf[$id]) ? $people->get($sponsorOf[$id])?->name : null,
+                'co_sponsor' => isset($coOf[$id]) ? ['name' => $people->get($coOf[$id][0])?->name, 'share' => rtrim(rtrim(number_format((float) $coOf[$id][1], 4, '.', ''), '0'), '.')] : null,
+                'joined' => $u->created_at?->toDateString(), 'kind' => $u->kind->value, 'children' => $kids];
         };
-        $tree = array_values(array_filter(array_map(fn (int $id): ?array => $build($id, 0, []), $children[0] ?? [])));
+        $tree = array_values(array_filter(array_map(fn (int $id): ?array => $build($id, 1, []), $children[0] ?? [])));
         usort($tree, fn (array $a, array $b): int => [$b['team'], $a['name']] <=> [$a['team'], $b['name']]);
 
         return Inertia::render('compensation/network', [
             'tree' => $tree,
+            'brokerage' => (string) app(TenantContext::class)->current()->name,
             'totals' => ['people' => $people->count(), 'sponsored' => count(array_filter($sponsorOf)), 'ranks' => count($ranks->all())],
             'canChange' => $viewer->can('compensation.calculations.manage'),
             'people' => $people->filter(fn (User $u): bool => $u->status === UserStatus::Active)->map(fn (User $u): array => ['ulid' => $u->ulid, 'name' => $u->name])->values(),
@@ -124,9 +131,12 @@ final class RanksController
     public function sponsor(Request $request, User $user, Sponsorships $sponsorships): RedirectResponse
     {
         $by = self::can($request, 'compensation.calculations.manage');
-        $data = $request->validate(['sponsor' => ['nullable', 'string', 'size:26'], 'reason' => ['required', 'string', 'min:10', 'max:200']]);
+        $data = $request->validate(['sponsor' => ['nullable', 'string', 'size:26'], 'reason' => ['required', 'string', 'min:10', 'max:200'],
+            'co_sponsor' => ['nullable', 'string', 'size:26'], 'co_share' => ['nullable', 'numeric', 'gt:0', 'lt:100']]);
         $sponsor = isset($data['sponsor']) ? User::query()->where('ulid', $data['sponsor'])->firstOrFail() : null;
-        $sponsorships->set($user, $sponsor, CarbonImmutable::today(), $by, trim($data['reason']));
+        // CM3: a co-sponsor shares level 1 with the sponsor (50/50 unless the broker says otherwise).
+        $co = isset($data['co_sponsor']) ? User::query()->where('ulid', $data['co_sponsor'])->firstOrFail() : null;
+        $sponsorships->set($user, $sponsor, CarbonImmutable::today(), $by, trim($data['reason']), $co, $co !== null ? (string) ($data['co_share'] ?? '50') : null);
         Inertia::flash('toast', ['type' => 'success', 'message' => $sponsor !== null ? "{$user->name} now sits under {$sponsor->name}, from today." : "{$user->name} now sits at the top, from today."]);
 
         return back();
