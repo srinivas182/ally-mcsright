@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Modules\Compensation\Calculator\DealSideInput;
 use Modules\Compensation\Models\Calculation;
 use Modules\Compensation\Models\PlanVersion;
+use Modules\Compensation\Recruiters\Recruiters;
 use Modules\Compensation\Rules\RevenueShareRules;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Identity\Enums\UserStatus;
@@ -142,7 +143,8 @@ final class RevenueShareEngine
                     $resolved = null;
                     if ($payee !== null) {
                         [$resolved, $why] = $this->members->payee((int) $payee, $rules, $date);
-                        $reason = $resolved === null ? $why : (! $this->unlocking->open((int) $payee, $level, $rules, $date) ? 'locked_level' : null);
+                        $reason = $resolved === null ? $why : $this->recruiterReason((int) $payee, $level)
+                            ?? (! $this->unlocking->open((int) $payee, $level, $rules, $date) ? 'locked_level' : null);
                     }
                     $line = ['level' => $level, 'percent' => $rules->levels[$i], 'source_user_id' => $agentId, 'amount_cents' => (int) $amount];
                     if ($reason === null && $resolved !== null) {
@@ -174,7 +176,8 @@ final class RevenueShareEngine
         $resolved = null;
         if ($payee !== null) {
             [$resolved, $why] = $this->members->payee($payee, $rules, $date);
-            $reason = $resolved === null ? $why : (! $this->unlocking->open($payee, (int) $entry['level'], $rules, $date) ? 'locked_level' : null);
+            $reason = $resolved === null ? $why : $this->recruiterReason($payee, (int) $entry['level'])
+                ?? (! $this->unlocking->open($payee, (int) $entry['level'], $rules, $date) ? 'locked_level' : null);
         }
 
         if ($reason === null && $resolved !== null) {
@@ -360,24 +363,39 @@ final class RevenueShareEngine
     private function milestones(Calculation $final, CarbonImmutable $date): void
     {
         $db = DB::connection(Connections::cell());
+        $recruiters = app(Recruiters::class);
         foreach ((array) ($final->result['agents'] ?? []) as $row) {
             /** @var array<string, mixed> $row */
             $rules = $this->rulesFor($row);
             $agentId = (int) $row['user_id'];
-            if ($rules?->milestoneFirstClosingCents === null
-                || $db->table('comp_calculation_agents')->where('agent_user_id', $agentId)->where('status', 'final')->count() !== 1
+            if ($db->table('comp_calculation_agents')->where('agent_user_id', $agentId)->where('status', 'final')->count() !== 1
                 || $db->table('rs_entries')->where('source_agent_user_id', $agentId)->where('kind', 'bonus')->whereNull('reversal_of')->exists()) {
                 continue;
             }
             $sponsor = $this->sponsorships->sponsorOf($agentId, $date);
-            [$payee] = $sponsor !== null ? $this->members->payee($sponsor, $rules, $date) : [null];
+            // CM4b: a recruiter is paid their flat bonus on a recruit's first closing (instead of the plan's bonus).
+            $recruiter = $sponsor !== null && $recruiters->isRecruiter($sponsor);
+            $amount = $recruiter ? $recruiters->bonusFor((int) $sponsor) : $rules?->milestoneFirstClosingCents;
+            if ($amount === null || $amount <= 0) {
+                continue;
+            }
+            // A recruiter's bonus is paid even when the agent's plan has no revenue share.
+            [$payee] = $sponsor !== null ? $this->members->payee($sponsor, $rules ?? new RevenueShareRules('net_profit'), $date) : [null];
             if ($payee === null) {
                 continue;
             }
-            $this->insert($final, $row, $date, ['level' => 1, 'kind' => 'bonus', 'reason' => 'first_closing', 'basis' => 'milestone', 'base_cents' => 0,
-                'percent' => '0', 'amount_cents' => $rules->milestoneFirstClosingCents, 'recipient_user_id' => $payee]);
-            $this->credits[$payee] = ($this->credits[$payee] ?? 0) + $rules->milestoneFirstClosingCents;
+            $this->insert($final, $row, $date, ['level' => 1, 'kind' => 'bonus', 'reason' => $recruiter ? 'recruiter_bonus' : 'first_closing', 'basis' => 'milestone', 'base_cents' => 0,
+                'percent' => '0', 'amount_cents' => $amount, 'recipient_user_id' => $payee]);
+            $this->credits[$payee] = ($this->credits[$payee] ?? 0) + $amount;
         }
+    }
+
+    /** CM4b: recruiters receive revenue share only on the levels the owner allowed (none by default). */
+    private function recruiterReason(int $payee, int $level): ?string
+    {
+        $recruiters = app(Recruiters::class);
+
+        return $recruiters->isRecruiter($payee) && $level > $recruiters->shareLevels() ? 'recruiter_limit' : null;
     }
 
     /** The agent's revenue share wallet balance. */

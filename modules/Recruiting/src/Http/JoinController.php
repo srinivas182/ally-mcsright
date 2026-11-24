@@ -4,14 +4,17 @@ declare(strict_types=1);
 
 namespace Modules\Recruiting\Http;
 
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 use Inertia\Response;
+use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Listings\Idx\Coverage;
 use Modules\Recruiting\SelfJoin;
+use Modules\Roster\Brokerage\BrokerageLicences;
 use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 /**
@@ -22,13 +25,15 @@ final class JoinController
     public function show(Request $request, SelfJoin $join, ?string $code = null): HttpResponse
     {
         $sponsor = $join->sponsorFor($code);
+        $page = $join->page();
         $response = Inertia::render('public/join', [
             'brokerage' => app(TenantContext::class)->current()->name,
-            'sponsor' => $sponsor?->name,
+            'sponsor' => $sponsor !== null ? ['name' => $sponsor->name, 'since' => $sponsor->created_at?->format('Y')] : null,
+            'page' => ['headline' => $page['headline'], 'pitch' => $page['pitch'], 'reasons' => $page['reasons'], 'video' => SelfJoin::player($page['video'])],
             'code' => $sponsor !== null ? $code : null,
             'unknownCode' => $code !== null && $sponsor === null,
             'packs' => $join->packs(),
-            'states' => self::states(),
+            'states' => $join->states(self::states()),
             'cancelled' => $request->boolean('cancelled'),
         ])->toResponse($request);
         $response->headers->add(['X-Robots-Tag' => 'noindex, nofollow', 'Cache-Control' => 'private, no-store']);
@@ -38,14 +43,14 @@ final class JoinController
 
     public function store(Request $request, SelfJoin $join, ?string $code = null): RedirectResponse|HttpResponse
     {
-        $states = self::states();
+        $states = $join->states(self::states());
         $data = $request->validate([
             'first_name' => ['required', 'string', 'max:60'], 'last_name' => ['required', 'string', 'max:60'],
-            'email' => ['required', 'email:rfc', 'max:160'], 'phone' => ['required', 'string', 'min:7', 'max:30'],
+            'email' => ['required', 'email:rfc,filter', 'max:160'], 'phone' => ['required', 'regex:/^\+1[2-9]\d{9}$/'],
             'password' => ['required', 'confirmed', Password::min(12)],
             'licence_state' => ['required', 'string', 'size:2', 'in:'.implode(',', array_keys($states))], 'licence_number' => ['required', 'string', 'max:40'],
             'pack' => ['nullable', 'string', 'size:26'], 'agree' => ['accepted'],
-        ], ['agree.accepted' => 'Please agree to the terms to join.', 'licence_state.in' => 'Choose the state that issued your licence.']);
+        ], ['agree.accepted' => 'Please agree to the terms to join.', 'phone.regex' => 'Enter a 10-digit US phone number.', 'email.email' => 'Enter a full email address, like name@example.com.', 'licence_state.in' => 'Choose the state that issued your licence.']);
         $next = $join->apply($data, $join->sponsorFor($code), $states[$data['licence_state']], $request->getSchemeAndHttpHost());
 
         return str_starts_with($next, '/') ? redirect($next) : Inertia::location($next);
@@ -54,6 +59,26 @@ final class JoinController
     public function done(Request $request): Response
     {
         return Inertia::render('public/join-done', ['brokerage' => app(TenantContext::class)->current()->name]);
+    }
+
+    /** CM4b: the owner's join page (words, video, extra states). */
+    public function edit(Request $request, SelfJoin $join): Response
+    {
+        $user = $request->user();
+        abort_unless($user instanceof User && $user->isKind(UserKind::Owner), 403);
+
+        return Inertia::render('recruiting/join-page', ['page' => $join->page(), 'states' => self::states(),
+            'licensed' => app(BrokerageLicences::class)->goodStates(), 'link' => $request->getSchemeAndHttpHost().'/join']);
+    }
+
+    public function save(Request $request, SelfJoin $join): RedirectResponse
+    {
+        $user = $request->user();
+        abort_unless($user instanceof User && $user->isKind(UserKind::Owner), 403);
+        $join->savePage($request->only(['headline', 'pitch', 'reasons', 'video', 'extra_states']), $user);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Join page saved.']);
+
+        return back();
     }
 
     /**
