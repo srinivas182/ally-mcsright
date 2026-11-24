@@ -70,8 +70,8 @@ final class Signing
             $token = Str::random(48);
             $db->table('form_signers')->where('id', $s->id)->update(['token_hash' => hash('sha256', $token), 'status' => 'sent', 'sent_at' => now(), 'updated_at' => now()]);
             // IDX6: an MLS agreement (no deal) is sent by RightAlly on the brokerage's behalf.
-            Notification::route('mail', (string) $s->email)->notify(new SignatureRequested((string) $packet->title, (string) $this->tenants->current()->name,
-                (int) $packet->deal_id === 0 ? 'RightAlly' : ($agent->name ?? 'Your agent'), $baseUrl.'/sign/'.$token, false));
+            Notification::route('mail', (string) $s->email)->route('name', (string) ($s->name ?? ''))->notify(new SignatureRequested((string) $packet->title, (string) $this->tenants->current()->name,
+                (int) $packet->deal_id === 0 ? 'RightAlly' : ($agent->name ?? 'Your agent'), $baseUrl.'/sign/'.$token, false, (int) $packet->deal_id !== 0));
             $this->event($packetId, (int) $s->id, 'emailed', 'Signing link emailed to '.$s->email);
         }
     }
@@ -307,7 +307,7 @@ final class Signing
             $token = Str::random(48);
             $db->table('form_signers')->where('id', $s->id)->update(['token_hash' => hash('sha256', $token), 'reminders' => (int) $s->reminders + 1, 'reminded_at' => now()]);
             $agent = User::query()->find((int) $db->table('tx_deals')->where('id', $s->deal_id)->value('agent_user_id'));
-            Notification::route('mail', (string) $s->email)->notify(new SignatureRequested((string) $s->title, (string) $this->tenants->current()->name, $agent->name ?? 'Your agent', $baseUrl.'/sign/'.$token, true));
+            Notification::route('mail', (string) $s->email)->route('name', (string) ($s->name ?? ''))->notify(new SignatureRequested((string) $s->title, (string) $this->tenants->current()->name, $agent->name ?? 'Your agent', $baseUrl.'/sign/'.$token, true, (int) $s->deal_id !== 0));
             $this->event((int) $s->packet_id, (int) $s->id, 'reminded', null);
             $sent++;
         }
@@ -386,7 +386,7 @@ final class Signing
         $this->event($packetId, null, 'completed', 'All signed; sealed with SHA-256 '.$sha);
         $this->file($p, $pdf);
         foreach ($signers as $s) {
-            Notification::route('mail', (string) $s->email)->notify(new PacketCompleted((string) $p->title, (string) $this->tenants->current()->name, $pdf));
+            Notification::route('mail', (string) $s->email)->route('name', (string) ($s->name ?? ''))->notify(new PacketCompleted((string) $p->title, (string) $this->tenants->current()->name, $pdf, (int) $p->deal_id !== 0));
         }
         app(AuditLogger::class)->record('forms.packet.completed', metadata: ['packet' => $p->ulid, 'sha256' => $sha], severity: 'notice');
         PacketSealed::dispatch($this->tenants->id(), (string) $p->ulid, $path);

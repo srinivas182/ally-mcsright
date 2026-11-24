@@ -46,7 +46,7 @@ final class SignupReminders
         if (! in_array($signup->status, ['draft', 'pending'], true) || (! $byHq && (bool) $signup->no_reminders) || $this->finished((string) $signup->owner_email)) {
             return false;
         }
-        Notification::route('mail', (string) $signup->owner_email)->notify(new SignupReminderMail(
+        Notification::route('mail', (string) $signup->owner_email)->route('name', (string) ($signup->owner_name ?? ''))->notify(new SignupReminderMail(
             (string) $signup->owner_name, (string) $signup->brokerage, self::resumeUrl($signup), self::stopUrl($signup), (int) $signup->reminders_sent + 1,
         ));
         // Not updated_at: that is when they last filled in a step, which decides when reminders go.

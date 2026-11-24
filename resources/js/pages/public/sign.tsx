@@ -1,6 +1,7 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import { useRef, useState } from 'react';
 
+import { PdfPages } from '@/components/forms/pdf-pages';
 import { SummaryBody } from '@/components/forms/summary-panel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +9,9 @@ import { Input } from '@/components/ui/input';
 type Props = {
     token: string;
     brokerage: string;
+    brand: { logo: string | null; color: string; site: string };
+    deal: boolean;
+    back: string | null;
     packet: { title: string; status: string; verify: string };
     signer: {
         name: string;
@@ -265,6 +269,9 @@ function SignaturePad({
 export default function Sign({
     token,
     brokerage,
+    brand,
+    deal,
+    back,
     packet,
     signer,
     fields,
@@ -288,288 +295,396 @@ export default function Sign({
     return (
         <>
             <Head title={`Sign: ${packet.title}`} />
-            <main className="mx-auto grid max-w-2xl gap-4 p-6 text-sm">
-                <h1 className="text-xl font-semibold">{packet.title}</h1>
-                <p>
-                    From {brokerage}, for {signer.name}.
-                </p>
-                <p
-                    role="note"
-                    className="rounded-md border border-amber-300 bg-amber-50 p-3 text-amber-900"
+            <div className="flex min-h-screen flex-col bg-slate-50">
+                <header
+                    className="border-b bg-white"
+                    style={{ borderTop: `4px solid ${brand.color}` }}
                 >
-                    Never wire money based on an email or text. Payment
-                    instructions never change by email — call your agent or the
-                    title company on a number you already know.
-                </p>
-
-                {changes.length > 0 && packet.status === 'sent' ? (
-                    <InitialChanges base={base} changes={changes} />
-                ) : done ? (
-                    <section className="grid gap-2 rounded-lg border p-4">
-                        <p className="font-medium">
-                            {packet.status === 'completed'
-                                ? 'Everyone has signed. Your copy has been emailed to you.'
-                                : signer.signed
-                                  ? 'Thank you — you have signed. We will email your copy when everyone has signed.'
-                                  : packet.status === 'declined'
-                                    ? 'This was declined.'
-                                    : 'This is no longer available for signing.'}
-                        </p>
-                        {packet.status === 'completed' && (
-                            <a
-                                className="underline"
-                                href={`${base}/document.pdf`}
+                    <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+                        <a
+                            href={brand.site}
+                            className="flex items-center gap-3 font-semibold text-slate-900"
+                        >
+                            {brand.logo ? (
+                                <img
+                                    src={brand.logo}
+                                    alt={brokerage}
+                                    className="max-h-10 max-w-[200px] object-contain"
+                                />
+                            ) : (
+                                <span className="text-lg">{brokerage}</span>
+                            )}
+                        </a>
+                        <span className="flex items-center gap-1.5 text-xs text-slate-500">
+                            <svg
+                                aria-hidden="true"
+                                viewBox="0 0 24 24"
+                                width="14"
+                                height="14"
                             >
-                                Download the signed copy
-                            </a>
-                        )}
-                    </section>
-                ) : !signer.consented ? (
-                    <form
-                        className="grid gap-2 rounded-lg border p-4"
-                        onSubmit={(e) => {
-                            e.preventDefault();
-                            consent.post(`${base}/consent`);
-                        }}
-                    >
-                        <h2 className="font-semibold">
-                            Agree to sign electronically
-                        </h2>
-                        <p>{disclosure}</p>
-                        <label className="flex items-center gap-2">
-                            <input
-                                type="checkbox"
-                                className="size-4"
-                                checked={consent.data.agree}
-                                onChange={(e) =>
-                                    consent.setData('agree', e.target.checked)
-                                }
-                            />{' '}
-                            I agree
-                        </label>
-                        <Button type="submit" disabled={!consent.data.agree}>
-                            Continue
-                        </Button>
-                    </form>
-                ) : packet.verify === 'sms' && !signer.verified ? (
-                    <form
-                        className="grid gap-2 rounded-lg border p-4"
-                        onSubmit={(e) => {
-                            e.preventDefault();
-                            code.post(`${base}/verify`);
-                        }}
-                    >
-                        <h2 className="font-semibold">
-                            Enter the code we texted to the number ending{' '}
-                            {signer.phone_last4}
-                        </h2>
-                        <Input
-                            aria-label="Code"
-                            inputMode="numeric"
-                            autoComplete="one-time-code"
-                            className="w-40"
-                            value={code.data.code}
-                            onChange={(e) =>
-                                code.setData('code', e.target.value)
-                            }
-                        />
-                        <span className="flex gap-2">
-                            <Button type="submit">Check code</Button>
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                onClick={() => router.post(`${base}/code`)}
-                            >
-                                Send a new code
-                            </Button>
+                                <path
+                                    fill="currentColor"
+                                    d="M12 1 3 5v6c0 5.5 3.8 10.7 9 12 5.2-1.3 9-6.5 9-12V5l-9-4zm-1 15-4-4 1.4-1.4L11 13.2l5.6-5.6L18 9l-7 7z"
+                                />
+                            </svg>
+                            Secure e-signing
                         </span>
-                        {code.errors.code && (
-                            <p role="alert" className="text-destructive">
-                                {code.errors.code}
+                    </div>
+                </header>
+                <main className="mx-auto grid w-full max-w-5xl flex-1 content-start gap-5 px-4 py-6 text-base sm:px-6">
+                    <div className="grid gap-1">
+                        <h1 className="text-2xl font-semibold text-slate-900">
+                            {packet.title}
+                        </h1>
+                        <p className="text-slate-600">
+                            From {brokerage}, for {signer.name}.
+                        </p>
+                    </div>
+                    {deal && (
+                        <p
+                            role="note"
+                            className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900"
+                        >
+                            Never wire money based on an email or text. Payment
+                            instructions never change by email. Call your agent
+                            or the title company on a number you already know.
+                        </p>
+                    )}
+
+                    {changes.length > 0 && packet.status === 'sent' ? (
+                        <InitialChanges base={base} changes={changes} />
+                    ) : done ? (
+                        <section className="grid justify-items-start gap-3 rounded-xl border bg-white p-6 shadow-sm">
+                            <span
+                                className="grid size-12 place-items-center rounded-full text-white"
+                                style={{ background: brand.color }}
+                                aria-hidden="true"
+                            >
+                                <svg viewBox="0 0 24 24" width="26" height="26">
+                                    <path
+                                        fill="currentColor"
+                                        d="m9 16.2-4.2-4.2L3.4 13.4 9 19 21 7l-1.4-1.4z"
+                                    />
+                                </svg>
+                            </span>
+                            <h2 className="text-xl font-semibold text-slate-900">
+                                {packet.status === 'completed'
+                                    ? 'All signed'
+                                    : signer.signed
+                                      ? `Thank you, ${signer.name.split(' ')[0]}. You have signed.`
+                                      : packet.status === 'declined'
+                                        ? 'This was declined'
+                                        : 'This is no longer open for signing'}
+                            </h2>
+                            <p className="text-slate-600">
+                                {packet.status === 'completed'
+                                    ? 'Everyone has signed. Your copy has been emailed to you, and you can download it here.'
+                                    : signer.signed
+                                      ? deal
+                                          ? 'We will email you a copy as soon as everyone has signed.'
+                                          : 'Next, the others named on this agreement sign it. We will email you a copy as soon as everyone has signed, and RightAlly then sends it to the MLS for you.'
+                                      : packet.status === 'declined'
+                                        ? `${brokerage} has been told.`
+                                        : `If you think this is a mistake, contact ${brokerage}.`}
                             </p>
-                        )}
-                    </form>
-                ) : signer.id_required && signer.id_status !== 'verified' ? (
-                    <section className="grid gap-2 rounded-lg border p-4">
-                        <h2 className="font-semibold">Verify your identity</h2>
-                        {signer.id_status === 'name_mismatch' ||
-                        signer.id_status === 'owner_mismatch' ? (
-                            <p role="alert" className="text-destructive">
-                                {signer.id_status === 'name_mismatch'
-                                    ? 'The name on your ID does not match these documents.'
-                                    : 'We need to confirm ownership of the property before you sign.'}{' '}
-                                Your agent has been told and will be in touch.
-                            </p>
-                        ) : (
-                            <>
-                                <p>
-                                    To protect you and the property from fraud,
-                                    please verify your identity with a
-                                    government photo ID and a quick selfie. It
-                                    takes about two minutes on your phone. Your
-                                    ID images are held by the verification
-                                    service, not shared with us.
-                                </p>
-                                {signer.id_status === 'failed' && (
-                                    <p
-                                        role="alert"
-                                        className="text-destructive"
-                                    >
-                                        That check did not go through. Please
-                                        try again in good light.
+                            <div className="flex flex-wrap gap-2">
+                                {packet.status === 'completed' && (
+                                    <Button asChild variant="outline">
+                                        <a
+                                            href={`${base}/document.pdf`}
+                                            download
+                                        >
+                                            Download the signed copy
+                                        </a>
+                                    </Button>
+                                )}
+                                {back ? (
+                                    <Button asChild>
+                                        <a href={back}>
+                                            Back to your back office
+                                        </a>
+                                    </Button>
+                                ) : (
+                                    <p className="text-sm text-slate-500">
+                                        You can close this page now.
                                     </p>
                                 )}
-                                <Button
-                                    className="justify-self-start"
-                                    onClick={() =>
-                                        router.post(`${base}/identity`)
-                                    }
-                                >
-                                    {signer.id_status === 'failed'
-                                        ? 'Try again'
-                                        : 'Verify my identity'}
-                                </Button>
-                            </>
-                        )}
-                    </section>
-                ) : (
-                    <>
-                        {summary && <PlainSummary summary={summary} />}
-                        <section className="grid gap-2 rounded-lg border p-4">
-                            <h2 className="font-semibold">Review</h2>
-                            <iframe
-                                title="Documents to sign"
-                                src={`${base}/document.pdf`}
-                                className="h-96 w-full rounded border"
-                            />
-                            <a
-                                className="underline"
-                                href={`${base}/document.pdf`}
-                                target="_blank"
-                                rel="noreferrer"
-                            >
-                                Open in a new tab
-                            </a>
-                            <p className="text-muted-foreground">
-                                You will sign:{' '}
-                                {fields
-                                    .map((f) => `${f.label} (${f.form})`)
-                                    .join('; ')}
-                                .
-                            </p>
+                            </div>
                         </section>
+                    ) : !signer.consented ? (
                         <form
                             className="grid gap-2 rounded-lg border p-4"
                             onSubmit={(e) => {
                                 e.preventDefault();
-                                sign.post(`${base}/sign`);
+                                consent.post(`${base}/consent`);
                             }}
                         >
-                            <h2 className="font-semibold">Sign</h2>
-                            <div
-                                role="group"
-                                aria-label="How to sign"
-                                className="flex w-fit rounded border"
-                            >
-                                {(['type', 'draw'] as const).map((m) => (
-                                    <button
-                                        key={m}
-                                        type="button"
-                                        aria-pressed={mode === m}
-                                        className={`px-3 py-1.5 ${mode === m ? 'bg-muted font-medium' : ''}`}
-                                        onClick={() => {
-                                            setMode(m);
-                                            sign.setData(
-                                                m === 'type'
-                                                    ? 'drawn'
-                                                    : 'typed',
-                                                m === 'type' ? null : '',
-                                            );
-                                        }}
-                                    >
-                                        {m === 'type' ? 'Type' : 'Draw'}
-                                    </button>
-                                ))}
-                            </div>
-                            {mode === 'type' ? (
-                                <Input
-                                    aria-label="Type your full name"
-                                    placeholder={`Type “${signer.name}”`}
-                                    className="max-w-sm font-serif italic"
-                                    value={sign.data.typed}
+                            <h2 className="font-semibold">
+                                Agree to sign electronically
+                            </h2>
+                            <p>{disclosure}</p>
+                            <label className="flex items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    className="size-4"
+                                    checked={consent.data.agree}
                                     onChange={(e) =>
-                                        sign.setData('typed', e.target.value)
+                                        consent.setData(
+                                            'agree',
+                                            e.target.checked,
+                                        )
                                     }
-                                />
-                            ) : (
-                                <SignaturePad
-                                    onChange={(d) => sign.setData('drawn', d)}
-                                />
-                            )}
-                            <Input
-                                aria-label="Initials"
-                                placeholder="Initials"
-                                maxLength={5}
-                                className="w-28"
-                                value={sign.data.initials}
-                                onChange={(e) =>
-                                    sign.setData('initials', e.target.value)
-                                }
-                            />
+                                />{' '}
+                                I agree
+                            </label>
                             <Button
                                 type="submit"
-                                disabled={
-                                    sign.processing ||
-                                    !sign.data.initials ||
-                                    (mode === 'type'
-                                        ? !sign.data.typed
-                                        : !sign.data.drawn)
-                                }
+                                disabled={!consent.data.agree}
                             >
-                                Sign
+                                Continue
                             </Button>
-                            {Object.values(sign.errors)[0] && (
+                        </form>
+                    ) : packet.verify === 'sms' && !signer.verified ? (
+                        <form
+                            className="grid gap-2 rounded-lg border p-4"
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                code.post(`${base}/verify`);
+                            }}
+                        >
+                            <h2 className="font-semibold">
+                                Enter the code we texted to the number ending{' '}
+                                {signer.phone_last4}
+                            </h2>
+                            <Input
+                                aria-label="Code"
+                                inputMode="numeric"
+                                autoComplete="one-time-code"
+                                className="w-40"
+                                value={code.data.code}
+                                onChange={(e) =>
+                                    code.setData('code', e.target.value)
+                                }
+                            />
+                            <span className="flex gap-2">
+                                <Button type="submit">Check code</Button>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    onClick={() => router.post(`${base}/code`)}
+                                >
+                                    Send a new code
+                                </Button>
+                            </span>
+                            {code.errors.code && (
                                 <p role="alert" className="text-destructive">
-                                    {Object.values(sign.errors)[0]}
+                                    {code.errors.code}
                                 </p>
                             )}
                         </form>
-                        {declining ? (
+                    ) : signer.id_required &&
+                      signer.id_status !== 'verified' ? (
+                        <section className="grid gap-2 rounded-lg border p-4">
+                            <h2 className="font-semibold">
+                                Verify your identity
+                            </h2>
+                            {signer.id_status === 'name_mismatch' ||
+                            signer.id_status === 'owner_mismatch' ? (
+                                <p role="alert" className="text-destructive">
+                                    {signer.id_status === 'name_mismatch'
+                                        ? 'The name on your ID does not match these documents.'
+                                        : 'We need to confirm ownership of the property before you sign.'}{' '}
+                                    Your agent has been told and will be in
+                                    touch.
+                                </p>
+                            ) : (
+                                <>
+                                    <p>
+                                        To protect you and the property from
+                                        fraud, please verify your identity with
+                                        a government photo ID and a quick
+                                        selfie. It takes about two minutes on
+                                        your phone. Your ID images are held by
+                                        the verification service, not shared
+                                        with us.
+                                    </p>
+                                    {signer.id_status === 'failed' && (
+                                        <p
+                                            role="alert"
+                                            className="text-destructive"
+                                        >
+                                            That check did not go through.
+                                            Please try again in good light.
+                                        </p>
+                                    )}
+                                    <Button
+                                        className="justify-self-start"
+                                        onClick={() =>
+                                            router.post(`${base}/identity`)
+                                        }
+                                    >
+                                        {signer.id_status === 'failed'
+                                            ? 'Try again'
+                                            : 'Verify my identity'}
+                                    </Button>
+                                </>
+                            )}
+                        </section>
+                    ) : (
+                        <>
+                            {summary && <PlainSummary summary={summary} />}
+                            <section className="grid gap-2 rounded-lg border p-4">
+                                <h2 className="font-semibold">Review</h2>
+                                <PdfPages
+                                    src={`${base}/document.pdf`}
+                                    title="Documents to sign"
+                                />
+                                <p className="text-muted-foreground">
+                                    You will sign:{' '}
+                                    {fields
+                                        .map((f) => `${f.label} (${f.form})`)
+                                        .join('; ')}
+                                    .
+                                </p>
+                            </section>
                             <form
-                                className="flex flex-wrap gap-2"
+                                className="grid gap-2 rounded-lg border p-4"
                                 onSubmit={(e) => {
                                     e.preventDefault();
-                                    decline.post(`${base}/decline`);
+                                    sign.post(`${base}/sign`);
                                 }}
                             >
+                                <h2 className="font-semibold">Sign</h2>
+                                <div
+                                    role="group"
+                                    aria-label="How to sign"
+                                    className="flex w-fit rounded border"
+                                >
+                                    {(['type', 'draw'] as const).map((m) => (
+                                        <button
+                                            key={m}
+                                            type="button"
+                                            aria-pressed={mode === m}
+                                            className={`px-3 py-1.5 ${mode === m ? 'bg-muted font-medium' : ''}`}
+                                            onClick={() => {
+                                                setMode(m);
+                                                sign.setData(
+                                                    m === 'type'
+                                                        ? 'drawn'
+                                                        : 'typed',
+                                                    m === 'type' ? null : '',
+                                                );
+                                            }}
+                                        >
+                                            {m === 'type' ? 'Type' : 'Draw'}
+                                        </button>
+                                    ))}
+                                </div>
+                                {mode === 'type' ? (
+                                    <Input
+                                        aria-label="Type your full name"
+                                        placeholder={`Type “${signer.name}”`}
+                                        className="max-w-sm font-serif italic"
+                                        value={sign.data.typed}
+                                        onChange={(e) =>
+                                            sign.setData(
+                                                'typed',
+                                                e.target.value,
+                                            )
+                                        }
+                                    />
+                                ) : (
+                                    <SignaturePad
+                                        onChange={(d) =>
+                                            sign.setData('drawn', d)
+                                        }
+                                    />
+                                )}
                                 <Input
-                                    aria-label="Why are you declining?"
-                                    placeholder="Why are you declining?"
-                                    className="w-72"
-                                    value={decline.data.reason}
+                                    aria-label="Initials"
+                                    placeholder="Initials"
+                                    maxLength={5}
+                                    className="w-28"
+                                    value={sign.data.initials}
                                     onChange={(e) =>
-                                        decline.setData(
-                                            'reason',
-                                            e.target.value,
-                                        )
+                                        sign.setData('initials', e.target.value)
                                     }
                                 />
-                                <Button type="submit" variant="outline">
-                                    Decline
+                                <Button
+                                    type="submit"
+                                    disabled={
+                                        sign.processing ||
+                                        !sign.data.initials ||
+                                        (mode === 'type'
+                                            ? !sign.data.typed
+                                            : !sign.data.drawn)
+                                    }
+                                >
+                                    Sign
                                 </Button>
+                                {Object.values(sign.errors)[0] && (
+                                    <p
+                                        role="alert"
+                                        className="text-destructive"
+                                    >
+                                        {Object.values(sign.errors)[0]}
+                                    </p>
+                                )}
                             </form>
-                        ) : (
-                            <button
-                                type="button"
-                                className="justify-self-start text-xs underline"
-                                onClick={() => setDeclining(true)}
+                            {declining ? (
+                                <form
+                                    className="flex flex-wrap gap-2"
+                                    onSubmit={(e) => {
+                                        e.preventDefault();
+                                        decline.post(`${base}/decline`);
+                                    }}
+                                >
+                                    <Input
+                                        aria-label="Why are you declining?"
+                                        placeholder="Why are you declining?"
+                                        className="w-72"
+                                        value={decline.data.reason}
+                                        onChange={(e) =>
+                                            decline.setData(
+                                                'reason',
+                                                e.target.value,
+                                            )
+                                        }
+                                    />
+                                    <Button type="submit" variant="outline">
+                                        Decline
+                                    </Button>
+                                </form>
+                            ) : (
+                                <button
+                                    type="button"
+                                    className="justify-self-start text-xs underline"
+                                    onClick={() => setDeclining(true)}
+                                >
+                                    I don't want to sign
+                                </button>
+                            )}
+                        </>
+                    )}
+                </main>
+                <footer className="border-t bg-white">
+                    <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-2 px-4 py-4 text-xs text-slate-500 sm:px-6">
+                        <span>
+                            Sent by {brokerage}. Questions? Reply to the email
+                            you received.
+                        </span>
+                        <span>
+                            Secure e-signing by{' '}
+                            <a
+                                href="https://rightally.app"
+                                className="font-medium underline underline-offset-2"
                             >
-                                I don't want to sign
-                            </button>
-                        )}
-                    </>
-                )}
-            </main>
+                                RightAlly
+                            </a>
+                        </span>
+                    </div>
+                </footer>
+            </div>
         </>
     );
 }

@@ -138,9 +138,9 @@ final class PrivacyRequests
             default => trim((string) $note) !== '' ? 'Corrected: '.trim((string) $note) : throw ValidationException::withMessages(['note' => 'Say what you corrected.']),
         };
         if ($req->kind === 'know') {
-            Notification::route('mail', (string) $req->email)->notify(new PrivacyCopyMail((string) $req->name, (string) $this->tenants->current()->name, $this->downloadLink($req)));
+            Notification::route('mail', (string) $req->email)->route('name', (string) ($req->name ?? ''))->notify(new PrivacyCopyMail((string) $req->name, (string) $this->tenants->current()->name, $this->downloadLink($req)));
         } else {
-            Notification::route('mail', (string) $req->email)->notify(new PrivacyAnswerMail((string) $req->name, (string) $this->tenants->current()->name, $outcome));
+            Notification::route('mail', (string) $req->email)->route('name', (string) ($req->name ?? ''))->notify(new PrivacyAnswerMail((string) $req->name, (string) $this->tenants->current()->name, $outcome));
         }
         $this->close((int) $req->id, 'done', $outcome, $by);
 
@@ -154,7 +154,7 @@ final class PrivacyRequests
         if (mb_strlen($reason) < 10) {
             throw ValidationException::withMessages(['note' => 'Explain why, in a sentence the person will understand.']);
         }
-        Notification::route('mail', (string) $req->email)->notify(new PrivacyAnswerMail((string) $req->name, (string) $this->tenants->current()->name, 'We could not do this: '.$reason));
+        Notification::route('mail', (string) $req->email)->route('name', (string) ($req->name ?? ''))->notify(new PrivacyAnswerMail((string) $req->name, (string) $this->tenants->current()->name, 'We could not do this: '.$reason));
         $this->close((int) $req->id, 'declined', 'Declined: '.$reason, $by);
     }
 

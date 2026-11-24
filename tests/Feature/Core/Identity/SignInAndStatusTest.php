@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Testing\TestResponse;
 use Illuminate\Validation\ValidationException;
+use Modules\Core\Http\Middleware\ThrottlePerRoute;
 use Modules\Core\Identity\Actions\ManageUserStatus;
 use Modules\Core\Identity\Enums\UserStatus;
 use Modules\Core\Identity\Events\RepeatedLoginFailures;
@@ -89,7 +90,7 @@ it('records the last sign-in time', function (): void {
 
 it('raises a security alert after 20 failed sign-ins for one email in an hour', function (): void {
     Event::fake([RepeatedLoginFailures::class]);
-    $this->withoutMiddleware(ThrottleRequests::class);
+    $this->withoutMiddleware([ThrottleRequests::class, ThrottlePerRoute::class]);
 
     foreach (range(1, 20) as $attempt) {
         signIn('acme', $this->owner->email, 'wrong-'.$attempt);

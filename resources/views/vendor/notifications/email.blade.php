@@ -1,13 +1,11 @@
 <x-mail::message>
-{{-- Greeting --}}
+{{-- Greeting: EM4, a plain, professional "Hello Maria Lopez," (not a heading). --}}
 @if (! empty($greeting))
-# {{ $greeting }}
+{{ $greeting }}
+@elseif ($level === 'error')
+@lang('Something needs your attention.')
 @else
-@if ($level === 'error')
-# @lang('Something needs your attention')
-@else
-# @lang('Hello,')
-@endif
+@lang('Hello,')
 @endif
 
 {{-- Intro Lines --}}

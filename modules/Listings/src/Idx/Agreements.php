@@ -160,7 +160,7 @@ final class Agreements
         if (($bcc = self::emails((string) $board->send_bcc)) !== []) {
             $mail->bcc($bcc);
         }
-        $mail->queue(new IdxAgreementMail((string) $board->name, $facts, (string) Storage::disk('local')->get((string) $sub->signed_path),
+        $mail->queue(new IdxAgreementMail((string) $board->name, $facts, (string) $sub->signed_path,
             'IDX agreement - '.Str::slug((string) $tenant->name).' - '.$board->code.'.pdf'));
         $this->db()->table('idx_subscriptions')->where('id', $sub->id)->update(['status' => 'sent', 'client_note' => null, 'status_at' => now(), 'sent_to_mls_at' => now(),
             'website' => $website, 'updated_at' => now()]);

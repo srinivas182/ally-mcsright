@@ -43,7 +43,7 @@ final class UploadRequests
             'item_id' => $item?->id, 'what' => mb_substr(trim($what), 0, 160), 'role' => mb_substr($role, 0, 20), 'name' => mb_substr(trim($name), 0, 160),
             'email' => mb_strtolower(trim($email)), 'token_hash' => hash('sha256', $token), 'requested_by' => $by->id,
             'expires_at' => CarbonImmutable::now()->addDays(self::DAYS), 'created_at' => now(), 'updated_at' => now()]);
-        Notification::route('mail', mb_strtolower(trim($email)))->notify(new UploadRequestMail(trim($name), trim($what), (string) $deal->street, $by->name,
+        Notification::route('mail', mb_strtolower(trim($email)))->route('name', trim($name))->notify(new UploadRequestMail(trim($name), trim($what), (string) $deal->street, $by->name,
             $note !== null && trim($note) !== '' ? mb_substr(trim($note), 0, 500) : null, url('/deal-upload/'.$token)));
         app(AuditLogger::class)->record('transactions.upload_request.sent', $deal, metadata: ['what' => $what, 'role' => $role, 'to' => AuditLogger::mask($email)], label: $deal->street);
 

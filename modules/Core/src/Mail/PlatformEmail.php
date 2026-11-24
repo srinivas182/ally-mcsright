@@ -140,6 +140,11 @@ final class PlatformEmail extends AbstractTransport
         if ($original instanceof Email && filter_var($from, FILTER_VALIDATE_EMAIL) !== false) {
             // Send from the address verified with the provider; replies still reach whoever the email names.
             $name = trim((string) ($keys['from_name'] ?? '')) ?: (string) config('mail.from.name', 'RightAlly');
+            // EM4: a brokerage's emails show its name ("MCS Realty via RightAlly"), so people know who wrote to them.
+            $brand = MailBrand::current();
+            if (! $brand['platform'] && trim($brand['name']) !== '') {
+                $name = mb_substr(trim($brand['name']), 0, 60).' via '.$name;
+            }
             if ($original->getReplyTo() === [] && $original->getFrom() !== [] && $original->getFrom()[0]->getAddress() !== $from) {
                 $original->replyTo($original->getFrom()[0]);
             }

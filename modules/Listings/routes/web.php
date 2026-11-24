@@ -82,7 +82,7 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])
         Route::get('boards/{subscription}/preview.pdf', [MlsSettingsController::class, 'preview'])->where('subscription', '[0-9A-HJKMNP-TV-Z]{26}')->middleware('throttle:30,1')->name('boards.preview');
         Route::put('boards/{subscription}/review', [MlsSettingsController::class, 'review'])->where('subscription', '[0-9A-HJKMNP-TV-Z]{26}')->middleware(['password.confirm', 'throttle:20,1'])->name('boards.review');
         // IDX13: the signing email again, or sign straight from here.
-        Route::post('boards/{subscription}/resend', [MlsSettingsController::class, 'resendSigning'])->where('subscription', '[0-9A-HJKMNP-TV-Z]{26}')->middleware('throttle:3,10')->name('boards.resend');
+        Route::post('boards/{subscription}/resend', [MlsSettingsController::class, 'resendSigning'])->where('subscription', '[0-9A-HJKMNP-TV-Z]{26}')->middleware('throttle:6,10')->name('boards.resend');
         Route::post('boards/{subscription}/sign', [MlsSettingsController::class, 'signNow'])->where('subscription', '[0-9A-HJKMNP-TV-Z]{26}')->middleware('throttle:10,10')->name('boards.sign');
         Route::delete('boards/{subscription}', [MlsSettingsController::class, 'cancelBoard'])->where('subscription', '[0-9A-HJKMNP-TV-Z]{26}')->middleware('password.confirm')->name('boards.destroy');
     });

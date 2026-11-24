@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace Modules\Forms\Http;
 
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
+use Modules\Core\Mail\MailBrand;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Forms\Identity\IdentityChecks;
@@ -39,8 +41,15 @@ final class SigningController
             }
         }
 
+        // EM4: a branded page with a way back. A signer who works at the brokerage returns to their back office.
+        $brand = MailBrand::current();
+        $member = User::query()->where('email', mb_strtolower((string) $s->email))->exists();
+        $deal = (int) $p->deal_id !== 0;
+
         return Inertia::render('public/sign', [
             'token' => $token, 'brokerage' => app(TenantContext::class)->current()->name,
+            'brand' => ['logo' => $brand['logo'], 'color' => $brand['color'], 'site' => $brand['url']], 'deal' => $deal,
+            'back' => $member ? ($deal ? '/deals' : '/settings/mls') : null,
             'packet' => ['title' => $p->title, 'status' => $p->status, 'verify' => $p->verify],
             'signer' => ['name' => $s->name, 'consented' => $s->consent_at !== null, 'verified' => $s->verified_at !== null, 'signed' => $s->signed_at !== null,
                 'phone_last4' => $s->phone !== null ? substr((string) $s->phone, -4) : null, 'id_required' => (bool) $s->id_required, 'id_status' => $s->id_status],

@@ -68,7 +68,7 @@ final class Negotiations
         foreach ($signed as $s) {
             $token = Str::random(48);
             $db->table('form_signers')->where('id', $s->id)->update(['token_hash' => hash('sha256', $token), 'updated_at' => now()]);
-            Notification::route('mail', (string) $s->email)->notify(new ChangesToInitial((string) $packet->title, (string) $this->tenants->current()->name,
+            Notification::route('mail', (string) $s->email)->route('name', (string) ($s->name ?? ''))->notify(new ChangesToInitial((string) $packet->title, (string) $this->tenants->current()->name,
                 $agent->name ?? 'Your agent', $lines, trim($reason), $baseUrl.'/sign/'.$token));
             $this->signing->recordEvent((int) $packet->id, (int) $s->id, 'emailed', 'Changes to initial emailed to '.$s->email);
         }

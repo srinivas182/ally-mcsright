@@ -12,7 +12,7 @@ final class PacketCompleted extends Notification
 {
     use Queueable;
 
-    public function __construct(public readonly string $title, public readonly string $brokerage, public readonly string $pdf) {}
+    public function __construct(public readonly string $title, public readonly string $brokerage, public readonly string $pdf, public readonly bool $deal = true) {}
 
     /**
      * @return list<string>
@@ -24,9 +24,13 @@ final class PacketCompleted extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
-        return (new MailMessage)->subject("Signed: {$this->title}")
-            ->line("Everyone has signed {$this->title}. Your copy is attached, with its signature certificate.")
-            ->line('Wire fraud warning: never wire money based on an email or text — call a number you already know first.')
-            ->attachData($this->pdf, 'Signed - '.$this->title.'.pdf', ['mime' => 'application/pdf']);
+        $mail = (new MailMessage)->subject("Signed: {$this->title}")
+            ->line("Everyone has signed **{$this->title}**. Your signed copy is attached, with its signature certificate. Please keep it for your records.");
+        // EM4: the wire fraud warning belongs on home sale paperwork, not on a brokerage's own agreements.
+        if ($this->deal) {
+            $mail->line('Wire fraud warning: never wire money based on an email or text. Call a number you already know first.');
+        }
+
+        return $mail->attachData($this->pdf, 'Signed - '.$this->title.'.pdf', ['mime' => 'application/pdf']);
     }
 }
