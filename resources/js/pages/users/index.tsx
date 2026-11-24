@@ -8,6 +8,7 @@ import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { MoreHorizontalIcon } from 'lucide-react';
 import { useState } from 'react';
 
+import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -86,6 +87,27 @@ const statusVariant = {
     suspended: 'destructive',
     deactivated: 'outline',
 } as const;
+
+/** Initials for the round badge: "Maria Chen" → "MC". */
+function initials(name: string): string {
+    return (
+        name
+            .split(/\s+/)
+            .filter(Boolean)
+            .slice(0, 2)
+            .map((w) => Array.from(w)[0]?.toUpperCase() ?? '')
+            .join('') || '?'
+    );
+}
+
+/** One colour per kind of person, so owners, staff and agents are told apart at a glance. */
+const KIND_COLOUR: Record<string, string> = {
+    owner: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-200',
+    staff: 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-200',
+    agent: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200',
+    assistant:
+        'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200',
+};
 
 function lastActive(value: string | null): string {
     if (!value) {
@@ -281,20 +303,33 @@ export default function UsersIndex(props: Props) {
                                 key={user.ulid}
                                 className="flex flex-wrap items-center justify-between gap-3 p-4"
                             >
-                                <div className="grid gap-0.5">
-                                    <span className="font-medium">
-                                        {user.name}
-                                        {user.is_me && (
-                                            <span className="text-muted-foreground">
-                                                {' '}
-                                                (you)
-                                            </span>
+                                <div className="flex items-center gap-3">
+                                    <span
+                                        aria-hidden="true"
+                                        className={cn(
+                                            'grid size-10 shrink-0 place-items-center rounded-full text-sm font-semibold',
+                                            KIND_COLOUR[user.kind] ??
+                                                'bg-muted text-muted-foreground',
                                         )}
+                                    >
+                                        {initials(user.name)}
                                     </span>
-                                    <span className="text-sm text-muted-foreground">
-                                        {user.email} · {user.kind_label} · Last
-                                        active {lastActive(user.last_active_at)}
-                                    </span>
+                                    <div className="grid gap-0.5">
+                                        <span className="font-medium">
+                                            {user.name}
+                                            {user.is_me && (
+                                                <span className="text-muted-foreground">
+                                                    {' '}
+                                                    (you)
+                                                </span>
+                                            )}
+                                        </span>
+                                        <span className="text-sm text-muted-foreground">
+                                            {user.email} · {user.kind_label} ·
+                                            Last active{' '}
+                                            {lastActive(user.last_active_at)}
+                                        </span>
+                                    </div>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <Badge
