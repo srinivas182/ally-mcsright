@@ -79,9 +79,6 @@ function PlanCard({
                 <span className="flex items-center gap-2 font-semibold">
                     {plan.name}
                     {plan.default && <Badge>Default</Badge>}
-                    <Badge variant="outline" className="capitalize">
-                        {plan.type}
-                    </Badge>
                     {plan.status !== 'active' && (
                         <Badge variant="secondary">{plan.status}</Badge>
                     )}
@@ -220,7 +217,7 @@ export default function Plans({
 }: Props) {
     const [creating, setCreating] = useState(false);
     const [name, setName] = useState('');
-    const [type, setType] = useState('commission');
+    // CM1: every plan is a commission plan (onboarding plans are gone; joining and monthly fees live under Fees).
     const [rules, setRules] = useState<Rules>({
         split: { mode: 'percentage', agent_percent: '80' },
     });
@@ -257,19 +254,6 @@ export default function Plans({
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
                             />
-                            <select
-                                aria-label="Plan type"
-                                className="rounded border bg-background px-2 py-1.5"
-                                value={type}
-                                onChange={(e) => setType(e.target.value)}
-                            >
-                                <option value="commission">
-                                    Commission plan
-                                </option>
-                                <option value="onboarding">
-                                    Onboarding plan
-                                </option>
-                            </select>
                         </span>
                         <RulesForm
                             value={rules}
@@ -284,7 +268,7 @@ export default function Plans({
                                     '/compensation/plans',
                                     {
                                         name,
-                                        type,
+                                        type: 'commission',
                                         rules: JSON.parse(
                                             JSON.stringify(rules),
                                         ),

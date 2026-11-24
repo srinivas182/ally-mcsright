@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Compensation\Exceptions\InvalidRules;
+use Modules\Compensation\Ranks\Ranks;
 use Modules\Compensation\RevenueShare\Attribution;
 use Modules\Compensation\RevenueShare\Holds;
 use Modules\Compensation\RevenueShare\Insights;
@@ -81,6 +82,20 @@ final class RevenueShareController
         return back();
     }
 
+    /**
+     * @return array{name: string|null, next: string|null, needs: list<string>, closings: int, recruits: int}|null
+     */
+    private static function rank(User $user): ?array
+    {
+        $ranks = app(Ranks::class);
+        if ($ranks->all() === []) {
+            return null;
+        }
+        $p = $ranks->progress($user->id, CarbonImmutable::now());
+
+        return ['name' => $p['rank']['name'] ?? null, 'next' => $p['next']['name'] ?? null, 'needs' => $p['needs'], 'closings' => $p['closings'], 'recruits' => $p['recruits']];
+    }
+
     private static function user(Request $request): User
     {
         $user = $request->user();
@@ -110,6 +125,8 @@ final class RevenueShareController
             'year_cents' => (int) $db->table('rs_entries')->where('recipient_user_id', $user->id)->whereIn('kind', ['share', 'root', 'bonus'])
                 ->whereYear('closing_date', now()->year)->sum('amount_cents'),
             'coaching' => $insights->coaching($user, $rules),
+            // CM1: the agent's rank and what the next one needs.
+            'rank' => self::rank($user),
             'network' => $insights->network($user, $rules),
             'statement' => $insights->statement($user),
             'missed' => $insights->missed($user),

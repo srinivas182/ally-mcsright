@@ -272,6 +272,12 @@ export const PAGE_HINTS: Record<string, PageHint> = {
     '/compensation/plans': {
         tip: 'Try a plan in the Simulator before you give it to an agent.',
     },
+    '/compensation/ranks': {
+        tip: 'Reaching a rank never moves anyone to a new plan by itself. You decide under "Ready to move up".',
+    },
+    '/compensation/network': {
+        tip: 'Revenue share follows this tree. Changes apply from today; deals already closed keep what they paid.',
+    },
     '/compensation/simulator': {
         tip: 'Type a few sale prices to see how a plan works below and above the cap.',
     },

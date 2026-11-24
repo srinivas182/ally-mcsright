@@ -8,6 +8,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Modules\Compensation\Models\Calculation;
 use Modules\Compensation\Models\CapPeriod;
+use Modules\Compensation\Ranks\Ranks;
 use Modules\Compensation\Rules\RevenueShareRules;
 use Modules\Core\Support\Connections;
 
@@ -15,7 +16,8 @@ use Modules\Core\Support\Connections;
  * Which levels a sponsor has unlocked on a date (specs/compensation/02, addition 1): levels up to
  * open_levels are open; a deeper level opens when the sponsor has enough qualifying front-line agents
  * (direct sponsorships who closed enough deals or earned enough GCI in the window), or when the
- * sponsor capped within the production window (opens levels up to through_level).
+ * sponsor capped within the production window (opens levels up to through_level), or when the sponsor's rank
+ * opens it (CM1).
  */
 final class Unlocking
 {
@@ -28,6 +30,11 @@ final class Unlocking
     public function open(int $sponsorId, int $level, RevenueShareRules $rules, CarbonImmutable $on): bool
     {
         if ($rules->openLevels === null || $level <= $rules->openLevels) {
+            return true;
+        }
+        // CM1: the sponsor's rank can open more levels.
+        $ranked = app(Ranks::class)->unlockedLevels($sponsorId, $on, $this);
+        if ($ranked !== null && $level <= $ranked) {
             return true;
         }
         if ($rules->productionThroughLevel !== null && $level <= $rules->productionThroughLevel && $this->cappedRecently($sponsorId, $on, $rules->productionMonths)) {
