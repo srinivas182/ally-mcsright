@@ -18,7 +18,7 @@
     <meta name="theme-color" content="{{ $design['theme'] ?? '#ffffff' }}">
     <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?{{ $design['css'] ?? 'family=Inter:wght@400;500;600;700' }}&display=swap">
-    <link rel="stylesheet" href="/site-assets/site.css?v=13">
+    <link rel="stylesheet" href="/site-assets/site.css?v=14">
     @stack('head')
     <style>:root{--brand: {{ $chrome['brand']['primary'] ?? '#1d4ed8' }};--accent: {{ $chrome['brand']['accent'] ?? '#0f172a' }};}</style>
     <script type="application/ld+json">{!! $seo['jsonld'] !!}</script>
@@ -136,12 +136,14 @@
     <form method="dialog" class="auth-close"><button aria-label="Close">×</button></form>
     <h2 id="auth-title" data-auth-title>Save homes and get price alerts</h2>
     <p class="lead-muted" data-auth-lead>Create a free account to save homes, compare them, and hear first when prices change.</p>
+    {{-- VS1: new visitors give their name (and, if they like, a mobile number); returning visitors only their email. --}}
     <form data-auth-start>
-        <label>Name <input name="name" autocomplete="name" required></label>
+        <label data-auth-new>Name <input name="name" autocomplete="name" required></label>
         <label>Email <input type="email" name="email" autocomplete="email" required></label>
-        <label>Mobile phone (optional) <input type="tel" name="phone" autocomplete="tel"></label>
-        <label class="consent"><input type="checkbox" name="sms_consent" value="1"> <span>{{ $chrome['consent'] }}</span></label>
+        <label data-auth-new>Mobile phone (optional) <input type="tel" name="phone" autocomplete="tel"></label>
+        <label class="consent" data-auth-new><input type="checkbox" name="sms_consent" value="1"> <span>{{ $chrome['consent'] }}</span></label>
         <button class="btn btn-primary" type="submit">Email me a code</button>
+        <p class="auth-switch"><span data-auth-switch-text>Already have an account?</span> <button type="button" class="link" data-auth-switch>Sign in with your email</button></p>
     </form>
     <form data-auth-verify hidden>
         <label>6-digit code <input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" required></label>
@@ -164,7 +166,7 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'&&t.getAttrib
 try{var k='ra_first_touch',st=window.localStorage,v=JSON.parse(st.getItem(k)||'null');if(!v){v={r:document.referrer,l:location.href};st.setItem(k,JSON.stringify(v));}
 document.querySelectorAll('form[data-lead]').forEach(function(f){f.first_referrer.value=v.r;f.landing_url.value=v.l;});}catch(e){}})();
 </script>
-<script src="/site-assets/visitor.js?v=2" defer></script>
+<script src="/site-assets/visitor.js?v=3" defer></script>
 @if (! empty($chrome['ailly']))
 @php($ally = $chrome['ailly'])
 <div class="ailly" data-ailly="{{ $ally['name'] }}" data-consent="{{ $chrome['consent'] }}"@if ($ally['nudge']) data-nudge @endif>

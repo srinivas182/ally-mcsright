@@ -69,6 +69,8 @@ final class VisitorController
         $email = mb_strtolower(trim($data['email']));
         $visitor = $this->visitors->resolve($site, $data['vid']);
         $account = SiteVisitor::query()->where('email', $email)->whereNotNull('verified_at')->whereNull('merged_into')->whereKeyNot($visitor->id)->orderBy('id')->first();
+        // VS1: someone who already had an account here: the website greets them by name, only now that the code proved it is them.
+        $returning = $account !== null || $visitor->verified_at !== null;
         if ($account !== null) {
             $this->visitors->merge($visitor, $account);
             $visitor = $account;
@@ -83,7 +85,7 @@ final class VisitorController
             $visitor = $visitor->refresh();
         }
 
-        return response()->json(['token' => $this->visitors->token($visitor), ...$this->me($visitor)]);
+        return response()->json(['token' => $this->visitors->token($visitor), 'returning' => $returning, ...$this->me($visitor)]);
     }
 
     public function show(Request $request): JsonResponse

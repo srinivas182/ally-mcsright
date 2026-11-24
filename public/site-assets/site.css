@@ -3515,3 +3515,20 @@ body:not(:has(main > .hero:first-child, main > .ra-block:first-child > .hero))
         padding: 0;
     }
 }
+
+/* VS1: "Already have an account? Sign in with your email" under the sign-in form. */
+.auth-switch {
+    margin: 0.25rem 0 0;
+    font-size: 0.9rem;
+    color: var(--muted);
+}
+.auth .link {
+    background: none;
+    border: 0;
+    padding: 0;
+    color: var(--brand);
+    font: inherit;
+    font-weight: 600;
+    text-decoration: underline;
+    cursor: pointer;
+}
