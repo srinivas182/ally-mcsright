@@ -100,6 +100,27 @@
     body {
         @apply bg-background text-foreground;
     }
+
+    /* FB1: every "Choose file" control looks like a real button (in the brokerage's colours), not plain text. */
+    input[type='file'] {
+        @apply max-w-full cursor-pointer text-sm text-muted-foreground;
+    }
+
+    input[type='file']::file-selector-button {
+        @apply me-3 inline-flex h-9 cursor-pointer items-center rounded-md border border-primary bg-background px-4 text-sm font-medium text-primary shadow-xs transition-colors;
+    }
+
+    input[type='file']:hover::file-selector-button {
+        @apply bg-primary text-primary-foreground;
+    }
+
+    input[type='file']:focus-visible {
+        @apply rounded-md outline-2 outline-offset-2 outline-ring;
+    }
+
+    input[type='file']:disabled::file-selector-button {
+        @apply cursor-not-allowed opacity-50;
+    }
 }
 
 /* Simple mode (SM1): everything a size larger, since all sizes are in rem. */
