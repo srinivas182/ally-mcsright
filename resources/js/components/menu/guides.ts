@@ -399,6 +399,21 @@ const OWNER: Record<string, Guide> = {
                 },
             },
             {
+                id: 'who-gets-paid',
+                title: 'Who gets paid on a deal',
+                why: 'See exactly how the commission splits: the agent, fees, the brokerage and each revenue-share level.',
+                steps: [
+                    'Open a deal and find "Who gets paid".',
+                    'Before closing it is marked "Estimate": it uses today\'s plan, caps and network.',
+                    'At closing it is fixed and marked "Booked at closing".',
+                    'Owners see every level and who receives it; agents see their own money and the revenue-share total.',
+                ],
+                tips: [
+                    'If a level says "Not paid", the reason is shown under it, for example a level not unlocked yet.',
+                ],
+                try: { label: 'Open All transactions', href: '/deals' },
+            },
+            {
                 id: 'money',
                 title: 'Money coming in',
                 why: 'See the company dollar you can expect in the next 30, 60 and 90 days.',
@@ -736,6 +751,7 @@ const OWNER: Record<string, Guide> = {
                 steps: [
                     'Open the Payouts tab.',
                     'Closed deals waiting to be paid are listed.',
+                    'Press "Show what this pays for" under a name to see each deal and revenue-share level in the payment.',
                     'Check the breakdown and press Pay.',
                     'The agent gets a statement by email.',
                 ],

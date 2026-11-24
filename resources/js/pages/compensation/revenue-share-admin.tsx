@@ -1,6 +1,10 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 
+import {
+    RevenueShareReport,
+    type RevenueShareReportData,
+} from '@/components/compensation/revenue-share-report';
 import { RulesForm, type Rules } from '@/components/compensation/rules-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,6 +49,7 @@ type Props = {
         top_cents: number;
     };
     people: { ulid: string; name: string }[];
+    report: RevenueShareReportData;
 };
 
 type Sim = {
@@ -180,6 +185,7 @@ export default function RevenueShareAdmin({
     budget,
     disclosure,
     people,
+    report,
 }: Props) {
     const form = useForm({
         budget_percent: settings.budget_percent ?? '',
@@ -270,6 +276,7 @@ export default function RevenueShareAdmin({
                         Save
                     </Button>
                 </form>
+                <RevenueShareReport report={report} />
                 <section className="grid gap-2 rounded-lg border p-4 text-sm">
                     <div className="flex items-center justify-between">
                         <h2 className="font-semibold">

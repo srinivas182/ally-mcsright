@@ -34,6 +34,10 @@ import {
     CompliancePanel,
     type Compliance,
 } from '@/components/deals/compliance-panel';
+import {
+    WhoGetsPaid,
+    type WhoGetsPaidData,
+} from '@/components/deals/who-gets-paid';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -96,6 +100,7 @@ type Props = {
     reviewer: boolean;
     reasons: string[];
     risk: { score: number; level: string; reasons: string[] };
+    whoGetsPaid?: WhoGetsPaidData | null;
     customFields: CustomFieldValue[];
     dealIq: DealIqProps;
     portal: PortalProps;
@@ -298,6 +303,7 @@ export default function ShowDeal({
     reviewer,
     reasons,
     risk,
+    whoGetsPaid = null,
     deposits,
     referrals,
     winCard,
@@ -391,6 +397,7 @@ export default function ShowDeal({
                         </span>
                     )}
                 </section>
+                {whoGetsPaid && <WhoGetsPaid data={whoGetsPaid} />}
                 <CustomFieldsPanel
                     fields={customFields}
                     action={`/deals/${deal.ulid}/fields`}
