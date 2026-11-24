@@ -32,7 +32,7 @@ final class PipelineController
         $deals = DealAccess::query($user)->where('status', 'pre_contract')->orderByDesc('updated_at')->limit(500)->get();
         $agents = User::query()->whereIn('id', $deals->pluck('agent_user_id')->unique()->all())->get()->mapWithKeys(fn (User $u): array => [$u->id => $u->name]);
         $clients = DB::connection(Connections::cell())->table('tx_parties')->whereIn('deal_id', $deals->pluck('id')->all())->whereIn('role', ['buyer', 'seller', 'tenant', 'landlord'])
-            ->orderBy('id')->get(['deal_id', 'name'])->groupBy('deal_id')->map(fn ($rows): string => (string) $rows->first()->name);
+            ->orderBy('id')->get(['deal_id', 'name'])->groupBy('deal_id')->map(fn ($rows): string => (string) ($rows->first()->name ?? ''));
         $now = CarbonImmutable::now();
 
         return Inertia::render('crm/pipeline', [
@@ -41,7 +41,7 @@ final class PipelineController
                 'ulid' => $d->ulid, 'street' => $d->street, 'city' => $d->city, 'type' => $d->type, 'price_cents' => $d->price_cents,
                 'stage' => isset(self::STAGES[(string) $d->getAttribute('pipeline_stage')]) ? (string) $d->getAttribute('pipeline_stage') : 'new',
                 'client' => $clients[$d->id] ?? null, 'agent' => $agents[$d->agent_user_id] ?? null,
-                'days' => (int) CarbonImmutable::parse((string) ($d->getAttribute('pipeline_stage_at') ?? $d->created_at))->diffInDays($now),
+                'days' => (int) CarbonImmutable::parse((string) ($d->getAttribute('pipeline_stage_at') ?? $d->getAttribute('created_at')))->diffInDays($now),
             ])->values(),
             'canCreateFor' => DealAccess::reviewer($user) ? User::query()->where('kind', UserKind::Agent)->where('status', 'active')->orderBy('first_name')->get()
                 ->map(fn (User $u): array => ['ulid' => $u->ulid, 'name' => $u->name]) : [],
