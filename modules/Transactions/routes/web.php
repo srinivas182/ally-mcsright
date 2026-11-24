@@ -119,6 +119,7 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoff
     Route::get('{deal}/why', [DealController::class, 'why'])->name('why');
     Route::post('{deal}/fields', [DealController::class, 'saveFields'])->name('fields');
     Route::post('{deal}/status', [DealController::class, 'status'])->name('status');
+    Route::post('{deal}/agents', [DealController::class, 'agents'])->middleware('throttle:30,1')->name('agents'); // CM5
     Route::post('{deal}/pay/override', [PayController::class, 'override'])->middleware('throttle:20,1')->name('pay.override');
     Route::post('{deal}/pay/reverse', [PayController::class, 'reverse'])->middleware('throttle:20,1')->name('pay.reverse');
     Route::post('{deal}/pay/again', [PayController::class, 'again'])->middleware('throttle:20,1')->name('pay.again');

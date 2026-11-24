@@ -6,8 +6,10 @@ namespace Modules\Transactions;
 
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 use Modules\Core\Access\Can;
 use Modules\Core\Identity\Enums\UserKind;
+use Modules\Core\Support\Connections;
 use Modules\Transactions\Models\Deal;
 
 /**
@@ -32,11 +34,19 @@ final class DealAccess
     {
         $q = Deal::query();
 
-        return self::reviewer($user) ? $q : $q->where('agent_user_id', self::actingFor($user));
+        if (self::reviewer($user)) {
+            return $q;
+        }
+        $me = self::actingFor($user);
+
+        // CM5: co-agents on a deal see it too.
+        return $q->where(fn (Builder $w) => $w->where('agent_user_id', $me)
+            ->orWhereIn('id', DB::connection(Connections::cell())->table('tx_deal_agents')->where('user_id', $me)->select('deal_id')));
     }
 
     public static function canSee(User $user, Deal $deal): bool
     {
-        return self::reviewer($user) || $deal->agent_user_id === self::actingFor($user);
+        return self::reviewer($user) || $deal->agent_user_id === self::actingFor($user)
+            || DB::connection(Connections::cell())->table('tx_deal_agents')->where('deal_id', $deal->id)->where('user_id', self::actingFor($user))->exists();
     }
 }

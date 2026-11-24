@@ -185,9 +185,32 @@ final class DealController
             'reviewer' => self::reviewer($user),
             'reasons' => self::reviewer($user) ? $reviews->reasons() : [],
             'risk' => DealRisk::forDeals([$deal->id])[$deal->id], // RD1
+            // CM5: the agents on the deal and their share; who can be added.
+            'dealAgents' => (function () use ($deals, $deal): array {
+                $list = $deals->agents($deal);
+                $people = User::query()->whereIn('id', array_column($list, 'user_id'))->get()->keyBy('id');
+
+                return array_map(fn (array $a): array => ['ulid' => (string) $people->get($a['user_id'])?->ulid, 'name' => (string) $people->get($a['user_id'])?->name,
+                    'share' => $a['share_percent'], 'primary' => $a['user_id'] === $deal->agent_user_id], $list);
+            })(),
+            'agentChoices' => self::reviewer($user) || $user->isKind(UserKind::Owner) || $user->can('compensation.calculations.manage')
+                ? User::query()->whereIn('kind', [UserKind::Agent, UserKind::Owner])->where('status', 'active')->orderBy('first_name')->get()->map(fn (User $u): array => ['ulid' => $u->ulid, 'name' => $u->name])->values()
+                : null,
             // CM2: who gets paid, tier by tier (amounts hidden from people who may not see commission).
             'whoGetsPaid' => Fields::visible($user, 'commission', $deal->agent_user_id) ? app(WhoGetsPaid::class)->for($deal->ulid, $user) : null,
         ]);
+    }
+
+    /** CM5: who is on the deal and their share (brokerage reviewers and money managers, before closing). */
+    public function agents(Request $request, Deal $deal, Deals $deals): RedirectResponse
+    {
+        $user = $this->authorise($request, $deal);
+        abort_unless(self::reviewer($user) || $user->isKind(UserKind::Owner) || $user->can('compensation.calculations.manage'), 403);
+        $data = $request->validate(['agents' => ['required', 'array', 'min:1', 'max:10'], 'agents.*.user' => ['required', 'string', 'size:26'], 'agents.*.share' => ['required', 'numeric']]);
+        $deals->setAgents($deal, $data['agents'], $user);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Agents on this deal saved.']);
+
+        return back();
     }
 
     public function store(Request $request, Deals $deals): RedirectResponse
