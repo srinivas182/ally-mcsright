@@ -126,6 +126,15 @@ type QueueItem = {
     compliance_note: string | null;
     check?: Check | null;
     form_version?: number | null;
+    /** IDX13 */
+    signing: {
+        names: string[];
+        emails: string[];
+        sent_at: string | null;
+        mine: boolean;
+    } | null;
+    by_hand: boolean;
+    overdue: boolean;
 };
 /** IDX11: the check of a signed agreement (rules, then AI). */
 type Check = {
@@ -855,6 +864,40 @@ function QueueRow({
                 </p>
             )}
             {q.status === 'hq_check' && <CheckPanel item={q} />}
+            {q.overdue && (
+                <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                    Longer than this MLS usually takes. Check with the MLS (or
+                    Repliers); when it is approved, press &quot;Go live&quot;.
+                </p>
+            )}
+            {q.status === 'awaiting_signature' && (
+                <div className="flex flex-wrap items-center gap-3 text-sm">
+                    <span className="text-muted-foreground">
+                        {q.signing
+                            ? `Waiting for ${q.signing.names.join(' and ')} (${q.signing.emails.join(', ')})${q.signing.sent_at ? `, emailed ${new Date(q.signing.sent_at).toLocaleDateString()}` : ''}.`
+                            : q.by_hand
+                              ? 'No "Send the signed agreement to" address on this board: the paperwork is done by hand.'
+                              : 'The agreement has not gone out yet.'}
+                    </span>
+                    {!q.by_hand && (
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                                router.post(
+                                    `/hq/idx/subscriptions/${q.ulid}/resend`,
+                                    {},
+                                    { preserveScroll: true },
+                                )
+                            }
+                        >
+                            {q.signing
+                                ? 'Resend signing email'
+                                : 'Send the agreement for signing'}
+                        </Button>
+                    )}
+                </div>
+            )}
             {(q.agreement || q.website || q.compliance_ok !== null) && (
                 <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
                     {q.agreement && <span>Agreement: {q.agreement}</span>}

@@ -148,6 +148,21 @@ final class MlsSettingsController
         return back();
     }
 
+    /** IDX13: email the signing link again. */
+    public function resendSigning(Request $request, TenantContext $tenants, Subscriptions $subs, string $subscription): RedirectResponse
+    {
+        $n = $subs->resendSigning($subscription, $tenants->id(), self::owner($request));
+        Inertia::flash('toast', ['type' => 'success', 'message' => $n === 1 ? 'Sent. Check your inbox (and spam folder) for the signing email.' : 'Sent to everyone who signs next.']);
+
+        return back();
+    }
+
+    /** IDX13: sign straight from here when it is the owner's turn. */
+    public function signNow(Request $request, TenantContext $tenants, Subscriptions $subs, string $subscription): \Symfony\Component\HttpFoundation\Response
+    {
+        return Inertia::location($subs->signNow($tenants->id(), $subscription, self::owner($request)));
+    }
+
     private static function owner(Request $request): User
     {
         $user = $request->user();

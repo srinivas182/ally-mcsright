@@ -77,6 +77,64 @@ final class Signing
     }
 
     /**
+     * IDX13: whoever's turn it is to sign (not signed yet), in signing order.
+     *
+     * @return list<\stdClass>
+     */
+    public function waiting(int $packetId): array
+    {
+        $db = DB::connection(Connections::cell());
+        $next = $db->table('form_signers')->where('packet_id', $packetId)->whereNull('signed_at')->min('sign_order');
+
+        return $next === null ? [] : array_values($db->table('form_signers')->where('packet_id', $packetId)->where('sign_order', $next)
+            ->whereNull('signed_at')->whereIn('status', ['waiting', 'sent', 'viewed'])->orderBy('id')->get()->all());
+    }
+
+    /**
+     * IDX13: emails a fresh signing link to everyone whose turn it is. Their earlier link stops working.
+     * Returns how many were emailed.
+     */
+    public function resend(int $packetId, string $baseUrl): int
+    {
+        $db = DB::connection(Connections::cell());
+        if ($db->table('form_packets')->where('id', $packetId)->value('status') !== 'sent') {
+            return 0;
+        }
+        $ids = array_map(fn (\stdClass $s): int => (int) $s->id, $this->waiting($packetId));
+        if ($ids === []) {
+            return 0;
+        }
+        $db->table('form_signers')->whereIn('id', $ids)->update(['status' => 'waiting', 'updated_at' => now()]);
+        $this->notifyNext($packetId, $baseUrl);
+
+        return count($ids);
+    }
+
+    /**
+     * IDX13: a signing link for a signed-in person whose turn it is (matched by email), so they can sign straight from
+     * their back office. Returns null when it is not their turn.
+     */
+    public function linkFor(int $packetId, string $email, string $baseUrl): ?string
+    {
+        $db = DB::connection(Connections::cell());
+        if ($db->table('form_packets')->where('id', $packetId)->value('status') !== 'sent') {
+            return null;
+        }
+        foreach ($this->waiting($packetId) as $s) {
+            if (mb_strtolower((string) $s->email) === mb_strtolower(trim($email))) {
+                $token = Str::random(48);
+                $db->table('form_signers')->where('id', $s->id)->update(['token_hash' => hash('sha256', $token), 'status' => $s->status === 'waiting' ? 'sent' : $s->status,
+                    'sent_at' => $s->sent_at ?? now(), 'updated_at' => now()]);
+                $this->event($packetId, (int) $s->id, 'opened', 'Opened for signing from the back office');
+
+                return $baseUrl.'/sign/'.$token;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * @return array{signer: \stdClass, packet: \stdClass}
      */
     public function byToken(string $token, bool $allowFinished = false): array
