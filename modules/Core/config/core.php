@@ -77,6 +77,8 @@ return [
     'slug' => [
         'min' => 3,
         'max' => 40,
+        // DP1: workspaces RightAlly runs itself (the design demo website): never suspended, closed or deleted.
+        'protected' => ['demo'],
         'reserved' => [
             'www', 'app', 'api', 'admin', 'hq', 'mail', 'support', 'help', 'status', 'docs',
             'blog', 'cdn', 'static', 'assets', 'auth', 'login', 'billing', 'rightally', 'mcp', 'sites',
