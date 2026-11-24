@@ -24,7 +24,7 @@ final class RetentionAlertMail extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
-        $m = (new MailMessage)->subject(count($this->agents).' agent(s) to check in with this week')
+        $m = (new MailMessage)->subject(count($this->agents).(count($this->agents) === 1 ? ' agent' : ' agents').' to check in with this week')
             ->line('These agents show signs they may be thinking of leaving. A short, personal check-in often helps.');
         foreach (array_slice($this->agents, 0, 10) as $a) {
             $m->line('**'.$a['name'].'**: '.implode(' ', $a['reasons']).' Suggested: '.$a['suggestion']);

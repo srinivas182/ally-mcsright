@@ -1,3 +1,4 @@
+import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { useEffect, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -12,7 +13,7 @@ export function PdfPages({ src, title }: { src: string; title: string }) {
     const [pages, setPages] = useState<number | null>(null);
     const [zoom, setZoom] = useState(1);
     const [failed, setFailed] = useState(false);
-    const doc = useRef<import('pdfjs-dist').PDFDocumentProxy | null>(null);
+    const doc = useRef<PDFDocumentProxy | null>(null);
 
     useEffect(() => {
         let cancelled = false;

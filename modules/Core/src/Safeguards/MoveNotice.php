@@ -26,7 +26,7 @@ final class MoveNotice extends Notification
         return $this->when === 'before'
             ? (new MailMessage)->subject('Your RightAlly data is moving to its own database')
                 ->line('We are moving your brokerage\'s data to a database of its own. Everyone can keep working.')
-                ->line("Near the end there is a short read-only window of about {$this->minutes} minute(s): pages open, but saving waits until it is over.")
+                ->line("Near the end there is a short read-only window of about {$this->minutes} ".($this->minutes === 1 ? 'minute' : 'minutes').': pages open, but saving waits until it is over.')
                 ->line('We will email you when it is done.')
             : (new MailMessage)->subject('Your RightAlly data has moved')
                 ->line('The move is finished and every table was checked: same rows, same money totals.')

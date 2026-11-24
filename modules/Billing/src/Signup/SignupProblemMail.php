@@ -27,7 +27,7 @@ final class SignupProblemMail extends Notification
     {
         return (new MailMessage)->subject('Signup needs a hand: '.$this->brokerage)
             ->line($this->brokerage.' paid, but RightAlly could not create the brokerage automatically: '.$this->problem)
-            ->line('Create it from HQ → Tenants and email the owner at '.$this->ownerEmail.'.')
+            ->line('Create it from HQ › Customers › Brokerages and email the owner at '.$this->ownerEmail.'.')
             ->action('Open go-live', 'https://'.config('core.hq_host').'/hq/go-live');
     }
 }

@@ -25,8 +25,8 @@ final class CdaSent extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject("Commission disbursement authorisation from {$this->brokerage}")
-            ->line("{$this->brokerage} has sent a commission disbursement authorisation. Open it, then acknowledge receipt.")
+            ->subject("Commission disbursement authorization from {$this->brokerage}")
+            ->line("{$this->brokerage} has sent a commission disbursement authorization. Open it, then acknowledge receipt.")
             ->action('Open the CDA', $this->url)
             ->line('Payment instructions never change by email. If anyone asks you to pay a different account, call the brokerage on a number you already know.');
     }

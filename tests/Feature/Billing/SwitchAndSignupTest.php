@@ -100,7 +100,7 @@ it('shows public prices with offer markup, checks the address, and sends the bro
     expect($this->gateway->checkouts[0])->toMatchArray(['email' => 'dana@oak.test', 'unitCents' => 29_900, 'interval' => 'month'])
         ->and($this->gateway->checkouts[0]['metadata'])->toMatchArray(['kind' => 'signup', 'signup' => $signup]);
     expect(Tenant::query()->where('slug', 'oak-realty')->exists())->toBeFalse(); // nothing before payment
-    $this->get(RA.'/start/welcome/'.$signup)->assertOk()->assertSee('Setting up Oak Realty')->assertHeader('X-Robots-Tag', 'noindex, nofollow');
+    $this->get(RA.'/start/welcome/'.$signup)->assertOk()->assertSee('We are setting up Oak Realty')->assertHeader('X-Robots-Tag', 'noindex, nofollow');
     // While the payment is pending the address is held.
     $this->getJson(RA.'/start/address?slug=oak-realty')->assertJson(['ok' => false]);
 });
@@ -117,7 +117,7 @@ it('creates the brokerage when the payment comes through, once, and its later pa
         ->and(control()->table('billing_tenant_subscriptions')->where('tenant_id', $tenant->id)->value('status'))->toBe('active')
         ->and(control()->table('go_live_plans')->where('tenant_id', $tenant->id)->exists())->toBeTrue();
     app(TenantContext::class)->runAs($tenant, fn () => expect(Invitation::query()->where('email', 'dana@oak.test')->exists())->toBeTrue());
-    $this->get(RA.'/start/welcome/'.$signup)->assertSee('Oak Realty is live')->assertSee('https://oak-realty.rightally.site')->assertSee('https://oak-realty.rightally.app/login', false);
+    $this->get(RA.'/start/welcome/'.$signup)->assertSee('Oak Realty is live')->assertSee('Welcome to the RightAlly family')->assertSee('Sunil')->assertSee('https://oak-realty.rightally.site')->assertSee('https://oak-realty.rightally.app/login', false);
 
     signupEvent('evt_3', 'invoice.payment_failed', $signup, ['subscription' => 'sub_1']);
     expect(control()->table('billing_tenant_subscriptions')->where('tenant_id', $tenant->id)->value('status'))->toBe('grace');
@@ -129,7 +129,7 @@ it('tells HQ when a paid signup cannot be created automatically', function (): v
     signupEvent('evt_9', 'checkout.session.completed', $signup);
     expect(control()->table('signups')->where('ulid', $signup)->value('status'))->toBe('failed');
     Notification::assertSentTo($this->staff, SignupProblemMail::class);
-    $this->get(RA.'/start/welcome/'.$signup)->assertSee('we\'ll finish your setup', false);
+    $this->get(RA.'/start/welcome/'.$signup)->assertSee('Your payment is safe', false);
 });
 
 it('prefills signup from a Health Check report', function (): void {
@@ -360,7 +360,7 @@ it('opens design previews on the demo website in the chosen board\'s state, and 
 
 it('sends the owner\'s sign-in email again from the welcome page and from HQ, and shows progress while setting up (QW1)', function (): void {
     $signup = startSignup();
-    $this->get(RA.'/start/welcome/'.$signup)->assertSee('Confirming your payment')->assertSee('Emailing you a link to sign in');
+    $this->get(RA.'/start/welcome/'.$signup)->assertSee('Confirming your payment')->assertSee('Emailing you a link to set your password');
     signupEvent('evt_1', 'checkout.session.completed', $signup);
     $tenant = Tenant::query()->where('slug', 'oak-realty')->sole();
     $hash = fn (): string => (string) app(TenantContext::class)->runAs($tenant, fn () => Invitation::query()->where('email', 'dana@oak.test')->value('token_hash'));
@@ -369,7 +369,7 @@ it('sends the owner\'s sign-in email again from the welcome page and from HQ, an
     $this->get(RA.'/start/welcome/'.$signup)->assertSee('Send it again');
     $this->post(RA.'/start/welcome/'.$signup.'/resend')->assertRedirect(RA.'/start/welcome/'.$signup);
     expect($hash())->not->toBe($first);
-    $this->get(RA.'/start/welcome/'.$signup)->assertSee('sent the email again', false);
+    $this->get(RA.'/start/welcome/'.$signup)->assertSee('we have sent it again', false);
 
     $second = $hash();
     $this->actingAs($this->staff)->get(RA.'/hq/signups?status=live')->assertInertia(fn (Assert $p) => $p->where('signups.0.can_resend', true));

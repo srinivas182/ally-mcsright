@@ -38,11 +38,14 @@ final class PersonalMailChannel extends MailChannel
             $message->greeting('Hello '.$name.',');
         }
 
-        return $this->mailer->mailer($message->mailer ?? null)->send(
+        $send = fn () => $this->mailer->mailer($message->mailer ?? null)->send(
             $this->buildView($message),
             array_merge($message->data(), $this->additionalMessageData($notification)),
             $this->messageBuilder($notifiable, $notification, $message)
         );
+
+        // EM5: an email from RightAlly itself (not from the brokerage) says so with `public bool $fromRightAlly = true`.
+        return ($notification->fromRightAlly ?? false) === true ? MailBrand::asPlatform($send) : $send();
     }
 
     /** The person's name for the greeting, or '' when there is none. */

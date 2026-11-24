@@ -24,7 +24,7 @@ final class AiCostSpike extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
-        $mail = (new MailMessage)->subject('AI cost jumped for '.count($this->spikes).' brokerage(s)')->line('Yesterday these brokerages used far more AI than usual:');
+        $mail = (new MailMessage)->subject('AI cost jumped for '.count($this->spikes).(count($this->spikes) === 1 ? ' brokerage' : ' brokerages'))->line('Yesterday these brokerages used far more AI than usual:');
         foreach ($this->spikes as $s) {
             $mail->line(sprintf('%s: $%s yesterday (usually about $%s a day)', $s['tenant'], number_format($s['yesterday_cents'] / 100, 2), number_format($s['usual_cents'] / 100, 2)));
         }

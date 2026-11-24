@@ -87,6 +87,7 @@ Route::domain((string) config('core.hq_host'))->middleware('web')->group(functio
     Route::get('start/address', [SignupController::class, 'address'])->middleware('throttle:60,1')->name('signup.address');
     Route::get('start/stop-reminders/{signup}', [SignupController::class, 'stopReminders'])->where('signup', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->middleware(['signed', 'throttle:30,1'])->name('signup.reminders.stop'); // SU1
     Route::get('start/welcome/{signup}', [SignupController::class, 'welcome'])->where('signup', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->middleware('throttle:60,1')->name('signup.welcome');
+    Route::get('start/welcome/{signup}/status', [SignupController::class, 'welcomeStatus'])->where('signup', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->middleware('throttle:120,1')->name('signup.welcome.status'); // EM5
     Route::post('start/welcome/{signup}/resend', [SignupController::class, 'resend'])->where('signup', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}')->middleware('throttle:10,10')->name('signup.welcome.resend'); // QW1
     Route::post('health-check/r/{token}/delete', [HealthCheckController::class, 'destroy'])->where('token', $token)->middleware('throttle:10,1')->name('health.delete');
 });

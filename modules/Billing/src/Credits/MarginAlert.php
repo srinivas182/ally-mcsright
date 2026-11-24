@@ -29,7 +29,7 @@ final class MarginAlert extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         $mail = (new MailMessage)
-            ->subject(count($this->alerts).' credit price(s) are below your '.$this->floor.'% minimum margin')
+            ->subject(count($this->alerts).(count($this->alerts) === 1 ? ' credit price is' : ' credit prices are').' below your '.$this->floor.'% minimum margin')
             ->line('Over the last 7 days these actions cost more than their credit price allows:');
         foreach ($this->alerts as $a) {
             $mail->line(sprintf('%s: %d credit(s), real average cost $%s per use, margin %d%% (suggested: %d credits, %s uses)',

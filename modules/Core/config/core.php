@@ -18,6 +18,9 @@ return [
     */
     'hq_host' => env('CORE_HQ_HOST', 'app.rightally.io'),
 
+    // EM5: who signs the welcome a new brokerage receives (thank-you page and first email).
+    'welcome_signer' => ['name' => env('CORE_WELCOME_SIGNER_NAME', 'Sunil'), 'title' => env('CORE_WELCOME_SIGNER_TITLE', 'CEO, RightAlly')],
+
     // UI2: while testing before launch, two-step sign-in can be paused until a date (at most 30 days ahead). Everyone
     // still sees the reminder, launch:check reports it, and it switches itself back on at the date. Leave empty.
     'two_factor_paused_until' => env('SECURITY_TWO_FACTOR_PAUSED_UNTIL'),

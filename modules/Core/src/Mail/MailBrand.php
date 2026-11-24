@@ -17,11 +17,34 @@ final class MailBrand
 {
     public const RIGHTALLY_BLUE = '#155DFC';
 
+    /** EM5: while set, emails use RightAlly's own look (the founder's welcome to a new brokerage, say). */
+    private static bool $platform = false;
+
+    /**
+     * @template T
+     *
+     * @param  callable(): T  $send
+     * @return T
+     */
+    public static function asPlatform(callable $send): mixed
+    {
+        $was = self::$platform;
+        self::$platform = true;
+        try {
+            return $send();
+        } finally {
+            self::$platform = $was;
+        }
+    }
+
     /** @return array{name: string, logo: string|null, color: string, url: string, platform: bool, team: string} */
     public static function current(): array
     {
         $platform = ['name' => 'RightAlly', 'logo' => 'https://'.config('core.hq_host').'/brand/rightally-email.png', 'color' => self::RIGHTALLY_BLUE,
             'url' => 'https://'.config('core.platform_domain'), 'platform' => true, 'team' => 'The RightAlly team'];
+        if (self::$platform) {
+            return $platform;
+        }
         try {
             $tenants = app(TenantContext::class);
             if (! $tenants->check() || $tenants->current()->isHq()) {
