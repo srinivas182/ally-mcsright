@@ -15,6 +15,7 @@ use Illuminate\Database\Connection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Client\Factory;
+use Illuminate\Notifications\Channels\MailChannel;
 use Illuminate\Notifications\Events\NotificationSending;
 use Illuminate\Queue\Events\JobAttempted;
 use Illuminate\Queue\Events\JobProcessing;
@@ -24,6 +25,7 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Fortify\Events\ValidTwoFactorAuthenticationCodeProvided;
 use Modules\Core\Access\PermissionRegistry;
@@ -54,6 +56,8 @@ use Modules\Core\Identity\Security\SignInSecurity;
 use Modules\Core\Identity\Security\TrustedDevices;
 use Modules\Core\Leads\NoVisitorJourneys;
 use Modules\Core\Leads\VisitorJourneys;
+use Modules\Core\Mail\MailBrand;
+use Modules\Core\Mail\PersonalMailChannel;
 use Modules\Core\Mail\PlatformEmail;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
@@ -182,6 +186,10 @@ final class CoreServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // EM3: every email shows who it is from: the brokerage's logo and colour, or RightAlly's.
+        // EM3: notification emails greet people by their first name.
+        $this->app->bind(MailChannel::class, PersonalMailChannel::class);
+        View::composer(['mail::*', 'notifications::email'], fn ($view) => $view->with('mailBrand', MailBrand::current()));
         $this->app->make(Mcp\McpToolbox::class)->add(Mcp\DailyBrief::class); // sections come from each module
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'core');
