@@ -17,7 +17,6 @@ final class MailBrand
 {
     public const RIGHTALLY_BLUE = '#155DFC';
 
-    /** @return array{name: string, logo: string|null, color: string, url: string, platform: bool, team: string} */
     /** EM5: while set, emails use RightAlly's own look (the founder's welcome to a new brokerage, say). */
     private static bool $platform = false;
 
@@ -38,6 +37,7 @@ final class MailBrand
         }
     }
 
+    /** @return array{name: string, logo: string|null, color: string, url: string, platform: bool, team: string} */
     public static function current(): array
     {
         $platform = ['name' => 'RightAlly', 'logo' => 'https://'.config('core.hq_host').'/brand/rightally-email.png', 'color' => self::RIGHTALLY_BLUE,
