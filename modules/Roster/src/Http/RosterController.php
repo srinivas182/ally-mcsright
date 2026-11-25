@@ -23,6 +23,7 @@ use Modules\Roster\Compliance;
 use Modules\Roster\ContinuingEducation;
 use Modules\Roster\Flows;
 use Modules\Roster\LicenceGuard;
+use Modules\Roster\MlsIds;
 use Modules\Roster\Roster;
 use Modules\Roster\UpdateRequests;
 use Modules\Roster\Verification;
@@ -69,6 +70,8 @@ final class RosterController
         return Inertia::render('roster/agent', ['agent' => ['ulid' => $target->ulid, 'name' => $target->name], 'records' => $roster->forUser($target),
             'canManage' => Roster::manages($user), 'isSelf' => $target->id === $user->id, 'isOwner' => $user->isKind(UserKind::Owner),
             'customFields' => app(CustomFields::class)->valuesFor('agent', $target->id, $user, $target->id),
+            // ML1: the agent sees and changes their own MLS ID here (checked against the MLS, like on the dashboard).
+            'mlsId' => $target->id === $user->id ? app(MlsIds::class)->forAgent($user) : null,
             'onboarding' => $flows->view($target, 'onboarding'), 'offboarding' => $flows->view($target, 'offboarding'),
             'toSign' => $target->id === $user->id ? array_values(array_filter([$agreements->latest('agreement'), $agreements->latest('policy')],
                 fn ($a) => $a !== null && ! $agreements->signed($target, $a['kind']))) : [],

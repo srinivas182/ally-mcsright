@@ -27,6 +27,17 @@ final class RosterAgentCredentials implements AgentCredentials
         return array_values($this->current($userId, 'mls')->whereNotNull('number')->orderBy('id')->pluck('number')->map(fn ($n): string => (string) $n)->unique()->all());
     }
 
+    public function mlsIdOwners(): array
+    {
+        $owners = [];
+        foreach (DB::connection(Connections::cell())->table('roster_credentials')->where('tenant_id', $this->tenants->id())->where('kind', 'mls')
+            ->where('status', 'current')->whereNotNull('number')->orderBy('id')->get(['number', 'user_id']) as $row) {
+            $owners[(string) $row->number] = (int) $row->user_id;
+        }
+
+        return $owners;
+    }
+
     private function current(int $userId, string $kind): Builder
     {
         return DB::connection(Connections::cell())->table('roster_credentials')->where('tenant_id', $this->tenants->id())->where('user_id', $userId)

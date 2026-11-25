@@ -99,3 +99,30 @@ it('asks nothing of agents when the brokerage has no MLS board', function (): vo
     MlsAuthorization::query()->update(['status' => 'revoked']);
     $this->actingAs($this->andy)->get('/agent')->assertInertia(fn (Assert $p) => $p->where('mlsId', null));
 });
+
+it('saves a typed ID with no listings as unchecked, and takes it back when listings show it is someone else\'s', function (): void {
+    $this->actingAs($this->maria)->post('/roster/mls-ids/typed', ['board' => $this->source->id, 'mls_id' => 'Q777']);
+    $ulid = DB::table('roster_mls_matches')->where('agent_mls_id', 'Q777')->value('ulid');
+    $this->actingAs($this->maria)->post("/roster/mls-ids/{$ulid}/decide", ['mine' => true]);
+    expect(app(RosterAgentCredentials::class)->mlsIds($this->maria->id))->toBe(['Q777'])
+        ->and(DB::table('roster_credentials')->where('user_id', $this->maria->id)->where('number', 'Q777')->value('verified_at'))->toBeNull();
+
+    // A listing from our office appears under Q777 with Robert Jones's name: off Maria's record, to the owner.
+    mlsHome('9', 'OFF1', 'Q777', 'Robert Jones', '3 Lake Dr');
+    app(MlsIds::class)->scan();
+    expect(app(RosterAgentCredentials::class)->mlsIds($this->maria->id))->toBe([])
+        ->and(DB::table('roster_mls_matches')->where('agent_mls_id', 'Q777')->value('status'))->toBe('review');
+});
+
+it('lets an agent change their MLS ID, and the old one is free again', function (): void {
+    app(MlsIds::class)->scan();
+    $this->actingAs($this->andy)->post('/roster/mls-ids/'.DB::table('roster_mls_matches')->where('agent_mls_id', 'A100')->value('ulid').'/decide', ['mine' => true]);
+    mlsHome('10', 'OFF1', 'A200', 'Andrew Smith', '12 New Rd');
+
+    $this->actingAs($this->andy)->get('/roster/me')->assertInertia(fn (Assert $p) => $p->where('mlsId.current.0.id', 'A100')->where('mlsId.current.0.checked', true));
+    $this->actingAs($this->andy)->post('/roster/mls-ids/typed', ['board' => $this->source->id, 'mls_id' => 'A200'])->assertSessionHasNoErrors();
+    $this->actingAs($this->andy)->post('/roster/mls-ids/'.DB::table('roster_mls_matches')->where('agent_mls_id', 'A200')->value('ulid').'/decide', ['mine' => true]);
+
+    expect(app(RosterAgentCredentials::class)->mlsIds($this->andy->id))->toBe(['A200'])
+        ->and(DB::table('roster_mls_matches')->where('agent_mls_id', 'A100')->value('status'))->toBe('replaced');
+});

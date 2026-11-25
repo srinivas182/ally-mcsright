@@ -112,7 +112,7 @@ final class TransactionsServiceProvider extends ServiceProvider
         $features->declare(Reading\Explainer::FEATURE, 'ai.doc_explain', 'DocIQ: a document explained in plain English or Spanish');
         $features->declare(Compliance\Rules::FEATURE, 'ai.compliance_rule', 'Deal-IQ: a brokerage rule written in plain English, read into a check');
         if ($this->app->runningInConsole()) {
-            $this->commands([Console\SendDateReminders::class, Console\EscalateDeadlines::class, Console\ScanOpenDeals::class, Console\SendPortalUpdates::class, Console\RunPlaybooks::class]);
+            $this->commands([Console\SendDateReminders::class, Console\EscalateDeadlines::class, Console\ScanOpenDeals::class, Console\SendPortalUpdates::class, Console\RunPlaybooks::class, Console\SyncMlsListings::class]);
         }
 
         $this->app->make(PermissionRegistry::class)->register('Transactions', [

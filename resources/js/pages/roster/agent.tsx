@@ -1,3 +1,4 @@
+import { MlsIdCard, type MlsIdData } from '@/components/roster/mls-id-card';
 import { Head, router, useForm } from '@inertiajs/react';
 
 import { CePanel, type CeProgress } from '@/components/roster/ce-panel';
@@ -44,6 +45,8 @@ type Props = {
     };
     canManage: boolean;
     isSelf: boolean;
+    /** ML1: the agent's own MLS ID, to see and change (their own record only). */
+    mlsId?: MlsIdData | null;
     isOwner: boolean;
     onboarding: Flow | null;
     offboarding: Flow | null;
@@ -186,6 +189,7 @@ export default function RosterAgent({
     ce,
     canVerify,
     customFields,
+    mlsId = null,
 }: Props) {
     const add = useForm({
         kind: 'licence',
@@ -209,6 +213,7 @@ export default function RosterAgent({
                     title={agent.name}
                     description="Licences, E&O, memberships and documents."
                 />
+                {isSelf && mlsId && <MlsIdCard data={mlsId} manage />}
                 <CustomFieldsPanel
                     fields={customFields}
                     action={`/roster/${agent.ulid}/fields`}

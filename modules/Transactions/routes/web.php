@@ -35,6 +35,10 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth', 'feature:backoff
     Route::get('/', [DealController::class, 'index'])->name('index');
     Route::get('review', [DealController::class, 'queue'])->name('review');
     Route::get('listings', [BoardController::class, 'listings'])->name('listings'); // LM1
+    Route::post('listings/mls/{listing}/add', [BoardController::class, 'addFromMls'])->middleware('throttle:60,1')->name('listings.mls.add'); // ML2
+    Route::post('listings/mls/{listing}/dismiss', [BoardController::class, 'dismissFromMls'])->middleware('throttle:60,1')->name('listings.mls.dismiss');
+    Route::post('listings/mls-auto', [BoardController::class, 'mlsAuto'])->name('listings.mls.auto');
+    Route::get('mls-check', [BoardController::class, 'mlsCheck'])->name('mls-check');
     Route::get('money', [BoardController::class, 'money'])->name('money');
     Route::get('money/forecast.csv', [BoardController::class, 'forecastCsv'])->middleware('throttle:20,1')->name('money.forecast');
     Route::get('money/royalties.csv', [BoardController::class, 'royaltiesCsv'])->middleware('throttle:20,1')->name('money.royalties');

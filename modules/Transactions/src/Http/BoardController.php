@@ -15,6 +15,7 @@ use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Transactions\DealAccess;
 use Modules\Transactions\Forecast;
+use Modules\Transactions\Mls\MlsListings;
 use Modules\Transactions\Models\Deal;
 use Modules\Transactions\Reports\ListingBoard;
 use Modules\Transactions\Reports\Royalties;
@@ -23,7 +24,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 /** LM1 (specs/transactions/30): the listing inventory board, and the money page (cash forecast, franchise and royalty report). */
 final class BoardController
 {
-    public function listings(Request $request, ListingBoard $board): Response
+    public function listings(Request $request, ListingBoard $board, MlsListings $mls): Response
     {
         $user = self::user($request);
         $mine = ! DealAccess::reviewer($user) || $request->query('mine') === '1';
@@ -32,7 +33,44 @@ final class BoardController
         return Inertia::render('deals/listings', ['board' => $board->build($agent), 'columns' => ListingBoard::COLUMNS, 'mine' => $mine, 'reviewer' => DealAccess::reviewer($user),
             // PG3: "Add a listing" on the board (a reviewer picks the agent; an agent adds their own).
             'canCreateFor' => DealAccess::reviewer($user) ? User::query()->where('kind', UserKind::Agent)->where('status', 'active')->orderBy('first_name')->get()
-                ->map(fn (User $u): array => ['ulid' => $u->ulid, 'name' => $u->name])->values()->all() : []]);
+                ->map(fn (User $u): array => ['ulid' => $u->ulid, 'name' => $u->name])->values()->all() : [],
+            // ML2: the agents' own listings found in the MLS, and deals whose MLS status moved on.
+            'mls' => $mls->board($agent), 'isOwner' => $user->isKind(UserKind::Owner)]);
+    }
+
+    /** ML2: add a listing found in the MLS to My listings. */
+    public function addFromMls(Request $request, string $listing, MlsListings $mls): RedirectResponse
+    {
+        $deal = $mls->add($listing, self::user($request));
+        Inertia::flash('toast', ['type' => 'success', 'message' => "Added {$deal->street} to My listings."]);
+
+        return back();
+    }
+
+    /** ML2: "not mine to add": not offered again. */
+    public function dismissFromMls(Request $request, string $listing, MlsListings $mls): RedirectResponse
+    {
+        $mls->dismiss($listing, self::user($request));
+
+        return back();
+    }
+
+    /** ML2: the owner lets listings found in the MLS be added by themselves. */
+    public function mlsAuto(Request $request, MlsListings $mls): RedirectResponse
+    {
+        $data = $request->validate(['on' => ['required', 'boolean']]);
+        $mls->setAutoAdd((bool) $data['on'], self::user($request));
+        Inertia::flash('toast', ['type' => 'success', 'message' => $data['on'] ? 'New MLS listings will be added by themselves every night.' : 'New MLS listings will wait for you to add them.']);
+
+        return back();
+    }
+
+    /** ML2: homes your agents sold in the MLS that have no deal in RightAlly. */
+    public function mlsCheck(Request $request, MlsListings $mls): Response
+    {
+        abort_unless(DealAccess::reviewer(self::user($request)), 403);
+
+        return Inertia::render('deals/mls-check', ['sales' => $mls->missingSales(), 'days' => MlsListings::REPORT_DAYS]);
     }
 
     /** The listing agreement's end date and the MLS number, from the board. */
