@@ -77,6 +77,9 @@ final class ListingsServiceProvider extends ServiceProvider
         $nav = $this->app->make(NavigationRegistry::class);
         $nav->add(new NavItem('Websites and MLS', 'MLS connections', '/hq/mls', 'building-2', 13, ability: 'hq.mls.manage', kinds: [UserKind::HqStaff]));
         $nav->add(new NavItem('Websites and MLS', 'IDX coverage', '/hq/idx', 'map', 14, ability: 'hq.mls.manage', kinds: [UserKind::HqStaff])); // IDX1
+        // HQ1: reached only from MLS connections until now; tabs of Websites and MLS.
+        $nav->add(new NavItem('Websites and MLS', 'MLS search', '/hq/mls/search', 'search', 15, ability: 'hq.mls.manage', kinds: [UserKind::HqStaff]));
+        $nav->add(new NavItem('Websites and MLS', 'Photos and places', '/hq/mls/photos-places', 'image', 16, ability: 'hq.mls.manage', kinds: [UserKind::HqStaff]));
         $nav->add(new NavItem('Settings', 'MLS', '/settings/mls', 'building-2', 66, kinds: [UserKind::Owner]));
         $nav->add(new NavItem('Grow', 'Listings', '/listings', 'home', 8, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant], mobile: true));
     }

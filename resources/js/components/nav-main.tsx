@@ -42,13 +42,14 @@ function MainMenuLink({ group }: { group: NavGroup }) {
     );
 }
 
-/** MN3: Settings, pinned to the bottom of a brokerage's sidebar, just above the AI credits. */
+/** MN3: Settings, pinned to the bottom of the sidebar (a brokerage's sits just above the AI credits). */
 export function NavSettings() {
-    const { navigation, tenant, simple } = usePage().props;
+    const { navigation, simple } = usePage().props;
     const settings = navigation.find(
         (g) => (g.key ?? g.label) === 'Settings' && g.items.length > 0,
     );
-    if (tenant?.isHq || simple?.mode === 'simple' || !settings) {
+    // HQ1: HQ pins its Settings (HQ team, security controls, feature switches) the same way.
+    if (simple?.mode === 'simple' || !settings) {
         return null;
     }
 
@@ -158,7 +159,8 @@ export function NavMain() {
 
     // MN3: a brokerage's sidebar is its main menus only; each opens a page whose tabs are that menu's pages.
     // Settings sits at the bottom, above the AI credits (NavSettings).
-    const flat = !tenant?.isHq && !simpleMenu;
+    // HQ1: the HQ console has main menus with tabs too.
+    const flat = !simpleMenu;
     if (flat) {
         return (
             <SidebarGroup className="px-2 py-1">

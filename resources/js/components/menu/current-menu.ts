@@ -17,6 +17,17 @@ export const MENU_ICONS: Record<string, string> = {
     Reports: 'chart-column',
     Training: 'book-open',
     Settings: 'toggle-right',
+    // HQ1: the HQ console's main menus.
+    Today: 'layout-grid',
+    Customers: 'building-2',
+    Support: 'life-buoy',
+    Billing: 'badge-dollar-sign',
+    'Websites and MLS': 'house',
+    Movewise: 'truck',
+    Products: 'blocks',
+    AI: 'sparkles',
+    Connections: 'plug',
+    System: 'shield',
 };
 
 function path(url: string): string {
