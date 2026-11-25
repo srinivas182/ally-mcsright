@@ -7,6 +7,7 @@ use Modules\Core\Http\Middleware\EnsureHqConsole;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
 use Modules\Team\Http\ChatController;
 use Modules\Team\Http\HelpController;
+use Modules\Team\Http\HqGuidesController;
 use Modules\Team\Http\HqSupportController;
 
 // Team chat (CH1, specs/team/01).
@@ -43,4 +44,10 @@ Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.tenants.manage
     Route::post('videos', [HqSupportController::class, 'setVideo'])->name('videos.set');
     Route::get('{ticket}/file', [HqSupportController::class, 'file'])->where('ticket', '[0-9A-HJKMNP-TV-Z]{26}')->middleware('throttle:30,1')->name('file'); // SX6
     Route::post('{ticket}', [HqSupportController::class, 'reply'])->where('ticket', '[0-9A-HJKMNP-TV-Z]{26}')->name('reply');
+});
+
+// HQ4: the HQ console's menu guides (lesson videos, and closing a guide so it stops opening by itself).
+Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.tenants.manage'])->prefix('hq/guides')->name('hq.guides.')->group(function (): void {
+    Route::get('videos', [HqGuidesController::class, 'videos'])->name('videos');
+    Route::post('seen', [HqGuidesController::class, 'seen'])->middleware('throttle:60,1')->name('seen');
 });

@@ -33,7 +33,8 @@ it('puts every HQ page in a menu (detail pages, new forms and downloads open fro
     $pages = collect(Route::getRoutes()->getRoutes())
         ->filter(fn ($r) => in_array('GET', $r->methods(), true) && str_starts_with($r->uri(), 'hq/'))
         ->map(fn ($r) => '/'.$r->uri())
-        ->reject(fn (string $u) => str_contains($u, '{') || preg_match('/\.(csv|pdf)$/', $u) || str_ends_with($u, '/download') || str_ends_with($u, '/create') || str_ends_with($u, '/new'))
+        ->reject(fn (string $u) => str_contains($u, '{') || preg_match('/\.(csv|pdf)$/', $u) || str_ends_with($u, '/download') || str_ends_with($u, '/create') || str_ends_with($u, '/new')
+            || str_starts_with($u, '/hq/guides/')) // HQ4: the menu guides' videos, not a page
         ->values();
     $menu = collect(NavigationRegistry::hqAddresses());
 

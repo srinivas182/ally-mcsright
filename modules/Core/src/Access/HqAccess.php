@@ -69,6 +69,9 @@ final class HqAccess
         if (preg_match('#^/hq/tenants/[^/]+/impersonate$#', $path) === 1) {
             return self::SUPPORT_ACCESS;
         }
+        if (str_starts_with($path, '/hq/guides/')) {
+            return 'hq.today.see'; // HQ4: the menu guides are for everyone in HQ
+        }
         if (preg_match('#^/hq/tenants/[^/]+/data(/|$)#', $path) === 1) {
             return self::DATA_EXPORT;
         }

@@ -4,6 +4,8 @@ import { useState } from 'react';
 
 import { GuidePanel, useGuide } from '@/components/menu/guide-panel';
 import { useCurrentMenu } from '@/components/menu/current-menu';
+import { HQ_PREFIX } from '@/components/menu/guides';
+import { HQ_PAGE_HINTS } from '@/components/menu/hq-guides';
 import { AiMarker, PageTip } from '@/components/menu/page-hint';
 import { PAGE_HINTS } from '@/components/menu/page-hints';
 import {
@@ -50,9 +52,12 @@ function Tab({ item, active }: { item: ServerNavItem; active: boolean }) {
 export function MenuTabs() {
     const { simple, tenant } = usePage().props;
     const { group, item } = useCurrentMenu();
-    // HQ1: the brokerage guides and tips are not for the HQ console (HQ's own come with the page clean-up).
+    // HQ4: the HQ console has its own guides, tips and AI markers (keyed "HQ <menu>").
     const hq = tenant?.isHq === true;
-    const guide = useGuide(hq ? null : (group?.key ?? null));
+    const menuKey = group ? (group.key ?? group.label) : null;
+    const guide = useGuide(
+        menuKey === null ? null : hq ? `${HQ_PREFIX}${menuKey}` : menuKey,
+    );
     const [open, setOpen] = useState<boolean | null>(null);
     const [start, setStart] = useState<{ lesson?: string; calling?: boolean }>(
         {},
@@ -78,7 +83,9 @@ export function MenuTabs() {
         more = row.filter((i) => !shown.includes(i));
     }
     const panelOpen = open ?? guide.autoOpen;
-    const hint = item && !hq ? PAGE_HINTS[item.href] : undefined;
+    const hint = item
+        ? (hq ? HQ_PAGE_HINTS : PAGE_HINTS)[item.href]
+        : undefined;
 
     return (
         <div className="border-b bg-background px-4 md:px-6">
@@ -133,6 +140,7 @@ export function MenuTabs() {
                 </nav>
                 {hint?.ai && (
                     <AiMarker
+                        hq={hq}
                         ai={hint.ai}
                         onWatch={() => {
                             setStart({ lesson: hint.ai?.lesson });
@@ -170,7 +178,7 @@ export function MenuTabs() {
             {guide.guide && (
                 <GuidePanel
                     guide={guide.guide}
-                    menuKey={group.key ?? group.label}
+                    menuKey={hq ? `${HQ_PREFIX}${menuKey}` : (menuKey ?? '')}
                     open={panelOpen}
                     start={start}
                     onOpenChange={(o) => {

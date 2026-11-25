@@ -31,10 +31,13 @@ export function AiMarker({
     ai,
     onWatch,
     onCall,
+    hq = false,
 }: {
     ai: PageAi;
     onWatch: () => void;
     onCall: () => void;
+    /** HQ4: on HQ pages the marker only explains; there is no assistant to try it with, and no call to book. */
+    hq?: boolean;
 }) {
     const [open, setOpen] = useState(false);
 
@@ -57,10 +60,12 @@ export function AiMarker({
                     </p>
                     <p>{ai.does}</p>
                 </div>
-                <p className="rounded-md border bg-muted/40 p-2 text-sm">
-                    <span className="font-semibold">Try saying: </span>
-                    <i>{ai.example}</i>
-                </p>
+                {ai.example && (
+                    <p className="rounded-md border bg-muted/40 p-2 text-sm">
+                        <span className="font-semibold">Try saying: </span>
+                        <i>{ai.example}</i>
+                    </p>
+                )}
                 <div className="grid gap-1">
                     <p className="text-sm font-semibold text-muted-foreground">
                         Get the most from it
@@ -68,15 +73,19 @@ export function AiMarker({
                     <p>{ai.most}</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                    <Button
-                        size="sm"
-                        onClick={() => {
-                            setOpen(false);
-                            window.dispatchEvent(new Event('assistant:open'));
-                        }}
-                    >
-                        Try it
-                    </Button>
+                    {!hq && (
+                        <Button
+                            size="sm"
+                            onClick={() => {
+                                setOpen(false);
+                                window.dispatchEvent(
+                                    new Event('assistant:open'),
+                                );
+                            }}
+                        >
+                            Try it
+                        </Button>
+                    )}
                     <Button
                         size="sm"
                         variant="outline"
@@ -87,16 +96,18 @@ export function AiMarker({
                     >
                         Watch how
                     </Button>
-                    <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                            setOpen(false);
-                            onCall();
-                        }}
-                    >
-                        Book a call
-                    </Button>
+                    {!hq && (
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                                setOpen(false);
+                                onCall();
+                            }}
+                        >
+                            Book a call
+                        </Button>
+                    )}
                 </div>
             </PopoverContent>
         </Popover>

@@ -7,7 +7,8 @@
 export type PageAi = {
     name: string;
     does: string;
-    example: string;
+    /** What to say to Your AI Assistant (not on HQ pages, where the assistant is not available). */
+    example?: string;
     most: string;
     lesson?: string;
 };

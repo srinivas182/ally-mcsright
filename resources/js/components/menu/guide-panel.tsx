@@ -2,7 +2,7 @@ import { router, usePage } from '@inertiajs/react';
 import { Check, ChevronDown, PlayCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-import { guideFor, type Guide } from '@/components/menu/guides';
+import { guideFor, HQ_PREFIX, type Guide } from '@/components/menu/guides';
 import { Button } from '@/components/ui/button';
 import {
     Sheet,
@@ -78,7 +78,10 @@ export function useGuide(menuKey: string | null): {
             }
             setMarked([...marked, menuKey]);
             router.post(
-                '/help/guides/seen',
+                // HQ4: the HQ console has its own address (the brokerage help centre is not open there).
+                menuKey.startsWith(HQ_PREFIX)
+                    ? '/hq/guides/seen'
+                    : '/help/guides/seen',
                 { key: menuKey },
                 { preserveScroll: true, preserveState: true, only: [] },
             );
@@ -153,6 +156,8 @@ export function GuidePanel({
     const [phone, setPhone] = useState('');
     const [when, setWhen] = useState('any');
     const [sent, setSent] = useState(false);
+    // HQ4: HQ's own guides; no assistant to ask and no call to book there.
+    const hq = menuKey.startsWith(HQ_PREFIX);
 
     useEffect(() => {
         if (!open) {
@@ -163,7 +168,7 @@ export function GuidePanel({
         }
         setCalling(Boolean(start.calling));
         setOpened(readOpened());
-        fetch('/help/guides/videos', {
+        fetch(hq ? '/hq/guides/videos' : '/help/guides/videos', {
             headers: { Accept: 'application/json' },
         })
             .then((r) => (r.ok ? r.json() : {}))
@@ -366,103 +371,112 @@ export function GuidePanel({
                         </section>
                     )}
 
-                    <section className="grid gap-3 rounded-xl bg-muted/50 p-4">
-                        <h3 className="text-lg font-semibold">
-                            Still unsure? We are here.
-                        </h3>
-                        {sent ? (
-                            <p
-                                role="status"
-                                className="font-medium text-primary"
-                            >
-                                Thank you. A RightAlly specialist will call you{' '}
-                                {when === 'any' ? 'soon' : `this ${when}`}.
-                            </p>
-                        ) : calling ? (
-                            <form
-                                className="grid gap-3"
-                                onSubmit={(e) => {
-                                    e.preventDefault();
-                                    router.post(
-                                        '/help/callback',
-                                        {
-                                            phone,
-                                            when,
-                                            page: page.url,
-                                            note: `About: ${guide.title}`,
-                                        },
-                                        {
-                                            preserveScroll: true,
-                                            preserveState: true,
-                                            onSuccess: () => setSent(true),
-                                        },
-                                    );
-                                }}
-                            >
-                                <label className="grid gap-1">
-                                    Your phone number
-                                    <input
-                                        className="h-11 rounded-md border bg-background px-3"
-                                        inputMode="tel"
-                                        autoComplete="tel"
-                                        value={phone}
-                                        onChange={(e) =>
-                                            setPhone(e.target.value)
-                                        }
-                                        required
-                                    />
-                                </label>
-                                <label className="grid gap-1">
-                                    Best time
-                                    <select
-                                        className="h-11 rounded-md border bg-background px-3"
-                                        value={when}
-                                        onChange={(e) =>
-                                            setWhen(e.target.value)
-                                        }
-                                    >
-                                        <option value="any">Any time</option>
-                                        <option value="morning">Morning</option>
-                                        <option value="afternoon">
-                                            Afternoon
-                                        </option>
-                                        <option value="evening">
-                                            Early evening
-                                        </option>
-                                    </select>
-                                </label>
-                                <div className="flex gap-2">
-                                    <Button type="submit">
-                                        Call me for 15 minutes
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={() => setCalling(false)}
-                                    >
-                                        Back
-                                    </Button>
-                                </div>
-                            </form>
-                        ) : (
-                            <div className="flex flex-wrap gap-2">
-                                <Button
-                                    variant="outline"
-                                    onClick={() => {
-                                        onOpenChange(false);
-                                        window.dispatchEvent(
-                                            new CustomEvent('assistant:open'),
+                    {!hq && (
+                        <section className="grid gap-3 rounded-xl bg-muted/50 p-4">
+                            <h3 className="text-lg font-semibold">
+                                Still unsure? We are here.
+                            </h3>
+                            {sent ? (
+                                <p
+                                    role="status"
+                                    className="font-medium text-primary"
+                                >
+                                    Thank you. A RightAlly specialist will call
+                                    you{' '}
+                                    {when === 'any' ? 'soon' : `this ${when}`}.
+                                </p>
+                            ) : calling ? (
+                                <form
+                                    className="grid gap-3"
+                                    onSubmit={(e) => {
+                                        e.preventDefault();
+                                        router.post(
+                                            '/help/callback',
+                                            {
+                                                phone,
+                                                when,
+                                                page: page.url,
+                                                note: `About: ${guide.title}`,
+                                            },
+                                            {
+                                                preserveScroll: true,
+                                                preserveState: true,
+                                                onSuccess: () => setSent(true),
+                                            },
                                         );
                                     }}
                                 >
-                                    Ask the assistant
-                                </Button>
-                                <Button onClick={() => setCalling(true)}>
-                                    Book a 15-minute call
-                                </Button>
-                            </div>
-                        )}
-                    </section>
+                                    <label className="grid gap-1">
+                                        Your phone number
+                                        <input
+                                            className="h-11 rounded-md border bg-background px-3"
+                                            inputMode="tel"
+                                            autoComplete="tel"
+                                            value={phone}
+                                            onChange={(e) =>
+                                                setPhone(e.target.value)
+                                            }
+                                            required
+                                        />
+                                    </label>
+                                    <label className="grid gap-1">
+                                        Best time
+                                        <select
+                                            className="h-11 rounded-md border bg-background px-3"
+                                            value={when}
+                                            onChange={(e) =>
+                                                setWhen(e.target.value)
+                                            }
+                                        >
+                                            <option value="any">
+                                                Any time
+                                            </option>
+                                            <option value="morning">
+                                                Morning
+                                            </option>
+                                            <option value="afternoon">
+                                                Afternoon
+                                            </option>
+                                            <option value="evening">
+                                                Early evening
+                                            </option>
+                                        </select>
+                                    </label>
+                                    <div className="flex gap-2">
+                                        <Button type="submit">
+                                            Call me for 15 minutes
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={() => setCalling(false)}
+                                        >
+                                            Back
+                                        </Button>
+                                    </div>
+                                </form>
+                            ) : (
+                                <div className="flex flex-wrap gap-2">
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => {
+                                            onOpenChange(false);
+                                            window.dispatchEvent(
+                                                new CustomEvent(
+                                                    'assistant:open',
+                                                ),
+                                            );
+                                        }}
+                                    >
+                                        Ask the assistant
+                                    </Button>
+                                    <Button onClick={() => setCalling(true)}>
+                                        Book a 15-minute call
+                                    </Button>
+                                </div>
+                            )}
+                        </section>
+                    )}
                 </div>
             </SheetContent>
         </Sheet>
