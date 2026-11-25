@@ -38,6 +38,7 @@ use Modules\Transactions\DealAccess;
  * @property CarbonImmutable|null $closed_on
  * @property string|null $cancel_reason
  * @property int|null $calculation_id
+ * @property int|null $paired_deal_id DA1: the other side of a dual deal
  * @property CarbonImmutable|null $locked_at
  * @property string|null $imported_from
  * @property array<string, mixed>|null $pay_overrides
@@ -54,7 +55,7 @@ final class Deal extends Model
 
     protected $table = 'tx_deals';
 
-    protected $fillable = ['type', 'status', 'agent_user_id', 'contact_id', 'street', 'city', 'state_code', 'postal_code', 'mls_number', 'price_cents', 'gci_cents', 'contract_date', 'closing_date', 'closed_on', 'cancel_reason', 'calculation_id', 'locked_at', 'created_by', 'imported_from', 'pay_overrides', 'money_status', 'money_note', 'paid_fingerprint', 'agent_paid_outside', 'property_type', 'financing', 'setup_status'];
+    protected $fillable = ['type', 'status', 'agent_user_id', 'contact_id', 'street', 'city', 'state_code', 'postal_code', 'mls_number', 'price_cents', 'gci_cents', 'contract_date', 'closing_date', 'closed_on', 'cancel_reason', 'calculation_id', 'locked_at', 'created_by', 'imported_from', 'pay_overrides', 'money_status', 'money_note', 'paid_fingerprint', 'agent_paid_outside', 'property_type', 'financing', 'setup_status', 'paired_deal_id'];
 
     public function getConnectionName(): ?string
     {

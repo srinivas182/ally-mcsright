@@ -9,7 +9,7 @@ import {
     type Deposit,
     type Referral,
 } from '@/components/deals/money-desk';
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import { CameraIcon, UploadIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
@@ -103,6 +103,18 @@ type Props = {
     reasons: string[];
     risk: { score: number; level: string; reasons: string[] };
     whoGetsPaid?: WhoGetsPaidData | null;
+    /** DA1: the other side of a dual deal. */
+    dual?: {
+        side: 'seller' | 'buyer';
+        other: {
+            ulid: string;
+            agent: string | null;
+            status: string;
+            gci_cents: number | null;
+        } | null;
+        warning: string | null;
+        consent: boolean;
+    } | null;
     dealAgents?: DealAgent[];
     agentChoices?: { ulid: string; name: string }[] | null;
     customFields: CustomFieldValue[];
@@ -323,6 +335,7 @@ export default function ShowDeal({
     risk,
     whoGetsPaid = null,
     dealAgents = [],
+    dual = null,
     agentChoices = null,
     deposits,
     referrals,
@@ -347,6 +360,7 @@ export default function ShowDeal({
         status: 'under_contract',
         price: deal.price_cents ? String(deal.price_cents / 100) : '',
         gci: '',
+        buyer_gci: '',
         contract_date: '',
         closing_date: '',
     });
@@ -436,7 +450,52 @@ export default function ShowDeal({
                         ): {risk.reasons.join(', ')}. Fix these and it drops.
                     </p>
                 )}
-                {deal.status === 'pre_contract' && (
+                {dual && (
+                    <section
+                        aria-label="Dual deal"
+                        className="grid gap-2 rounded-lg border border-indigo-300 bg-indigo-50 p-4 text-indigo-950 dark:border-indigo-800 dark:bg-indigo-950 dark:text-indigo-100"
+                    >
+                        <p>
+                            <strong>
+                                Dual deal: your brokerage is on both sides.
+                            </strong>{' '}
+                            {dual.side === 'seller'
+                                ? 'This is the seller (listing) side. The buyer side has its own commission and agents and is paid on its own.'
+                                : 'This is the buyer side. Its status changes with the seller side.'}
+                            {dual.other && (
+                                <>
+                                    {' '}
+                                    <Link
+                                        href={`/deals/${dual.other.ulid}`}
+                                        className="font-medium underline underline-offset-2"
+                                    >
+                                        Open the{' '}
+                                        {dual.side === 'seller'
+                                            ? 'buyer'
+                                            : 'seller'}{' '}
+                                        side
+                                        {dual.other.agent
+                                            ? ` (${dual.other.agent})`
+                                            : ''}
+                                    </Link>
+                                </>
+                            )}
+                        </p>
+                        {!dual.consent && (
+                            <p>
+                                Before it goes under contract, upload the signed
+                                dual agency consent (both the buyer and the
+                                seller sign it).
+                            </p>
+                        )}
+                        {dual.warning && (
+                            <p className="font-medium text-amber-800 dark:text-amber-200">
+                                {dual.warning}
+                            </p>
+                        )}
+                    </section>
+                )}
+                {deal.status === 'pre_contract' && dual?.side !== 'buyer' && (
                     <form
                         className="flex flex-wrap items-end gap-2 rounded-lg border p-4 text-sm"
                         onSubmit={(e) => {
@@ -460,8 +519,12 @@ export default function ShowDeal({
                             }
                         />
                         <Input
-                            aria-label="Commission (GCI $)"
-                            placeholder="GCI $"
+                            aria-label={
+                                dual
+                                    ? 'Seller side commission ($)'
+                                    : 'Commission (GCI $)'
+                            }
+                            placeholder={dual ? 'Seller side $' : 'GCI $'}
                             type="number"
                             className="w-32"
                             value={contract.data.gci}
@@ -469,6 +532,21 @@ export default function ShowDeal({
                                 contract.setData('gci', e.target.value)
                             }
                         />
+                        {dual && (
+                            <Input
+                                aria-label="Buyer side commission ($)"
+                                placeholder="Buyer side $"
+                                type="number"
+                                className="w-32"
+                                value={contract.data.buyer_gci}
+                                onChange={(e) =>
+                                    contract.setData(
+                                        'buyer_gci',
+                                        e.target.value,
+                                    )
+                                }
+                            />
+                        )}
                         <label className="grid gap-1">
                             Contract date
                             <Input

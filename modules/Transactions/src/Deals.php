@@ -37,7 +37,7 @@ final class Deals
     public function __construct(private readonly Checklists $checklists, private readonly CommissionService $commissions, private readonly AuditLogger $audit) {}
 
     /**
-     * @param  array<string, mixed>  $data  type, street, city, state_code, postal_code, mls_number, price_cents
+     * @param  array<string, mixed>  $data  type, street, city, state_code, postal_code, mls_number, price_cents; buyer_agent_user_id (dual)
      */
     public function create(array $data, User $agent, User $by, ?Contact $contact = null): Deal
     {
@@ -63,15 +63,50 @@ final class Deals
             $this->checklists->apply($deal);
             $this->audit->record('transactions.deal.created', $deal, metadata: ['type' => $deal->type, 'address' => $deal->street], label: $deal->street);
             DealStatusChanged::dispatch($deal->tenant_id, $deal->id, null, 'pre_contract');
+            if ($deal->type === 'dual') {
+                $this->pairBuyerSide($deal, User::query()->find((int) ($data['buyer_agent_user_id'] ?? 0)) ?? $agent, $by);
+            }
 
             return $deal;
         });
     }
 
     /**
-     * @param  array<string, mixed>  $data  price_cents, gci_cents, contract_date, closing_date (under contract); reason (fell through)
+     * @param  array<string, mixed>  $data  price_cents, gci_cents, contract_date, closing_date (under contract); buyer_gci_cents (dual); reason (fell through)
      */
     public function moveTo(Deal $deal, string $status, User $by, array $data = []): Deal
+    {
+        if (DualAgency::isBuyerSide($deal) && ! $this->movingPair) {
+            throw ValidationException::withMessages(['status' => 'This is the buyer side of a dual deal. Change its status on the dual deal: '.(DualAgency::other($deal)->street ?? 'the seller side').'.']);
+        }
+        $buyerSide = $deal->type === 'dual' ? DualAgency::other($deal) : null;
+        if ($buyerSide !== null && $status === 'under_contract' && (int) ($data['buyer_gci_cents'] ?? 0) <= 0) {
+            throw ValidationException::withMessages(['status' => 'For a dual deal, give both commissions: the seller side and the buyer side.']);
+        }
+
+        return DB::connection(Connections::cell())->transaction(function () use ($deal, $status, $by, $data, $buyerSide): Deal {
+            $this->moveOne($deal, $status, $by, $data);
+            if ($buyerSide !== null && in_array($buyerSide->status, ['pre_contract', 'under_contract'], true)) {
+                // DA1: the buyer side moves with the dual deal, on its own commission.
+                $this->movingPair = true;
+                try {
+                    $this->moveOne($buyerSide, $status, $by, ['gci_cents' => (int) ($data['buyer_gci_cents'] ?? 0)] + $data);
+                } finally {
+                    $this->movingPair = false;
+                }
+            }
+
+            return $deal->refresh();
+        });
+    }
+
+    /** DA1: true while the buyer side of a dual deal is being moved with it. */
+    private bool $movingPair = false;
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function moveOne(Deal $deal, string $status, User $by, array $data): void
     {
         $from = $deal->status;
         if ($deal->locked_at !== null) {
@@ -87,8 +122,17 @@ final class Deals
         $this->audit->record('transactions.deal.status', $deal, changes: ['status' => ['old' => $from, 'new' => $status]], severity: $status === 'closed' ? 'notice' : 'info', label: $deal->street);
         app(Compliance\ComplianceScan::class)->run($deal);
         DealStatusChanged::dispatch($deal->tenant_id, $deal->id, $from, $status);
+    }
 
-        return $deal->refresh();
+    /** DA1: the buyer side of a new dual deal: same home, its own agent and commission, no checklist of its own. */
+    private function pairBuyerSide(Deal $dual, User $agent, User $by): void
+    {
+        $buyer = Deal::query()->create(['type' => 'buyer', 'status' => 'pre_contract', 'agent_user_id' => $agent->id, 'street' => $dual->street, 'city' => $dual->city,
+            'state_code' => $dual->state_code, 'postal_code' => $dual->postal_code, 'mls_number' => $dual->mls_number, 'price_cents' => $dual->price_cents,
+            'created_by' => $by->id, 'paired_deal_id' => $dual->id]);
+        $dual->update(['paired_deal_id' => $buyer->id]);
+        $this->audit->record('transactions.deal.dual_paired', $dual, metadata: ['buyer_side' => $buyer->ulid, 'buyer_agent' => $agent->id], label: $dual->street);
+        DealStatusChanged::dispatch($buyer->tenant_id, $buyer->id, null, 'pre_contract');
     }
 
     /**
