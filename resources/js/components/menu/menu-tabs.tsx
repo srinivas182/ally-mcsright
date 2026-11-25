@@ -40,15 +40,18 @@ function Tab({ item, active }: { item: ServerNavItem; active: boolean }) {
  * ("Close more deals"), which opens its help panel.
  */
 export function MenuTabs() {
-    const { tenant, simple } = usePage().props;
+    const { simple, tenant } = usePage().props;
     const { group, item } = useCurrentMenu();
-    const guide = useGuide(group?.key ?? null);
+    // HQ1: the brokerage guides and tips are not for the HQ console (HQ's own come with the page clean-up).
+    const hq = tenant?.isHq === true;
+    const guide = useGuide(hq ? null : (group?.key ?? null));
     const [open, setOpen] = useState<boolean | null>(null);
     const [start, setStart] = useState<{ lesson?: string; calling?: boolean }>(
         {},
     );
 
-    if (tenant?.isHq || simple?.mode === 'simple' || group === null) {
+    // HQ1: HQ's main menus have tabs too.
+    if (simple?.mode === 'simple' || group === null) {
         return null;
     }
     const sections = [
@@ -67,7 +70,7 @@ export function MenuTabs() {
         more = row.filter((i) => !shown.includes(i));
     }
     const panelOpen = open ?? guide.autoOpen;
-    const hint = item ? PAGE_HINTS[item.href] : undefined;
+    const hint = item && !hq ? PAGE_HINTS[item.href] : undefined;
 
     return (
         <div className="border-b bg-background px-4 md:px-6">

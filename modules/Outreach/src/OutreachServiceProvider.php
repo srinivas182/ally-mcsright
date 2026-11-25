@@ -39,6 +39,10 @@ final class OutreachServiceProvider extends ServiceProvider
             $r->get('v/{token}', [Http\PublicController::class, 'video'])->where('token', '[A-Za-z0-9]{48}');
             $r->get('v/{token}/file', [Http\PublicController::class, 'videoFile'])->where('token', '[A-Za-z0-9]{48}');
         });
+        // HQ1: these HQ pages had no menu entry, so HQ staff could not reach them.
+        $this->app->make(NavigationRegistry::class)->add(new NavItem('Customers', 'Texting approvals', '/hq/texting', 'message-square', 20, ability: 'hq.tenants.manage',
+            kinds: [UserKind::HqStaff]));
+        $this->app->make(NavigationRegistry::class)->add(new NavItem('Support', 'Card orders', '/hq/cards', 'mail', 20, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff]));
         $this->app->make(NavigationRegistry::class)->add(new NavItem('Grow', 'Outreach', '/outreach', 'phone', 37,
             kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent, UserKind::Assistant]));
     }

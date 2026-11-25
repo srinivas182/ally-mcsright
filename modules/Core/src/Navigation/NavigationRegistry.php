@@ -6,6 +6,7 @@ namespace Modules\Core\Navigation;
 
 use App\Models\User;
 use Illuminate\Support\Facades\Gate;
+use Modules\Core\Access\HqAccess;
 use Modules\Core\Identity\AgentAssistants;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Simple\SimpleMode;
@@ -18,10 +19,6 @@ use Modules\Core\Switches\FeatureSwitches;
  */
 final class NavigationRegistry
 {
-    /** Group order in the sidebar: the brokerage's groups, then the HQ console's (HQ1, plain names for what each holds). */
-    private const GROUPS = ['Overview', 'Grow', 'Run', 'Finance', 'Protect', 'Know', 'Brokerage',
-        'HQ team', 'Customers', 'Sales and pricing', 'Payments', 'Websites and MLS', 'AI', 'Connections', 'Products', 'System', 'HQ'];
-
     /**
      * MN3: a brokerage's main menus, in the words brokers already use (CRM, Transactions, Commissions, Accounting…)
      * and in the order they are used, daily first. Each main menu opens a page whose tabs are its pages; a section
@@ -69,6 +66,31 @@ final class NavigationRegistry
         '/roster' => 'Licences and onboarding', '/recruiting/retention' => 'Retention', '/learn' => 'Training', '/compensation/plans' => 'Commission plans', '/settings/ailly' => 'Website assistant',
         '/settings/mls' => 'MLS / IDX', '/settings/network' => 'Referral network settings', '/plans' => 'Plans and fees'];
 
+    /**
+     * HQ1: the HQ console's main menus, like a brokerage's: each opens a page whose tabs are its pages. Every HQ page is
+     * placed here (a test fails when one is not); detail pages, "new" forms and downloads open from these pages.
+     *
+     * @var array<string, list<string>> menu => addresses, in tab order
+     */
+    private const HQ_MENUS = [
+        'Today' => ['/hq/dashboard'],
+        'Customers' => ['/hq/tenants', '/hq/signups', '/hq/go-live', '/hq/health-checks', '/hq/texting'],
+        'Support' => ['/hq/support', '/hq/support/videos', '/hq/cards'],
+        'Billing' => ['/hq/packages', '/hq/billing', '/hq/credits', '/hq/affiliates', '/hq/payments', '/hq/payout-rails'],
+        'Websites and MLS' => ['/hq/website', '/hq/content', '/hq/sites', '/hq/mls', '/hq/mls/search', '/hq/mls/photos-places', '/hq/idx'],
+        'Movewise' => ['/hq/movewise', '/hq/movewise/program', '/hq/movewise/money', '/hq/movewise/launch'],
+        'Products' => ['/hq/network', '/hq/studio'],
+        'AI' => ['/hq/ai', '/hq/ai/quality', '/hq/ai/cost'],
+        'Connections' => ['/hq/services', '/hq/messaging', '/hq/connect', '/hq/apps', '/hq/partners'],
+        'System' => ['/hq/watchtower', '/hq/cells'],
+        'Settings' => ['/users', '/hq/roles', '/hq/controls', '/hq/switches'],
+    ];
+
+    /** HQ1: tab names in the HQ console. */
+    private const HQ_TITLES = ['/hq/dashboard' => 'Numbers', '/hq/tenants' => 'All brokerages', '/hq/support' => 'Inbox', '/hq/billing' => 'Pricing', '/hq/packages' => 'Packages',
+        '/hq/credits' => 'Credits', '/hq/sites' => 'Brokerage websites', '/hq/movewise' => 'Overview', '/hq/movewise/program' => 'Agents', '/hq/movewise/money' => 'Money',
+        '/hq/movewise/launch' => 'Launch', '/hq/ai' => 'Gateway', '/hq/ai/quality' => 'Quality', '/hq/ai/cost' => 'Cost', '/users' => 'HQ team', '/hq/roles' => 'Roles'];
+
     /** MN3: an agent's own wording. */
     private const AGENT_TITLES = ['/deals' => 'My transactions', '/deals/listings' => 'My listings'];
 
@@ -98,24 +120,26 @@ final class NavigationRegistry
         $visible = array_filter($this->items, fn (NavItem $item): bool => ($item->kinds === [] || in_array($user->kind, $item->kinds, true))
             && ($item->ability === null || Gate::forUser($user)->allows($item->ability))
             && $switches->allowsPath($user, $item->href) // FL1: switched-off areas and seats
-            && $assistants->allowsPath($user, $item->href)); // AG1: an assistant's preset
+            && $assistants->allowsPath($user, $item->href) // AG1: an assistant's preset
+            // HQ2: HQ staff see HQ's pages only (never a brokerage's), as far as their HQ role allows.
+            && ($user->kind !== UserKind::HqStaff || ((str_starts_with($item->href, '/hq/') || in_array($item->href, self::hqAddresses(), true))
+                && HqAccess::canSee($user, $item->href))));
 
         $hq = $user->kind === UserKind::HqStaff;
         $agent = in_array($user->kind, [UserKind::Agent, UserKind::Assistant], true);
-        $place = fn (NavItem $item): array => $hq ? [$item->group, '', $this->groupIndex($item->group), $item->order] : self::tenantPlace($item, $agent);
+        $place = fn (NavItem $item): array => $hq ? self::hqPlace($item) : self::tenantPlace($item, $agent);
         usort($visible, fn (NavItem $a, NavItem $b): int => [$place($a)[2], $place($a)[3], $a->title] <=> [$place($b)[2], $place($b)[3], $b->title]);
 
         $groups = [];
         foreach ($visible as $item) {
             [$menu, $section] = $place($item);
-            $title = $hq ? $item->title : ($agent ? (self::AGENT_TITLES[$item->href] ?? self::TENANT_TITLES[$item->href] ?? $item->title) : (self::TENANT_TITLES[$item->href] ?? $item->title));
+            $title = $hq ? (self::HQ_TITLES[$item->href] ?? $item->title) : ($agent ? (self::AGENT_TITLES[$item->href] ?? self::TENANT_TITLES[$item->href] ?? $item->title) : (self::TENANT_TITLES[$item->href] ?? $item->title));
             $groups[$menu][] = ['title' => $title, 'href' => $item->href, 'icon' => $item->icon, 'mobile' => $item->mobile] + ($section !== '' ? ['section' => $section] : []);
         }
 
         $out = [];
         foreach ($groups as $label => $items) {
-            // HQ1: in the HQ console the people page is RightAlly's own team, not a brokerage's.
-            $label = $user->kind === UserKind::HqStaff && $label === 'Brokerage' ? 'HQ team' : (string) $label;
+            $label = (string) $label;
             // MN3: `key` stays in English (the help guide and icons use it); `label` may be translated.
             $out[] = ['key' => $label, 'label' => $label, 'items' => $items];
         }
@@ -157,10 +181,33 @@ final class NavigationRegistry
         return ['Settings', 'More', (int) array_search('Settings', self::TENANT_ORDER, true), 10_000 + $item->order];
     }
 
-    private function groupIndex(string $group): int
+    /**
+     * HQ1: where an HQ page goes: [menu, section, menu position, position within the menu].
+     *
+     * @return array{0: string, 1: string, 2: int, 3: int}
+     */
+    private static function hqPlace(NavItem $item): array
     {
-        $index = array_search($group, self::GROUPS, true);
+        $index = 0;
+        foreach (self::HQ_MENUS as $menu => $paths) {
+            $at = array_search($item->href, $paths, true);
+            if ($at !== false) {
+                return [$menu, '', $index, (int) $at];
+            }
+            $index++;
+        }
 
-        return $index === false ? count(self::GROUPS) : $index;
+        // Not placed yet: Settings › More, so nothing ever disappears from the menu.
+        return ['Settings', 'More', $index, 10_000 + $item->order];
+    }
+
+    /**
+     * HQ1: every address the HQ menus place (for the test that no HQ page is left out).
+     *
+     * @return list<string>
+     */
+    public static function hqAddresses(): array
+    {
+        return array_merge(...array_values(self::HQ_MENUS));
     }
 }

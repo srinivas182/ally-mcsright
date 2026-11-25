@@ -28,6 +28,7 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Fortify\Events\ValidTwoFactorAuthenticationCodeProvided;
+use Modules\Core\Access\HqAccess;
 use Modules\Core\Access\PermissionRegistry;
 use Modules\Core\Access\Permissions;
 use Modules\Core\Access\Roles;
@@ -283,6 +284,8 @@ final class CoreServiceProvider extends ServiceProvider
             'core.privacy.manage' => ['Answer privacy requests (see, delete, correct, stop sharing)', false, true],
         ]);
         // Areas whose screens live in several modules (specs/core/03, R1).
+        // HQ2: the HQ console's permissions (only HQ's roles use them).
+        $registry->register('hq', HqAccess::permissions());
         $registry->register('Marketing', [
             'marketing.manage' => ['Run company marketing: Ally Studio and Autopilot, social posts, listing ads, funnels, buyer demand and campaigns'],
         ]);
@@ -450,6 +453,7 @@ final class CoreServiceProvider extends ServiceProvider
         $nav->add(new NavItem('System', 'Cells', '/hq/cells', 'database', 11, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff])); // PS1
         $nav->add(new NavItem('System', 'Feature switches', '/hq/switches', 'toggle-right', 12, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff])); // FL1
         $nav->add(new NavItem('Connections', 'Outside services', '/hq/services', 'plug', 10, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff])); // FL1
+        $nav->add(new NavItem('Settings', 'HQ roles', '/hq/roles', 'shield-check', 11, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff])); // HQ2
         $nav->add(new NavItem('System', 'Security controls', '/hq/controls', 'shield-check', 13, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff])); // TR1
         $nav->add(new NavItem('Settings', 'Features and seats', '/settings/features', 'toggle-right', 82, ability: 'core.platform.manage')); // FL1
         $nav->add(new NavItem('Settings', 'Outside services', '/settings/services', 'plug', 83, ability: 'core.platform.manage')); // FL1

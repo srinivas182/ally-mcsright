@@ -75,7 +75,7 @@ final class Roles
         $clean = [];
         foreach ($permissions as $key => $scope) {
             $def = $this->registry->get($key);
-            if ($def === null) {
+            if ($def === null || $def['area'] === 'hq') { // HQ2: HQ's permissions only through HQ's roles
                 continue;
             }
             $clean[$key] = $def['scoped'] ? (in_array($scope, PermissionRegistry::SCOPES, true) ? $scope : 'own') : null;
@@ -187,7 +187,7 @@ final class Roles
                 $lines[] = 'Can '.lcfirst($def['label']).($def['scoped'] ? ' '.$where[$scope ?? 'own'] : '').'.';
             }
         }
-        $sensitive = array_filter($this->registry->all(), fn (array $d): bool => $d['sensitive'] && ! array_key_exists($d['key'], $permissions));
+        $sensitive = array_filter($this->registry->all(), fn (array $d): bool => $d['sensitive'] && $d['area'] !== 'hq' && ! array_key_exists($d['key'], $permissions));
         foreach ($sensitive as $d) {
             $lines[] = 'Cannot '.lcfirst($d['label']).'.';
         }

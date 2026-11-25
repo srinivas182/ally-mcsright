@@ -1,4 +1,8 @@
 import {
+    Image as ImageIcon,
+    MessageSquare,
+    Search,
+    Truck,
     Map as MapIcon,
     ChartColumn,
     ListPlus,
@@ -70,6 +74,10 @@ import {
 /** Icons the server may name for menu items. Unknown names fall back to a dot. */
 const icons: Record<string, LucideIcon> = {
     map: MapIcon,
+    truck: Truck,
+    search: Search,
+    image: ImageIcon,
+    'message-square': MessageSquare,
     'book-open': BookOpen,
     'chart-column': ChartColumn,
     'list-plus': ListPlus,

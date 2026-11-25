@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button';
 
 /** Simple or full view, and (in simple view) English or Spanish (SM1). */
 export function ViewSwitch() {
-    const simple = usePage().props.simple;
-    if (!simple) {
+    const { simple, tenant } = usePage().props;
+    // HQ1: the simple view is for agents who want bigger buttons; HQ staff do not need it.
+    if (!simple || tenant?.isHq) {
         return null;
     }
     const w = simple.words;

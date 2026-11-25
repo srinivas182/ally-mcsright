@@ -37,19 +37,20 @@ it('shows HQ staff the HQ console and people', function (): void {
     $hq = Tenant::query()->where('type', 'hq')->sole();
     $staff = app(TenantContext::class)->runAs($hq, fn () => User::factory()->hqStaff()->create());
 
-    // HQ1: grouped under plain headings, in the order HQ works.
+    // HQ1: main menus with tabs, like a brokerage's, in the order HQ works; Settings pinned last.
     $groups = collect(app(NavigationRegistry::class)->for($staff))->mapWithKeys(fn (array $g): array => [$g['label'] => array_column($g['items'], 'title')])->all();
     expect($groups)->toBe([
-        'Overview' => ['Dashboard'],
-        'HQ team' => ['People'],
-        'Customers' => ['Brokerages', 'Health checks', 'Sign-ups', 'Go-live', 'Support', 'Help videos'],
-        'Sales and pricing' => ['Package builder', 'Pricing', 'RightAlly credits', 'Referral programme'],
-        'Payments' => ['Payments', 'Payout rails'],
-        'Websites and MLS' => ['RightAlly website', 'Content desk', 'Websites', 'MLS connections', 'IDX coverage'],
-        'AI' => ['AI gateway', 'AI quality', 'AI cost'],
+        'Today' => ['Numbers'],
+        'Customers' => ['All brokerages', 'Sign-ups', 'Go-live', 'Health checks', 'Texting approvals'],
+        'Support' => ['Inbox', 'Help videos', 'Card orders'],
+        'Billing' => ['Packages', 'Pricing', 'Credits', 'Referral programme', 'Payments', 'Payout rails'],
+        'Websites and MLS' => ['RightAlly website', 'Content desk', 'Brokerage websites', 'MLS connections', 'MLS search', 'Photos and places', 'IDX coverage'],
+        'Movewise' => ['Overview', 'Agents', 'Money', 'Launch'],
+        'Products' => ['Referral network', 'Ally Studio'],
+        'AI' => ['Gateway', 'Quality', 'Cost'],
         'Connections' => ['Outside services', 'Texts and calls', 'Connect setup', 'App demand', 'Partner apps'],
-        'Products' => ['Referral network', 'Ally Studio', 'Movewise', 'Movewise agents', 'Movewise money', 'Movewise launch'],
-        'System' => ['System health', 'Cells', 'Feature switches', 'Security controls'],
+        'System' => ['System health', 'Cells'],
+        'Settings' => ['HQ team', 'Roles', 'Security controls', 'Feature switches'],
     ]);
 });
 
