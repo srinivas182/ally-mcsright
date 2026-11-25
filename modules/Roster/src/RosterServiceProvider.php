@@ -43,7 +43,7 @@ final class RosterServiceProvider extends ServiceProvider
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
         if ($this->app->runningInConsole()) {
-            $this->commands([Console\RosterReminders::class, Console\RosterVerify::class, Console\LoadLicenceData::class, Console\SyncLicenceData::class, Console\RecheckBrokerageLicences::class]);
+            $this->commands([Console\RosterReminders::class, Console\RosterVerify::class, Console\LoadLicenceData::class, Console\SyncLicenceData::class, Console\RecheckBrokerageLicences::class, Console\MatchMlsIds::class]);
         }
 
         $this->app->make(PermissionRegistry::class)->register('People', [

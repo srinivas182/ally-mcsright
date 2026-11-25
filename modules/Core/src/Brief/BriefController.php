@@ -14,6 +14,7 @@ use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Simple\SimpleMode;
 use Modules\Crm\Brief\MorningList;
 use Modules\Recruiting\SelfJoin;
+use Modules\Roster\MlsIds;
 
 /**
  * The daily brief on the home pages (specs/core/09): Dashboard for owners and staff, Today for agents and their
@@ -51,7 +52,10 @@ final class BriefController
             // SX6: the morning text with today's list (the CRM's; the agent's own opt-in).
             'morningText' => class_exists(MorningList::class) && $user->assistedAgent === null ? app(MorningList::class)->textOn($user) : null,
             // CM4: the agent's own link for bringing in other agents (they become the sponsor).
-            'joinLink' => class_exists(SelfJoin::class) && $user->isKind(UserKind::Agent) ? $request->getSchemeAndHttpHost().'/join/'.app(SelfJoin::class)->codeFor($user) : null]);
+            'joinLink' => class_exists(SelfJoin::class) && $user->isKind(UserKind::Agent) ? $request->getSchemeAndHttpHost().'/join/'.app(SelfJoin::class)->codeFor($user) : null,
+            // ML1: the agent's MLS ID, found in the MLS for them to confirm, or typed once.
+            'mlsId' => class_exists(MlsIds::class) && $user->assistedAgent === null && ($user->isKind(UserKind::Agent) || $user->isKind(UserKind::Owner))
+                ? app(MlsIds::class)->forAgent($user) : null]);
     }
 
     public function email(Request $request, DailyBriefs $briefs): RedirectResponse

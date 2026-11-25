@@ -41,6 +41,28 @@ final class Roster
     public function add(User $agent, string $kind, array $data, User $by): string
     {
         $this->guard($by);
+
+        return $this->store($agent, $kind, $data);
+    }
+
+    /**
+     * ML1: an agent's MLS ID, confirmed by the agent against the MLS's own listings (or assigned by the owner). It needs
+     * no roster permission because the match itself is the evidence; it is marked verified from the MLS feed.
+     */
+    public function addMlsIdFromFeed(User $agent, string $mlsName, string $agentMlsId, User $by): string
+    {
+        $ulid = $this->store($agent, 'mls', ['issuer' => $mlsName, 'number' => $agentMlsId]);
+        DB::connection(Connections::cell())->table('roster_credentials')->where('ulid', $ulid)->update(['verified_at' => now(), 'verified_by' => $by->id,
+            'verification_method' => 'mls_feed', 'verification_note' => mb_substr("Matched to listings in {$mlsName}", 0, 300), 'updated_at' => now()]);
+
+        return $ulid;
+    }
+
+    /**
+     * @param  array{state_code?: string|null, number?: string|null, issuer?: string|null, coverage_cents?: int|null, expires_on?: string|null}  $data
+     */
+    private function store(User $agent, string $kind, array $data): string
+    {
         $state = isset($data['state_code']) ? strtoupper(trim((string) $data['state_code'])) : null;
         $expires = isset($data['expires_on']) && $data['expires_on'] !== '' ? CarbonImmutable::parse((string) $data['expires_on']) : null;
         $message = match (true) {

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Route;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
 use Modules\Roster\Http\BrokerageLicencesController;
+use Modules\Roster\Http\MlsIdsController;
 use Modules\Roster\Http\RosterController;
 
 Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('roster')->name('roster.')->group(function (): void {
@@ -22,6 +23,12 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->prefix('roster
     Route::post('ce/courses/{course}/remove', [RosterController::class, 'ceRemove'])->name('ce.remove');
     Route::post('credentials/{credential}/check', [RosterController::class, 'check'])->middleware('throttle:30,1')->name('check');
     Route::get('export.csv', [RosterController::class, 'export'])->name('export');
+    // ML1: MLS IDs found in the MLS feed (before the catch-all {agent} routes).
+    Route::get('mls-ids', [MlsIdsController::class, 'index'])->name('mls-ids');
+    Route::post('mls-ids/scan', [MlsIdsController::class, 'scan'])->middleware('throttle:6,1')->name('mls-ids.scan');
+    Route::post('mls-ids/typed', [MlsIdsController::class, 'typed'])->middleware('throttle:10,1')->name('mls-ids.typed');
+    Route::post('mls-ids/{match}/decide', [MlsIdsController::class, 'decide'])->middleware('throttle:20,1')->name('mls-ids.decide');
+    Route::post('mls-ids/{match}/assign', [MlsIdsController::class, 'assign'])->middleware('throttle:30,1')->name('mls-ids.assign');
     Route::get('{agent}', [RosterController::class, 'show'])->name('show');
     Route::post('{agent}/ce', [RosterController::class, 'ceLog'])->middleware('throttle:30,1')->name('ce.log');
     Route::post('{agent}/flows', [RosterController::class, 'startFlow'])->name('flows.start');
