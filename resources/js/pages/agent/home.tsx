@@ -3,6 +3,7 @@ import { ChevronRight } from 'lucide-react';
 
 import { type BriefItem, DailyBrief } from '@/components/brief/daily-brief';
 import { SponsorLink } from '@/components/recruiting/sponsor-link';
+import { MlsIdCard, type MlsIdData } from '@/components/roster/mls-id-card';
 import { WelcomeHero } from '@/components/welcome-hero';
 
 type Props = {
@@ -12,6 +13,7 @@ type Props = {
     briefEmail: boolean;
     morningText?: boolean | null;
     joinLink?: string | null;
+    mlsId?: MlsIdData | null;
 };
 
 /** MN3: an agent's numbers, one click from the dashboard (they also have their own Reports menu). */
@@ -70,6 +72,7 @@ export default function AgentHome({
     briefEmail,
     morningText = null,
     joinLink = null,
+    mlsId = null,
 }: Props) {
     return (
         <>
@@ -83,6 +86,8 @@ export default function AgentHome({
                             : 'Here is what needs you today: new leads, follow-ups and deals.'
                     }
                 />
+                {/* ML1: a one-time step, so it sits above the day's list until it is done. */}
+                {mlsId && <MlsIdCard data={mlsId} />}
                 <DailyBrief
                     items={brief}
                     email={briefEmail}

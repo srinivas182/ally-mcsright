@@ -1,4 +1,4 @@
-import { Head, router, useForm, usePage } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
@@ -152,6 +152,15 @@ export default function MlsSettings({
                 <PageHeader
                     title="Your MLS boards"
                     description="Add the MLS boards you belong to. Your website shows demo listings straight away; each board's real listings appear the day its MLS approves, with the MLS's notices shown automatically."
+                    actions={
+                        current.length > 0 && (
+                            <Button variant="outline" asChild>
+                                <Link href="/roster/mls-ids">
+                                    Agents' MLS IDs
+                                </Link>
+                            </Button>
+                        )
+                    }
                 />
                 {current.length === 0 && (
                     <p className="rounded-xl border bg-card p-5 text-base">

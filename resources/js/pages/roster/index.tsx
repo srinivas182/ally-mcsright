@@ -80,6 +80,9 @@ export default function RosterIndex({
                             <a className="underline" href="/directory">
                                 Directory
                             </a>
+                            <a className="underline" href="/roster/mls-ids">
+                                Agents' MLS IDs
+                            </a>
                         </span>
                     }
                 />
