@@ -15,6 +15,7 @@ use Modules\Billing\Http\EnsureNotBlocked;
 use Modules\Core\Http\Middleware\ConfirmPasswordInline;
 use Modules\Core\Http\Middleware\EnsureHqConsole;
 use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
+use Modules\Core\Http\Middleware\HqPermissions;
 use Modules\Core\Http\Middleware\SecurityHeaders;
 use Modules\Core\Http\Middleware\ThrottleRequestsPerRoute;
 use Modules\Core\Http\Middleware\TrustLoadBalancer;
@@ -57,6 +58,7 @@ return Application::configure(basePath: dirname(__DIR__))
             EnsureValidSignedInUser::class,
             EnsureSecondFactor::class,
             ImpersonationGuard::class,
+            HqPermissions::class, // HQ2: each HQ page checks the staff member's HQ role
             EnsureNotBlocked::class,
             EnsureAreaOn::class, // FL1: switched-off areas and seats (specs/core/16)
             BrokerageMoving::class,

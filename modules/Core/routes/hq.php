@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use Modules\Core\Http\Controllers\Hq\MessagingController;
+use Modules\Core\Http\Controllers\Hq\RolesController;
 use Modules\Core\Http\Controllers\Hq\TenantController;
 use Modules\Core\Http\Middleware\EnsureHqConsole;
 use Modules\Core\Identity\Http\Controllers\ImpersonationController;
@@ -47,6 +48,12 @@ Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.tenants.manage
         Route::post('tenants/{tenant}/data/moves/{move}/cancel', [HqDataController::class, 'cancelMove'])->where('move', '[0-9A-HJKMNP-TV-Z]{26}')->name('tenants.data.moves.cancel');
         Route::post('tenants/{tenant}/data/moves/{move}/switch-back', [HqDataController::class, 'switchBack'])->where('move', '[0-9A-HJKMNP-TV-Z]{26}')->middleware('password.confirm')->name('tenants.data.moves.back');
         Route::post('tenants/{tenant}/data/keys/rotate', [HqDataController::class, 'rotateKey'])->middleware('password.confirm')->name('tenants.data.keys.rotate');
+        // HQ2: HQ roles (changing them needs Super admin, through HqPermissions, and the password again).
+        Route::get('roles', [RolesController::class, 'index'])->name('roles');
+        Route::post('roles', [RolesController::class, 'save'])->middleware('password.confirm')->name('roles.create');
+        Route::post('roles/{role}', [RolesController::class, 'save'])->where('role', '[0-9A-HJKMNP-TV-Z]{26}')->middleware('password.confirm')->name('roles.save');
+        Route::post('roles/{role}/delete', [RolesController::class, 'delete'])->where('role', '[0-9A-HJKMNP-TV-Z]{26}')->middleware('password.confirm')->name('roles.delete');
+        Route::post('roles/people/{person}', [RolesController::class, 'assign'])->where('person', '[0-9A-HJKMNP-TV-Z]{26}')->middleware(['password.confirm', 'throttle:30,1'])->name('roles.assign');
         Route::get('messaging', [MessagingController::class, 'index'])->name('messaging');
         Route::post('messaging', [MessagingController::class, 'save'])->middleware('password.confirm')->name('messaging.save');
         Route::post('messaging/tenants/{tenant}', [MessagingController::class, 'tenant'])->name('messaging.tenant');

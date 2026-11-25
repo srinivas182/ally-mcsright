@@ -6,6 +6,7 @@ namespace Modules\Core\Navigation;
 
 use App\Models\User;
 use Illuminate\Support\Facades\Gate;
+use Modules\Core\Access\HqAccess;
 use Modules\Core\Identity\AgentAssistants;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Simple\SimpleMode;
@@ -82,13 +83,13 @@ final class NavigationRegistry
         'AI' => ['/hq/ai', '/hq/ai/quality', '/hq/ai/cost'],
         'Connections' => ['/hq/services', '/hq/messaging', '/hq/connect', '/hq/apps', '/hq/partners'],
         'System' => ['/hq/watchtower', '/hq/cells'],
-        'Settings' => ['/users', '/hq/controls', '/hq/switches'],
+        'Settings' => ['/users', '/hq/roles', '/hq/controls', '/hq/switches'],
     ];
 
     /** HQ1: tab names in the HQ console. */
     private const HQ_TITLES = ['/hq/dashboard' => 'Numbers', '/hq/tenants' => 'All brokerages', '/hq/support' => 'Inbox', '/hq/billing' => 'Pricing', '/hq/packages' => 'Packages',
         '/hq/credits' => 'Credits', '/hq/sites' => 'Brokerage websites', '/hq/movewise' => 'Overview', '/hq/movewise/program' => 'Agents', '/hq/movewise/money' => 'Money',
-        '/hq/movewise/launch' => 'Launch', '/hq/ai' => 'Gateway', '/hq/ai/quality' => 'Quality', '/hq/ai/cost' => 'Cost', '/users' => 'HQ team'];
+        '/hq/movewise/launch' => 'Launch', '/hq/ai' => 'Gateway', '/hq/ai/quality' => 'Quality', '/hq/ai/cost' => 'Cost', '/users' => 'HQ team', '/hq/roles' => 'Roles'];
 
     /** MN3: an agent's own wording. */
     private const AGENT_TITLES = ['/deals' => 'My transactions', '/deals/listings' => 'My listings'];
@@ -119,7 +120,10 @@ final class NavigationRegistry
         $visible = array_filter($this->items, fn (NavItem $item): bool => ($item->kinds === [] || in_array($user->kind, $item->kinds, true))
             && ($item->ability === null || Gate::forUser($user)->allows($item->ability))
             && $switches->allowsPath($user, $item->href) // FL1: switched-off areas and seats
-            && $assistants->allowsPath($user, $item->href)); // AG1: an assistant's preset
+            && $assistants->allowsPath($user, $item->href) // AG1: an assistant's preset
+            // HQ2: HQ staff see HQ's pages only (never a brokerage's), as far as their HQ role allows.
+            && ($user->kind !== UserKind::HqStaff || ((str_starts_with($item->href, '/hq/') || in_array($item->href, self::hqAddresses(), true))
+                && HqAccess::canSee($user, $item->href))));
 
         $hq = $user->kind === UserKind::HqStaff;
         $agent = in_array($user->kind, [UserKind::Agent, UserKind::Assistant], true);

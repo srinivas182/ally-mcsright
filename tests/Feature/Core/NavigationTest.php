@@ -50,7 +50,7 @@ it('shows HQ staff the HQ console and people', function (): void {
         'AI' => ['Gateway', 'Quality', 'Cost'],
         'Connections' => ['Outside services', 'Texts and calls', 'Connect setup', 'App demand', 'Partner apps'],
         'System' => ['System health', 'Cells'],
-        'Settings' => ['HQ team', 'Security controls', 'Feature switches'],
+        'Settings' => ['HQ team', 'Roles', 'Security controls', 'Feature switches'],
     ]);
 });
 

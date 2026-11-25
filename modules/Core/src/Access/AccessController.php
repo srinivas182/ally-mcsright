@@ -37,7 +37,8 @@ final class AccessController
                 'template' => $r->template_key, 'members' => (int) ($holders[$r->id] ?? 0), 'permissions' => (object) $this->roles->permissionsOf($r),
                 'preview' => $this->roles->describe($this->roles->permissionsOf($r), $r->is_locked),
             ])->values(),
-            'catalogue' => collect($this->registry->all())->groupBy('area')->map(fn ($items, $area): array => ['area' => $area, 'permissions' => $items->values()])->values(),
+            // HQ2: HQ's own permissions are not for brokerages' roles.
+            'catalogue' => collect($this->registry->all())->reject(fn (array $p): bool => $p['area'] === 'hq')->groupBy('area')->map(fn ($items, $area): array => ['area' => $area, 'permissions' => $items->values()])->values(),
             'missingTemplates' => $this->roles->missingTemplates(),
             'accessReviewDue' => app(AccessReviews::class)->due(),
             'conflicts' => array_map(fn (array $c): array => ['a' => $c[0], 'b' => $c[1], 'why' => $c[2]], $this->registry->conflicts()),

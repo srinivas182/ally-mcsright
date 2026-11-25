@@ -26,7 +26,7 @@ it('shows the HQ main menus in order, with their tabs', function (): void {
         ->where('navigation.0.items.0.title', 'Numbers')
         ->where('navigation.1.items', fn ($items) => collect($items)->pluck('title')->all() === ['All brokerages', 'Sign-ups', 'Go-live', 'Health checks', 'Texting approvals'])
         ->where('navigation.5.items', fn ($items) => collect($items)->pluck('title')->all() === ['Overview', 'Agents', 'Money', 'Launch'])
-        ->where('navigation.10.items', fn ($items) => collect($items)->pluck('href')->all() === ['/users', '/hq/controls', '/hq/switches']));
+        ->where('navigation.10.items', fn ($items) => collect($items)->pluck('href')->all() === ['/users', '/hq/roles', '/hq/controls', '/hq/switches']));
 });
 
 it('puts every HQ page in a menu (detail pages, new forms and downloads open from them)', function (): void {
