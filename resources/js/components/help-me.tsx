@@ -61,7 +61,8 @@ export function HelpMe({ inHeader = false }: { inHeader?: boolean }) {
 
     const big = 'h-16 w-full justify-start gap-3 text-lg';
 
-    if (inTopBar !== inHeader) {
+    // HQ4: "Help" asks RightAlly HQ for help, so it is not shown inside HQ; HQ uses each menu's guide.
+    if (inTopBar !== inHeader || page.props.tenant?.isHq === true) {
         return null;
     }
 

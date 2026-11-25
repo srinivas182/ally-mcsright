@@ -35,12 +35,12 @@ export default function CreateTenant({ platformDomain }: Props) {
 
     return (
         <>
-            <Head title="New tenant" />
+            <Head title="New brokerage" />
             <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 p-4 md:p-6">
                 <header>
-                    <h1 className="text-2xl font-semibold">New tenant</h1>
+                    <h1 className="text-2xl font-semibold">New brokerage</h1>
                     <p className="text-sm text-muted-foreground">
-                        The tenant goes live immediately on its RightAlly
+                        The brokerage goes live immediately on its RightAlly
                         address.
                     </p>
                 </header>
@@ -179,7 +179,7 @@ export default function CreateTenant({ platformDomain }: Props) {
                     <div className="flex justify-end">
                         <Button type="submit" disabled={form.processing}>
                             {form.processing && <Spinner />}
-                            Create tenant
+                            Create brokerage
                         </Button>
                     </div>
                 </form>
@@ -191,6 +191,6 @@ export default function CreateTenant({ platformDomain }: Props) {
 CreateTenant.layout = {
     breadcrumbs: [
         { title: 'Brokerages', href: '/hq/tenants' },
-        { title: 'New tenant', href: '/hq/tenants/create' },
+        { title: 'New brokerage', href: '/hq/tenants/create' },
     ],
 };

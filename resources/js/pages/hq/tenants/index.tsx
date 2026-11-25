@@ -84,7 +84,7 @@ export default function TenantsIndex({ tenants, filters }: Props) {
                     }}
                 >
                     <Input
-                        aria-label="Search tenants"
+                        aria-label="Search brokerages"
                         placeholder="Search name or address"
                         className="max-w-xs"
                         value={search}

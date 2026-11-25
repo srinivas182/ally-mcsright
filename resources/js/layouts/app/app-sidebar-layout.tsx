@@ -26,7 +26,9 @@ export default function AppSidebarLayout({
     children,
     breadcrumbs = [],
 }: AppLayoutProps) {
-    const { simple: simpleProps, reading } = usePage().props;
+    const { simple: simpleProps, reading, tenant } = usePage().props;
+    // HQ4: Your AI Assistant and "Help" are for brokerages; HQ uses the guides on each menu instead.
+    const hq = tenant?.isHq === true;
     const simple = simpleProps?.mode === 'simple';
     useEffect(() => {
         document.documentElement.classList.toggle('simple', simple);
@@ -57,8 +59,8 @@ export default function AppSidebarLayout({
             <PasswordCheckHost />
             <CreditConsentHost />
             <TalkButton />
-            <HelpMe />
-            <YourAiAssistant />
+            {!hq && <HelpMe />}
+            {!hq && <YourAiAssistant />}
         </AppShell>
     );
 }

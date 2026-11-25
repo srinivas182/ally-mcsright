@@ -5,6 +5,11 @@
  * address `guide:<menu>:<lesson>` (for example `guide:crm:new-leads`, `guide:website-idx:builder`) and it plays here.
  */
 
+import { HQ_GUIDES } from '@/components/menu/hq-guides';
+
+/** HQ4: HQ menu guides are keyed with this prefix (guide videos: guide:hq-<menu>:<lesson>). */
+export const HQ_PREFIX = 'HQ ';
+
 export type Lesson = {
     id: string;
     title: string;
@@ -1100,6 +1105,10 @@ const AGENT: Record<string, Guide> = {
 
 /** The guide behind a main menu, in the words for this person (agents and their assistants get their own). */
 export function guideFor(menuKey: string, kind: string): Guide | null {
+    // HQ4: the HQ console's menus have their own guides, keyed "HQ <menu>".
+    if (menuKey.startsWith(HQ_PREFIX)) {
+        return HQ_GUIDES[menuKey.slice(HQ_PREFIX.length)] ?? null;
+    }
     const agent = kind === 'agent' || kind === 'assistant';
 
     return (

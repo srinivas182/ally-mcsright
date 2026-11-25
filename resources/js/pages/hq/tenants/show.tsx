@@ -62,15 +62,15 @@ type Action = 'suspend' | 'close' | null;
 
 const actionCopy = {
     suspend: {
-        title: 'Suspend tenant',
+        title: 'Suspend brokerage',
         description:
-            'Users will see a suspension notice. Data is not changed and the tenant can be reactivated at any time.',
+            'Users will see a suspension notice. Data is not changed and the brokerage can be reactivated at any time.',
         button: 'Suspend',
     },
     close: {
-        title: 'Close tenant',
+        title: 'Close brokerage',
         description:
-            'Starts a 30-day closing period that can be reversed. After that the tenant is closed and its data is kept for 90 more days. A closed tenant can then be deleted permanently.',
+            'Starts a 30-day closing period that can be reversed. After that the brokerage is closed and its data is kept for 90 more days. A closed brokerage can then be deleted permanently.',
         button: 'Start closing',
     },
 };
@@ -214,7 +214,7 @@ export default function ShowTenant({
                         <CardHeader>
                             <CardTitle>Domains</CardTitle>
                             <CardDescription>
-                                Where this tenant is reachable.
+                                Where this brokerage is reachable.
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="grid gap-3">
