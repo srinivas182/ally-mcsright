@@ -23,7 +23,7 @@ it('shows the HQ main menus in order, with their tabs', function (): void {
     $this->actingAs($this->staff)->get('http://app.rightally.io/hq/dashboard')->assertInertia(fn (Assert $p) => $p
         ->where('navigation', fn ($nav) => collect($nav)->pluck('key')->all() === ['Today', 'Customers', 'Support', 'Billing', 'Websites and MLS', 'Movewise', 'Products', 'AI',
             'Connections', 'System', 'Settings'])
-        ->where('navigation.0.items.0.title', 'Numbers')
+        ->where('navigation.0.items', fn ($items) => collect($items)->pluck('title')->all() === ['To do', 'Numbers'])
         ->where('navigation.1.items', fn ($items) => collect($items)->pluck('title')->all() === ['All brokerages', 'Sign-ups', 'Go-live', 'Health checks', 'Texting approvals'])
         ->where('navigation.5.items', fn ($items) => collect($items)->pluck('title')->all() === ['Overview', 'Agents', 'Money', 'Launch'])
         ->where('navigation.10.items', fn ($items) => collect($items)->pluck('href')->all() === ['/users', '/hq/roles', '/hq/controls', '/hq/switches']));

@@ -26,7 +26,7 @@ final class BriefController
     {
         $user = self::user($request);
         if ($user->isKind(UserKind::HqStaff) && $request->user()?->can('hq.tenants.manage')) {
-            return redirect('/hq/dashboard'); // HQ2: HQ staff land on the platform dashboard
+            return redirect('/hq/today'); // HQ3: HQ staff land on what is waiting
         }
         if (SimpleMode::on($user)) {
             return redirect('/simple');

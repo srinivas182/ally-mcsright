@@ -40,6 +40,7 @@ Route::middleware(['web', EnsureTenantHost::class, 'auth'])->prefix('settings')-
 
 Route::middleware(['web', EnsureHqConsole::class, 'auth', 'can:hq.tenants.manage'])->prefix('hq')->name('hq.')->group(function (): void {
     Route::get('dashboard', HqDashboardController::class)->name('dashboard'); // HQ2
+    Route::get('today', [HqDashboardController::class, 'today'])->name('today'); // HQ3: To do
     Route::get('controls', [ControlsController::class, 'index'])->name('controls'); // TR1: SOC 2 evidence
     Route::get('controls/download', [ControlsController::class, 'download'])->name('controls.download');
     Route::get('switches', [HqPlatformController::class, 'switches'])->name('switches');

@@ -30,6 +30,14 @@ function Tab({ item, active }: { item: ServerNavItem; active: boolean }) {
             }`}
         >
             {item.title}
+            {(item.badge ?? 0) > 0 && (
+                <span
+                    className="ml-1.5 rounded-full bg-amber-400 px-1.5 py-0.5 text-xs font-semibold text-amber-950"
+                    aria-label={`${item.badge} waiting`}
+                >
+                    {item.badge}
+                </span>
+            )}
         </Link>
     );
 }

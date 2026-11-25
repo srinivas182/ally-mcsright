@@ -20,7 +20,7 @@ final class HqAccess
 {
     /** @var array<string, array{0: string, 1: list<string>}> area => [label, page addresses] */
     public const AREAS = [
-        'today' => ['Today', ['/hq/dashboard']],
+        'today' => ['Today', ['/hq/today', '/hq/dashboard']],
         'customers' => ['Customers', ['/hq/tenants', '/hq/signups', '/hq/go-live', '/hq/health-checks', '/hq/texting']],
         'support' => ['Support', ['/hq/support', '/hq/cards']],
         'billing' => ['Billing: packages, pricing, credits, referral programme', ['/hq/packages', '/hq/billing', '/hq/credits', '/hq/affiliates']],

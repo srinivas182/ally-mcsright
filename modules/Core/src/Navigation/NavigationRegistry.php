@@ -7,6 +7,8 @@ namespace Modules\Core\Navigation;
 use App\Models\User;
 use Illuminate\Support\Facades\Gate;
 use Modules\Core\Access\HqAccess;
+use Modules\Core\Hq\HqDashboard;
+use Modules\Core\Hq\HqDashboardController;
 use Modules\Core\Identity\AgentAssistants;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Simple\SimpleMode;
@@ -73,7 +75,7 @@ final class NavigationRegistry
      * @var array<string, list<string>> menu => addresses, in tab order
      */
     private const HQ_MENUS = [
-        'Today' => ['/hq/dashboard'],
+        'Today' => ['/hq/today', '/hq/dashboard'],
         'Customers' => ['/hq/tenants', '/hq/signups', '/hq/go-live', '/hq/health-checks', '/hq/texting'],
         'Support' => ['/hq/support', '/hq/support/videos', '/hq/cards'],
         'Billing' => ['/hq/packages', '/hq/billing', '/hq/credits', '/hq/affiliates', '/hq/payments', '/hq/payout-rails'],
@@ -87,7 +89,7 @@ final class NavigationRegistry
     ];
 
     /** HQ1: tab names in the HQ console. */
-    private const HQ_TITLES = ['/hq/dashboard' => 'Numbers', '/hq/tenants' => 'All brokerages', '/hq/support' => 'Inbox', '/hq/billing' => 'Pricing', '/hq/packages' => 'Packages',
+    private const HQ_TITLES = ['/hq/today' => 'To do', '/hq/dashboard' => 'Numbers', '/hq/tenants' => 'All brokerages', '/hq/support' => 'Inbox', '/hq/billing' => 'Pricing', '/hq/packages' => 'Packages',
         '/hq/credits' => 'Credits', '/hq/sites' => 'Brokerage websites', '/hq/movewise' => 'Overview', '/hq/movewise/program' => 'Agents', '/hq/movewise/money' => 'Money',
         '/hq/movewise/launch' => 'Launch', '/hq/ai' => 'Gateway', '/hq/ai/quality' => 'Quality', '/hq/ai/cost' => 'Cost', '/users' => 'HQ team', '/hq/roles' => 'Roles'];
 
@@ -107,7 +109,7 @@ final class NavigationRegistry
     }
 
     /**
-     * @return list<array{key: string, label: string, items: list<array{title: string, href: string, icon: string, mobile: bool, section?: string}>}>
+     * @return list<array{key: string, label: string, items: list<array{title: string, href: string, icon: string, mobile: bool, section?: string, badge?: int}>}>
      */
     public function for(?User $user): array
     {
@@ -134,7 +136,9 @@ final class NavigationRegistry
         foreach ($visible as $item) {
             [$menu, $section] = $place($item);
             $title = $hq ? (self::HQ_TITLES[$item->href] ?? $item->title) : ($agent ? (self::AGENT_TITLES[$item->href] ?? self::TENANT_TITLES[$item->href] ?? $item->title) : (self::TENANT_TITLES[$item->href] ?? $item->title));
-            $groups[$menu][] = ['title' => $title, 'href' => $item->href, 'icon' => $item->icon, 'mobile' => $item->mobile] + ($section !== '' ? ['section' => $section] : []);
+            $groups[$menu][] = ['title' => $title, 'href' => $item->href, 'icon' => $item->icon, 'mobile' => $item->mobile] + ($section !== '' ? ['section' => $section] : [])
+                // HQ3: how many things are waiting, on Today › To do.
+                + ($hq && $item->href === '/hq/today' ? ['badge' => self::todoCount($user)] : []);
         }
 
         $out = [];
@@ -199,6 +203,17 @@ final class NavigationRegistry
 
         // Not placed yet: Settings › More, so nothing ever disappears from the menu.
         return ['Settings', 'More', $index, 10_000 + $item->order];
+    }
+
+    private static function todoCount(User $user): int
+    {
+        try {
+            return (int) array_sum(array_column(HqDashboardController::mine($user, app(HqDashboard::class)), 'count'));
+        } catch (\Throwable $e) {
+            report($e);
+
+            return 0;
+        }
     }
 
     /**

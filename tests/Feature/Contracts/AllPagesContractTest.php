@@ -140,6 +140,7 @@ it('sends every HQ console page the data its component needs', function (string 
     }
     assertPageContract($this->actingAs($staff)->get('http://app.rightally.io'.$url), $component);
 })->with([
+    'to do' => ['/hq/today', 'hq/today'],
     'tenants' => ['/hq/tenants', 'hq/tenants/index'],
     'new tenant' => ['/hq/tenants/create', 'hq/tenants/create'],
     'tenant' => ['/hq/tenants/{tenant}', 'hq/tenants/show'],
