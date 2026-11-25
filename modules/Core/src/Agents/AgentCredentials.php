@@ -19,4 +19,11 @@ interface AgentCredentials
      * @return list<string> current MLS agent ids
      */
     public function mlsIds(int $userId): array;
+
+    /**
+     * ML2: every current MLS agent id in this brokerage and whose it is.
+     *
+     * @return array<string, int> MLS agent id => user id
+     */
+    public function mlsIdOwners(): array;
 }

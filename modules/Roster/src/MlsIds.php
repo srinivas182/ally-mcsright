@@ -48,7 +48,11 @@ final class MlsIds
                 ->selectRaw('list_agent_mls_id as id, max(list_agent_name) as name, count(*) as n')->groupBy('list_agent_mls_id')->get();
             foreach ($rows as $row) {
                 $id = trim((string) $row->id);
-                if ($id === '' || $this->known($auth->mls_source_id, $id)) {
+                if ($id === '') {
+                    continue;
+                }
+                $this->recheckTyped($auth->mls_source_id, $id, (string) $row->name, $people);
+                if ($this->known($auth->mls_source_id, $id)) {
                     continue;
                 }
                 $who = self::match((string) $row->name, $people);
@@ -63,7 +67,7 @@ final class MlsIds
     /**
      * What the agent sees on their dashboard: a suggestion to confirm, or the boards to type an ID for.
      *
-     * @return array{suggestions: list<array{ulid: string, mls: string, id: string, listings: int, sample: list<string>}>, boards: list<array{id: int, name: string}>, has_id: bool}|null
+     * @return array{suggestions: list<array{ulid: string, mls: string, id: string, listings: int, sample: list<string>}>, boards: list<array{id: int, name: string}>, has_id: bool, current: list<array{mls: string, id: string, checked: bool}>}|null
      */
     public function forAgent(User $agent): ?array
     {
@@ -76,7 +80,11 @@ final class MlsIds
             ->map(fn (object $m): array => ['ulid' => (string) $m->ulid, 'mls' => (string) ($names[(int) $m->mls_source_id] ?? 'your MLS'), 'id' => (string) $m->agent_mls_id,
                 'listings' => (int) $m->listings, 'sample' => array_values(array_map('strval', (array) json_decode((string) ($m->sample ?? '[]'), true)))])->values()->all());
 
-        return ['suggestions' => $suggestions, 'boards' => $boards, 'has_id' => app(RosterAgentCredentials::class)->mlsIds($agent->id) !== []];
+        $current = array_values(DB::connection(Connections::cell())->table('roster_credentials')->where('user_id', $agent->id)->where('kind', 'mls')->where('status', 'current')
+            ->whereNotNull('number')->orderBy('id')->get(['issuer', 'number', 'verified_at'])
+            ->map(fn (object $c): array => ['mls' => (string) $c->issuer, 'id' => (string) $c->number, 'checked' => $c->verified_at !== null])->values()->all());
+
+        return ['suggestions' => $suggestions, 'boards' => $boards, 'has_id' => $current !== [], 'current' => $current];
     }
 
     /** The agent says yes (or no) to a suggested ID. */
@@ -126,6 +134,8 @@ final class MlsIds
         $theirs = $name === '' || self::sameName($name, $agent);
         $status = $theirs ? 'suggested' : 'review';
         $db->table('roster_mls_matches')->where('mls_source_id', $sourceId)->where('agent_mls_id', $id)->where('status', '!=', 'confirmed')->delete();
+        // Anything still waiting for this agent on this board is replaced by what they just typed.
+        $db->table('roster_mls_matches')->where('user_id', $agent->id)->where('mls_source_id', $sourceId)->where('status', 'suggested')->delete();
         $this->insert($sourceId, $id, $name !== '' ? $name : $agent->name, $count, $theirs ? $agent->id : null, $status, 'typed', $theirs ? null : $agent->id);
 
         return $theirs ? 'confirm' : 'review';
@@ -194,9 +204,16 @@ final class MlsIds
     private function confirm(int $matchId, int $sourceId, string $agentMlsId, User $agent, User $by): void
     {
         $name = (string) (MlsSource::query()->whereKey($sourceId)->value('name') ?? 'MLS');
-        DB::connection(Connections::cell())->transaction(function () use ($matchId, $agentMlsId, $agent, $by, $name): void {
-            $this->roster->addMlsIdFromFeed($agent, $name, $agentMlsId, $by);
-            DB::connection(Connections::cell())->table('roster_mls_matches')->where('id', $matchId)->update(['status' => 'confirmed', 'user_id' => $agent->id,
+        $db = DB::connection(Connections::cell());
+        $row = $db->table('roster_mls_matches')->where('id', $matchId)->first(['listings', 'matched_by']);
+        // Typed by the agent with no listings to compare yet: saved, but not marked as checked.
+        $matched = $by->id !== $agent->id || (int) ($row->listings ?? 0) > 0 || ($row->matched_by ?? '') === 'feed';
+        $db->transaction(function () use ($db, $matchId, $sourceId, $agentMlsId, $agent, $by, $name, $matched): void {
+            $this->roster->addMlsIdFromFeed($agent, $name, $agentMlsId, $by, $matched);
+            // A new ID on the same board replaces the old one; the old one is free again.
+            $db->table('roster_mls_matches')->where('user_id', $agent->id)->where('mls_source_id', $sourceId)->where('status', 'confirmed')->where('id', '!=', $matchId)
+                ->update(['status' => 'replaced', 'updated_at' => now()]);
+            $db->table('roster_mls_matches')->where('id', $matchId)->update(['status' => 'confirmed', 'user_id' => $agent->id,
                 'decided_by' => $by->id, 'decided_at' => now(), 'updated_at' => now()]);
         });
         app(AuditLogger::class)->record('roster.mls_id.confirmed', $agent, metadata: ['mls_id' => $agentMlsId, 'mls' => $name, 'by_owner' => $by->id !== $agent->id],
@@ -213,6 +230,34 @@ final class MlsIds
         DB::connection(Connections::cell())->table('roster_mls_matches')->insert(['ulid' => (string) Str::ulid(), 'tenant_id' => $this->tenants->id(), 'user_id' => $userId,
             'mls_source_id' => $sourceId, 'agent_mls_id' => $id, 'agent_name' => mb_substr($name, 0, 120), 'listings' => $listings, 'sample' => json_encode($sample),
             'status' => $status, 'matched_by' => $by, 'decided_by' => $typedBy, 'decided_at' => $typedBy !== null ? now() : null, 'created_at' => now(), 'updated_at' => now()]);
+    }
+
+    /**
+     * An ID an agent typed before it had any listings, now seen on listings carrying someone else's name: it comes off
+     * the agent's record and goes to the owner to check, so no one's listings come in under the wrong person.
+     *
+     * @param  list<array{id: int, ulid: string, name: string, first: string, last: string}>  $people
+     */
+    private function recheckTyped(int $sourceId, string $id, string $mlsName, array $people): void
+    {
+        $db = DB::connection(Connections::cell());
+        $match = $db->table('roster_mls_matches')->where('mls_source_id', $sourceId)->where('agent_mls_id', $id)->where('status', 'confirmed')->first();
+        if ($match === null || $mlsName === '') {
+            return;
+        }
+        $holder = collect($people)->firstWhere('id', (int) $match->user_id);
+        $unchecked = $db->table('roster_credentials')->where('user_id', $match->user_id)->where('kind', 'mls')->where('status', 'current')->where('number', $id)
+            ->whereNull('verified_at')->exists();
+        if (! $unchecked || ($holder !== null && self::match($mlsName, [$holder]) !== null)) {
+            return;
+        }
+        $db->transaction(function () use ($db, $match, $id, $mlsName): void {
+            $db->table('roster_credentials')->where('user_id', $match->user_id)->where('kind', 'mls')->where('status', 'current')->where('number', $id)
+                ->update(['status' => 'replaced', 'updated_at' => now()]);
+            $db->table('roster_mls_matches')->where('id', $match->id)->update(['status' => 'review', 'decided_by' => $match->user_id, 'user_id' => null,
+                'matched_by' => 'typed', 'agent_name' => mb_substr($mlsName, 0, 120), 'updated_at' => now()]);
+        });
+        app(AuditLogger::class)->record('roster.mls_id.name_mismatch', metadata: ['mls_id' => $id, 'mls_name' => $mlsName, 'typed_by' => $match->user_id], severity: 'warning');
     }
 
     /** Already suggested, confirmed, declined or waiting for the owner: do not suggest it again. */

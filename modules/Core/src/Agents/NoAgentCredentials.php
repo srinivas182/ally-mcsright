@@ -16,4 +16,9 @@ final class NoAgentCredentials implements AgentCredentials
     {
         return [];
     }
+
+    public function mlsIdOwners(): array
+    {
+        return [];
+    }
 }

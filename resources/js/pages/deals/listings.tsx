@@ -2,6 +2,7 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
 
+import { FromTheMls, type MlsBoardData } from '@/components/deals/from-the-mls';
 import { NewDealForm } from '@/components/deals/new-deal-form';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -46,6 +47,8 @@ type Props = {
     mine: boolean;
     reviewer: boolean;
     canCreateFor: { ulid: string; name: string }[];
+    mls?: MlsBoardData;
+    isOwner?: boolean;
 };
 
 /** LM1: the listing inventory board, from getting ready to sold, with listing agreements about to end. */
@@ -55,6 +58,8 @@ export default function ListingsBoard({
     mine,
     reviewer,
     canCreateFor,
+    mls,
+    isOwner = false,
 }: Props) {
     const [adding, setAdding] = useState(false);
 
@@ -100,6 +105,13 @@ export default function ListingsBoard({
                             type="listing"
                         />
                     </div>
+                )}
+                {mls && (
+                    <FromTheMls
+                        data={mls}
+                        isOwner={isOwner}
+                        reviewer={reviewer}
+                    />
                 )}
                 {board.expiring > 0 && (
                     <p

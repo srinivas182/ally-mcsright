@@ -49,11 +49,14 @@ final class Roster
      * ML1: an agent's MLS ID, confirmed by the agent against the MLS's own listings (or assigned by the owner). It needs
      * no roster permission because the match itself is the evidence; it is marked verified from the MLS feed.
      */
-    public function addMlsIdFromFeed(User $agent, string $mlsName, string $agentMlsId, User $by): string
+    public function addMlsIdFromFeed(User $agent, string $mlsName, string $agentMlsId, User $by, bool $matched = true): string
     {
         $ulid = $this->store($agent, 'mls', ['issuer' => $mlsName, 'number' => $agentMlsId]);
-        DB::connection(Connections::cell())->table('roster_credentials')->where('ulid', $ulid)->update(['verified_at' => now(), 'verified_by' => $by->id,
-            'verification_method' => 'mls_feed', 'verification_note' => mb_substr("Matched to listings in {$mlsName}", 0, 300), 'updated_at' => now()]);
+        // Only an ID seen on listings with the agent's name (or assigned by the owner) counts as checked.
+        if ($matched) {
+            DB::connection(Connections::cell())->table('roster_credentials')->where('ulid', $ulid)->update(['verified_at' => now(), 'verified_by' => $by->id,
+                'verification_method' => 'mls_feed', 'verification_note' => mb_substr("Matched to listings in {$mlsName}", 0, 300), 'updated_at' => now()]);
+        }
 
         return $ulid;
     }
