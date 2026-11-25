@@ -32,6 +32,7 @@ export function NewDealForm({
         mls_number: '',
         price: '',
         agent: '',
+        buyer_agent: '',
         contact,
     });
 
@@ -117,6 +118,31 @@ export function NewDealForm({
                         onChange={(e) => form.setData('agent', e.target.value)}
                     >
                         <option value="">Me</option>
+                        {canCreateFor.map((a) => (
+                            <option key={a.ulid} value={a.ulid}>
+                                {a.name}
+                            </option>
+                        ))}
+                    </select>
+                </label>
+            )}
+            {form.data.type === 'dual' && (
+                <p className="self-center text-muted-foreground md:col-span-2">
+                    Dual: your brokerage is on both sides. A linked buyer side
+                    is made with it, with its own commission and agent.
+                </p>
+            )}
+            {form.data.type === 'dual' && canCreateFor.length > 0 && (
+                <label className="grid gap-1">
+                    Buyer's agent
+                    <select
+                        className="h-10 rounded-md border bg-background px-2"
+                        value={form.data.buyer_agent}
+                        onChange={(e) =>
+                            form.setData('buyer_agent', e.target.value)
+                        }
+                    >
+                        <option value="">Same agent</option>
                         {canCreateFor.map((a) => (
                             <option key={a.ulid} value={a.ulid}>
                                 {a.name}

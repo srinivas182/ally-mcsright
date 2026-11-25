@@ -36,6 +36,7 @@ use Modules\Transactions\DealIq;
 use Modules\Transactions\DealIq\EmailIntake;
 use Modules\Transactions\Deals;
 use Modules\Transactions\Documents;
+use Modules\Transactions\DualAgency;
 use Modules\Transactions\EarnestMoney;
 use Modules\Transactions\Forecast;
 use Modules\Transactions\KeyDates;
@@ -137,6 +138,8 @@ final class DealController
                 'locked' => $deal->locked_at !== null, 'cancel_reason' => $deal->cancel_reason, 'agent' => User::query()->find($deal->agent_user_id)?->name,
                 'imported_from' => $deal->imported_from, 'money_status' => $deal->money_status, 'money_note' => $deal->money_note, 'pay_overrides' => $deal->pay_overrides,
                 'agent_paid_outside' => $deal->agent_paid_outside],
+            // DA1: the other side of a dual deal, and what the state expects when one agent is on both sides.
+            'dual' => self::dual($deal, $deals),
             'parties' => $db->table('tx_parties')->where('deal_id', $deal->id)->get(['role', 'name', 'company', 'email', 'phone']),
             'items' => Item::query()->where('deal_id', $deal->id)->orderBy('sort')->get()->map(fn (Item $i): array => [
                 'ulid' => $i->ulid, 'label' => $i->label, 'required' => $i->required, 'stage' => $i->stage, 'status' => $i->status, 'fix_reason' => $i->fix_reason,
@@ -220,6 +223,7 @@ final class DealController
             'type' => ['required', Rule::in(Deals::TYPES)], 'street' => ['required', 'string', 'max:160'], 'city' => ['nullable', 'string', 'max:80'],
             'state_code' => ['required', 'string', 'size:2'], 'postal_code' => ['nullable', 'string', 'max:10'], 'mls_number' => ['nullable', 'string', 'max:30'],
             'price' => ['nullable', 'numeric', 'min:0'], 'agent' => ['nullable', 'string', 'size:26'], 'contact' => ['nullable', 'string', 'size:26'],
+            'buyer_agent' => ['nullable', 'string', 'size:26'], // DA1: who has the buyer side of a dual deal (brokerage staff choose)
         ]);
         $agent = isset($data['agent']) && self::reviewer($user) ? User::query()->where('ulid', $data['agent'])->firstOrFail()
             : User::query()->findOrFail(self::actingFor($user));
@@ -231,7 +235,8 @@ final class DealController
                 throw ValidationException::withMessages(['contact' => 'Practice people cannot be put on a real deal. Choose a real client.']);
             }
         }
-        $deal = $deals->create($data + ['price_cents' => (int) round((float) ($data['price'] ?? 0) * 100)], $agent, $user, $contact);
+        $buyerAgent = isset($data['buyer_agent']) && self::reviewer($user) ? User::query()->where('ulid', $data['buyer_agent'])->firstOrFail() : null;
+        $deal = $deals->create($data + ['price_cents' => (int) round((float) ($data['price'] ?? 0) * 100), 'buyer_agent_user_id' => $buyerAgent?->id], $agent, $user, $contact);
 
         return redirect('/deals/'.$deal->ulid);
     }
@@ -242,11 +247,13 @@ final class DealController
         $data = $request->validate([
             'status' => ['required', 'in:under_contract,closed,fell_through'], 'price' => ['nullable', 'numeric', 'min:0'], 'gci' => ['nullable', 'numeric', 'min:0'],
             'contract_date' => ['nullable', 'date'], 'closing_date' => ['nullable', 'date'], 'reason' => ['nullable', 'string', 'max:300'],
+            'buyer_gci' => ['nullable', 'numeric', 'min:0'], // DA1: the buyer side's commission on a dual deal
         ]);
         abort_if($data['status'] === 'closed' && ! self::reviewer($user), 403, 'The brokerage closes deals after review.');
         $deals->moveTo($deal, $data['status'], $user, [
             'price_cents' => isset($data['price']) ? (int) round((float) $data['price'] * 100) : null, 'gci_cents' => isset($data['gci']) ? (int) round((float) $data['gci'] * 100) : null,
             'contract_date' => $data['contract_date'] ?? null, 'closing_date' => $data['closing_date'] ?? null, 'reason' => $data['reason'] ?? null,
+            'buyer_gci_cents' => isset($data['buyer_gci']) ? (int) round((float) $data['buyer_gci'] * 100) : null,
         ]);
 
         return back();
@@ -407,6 +414,23 @@ final class DealController
     private static function reviewer(User $user): bool
     {
         return DealAccess::reviewer($user);
+    }
+
+    /**
+     * @return array{side: string, other: array{ulid: string, agent: string|null, status: string, gci_cents: int|null}|null, warning: string|null, consent: bool}|null
+     */
+    private static function dual(Deal $deal, Deals $deals): ?array
+    {
+        if ($deal->type !== 'dual' && ! DualAgency::isBuyerSide($deal)) {
+            return null;
+        }
+        $other = DualAgency::other($deal);
+        $dual = $deal->type === 'dual' ? $deal : $other;
+
+        return ['side' => $deal->type === 'dual' ? 'seller' : 'buyer',
+            'other' => $other !== null ? ['ulid' => $other->ulid, 'agent' => User::query()->find($other->agent_user_id)?->name, 'status' => $other->status,
+                'gci_cents' => $other->gci_cents] : null,
+            'warning' => $dual !== null ? DualAgency::warning($dual, $deals) : null, 'consent' => $dual !== null && DualAgency::consentIn($dual)];
     }
 
     private static function user(Request $request): User

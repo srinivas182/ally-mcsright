@@ -71,6 +71,7 @@ final class TransactionsServiceProvider extends ServiceProvider
         Event::listen(Events\DealStatusChanged::class, [Workflows\DealWorkflows::class, 'statusChanged']);
         Event::listen(Events\DealStatusChanged::class, [Mls\MlsGuard::class, 'statusChanged']); // the MLS update clock (specs/ai/02, §20)
         $this->app->tag([Mls\MlsStatusRisks::class], 'risk.sources');
+        $this->app->tag([DualConsentGuard::class], 'transactions.deal_guards'); // DA1
         Brief\DealBriefItems::register($this->app->make(DailyBriefs::class));
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
