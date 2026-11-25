@@ -447,6 +447,7 @@ final class CoreServiceProvider extends ServiceProvider
         $nav->add(new NavItem('Overview', 'Dashboard', '/dashboard', 'layout-grid', 10, kinds: [UserKind::Owner, UserKind::Staff], mobile: true));
         $nav->add(new NavItem('Overview', 'Today', '/agent', 'sun', 10, kinds: [UserKind::Agent, UserKind::Assistant], mobile: true));
         $nav->add(new NavItem('Brokerage', 'People', '/users', 'users', 10, ability: 'core.users.view', mobile: true));
+        $nav->add(new NavItem('Overview', 'To do', '/hq/today', 'list-checks', 9, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff], mobile: true)); // HQ3
         $nav->add(new NavItem('Overview', 'Dashboard', '/hq/dashboard', 'layout-grid', 10, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff], mobile: true)); // HQ2
         $nav->add(new NavItem('Customers', 'Brokerages', '/hq/tenants', 'building-2', 10, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff], mobile: true));
         $nav->add(new NavItem('Connections', 'Texts and calls', '/hq/messaging', 'phone', 11, ability: 'hq.tenants.manage', kinds: [UserKind::HqStaff]));

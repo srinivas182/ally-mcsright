@@ -59,7 +59,7 @@ it('lands HQ staff on the HQ console', function (): void {
     $hq = Tenant::query()->where('type', 'hq')->sole();
     $staff = app(TenantContext::class)->runAs($hq, fn () => User::factory()->hqStaff()->withoutTwoFactor()->create());
 
-    $this->post('http://app.rightally.io/login', ['email' => $staff->email, 'password' => 'password'])->assertRedirect('/hq/tenants');
+    $this->post('http://app.rightally.io/login', ['email' => $staff->email, 'password' => 'password'])->assertRedirect('/hq/today');
 });
 
 it('gives the same neutral error for unknown emails, wrong passwords and blocked users', function (): void {

@@ -21,6 +21,8 @@ export type ServerNavItem = {
     mobile: boolean;
     /** MN3: a section inside a main menu (Accounting, Settings). */
     section?: string;
+    /** HQ3: how many things are waiting (Today › To do). */
+    badge?: number;
 };
 
 /** `key` is the menu's English name (guides and icons use it); `label` may be translated. */

@@ -40,7 +40,7 @@ it('shows HQ staff the HQ console and people', function (): void {
     // HQ1: main menus with tabs, like a brokerage's, in the order HQ works; Settings pinned last.
     $groups = collect(app(NavigationRegistry::class)->for($staff))->mapWithKeys(fn (array $g): array => [$g['label'] => array_column($g['items'], 'title')])->all();
     expect($groups)->toBe([
-        'Today' => ['Numbers'],
+        'Today' => ['To do', 'Numbers'],
         'Customers' => ['All brokerages', 'Sign-ups', 'Go-live', 'Health checks', 'Texting approvals'],
         'Support' => ['Inbox', 'Help videos', 'Card orders'],
         'Billing' => ['Packages', 'Pricing', 'Credits', 'Referral programme', 'Payments', 'Payout rails'],

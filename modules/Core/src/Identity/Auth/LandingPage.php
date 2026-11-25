@@ -15,7 +15,7 @@ final class LandingPage
     public static function for(User $user): string
     {
         return match ($user->kind) {
-            UserKind::HqStaff => '/hq/tenants',
+            UserKind::HqStaff => '/hq/today', // HQ3: HQ starts on what is waiting
             UserKind::Owner, UserKind::Staff => '/dashboard',
             UserKind::Agent, UserKind::Assistant => '/agent',
         };

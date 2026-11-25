@@ -124,6 +124,41 @@ final class HqDashboard
     }
 
     /**
+     * HQ3: everything waiting for HQ, each with the HQ area it belongs to (so each person sees only their part), what to
+     * do and the page that does it. Only items with something in them are listed.
+     *
+     * @return list<array{key: string, area: string, label: string, do: string, count: int, href: string}>
+     */
+    public function todo(?CarbonImmutable $now = null): array
+    {
+        $now ??= CarbonImmutable::now();
+        $control = Connections::control();
+        $switchOn = fn (Builder $q): Builder => $q->where('status', 'open')->where('subject', 'like', 'Please switch on %');
+        $items = [
+            ['switch_on', 'support', 'Brokerages asking to switch a tool on', 'Switch it on for them, then answer the request', $this->sumOrNull($control, 'support_tickets', fn (Builder $q): int => $switchOn($q)->count()), '/hq/support'],
+            ['support', 'support', 'Support questions waiting', 'Answer them', $this->sumOrNull($control, 'support_tickets', fn (Builder $q): int => $q->where('status', 'open')->where('subject', 'not like', 'Please switch on %')->count()), '/hq/support'],
+            ['cards', 'support', 'Handwritten cards to send', 'Download the list, send the cards, mark them sent', $this->cross('outreach_card_requests', fn (Builder $q): int => $q->where('status', 'queued')->count()), '/hq/cards'],
+            ['texting', 'customers', 'Texting registrations to submit', 'Submit them to the carriers and record the answer', $this->sumOrNull($control, 'outreach_texting_registrations', fn (Builder $q): int => $q->where('status', 'submitted')->count()), '/hq/texting'],
+            ['mls_access', 'mls', 'MLS access waiting for approval', 'Check the MLS agreement and approve', $this->sumOrNull($control, 'mls_authorizations', fn (Builder $q): int => $q->where('status', 'pending')->count()), '/hq/mls'],
+            ['mls_boards', 'mls', 'MLS boards brokerages asked for', 'Add the board, or tell them when it will be ready', $this->sumOrNull($control, 'idx_board_requests', fn (Builder $q): int => $q->where('status', 'open')->count()), '/hq/idx'],
+            ['signups_stuck', 'customers', 'Sign-ups not finished (not paid)', 'Follow up so they finish', $this->sumOrNull($control, 'signups', fn (Builder $q): int => $q->whereIn('status', ['draft', 'pending'])->where('updated_at', '<=', $now->subHour())->where('updated_at', '>=', $now->subDays(7))->count()), '/hq/signups'],
+            ['signups_failed', 'customers', 'Sign-ups that failed', 'See what went wrong and help them', $this->sumOrNull($control, 'signups', fn (Builder $q): int => $q->where('status', 'failed')->where('created_at', '>=', $now->subDays(30))->count()), '/hq/signups?status=failed'],
+            ['health_calls', 'customers', 'Health Checks asking for a call', 'Call them', $this->sumOrNull($control, 'health_checks', fn (Builder $q): int => $q->where('contact_ok', true)->where('created_at', '>=', $now->subDays(14))->count()), '/hq/health-checks'],
+            ['overdue', 'billing', 'Brokerage payments overdue', 'Contact them before their grace period ends', $this->sumOrNull($control, 'billing_tenant_subscriptions', fn (Builder $q): int => $q->where('status', 'grace')->count()), '/hq/billing'],
+            ['errors', 'system', 'Serious errors not fixed', 'Look into them', $this->sumOrNull($control, 'watchtower_incidents', fn (Builder $q): int => $q->whereIn('status', ['new', 'acknowledged'])->whereIn('severity', ['critical', 'high'])->count()), '/hq/watchtower'],
+        ];
+
+        $out = [];
+        foreach ($items as [$key, $area, $label, $do, $count, $href]) {
+            if ((int) $count > 0) {
+                $out[] = ['key' => $key, 'area' => $area, 'label' => $label, 'do' => $do, 'count' => (int) $count, 'href' => $href];
+            }
+        }
+
+        return $out;
+    }
+
+    /**
      * What HQ should look at now, each with the page that deals with it. Only items with something in them are listed.
      *
      * @return list<array{label: string, count: int, href: string}>

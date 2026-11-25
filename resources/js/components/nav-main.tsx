@@ -36,6 +36,14 @@ function MainMenuLink({ group }: { group: NavGroup }) {
                 <Link href={group.items[0].href} prefetch>
                     <NavIcon name={MENU_ICONS[key] ?? group.items[0].icon} />
                     <span>{group.label}</span>
+                    {(group.items[0].badge ?? 0) > 0 && (
+                        <span
+                            className="ml-auto rounded-full bg-amber-400 px-2 py-0.5 text-xs font-semibold text-amber-950"
+                            aria-label={`${group.items[0].badge} waiting`}
+                        >
+                            {group.items[0].badge}
+                        </span>
+                    )}
                 </Link>
             </SidebarMenuButton>
         </SidebarMenuItem>

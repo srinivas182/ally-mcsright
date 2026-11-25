@@ -43,7 +43,7 @@ it('shows money, growth, use and what needs attention, across every brokerage', 
 });
 
 it('is where HQ staff land, and only HQ can open it', function (): void {
-    $this->actingAs($this->staff)->get('http://app.rightally.io/dashboard')->assertRedirect('/hq/dashboard');
+    $this->actingAs($this->staff)->get('http://app.rightally.io/dashboard')->assertRedirect('/hq/today');
     auth()->logout();
 
     $brokerage = Tenant::factory()->create();
