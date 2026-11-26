@@ -79,6 +79,7 @@ Schedule::command('billing:prune-health-checks')->dailyAt('03:40')->onOneServer(
 Schedule::command('signups:remind')->everyTenMinutes()->withoutOverlapping()->onOneServer(); // SU1
 Schedule::command('billing:go-live-weekly')->weeklyOn(1, '14:20')->onOneServer();
 Schedule::command('credits:paused-maps')->dailyAt('14:05')->onOneServer();
+Schedule::command('sites:check-domains')->everyFiveMinutes()->withoutOverlapping()->onOneServer(); // DM2: custom domains connect soon after their DNS is set
 Schedule::command('sites:home-reports')->hourlyAt(7)->withoutOverlapping()->onOneServer();
 Schedule::command('crm:contact-health')->dailyAt('04:50')->withoutOverlapping()->onOneServer(); // LN4 (E24)
 Schedule::command('ledger:bank-feeds')->dailyAt('05:40')->withoutOverlapping()->onOneServer(); // BK1 (B15)

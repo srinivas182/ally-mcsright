@@ -16,6 +16,7 @@ use Modules\Core\Tenancy\Models\TenantDomain;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Roster\Brokerage\BrokerageLicences;
 use Modules\Sites\Content\StarterSite;
+use Modules\Sites\Domains\DomainConnector;
 use Modules\Sites\Models\Site;
 use Modules\Sites\Models\SitePage;
 use Modules\Sites\Models\SitePost;
@@ -183,12 +184,18 @@ final class SiteSetup
     /**
      * The site's web addresses: the platform address first, then custom domains with their DNS status.
      *
-     * @return list<array{host: string, kind: string, verified: bool}>
+     * The brokerage's own addresses only (agents' domains serve their own sites). DM2: a custom domain counts as
+     * connected once it points to us and its certificate is ready; until then the free address is used.
+     *
+     * @return list<array{ulid: string, host: string, kind: string, verified: bool, ssl: bool, message: string|null, checked_at: string|null}>
      */
     public function hosts(): array
     {
-        return array_values(TenantDomain::query()->where('tenant_id', $this->tenants->id())->where('purpose', 'website')->orderByRaw("case kind when 'platform' then 0 else 1 end")->orderBy('id')->get()
-            ->map(fn (TenantDomain $d): array => ['host' => $d->host, 'kind' => $d->kind->value, 'verified' => $d->verification_status === VerificationStatus::Verified])->all());
+        return array_values(TenantDomain::query()->where('tenant_id', $this->tenants->id())->where('purpose', 'website')->whereNull('site_ulid')
+            ->orderByRaw("case kind when 'platform' then 0 else 1 end")->orderBy('id')->get()
+            ->map(fn (TenantDomain $d): array => ['ulid' => $d->ulid, 'host' => $d->host, 'kind' => $d->kind->value,
+                'verified' => $d->verification_status === VerificationStatus::Verified && ($d->kind === DomainKind::Platform || $d->ssl_status === SslStatus::Active),
+                'ssl' => $d->ssl_status === SslStatus::Active, 'message' => $d->check_message, 'checked_at' => $d->checked_at?->toIso8601String()])->all());
     }
 
     /** Where the site is visited: the first verified custom domain, else the platform address. */
@@ -250,6 +257,40 @@ final class SiteSetup
             'verification_status' => VerificationStatus::Pending, 'ssl_status' => SslStatus::Pending, 'purpose' => 'website']);
         $this->publicHosts = [];
         app(AuditLogger::class)->record('sites.domain_added', metadata: ['host' => $host], severity: 'notice');
+
+        return app(DomainConnector::class)->connect($domain); // DM2: registered with the custom-domain service and checked once
+    }
+
+    /** DM2: checks one of the brokerage's custom domains now (the button next to it). */
+    public function checkDomain(string $ulid, User $by, bool $allowAgent = false): TenantDomain
+    {
+        if (! $allowAgent) {
+            self::guard($by);
+        }
+        $this->publicHosts = [];
+
+        return app(DomainConnector::class)->check($this->customDomain($ulid));
+    }
+
+    /** DM2: stops using a custom domain; the website stays on its free address. */
+    public function removeDomain(string $ulid, User $by, bool $allowAgent = false): void
+    {
+        if (! $allowAgent) {
+            self::guard($by);
+        }
+        $domain = $this->customDomain($ulid);
+        app(DomainConnector::class)->disconnect($domain);
+        $domain->delete();
+        $this->publicHosts = [];
+        app(AuditLogger::class)->record('sites.domain_removed', metadata: ['host' => $domain->host], severity: 'notice');
+    }
+
+    private function customDomain(string $ulid): TenantDomain
+    {
+        $domain = TenantDomain::query()->where('tenant_id', $this->tenants->id())->where('ulid', $ulid)->where('kind', DomainKind::Custom)->where('purpose', 'website')->first();
+        if (! $domain instanceof TenantDomain) {
+            throw ValidationException::withMessages(['host' => 'That domain is not connected to this website.']);
+        }
 
         return $domain;
     }

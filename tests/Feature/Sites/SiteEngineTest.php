@@ -208,7 +208,7 @@ it('connects custom domains that serve the site once DNS is verified', function 
     expect($d->host)->toBe('www.joneshomes.com')->and($d->purpose)->toBe('website')->and($sites->liveHost())->toBe('acme.rightally.site');
     $this->get('http://www.joneshomes.com/')->assertNotFound(); // not verified yet
 
-    $d->forceFill(['verification_status' => 'verified'])->save();
+    $d->forceFill(['verification_status' => 'verified', 'ssl_status' => 'active'])->save(); // DM2: connected once it points to us and https is ready
     app(DomainResolver::class)->forget('www.joneshomes.com');
     expect($sites->liveHost())->toBe('www.joneshomes.com');
     expect((string) $this->get('http://www.joneshomes.com/')->assertOk()->getContent())->toContain('<link rel="canonical" href="http://www.joneshomes.com/">');

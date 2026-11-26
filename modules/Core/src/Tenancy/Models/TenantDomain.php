@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Core\Tenancy\Models;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -30,6 +31,10 @@ use Modules\Core\Tenancy\Host;
  * @property bool $is_primary
  * @property VerificationStatus $verification_status
  * @property SslStatus $ssl_status
+ * @property string|null $provider_hostname_id
+ * @property CarbonImmutable|null $verified_at
+ * @property CarbonImmutable|null $checked_at DM2: when the connection was last checked
+ * @property string|null $check_message DM2: what is still missing, in plain words (null when connected)
  */
 #[ControlPlaneModel]
 final class TenantDomain extends Model
@@ -41,7 +46,7 @@ final class TenantDomain extends Model
 
     protected $fillable = [
         'tenant_id', 'host', 'kind', 'owner_user_id', 'is_primary', 'verification_status',
-        'ssl_status', 'provider_hostname_id', 'verified_at', 'purpose', 'site_ulid',
+        'ssl_status', 'provider_hostname_id', 'verified_at', 'purpose', 'site_ulid', 'checked_at', 'check_message',
     ];
 
     public function getConnectionName(): ?string
@@ -81,6 +86,7 @@ final class TenantDomain extends Model
             'ssl_status' => SslStatus::class,
             'is_primary' => 'boolean',
             'verified_at' => 'immutable_datetime',
+            'checked_at' => 'immutable_datetime',
         ];
     }
 

@@ -63,6 +63,8 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])
         Route::patch('pages/{page}', [WebsiteSettingsController::class, 'page'])->name('pages.update');
         Route::post('pages/{page}/preview', [WebsiteSettingsController::class, 'preview'])->middleware('throttle:30,1,site-preview')->name('pages.preview');
         Route::post('domains', [WebsiteSettingsController::class, 'domain'])->middleware('throttle:10,1,site-domain')->name('domains.store');
+        Route::post('domains/{domain}/check', [WebsiteSettingsController::class, 'checkDomain'])->where('domain', '[0-9A-Za-z]{26}')->middleware('throttle:20,1,site-domain-check')->name('domains.check'); // DM2
+        Route::delete('domains/{domain}', [WebsiteSettingsController::class, 'removeDomain'])->where('domain', '[0-9A-Za-z]{26}')->middleware('password.confirm')->name('domains.destroy'); // DM2
         Route::post('menus', [WebsiteSettingsController::class, 'menus'])->name('menus');
         Route::post('agents', [WebsiteSettingsController::class, 'agentRules'])->name('agents.rules');
         Route::post('calculators', [WebsiteSettingsController::class, 'calculators'])->name('calculators');
