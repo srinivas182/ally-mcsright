@@ -3,6 +3,7 @@ import { HelpMe } from '@/components/help-me';
 import { CommandBar } from '@/components/command-bar';
 import { NotificationBell } from '@/components/notification-bell';
 import { TextSizeButton } from '@/components/reading/easier-reading';
+import { VisitWebsite } from '@/components/visit-website';
 import { ShowMe } from '@/components/simple/show-me';
 import { ViewSwitch } from '@/components/simple/view-switch';
 import { SidebarTrigger } from '@/components/ui/sidebar';
@@ -30,6 +31,7 @@ export function AppSidebarHeader({
                 <ViewSwitch />
                 <CommandBar />
                 <HelpMe inHeader />
+                <VisitWebsite />
                 <NotificationBell />
             </div>
         </header>

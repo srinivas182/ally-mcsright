@@ -43,6 +43,14 @@ final class SitesServiceProvider extends ServiceProvider
 
             return $host !== null ? 'https://'.$host.Rendering\Urls::listing($ulid, $label) : null;
         });
+        // WS1: the brokerage's website address for Core (welcome email, "Visit website" in the back office).
+        $this->app->bind('sites.address', fn ($app) => function () use ($app): ?array {
+            $setup = $app->make(SiteSetup::class);
+            $site = $setup->brokerageSite();
+            $host = $site !== null ? $setup->liveHost() : null;
+
+            return $host !== null ? ['host' => $host, 'live' => $site->status === 'live'] : null;
+        });
         $this->app->scoped(Http\SiteRouter::class);
         $this->app->scoped(Content\DemoView::class); // TP4: one demo visitor's choices, per request
         $this->app->bind(OfficeBrandSource::class, Content\SiteOfficeBrand::class); // BR2

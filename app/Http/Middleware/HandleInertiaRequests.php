@@ -10,6 +10,7 @@ use Modules\Billing\Credits\CreditLedger;
 use Modules\Billing\PaymentSettings;
 use Modules\Billing\Usage\UsageMeter;
 use Modules\Core\Branding\OfficeBrandSource;
+use Modules\Core\Branding\WebsiteAddress;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Identity\Impersonation;
 use Modules\Core\Identity\Security\TwoFactorPolicy;
@@ -48,7 +49,7 @@ class HandleInertiaRequests extends Middleware
      * @return array<string, mixed>
      */
     /**
-     * @return array{name: string, isHq: bool, logo: string|null, photo: string|null, branded: bool}|null
+     * @return array{name: string, isHq: bool, logo: string|null, photo: string|null, branded: bool, website: string|null}|null
      */
     private function tenant(): ?array
     {
@@ -62,7 +63,16 @@ class HandleInertiaRequests extends Middleware
         $on = $brand !== null && $brand->mode !== 'off';
 
         return ['name' => $context->current()->name, 'isHq' => $hq, 'logo' => $on ? $brand->logo : null, 'photo' => $on ? $brand->photo : null,
-            'branded' => $on && $brand->primary !== null];
+            'branded' => $on && $brand->primary !== null,
+            // WS1: the live website's address, for "Visit website" in the top bar (none in HQ, or before it is live).
+            'website' => $hq ? null : self::website()];
+    }
+
+    private static function website(): ?string
+    {
+        $address = WebsiteAddress::current();
+
+        return $address !== null && $address['live'] ? 'https://'.$address['host'] : null;
     }
 
     /**

@@ -35,4 +35,6 @@ export type TenantInfo = {
     logo?: string | null;
     photo?: string | null;
     branded?: boolean;
+    /** WS1: the brokerage's live website, for "Visit website" in the top bar. */
+    website?: string | null;
 };

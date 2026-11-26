@@ -270,10 +270,6 @@ final class Signups
             return;
         }
         app(BrokeragePayments::class)->apply('checkout.session.completed', $object, ['tenant_id' => (string) $tenant->id] + $meta);
-        $this->tenants->runAs($tenant, function () use ($signup): void {
-            [$first, $last] = array_pad(explode(' ', trim((string) $signup->owner_name), 2), 2, '');
-            app(ManageInvitations::class)->invite((string) $signup->owner_email, $first, $last, UserKind::Owner, null);
-        });
         app(GoLive::class)->start($tenant);
         // LV2: the licences become the brokerage's own (Settings › Licences); without a good one the website waits.
         $licences = array_values(array_filter((array) json_decode((string) ($signup->licences ?? '[]'), true), 'is_array'));
@@ -304,6 +300,11 @@ final class Signups
                 report($e); // a board closed in the meantime: the brokerage can add another from Settings › MLS
             }
         }
+        // WS1: the welcome email goes last, so it can give the website's address as well as the back office's.
+        $this->tenants->runAs($tenant, function () use ($signup): void {
+            [$first, $last] = array_pad(explode(' ', trim((string) $signup->owner_name), 2), 2, '');
+            app(ManageInvitations::class)->invite((string) $signup->owner_email, $first, $last, UserKind::Owner, null);
+        });
         $db->table('signups')->where('id', $signup->id)->update(['status' => 'live', 'tenant_id' => $tenant->id, 'updated_at' => now()]);
         // RF1 (specs/billing/08): a signup that came through a referral link.
         app(Affiliates::class)->attribute($signup->referral_code ?? null, $tenant, (string) $signup->owner_email);
