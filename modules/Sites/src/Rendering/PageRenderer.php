@@ -48,6 +48,25 @@ final class PageRenderer
                 $s['listings'] = $mine === '' ? [] : app(ListingSearch::class)->search($tenantId, array_filter(['q' => $p['q'] ?? '', 'min_price' => $p['min_price'] ?? null,
                     'max_price' => $p['max_price'] ?? null, 'sort' => $p['sort'] ?? 'newest', 'per_page' => $p['limit'] ?? 6, 'agent_mls_id' => $mine]))['results'];
             }
+            if ($s['type'] === 'agent') {
+                // AG7: only on an agent's own page; numbers that are not there yet are left out, never shown as zero.
+                if ($agent === null) {
+                    continue;
+                }
+                $mls = (string) ($agent['mls_ids'][0] ?? '');
+                $reviews = app(Reviews::class)->shown($owner->user_id !== null ? (int) $owner->user_id : null, 1);
+                $rated = array_values(array_filter(array_column($reviews['sources'], 'average'), fn ($v): bool => $v !== null));
+                $s['agent'] = $agent + ['brokerage' => $brokerage->displayName(),
+                    'active' => $mls !== '' ? (int) app(ListingSearch::class)->search($tenantId, ['agent_mls_id' => $mls, 'per_page' => 1])['total'] : 0,
+                    'reviews' => (int) $reviews['count'], 'rating' => $rated !== [] ? round(array_sum($rated) / count($rated), 1) : null];
+            }
+            if ($s['type'] === 'text' && $agent !== null && $s['id'] === 'about' && trim((string) $s['props']['body']) === '') {
+                // AG7: "About Maria" uses her bio; with no bio yet the section is left out rather than shown empty.
+                $s['props']['body'] = $agent['bio'];
+            }
+            if ($s['type'] === 'text' && trim((string) $s['props']['body']) === '' && trim((string) $s['props']['title']) !== '' && $agent !== null) {
+                continue;
+            }
             if ($s['type'] === 'testimonials' && ($s['props']['items'] === [] || $s['props']['from_reviews'])) {
                 // C8a: the agent's (or brokerage's) reviews from Google and RealSatisfied, each with its source and date.
                 $s['props']['items'] = app(Reviews::class)->shown($agent !== null ? ($owner->user_id !== null ? (int) $owner->user_id : null) : null, 6)['reviews']

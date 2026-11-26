@@ -14,12 +14,12 @@ use Modules\Sites\Content\StarterSite;
  */
 final class Sections
 {
-    public const TYPES = ['hero', 'listings', 'features', 'text', 'faq', 'cta', 'contact', 'testimonials', 'team', 'stats', 'gallery', 'video', 'neighbourhoods', 'banner', 'split'];
+    public const TYPES = ['hero', 'listings', 'features', 'text', 'faq', 'cta', 'contact', 'testimonials', 'team', 'stats', 'gallery', 'video', 'neighbourhoods', 'banner', 'split', 'agent'];
 
     /** What the page builder shows for each type. */
     public const LABELS = ['hero' => 'Hero with search', 'listings' => 'Homes for sale', 'features' => 'Features', 'text' => 'Text', 'faq' => 'Questions and answers',
         'cta' => 'Call to action', 'contact' => 'Contact form', 'testimonials' => 'Testimonials', 'team' => 'Team', 'stats' => 'Numbers', 'gallery' => 'Photo gallery',
-        'video' => 'Video', 'neighbourhoods' => 'Neighborhoods', 'banner' => 'Photo banner', 'split' => 'Photo and text'];
+        'video' => 'Video', 'neighbourhoods' => 'Neighborhoods', 'banner' => 'Photo banner', 'split' => 'Photo and text', 'agent' => 'Agent profile'];
 
     /**
      * Cleans untrusted section data (from the builder, a stored version or AI): unknown types and malformed values
@@ -67,6 +67,8 @@ final class Sections
                     'image' => self::image($p['image'] ?? null)],
                 'split' => ['title' => $t('title', 120), 'body' => $t('body', 2000), 'button' => $t('button', 40), 'link' => self::link($p['link'] ?? '/contact'),
                     'image' => self::image($p['image'] ?? null), 'side' => ($p['side'] ?? 'left') === 'right' ? 'right' : 'left'],
+                // AG7: the agent's profile at the top of their page: photo, name, call/text/email, areas, numbers.
+                'agent' => ['home_value' => (bool) ($p['home_value'] ?? true), 'search' => (bool) ($p['search'] ?? true)],
                 'neighbourhoods' => ['title' => $t('title', 120), 'places' => array_values(array_filter(array_map(fn ($v): ?string => is_string($v) && preg_match('/^[a-z0-9-]{2,80}$/', $v) === 1 ? $v : null,
                     array_slice((array) ($p['places'] ?? []), 0, 12))))],
             };
@@ -115,6 +117,7 @@ final class Sections
             'split' => ['title' => 'A heading', 'body' => 'A few sentences about this.', 'button' => '', 'link' => '/contact', 'image' => DemoPhotos::pick('living'), 'side' => 'left'],
             'video' => ['title' => '', 'url' => null, 'caption' => ''],
             'neighbourhoods' => ['title' => 'Neighborhoods we know', 'places' => []],
+            'agent' => ['home_value' => true, 'search' => true],
             default => [],
         }]])[0] ?? [];
     }

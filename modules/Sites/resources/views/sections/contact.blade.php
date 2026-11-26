@@ -12,6 +12,8 @@
     $hours = trim((string) ($site->info['hours'] ?? '')) ?: "Monday to Friday, 9am to 6pm\nSaturday, 10am to 4pm";
     $photo = \Modules\Sites\Content\DemoPhotos::url(\Modules\Sites\Content\StarterSite::cityPhoto((array) $site->info), 'card');
     $area = trim((string) ($site->info['area'] ?? ''));
+    // AG7: on an agent's page the form is theirs, and the brokerage's opening hours and office photo are left out.
+    $agentFirst = ! empty($chrome['agent']) ? (string) strtok((string) $chrome['agent']['name'], ' ') : null;
 @endphp
 <section class="section contact-pro" id="{{ $block['id'] ?? 'contact-section' }}">
     <div class="wrap contact-grid">
@@ -38,12 +40,14 @@
                             <a class="contact-link" href="https://www.google.com/maps/search/?api=1&amp;query={{ rawurlencode($site->displayName().' '.$address) }}" target="_blank" rel="noopener">Get directions</a></span>
                     </li>
                 @endif
+                @if ($agentFirst === null)
                 <li class="contact-card">
                     <span class="contact-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zm0 2a8 8 0 1 0 0 16 8 8 0 0 0 0-16zm1 3v4.6l3.2 1.9-.8 1.3L11 12.4V7h2z"/></svg></span>
                     <span><span class="contact-label">Office hours</span><span class="contact-value contact-hours">{!! nl2br(e($hours)) !!}</span></span>
                 </li>
+                @endif
             </ul>
-            @if ($photo)
+            @if ($photo && $agentFirst === null)
                 <figure class="contact-photo">
                     <img src="{{ $photo }}" alt="{{ $area !== '' ? $area : 'Our area' }}" loading="lazy" width="800" height="500">
                     <figcaption><strong>Most messages are answered within the hour.</strong>@if ($area !== '') <span>Local agents for {{ $area }}.</span>@endif</figcaption>
@@ -51,8 +55,13 @@
             @endif
         </div>
         <div class="contact-form-col">
-            <h2 class="contact-form-title">Send us a message</h2>
-            <p class="muted">Tell us what you are looking for. An agent will reply by phone, text or email, whichever you prefer.</p>
+            @if ($agentFirst !== null)
+                <h2 class="contact-form-title">Message {{ $agentFirst }}</h2>
+                <p class="muted">Tell {{ $agentFirst }} what you are looking for. {{ $agentFirst }} will reply by phone, text or email, whichever you prefer.</p>
+            @else
+                <h2 class="contact-form-title">Send us a message</h2>
+                <p class="muted">Tell us what you are looking for. An agent will reply by phone, text or email, whichever you prefer.</p>
+            @endif
             @include('sites::partials.lead-form', ['return' => $current])
         </div>
     </div>
