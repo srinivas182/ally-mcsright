@@ -22,7 +22,20 @@ final class MyNetworkController
         $user = $request->user();
         abort_unless($user instanceof User && in_array($user->kind, [UserKind::Agent, UserKind::Owner], true), 403);
 
-        return Inertia::render('recruiting/my-network', ['link' => $network->shareUrl($user, $request->getSchemeAndHttpHost())] + $network->for($user));
+        $data = $network->for($user);
+        unset($data['tree']); // the tree has its own page (AG1b)
+
+        return Inertia::render('recruiting/my-network', ['link' => $network->shareUrl($user, $request->getSchemeAndHttpHost())] + $data + $network->money($user));
+    }
+
+    /** AG1b: My commissions › Network tree: who the agent brought in, level by level. */
+    public function tree(Request $request, MyNetwork $network): Response
+    {
+        $user = $request->user();
+        abort_unless($user instanceof User && in_array($user->kind, [UserKind::Agent, UserKind::Owner], true), 403);
+        $data = $network->for($user);
+
+        return Inertia::render('recruiting/network-tree', ['tree' => $data['tree'], 'direct' => $data['direct'], 'network' => $data['network']]);
     }
 
     /** /join/{code} on the website: on to the join page in the back office (same brokerage), keeping the agent's code. */

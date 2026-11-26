@@ -1,4 +1,4 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, router, Link } from '@inertiajs/react';
 import { ChevronRightIcon } from 'lucide-react';
 import { useState } from 'react';
 
@@ -111,7 +111,6 @@ export default function RevenueShare({
     year_cents,
     coaching,
     rank = null,
-    network,
     statement,
     missed,
     retention,
@@ -219,18 +218,12 @@ export default function RevenueShare({
                         </ul>
                     </section>
                 )}
-                <section className="grid gap-2">
-                    <h2 className="font-semibold">Your network</h2>
-                    {network.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">
-                            No one yet.
-                        </p>
-                    ) : (
-                        <div className="rounded-lg border p-3">
-                            <Tree nodes={network} />
-                        </div>
-                    )}
-                </section>
+                <p className="text-sm">
+                    Who is in your network:{' '}
+                    <Link className="underline" href="/my-network/tree">
+                        Network tree
+                    </Link>
+                </p>
                 <section className="grid gap-2">
                     <h2 className="font-semibold">Every payment</h2>
                     <ul className="divide-y rounded-lg border text-sm">

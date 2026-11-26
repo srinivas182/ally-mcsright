@@ -11,6 +11,7 @@ use Modules\Compensation\Models\Calculation;
 use Modules\Compensation\RevenueShare\Insights;
 use Modules\Core\Branding\WebsiteAddress;
 use Modules\Core\Support\Connections;
+use Modules\Payouts\Wallet;
 use Modules\Transactions\Models\Deal;
 
 /**
@@ -68,6 +69,8 @@ final class MyNetwork
             'network' => $count($tree),
             'year' => $year,
             'closed' => $this->closed($agent, $year),
+            // AG1b: only promise revenue share when the agent's plan pays it.
+            'revenue_share_on' => ($rules = $this->insights->rulesFor($agent->id)) !== null && $rules->levels !== [],
             'revenue_share_cents' => (int) $db->table('rs_entries')->where('recipient_user_id', $agent->id)->whereIn('kind', ['share', 'root', 'bonus'])
                 ->whereYear('closing_date', $year)->sum('amount_cents'),
             'tree' => $tree,
@@ -95,5 +98,23 @@ final class MyNetwork
         }
 
         return ['deals' => $deals->count(), 'commission_cents' => $cents];
+    }
+
+    /**
+     * AG1b: the agent's own money on the Overview: paid to them this year, and waiting on deals not yet paid.
+     *
+     * @return array{paid_cents: int, waiting_cents: int, waiting_deals: int, cap: array{cap_cents: int, paid_cents: int, capped: bool}|null}
+     */
+    public function money(User $agent): array
+    {
+        if (! class_exists(Wallet::class)) {
+            return ['paid_cents' => 0, 'waiting_cents' => 0, 'waiting_deals' => 0, 'cap' => null];
+        }
+        $wallet = app(Wallet::class)->for($agent);
+        $open = array_values(array_filter((array) $wallet['pending_deals'], fn (array $d): bool => ! $d['paid_outside']));
+        $cap = $wallet['cap'];
+
+        return ['paid_cents' => (int) $wallet['paid_ytd_cents'], 'waiting_cents' => (int) array_sum(array_column($open, 'expected_cents')), 'waiting_deals' => count($open),
+            'cap' => $cap !== null && (int) $cap['cap_cents'] > 0 ? ['cap_cents' => (int) $cap['cap_cents'], 'paid_cents' => (int) $cap['paid_cents'], 'capped' => (bool) $cap['capped']] : null];
     }
 }

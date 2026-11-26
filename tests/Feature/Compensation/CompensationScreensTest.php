@@ -108,9 +108,9 @@ it('reports company dollar by plan and agent, and replays the last year through 
     $this->actingAs($staff)->get('/compensation/profitability')->assertForbidden();
 });
 
-it('shows agents My plan and owners the Compensation menu', function (): void {
+it('shows agents My commission plan and owners the Compensation menu', function (): void {
     $menu = fn (User $u) => collect($this->actingAs($u)->get('/contacts')->viewData('page')['props']['navigation'])->flatMap(fn ($g) => collect($g['items'])->pluck('title'))->all();
 
-    expect($menu($this->agent))->toContain('My plan')->not->toContain('Simulator')
-        ->and($menu($this->owner))->toContain('Commission plans', 'Fees', 'Credits', 'Simulator', 'Profitability')->not->toContain('My plan');
+    expect($menu($this->agent))->toContain('My commission plan')->not->toContain('Simulator')
+        ->and($menu($this->owner))->toContain('Commission plans', 'Fees', 'Credits', 'Simulator', 'Profitability')->not->toContain('My commission plan');
 });

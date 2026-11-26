@@ -117,7 +117,7 @@ it('shows only offered plans at the brokerage price, and keeps settings to owner
     $this->actingAs($this->agent)->get('/plans')->assertInertia(fn (Assert $page) => $page
         ->has('plans', 1)->where('plans.0.name', 'Pro')->where('plans.0.price_cents', 8_000));
     $menu = fn (User $u) => collect($this->actingAs($u)->get('/plans')->viewData('page')['props']['navigation'])->flatMap(fn ($g) => collect($g['items'])->pluck('title'))->all();
-    expect($menu($this->agent))->toContain('Plans and fees');
+    expect($menu($this->agent))->toContain('My subscription');
 
     $this->actingAs($this->agent)->get('/settings/agent-plans')->assertForbidden();
     $this->actingAs($this->owner)->get('/settings/agent-plans')->assertInertia(fn (Assert $page) => $page

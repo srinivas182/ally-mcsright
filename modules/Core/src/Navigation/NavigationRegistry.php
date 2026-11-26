@@ -40,7 +40,7 @@ final class NavigationRegistry
             '/settings/ailly', '/settings/mls']],
         'Agents' => ['' => ['/users', '/roster', '/recruiting', '/recruiting/join-page', '/recruiting/agents', '/recruiting/retention', '/engage/activity', '/learn', '/directory']],
         'Commissions' => ['' => ['/compensation/plans', '/compensation/ranks', '/compensation/network', '/compensation/recruiters', '/compensation/revenue-share', '/finance/payouts', '/compensation/fees', '/compensation/simulator', '/compensation/credits']],
-        'My commissions' => ['' => ['/my-money', '/my-network', '/my-plan', '/revenue-share', '/plans', '/recruiting/refer']],
+        'My commissions' => ['' => ['/my-network', '/my-network/tree', '/my-money', '/my-plan', '/revenue-share', '/plans']], // AG1b: Overview first, each tab says what it holds
         'Accounting' => [
             'Money in and out' => ['/finance/receipts', '/finance/agent-billing', '/finance/invoices', '/finance/bills'],
             'Books' => ['/finance/accounts', '/finance/journals', '/finance/adjustments', '/finance/bank', '/finance/periods', '/finance/books'],
@@ -94,7 +94,9 @@ final class NavigationRegistry
         '/hq/movewise/launch' => 'Launch', '/hq/ai' => 'Gateway', '/hq/ai/quality' => 'Quality', '/hq/ai/cost' => 'Cost', '/users' => 'HQ team', '/hq/roles' => 'Roles'];
 
     /** MN3: an agent's own wording. */
-    private const AGENT_TITLES = ['/deals' => 'My transactions', '/deals/listings' => 'My listings'];
+    private const AGENT_TITLES = ['/deals' => 'My transactions', '/deals/listings' => 'My listings',
+        // AG1b: the agent's My commissions tabs, named for what is on them.
+        '/my-network' => 'Overview', '/my-money' => 'Payouts and bank', '/my-plan' => 'My commission plan', '/plans' => 'My subscription'];
 
     /** MN3: the order of the main menus. */
     private const TENANT_ORDER = ['Dashboard', 'CRM', 'Listings', 'Transactions', 'Marketing', 'Website & IDX', 'Agents', 'Commissions', 'My commissions', 'Accounting',
