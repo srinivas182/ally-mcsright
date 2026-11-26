@@ -19,6 +19,7 @@ use Modules\Listings\Feed\ResoFeed;
 use Modules\Listings\Models\MlsAuthorization;
 use Modules\Listings\Models\MlsSource;
 use Modules\Listings\Sync\ListingSync;
+use Modules\Sites\Funnels\Funnels;
 use Modules\Sites\Models\SiteFunnel;
 use Modules\Sites\SiteSetup;
 
@@ -117,4 +118,31 @@ it('ignores bots and forms filled too fast', function (): void {
     expect($f->fresh()?->visits)->toBe(0);
     $this->post($this->web.'/_funnel/'.$f->slug, funnelForm(['t' => Crypt::encryptString((string) time())]))->assertStatus(303);
     expect(Lead::query()->count())->toBe(0);
+});
+
+it('gives agents ten landing pages, each with its own reasons and button, credited to them (AG3)', function (): void {
+    expect(Funnels::KINDS)->toHaveCount(10);
+    foreach (Funnels::KINDS as $kind => $k) {
+        $this->actingAs($this->ann)->post('/funnels', ['kind' => $kind, 'area' => '78704'])->assertSessionHasNoErrors();
+        $f = SiteFunnel::query()->where('kind', $kind)->sole();
+        expect($f->owner_user_id)->toBe($this->ann->id);
+        auth()->logout();
+        $html = (string) $this->get($this->web.'/go/'.$f->slug)->assertOk()->getContent();
+        expect($html)->toContain(e($f->headline))->toContain(e($k['button']))->toContain(e($k['points'][0]))
+            ->toContain('With Ann Agent')->toContain('class="lp-hero"');
+        expect(str_contains($html, 'name="address"'))->toBe(Funnels::isValue($kind)); // value pages ask for the home
+    }
+    // A price-drop page shows homes whose price came down.
+    expect(Funnels::filters(SiteFunnel::query()->where('kind', 'price_drops')->sole())['sort'])->toBe('reduced');
+});
+
+it('sends a seller on a "fresh plan" page their price range, and the lead to the agent who shared it (AG3)', function (): void {
+    $this->actingAs($this->ann)->post('/funnels', ['kind' => 'fresh_start', 'area' => '78704'])->assertSessionHasNoErrors();
+    auth()->logout();
+    $f = SiteFunnel::query()->sole();
+    $this->get($this->web.'/go/'.$f->slug);
+    $res = $this->post($this->web.'/_funnel/'.$f->slug, funnelForm(['address' => '12 Oak Ln', 'zip' => '78704', 'beds' => '3']));
+    $lead = Lead::query()->sole();
+    expect($lead->intent)->toBe('sell')->and($lead->assigned_user_id)->toBe($this->ann->id)->and($lead->message)->toContain('Home value request for 12 Oak Ln');
+    expect((string) $this->get((string) $res->headers->get('Location'))->getContent())->toContain('your home is likely worth');
 });
