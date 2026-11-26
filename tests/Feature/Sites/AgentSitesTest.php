@@ -248,3 +248,32 @@ it('has free calculators that work without JavaScript and are found by search en
     expect((string) $this->get($this->web.'/sitemap.xml')->getContent())->toContain('/calculators/rent-vs-buy</loc>');
     expect((string) $this->get($this->web.'/llms.txt')->getContent())->toContain('/calculators/affordability');
 });
+
+it('remembers the agent whose page a visitor opened, shows "Your agent" on other pages, and sends their leads to the agent (AG2)', function (): void {
+    janeSite($this);
+    // The agent's page stays cached for everyone; the page itself asks to remember Jane.
+    $page = $this->get($this->web.'/agents/jane-doe')->assertOk();
+    expect(collect($page->headers->getCookies())->first(fn ($c) => $c->getName() === 'ra_agent'))->toBeNull()
+        ->and($page->getContent())->toContain('data-your-agent');
+
+    $this->get($this->web.'/_ref')->assertNoContent(); // a visitor who came with no agent
+    $this->get($this->web.'/_ref?remember=nobody')->assertNoContent();
+    $r = $this->get($this->web.'/_ref?remember=jane-doe')->assertOk()->assertHeader('Cache-Control', 'no-store, private')->assertJson(['name' => 'Jane Doe', 'url' => '/agents/jane-doe']);
+    $cookie = collect($r->headers->getCookies())->first(fn ($c) => $c->getName() === 'ra_agent');
+    expect($cookie)->not->toBeNull()->and($cookie->isHttpOnly())->toBeTrue();
+
+    // On any other page: who the visitor is with.
+    $this->withUnencryptedCookie('ra_agent', $cookie->getValue())->get($this->web.'/_ref')->assertOk()->assertJson(['first_name' => 'Jane']);
+
+    // Their lead later, from the brokerage's contact form, goes to Jane.
+    $form = ['name' => 'Page Buyer', 'email' => 'page@x.test', 'message' => 'Hello', 'return' => '/contact', 't' => Crypt::encryptString((string) (time() - 30))];
+    $this->withUnencryptedCookie('ra_agent', $cookie->getValue())->post($this->web.'/_lead', $form)->assertRedirect();
+    expect(Lead::query()->latest('id')->first()->assigned_user_id)->toBe($this->jane->id);
+
+    // A broker who switched referral links off: nothing is remembered.
+    $this->actingAs($this->owner)->post('/settings/website/agents', ['enabled' => true, 'template' => false, 'colours' => false, 'sections' => true, 'domain' => false,
+        'referrals' => false, 'approval' => false]);
+    auth()->logout();
+    $this->unencryptedCookies = [];
+    expect(collect($this->get($this->web.'/_ref?remember=jane-doe')->headers->getCookies())->first(fn ($c) => $c->getName() === 'ra_agent'))->toBeNull();
+});
