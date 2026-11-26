@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Connection;
+use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
@@ -20,6 +21,7 @@ use Modules\Billing\Models\Package;
 use Modules\Billing\Signup\SignupProblemMail;
 use Modules\Billing\Signup\SignupReminderMail;
 use Modules\Core\Identity\Models\Invitation;
+use Modules\Core\Identity\Notifications\InvitationNotification;
 use Modules\Core\Support\Connections;
 use Modules\Core\Tenancy\Models\Tenant;
 use Modules\Core\Tenancy\TenantContext;
@@ -299,6 +301,14 @@ it('puts the new website live in the chosen design the moment they pay (SU2)', f
         ->and($site->info['name'])->toBe('Oak Realty')->and($site->info['phone'])->toBe('(713) 555-0142') // FT1: in the header and footer
         // LP1: a landing page: Home, About and Contact, no home search.
         ->and(app(TenantContext::class)->runAs($tenant, fn () => SitePage::query()->where('site_id', $site->id)->orderBy('position')->pluck('path')->all()))->toBe(['/', '/about', '/contact']);
+
+    // WS1: the welcome email gives the website's address too, apart from the back office's.
+    Notification::assertSentOnDemand(InvitationNotification::class, function (InvitationNotification $n): bool {
+        $mail = implode(' ', $n->toMail(new AnonymousNotifiable)->outroLines);
+
+        return $n->websiteHost === 'oak-realty.rightally.site' && $n->websiteLive && $n->officeHost !== $n->websiteHost
+            && str_contains($mail, 'https://oak-realty.rightally.site') && str_contains($mail, 'It is live now');
+    });
 });
 
 it('shows each design with made-up content for choosing, never indexed (SU2)', function (): void {
@@ -412,6 +422,9 @@ it('keeps the website "coming soon" after payment when no licence is active, and
         expect(Site::query()->where('kind', 'brokerage')->value('status'))->toBe('draft')
             ->and(app(BrokerageLicences::class)->all()[0])->toMatchArray(['state' => 'TX', 'status' => 'expired', 'good' => false]);
     });
+    // WS1: the welcome email says where the website will be, and that it waits for the licence.
+    Notification::assertSentOnDemand(InvitationNotification::class, fn (InvitationNotification $n): bool => $n->websiteHost === 'oak-realty.rightally.site' && ! $n->websiteLive
+        && str_contains(implode(' ', $n->toMail(new AnonymousNotifiable)->outroLines), 'goes live as soon as your licence is checked'));
 });
 
 it('keeps earlier attempts of someone who later paid out of "Started again", labelled under All (SU5)', function (): void {

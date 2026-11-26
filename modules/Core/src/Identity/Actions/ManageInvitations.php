@@ -9,6 +9,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Modules\Core\Branding\WebsiteAddress;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Identity\Enums\UserStatus;
 use Modules\Core\Identity\Events\InvitationResent;
@@ -129,6 +130,8 @@ final class ManageInvitations
         $host = $tenant->primaryDomain()?->host;
         $url = ($host !== null ? 'https://'.$host : rtrim((string) config('app.url'), '/')).'/invitations/'.$token;
         $this->lastLink = $url;
+        // WS1: owners and staff also get the website's address, so they do not mistake the back office for it.
+        $website = in_array($invitation->kind->value, ['owner', 'staff'], true) ? WebsiteAddress::current() : null;
 
         Notification::route('mail', $invitation->email)->notify(new InvitationNotification(
             $url,
@@ -138,6 +141,8 @@ final class ManageInvitations
             (string) $invitation->first_name,
             $invitation->kind->value,
             (string) ($host ?? ''),
+            (string) ($website['host'] ?? ''),
+            (bool) ($website['live'] ?? false),
         ));
     }
 }
