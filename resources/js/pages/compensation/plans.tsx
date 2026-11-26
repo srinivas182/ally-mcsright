@@ -22,6 +22,7 @@ type Plan = {
     name: string;
     type: string;
     default: boolean;
+    offered_on_join: boolean;
     status: string;
     description: string | null;
     agents: number;
@@ -91,6 +92,14 @@ function PlanTable({ plans }: { plans: Plan[] }) {
                                     {p.name}
                                     {p.default && (
                                         <Badge className="ml-2">Default</Badge>
+                                    )}
+                                    {p.offered_on_join && (
+                                        <Badge
+                                            variant="secondary"
+                                            className="ml-2"
+                                        >
+                                            New agents can pick
+                                        </Badge>
                                     )}
                                     {!v || v.status !== 'published' ? (
                                         <Badge
@@ -176,6 +185,9 @@ function PlanCard({
                 <span className="flex items-center gap-2 font-semibold">
                     {plan.name}
                     {plan.default && <Badge>Default</Badge>}
+                    {plan.offered_on_join && (
+                        <Badge variant="secondary">New agents can pick</Badge>
+                    )}
                     {plan.status !== 'active' && (
                         <Badge variant="secondary">{plan.status}</Badge>
                     )}
@@ -224,6 +236,24 @@ function PlanCard({
                                     }
                                 >
                                     Make default
+                                </Button>
+                            )}
+                        {plan.status === 'active' &&
+                            (published || plan.offered_on_join) && (
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() =>
+                                        router.post(
+                                            `/compensation/plans/${plan.ulid}/join`,
+                                            { offered: !plan.offered_on_join },
+                                            { preserveScroll: true },
+                                        )
+                                    }
+                                >
+                                    {plan.offered_on_join
+                                        ? 'Stop offering to new agents'
+                                        : 'Let new agents pick this plan'}
                                 </Button>
                             )}
                         {!plan.default && (

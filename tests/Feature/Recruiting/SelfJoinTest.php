@@ -11,6 +11,9 @@ use Modules\Billing\Gateway\FakeGateway;
 use Modules\Billing\Gateway\PaymentGateway;
 use Modules\Billing\PaymentSettings;
 use Modules\Billing\Pricing;
+use Modules\Compensation\Actions\ManagePlans;
+use Modules\Compensation\Enums\PlanType;
+use Modules\Compensation\Models\PlanAssignment;
 use Modules\Compensation\RevenueShare\Sponsorships;
 use Modules\Core\Identity\Enums\UserStatus;
 use Modules\Core\Support\Connections;
@@ -126,4 +129,47 @@ it('sends the short link on the website on to the join page, keeping the agent (
     $response = app(MyNetworkController::class)->fromWebsite(app(SelfJoin::class), $this->code);
     expect($response->getTargetUrl())->toEndWith("/join/{$this->code}");
     expect(app(MyNetworkController::class)->fromWebsite(app(SelfJoin::class), 'nobody12')->getTargetUrl())->toEndWith('/join');
+});
+
+it('lets a new agent pick revenue share or a flat fee, told in plain words, and places them on it (AG4)', function (): void {
+    $plans = app(ManagePlans::class);
+    $share = $plans->create(PlanType::Commission, 'Revenue share', ['split' => ['mode' => 'percentage', 'agent_percent' => '90'],
+        'cap' => ['amount_cents' => 1_600_000, 'anchor' => 'anniversary'], 'post_cap' => ['fee' => ['calc' => 'flat', 'amount' => 50_000]],
+        'revenue_share' => ['basis' => 'company_dollar', 'levels' => ['20', '20', '20', '20', '20']]]);
+    $plans->publish($share->versions()->sole(), CarbonImmutable::parse('2026-01-01'));
+    $flat = $plans->create(PlanType::Commission, 'Flat fee', ['split' => ['mode' => 'flat_fee', 'bands' => [['up_to_price_cents' => null, 'fee_cents' => 50_000]]]]);
+    $plans->publish($flat->versions()->sole(), CarbonImmutable::parse('2026-01-01'));
+    $plans->setDefault($share->fresh());
+
+    // Not offered yet: no choice, they join on the default plan.
+    $this->get("/join/{$this->code}")->assertInertia(fn (Assert $page) => $page->where('plans', []));
+
+    $this->actingAs($this->owner)->post("/compensation/plans/{$share->ulid}/join", ['offered' => true])->assertSessionHasNoErrors();
+    $this->post("/compensation/plans/{$flat->ulid}/join", ['offered' => true])->assertSessionHasNoErrors();
+    auth()->logout();
+
+    $this->get("/join/{$this->code}")->assertInertia(fn (Assert $page) => $page->has('plans', 2)
+        ->where('plans.0.name', 'Revenue share')
+        ->where('plans.0.lines', ['You keep 90% of each commission; the brokerage keeps 10%.',
+            'The brokerage\'s share stops at $16,000 a year (your cap). Your year starts on the day you join.',
+            'After you cap, you pay $500 a deal for the rest of that year.', 'Earn revenue share on the agents you bring in, 5 levels deep.'])
+        ->where('plans.1.lines', ['You keep 100% of each commission, less a flat $500 per deal.']));
+
+    $this->post("/join/{$this->code}", joinForm(['plan' => null]))->assertSessionHasErrors('plan');
+    $this->post("/join/{$this->code}", joinForm(['plan' => $flat->ulid]), ['X-Inertia' => 'true'])->assertStatus(409);
+    $nina = User::query()->where('email', 'nina@example.test')->sole();
+    app(SelfJoin::class)->place($nina->id);
+
+    expect(PlanAssignment::query()->where('agent_user_id', $nina->id)->sole()->plan_id)->toBe($flat->id);
+});
+
+it('only offers a published plan to new agents, and stops when it is archived (AG4)', function (): void {
+    $plans = app(ManagePlans::class);
+    $draft = $plans->create(PlanType::Commission, 'Draft plan', ['split' => ['mode' => 'percentage', 'agent_percent' => '80']]);
+    $this->actingAs($this->owner)->post("/compensation/plans/{$draft->ulid}/join", ['offered' => true])->assertSessionHasErrors('plan');
+    $plans->publish($draft->versions()->sole(), CarbonImmutable::parse('2026-01-01'));
+    $this->post("/compensation/plans/{$draft->ulid}/join", ['offered' => true])->assertSessionHasNoErrors();
+    expect(app(SelfJoin::class)->plans())->toHaveCount(1);
+    $plans->archive($draft->fresh());
+    expect(app(SelfJoin::class)->plans())->toBe([]);
 });

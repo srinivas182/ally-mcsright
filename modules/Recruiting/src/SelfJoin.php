@@ -14,6 +14,7 @@ use Modules\Billing\Events\AgentPlanStarted;
 use Modules\Billing\Models\AgentPlan;
 use Modules\Billing\Pricing;
 use Modules\Billing\Signup\LicenceCheck;
+use Modules\Compensation\JoinChoices;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Identity\Enums\UserStatus;
@@ -26,8 +27,9 @@ use Modules\Roster\Brokerage\BrokerageLicences;
 /**
  * CM4: joining through an agent's link. The new agent gives a licence that the state's records accept, picks one of
  * the brokerage's packs and pays RightAlly for it; once paid they are placed straight away (no approval) under the
- * agent whose link they used, on the brokerage's default commission plan. When the brokerage pays for its agents,
- * they are placed as soon as the licence checks out.
+ * agent whose link they used, on the commission plan they picked (AG4: revenue share or a flat fee, as the owner
+ * offers) or the brokerage's default plan. When the brokerage pays for its agents, they are placed as soon as the
+ * licence checks out.
  */
 final class SelfJoin
 {
@@ -141,6 +143,16 @@ final class SelfJoin
     }
 
     /**
+     * AG4: the commission plans a new agent can pick (none: they join on the default plan).
+     *
+     * @return list<array{ulid: string, name: string, description: string|null, lines: list<string>, default: bool}>
+     */
+    public function plans(): array
+    {
+        return class_exists(JoinChoices::class) ? app(JoinChoices::class)->offered() : [];
+    }
+
+    /**
      * The packs a new agent can choose (when agents pay RightAlly for their own plan).
      *
      * @return list<array{ulid: string, name: string, description: string|null, price_cents: int}>
@@ -160,7 +172,7 @@ final class SelfJoin
      * Applies: checks the licence, creates the (not yet active) account and returns where to go next: the payment
      * page, or the done page when the brokerage pays.
      *
-     * @param  array{first_name: string, last_name: string, email: string, phone: string, password: string, licence_state: string, licence_number: string, pack?: string|null}  $data
+     * @param  array{first_name: string, last_name: string, email: string, phone: string, password: string, licence_state: string, licence_number: string, pack?: string|null, plan?: string|null}  $data
      */
     public function apply(array $data, ?User $sponsor, string $stateName, string $returnBase): string
     {
@@ -185,13 +197,26 @@ final class SelfJoin
             }
         }
 
-        $user = DB::transaction(function () use ($data, $email, $sponsor, $licence, $plan): User {
+        $choices = $this->plans();
+        $commission = null;
+        if ($choices !== []) {
+            $picked = (string) ($data['plan'] ?? '');
+            if ($picked === '' && count($choices) === 1) {
+                $picked = $choices[0]['ulid'];
+            }
+            $commission = in_array($picked, array_column($choices, 'ulid'), true) ? app(JoinChoices::class)->find($picked) : null;
+            if ($commission === null) {
+                throw ValidationException::withMessages(['plan' => 'Choose how you want to be paid.']);
+            }
+        }
+
+        $user = DB::transaction(function () use ($data, $email, $sponsor, $licence, $plan, $commission): User {
             $user = new User(['kind' => UserKind::Agent, 'first_name' => trim($data['first_name']), 'last_name' => trim($data['last_name']), 'email' => $email,
                 'phone' => trim($data['phone']), 'password' => $data['password'], 'status' => UserStatus::Invited]);
             $user->save();
             $db = DB::connection(Connections::cell());
             $db->table('recruiting_join_applications')->insert(['ulid' => (string) Str::ulid(), 'tenant_id' => $this->tenants->id(), 'user_id' => $user->id,
-                'sponsor_user_id' => $sponsor?->id, 'agent_plan_id' => $plan?->id, 'licence_state' => $licence['state'], 'licence_number' => $licence['number'],
+                'sponsor_user_id' => $sponsor?->id, 'agent_plan_id' => $plan?->id, 'comp_plan_id' => $commission?->id, 'licence_state' => $licence['state'], 'licence_number' => $licence['number'],
                 'licence_status' => $licence['status'], 'status' => 'payment', 'created_at' => now(), 'updated_at' => now()]);
             $db->table('roster_credentials')->insert(['ulid' => (string) Str::ulid(), 'tenant_id' => $this->tenants->id(), 'user_id' => $user->id, 'kind' => 'licence',
                 'state_code' => $licence['state'], 'number' => $licence['number'], 'expires_on' => $licence['expires_on'], 'status' => 'current',
@@ -200,7 +225,7 @@ final class SelfJoin
 
             return $user;
         });
-        app(AuditLogger::class)->record('recruiting.join.applied', $user, metadata: ['sponsor' => $sponsor?->name, 'licence' => $licence['state'].' '.$licence['status']], label: $user->name);
+        app(AuditLogger::class)->record('recruiting.join.applied', $user, metadata: ['sponsor' => $sponsor?->name, 'licence' => $licence['state'].' '.$licence['status'], 'plan' => $commission?->name], label: $user->name);
 
         if ($plan === null) {
             // The brokerage pays for its agents: nothing to pay, placed now.
@@ -217,7 +242,7 @@ final class SelfJoin
         $this->place($event->userId);
     }
 
-    /** Placed: the account is active, under the sponsor, on the default plan. Runs once. */
+    /** Placed: the account is active, under the sponsor, on the plan they picked (or the default plan). Runs once. */
     public function place(int $userId): void
     {
         $db = DB::connection(Connections::cell());
@@ -234,7 +259,8 @@ final class SelfJoin
                 'expires_at' => now(), 'accepted_at' => now()]);
             $db->table('recruiting_join_applications')->where('id', $app->id)->update(['status' => 'joined', 'joined_at' => now(), 'updated_at' => now()]);
         });
+        $planName = $app->comp_plan_id !== null && class_exists(JoinChoices::class) ? app(JoinChoices::class)->place($user->id, (int) $app->comp_plan_id) : null;
         UserActivated::dispatch($this->tenants->id(), $user->id, $app->sponsor_user_id !== null ? (int) $app->sponsor_user_id : null);
-        app(AuditLogger::class)->record('recruiting.join.placed', $user, label: $user->name);
+        app(AuditLogger::class)->record('recruiting.join.placed', $user, metadata: ['plan' => $planName], label: $user->name);
     }
 }

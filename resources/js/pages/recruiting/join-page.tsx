@@ -1,4 +1,4 @@
-import { Head, useForm } from '@inertiajs/react';
+import { Head, Link, useForm } from '@inertiajs/react';
 import { ExternalLink } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -17,13 +17,20 @@ type Props = {
     states: Record<string, string>;
     licensed: string[];
     link: string;
+    plans: string[];
 };
 
 /**
  * CM4b: the owner's join page: the words and video new agents see when they join through an agent's link, and the
  * states they can join from (the brokerage's licensed states, plus states it works in through a managing broker).
  */
-export default function JoinPage({ page, states, licensed, link }: Props) {
+export default function JoinPage({
+    page,
+    states,
+    licensed,
+    link,
+    plans,
+}: Props) {
     const form = useForm({
         headline: page.headline,
         pitch: page.pitch,
@@ -58,6 +65,19 @@ export default function JoinPage({ page, states, licensed, link }: Props) {
                         </Button>
                     }
                 />
+                <p className="rounded-xl border bg-card p-4 text-[15px]">
+                    {plans.length > 1
+                        ? `New agents pick how they are paid: ${plans.join(' or ')}.`
+                        : plans.length === 1
+                          ? `New agents join on ${plans[0]}.`
+                          : 'New agents join on your default commission plan.'}{' '}
+                    <Link
+                        href="/compensation/plans"
+                        className="font-medium text-primary underline-offset-4 hover:underline"
+                    >
+                        Choose the plans they can pick
+                    </Link>
+                </p>
                 <form
                     className="grid gap-5 rounded-xl border bg-card p-5 text-[15px]"
                     onSubmit={(e) => {

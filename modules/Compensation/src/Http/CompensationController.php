@@ -48,7 +48,7 @@ final class CompensationController
         return Inertia::render('compensation/plans', [
             // CM1: onboarding plans are gone (archived); only commission plans are shown.
             'plans' => Plan::query()->where('type', PlanType::Commission)->with('versions')->orderByDesc('is_default')->orderBy('name')->get()->map(fn (Plan $p): array => [
-                'ulid' => $p->ulid, 'name' => $p->name, 'type' => $p->type->value, 'default' => $p->is_default, 'status' => $p->status->value, 'description' => $p->description,
+                'ulid' => $p->ulid, 'name' => $p->name, 'type' => $p->type->value, 'default' => $p->is_default, 'offered_on_join' => $p->offered_on_join, 'status' => $p->status->value, 'description' => $p->description,
                 'agents' => PlanAssignment::query()->where('plan_id', $p->id)->whereNull('effective_to')->count(),
                 'versions' => $p->versions->sortByDesc('version')->map(fn (PlanVersion $v): array => [
                     'ulid' => $v->ulid, 'version' => $v->version, 'status' => $v->status->value, 'effective_from' => $v->effective_from?->toDateString(),
@@ -103,6 +103,15 @@ final class CompensationController
         $this->can($request, 'compensation.plans.manage');
 
         return $this->attempt(fn () => $this->plans->setDefault($plan), 'Default plan changed.');
+    }
+
+    /** AG4: offer this plan to new agents when they join online (or stop offering it). */
+    public function offerOnJoin(Request $request, Plan $plan): RedirectResponse
+    {
+        $this->can($request, 'compensation.plans.manage');
+        $offered = $request->boolean('offered');
+
+        return $this->attempt(fn () => $this->plans->offerOnJoin($plan, $offered), $offered ? 'New agents can now pick this plan when they join.' : 'New agents can no longer pick this plan when they join.');
     }
 
     public function archive(Request $request, Plan $plan): RedirectResponse
