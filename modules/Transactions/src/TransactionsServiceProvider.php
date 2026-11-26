@@ -140,7 +140,8 @@ final class TransactionsServiceProvider extends ServiceProvider
         $nav->add(new NavItem('Settings', 'Transaction settings', '/settings/transactions', 'briefcase', 76, ability: 'transactions.queue'));
         // MN2: every transaction page in the menu (they were only reachable from inside Deals).
         $nav->add(new NavItem('Overview', 'Listings board', '/deals/listings', 'house', 29, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent]));
-        $nav->add(new NavItem('Overview', 'Money coming in', '/deals/money', 'banknote', 30, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent]));
+        // FX1: owners and staff only; agents see their own money under My commissions (the page refuses agents).
+        $nav->add(new NavItem('Overview', 'Money coming in', '/deals/money', 'banknote', 30, kinds: [UserKind::Owner, UserKind::Staff]));
         $nav->add(new NavItem('Overview', 'Playbooks', '/deals/playbooks', 'list-checks', 31, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent]));
         $nav->add(new NavItem('Overview', 'Vendors', '/deals/vendors', 'contact', 32, kinds: [UserKind::Owner, UserKind::Staff, UserKind::Agent]));
         $nav->add(new NavItem('Overview', 'Compliance checklists', '/deals/compliance', 'clipboard-check', 33, ability: 'transactions.queue'));
