@@ -30,13 +30,13 @@ beforeEach(function (): void {
     $this->web = 'http://acme.rightally.site';
 });
 
-it('starts a website with six pages full of sections and photos, and three blog posts', function (): void {
+it('starts a website with seven pages (Join us included) full of sections and photos, and three blog posts', function (): void {
     $sites = app(SiteSetup::class);
     $site = $sites->create('estate', ['area' => 'Greater Houston', 'state' => 'TX', 'tagline' => 'Homes across Houston'], $this->owner);
     $sites->publish($site, true, $this->owner);
 
     $pages = SitePage::query()->where('site_id', $site->id)->orderBy('position')->get();
-    expect($pages->pluck('path')->all())->toBe(['/', '/buy', '/sell', '/communities', '/about', '/contact'])
+    expect($pages->pluck('path')->all())->toBe(['/', '/buy', '/sell', '/communities', '/about', '/join-us', '/contact'])
         ->and($pages->every(fn (SitePage $p): bool => $p->in_menu && $p->meta_description !== null))->toBeTrue();
     $home = $pages->first();
     expect(array_column($home->sections, 'type'))->toBe(['hero', 'listings', 'split', 'features', 'neighbourhoods', 'banner', 'testimonials', 'faq', 'cta'])
@@ -95,9 +95,9 @@ it('lets a website made before add the standard pages it is missing, without tou
     SitePost::query()->where('site_id', $site->id)->delete();
     SitePage::query()->where('site_id', $site->id)->where('path', '/about')->update(['title' => 'Our story']);
 
-    $this->actingAs($this->owner)->get('/settings/website')->assertInertia(fn (Assert $p) => $p->where('starter_missing', ['/buy', '/sell', '/communities']));
+    $this->actingAs($this->owner)->get('/settings/website')->assertInertia(fn (Assert $p) => $p->where('starter_missing', ['/buy', '/sell', '/communities', '/join-us']));
     $this->actingAs($this->owner)->post('/settings/website/starter-pages')->assertRedirect();
-    expect(SitePage::query()->where('site_id', $site->id)->pluck('path')->sort()->values()->all())->toBe(['/', '/about', '/buy', '/communities', '/contact', '/sell'])
+    expect(SitePage::query()->where('site_id', $site->id)->pluck('path')->sort()->values()->all())->toBe(['/', '/about', '/buy', '/communities', '/contact', '/join-us', '/sell'])
         ->and(SitePage::query()->where('site_id', $site->id)->where('path', '/about')->value('title'))->toBe('Our story')
         ->and(SitePost::query()->where('site_id', $site->id)->count())->toBe(3);
     $this->actingAs($this->owner)->get('/settings/website')->assertInertia(fn (Assert $p) => $p->where('starter_missing', []));

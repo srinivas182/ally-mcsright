@@ -4360,3 +4360,96 @@ body:not(:has(main > .hero:first-child, main > .ra-block:first-child > .hero))
     margin: 0;
     font-size: 0.85rem;
 }
+
+/* AG8: the "Join us" page for agents: the same photo opening as the landing pages, with the plans new agents can
+   pick in a glass card beside the promise. */
+.recruit-solo .lp-copy {
+    max-width: 46rem;
+}
+.recruit-kicker {
+    padding: 0.4rem 1rem;
+    letter-spacing: 0.01em;
+}
+.recruit-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin: 0.4rem 0 0;
+}
+.recruit-actions .btn {
+    min-height: 52px;
+    padding-inline: 1.6rem;
+    font-size: 1.05rem;
+}
+.recruit-talk {
+    background: rgb(255 255 255 / 0.12);
+    border: 1px solid rgb(255 255 255 / 0.45);
+    color: #fff;
+}
+.recruit-talk:hover {
+    background: rgb(255 255 255 / 0.22);
+}
+.recruit-small {
+    text-align: left;
+    color: rgb(255 255 255 / 0.78);
+}
+.recruit-plans {
+    display: grid;
+    gap: 0.9rem;
+    padding: clamp(1.1rem, 2.4vw, 1.6rem);
+    border-radius: var(--radius);
+    background: rgb(255 255 255 / 0.1);
+    border: 1px solid rgb(255 255 255 / 0.22);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    box-shadow: 0 30px 60px -30px rgb(0 0 0 / 0.6);
+}
+.recruit-plans-title {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: rgb(255 255 255 / 0.85);
+}
+.recruit-plan {
+    display: grid;
+    gap: 0.55rem;
+    padding: 1rem 1.1rem;
+    border-radius: var(--radius-sm);
+    background: #fff;
+    color: #0f172a;
+}
+.recruit-plan h2 {
+    margin: 0;
+    font-size: 1.25rem;
+    color: #0f172a;
+}
+.recruit-plan-note {
+    margin: 0;
+    color: #475569;
+    font-size: 0.95rem;
+}
+.recruit-plan ul {
+    display: grid;
+    gap: 0.45rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.recruit-plan li {
+    display: flex;
+    gap: 0.55rem;
+    font-size: 0.95rem;
+    line-height: 1.4;
+}
+.recruit-plan svg {
+    flex: none;
+    margin-top: 1px;
+    width: 18px;
+    height: 18px;
+    color: var(--brand);
+}
+.recruit-plans-join {
+    justify-self: stretch;
+    text-align: center;
+    min-height: 50px;
+}

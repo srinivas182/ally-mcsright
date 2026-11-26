@@ -11,6 +11,7 @@ use Modules\Listings\Search\ListingSearch;
 use Modules\Sites\AgentSites;
 use Modules\Sites\Content\AreaTiles;
 use Modules\Sites\Http\Controllers\SiteController;
+use Modules\Sites\Http\SiteExtensions;
 use Modules\Sites\Models\Site;
 use Modules\Sites\Models\SitePage;
 use Modules\Sites\Reviews\Review;
@@ -59,6 +60,10 @@ final class PageRenderer
                 $s['agent'] = $agent + ['brokerage' => $brokerage->displayName(),
                     'active' => $mls !== '' ? (int) app(ListingSearch::class)->search($tenantId, ['agent_mls_id' => $mls, 'per_page' => 1])['total'] : 0,
                     'reviews' => (int) $reviews['count'], 'rating' => $rated !== [] ? round(array_sum($rated) / count($rated), 1) : null];
+            }
+            if ($s['type'] === 'recruit') {
+                // AG8: the plans new agents can pick, live (Recruiting provides them).
+                $s['plans'] = $s['props']['plans'] ? array_slice(app(SiteExtensions::class)->data('join_plans'), 0, 3) : [];
             }
             if ($s['type'] === 'text' && $agent !== null && $s['id'] === 'about' && trim((string) $s['props']['body']) === '') {
                 // AG7: "About Maria" uses her bio; with no bio yet the section is left out rather than shown empty.

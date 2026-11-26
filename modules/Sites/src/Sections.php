@@ -14,12 +14,12 @@ use Modules\Sites\Content\StarterSite;
  */
 final class Sections
 {
-    public const TYPES = ['hero', 'listings', 'features', 'text', 'faq', 'cta', 'contact', 'testimonials', 'team', 'stats', 'gallery', 'video', 'neighbourhoods', 'banner', 'split', 'agent'];
+    public const TYPES = ['hero', 'listings', 'features', 'text', 'faq', 'cta', 'contact', 'testimonials', 'team', 'stats', 'gallery', 'video', 'neighbourhoods', 'banner', 'split', 'agent', 'recruit'];
 
     /** What the page builder shows for each type. */
     public const LABELS = ['hero' => 'Hero with search', 'listings' => 'Homes for sale', 'features' => 'Features', 'text' => 'Text', 'faq' => 'Questions and answers',
         'cta' => 'Call to action', 'contact' => 'Contact form', 'testimonials' => 'Testimonials', 'team' => 'Team', 'stats' => 'Numbers', 'gallery' => 'Photo gallery',
-        'video' => 'Video', 'neighbourhoods' => 'Neighborhoods', 'banner' => 'Photo banner', 'split' => 'Photo and text', 'agent' => 'Agent profile'];
+        'video' => 'Video', 'neighbourhoods' => 'Neighborhoods', 'banner' => 'Photo banner', 'split' => 'Photo and text', 'agent' => 'Agent profile', 'recruit' => 'Join our team'];
 
     /**
      * Cleans untrusted section data (from the builder, a stored version or AI): unknown types and malformed values
@@ -69,6 +69,11 @@ final class Sections
                     'image' => self::image($p['image'] ?? null), 'side' => ($p['side'] ?? 'left') === 'right' ? 'right' : 'left'],
                 // AG7: the agent's profile at the top of their page: photo, name, call/text/email, areas, numbers.
                 'agent' => ['home_value' => (bool) ($p['home_value'] ?? true), 'search' => (bool) ($p['search'] ?? true)],
+                // AG8: the opening of the "Join us" page: a photo, why agents join, the button to join, and the plans
+                // new agents can pick (live from Commissions › Plans).
+                'recruit' => ['headline' => $t('headline', 120), 'body' => $t('body', 600), 'button' => $t('button', 40), 'link' => self::link($p['link'] ?? '/join'),
+                    'image' => self::image($p['image'] ?? null), 'points' => array_map(fn (array $it): array => ['text' => $s2($it, 'text', 120)], array_slice(array_values(array_filter((array) ($p['points'] ?? []), 'is_array')), 0, 5)),
+                    'plans' => (bool) ($p['plans'] ?? true)],
                 'neighbourhoods' => ['title' => $t('title', 120), 'places' => array_values(array_filter(array_map(fn ($v): ?string => is_string($v) && preg_match('/^[a-z0-9-]{2,80}$/', $v) === 1 ? $v : null,
                     array_slice((array) ($p['places'] ?? []), 0, 12))))],
             };
@@ -118,6 +123,8 @@ final class Sections
             'video' => ['title' => '', 'url' => null, 'caption' => ''],
             'neighbourhoods' => ['title' => 'Neighborhoods we know', 'places' => []],
             'agent' => ['home_value' => true, 'search' => true],
+            'recruit' => ['headline' => 'Grow your business with us', 'body' => '', 'button' => 'Join us', 'link' => '/join', 'image' => DemoPhotos::pick('neighbourhood', 1),
+                'points' => [['text' => 'Start the same day your licence checks out']], 'plans' => true],
             default => [],
         }]])[0] ?? [];
     }

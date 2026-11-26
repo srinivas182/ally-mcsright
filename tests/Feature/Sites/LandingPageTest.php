@@ -31,7 +31,7 @@ it('builds a landing page website without home search, listings or the MLS block
     $owner = User::factory()->owner()->create();
     $site = app(SiteSetup::class)->create('shoreline', ['name' => 'Acme Realty', 'area' => 'Greater Houston', 'state' => 'TX', 'licence' => 'TX 0654321'], $owner);
     $site->update(['status' => 'live']);
-    expect(SitePage::query()->where('site_id', $site->id)->orderBy('position')->pluck('path')->all())->toBe(['/', '/about', '/contact']);
+    expect(SitePage::query()->where('site_id', $site->id)->orderBy('position')->pluck('path')->all())->toBe(['/', '/about', '/join-us', '/contact']);
 
     $web = 'http://acme.rightally.site';
     $html = (string) $this->get($web.'/')->assertOk()->getContent();

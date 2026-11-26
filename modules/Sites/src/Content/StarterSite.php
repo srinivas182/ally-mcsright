@@ -131,6 +131,7 @@ final class StarterSite
                     $reviews,
                     $cta,
                 ])],
+            self::joinPage($name, $area),
             ['path' => '/contact', 'title' => 'Contact', 'in_menu' => true, 'meta' => "Contact {$name}: talk to a local real estate agent about buying or selling in {$area}.",
                 'sections' => Sections::clean([
                     ['type' => 'contact', 'id' => 'contact', 'props' => ['title' => 'Contact us', 'body' => 'Send a message and an agent will get back to you shortly, usually within the hour during the day.']],
@@ -204,11 +205,64 @@ final class StarterSite
                     $reviews,
                     $cta,
                 ])],
+            self::joinPage($name, $area),
             ['path' => '/contact', 'title' => 'Contact', 'in_menu' => true, 'meta' => "Contact {$name}: talk to a real estate professional about buying or selling in {$area}.",
                 'sections' => Sections::clean([
                     ['type' => 'contact', 'id' => 'contact', 'props' => ['title' => 'Contact us', 'body' => 'Send a message and we will get back to you shortly, usually the same day.']],
                 ])],
         ];
+    }
+
+    /**
+     * AG8: "Join us", on every brokerage website: why agents join, how they can be paid (the plans offered under
+     * Commissions › Plans, live), how joining works, agents' questions, and the button to join online. With no
+     * agent's link, a new agent joins with the brokerage itself. The brokerage edits it like any other page.
+     *
+     * @return array{path: string, title: string, in_menu: bool, meta: string, sections: list<array<string, mixed>>}
+     */
+    public static function joinPage(string $name, string $area): array
+    {
+        $p = fn (string $group, int $n = 0): string => DemoPhotos::pick($group, $n);
+
+        return ['path' => '/join-us', 'title' => 'Join us', 'in_menu' => true,
+            'meta' => "Join {$name} as a real estate agent in {$area}: why agents choose us, how you are paid, and how to join online in a few minutes.",
+            'sections' => Sections::clean([
+                ['type' => 'recruit', 'id' => 'join', 'props' => ['headline' => "Grow your real estate business with {$name}",
+                    'body' => 'Keep more of what you earn, get the tools and support to close more deals, and build income from the agents you bring with you. Joining takes a few minutes online.',
+                    'button' => 'Start joining', 'link' => '/join', 'image' => $p('exterior_luxury', 2), 'plans' => true, 'points' => [
+                        ['text' => 'Pick the plan that fits how you work'], ['text' => 'Your own website, leads and app from day one'],
+                        ['text' => 'A broker who answers the phone'], ['text' => 'Start the same day your licence checks out'],
+                    ]]],
+                ['type' => 'features', 'id' => 'why', 'props' => ['title' => "Why agents choose {$name}", 'items' => [
+                    ['title' => 'Keep more of what you earn', 'body' => 'Clear plans with a cap or a flat fee per deal. You see what you keep on every deal before it closes.'],
+                    ['title' => 'Leads and a website of your own', 'body' => 'Your own page and landing pages to share, with every lead sent straight to you, not to a call center.'],
+                    ['title' => 'One app for everything', 'body' => 'Clients, listings, deals, documents, marketing and your money in one place, on your phone and your computer.'],
+                    ['title' => 'Paid quickly, every time', 'body' => 'Your commission goes straight to your bank account once the deal closes, and you can follow each step.'],
+                    ['title' => 'Support when you need it', 'body' => 'A broker who picks up the phone, help with contracts, and training when you want it.'],
+                    ['title' => 'Earn from the agents you bring', 'body' => 'Invite agents you trust. When they close, you can share in what the brokerage earns, as your plan allows.'],
+                ]]],
+                ['type' => 'split', 'id' => 'tools', 'props' => ['title' => 'Everything you need to work, from day one', 'side' => 'left',
+                    'body' => "On your first day you get your own agent page, ten ready-made landing pages to share, a CRM that follows up for you, and an assistant on your website day and night.\n\nYour deals, documents and commission sit in the same app, so you always know where you stand.",
+                    'button' => '', 'link' => '/join', 'image' => $p('living', 2)]],
+                ['type' => 'split', 'id' => 'grow', 'props' => ['title' => 'Build income beyond your own deals', 'side' => 'right',
+                    'body' => "Every agent gets a personal join link. Share it with agents you respect; when they join and close deals, you can earn revenue share, as your plan allows.\n\nYou can see everyone you brought in, and what they earned you, at any time.",
+                    'button' => 'Start joining', 'link' => '/join', 'image' => $p('neighbourhood', 3)]],
+                ['type' => 'features', 'id' => 'how', 'props' => ['title' => 'How joining works', 'items' => [
+                    ['title' => '1. Check your licence', 'body' => 'Enter your licence number. We check it with the state right away.'],
+                    ['title' => '2. Pick how you are paid', 'body' => 'Choose the plan that suits you. Each one is explained in plain words.'],
+                    ['title' => '3. Set up in minutes', 'body' => 'Your app, website and agent page are ready as soon as you join.'],
+                    ['title' => '4. Meet your broker', 'body' => 'We call to welcome you, move your licence over with you and answer your questions.'],
+                ]]],
+                ['type' => 'faq', 'id' => 'faq', 'props' => ['title' => 'Questions agents ask', 'items' => [
+                    ['q' => "Do I need to move my licence to {$name}?", 'a' => 'Yes, your licence is held by the brokerage you work with. We walk you through the change with the state after you join.'],
+                    ['q' => 'Can I bring my clients with me?', 'a' => 'Your clients are your relationships. You can bring your contacts into your CRM on day one. Deals already under contract stay with your current brokerage until they close.'],
+                    ['q' => 'What does it cost?', 'a' => 'The plan you pick shows what you keep on every deal. Any monthly or yearly fees are shown before you join, so there are no surprises.'],
+                    ['q' => 'When do I get paid?', 'a' => 'Once a deal closes and the money reaches us, your commission is paid to your bank account. You can follow every step in the app.'],
+                    ['q' => 'Can I talk to someone first?', 'a' => 'Of course. Send us a message or call, and our broker will set a time to talk, with no pressure.'],
+                ]]],
+                ['type' => 'cta', 'id' => 'ready', 'props' => ['title' => 'Ready when you are', 'body' => 'Joining takes a few minutes. Have your licence number ready.',
+                    'button' => 'Start joining', 'link' => '/join']],
+            ])];
     }
 
     /**
