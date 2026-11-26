@@ -9,6 +9,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Core\Access\Role;
@@ -82,6 +83,10 @@ final class UserController
             )),
             'agents' => User::query()->where('kind', UserKind::Agent)->where('status', UserStatus::Active)
                 ->orderBy('first_name')->get()->map(fn (User $a): array => ['id' => $a->id, 'name' => $a->name]),
+            // AG6: who can sponsor a new agent, and the plans they can start on (from Commissions, when it is there).
+            'sponsors' => $isHq ? [] : User::query()->whereIn('kind', [UserKind::Agent, UserKind::Owner])->where('status', UserStatus::Active)
+                ->orderBy('first_name')->get()->map(fn (User $a): array => ['ulid' => $a->ulid, 'name' => $a->name]),
+            'plans' => $isHq ? [] : self::invitePlans(),
             'can' => ['invite' => Gate::allows('core.users.invite'), 'manage' => Gate::allows('core.users.manage'), 'roles' => Gate::allows('core.roles.manage')],
             'roles' => Gate::allows('core.roles.manage') && ! $isHq ? app(Roles::class)->all()->map(fn ($r): array => ['ulid' => $r->ulid, 'name' => $r->name, 'locked' => $r->is_locked])->values() : [],
             'grants' => Gate::allows('core.roles.manage') && ! $isHq ? UserRole::query()->get()->groupBy(fn ($ur) => (string) User::query()->whereKey($ur->user_id)->value('ulid'))->map(fn ($g) => $g->map(fn ($ur): array => [
@@ -103,12 +108,25 @@ final class UserController
             'kind' => ['required', Rule::enum(UserKind::class)],
             'assisted_user_id' => ['nullable', 'integer'],
             'sponsor' => ['nullable', 'string', 'size:26'],
+            'plan' => ['nullable', 'string', 'size:26'],
         ]);
+        $kind = UserKind::from($data['kind']);
+        // AG6: the sponsor (an active agent or owner) and the commission plan an agent starts on; none: under the
+        // company, on the default plan.
+        $sponsorId = isset($data['sponsor']) && $kind === UserKind::Agent ? User::query()->where('ulid', $data['sponsor'])->whereIn('kind', [UserKind::Agent, UserKind::Owner])
+            ->where('status', UserStatus::Active)->value('id') : null;
+        if (isset($data['sponsor']) && $kind === UserKind::Agent && $sponsorId === null) {
+            throw ValidationException::withMessages(['sponsor' => 'Choose an active agent as the sponsor, or no sponsor.']);
+        }
+        $plans = self::invitePlans();
+        if (isset($data['plan']) && ($kind !== UserKind::Agent || ! in_array($data['plan'], array_column($plans, 'ulid'), true))) {
+            throw ValidationException::withMessages(['plan' => 'Choose one of your published commission plans.']);
+        }
 
         $invitations->invite(
-            $data['email'], $data['first_name'], $data['last_name'], UserKind::from($data['kind']),
+            $data['email'], $data['first_name'], $data['last_name'], $kind,
             self::actor($request), isset($data['assisted_user_id']) ? (int) $data['assisted_user_id'] : null,
-            isset($data['sponsor']) ? User::query()->where('ulid', $data['sponsor'])->value('id') : null,
+            $sponsorId, isset($data['plan']) ? ['comp_plan' => $data['plan']] : [],
         );
 
         Inertia::flash('toast', ['type' => 'success', 'message' => "Invitation sent to {$data['email']}."]);
@@ -187,5 +205,15 @@ final class UserController
         abort_unless($user instanceof User, 403);
 
         return $user;
+    }
+
+    /**
+     * AG6: the commission plans an agent can be invited on, from the Compensation module's 'core.invite_plans' answer.
+     *
+     * @return list<array{ulid: string, name: string, default: bool}>
+     */
+    private static function invitePlans(): array
+    {
+        return app()->bound('core.invite_plans') ? (app('core.invite_plans'))() : [];
     }
 }

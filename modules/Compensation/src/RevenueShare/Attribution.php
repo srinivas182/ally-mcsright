@@ -9,6 +9,9 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Modules\Compensation\JoinChoices;
+use Modules\Compensation\Models\Plan;
+use Modules\Compensation\Models\PlanAssignment;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Identity\Events\UserActivated;
@@ -49,6 +52,12 @@ final class Attribution
             $sponsor = $sponsorId !== null ? User::query()->find($sponsorId) : null;
             if ($sponsor instanceof User && $sponsor->id !== $user->id) {
                 $this->sponsorships->set($user, $sponsor, $today, $inviter instanceof User ? $inviter : null, 'Set when the invitation was accepted');
+            }
+            // AG6: the commission plan chosen when they were invited.
+            $planUlid = $invitation !== null ? ($invitation->extras['comp_plan'] ?? null) : null;
+            $plan = is_string($planUlid) ? Plan::query()->where('ulid', $planUlid)->first() : null;
+            if ($plan instanceof Plan && ! PlanAssignment::query()->where('agent_user_id', $user->id)->exists()) {
+                app(JoinChoices::class)->place($user->id, $plan->id);
             }
         });
     }

@@ -48,6 +48,19 @@ final class JoinChoices
         return $out;
     }
 
+    /**
+     * AG6: every published, active commission plan an owner can invite an agent on (not only those offered at
+     * joining), the default first.
+     *
+     * @return list<array{ulid: string, name: string, default: bool}>
+     */
+    public function invitable(): array
+    {
+        return array_values(Plan::query()->where('type', PlanType::Commission)->where('status', PlanStatus::Active)->orderByDesc('is_default')->orderBy('name')->get()
+            ->filter(fn (Plan $p): bool => $p->latestPublished() !== null)
+            ->map(fn (Plan $p): array => ['ulid' => $p->ulid, 'name' => $p->name, 'default' => $p->is_default])->all());
+    }
+
     /** One of the offered plans, by its public id; null when it is not (or no longer) offered. */
     public function find(string $ulid): ?Plan
     {

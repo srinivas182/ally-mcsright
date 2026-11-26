@@ -29,7 +29,10 @@ final class ManageInvitations
 
     public function __construct(private readonly TenantContext $tenants) {}
 
-    public function invite(string $email, string $firstName, string $lastName, UserKind $kind, ?User $invitedBy, ?int $assistedUserId = null, ?int $sponsorUserId = null): Invitation
+    /**
+     * @param  array<string, string>  $extras  AG6: what other modules set for the new person (e.g. 'comp_plan' => a plan's public id)
+     */
+    public function invite(string $email, string $firstName, string $lastName, UserKind $kind, ?User $invitedBy, ?int $assistedUserId = null, ?int $sponsorUserId = null, array $extras = []): Invitation
     {
         $email = mb_strtolower(trim($email));
 
@@ -70,6 +73,7 @@ final class ManageInvitations
             'assisted_user_id' => $assistedUserId,
             'invited_by' => $invitedBy?->id,
             'sponsor_user_id' => $sponsorUserId,
+            'extras' => $extras !== [] ? $extras : null,
             'token_hash' => Invitation::hashToken($token),
             'expires_at' => CarbonImmutable::now()->addDays(self::VALID_DAYS),
         ]);

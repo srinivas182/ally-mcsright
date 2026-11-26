@@ -40,7 +40,7 @@ final class Invitation extends Model
     use HasPublicUlid;
 
     protected $fillable = [
-        'email', 'first_name', 'last_name', 'kind', 'role_ids', 'assisted_user_id', 'invited_by', 'sponsor_user_id',
+        'email', 'first_name', 'last_name', 'kind', 'role_ids', 'assisted_user_id', 'invited_by', 'sponsor_user_id', 'extras',
         'token_hash', 'expires_at', 'accepted_at', 'revoked_at',
     ];
 
@@ -56,6 +56,7 @@ final class Invitation extends Model
     {
         return [
             'kind' => UserKind::class,
+            'extras' => 'array',
             'role_ids' => 'array',
             'expires_at' => 'immutable_datetime',
             'accepted_at' => 'immutable_datetime',

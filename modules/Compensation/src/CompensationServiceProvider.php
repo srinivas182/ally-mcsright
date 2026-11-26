@@ -66,6 +66,8 @@ final class CompensationServiceProvider extends ServiceProvider
         // Plan changes recalculate pending deals automatically (best-in-class review, addition 7).
         // Revenue share attribution and vesting follow people joining and leaving.
         Event::listen(UserActivated::class, [RevenueShare\Attribution::class, 'onActivated']);
+        // AG6: the plans an agent can be invited on (Core's invite form), and placing them on it when they accept.
+        $this->app->bind('core.invite_plans', fn ($app) => fn (): array => $app->make(JoinChoices::class)->invitable());
         // AG5: a new brokerage starts with Revenue share (default) and Flat fee, both offered when agents join.
         Event::listen(TenantProvisioned::class, [StarterPlans::class, 'onProvisioned']);
         Event::listen(UserActivated::class, [Recruiters\Recruiters::class, 'activated']);
