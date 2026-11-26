@@ -13,7 +13,7 @@ use Modules\Billing\Onboarding\Setup;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Simple\SimpleMode;
 use Modules\Crm\Brief\MorningList;
-use Modules\Recruiting\SelfJoin;
+use Modules\Recruiting\MyNetwork;
 use Modules\Roster\MlsIds;
 
 /**
@@ -52,7 +52,8 @@ final class BriefController
             // SX6: the morning text with today's list (the CRM's; the agent's own opt-in).
             'morningText' => class_exists(MorningList::class) && $user->assistedAgent === null ? app(MorningList::class)->textOn($user) : null,
             // CM4: the agent's own link for bringing in other agents (they become the sponsor).
-            'joinLink' => class_exists(SelfJoin::class) && $user->isKind(UserKind::Agent) ? $request->getSchemeAndHttpHost().'/join/'.app(SelfJoin::class)->codeFor($user) : null,
+            // AG1: on the brokerage's website when it is live (mcs-realty.rightally.site/join/mariachen).
+            'joinLink' => class_exists(MyNetwork::class) && $user->isKind(UserKind::Agent) ? app(MyNetwork::class)->shareUrl($user, $request->getSchemeAndHttpHost()) : null,
             // ML1: the agent's MLS ID, found in the MLS for them to confirm, or typed once.
             'mlsId' => class_exists(MlsIds::class) && $user->assistedAgent === null && ($user->isKind(UserKind::Agent) || $user->isKind(UserKind::Owner))
                 ? app(MlsIds::class)->forAgent($user) : null]);

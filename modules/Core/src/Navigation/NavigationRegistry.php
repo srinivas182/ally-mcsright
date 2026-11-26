@@ -40,7 +40,7 @@ final class NavigationRegistry
             '/settings/ailly', '/settings/mls']],
         'Agents' => ['' => ['/users', '/roster', '/recruiting', '/recruiting/join-page', '/recruiting/agents', '/recruiting/retention', '/engage/activity', '/learn', '/directory']],
         'Commissions' => ['' => ['/compensation/plans', '/compensation/ranks', '/compensation/network', '/compensation/recruiters', '/compensation/revenue-share', '/finance/payouts', '/compensation/fees', '/compensation/simulator', '/compensation/credits']],
-        'My commissions' => ['' => ['/my-money', '/my-plan', '/revenue-share', '/plans', '/recruiting/refer']],
+        'My commissions' => ['' => ['/my-money', '/my-network', '/my-plan', '/revenue-share', '/plans', '/recruiting/refer']],
         'Accounting' => [
             'Money in and out' => ['/finance/receipts', '/finance/agent-billing', '/finance/invoices', '/finance/bills'],
             'Books' => ['/finance/accounts', '/finance/journals', '/finance/adjustments', '/finance/bank', '/finance/periods', '/finance/books'],

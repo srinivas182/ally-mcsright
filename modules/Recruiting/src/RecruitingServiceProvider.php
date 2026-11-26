@@ -53,6 +53,7 @@ final class RecruitingServiceProvider extends ServiceProvider
         $site = $this->app->make(SiteExtensions::class);
         $site->routes(function (Router $r): void {
             $r->get('careers', [Http\CareersController::class, 'show']);
+            $r->get('join/{code}', [Http\MyNetworkController::class, 'fromWebsite'])->where('code', '[a-z0-9]{6,12}'); // AG1: the short link
             $r->post('_careers', [Http\CareersController::class, 'apply']);
         });
         $site->pages(fn (): array => app(Careers::class)->live()
@@ -65,6 +66,7 @@ final class RecruitingServiceProvider extends ServiceProvider
         $nav->add(new NavItem('People', 'Join page', '/recruiting/join-page', 'link', 13, kinds: [UserKind::Owner]));
         $nav->add(new NavItem('People', 'Agent database', '/recruiting/agents', 'user-search', 14, ability: 'recruiting.manage'));
         $nav->add(new NavItem('People', 'Keeping agents', '/recruiting/retention', 'heart-handshake', 15, ability: 'recruiting.manage'));
+        $nav->add(new NavItem('Grow', 'My network', '/my-network', 'network', 35, kinds: [UserKind::Agent])); // AG1
         $nav->add(new NavItem('Grow', 'Refer an agent', '/recruiting/refer', 'user-plus', 36, kinds: [UserKind::Agent]));
     }
 }

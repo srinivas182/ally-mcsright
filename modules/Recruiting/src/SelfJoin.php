@@ -118,9 +118,13 @@ final class SelfJoin
         if ($code !== '') {
             return $code;
         }
-        do {
-            $code = Str::lower(Str::random(8));
-        } while (User::query()->where('join_code', $code)->exists());
+        // AG1: a code people can read and remember, from the agent's name ("mariachen"); a number is added when taken.
+        $base = substr((string) preg_replace('/[^a-z0-9]/', '', Str::lower(Str::ascii($user->first_name.$user->last_name))), 0, 10);
+        $base = strlen($base) >= 6 ? $base : str_pad($base, 6, (string) random_int(0, 9));
+        $code = $base;
+        for ($n = 2; User::query()->where('join_code', $code)->exists(); $n++) {
+            $code = $n < 100 ? substr($base, 0, 12 - strlen((string) $n)).$n : Str::lower(Str::random(8));
+        }
         $user->forceFill(['join_code' => $code])->saveQuietly();
 
         return $code;
