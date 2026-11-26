@@ -83,7 +83,7 @@ function PlanTable({ plans }: { plans: Plan[] }) {
                             | { fee?: { amount?: number } }
                             | undefined;
                         const rs = r.revenue_share as
-                            | { levels?: string[] }
+                            | { levels?: string[]; pool_percent?: string }
                             | undefined;
 
                         return (
@@ -132,7 +132,7 @@ function PlanTable({ plans }: { plans: Plan[] }) {
                                 </td>
                                 <td className="px-4 py-3">
                                     {rs?.levels?.length
-                                        ? `${rs.levels.length} levels (${rs.levels.join(' / ')}%)`
+                                        ? `${rs.levels.length} levels (${rs.levels.join(' / ')}%)${rs.pool_percent && rs.pool_percent !== '100' ? ` of a ${rs.pool_percent}% pool` : ''}`
                                         : 'None'}
                                 </td>
                                 <td className="px-4 py-3 text-right">
@@ -406,6 +406,48 @@ export default function Plans({
                         >
                             Save as draft
                         </Button>
+                    </section>
+                )}
+                {plans.length === 0 && canManage && (
+                    <section className="grid gap-3 rounded-xl border border-primary/30 bg-primary/5 p-5 text-[15px]">
+                        <h2 className="text-lg font-semibold">
+                            Start with the two plans agents ask about most
+                        </h2>
+                        <ul className="grid gap-1.5 text-muted-foreground">
+                            <li>
+                                <strong className="text-foreground">
+                                    Revenue share
+                                </strong>
+                                : agents keep 90% until they pay $16,000 in a
+                                year (counted from the day they join), then $500
+                                a deal. They share in half of your company
+                                dollar on agents they bring in, over 5 levels.
+                            </li>
+                            <li>
+                                <strong className="text-foreground">
+                                    Flat fee
+                                </strong>
+                                : agents keep 100% less $500 a deal.
+                            </li>
+                        </ul>
+                        <p className="text-muted-foreground">
+                            New agents can pick either one when they join.
+                            Change any number before you give a plan to an
+                            agent.
+                        </p>
+                        <span>
+                            <Button
+                                onClick={() =>
+                                    router.post(
+                                        '/compensation/plans/starter',
+                                        {},
+                                        { preserveScroll: true },
+                                    )
+                                }
+                            >
+                                Add these two plans
+                            </Button>
+                        </span>
                     </section>
                 )}
                 {plans.length > 0 && <PlanTable plans={plans} />}

@@ -18,6 +18,7 @@ Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function
         Route::post('plans/{plan}/default', [CompensationController::class, 'makeDefault'])->name('plans.default');
         Route::post('plans/{plan}/archive', [CompensationController::class, 'archive'])->name('plans.archive');
         Route::post('plans/{plan}/join', [CompensationController::class, 'offerOnJoin'])->name('plans.join'); // AG4
+        Route::post('plans/starter', [CompensationController::class, 'starter'])->name('plans.starter'); // AG5
         Route::post('versions/{version}/publish', [CompensationController::class, 'publish'])->name('versions.publish');
         Route::post('assignments', [CompensationController::class, 'assign'])->name('assign');
         Route::get('fees', [CompensationController::class, 'fees'])->name('fees');
