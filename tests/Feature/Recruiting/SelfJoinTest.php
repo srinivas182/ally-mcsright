@@ -14,6 +14,7 @@ use Modules\Billing\Pricing;
 use Modules\Compensation\RevenueShare\Sponsorships;
 use Modules\Core\Identity\Enums\UserStatus;
 use Modules\Core\Support\Connections;
+use Modules\Recruiting\Http\MyNetworkController;
 use Modules\Recruiting\SelfJoin;
 
 /*
@@ -91,4 +92,30 @@ it('lets the owner set the join page: words, video and extra states', function (
         ->where('page.headline', 'Grow with us')->where('page.reasons', ['Great tools', 'Great team'])
         ->where('page.video', 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ')->where('states', ['FL' => 'Florida']));
     $this->actingAs($this->sponsor)->get('/recruiting/join-page')->assertForbidden();
+});
+
+it('makes each agent a join code people can read, from their name (AG1)', function (): void {
+    expect($this->code)->toBe('jamessmith');
+    $twin = User::factory()->create(['first_name' => 'James', 'last_name' => 'Smith']);
+    expect(app(SelfJoin::class)->codeFor($twin))->toBe('jamessmith2')
+        ->and(app(SelfJoin::class)->codeFor(User::factory()->create(['first_name' => 'Al', 'last_name' => 'Ng'])))->toMatch('/^alng\d{2}$/');
+});
+
+it('counts link opens once per visitor, and shows the agent their network numbers (AG1)', function (): void {
+    $this->get("/join/{$this->code}");
+    $this->get("/join/{$this->code}"); // same visitor: counted once
+    $this->post("/join/{$this->code}", joinForm(), ['X-Inertia' => 'true']); // started (waiting for payment)
+
+    $this->actingAs($this->sponsor)->get('/my-network')->assertOk()->assertInertia(fn (Assert $page) => $page->component('recruiting/my-network')
+        ->where('joins.opens', 1)->where('joins.started', 1)->where('joins.joined', 0)
+        ->where('direct', 0)->where('closed.deals', 0)->where('revenue_share_cents', 0)
+        ->where('link', fn ($l) => str_ends_with((string) $l, '/join/jamessmith')));
+    $this->actingAs($this->owner)->get('/my-network')->assertOk();
+});
+
+it('sends the short link on the website on to the join page, keeping the agent (AG1)', function (): void {
+    $this->get("/join/{$this->code}")->assertOk(); // the back office join page still answers
+    $response = app(MyNetworkController::class)->fromWebsite(app(SelfJoin::class), $this->code);
+    expect($response->getTargetUrl())->toEndWith("/join/{$this->code}");
+    expect(app(MyNetworkController::class)->fromWebsite(app(SelfJoin::class), 'nobody12')->getTargetUrl())->toEndWith('/join');
 });

@@ -13,6 +13,7 @@ use Inertia\Response;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Listings\Idx\Coverage;
+use Modules\Recruiting\MyNetwork;
 use Modules\Recruiting\SelfJoin;
 use Modules\Roster\Brokerage\BrokerageLicences;
 use Symfony\Component\HttpFoundation\Response as HttpResponse;
@@ -25,6 +26,10 @@ final class JoinController
     public function show(Request $request, SelfJoin $join, ?string $code = null): HttpResponse
     {
         $sponsor = $join->sponsorFor($code);
+        if ($sponsor !== null && ! $request->session()->has('join_opened.'.$code)) {
+            $request->session()->put('join_opened.'.$code, true); // AG1: counted once per visitor session
+            MyNetwork::opened($sponsor);
+        }
         $page = $join->page();
         $response = Inertia::render('public/join', [
             'brokerage' => app(TenantContext::class)->current()->name,

@@ -7,6 +7,7 @@ use Modules\Core\Http\Middleware\EnsureTenantWorkspace;
 use Modules\Recruiting\Http\AttractionController;
 use Modules\Recruiting\Http\GrowthController;
 use Modules\Recruiting\Http\JoinController;
+use Modules\Recruiting\Http\MyNetworkController;
 use Modules\Recruiting\Http\RecruitingController;
 
 // CM4: join through an agent's link; licence checked, pack paid, placed under the sponsor (no approval).
@@ -17,6 +18,7 @@ Route::middleware(['web', EnsureTenantWorkspace::class])->group(function (): voi
 });
 
 Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function (): void {
+    Route::get('my-network', [MyNetworkController::class, 'show'])->name('my-network'); // AG1
     Route::get('recruiting/join-page', [JoinController::class, 'edit'])->name('join.page');
     Route::post('recruiting/join-page', [JoinController::class, 'save'])->name('join.page.save');
 });
