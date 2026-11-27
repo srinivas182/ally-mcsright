@@ -1,20 +1,9 @@
-import { Head } from '@inertiajs/react';
-import { ChevronRightIcon } from 'lucide-react';
-import { useState } from 'react';
+import { Head, Link } from '@inertiajs/react';
 
-import { SponsorLink } from '@/components/recruiting/sponsor-link';
-import { Badge } from '@/components/ui/badge';
+import { ReferralHero } from '@/components/recruiting/referral-hero';
+import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
 import { formatMoney } from '@/lib/money';
-
-type Node = {
-    ulid: string;
-    name: string;
-    level: number;
-    active: boolean;
-    closings: number;
-    children: Node[];
-};
 
 type Joins = {
     opens: number;
@@ -30,8 +19,12 @@ type Props = {
     direct: number;
     network: number;
     revenue_share_cents: number;
+    revenue_share_on: boolean;
     closed: { deals: number; commission_cents: number };
-    tree: Node[];
+    paid_cents: number;
+    waiting_cents: number;
+    waiting_deals: number;
+    cap: { cap_cents: number; paid_cents: number; capped: boolean } | null;
 };
 
 const usd = (cents: number) => formatMoney({ cents, currency: 'USD' });
@@ -54,58 +47,9 @@ function Stat({
     );
 }
 
-function Branch({ node }: { node: Node }) {
-    const [open, setOpen] = useState(node.level === 1);
-    const leaf = node.children.length === 0;
-
-    return (
-        <li>
-            <button
-                type="button"
-                aria-expanded={leaf ? undefined : open}
-                className="flex w-full flex-wrap items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-muted/60"
-                onClick={() => setOpen(!open)}
-                disabled={leaf}
-            >
-                <ChevronRightIcon
-                    aria-hidden="true"
-                    className={`size-4 transition-transform ${open ? 'rotate-90' : ''} ${leaf ? 'invisible' : ''}`}
-                />
-                <span
-                    className={
-                        node.active
-                            ? 'font-medium'
-                            : 'text-muted-foreground line-through'
-                    }
-                >
-                    {node.name}
-                </span>
-                <Badge variant="outline">Level {node.level}</Badge>
-                <span className="text-sm text-muted-foreground">
-                    {node.closings === 1
-                        ? '1 closing recently'
-                        : `${node.closings} closings recently`}
-                </span>
-                {!leaf && (
-                    <span className="text-sm text-muted-foreground">
-                        · brought in {node.children.length}
-                    </span>
-                )}
-            </button>
-            {open && !leaf && (
-                <ul className="ml-5 grid gap-0.5 border-l pl-2">
-                    {node.children.map((c) => (
-                        <Branch key={c.ulid} node={c} />
-                    ))}
-                </ul>
-            )}
-        </li>
-    );
-}
-
 /**
- * AG1: My commissions › My network. The agent's join link and what it brought, their direct referrals and whole
- * tree, deals closed this year with their own commission, and revenue share earned. Never another agent's money.
+ * AG1/AG1b: My commissions › Overview. Everything the agent earned this year and what is waiting, their cap, their
+ * join link and what it brought, and their network in numbers (the tree has its own tab). Never another agent's money.
  */
 export default function MyNetwork({
     link,
@@ -114,17 +58,34 @@ export default function MyNetwork({
     direct,
     network,
     revenue_share_cents,
+    revenue_share_on,
     closed,
-    tree,
+    paid_cents,
+    waiting_cents,
+    waiting_deals,
+    cap,
 }: Props) {
     return (
         <>
-            <Head title="My network" />
+            <Head title="Overview" />
             <div className="mx-auto grid w-full max-w-5xl gap-6 p-4 md:p-6">
                 <PageHeader
-                    title="My network"
-                    description={`Agents you brought in, and what your work earned you in ${year}. Only your own money is shown here.`}
+                    title="Overview"
+                    description={`What you earned in ${year}, what is on its way, and the agents you brought in. Only your own money is shown here.`}
                 />
+
+                <ReferralHero
+                    url={link}
+                    joins={joins}
+                    revenueShare={revenue_share_on}
+                />
+                <p className="-mt-3 text-sm text-muted-foreground">
+                    Know a good agent who might not click a link?{' '}
+                    <Link className="underline" href="/recruiting/refer">
+                        Tell your broker about them
+                    </Link>
+                    .
+                </p>
 
                 <section aria-labelledby="this-year" className="grid gap-3">
                     <h2 id="this-year" className="text-lg font-semibold">
@@ -154,63 +115,61 @@ export default function MyNetwork({
                     </div>
                 </section>
 
-                <SponsorLink url={link} />
-
-                <section aria-labelledby="link-results" className="grid gap-3">
-                    <h2 id="link-results" className="text-lg font-semibold">
-                        What your link brought
+                <section aria-labelledby="money" className="grid gap-3">
+                    <h2 id="money" className="text-lg font-semibold">
+                        Your money
                     </h2>
-                    <ol className="grid gap-3 sm:grid-cols-3">
-                        <li>
-                            <Stat
-                                label="Opened your link"
-                                value={String(joins.opens)}
-                                note={`${joins.opens_30} in the last 30 days`}
-                            />
-                        </li>
-                        <li>
-                            <Stat
-                                label="Started joining"
-                                value={String(joins.started)}
-                                note="Gave their licence"
-                            />
-                        </li>
-                        <li>
-                            <Stat
-                                label="Joined"
-                                value={String(joins.joined)}
-                                note="Placed under you"
-                            />
-                        </li>
-                    </ol>
+                    <div className="grid gap-3 sm:grid-cols-3">
+                        <Stat
+                            label="Paid to you this year"
+                            value={usd(paid_cents)}
+                        />
+                        <Stat
+                            label="On its way"
+                            value={usd(waiting_cents)}
+                            note={
+                                waiting_deals === 0
+                                    ? 'No deals waiting'
+                                    : `From ${waiting_deals} ${waiting_deals === 1 ? 'deal' : 'deals'} not paid yet`
+                            }
+                        />
+                        <Stat
+                            label="Your cap"
+                            value={
+                                cap === null
+                                    ? 'No cap'
+                                    : cap.capped
+                                      ? 'Capped'
+                                      : `${usd(cap.paid_cents)} of ${usd(cap.cap_cents)}`
+                            }
+                            note={
+                                cap === null
+                                    ? 'Your plan has no cap'
+                                    : cap.capped
+                                      ? 'You keep more on every deal now'
+                                      : 'Paid to the brokerage so far'
+                            }
+                        />
+                    </div>
+                    <p className="text-sm">
+                        <Link className="underline" href="/my-money">
+                            Payments, statements and your bank account
+                        </Link>
+                    </p>
                 </section>
 
-                <section
-                    aria-labelledby="tree"
-                    className="grid gap-3 rounded-xl border bg-card p-5"
-                >
+                <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-5">
                     <div>
-                        <h2 id="tree" className="text-lg font-semibold">
-                            Your network
-                        </h2>
+                        <h2 className="text-lg font-semibold">Your network</h2>
                         <p className="text-sm text-muted-foreground">
-                            Level 1 is the agents you brought in; level 2 is the
-                            agents they brought in, and so on. Open a name to
-                            see who they brought in.
+                            {network === 0
+                                ? 'Nobody yet. Agents who join through your link show here.'
+                                : `${direct} brought in by you, ${network} in your whole network.`}
                         </p>
                     </div>
-                    {tree.length === 0 ? (
-                        <p className="rounded-lg bg-muted/40 p-4">
-                            Nobody yet. Share your link above: agents who join
-                            through it are placed under you.
-                        </p>
-                    ) : (
-                        <ul className="grid gap-0.5">
-                            {tree.map((n) => (
-                                <Branch key={n.ulid} node={n} />
-                            ))}
-                        </ul>
-                    )}
+                    <Button asChild variant="outline">
+                        <Link href="/my-network/tree">Open network tree</Link>
+                    </Button>
                 </section>
             </div>
         </>
@@ -218,5 +177,5 @@ export default function MyNetwork({
 }
 
 MyNetwork.layout = {
-    breadcrumbs: [{ title: 'My network', href: '/my-network' }],
+    breadcrumbs: [{ title: 'Overview', href: '/my-network' }],
 };

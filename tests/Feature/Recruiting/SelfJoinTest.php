@@ -109,8 +109,16 @@ it('counts link opens once per visitor, and shows the agent their network number
     $this->actingAs($this->sponsor)->get('/my-network')->assertOk()->assertInertia(fn (Assert $page) => $page->component('recruiting/my-network')
         ->where('joins.opens', 1)->where('joins.started', 1)->where('joins.joined', 0)
         ->where('direct', 0)->where('closed.deals', 0)->where('revenue_share_cents', 0)
-        ->where('link', fn ($l) => str_ends_with((string) $l, '/join/jamessmith')));
+        ->where('link', fn ($l) => str_ends_with((string) $l, '/join/jamessmith'))
+        ->where('paid_cents', 0)->where('waiting_cents', 0)->where('revenue_share_on', false)->missing('tree'));
     $this->actingAs($this->owner)->get('/my-network')->assertOk();
+
+    // AG1b: the tree has its own tab.
+    $nina = User::query()->where('email', 'nina@example.test')->sole();
+    $nina->forceFill(['status' => UserStatus::Active])->save();
+    app(Sponsorships::class)->set($nina, $this->sponsor, CarbonImmutable::parse('2026-05-01'));
+    $this->actingAs($this->sponsor)->get('/my-network/tree')->assertOk()->assertInertia(fn (Assert $page) => $page->component('recruiting/network-tree')
+        ->where('direct', 1)->where('tree.0.name', 'Nina Ortiz')->where('tree.0.level', 1));
 });
 
 it('sends the short link on the website on to the join page, keeping the agent (AG1)', function (): void {

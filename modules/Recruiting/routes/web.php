@@ -18,7 +18,8 @@ Route::middleware(['web', EnsureTenantWorkspace::class])->group(function (): voi
 });
 
 Route::middleware(['web', EnsureTenantWorkspace::class, 'auth'])->group(function (): void {
-    Route::get('my-network', [MyNetworkController::class, 'show'])->name('my-network'); // AG1
+    Route::get('my-network', [MyNetworkController::class, 'show'])->name('my-network'); // AG1: the agent's Overview
+    Route::get('my-network/tree', [MyNetworkController::class, 'tree'])->name('my-network.tree'); // AG1b
     Route::get('recruiting/join-page', [JoinController::class, 'edit'])->name('join.page');
     Route::post('recruiting/join-page', [JoinController::class, 'save'])->name('join.page.save');
 });
