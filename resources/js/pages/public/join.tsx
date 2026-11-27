@@ -1,5 +1,5 @@
 import { Head, useForm, usePage } from '@inertiajs/react';
-import { Check, ShieldCheck } from 'lucide-react';
+import { Check, CircleCheck, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 
 import PasswordInput from '@/components/password-input';
@@ -24,6 +24,13 @@ type Props = {
         name: string;
         description: string | null;
         price_cents: number;
+    }[];
+    plans: {
+        ulid: string;
+        name: string;
+        description: string | null;
+        lines: string[];
+        default: boolean;
     }[];
     states: Record<string, string>;
     cancelled: boolean;
@@ -102,6 +109,7 @@ export default function Join({
     code,
     unknownCode,
     packs,
+    plans,
     states,
     cancelled,
 }: Props) {
@@ -117,6 +125,7 @@ export default function Join({
             Object.keys(states).length === 1 ? Object.keys(states)[0] : '',
         licence_number: '',
         pack: packs[0]?.ulid ?? '',
+        plan: plans.length === 1 ? plans[0].ulid : '',
         agree: false,
     });
     const [phoneShown, setPhoneShown] = useState('');
@@ -153,7 +162,10 @@ export default function Join({
         form.data.phone !== '' &&
         form.data.password.length >= 12 &&
         form.data.password === form.data.password_confirmation &&
+        (plans.length === 0 || form.data.plan !== '') &&
         form.data.agree;
+    const steps = 2 + (plans.length > 0 ? 1 : 0) + (packs.length > 0 ? 1 : 0);
+    const stepWords = ['', '', 'two', 'three', 'four'];
     const logo = (tenant as { logo?: string | null } | null)?.logo ?? null;
 
     return (
@@ -265,8 +277,7 @@ export default function Join({
                                 Join {brokerage}
                             </p>
                             <p className="text-3xl font-semibold text-slate-900">
-                                Start in {packs.length > 0 ? 'three' : 'two'}{' '}
-                                steps
+                                Start in {stepWords[steps]} steps
                             </p>
                             <p className="text-slate-600">
                                 {sponsor
@@ -460,9 +471,96 @@ export default function Join({
                                 </p>
                             </div>
 
+                            {plans.length > 0 && (
+                                <>
+                                    <Step
+                                        n={3}
+                                        title="How you want to be paid"
+                                    />
+                                    <fieldset className="-mt-2 grid gap-3">
+                                        <legend className="sr-only">
+                                            Your commission plan
+                                        </legend>
+                                        <div
+                                            className={`grid gap-3 ${plans.length > 1 ? 'sm:grid-cols-2' : ''}`}
+                                        >
+                                            {plans.map((p) => {
+                                                const on =
+                                                    form.data.plan === p.ulid;
+
+                                                return (
+                                                    <label
+                                                        key={p.ulid}
+                                                        className={`grid cursor-pointer content-start gap-3 rounded-2xl border-2 p-5 transition-colors ${
+                                                            on
+                                                                ? 'border-[#0E1B2C] bg-[#0E1B2C] text-white shadow-lg'
+                                                                : 'border-slate-200 hover:border-slate-400'
+                                                        }`}
+                                                    >
+                                                        <span className="flex items-center gap-2.5 text-lg font-semibold">
+                                                            <input
+                                                                type="radio"
+                                                                name="plan"
+                                                                className="size-5 accent-[#C8A96A]"
+                                                                checked={on}
+                                                                onChange={() =>
+                                                                    form.setData(
+                                                                        'plan',
+                                                                        p.ulid,
+                                                                    )
+                                                                }
+                                                            />
+                                                            {p.name}
+                                                        </span>
+                                                        {p.description && (
+                                                            <span
+                                                                className={`text-[15px] ${on ? 'text-slate-200' : 'text-slate-600'}`}
+                                                            >
+                                                                {p.description}
+                                                            </span>
+                                                        )}
+                                                        <ul className="grid gap-2">
+                                                            {p.lines.map(
+                                                                (l) => (
+                                                                    <li
+                                                                        key={l}
+                                                                        className="flex gap-2 text-[15px] leading-snug"
+                                                                    >
+                                                                        <CircleCheck
+                                                                            className={`mt-0.5 size-4 shrink-0 ${on ? 'text-[#C8A96A]' : 'text-emerald-600'}`}
+                                                                            aria-hidden="true"
+                                                                        />
+                                                                        {l}
+                                                                    </li>
+                                                                ),
+                                                            )}
+                                                        </ul>
+                                                    </label>
+                                                );
+                                            })}
+                                        </div>
+                                        <p className="text-sm text-slate-500">
+                                            You can talk to {brokerage} about
+                                            changing plans later.
+                                        </p>
+                                        {e.plan && (
+                                            <span
+                                                role="alert"
+                                                className="text-sm text-destructive"
+                                            >
+                                                {e.plan}
+                                            </span>
+                                        )}
+                                    </fieldset>
+                                </>
+                            )}
+
                             {packs.length > 0 && (
                                 <>
-                                    <Step n={3} title="Choose your pack" />
+                                    <Step
+                                        n={plans.length > 0 ? 4 : 3}
+                                        title="Choose your pack"
+                                    />
                                     <fieldset className="-mt-2 grid gap-3">
                                         <legend className="sr-only">
                                             Your pack

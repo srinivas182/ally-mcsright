@@ -38,6 +38,7 @@ final class JoinController
             'code' => $sponsor !== null ? $code : null,
             'unknownCode' => $code !== null && $sponsor === null,
             'packs' => $join->packs(),
+            'plans' => $join->plans(),
             'states' => $join->states(self::states()),
             'cancelled' => $request->boolean('cancelled'),
         ])->toResponse($request);
@@ -54,7 +55,7 @@ final class JoinController
             'email' => ['required', 'email:rfc,filter', 'max:160'], 'phone' => ['required', 'regex:/^\+1[2-9]\d{9}$/'],
             'password' => ['required', 'confirmed', Password::min(12)],
             'licence_state' => ['required', 'string', 'size:2', 'in:'.implode(',', array_keys($states))], 'licence_number' => ['required', 'string', 'max:40'],
-            'pack' => ['nullable', 'string', 'size:26'], 'agree' => ['accepted'],
+            'pack' => ['nullable', 'string', 'size:26'], 'plan' => ['nullable', 'string', 'size:26'], 'agree' => ['accepted'],
         ], ['agree.accepted' => 'Please agree to the terms to join.', 'phone.regex' => 'Enter a 10-digit US phone number.', 'email.email' => 'Enter a full email address, like name@example.com.', 'licence_state.in' => 'Choose the state that issued your licence.']);
         $next = $join->apply($data, $join->sponsorFor($code), $states[$data['licence_state']], $request->getSchemeAndHttpHost());
 
@@ -72,7 +73,7 @@ final class JoinController
         $user = $request->user();
         abort_unless($user instanceof User && $user->isKind(UserKind::Owner), 403);
 
-        return Inertia::render('recruiting/join-page', ['page' => $join->page(), 'states' => self::states(),
+        return Inertia::render('recruiting/join-page', ['page' => $join->page(), 'states' => self::states(), 'plans' => array_column($join->plans(), 'name'),
             'licensed' => app(BrokerageLicences::class)->goodStates(), 'link' => $request->getSchemeAndHttpHost().'/join']);
     }
 

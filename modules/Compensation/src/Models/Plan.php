@@ -21,6 +21,7 @@ use Modules\Core\Tenancy\Concerns\HasPublicUlid;
  * @property string $name
  * @property string|null $description
  * @property bool $is_default
+ * @property bool $offered_on_join
  * @property PlanStatus $status
  * @property int|null $created_by
  */
@@ -31,7 +32,7 @@ final class Plan extends Model
 
     protected $table = 'comp_plans';
 
-    protected $fillable = ['type', 'name', 'description', 'is_default', 'status', 'created_by'];
+    protected $fillable = ['type', 'name', 'description', 'is_default', 'offered_on_join', 'status', 'created_by'];
 
     public function getConnectionName(): ?string
     {
@@ -43,7 +44,7 @@ final class Plan extends Model
      */
     protected function casts(): array
     {
-        return ['type' => PlanType::class, 'status' => PlanStatus::class, 'is_default' => 'boolean'];
+        return ['type' => PlanType::class, 'status' => PlanStatus::class, 'is_default' => 'boolean', 'offered_on_join' => 'boolean'];
     }
 
     /**

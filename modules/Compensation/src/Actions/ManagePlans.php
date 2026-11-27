@@ -133,6 +133,20 @@ final class ManagePlans
         return $plan;
     }
 
+    /**
+     * AG4: lets new agents pick this plan when they join online (or stops it). Only a published, active commission
+     * plan can be offered; agents already on it stay on it either way.
+     */
+    public function offerOnJoin(Plan $plan, bool $offered): Plan
+    {
+        if ($offered && ($plan->type !== PlanType::Commission || $plan->status !== PlanStatus::Active || $plan->latestPublished() === null)) {
+            throw ValidationException::withMessages(['plan' => 'Publish the plan before offering it to new agents.']);
+        }
+        $plan->update(['offered_on_join' => $offered]);
+
+        return $plan;
+    }
+
     public function archive(Plan $plan): Plan
     {
         if ($plan->is_default) {
@@ -146,7 +160,7 @@ final class ManagePlans
             throw ValidationException::withMessages(['plan' => 'Agents are still on this plan. Move them to another plan first.']);
         }
 
-        $plan->update(['status' => PlanStatus::Archived]);
+        $plan->update(['status' => PlanStatus::Archived, 'offered_on_join' => false]);
 
         return $plan;
     }
