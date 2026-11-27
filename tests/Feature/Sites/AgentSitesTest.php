@@ -277,3 +277,29 @@ it('remembers the agent whose page a visitor opened, shows "Your agent" on other
     $this->unencryptedCookies = [];
     expect(collect($this->get($this->web.'/_ref?remember=jane-doe')->headers->getCookies())->first(fn ($c) => $c->getName() === 'ra_agent'))->toBeNull();
 });
+
+it('opens an agent\'s page with their profile: photo or initials, Call/Text/Email, areas, and their own contact form (AG7)', function (): void {
+    janeSite($this);
+    $html = (string) $this->get($this->web.'/agents/jane-doe')->assertOk()->getContent();
+    expect($html)->toContain('class="agent-hero"')->toContain('<h1 class="agent-name"')->toContain('Jane Doe</h1>')
+        ->toContain('Real estate agent with <strong>')->toContain('South Austin specialist')
+        ->toContain('<li>Travis Heights</li>')->toContain('href="tel:5125550177"')->toContain('href="sms:5125550177"')->toContain('href="mailto:jane@acme.test"')
+        ->toContain('class="agent-monogram"')->toContain('>JD</span>') // no photo yet: her initials
+        ->toContain('class="agent-dock"')->toContain('TX real estate licence 0712345')
+        ->toContain('Twelve years helping buyers.') // "About Jane" uses her bio
+        ->toContain('Message Jane')->not->toContain('Office hours')->not->toContain('Send us a message')
+        ->not->toContain('Helping you buy and sell with'); // the old opening is gone
+});
+
+it('moves agents\' existing pages to the profile opening, leaving pages they changed alone (AG7)', function (): void {
+    $site = janeSite($this);
+    $page = SitePage::query()->where('site_id', $site->id)->where('path', '/')->sole();
+    $old = ['type' => 'hero', 'id' => 'hero', 'props' => ['headline' => 'Jane Doe', 'subhead' => 'Helping you buy and sell.', 'search' => true]];
+    $page->forceFill(['sections' => [$old, ...array_slice($page->sections, 1)]])->save();
+    (require base_path('modules/Sites/database/migrations/2027_07_02_000001_agent_profile_section.php'))->up();
+    expect($page->fresh()->sections[0]['type'])->toBe('agent');
+
+    $page->forceFill(['sections' => [array_replace_recursive($old, ['props' => ['headline' => 'Your Austin home, made simple']]), ...array_slice($page->sections, 1)]])->save();
+    (require base_path('modules/Sites/database/migrations/2027_07_02_000001_agent_profile_section.php'))->up();
+    expect($page->fresh()->sections[0]['props']['headline'])->toBe('Your Austin home, made simple'); // changed by Jane: kept
+});

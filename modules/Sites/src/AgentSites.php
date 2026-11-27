@@ -89,7 +89,7 @@ final class AgentSites
                 'languages' => 'English', 'photo' => null], 'seo' => [], 'status' => 'draft']);
         SitePage::query()->create(['site_id' => $site->id, 'path' => '/', 'title' => $agent->name, 'position' => 0, 'status' => 'published', 'published_at' => CarbonImmutable::now(),
             'updated_by' => $agent->id, 'sections' => Sections::clean([
-                ['type' => 'hero', 'id' => 'hero', 'props' => ['headline' => $agent->name, 'subhead' => 'Helping you buy and sell with '.$brokerage->displayName().'.', 'search' => true]],
+                ['type' => 'agent', 'id' => 'profile', 'props' => ['home_value' => true, 'search' => true]], // AG7
                 ['type' => 'listings', 'id' => 'mine', 'props' => ['title' => $first.'\'s listings', 'mine' => true, 'limit' => 6]],
                 ['type' => 'text', 'id' => 'about', 'props' => ['title' => 'About '.$first, 'body' => '']],
                 ['type' => 'testimonials', 'id' => 'reviews', 'props' => ['title' => 'What clients say', 'items' => []]],
