@@ -24,6 +24,7 @@ use Modules\Sites\Http\Controllers\SiteController;
 use Modules\Sites\Http\Controllers\ValuationController;
 use Modules\Sites\Http\Controllers\VisitorController;
 use Modules\Sites\Models\Site;
+use Modules\Sites\SiteSetup;
 use Modules\Sites\Support\Designs;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
@@ -89,6 +90,11 @@ final class SiteRouter
 
     public function dispatch(Request $request): Response
     {
+        // DM2: once the brokerage's own domain is connected, its free address sends visitors (and search engines) there,
+        // so the website is found at one address. Until then, and if the domain stops working, the free address serves it.
+        if ($request->isMethod('GET') && ! str_starts_with(ltrim($request->path(), '/'), '_') && ($own = self::ownDomain($request)) !== null) {
+            return redirect()->away('https://'.$own.$request->getRequestUri(), 301)->header('Cache-Control', 'public, max-age=300');
+        }
         // LP1: a landing page website has no home search, property pages or market reports: those addresses go home.
         if ($request->isMethod('GET') && preg_match('#^(homes|market)(/|$)#', ltrim($request->path(), '/')) === 1
             && Designs::isLanding(Site::query()->where('kind', 'brokerage')->first()?->template)) {
@@ -116,5 +122,19 @@ final class SiteRouter
         }
 
         return $response;
+    }
+
+    /** The brokerage's connected custom domain when this request came in on its free address; null otherwise. */
+    private static function ownDomain(Request $request): ?string
+    {
+        if (! app(TenantContext::class)->check()) {
+            return null;
+        }
+        $sites = app(SiteSetup::class);
+        $hosts = $sites->hosts();
+        $free = collect($hosts)->firstWhere('kind', 'platform')['host'] ?? null;
+        $live = $sites->liveHost();
+
+        return $free !== null && $live !== null && $live !== $free && strtolower($request->getHost()) === $free ? $live : null;
     }
 }

@@ -174,6 +174,17 @@ final class Catalog
                     'shotstack' => ['label' => 'Shotstack', 'fields' => $key, 'note' => 'Test mode uses Shotstack\'s free "stage" environment (watermarked).'],
                     'creatomate' => ['label' => 'Creatomate', 'fields' => $key],
                 ]],
+            // DM2: brokerages' and agents' own web addresses (www.joneshomes.com), with the SSL certificate issued for them.
+            'custom_domains' => ['label' => 'Custom domains for websites', 'about' => 'Lets brokerages and agents use their own web address. Until it is connected their website stays on its free address (name.rightally.site).',
+                'level' => 'hq', 'sprint' => 'DM2', 'contacts' => false, 'providers' => [
+                    'cloudflare_saas' => ['label' => 'Cloudflare for SaaS (recommended)', 'fields' => ['zone_id' => ['label' => 'Zone ID of the websites domain (rightally.site)', 'kind' => 'text'],
+                        'api_token' => ['label' => 'API token (Zone › SSL and Certificates › Edit, Zone › Custom Hostnames › Edit)', 'kind' => 'secret']],
+                        'note' => 'Issues and renews each domain\'s certificate and keeps the site behind Cloudflare. The first 100 domains are free, then $0.10 a month each. Set the fallback origin in Cloudflare to the CNAME target.'],
+                    'approximated' => ['label' => 'Approximated', 'fields' => ['api_key' => ['label' => 'API key', 'kind' => 'secret']],
+                        'note' => 'A managed proxy for custom domains with automatic certificates; priced per domain.'],
+                    'dns_only' => ['label' => 'Our own server (DNS check only)', 'fields' => [],
+                        'note' => 'We only check that the domain points to us. The web server must issue certificates itself (for example Caddy on-demand TLS).'],
+                ]],
             'licence_lookup' => ['label' => 'Agent licence look-up', 'about' => 'Fills in and checks agents\' licence details.',
                 'level' => 'hq', 'sprint' => 'LN4', 'contacts' => false, 'providers' => [
                     'state_data' => ['label' => 'State public licence data (recommended, free)', 'fields' => [], 'note' => 'Covers the states that publish their licence lists.'],
@@ -195,7 +206,7 @@ final class Catalog
         'MLS and listings' => ['idx_repliers', 'idx_spark', 'search', 'nearby_places', 'photo_tags', 'staging', 'floor_plans'],
         'Calls, texts and email' => ['platform_email', 'inbound_email', 'voice_calls', 'transcripts', 'phone_check', 'email_check'],
         'Payments and banking' => ['payments', 'bank_feed'],
-        'Website and marketing' => ['bot_protection', 'search_console', 'social_share', 'video'],
+        'Website and marketing' => ['custom_domains', 'bot_protection', 'search_console', 'social_share', 'video'],
         'Agents' => ['licence_lookup'],
         'System' => ['error_tracking'],
     ];

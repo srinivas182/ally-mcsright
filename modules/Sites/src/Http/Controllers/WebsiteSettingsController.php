@@ -146,7 +146,28 @@ final class WebsiteSettingsController
         $user = self::manager($request);
         self::site($sites);
         $sites->addDomain((string) $request->validate(['host' => ['required', 'string', 'max:253']])['host'], $user);
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Domain added. Add the DNS record shown, and it goes live once verified.']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Domain added. Add the DNS record shown; we check it every few minutes and your website moves to it once it is connected.']);
+
+        return back();
+    }
+
+    /** DM2: check a domain now. */
+    public function checkDomain(Request $request, SiteSetup $sites, string $domain): RedirectResponse
+    {
+        $user = self::manager($request);
+        $d = $sites->checkDomain($domain, $user);
+        Inertia::flash('toast', $d->check_message === null ? ['type' => 'success', 'message' => "{$d->host} is connected. Your website now opens there."]
+            : ['type' => 'info', 'message' => $d->check_message]);
+
+        return back();
+    }
+
+    /** DM2: stop using a domain (the website stays on its free address). */
+    public function removeDomain(Request $request, SiteSetup $sites, string $domain): RedirectResponse
+    {
+        $user = self::manager($request);
+        $sites->removeDomain($domain, $user);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Domain removed. Your website is on its free address.']);
 
         return back();
     }

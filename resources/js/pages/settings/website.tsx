@@ -34,7 +34,15 @@ type Site = {
 };
 type Props = {
     site: Site | null;
-    hosts: { host: string; kind: string; verified: boolean }[];
+    hosts: {
+        ulid: string;
+        host: string;
+        kind: string;
+        verified: boolean;
+        ssl: boolean;
+        message: string | null;
+        checked_at: string | null;
+    }[];
     live_host: string | null;
     starter_missing: string[];
     cname_target: string;
@@ -582,26 +590,79 @@ function Manage({
                         (h) => h.kind !== 'platform' && h.verified,
                     )}
                 />
-                <ul className="grid gap-1">
+                <ul className="grid gap-2">
                     {hosts.map((h) => (
                         <li
                             key={h.host}
-                            className="flex flex-wrap items-center gap-2"
+                            className="grid gap-1 rounded-md border bg-background p-3"
                         >
-                            <span className="font-medium">{h.host}</span>
-                            <Badge
-                                variant={h.verified ? 'secondary' : 'outline'}
-                            >
-                                {h.verified
-                                    ? h.kind === 'platform'
-                                        ? 'Included'
-                                        : 'Connected'
-                                    : 'Waiting for DNS'}
-                            </Badge>
-                            {!h.verified && (
+                            <span className="flex flex-wrap items-center gap-2">
+                                <span className="font-medium">{h.host}</span>
+                                <Badge
+                                    variant={
+                                        h.verified ? 'secondary' : 'outline'
+                                    }
+                                >
+                                    {h.kind === 'platform'
+                                        ? 'Free address'
+                                        : h.verified
+                                          ? 'Connected'
+                                          : h.message?.includes('certificate')
+                                            ? 'Setting up https'
+                                            : 'Waiting for DNS'}
+                                </Badge>
+                                {h.kind === 'platform' &&
+                                    live_host === h.host && (
+                                        <span className="text-muted-foreground">
+                                            Your website opens here.
+                                        </span>
+                                    )}
+                                {h.kind !== 'platform' && h.verified && (
+                                    <span className="text-muted-foreground">
+                                        Your website opens here; the free
+                                        address sends visitors to it.
+                                    </span>
+                                )}
+                                {h.kind !== 'platform' && (
+                                    <span className="ml-auto flex gap-1">
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() =>
+                                                router.post(
+                                                    `/settings/website/domains/${h.ulid}/check`,
+                                                    {},
+                                                    { preserveScroll: true },
+                                                )
+                                            }
+                                        >
+                                            Check now
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={() =>
+                                                router.delete(
+                                                    `/settings/website/domains/${h.ulid}`,
+                                                    { preserveScroll: true },
+                                                )
+                                            }
+                                        >
+                                            Remove
+                                        </Button>
+                                    </span>
+                                )}
+                            </span>
+                            {h.kind !== 'platform' && !h.verified && (
                                 <span className="text-muted-foreground">
-                                    Add a CNAME record for <code>{h.host}</code>{' '}
-                                    pointing to <code>{cname_target}</code>.
+                                    {h.message ??
+                                        `Add a CNAME record for ${h.host} pointing to ${cname_target}.`}{' '}
+                                    Until then your website stays at{' '}
+                                    {hosts.find((x) => x.kind === 'platform')
+                                        ?.host ?? 'its free address'}
+                                    .
+                                    {h.checked_at &&
+                                        ` Last checked ${new Date(h.checked_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}; we check again every few minutes.`}
                                 </span>
                             )}
                         </li>

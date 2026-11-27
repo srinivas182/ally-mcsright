@@ -95,7 +95,11 @@ final class ConnectionCheck
             'mailgun' => $this->status($this->http()->withBasicAuth('api', $k['api_key'])->get('https://api.mailgun.net/v3/domains/'.rawurlencode($k['domain']))),
             'shotstack' => $this->status($this->http()->withHeaders(['x-api-key' => $k['api_key']])->get('https://api.shotstack.io/serve/'.($test ? 'stage' : 'v1').'/assets/render/none'), [404]),
             'creatomate' => $this->status($this->http()->withToken($k['api_key'])->get('https://api.creatomate.com/v1/templates')),
-            'own', 'state_data', 'manual' => ['ok' => true, 'message' => 'Built in. Nothing to connect.'],
+            'own', 'state_data', 'manual', 'dns_only' => ['ok' => true, 'message' => 'Built in. Nothing to connect.'],
+            // DM2: read one custom hostname (nothing is changed).
+            'cloudflare_saas' => $this->status($this->http()->withToken($k['api_token'])->acceptJson()
+                ->get('https://api.cloudflare.com/client/v4/zones/'.rawurlencode(trim($k['zone_id'])).'/custom_hostnames', ['per_page' => 5])),
+            'approximated' => $this->status($this->http()->withHeaders(['api-key' => $k['api_key']])->acceptJson()->get('https://cloud.approximated.app/api/vhosts/count')),
             'teller' => $this->format(str_contains($k['certificate'], 'BEGIN CERTIFICATE') && str_contains($k['certificate'], 'PRIVATE KEY'),
                 'Paste the certificate and its private key together, as Teller gave them.'),
             // C03: a one-node Overpass question; a Geoapify place look-up; Azure's endpoint must be https.
