@@ -20,6 +20,7 @@ type Cap = {
 type PostCap = { fee?: { calc?: string; amount?: number | string } };
 type RevenueShare = {
     basis?: string;
+    pool_percent?: string;
     levels?: string[];
     level_caps_cents?: (number | null)[];
     unlock?: {
@@ -472,6 +473,30 @@ export function RulesForm({
                                         )}
                                     </select>
                                 </label>
+                                {rs.basis !== 'gci' && (
+                                    <label className="flex flex-wrap items-center gap-2">
+                                        Pay out
+                                        <Input
+                                            aria-label="Share of the basis paid as revenue share"
+                                            type="number"
+                                            min={1}
+                                            max={100}
+                                            className="h-9 w-20"
+                                            value={rs.pool_percent ?? '100'}
+                                            onChange={(e) =>
+                                                setRs({
+                                                    pool_percent:
+                                                        e.target.value === '' ||
+                                                        e.target.value === '100'
+                                                            ? undefined
+                                                            : e.target.value,
+                                                })
+                                            }
+                                        />
+                                        % of it as revenue share; the levels
+                                        below split that amount.
+                                    </label>
+                                )}
                                 <div className="overflow-x-auto rounded-md border">
                                     <table className="w-full text-left">
                                         <thead className="bg-muted/50 text-muted-foreground">

@@ -28,6 +28,7 @@ use Modules\Compensation\Models\Plan;
 use Modules\Compensation\Models\PlanAssignment;
 use Modules\Compensation\Models\PlanVersion;
 use Modules\Compensation\PlanReader;
+use Modules\Compensation\StarterPlans;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Support\Connections;
 use Modules\Ledger\Money\Money;
@@ -103,6 +104,17 @@ final class CompensationController
         $this->can($request, 'compensation.plans.manage');
 
         return $this->attempt(fn () => $this->plans->setDefault($plan), 'Default plan changed.');
+    }
+
+    /** AG5: a brokerage with no plans yet starts with the two standard plans (Revenue share and Flat fee). */
+    public function starter(Request $request, StarterPlans $starter): RedirectResponse
+    {
+        $user = $this->can($request, 'compensation.plans.manage');
+        $added = $starter->seed($user->id);
+        Inertia::flash('toast', $added ? ['type' => 'success', 'message' => 'Revenue share and Flat fee added. Check the numbers, then change them to suit you.']
+            : ['type' => 'info', 'message' => 'You already have plans, so nothing was added.']);
+
+        return back();
     }
 
     /** AG4: offer this plan to new agents when they join online (or stop offering it). */

@@ -406,10 +406,13 @@ final class RevenueShareEngine
         return app(LedgerService::class)->balance($account);
     }
 
-    /** Basis × total of the levels (the whole basis when levels total 100). */
+    /** Basis × total of the levels (the whole basis when levels total 100) × the pool (AG5; 100% when not set). */
     public function distributable(int $base, RevenueShareRules $rules): int
     {
         $total = array_reduce($rules->levels, fn (string $s, string $p): string => (string) BigDecimal::of($s)->plus($p), '0');
+        if ($rules->poolPercent !== '100') {
+            $total = (string) BigDecimal::of($total)->multipliedBy($rules->poolPercent)->dividedBy(100, 6, RoundingMode::HalfUp);
+        }
 
         return Money::of($base)->percentage($total)->cents;
     }

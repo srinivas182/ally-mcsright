@@ -16,6 +16,7 @@ use Modules\Compensation\Calculator\SideCalculation;
 use Modules\Compensation\Events\AgentCapped;
 use Modules\Compensation\Events\CalculationFinalised;
 use Modules\Compensation\Events\CalculationReversed;
+use Modules\Compensation\Exceptions\NoPlanForAgent;
 use Modules\Compensation\Models\Calculation;
 use Modules\Compensation\Models\CalculationAgent;
 use Modules\Compensation\Models\CapEntry;
@@ -145,7 +146,11 @@ final class CommissionService
             }
 
             $input = DealSideInput::fromArray($pending->inputs);
-            $fresh = $this->run($input);
+            try {
+                $fresh = $this->run($input);
+            } catch (NoPlanForAgent) {
+                continue; // AG5: an agent with no plan in force yet keeps the figures already worked out
+            }
             $differences = $this->differences($pending->result, $fresh);
 
             if ($differences !== []) {

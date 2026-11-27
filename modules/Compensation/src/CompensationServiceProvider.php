@@ -19,6 +19,7 @@ use Modules\Core\Identity\Events\UserActivated;
 use Modules\Core\Identity\Events\UserDeactivated;
 use Modules\Core\Navigation\NavigationRegistry;
 use Modules\Core\Navigation\NavItem;
+use Modules\Core\Tenancy\Events\TenantProvisioned;
 
 final class CompensationServiceProvider extends ServiceProvider
 {
@@ -65,6 +66,8 @@ final class CompensationServiceProvider extends ServiceProvider
         // Plan changes recalculate pending deals automatically (best-in-class review, addition 7).
         // Revenue share attribution and vesting follow people joining and leaving.
         Event::listen(UserActivated::class, [RevenueShare\Attribution::class, 'onActivated']);
+        // AG5: a new brokerage starts with Revenue share (default) and Flat fee, both offered when agents join.
+        Event::listen(TenantProvisioned::class, [StarterPlans::class, 'onProvisioned']);
         Event::listen(UserActivated::class, [Recruiters\Recruiters::class, 'activated']);
         Event::listen(UserDeactivated::class, [RevenueShare\Attribution::class, 'onDeactivated']);
 

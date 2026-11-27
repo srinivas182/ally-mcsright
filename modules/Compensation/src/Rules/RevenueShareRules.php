@@ -16,6 +16,8 @@ use Brick\Math\BigDecimal;
  * - missing_upline / ineligible_upline: root (credit the root account) or forfeit (missed earning)
  * - fallback_cap_cents: most the root account receives from one deal (the rest is missed)
  * - level_caps_cents: most one person receives at each level per calendar year (CM3)
+ * - pool_percent: AG5, for net_profit and company_dollar only: the share of the basis that is paid out as revenue
+ *   share (e.g. 50: half; the levels still total 100 and split that pool). 100 (the whole basis) when not set.
  */
 final readonly class RevenueShareRules
 {
@@ -46,6 +48,7 @@ final readonly class RevenueShareRules
         public int $recentSponsorChangeDays = 30,       // abuse control: sponsor changed this recently → held
         /** @var list<int|null> CM3: most one person receives at each level per calendar year (null: no limit) */
         public array $levelCapsCents = [],
+        public string $poolPercent = '100',
     ) {}
 
     /**
@@ -141,6 +144,14 @@ final readonly class RevenueShareRules
             $levelCaps = array_slice($levelCaps, 0, count($levels));
         }
 
+        // AG5: the pool (part of the basis) the levels split; the gci basis already sets its own total.
+        $pool = $data['pool_percent'] ?? null;
+        if ($pool !== null && (! is_numeric($pool) || ! BigDecimal::of((string) $pool)->isPositive() || BigDecimal::of((string) $pool)->isGreaterThan(100))) {
+            $errors['revenue_share.pool_percent'] = 'The pool is a percentage of the basis, more than 0 and up to 100.';
+        } elseif ($pool !== null && $basis === 'gci' && ! BigDecimal::of((string) $pool)->isEqualTo(100)) {
+            $errors['revenue_share.pool_percent'] = 'With a GCI basis the levels set the total; leave the pool at 100%.';
+        }
+
         // Funding limits (addition 2).
         $funding = is_array($data['funding'] ?? null) ? $data['funding'] : [];
 
@@ -158,6 +169,7 @@ final readonly class RevenueShareRules
             $int($data['milestone']['first_closing_cents'] ?? null, 'milestone.first_closing_cents', 1, $errors),
             $int($data['controls']['tiny_deal_gci_cents'] ?? 50_000, 'controls.tiny_deal_gci_cents', 0, $errors) ?? 50_000,
             $int($data['controls']['recent_sponsor_change_days'] ?? 30, 'controls.recent_sponsor_change_days', 0, $errors) ?? 30,
-            $levelCaps);
+            $levelCaps,
+            $pool !== null && is_numeric($pool) ? (string) $pool : '100');
     }
 }
