@@ -28,6 +28,7 @@ import {
     Tablet,
     Trash2,
     Undo2,
+    UserPlus,
     Users,
     Video,
 } from 'lucide-react';
@@ -200,6 +201,33 @@ const SCHEMA: Record<string, Field[]> = {
         { key: 'body', label: 'Text', kind: 'textarea' },
         { key: 'button', label: 'Button', kind: 'text' },
         { key: 'link', label: 'Button link (/page or https)', kind: 'text' },
+    ],
+    recruit: [
+        { key: 'image', label: 'Background photo', kind: 'image' },
+        { key: 'headline', label: 'Headline', kind: 'text' },
+        {
+            key: 'body',
+            label: 'Why agents join (a few sentences)',
+            kind: 'textarea',
+        },
+        {
+            key: 'points',
+            label: 'Reasons (short lines)',
+            kind: 'items',
+            max: 5,
+            fields: [{ key: 'text', label: 'Reason', kind: 'text' }],
+        },
+        { key: 'button', label: 'Button', kind: 'text' },
+        {
+            key: 'link',
+            label: 'Button link (/join opens joining online)',
+            kind: 'text',
+        },
+        {
+            key: 'plans',
+            label: 'Show the plans new agents can pick (from Commissions › Plans)',
+            kind: 'checkbox',
+        },
     ],
     split: [
         { key: 'image', label: 'Photo', kind: 'image' },
@@ -1101,6 +1129,7 @@ const SECTION_HINTS: Record<string, string> = {
     neighbourhoods: 'Areas you serve, with live market figures.',
     banner: 'A full-width photo with a line over it and a button.',
     split: 'A photo beside a heading, text and a button.',
+    recruit: 'For agents: why join you, how they are paid, and a Join button.',
 };
 
 const SECTION_ICONS: Record<string, LucideIcon> = {
@@ -1119,6 +1148,7 @@ const SECTION_ICONS: Record<string, LucideIcon> = {
     neighbourhoods: MapPin,
     banner: ImageIcon,
     split: Columns2,
+    recruit: UserPlus,
 };
 
 /** The small menu on each section: move, hide, copy, delete. */

@@ -39,10 +39,10 @@ final class MyNetworkController
     }
 
     /** /join/{code} on the website: on to the join page in the back office (same brokerage), keeping the agent's code. */
-    public function fromWebsite(SelfJoin $join, string $code): RedirectResponse
+    public function fromWebsite(SelfJoin $join, ?string $code = null): RedirectResponse
     {
         $host = app(TenantContext::class)->current()->primaryDomain()?->host;
-        $known = $join->sponsorFor($code) !== null;
+        $known = $code !== null && $join->sponsorFor($code) !== null; // AG8: no agent: they join with the brokerage itself
 
         return redirect()->away(($host !== null ? 'https://'.$host : '').'/join'.($known ? '/'.$code : ''), 302)
             ->header('Cache-Control', 'no-store')->header('X-Robots-Tag', 'noindex');

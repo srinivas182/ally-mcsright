@@ -282,7 +282,7 @@ export default function Join({
                             <p className="text-slate-600">
                                 {sponsor
                                     ? `${sponsor.name} invited you. You join under them as soon as your licence checks out${packs.length > 0 ? ' and your pack is paid' : ''}.`
-                                    : `You can start as soon as your licence checks out${packs.length > 0 ? ' and your pack is paid' : ''}.`}
+                                    : `You join ${brokerage} directly, and can start as soon as your licence checks out${packs.length > 0 ? ' and your pack is paid' : ''}.`}
                             </p>
                         </div>
                         {(unknownCode || cancelled) && (

@@ -53,9 +53,11 @@ final class RecruitingServiceProvider extends ServiceProvider
         $site = $this->app->make(SiteExtensions::class);
         $site->routes(function (Router $r): void {
             $r->get('careers', [Http\CareersController::class, 'show']);
-            $r->get('join/{code}', [Http\MyNetworkController::class, 'fromWebsite'])->where('code', '[a-z0-9]{6,12}'); // AG1: the short link
+            $r->get('join/{code?}', [Http\MyNetworkController::class, 'fromWebsite'])->where('code', '[a-z0-9]{6,12}'); // AG1: the short link; AG8: /join with no agent
             $r->post('_careers', [Http\CareersController::class, 'apply']);
         });
+        // AG8: the plans new agents can pick, for the "Join our team" section of the website's Join us page.
+        $site->provide('join_plans', fn (): array => app(SelfJoin::class)->plans());
         $site->pages(fn (): array => app(Careers::class)->live()
             ? [['path' => '/careers', 'title' => 'Careers', 'description' => 'joining as an agent: what you would keep here, in agents\' own words, and how to talk to us']] : []);
         if ($this->app->runningInConsole()) {

@@ -299,8 +299,8 @@ it('puts the new website live in the chosen design the moment they pay (SU2)', f
     $site = app(TenantContext::class)->runAs($tenant, fn () => Site::query()->where('kind', 'brokerage')->sole());
     expect($site)->template->toBe('signature')->status->toBe('live')
         ->and($site->info['name'])->toBe('Oak Realty')->and($site->info['phone'])->toBe('(713) 555-0142') // FT1: in the header and footer
-        // LP1: a landing page: Home, About and Contact, no home search.
-        ->and(app(TenantContext::class)->runAs($tenant, fn () => SitePage::query()->where('site_id', $site->id)->orderBy('position')->pluck('path')->all()))->toBe(['/', '/about', '/contact']);
+        // LP1: a landing page: Home, About, Join us (AG8) and Contact, no home search.
+        ->and(app(TenantContext::class)->runAs($tenant, fn () => SitePage::query()->where('site_id', $site->id)->orderBy('position')->pluck('path')->all()))->toBe(['/', '/about', '/join-us', '/contact']);
 
     // WS1: the welcome email gives the website's address too, apart from the back office's.
     Notification::assertSentOnDemand(InvitationNotification::class, function (InvitationNotification $n): bool {
