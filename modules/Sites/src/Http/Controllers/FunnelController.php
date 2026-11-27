@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Sites\Http\Controllers;
 
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -15,6 +16,9 @@ use Modules\Core\Security\BotProtection;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Listings\Search\ListingSearch;
 use Modules\Listings\Search\MarketStats;
+use Modules\Sites\AgentSites;
+use Modules\Sites\Content\DemoPhotos;
+use Modules\Sites\Content\StarterSite;
 use Modules\Sites\Funnels\Funnels;
 use Modules\Sites\Models\Site;
 use Modules\Sites\Models\SiteFunnel;
@@ -55,7 +59,7 @@ final class FunnelController
         }
         $homes = [];
         $stats = null;
-        if ($funnel->kind !== 'home_value') {
+        if (! Funnels::isValue($funnel->kind)) {
             $found = app(ListingSearch::class)->search($this->tenants->id(), Funnels::filters($funnel, is_int($result['budget'] ?? null) ? $result['budget'] : null));
             $homes = $found['results'];
             $stats = ['total' => $found['total']];
@@ -68,8 +72,20 @@ final class FunnelController
             }
         }
 
+        // AG3: the page's photo, and the agent who shares it (their own funnel), shown by name with a call button.
+        $kind = Funnels::KINDS[$funnel->kind];
+        $photo = DemoPhotos::url($kind['photo'] !== null ? DemoPhotos::pick($kind['photo'], (int) $funnel->id) : StarterSite::cityPhoto((array) $site->info), 'hero');
+        $agent = null;
+        if ($funnel->owner_user_id !== null && ($owner = User::query()->find($funnel->owner_user_id)) instanceof User && $owner->isActive()) {
+            $agentSite = app(AgentSites::class)->forUser($owner);
+            $agent = $agentSite !== null && $agentSite->status === 'live' ? AgentSites::profile($agentSite) + ['slug' => (string) $agentSite->slug]
+                : ['name' => $owner->name, 'first_name' => (string) $owner->first_name, 'phone' => (string) ($owner->phone ?? ''), 'email' => (string) $owner->email, 'photo' => null, 'slug' => null];
+        }
+
         return response()->view('sites::funnel', [
             'site' => $site, 'current' => '/go/'.$slug, 'funnel' => $funnel, 'homes' => $homes, 'stats' => $stats, 'result' => $result,
+            'kind' => $kind, 'photo' => $photo, 'agent' => $agent, 'value' => Funnels::isValue($funnel->kind),
+            'rememberAgent' => $agent['slug'] ?? null, // AG3: the visitor stays with the agent who shared the page (AG2)
             'seo' => Seo::build($site, $request->getSchemeAndHttpHost(), '/go/'.$slug, $funnel->headline.' | '.$site->displayName(), (string) $funnel->intro, null, false, []),
             'chrome' => Chrome::for($site, $this->tenants->id(), array_column($homes, 'disclaimer')),
             ...SiteController::form($request),
@@ -94,7 +110,7 @@ final class FunnelController
         }
         try {
             $done = $funnels->capture($site, $funnel, $request->only(['name', 'email', 'phone', 'sms_consent', 'address', 'zip', 'beds', 'sqft', 'budget', 'timeline', 'preapproved',
-                'move_date', 'first_referrer', 'landing_url', 'vid', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'gclid']), $request);
+                'move_date', 'financing', 'first_referrer', 'landing_url', 'vid', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'gclid']), $request);
         } catch (ValidationException $e) {
             return redirect($back.'?error='.urlencode((string) (collect($e->errors())->flatten()->first() ?? 'Please check the form.')).'#ask', 303);
         }

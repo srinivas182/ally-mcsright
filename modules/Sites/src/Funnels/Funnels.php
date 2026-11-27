@@ -27,16 +27,48 @@ use Modules\Sites\Visitors\Valuation;
  */
 final class Funnels
 {
-    /** The templates: what each one is called, its default headline and intro (homes and places, never people). */
+    /**
+     * The templates: what each one is called, its default headline and intro (homes and places, never people), and
+     * (AG3) its photo (null: the area's), and how the page works: 'value' pages ask for the home and show a price range; 'homes' pages show homes and
+     * save the search. 'points' are the three reasons on the page; 'steps' a short plan; 'button' the main button.
+     *
+     * @var array<string, array{photo: string|null, label: string, headline: string, intro: string, intent: string, flow: string, points: list<string>, button: string, steps?: list<string>, sort?: string}>
+     */
     public const KINDS = [
-        'home_value' => ['label' => 'What\'s my home worth? (sellers)', 'headline' => 'What is your home in :area worth?',
-            'intro' => 'Get a free price range from similar homes for sale nearby, then a local agent confirms it with recent sales. No cost, no obligation.', 'intent' => 'sell'],
-        'new_listings' => ['label' => 'New listings in an area (buyers)', 'headline' => 'New homes for sale in :area',
-            'intro' => 'See today\'s homes, then get new ones by email the day they come up. Free, and stop any time.', 'intent' => 'buy'],
-        'first_home' => ['label' => 'First home (buyers)', 'headline' => 'Your first home in :area',
-            'intro' => 'Homes at your budget, and the simple steps from pre-approval to keys. A local agent answers your questions.', 'intent' => 'buy'],
-        'moving' => ['label' => 'Moving to an area (relocation)', 'headline' => 'Moving to :area?',
-            'intro' => 'Homes for sale, prices and what the market is doing, with a local agent to help you from wherever you are now.', 'intent' => 'buy'],
+        'home_value' => ['photo' => 'exterior_family', 'label' => 'What\'s my home worth? (sellers)', 'headline' => 'What is your home in :area worth?',
+            'intro' => 'Get a free price range from similar homes for sale nearby, then a local agent confirms it with recent sales. No cost, no obligation.', 'intent' => 'sell',
+            'flow' => 'value', 'button' => 'See my home\'s value', 'points' => ['A price range in under a minute', 'Checked by a local agent against recent sales', 'Updated for you once a month']],
+        'new_listings' => ['photo' => null, 'label' => 'New listings in an area (buyers)', 'headline' => 'New homes for sale in :area',
+            'intro' => 'See today\'s homes, then get new ones by email the day they come up. Free, and stop any time.', 'intent' => 'buy',
+            'flow' => 'homes', 'button' => 'Send me these homes', 'points' => ['New homes the day they are listed', 'Straight from the MLS, updated every few minutes', 'Free, and stop any time']],
+        'first_home' => ['photo' => 'exterior_townhome', 'label' => 'First home (buyers)', 'headline' => 'Your first home in :area',
+            'intro' => 'Homes at your budget, and the simple steps from pre-approval to keys. A local agent answers your questions.', 'intent' => 'buy',
+            'flow' => 'homes', 'button' => 'Send me these homes', 'points' => ['Homes at your budget', 'Plain answers from a local agent', 'No pressure, no cost to ask'],
+            'steps' => ['Get pre-approved, so you know your budget and sellers take your offer seriously.', 'Tour homes at that budget with a local agent.',
+                'Make an offer, get an inspection and an appraisal.', 'Close and get your keys.']],
+        'moving' => ['photo' => null, 'label' => 'Moving to an area (relocation)', 'headline' => 'Moving to :area?',
+            'intro' => 'Homes for sale, prices and what the market is doing, with a local agent to help you from wherever you are now.', 'intent' => 'buy',
+            'flow' => 'homes', 'button' => 'Send me these homes', 'points' => ['What homes cost here, today', 'Video tours if you cannot visit yet', 'A local agent from day one']],
+        // AG3: six more, so agents have ten pages to share.
+        'weekend_tours' => ['photo' => 'living', 'label' => 'Tour homes this weekend (buyers)', 'headline' => 'Tour homes in :area this weekend',
+            'intro' => 'Pick the homes you like and a local agent sets up private tours at times that suit you. Free, with no obligation.', 'intent' => 'buy',
+            'flow' => 'homes', 'button' => 'Plan my tours', 'points' => ['Private tours at your times', 'Homes picked to your budget', 'No cost, no obligation']],
+        'price_drops' => ['photo' => 'kitchen', 'label' => 'Price drops in an area (buyers)', 'headline' => 'Price drops in :area',
+            'intro' => 'Homes in :area whose price just came down, and an email the day another one drops. Free, and stop any time.', 'intent' => 'buy',
+            'flow' => 'homes', 'button' => 'Send me price drops', 'sort' => 'reduced', 'points' => ['Every price drop, the day it happens', 'Room to negotiate on homes that sat', 'Free, and stop any time']],
+        'sold_nearby' => ['photo' => 'neighbourhood', 'label' => 'What homes sold for nearby (sellers)', 'headline' => 'What are homes in :area selling for?',
+            'intro' => 'See what a home like yours could sell for today, from homes for sale and recently sold near you. A local agent checks it for you.', 'intent' => 'sell',
+            'flow' => 'value', 'button' => 'See what mine could sell for', 'points' => ['Built from homes near yours', 'Checked by a local agent', 'Yours to keep, no obligation']],
+        'downsizing' => ['photo' => 'exterior_townhome', 'label' => 'Downsizing (sellers who will buy)', 'headline' => 'Ready for a smaller home in :area?',
+            'intro' => 'Find out what your home could sell for and see smaller homes that fit, with one local agent handling both moves.', 'intent' => 'sell',
+            'flow' => 'value', 'button' => 'Show me my options', 'points' => ['What your home could sell for', 'Smaller homes that fit your plans', 'One agent for selling and buying'],
+            'steps' => ['See what your home could sell for.', 'Choose the smaller homes you like.', 'Time the sale and the purchase so you move once.']],
+        'investor' => ['photo' => 'exterior_condo', 'label' => 'Investment homes (buyers)', 'headline' => 'Investment homes in :area',
+            'intro' => 'Homes in :area at your budget, with the numbers that matter, and an email when a new one comes up. Free, and stop any time.', 'intent' => 'buy',
+            'flow' => 'homes', 'button' => 'Send me investment homes', 'points' => ['New homes at your budget, first', 'Prices, taxes and days on the market', 'A local agent who knows rentals']],
+        'fresh_start' => ['photo' => 'exterior_luxury', 'label' => 'Home did not sell? (sellers)', 'headline' => 'Your home in :area didn\'t sell? Let\'s try a fresh plan',
+            'intro' => 'Get today\'s price range for your home and a fresh selling plan from a local agent: photos, price and timing. No cost, no obligation.', 'intent' => 'sell',
+            'flow' => 'value', 'button' => 'Get my fresh plan', 'points' => ['Today\'s price range for your home', 'A fresh plan: price, photos, timing', 'No cost, no obligation']],
     ];
 
     public function __construct(private readonly Valuation $valuation) {}
@@ -55,10 +87,10 @@ final class Funnels
         }
         $template = self::KINDS[$in['kind']];
         $headline = trim(strip_tags((string) ($in['headline'] ?? ''))) ?: str_replace(':area', $area, $template['headline']);
-        $intro = trim(strip_tags((string) ($in['intro'] ?? ''))) ?: $template['intro'];
+        $intro = trim(strip_tags((string) ($in['intro'] ?? ''))) ?: str_replace(':area', $area, $template['intro']);
         self::checkWords($headline.' '.$intro);
         $manager = Can::manage($by, 'marketing.manage');
-        $base = Str::slug(mb_substr($in['kind'] === 'home_value' ? 'home value '.$area : $headline, 0, 60)) ?: 'homes';
+        $base = Str::slug(mb_substr($in['kind'] === 'home_value' ? 'home value '.$area : $headline, 0, 60)) ?: 'homes'; // AG3: value pages read as what they are
         $slug = $base;
         for ($i = 2; SiteFunnel::query()->where('site_id', $site->id)->where('slug', $slug)->exists(); $i++) {
             $slug = $base.'-'.$i;
@@ -92,7 +124,7 @@ final class Funnels
     public static function filters(SiteFunnel $funnel, ?int $maxPrice = null): array
     {
         return array_filter(['q' => (string) $funnel->area, 'min_price' => $funnel->min_price, 'max_price' => $maxPrice ?? $funnel->max_price, 'beds' => $funnel->beds,
-            'sort' => 'newest', 'per_page' => 12], fn ($v) => $v !== null);
+            'sort' => self::KINDS[$funnel->kind]['sort'] ?? 'newest', 'per_page' => 12], fn ($v) => $v !== null);
     }
 
     /**
@@ -111,7 +143,7 @@ final class Funnels
         $notes = [];
         $data = ['funnel' => $funnel->ulid];
         $home = null;
-        if ($funnel->kind === 'home_value') {
+        if (self::isValue($funnel->kind)) {
             $address = mb_substr(trim(strip_tags((string) ($in['address'] ?? ''))), 0, 150);
             $zip = preg_match('/^\d{5}$/', trim((string) ($in['zip'] ?? ''))) === 1 ? trim((string) $in['zip']) : null;
             if ($address === '' || $zip === null) {
@@ -132,7 +164,7 @@ final class Funnels
             if ($budget !== null) {
                 $notes[] = 'Budget about $'.number_format($budget).'.';
             }
-            foreach (['timeline' => 'Timeline', 'preapproved' => 'Pre-approved', 'move_date' => 'Moving'] as $k => $label) {
+            foreach (['timeline' => 'Timeline', 'preapproved' => 'Pre-approved', 'move_date' => 'Moving', 'financing' => 'Paying with'] as $k => $label) {
                 if (is_string($in[$k] ?? null) && trim($in[$k]) !== '') {
                     $notes[] = $label.': '.mb_substr(trim(strip_tags($in[$k])), 0, 60).'.';
                 }
@@ -153,7 +185,7 @@ final class Funnels
             app(HomeReports::class)->start($contact, $funnel, $home['address'], $home['zip'], $home['beds'], $home['sqft'], $estimate['mid'] ?? null,
                 $contact->owner_user_id ?? $funnel->owner_user_id);
         }
-        if ($funnel->kind !== 'home_value') {
+        if (! self::isValue($funnel->kind)) {
             $contact = $lead->contact_id !== null ? Contact::query()->find($lead->contact_id) : null;
             if ($contact !== null && $contact->primary_email !== null) {
                 $agent = $contact->owner_user_id ?? $funnel->owner_user_id;
@@ -166,6 +198,12 @@ final class Funnels
         }
 
         return ['lead' => $lead, 'estimate' => $estimate];
+    }
+
+    /** AG3: pages that ask for the home and show a price range (the others show homes and save the search). */
+    public static function isValue(string $kind): bool
+    {
+        return (self::KINDS[$kind]['flow'] ?? 'homes') === 'value';
     }
 
     private static function checkWords(string $text): void

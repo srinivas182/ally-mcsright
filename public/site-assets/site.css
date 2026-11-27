@@ -4111,3 +4111,252 @@ body:not(:has(main > .hero:first-child, main > .ra-block:first-child > .hero))
         display: none;
     }
 }
+
+/* AG3: landing pages built to be shared: a full-width photo, the promise and the form side by side, three reasons,
+   the agent who shares it, a short plan, and the homes. */
+.lp-hero {
+    position: relative;
+    isolation: isolate;
+    padding: clamp(2.5rem, 7vw, 6rem) 0;
+    color: #fff;
+    background: var(--text);
+    overflow: hidden;
+}
+.lp-hero-bg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: -2;
+}
+.lp-hero::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background:
+        linear-gradient(
+            100deg,
+            rgb(8 12 24 / 0.86) 0%,
+            rgb(8 12 24 / 0.66) 48%,
+            rgb(8 12 24 / 0.28) 100%
+        ),
+        linear-gradient(
+            0deg,
+            color-mix(in oklab, var(--brand) 30%, transparent),
+            transparent 55%
+        );
+}
+.lp-hero-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    gap: clamp(2rem, 5vw, 4rem);
+    align-items: center;
+}
+.lp-copy {
+    display: grid;
+    gap: 1.2rem;
+    max-width: 40rem;
+}
+.lp-agent {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
+    justify-self: start;
+    margin: 0;
+    padding: 0.35rem 1rem 0.35rem 0.35rem;
+    border-radius: 999px;
+    background: rgb(255 255 255 / 0.14);
+    border: 1px solid rgb(255 255 255 / 0.25);
+    backdrop-filter: blur(6px);
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+.lp-agent img,
+.lp-agent span {
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    object-fit: cover;
+    display: grid;
+    place-items: center;
+    background: var(--brand);
+    color: var(--on-brand);
+    font-weight: 700;
+    font-size: 0.85rem;
+}
+.lp-title {
+    margin: 0;
+    color: #fff;
+    font-size: clamp(2.3rem, 5.4vw, 4.4rem);
+    line-height: 1.02;
+    letter-spacing: -0.025em;
+    text-wrap: balance;
+}
+.lp-intro {
+    margin: 0;
+    font-size: clamp(1.08rem, 1.7vw, 1.3rem);
+    line-height: 1.55;
+    color: rgb(255 255 255 / 0.9);
+}
+.lp-points {
+    display: grid;
+    gap: 0.6rem;
+    margin: 0.2rem 0 0;
+    padding: 0;
+    list-style: none;
+}
+.lp-points li {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    font-weight: 500;
+}
+.lp-points svg {
+    flex: none;
+    padding: 3px;
+    width: 26px;
+    height: 26px;
+    border-radius: 999px;
+    background: var(--brand);
+    color: var(--on-brand);
+}
+.lp-note {
+    margin: 0;
+    color: rgb(255 255 255 / 0.78);
+}
+.lp-range strong {
+    font: 700 clamp(2.2rem, 5vw, 3.6rem) / 1.05 var(--font-head);
+    color: #fff;
+}
+.lp-form {
+    color: var(--text);
+    background: var(--bg);
+    border-radius: calc(var(--radius) * 1.2);
+    padding: clamp(1.4rem, 3vw, 2rem);
+    box-shadow: 0 40px 80px -30px rgb(0 0 0 / 0.6);
+}
+.lp-form-title {
+    margin: 0 0 1rem;
+    font-size: 1.35rem;
+}
+.lp-submit {
+    width: 100%;
+    padding: 1rem 1.4rem;
+    font-size: 1.05rem;
+}
+.lp-small {
+    margin: 0.6rem 0 0;
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.85rem;
+}
+.lp-steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    gap: 1rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: lp;
+}
+.lp-steps li {
+    counter-increment: lp;
+    position: relative;
+    padding: 1.4rem 1.3rem 1.3rem;
+    border-radius: var(--radius);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    font-size: 1.02rem;
+    line-height: 1.5;
+}
+.lp-steps li::before {
+    content: counter(lp);
+    display: grid;
+    place-items: center;
+    width: 2.2rem;
+    height: 2.2rem;
+    margin-bottom: 0.8rem;
+    border-radius: 999px;
+    background: var(--brand);
+    color: var(--on-brand);
+    font-weight: 700;
+}
+.lp-facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+    gap: 1rem;
+    margin: 0;
+}
+.lp-facts div {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 0.3rem;
+    padding: 1.2rem;
+    border-radius: var(--radius);
+    background: var(--surface);
+}
+.lp-facts dd {
+    margin: 0;
+    font: 700 1.9rem / 1.1 var(--font-head);
+}
+.lp-facts dt {
+    color: var(--muted);
+}
+.lp-close {
+    padding: clamp(2rem, 5vw, 3.5rem) 0;
+    background: color-mix(in oklab, var(--brand) 10%, var(--bg));
+}
+.lp-close-inner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem 2rem;
+}
+.lp-close-text {
+    margin: 0;
+    font-size: 1.2rem;
+}
+.lp-close-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin: 0;
+}
+@media (max-width: 860px) {
+    .lp-hero-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .lp-hero::after {
+        background: linear-gradient(
+            180deg,
+            rgb(8 12 24 / 0.82),
+            rgb(8 12 24 / 0.7) 60%,
+            rgb(8 12 24 / 0.55)
+        );
+    }
+}
+.lp-form label,
+.lp-form .form-row > * {
+    min-width: 0;
+}
+.lp-form input,
+.lp-form select {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+.lp-form .form-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 0.75rem;
+}
+.lp-form .form-row:has(> :nth-child(2):last-child) {
+    grid-template-columns: 1fr 1fr;
+}
+.lp-form .lead-muted {
+    margin: 0;
+    font-size: 0.85rem;
+}
