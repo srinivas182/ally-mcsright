@@ -77,6 +77,7 @@ final class SiteRouter
         $r->get('_preview/post/{post}', [BlogController::class, 'preview'])->where('post', '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}');
         $r->get('calculators', [CalculatorController::class, 'index']);
         $r->get('calculators/{kind}', [CalculatorController::class, 'show'])->where('kind', '[a-z-]{3,30}');
+        $r->get('_ref', [ReferralController::class, 'me']); // AG2: remember the agent, and "Your agent" on every page
         $r->get('r/{slug}', [ReferralController::class, 'go'])->where('slug', '[a-z0-9-]{1,80}');
         $r->get('agents', [AgentSiteController::class, 'directory']);
         $r->get('agents/{slug}/{path?}', [AgentSiteController::class, 'show'])->where(['slug' => '[a-z0-9-]{1,80}', 'path' => '[a-z0-9/\-]{0,130}']);

@@ -84,7 +84,7 @@ final class Chrome
         if ($agentSite !== null) {
             $p = AgentSites::profile($agentSite);
             $agent = ['name' => $p['name'], 'phone' => $p['phone'], 'email' => $p['email'], 'photo' => $p['photo'], 'licence' => $p['licence'], 'home' => $context->url('/'),
-                'ulid' => $agentSite->ulid];
+                'ulid' => $agentSite->ulid, 'slug' => (string) $agentSite->slug];
         }
 
         return ['agent' => $agent, 'template' => $agentSite !== null && $rules['template'] ? $agentSite->template : $site->template,

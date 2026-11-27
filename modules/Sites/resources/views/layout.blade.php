@@ -18,7 +18,7 @@
     <meta name="theme-color" content="{{ $design['theme'] ?? '#ffffff' }}">
     <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?{{ $design['css'] ?? 'family=Inter:wght@400;500;600;700' }}&display=swap">
-    <link rel="stylesheet" href="/site-assets/site.css?v=15">
+    <link rel="stylesheet" href="/site-assets/site.css?v=16">
     @stack('head')
     <style>:root{--brand: {{ $chrome['brand']['primary'] ?? '#1d4ed8' }};--accent: {{ $chrome['brand']['accent'] ?? '#0f172a' }};}</style>
     <script type="application/ld+json">{!! $seo['jsonld'] !!}</script>
@@ -166,6 +166,25 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'&&t.getAttrib
 (function(){var h=document.querySelector('[data-header]');function s(){h&&h.classList.toggle('scrolled',window.scrollY>24)}s();window.addEventListener('scroll',s,{passive:true});
 try{var k='ra_first_touch',st=window.localStorage,v=JSON.parse(st.getItem(k)||'null');if(!v){v={r:document.referrer,l:location.href};st.setItem(k,JSON.stringify(v));}
 document.querySelectorAll('form[data-lead]').forEach(function(f){f.first_referrer.value=v.r;f.landing_url.value=v.l;});}catch(e){}})();
+</script>
+{{-- AG2: on an agent's page the visit is remembered for 30 days; on every other page, the agent the visitor came with. --}}
+<aside class="your-agent" data-your-agent aria-label="Your agent" hidden>
+    <img class="your-agent-photo" data-ya-photo alt="" width="44" height="44" hidden>
+    <span class="your-agent-initials" data-ya-initials aria-hidden="true"></span>
+    <span class="your-agent-who"><small>Your agent</small><a data-ya-name href="/">Your agent</a></span>
+    <a class="your-agent-icon your-agent-text" data-ya-text href="#" aria-label="Text" title="Text"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24"><path fill="currentColor" d="M4 4h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8l-4 4V6a2 2 0 0 1 2-2zm3 6v2h2v-2H7zm4 0v2h2v-2h-2zm4 0v2h2v-2h-2z"/></svg></a>
+    <a class="your-agent-icon your-agent-call" data-ya-call href="#" aria-label="Call" title="Call"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24"><path fill="currentColor" d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.6a1 1 0 0 1-.25 1z"/></svg></a>
+</aside>
+<script nonce="{{ Vite::cspNonce() }}">
+(function(){var slug=@json($chrome['agent']['slug'] ?? null),bar=document.querySelector('[data-your-agent]');
+fetch('/_ref'+(slug?'?remember='+encodeURIComponent(slug):''),{credentials:'same-origin',headers:{Accept:'application/json'},cache:'no-store'})
+.then(function(r){return r.status===200?r.json():null;}).then(function(a){if(!a||slug||!bar)return;
+var tel=(a.phone||'').replace(/[^0-9+]/g,''),n=bar.querySelector('[data-ya-name]'),ph=bar.querySelector('[data-ya-photo]'),c=bar.querySelector('[data-ya-call]'),t=bar.querySelector('[data-ya-text]');
+n.textContent=a.name;n.href=a.url;var ini=bar.querySelector('[data-ya-initials]');ini.textContent=a.name.split(' ').map(function(w){return w.charAt(0);}).slice(0,2).join('').toUpperCase();
+if(a.photo){ph.onload=function(){ph.hidden=false;ini.hidden=true;};ph.onerror=function(){ph.remove();};ph.src=a.photo;}
+if(tel){c.href='tel:'+tel;t.href='sms:'+tel;c.setAttribute('aria-label','Call '+a.first_name);c.title='Call '+a.first_name;t.setAttribute('aria-label','Text '+a.first_name);t.title='Text '+a.first_name;}else{c.remove();t.href=a.email?'mailto:'+a.email:a.url;t.setAttribute('aria-label',a.email?'Email '+a.first_name:'Contact '+a.first_name);}
+bar.hidden=false;
+var hc=document.querySelector('.header-call');if(hc&&tel){hc.href='tel:'+tel;var s=hc.querySelector('span');if(s)s.textContent=a.phone;}}).catch(function(){});})();
 </script>
 <script src="/site-assets/visitor.js?v=3" defer></script>
 @if (! empty($chrome['ailly']))
