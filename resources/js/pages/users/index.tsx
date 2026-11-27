@@ -74,6 +74,8 @@ type Props = {
     filters: { search: string; kind: string; status: string };
     kinds: { value: string; label: string }[];
     agents: { id: number; name: string }[];
+    sponsors: { ulid: string; name: string }[];
+    plans: { ulid: string; name: string; default: boolean }[];
     can: { invite: boolean; manage: boolean; roles?: boolean };
     roles?: RoleOption[];
     grants?: Record<string, Grant[]>;
@@ -121,8 +123,18 @@ function lastActive(value: string | null): string {
 }
 
 export default function UsersIndex(props: Props) {
-    const { users, invitations, filters, kinds, agents, can, roles, grants } =
-        props;
+    const {
+        users,
+        invitations,
+        filters,
+        kinds,
+        agents,
+        sponsors,
+        plans,
+        can,
+        roles,
+        grants,
+    } = props;
     const [inviting, setInviting] = useState(false);
     const [search, setSearch] = useState(filters.search);
     const form = useForm({
@@ -134,6 +146,8 @@ export default function UsersIndex(props: Props) {
             kinds[0]?.value ??
             '',
         assisted_user_id: '',
+        sponsor: '',
+        plan: '',
     });
 
     function apply(next: Partial<Props['filters']>) {
@@ -548,6 +562,97 @@ export default function UsersIndex(props: Props) {
                                 </Select>
                             )}
                         </FormField>
+                        {form.data.kind === 'agent' && (
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <FormField
+                                    label="Sponsor"
+                                    help="Who brought them in. They join their network tree and revenue share."
+                                    error={form.errors.sponsor}
+                                >
+                                    {(control) => (
+                                        <Select
+                                            value={
+                                                form.data.sponsor || '__none'
+                                            }
+                                            onValueChange={(v) =>
+                                                form.setData(
+                                                    'sponsor',
+                                                    v === '__none' ? '' : v,
+                                                )
+                                            }
+                                        >
+                                            <SelectTrigger {...control}>
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="__none">
+                                                    No sponsor (under the
+                                                    company)
+                                                </SelectItem>
+                                                {sponsors.map((a) => (
+                                                    <SelectItem
+                                                        key={a.ulid}
+                                                        value={a.ulid}
+                                                    >
+                                                        {a.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    )}
+                                </FormField>
+                                {plans.length > 0 && (
+                                    <FormField
+                                        label="Commission plan"
+                                        help="The plan they start on. You can move them later."
+                                        error={form.errors.plan}
+                                    >
+                                        {(control) => (
+                                            <Select
+                                                value={
+                                                    form.data.plan ||
+                                                    '__default'
+                                                }
+                                                onValueChange={(v) =>
+                                                    form.setData(
+                                                        'plan',
+                                                        v === '__default'
+                                                            ? ''
+                                                            : v,
+                                                    )
+                                                }
+                                            >
+                                                <SelectTrigger {...control}>
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="__default">
+                                                        Default plan
+                                                        {plans.find(
+                                                            (p) => p.default,
+                                                        )
+                                                            ? ` (${plans.find((p) => p.default)?.name})`
+                                                            : ''}
+                                                    </SelectItem>
+                                                    {plans
+                                                        .filter(
+                                                            (p) => !p.default,
+                                                        )
+                                                        .map((p) => (
+                                                            <SelectItem
+                                                                key={p.ulid}
+                                                                value={p.ulid}
+                                                            >
+                                                                {p.name}
+                                                            </SelectItem>
+                                                        ))}
+                                                </SelectContent>
+                                            </Select>
+                                        )}
+                                    </FormField>
+                                )}
+                            </div>
+                        )}
                         {form.data.kind === 'assistant' && (
                             <FormField
                                 label="Assists"
