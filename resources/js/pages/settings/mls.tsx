@@ -500,7 +500,7 @@ function BoardCard({
             </ol>
 
             {b.status === 'needs_fixing' && b.note && (
-                <p className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+                <p className="rounded-lg bg-destructive/10 p-3 text-sm whitespace-pre-line text-destructive">
                     What to fix: {b.note}
                 </p>
             )}

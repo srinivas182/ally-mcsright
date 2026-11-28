@@ -149,6 +149,15 @@ const phone = (p: string) => {
     return m ? `(${m[1]}) ${m[2]}-${m[3]}` : p;
 };
 
+/** Lead sources in the words people use (realtor_com → Realtor.com). */
+const SOURCES: Record<string, string> = {
+    zillow: 'Zillow',
+    realtor_com: 'Realtor.com',
+    homes_com: 'Homes.com',
+    open_house: 'open house',
+};
+const sourceLabel = (s: string) => SOURCES[s] ?? s.replaceAll('_', ' ');
+
 const shortTime = (iso: string) => {
     const d = new Date(iso);
     const today = new Date();
@@ -461,7 +470,7 @@ function Thread({
                                     className="size-3.5"
                                     aria-hidden="true"
                                 />
-                                {current.contact.phone}
+                                {phone(current.contact.phone)}
                             </span>
                         )}
                         {current.contact.email && (
@@ -473,8 +482,7 @@ function Thread({
                         {current.agent && <span>Agent: {current.agent}</span>}
                         {current.contact.source && (
                             <span>
-                                From:{' '}
-                                {current.contact.source.replaceAll('_', ' ')}
+                                From: {sourceLabel(current.contact.source)}
                             </span>
                         )}
                     </p>

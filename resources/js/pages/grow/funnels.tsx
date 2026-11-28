@@ -123,7 +123,7 @@ export default function Funnels({
                             <label className="grid gap-1">
                                 <span className="font-medium">2. Where?</span>
                                 <Input
-                                    placeholder="Fondren, Jackson, MS or 39211"
+                                    placeholder="A neighborhood, a city and state, or a ZIP code"
                                     value={form.data.area}
                                     onChange={(e) =>
                                         form.setData('area', e.target.value)

@@ -36,7 +36,7 @@ export default function Coaching({ trends }: { trends: Trends }) {
                             </h2>
                             <p>
                                 {trends.talk_share !== null
-                                    ? `On average you talked ${trends.talk_share}% of the time across ${trends.count} appointments.`
+                                    ? `On average you talked ${trends.talk_share}% of the time across ${trends.count} ${trends.count === 1 ? 'appointment' : 'appointments'}.`
                                     : `${trends.count} appointments recorded.`}
                             </p>
                         </section>
@@ -48,7 +48,11 @@ export default function Coaching({ trends }: { trends: Trends }) {
                                 <ul className="list-disc pl-6">
                                     {trends.objections.map((o) => (
                                         <li key={o.objection}>
-                                            {o.objection}: {o.count}{' '}
+                                            {o.objection
+                                                .charAt(0)
+                                                .toUpperCase() +
+                                                o.objection.slice(1)}
+                                            : {o.count}{' '}
                                             {o.count === 1 ? 'time' : 'times'}
                                         </li>
                                     ))}

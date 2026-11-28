@@ -283,7 +283,7 @@ export default function AillySettings({
                             free.
                         </p>
                         <section className="grid gap-3 md:grid-cols-2">
-                            <div className="rounded-lg border p-4 text-sm">
+                            <div className="min-w-0 rounded-lg border p-4 text-sm">
                                 <h2 className="mb-2 font-semibold">
                                     Which pages turn chats into leads
                                 </h2>
@@ -298,8 +298,11 @@ export default function AillySettings({
                                             key={p.page}
                                             className="flex justify-between gap-2"
                                         >
-                                            <span className="truncate">
-                                                {p.page}
+                                            <span
+                                                className="min-w-0 truncate"
+                                                title={p.page}
+                                            >
+                                                {pageLabel(p.page)}
                                             </span>
                                             <span className="shrink-0 text-muted-foreground">
                                                 {p.chats} chats · {p.leads}{' '}
@@ -309,7 +312,7 @@ export default function AillySettings({
                                     ))}
                                 </ul>
                             </div>
-                            <div className="rounded-lg border p-4 text-sm">
+                            <div className="min-w-0 rounded-lg border p-4 text-sm">
                                 <h2 className="mb-2 font-semibold">
                                     By website
                                 </h2>
@@ -324,8 +327,10 @@ export default function AillySettings({
                                             key={s.site}
                                             className="flex justify-between gap-2"
                                         >
-                                            <span>{s.site}</span>
-                                            <span className="text-muted-foreground">
+                                            <span className="min-w-0 truncate">
+                                                {s.site}
+                                            </span>
+                                            <span className="shrink-0 text-muted-foreground">
                                                 {s.chats} chats · {s.leads}{' '}
                                                 leads · {s.calls} calls ·{' '}
                                                 {s.rate}%
@@ -429,9 +434,14 @@ export default function AillySettings({
                                         }
                                     >
                                         <span>
-                                            {new Date(c.at).toLocaleString()} ·{' '}
-                                            {c.page || '/'} · {c.answers}{' '}
-                                            answers
+                                            {new Date(c.at).toLocaleString([], {
+                                                dateStyle: 'medium',
+                                                timeStyle: 'short',
+                                            })}{' '}
+                                            · {pageLabel(c.page)} · {c.answers}{' '}
+                                            {c.answers === 1
+                                                ? 'answer'
+                                                : 'answers'}
                                         </span>
                                         <span className="flex items-center gap-2">
                                             {c.score !== null && (
@@ -886,3 +896,13 @@ export default function AillySettings({
 AillySettings.layout = {
     breadcrumbs: [{ title: 'AIlly assistant', href: '/settings/ailly' }],
 };
+
+/** A page path people can read: a home page shows its address, not its record id. */
+function pageLabel(page: string | null): string {
+    if (!page) {
+        return 'Home page';
+    }
+    const home = /^\/homes\/[0-9A-HJKMNP-TV-Z]{26}\/([^/?#]+)/.exec(page);
+
+    return home ? `Home: ${home[1].replace(/-/g, ' ')}` : page;
+}

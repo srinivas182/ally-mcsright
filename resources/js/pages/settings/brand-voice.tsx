@@ -1,5 +1,5 @@
 import { Head, router, useForm } from '@inertiajs/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -81,6 +81,23 @@ export default function BrandVoicePage({
             (guide.colors.length > 0 || guide.fonts.length > 0),
     });
     const upload = useForm<{ guide: File | null }>({ guide: null });
+
+    // A newly read brand guide arrives as new props on the same page: show what was read in the form below.
+    useEffect(() => {
+        if (guide === null) {
+            return;
+        }
+        setUseWords(guide.use_words.join(', '));
+        setAvoidWords(guide.avoid_words.join(', '));
+        form.setData((d) => ({
+            ...d,
+            tone: guide.tone,
+            emojis: guide.emojis,
+            sign_off: guide.sign_off,
+            apply_kit: guide.colors.length > 0 || guide.fonts.length > 0,
+        }));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [guide]);
 
     return (
         <>

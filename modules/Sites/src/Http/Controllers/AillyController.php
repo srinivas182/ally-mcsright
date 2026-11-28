@@ -156,7 +156,7 @@ final class AillyController
             'by_site' => $bySite->map(fn (object $r): array => ['site' => (string) ($siteNames[$r->site_id] ?? 'Website'), 'chats' => (int) $r->chats, 'leads' => (int) $r->leads,
                 'calls' => (int) $r->calls, 'rate' => $rate((int) $r->leads, (int) $r->chats)])->sortByDesc('chats')->values(),
             'conversations' => $list->map(fn (object $c): array => ['ulid' => (string) $c->ulid, 'at' => (string) $c->created_at, 'page' => (string) ($c->page ?? ''),
-                'outcome' => (string) $c->outcome, 'score' => $c->lead_score !== null ? (int) $c->lead_score : null, 'answers' => (int) $c->ai_replies,
+                'outcome' => (string) $c->outcome, 'score' => $c->lead_score !== null ? (int) $c->lead_score : null, 'answers' => (int) $c->ai_replies + (int) $c->cached_replies,
                 'messages' => array_values(array_map(fn (\stdClass $m): array => ['role' => (string) $m->role, 'body' => (string) $m->body, 'flagged' => $m->flags !== null],
                     array_filter(($messages->get($c->id) ?? collect())->all(), fn ($m): bool => $m instanceof \stdClass)))])->values(),
             'answers' => $answers->list(),

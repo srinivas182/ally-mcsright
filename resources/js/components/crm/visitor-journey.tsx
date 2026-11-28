@@ -211,10 +211,14 @@ export function VisitorJourney({
             <div className="flex flex-wrap items-center gap-2">
                 <span className="font-medium">Website journey</span>
                 <Badge variant="secondary">
-                    {journey.homes_viewed} homes viewed
+                    {journey.homes_viewed}{' '}
+                    {journey.homes_viewed === 1 ? 'home' : 'homes'} viewed
                 </Badge>
                 {journey.searches > 0 && (
-                    <Badge variant="outline">{journey.searches} searches</Badge>
+                    <Badge variant="outline">
+                        {journey.searches}{' '}
+                        {journey.searches === 1 ? 'search' : 'searches'}
+                    </Badge>
                 )}
                 {journey.favourites > 0 && (
                     <Badge variant="outline">{journey.favourites} saved</Badge>
