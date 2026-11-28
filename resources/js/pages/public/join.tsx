@@ -50,7 +50,7 @@ function Field({
     children: React.ReactNode;
 }) {
     return (
-        <label className="grid gap-1.5 text-[15px] font-medium text-slate-800">
+        <label className="grid content-start gap-1.5 text-[15px] font-medium text-slate-800">
             {label}
             {children}
             {hint && !error && (
@@ -295,369 +295,411 @@ export default function Join({
                                     : 'We could not find the agent whose link you used. You can still join; ask them to send the link again if you want them as your sponsor.'}
                             </p>
                         )}
-                        <form
-                            noValidate
-                            className="grid gap-7 rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_20px_60px_-30px_rgba(14,27,44,0.35)] sm:p-8"
-                            onSubmit={(ev) => {
-                                ev.preventDefault();
-                                setTouched({
-                                    email: true,
-                                    phone: true,
-                                    password: true,
-                                    password_confirmation: true,
-                                });
-                                form.post(code ? `/join/${code}` : '/join');
-                            }}
-                        >
-                            <Step n={1} title="About you" />
-                            <div className="-mt-2 grid gap-4 sm:grid-cols-2">
-                                <Field label="First name" error={e.first_name}>
-                                    <Input
-                                        className="h-11"
-                                        autoComplete="given-name"
-                                        value={form.data.first_name}
-                                        onChange={(x) =>
-                                            form.setData(
-                                                'first_name',
-                                                x.target.value,
-                                            )
-                                        }
-                                        required
-                                    />
-                                </Field>
-                                <Field label="Last name" error={e.last_name}>
-                                    <Input
-                                        className="h-11"
-                                        autoComplete="family-name"
-                                        value={form.data.last_name}
-                                        onChange={(x) =>
-                                            form.setData(
-                                                'last_name',
-                                                x.target.value,
-                                            )
-                                        }
-                                        required
-                                    />
-                                </Field>
-                                <Field label="Email" error={e.email}>
-                                    <Input
-                                        className="h-11"
-                                        type="email"
-                                        inputMode="email"
-                                        autoComplete="email"
-                                        value={form.data.email}
-                                        onBlur={() => touch('email')}
-                                        onChange={(x) =>
-                                            form.setData(
-                                                'email',
-                                                x.target.value.trim(),
-                                            )
-                                        }
-                                        aria-invalid={Boolean(e.email)}
-                                        required
-                                    />
-                                </Field>
-                                <Field
-                                    label="Mobile phone"
-                                    hint="US number, 10 digits"
-                                    error={e.phone}
-                                >
-                                    <PhoneInput
-                                        className="h-11"
-                                        value={phoneShown}
-                                        onBlur={() => touch('phone')}
-                                        onChange={(display, e164) => {
-                                            setPhoneShown(display);
-                                            form.setData('phone', e164 ?? '');
-                                        }}
-                                        placeholder="(512) 555-0100"
-                                        aria-invalid={Boolean(e.phone)}
-                                        required
-                                    />
-                                </Field>
-                                <Field
-                                    label="Password"
-                                    hint="12 or more characters"
-                                    error={e.password}
-                                >
-                                    <PasswordInput
-                                        className="h-11"
-                                        autoComplete="new-password"
-                                        value={form.data.password}
-                                        onBlur={() => touch('password')}
-                                        onChange={(x) =>
-                                            form.setData(
-                                                'password',
-                                                x.target.value,
-                                            )
-                                        }
-                                        aria-invalid={Boolean(e.password)}
-                                        required
-                                    />
-                                </Field>
-                                <Field
-                                    label="Type the password again"
-                                    error={e.password_confirmation}
-                                >
-                                    <PasswordInput
-                                        className="h-11"
-                                        autoComplete="new-password"
-                                        value={form.data.password_confirmation}
-                                        onBlur={() =>
-                                            touch('password_confirmation')
-                                        }
-                                        onChange={(x) =>
-                                            form.setData(
-                                                'password_confirmation',
-                                                x.target.value,
-                                            )
-                                        }
-                                        aria-invalid={Boolean(
-                                            e.password_confirmation,
-                                        )}
-                                        required
-                                    />
-                                </Field>
-                            </div>
-
-                            <Step n={2} title="Your licence" />
-                            <div className="-mt-2 grid gap-4 sm:grid-cols-2">
-                                <Field label="State" error={e.licence_state}>
-                                    <select
-                                        className="h-11 rounded-md border bg-background px-3 font-normal"
-                                        value={form.data.licence_state}
-                                        onChange={(x) =>
-                                            form.setData(
-                                                'licence_state',
-                                                x.target.value,
-                                            )
-                                        }
-                                        required
-                                    >
-                                        <option value="">Choose…</option>
-                                        {Object.entries(states).map(
-                                            ([c, n]) => (
-                                                <option key={c} value={c}>
-                                                    {n}
-                                                </option>
-                                            ),
-                                        )}
-                                    </select>
-                                </Field>
-                                <Field
-                                    label="Licence number"
-                                    error={e.licence_number}
-                                >
-                                    <Input
-                                        className="h-11"
-                                        value={form.data.licence_number}
-                                        onChange={(x) =>
-                                            form.setData(
-                                                'licence_number',
-                                                x.target.value,
-                                            )
-                                        }
-                                        required
-                                    />
-                                </Field>
-                                <p className="flex items-start gap-2 text-sm text-slate-500 sm:col-span-2">
-                                    <ShieldCheck
-                                        className="mt-0.5 size-4 shrink-0 text-emerald-600"
-                                        aria-hidden="true"
-                                    />
-                                    We check your licence with the state&apos;s
-                                    public records right away. Only active
-                                    licences can join.
+                        {Object.keys(states).length === 0 ? (
+                            <div
+                                role="status"
+                                className="grid gap-2 rounded-3xl border border-slate-200 bg-white p-6 text-slate-700 sm:p-8"
+                            >
+                                <h2 className="text-lg font-semibold text-slate-900">
+                                    Joining online opens soon
+                                </h2>
+                                <p>
+                                    {brokerage} is adding its brokerage licence.
+                                    Agents can join online once it is on file.
+                                    Until then, please contact {brokerage}{' '}
+                                    directly.
                                 </p>
                             </div>
+                        ) : (
+                            <form
+                                noValidate
+                                className="grid gap-7 rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_20px_60px_-30px_rgba(14,27,44,0.35)] sm:p-8"
+                                onSubmit={(ev) => {
+                                    ev.preventDefault();
+                                    setTouched({
+                                        email: true,
+                                        phone: true,
+                                        password: true,
+                                        password_confirmation: true,
+                                    });
+                                    form.post(code ? `/join/${code}` : '/join');
+                                }}
+                            >
+                                <Step n={1} title="About you" />
+                                <div className="-mt-2 grid gap-4 sm:grid-cols-2">
+                                    <Field
+                                        label="First name"
+                                        error={e.first_name}
+                                    >
+                                        <Input
+                                            className="h-11"
+                                            autoComplete="given-name"
+                                            value={form.data.first_name}
+                                            onChange={(x) =>
+                                                form.setData(
+                                                    'first_name',
+                                                    x.target.value,
+                                                )
+                                            }
+                                            required
+                                        />
+                                    </Field>
+                                    <Field
+                                        label="Last name"
+                                        error={e.last_name}
+                                    >
+                                        <Input
+                                            className="h-11"
+                                            autoComplete="family-name"
+                                            value={form.data.last_name}
+                                            onChange={(x) =>
+                                                form.setData(
+                                                    'last_name',
+                                                    x.target.value,
+                                                )
+                                            }
+                                            required
+                                        />
+                                    </Field>
+                                    <Field label="Email" error={e.email}>
+                                        <Input
+                                            className="h-11"
+                                            type="email"
+                                            inputMode="email"
+                                            autoComplete="email"
+                                            value={form.data.email}
+                                            onBlur={() => touch('email')}
+                                            onChange={(x) =>
+                                                form.setData(
+                                                    'email',
+                                                    x.target.value.trim(),
+                                                )
+                                            }
+                                            aria-invalid={Boolean(e.email)}
+                                            required
+                                        />
+                                    </Field>
+                                    <Field
+                                        label="Mobile phone"
+                                        hint="US number, 10 digits"
+                                        error={e.phone}
+                                    >
+                                        <PhoneInput
+                                            className="h-11"
+                                            value={phoneShown}
+                                            onBlur={() => touch('phone')}
+                                            onChange={(display, e164) => {
+                                                setPhoneShown(display);
+                                                form.setData(
+                                                    'phone',
+                                                    e164 ?? '',
+                                                );
+                                            }}
+                                            placeholder="(512) 555-0100"
+                                            aria-invalid={Boolean(e.phone)}
+                                            required
+                                        />
+                                    </Field>
+                                    <Field
+                                        label="Password"
+                                        hint="12 or more characters"
+                                        error={e.password}
+                                    >
+                                        <PasswordInput
+                                            className="h-11"
+                                            autoComplete="new-password"
+                                            value={form.data.password}
+                                            onBlur={() => touch('password')}
+                                            onChange={(x) =>
+                                                form.setData(
+                                                    'password',
+                                                    x.target.value,
+                                                )
+                                            }
+                                            aria-invalid={Boolean(e.password)}
+                                            required
+                                        />
+                                    </Field>
+                                    <Field
+                                        label="Type the password again"
+                                        error={e.password_confirmation}
+                                    >
+                                        <PasswordInput
+                                            className="h-11"
+                                            autoComplete="new-password"
+                                            value={
+                                                form.data.password_confirmation
+                                            }
+                                            onBlur={() =>
+                                                touch('password_confirmation')
+                                            }
+                                            onChange={(x) =>
+                                                form.setData(
+                                                    'password_confirmation',
+                                                    x.target.value,
+                                                )
+                                            }
+                                            aria-invalid={Boolean(
+                                                e.password_confirmation,
+                                            )}
+                                            required
+                                        />
+                                    </Field>
+                                </div>
 
-                            {plans.length > 0 && (
-                                <>
-                                    <Step
-                                        n={3}
-                                        title="How you want to be paid"
-                                    />
-                                    <fieldset className="-mt-2 grid gap-3">
-                                        <legend className="sr-only">
-                                            Your commission plan
-                                        </legend>
-                                        <div
-                                            className={`grid gap-3 ${plans.length > 1 ? 'sm:grid-cols-2' : ''}`}
+                                <Step n={2} title="Your licence" />
+                                <div className="-mt-2 grid gap-4 sm:grid-cols-2">
+                                    <Field
+                                        label="State"
+                                        error={e.licence_state}
+                                    >
+                                        <select
+                                            className="h-11 w-full rounded-md border border-input bg-white px-3 text-base font-normal shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive md:text-sm"
+                                            aria-invalid={Boolean(
+                                                e.licence_state,
+                                            )}
+                                            value={form.data.licence_state}
+                                            onChange={(x) =>
+                                                form.setData(
+                                                    'licence_state',
+                                                    x.target.value,
+                                                )
+                                            }
+                                            required
                                         >
-                                            {plans.map((p) => {
-                                                const on =
-                                                    form.data.plan === p.ulid;
+                                            <option value="">Choose…</option>
+                                            {Object.entries(states).map(
+                                                ([c, n]) => (
+                                                    <option key={c} value={c}>
+                                                        {n}
+                                                    </option>
+                                                ),
+                                            )}
+                                        </select>
+                                    </Field>
+                                    <Field
+                                        label="Licence number"
+                                        error={e.licence_number}
+                                    >
+                                        <Input
+                                            className="h-11"
+                                            value={form.data.licence_number}
+                                            onChange={(x) =>
+                                                form.setData(
+                                                    'licence_number',
+                                                    x.target.value,
+                                                )
+                                            }
+                                            required
+                                        />
+                                    </Field>
+                                    <p className="flex items-start gap-2 text-sm text-slate-500 sm:col-span-2">
+                                        <ShieldCheck
+                                            className="mt-0.5 size-4 shrink-0 text-emerald-600"
+                                            aria-hidden="true"
+                                        />
+                                        We check your licence with the
+                                        state&apos;s public records right away.
+                                        Only active licences can join.
+                                    </p>
+                                </div>
 
-                                                return (
+                                {plans.length > 0 && (
+                                    <>
+                                        <Step
+                                            n={3}
+                                            title="How you want to be paid"
+                                        />
+                                        <fieldset className="-mt-2 grid gap-3">
+                                            <legend className="sr-only">
+                                                Your commission plan
+                                            </legend>
+                                            <div
+                                                className={`grid gap-3 ${plans.length > 1 ? 'sm:grid-cols-2' : ''}`}
+                                            >
+                                                {plans.map((p) => {
+                                                    const on =
+                                                        form.data.plan ===
+                                                        p.ulid;
+
+                                                    return (
+                                                        <label
+                                                            key={p.ulid}
+                                                            className={`grid cursor-pointer content-start gap-3 rounded-2xl border-2 p-5 transition-colors ${
+                                                                on
+                                                                    ? 'border-[#0E1B2C] bg-[#0E1B2C] text-white shadow-lg'
+                                                                    : 'border-slate-200 hover:border-slate-400'
+                                                            }`}
+                                                        >
+                                                            <span className="flex items-center gap-2.5 text-lg font-semibold">
+                                                                <input
+                                                                    type="radio"
+                                                                    name="plan"
+                                                                    className="size-5 accent-[#C8A96A]"
+                                                                    checked={on}
+                                                                    onChange={() =>
+                                                                        form.setData(
+                                                                            'plan',
+                                                                            p.ulid,
+                                                                        )
+                                                                    }
+                                                                />
+                                                                {p.name}
+                                                            </span>
+                                                            {p.description && (
+                                                                <span
+                                                                    className={`text-[15px] ${on ? 'text-slate-200' : 'text-slate-600'}`}
+                                                                >
+                                                                    {
+                                                                        p.description
+                                                                    }
+                                                                </span>
+                                                            )}
+                                                            <ul className="grid gap-2">
+                                                                {p.lines.map(
+                                                                    (l) => (
+                                                                        <li
+                                                                            key={
+                                                                                l
+                                                                            }
+                                                                            className="flex gap-2 text-[15px] leading-snug"
+                                                                        >
+                                                                            <CircleCheck
+                                                                                className={`mt-0.5 size-4 shrink-0 ${on ? 'text-[#C8A96A]' : 'text-emerald-600'}`}
+                                                                                aria-hidden="true"
+                                                                            />
+                                                                            {l}
+                                                                        </li>
+                                                                    ),
+                                                                )}
+                                                            </ul>
+                                                        </label>
+                                                    );
+                                                })}
+                                            </div>
+                                            <p className="text-sm text-slate-500">
+                                                You can talk to {brokerage}{' '}
+                                                about changing plans later.
+                                            </p>
+                                            {e.plan && (
+                                                <span
+                                                    role="alert"
+                                                    className="text-sm text-destructive"
+                                                >
+                                                    {e.plan}
+                                                </span>
+                                            )}
+                                        </fieldset>
+                                    </>
+                                )}
+
+                                {packs.length > 0 && (
+                                    <>
+                                        <Step
+                                            n={plans.length > 0 ? 4 : 3}
+                                            title="Choose your pack"
+                                        />
+                                        <fieldset className="-mt-2 grid gap-3">
+                                            <legend className="sr-only">
+                                                Your pack
+                                            </legend>
+                                            <div className="grid gap-3 sm:grid-cols-3">
+                                                {packs.map((p) => (
                                                     <label
                                                         key={p.ulid}
-                                                        className={`grid cursor-pointer content-start gap-3 rounded-2xl border-2 p-5 transition-colors ${
-                                                            on
-                                                                ? 'border-[#0E1B2C] bg-[#0E1B2C] text-white shadow-lg'
-                                                                : 'border-slate-200 hover:border-slate-400'
+                                                        className={`grid cursor-pointer content-start gap-1 rounded-2xl border p-4 transition-colors ${
+                                                            form.data.pack ===
+                                                            p.ulid
+                                                                ? 'border-[#0E1B2C] bg-[#0E1B2C] text-white'
+                                                                : 'hover:border-slate-400'
                                                         }`}
                                                     >
-                                                        <span className="flex items-center gap-2.5 text-lg font-semibold">
+                                                        <span className="flex items-center gap-2 font-semibold">
                                                             <input
                                                                 type="radio"
-                                                                name="plan"
-                                                                className="size-5 accent-[#C8A96A]"
-                                                                checked={on}
+                                                                name="pack"
+                                                                className="size-4 accent-[#C8A96A]"
+                                                                checked={
+                                                                    form.data
+                                                                        .pack ===
+                                                                    p.ulid
+                                                                }
                                                                 onChange={() =>
                                                                     form.setData(
-                                                                        'plan',
+                                                                        'pack',
                                                                         p.ulid,
                                                                     )
                                                                 }
                                                             />
                                                             {p.name}
                                                         </span>
+                                                        <span className="text-2xl font-bold">
+                                                            {usd(p.price_cents)}
+                                                            <span className="text-sm font-normal opacity-70">
+                                                                {' '}
+                                                                / month
+                                                            </span>
+                                                        </span>
                                                         {p.description && (
-                                                            <span
-                                                                className={`text-[15px] ${on ? 'text-slate-200' : 'text-slate-600'}`}
-                                                            >
+                                                            <span className="text-sm opacity-80">
                                                                 {p.description}
                                                             </span>
                                                         )}
-                                                        <ul className="grid gap-2">
-                                                            {p.lines.map(
-                                                                (l) => (
-                                                                    <li
-                                                                        key={l}
-                                                                        className="flex gap-2 text-[15px] leading-snug"
-                                                                    >
-                                                                        <CircleCheck
-                                                                            className={`mt-0.5 size-4 shrink-0 ${on ? 'text-[#C8A96A]' : 'text-emerald-600'}`}
-                                                                            aria-hidden="true"
-                                                                        />
-                                                                        {l}
-                                                                    </li>
-                                                                ),
-                                                            )}
-                                                        </ul>
                                                     </label>
-                                                );
-                                            })}
-                                        </div>
-                                        <p className="text-sm text-slate-500">
-                                            You can talk to {brokerage} about
-                                            changing plans later.
-                                        </p>
-                                        {e.plan && (
-                                            <span
-                                                role="alert"
-                                                className="text-sm text-destructive"
-                                            >
-                                                {e.plan}
-                                            </span>
-                                        )}
-                                    </fieldset>
-                                </>
-                            )}
-
-                            {packs.length > 0 && (
-                                <>
-                                    <Step
-                                        n={plans.length > 0 ? 4 : 3}
-                                        title="Choose your pack"
-                                    />
-                                    <fieldset className="-mt-2 grid gap-3">
-                                        <legend className="sr-only">
-                                            Your pack
-                                        </legend>
-                                        <div className="grid gap-3 sm:grid-cols-3">
-                                            {packs.map((p) => (
-                                                <label
-                                                    key={p.ulid}
-                                                    className={`grid cursor-pointer content-start gap-1 rounded-2xl border p-4 transition-colors ${
-                                                        form.data.pack ===
-                                                        p.ulid
-                                                            ? 'border-[#0E1B2C] bg-[#0E1B2C] text-white'
-                                                            : 'hover:border-slate-400'
-                                                    }`}
+                                                ))}
+                                            </div>
+                                            {e.pack && (
+                                                <span
+                                                    role="alert"
+                                                    className="text-sm text-destructive"
                                                 >
-                                                    <span className="flex items-center gap-2 font-semibold">
-                                                        <input
-                                                            type="radio"
-                                                            name="pack"
-                                                            className="size-4 accent-[#C8A96A]"
-                                                            checked={
-                                                                form.data
-                                                                    .pack ===
-                                                                p.ulid
-                                                            }
-                                                            onChange={() =>
-                                                                form.setData(
-                                                                    'pack',
-                                                                    p.ulid,
-                                                                )
-                                                            }
-                                                        />
-                                                        {p.name}
-                                                    </span>
-                                                    <span className="text-2xl font-bold">
-                                                        {usd(p.price_cents)}
-                                                        <span className="text-sm font-normal opacity-70">
-                                                            {' '}
-                                                            / month
-                                                        </span>
-                                                    </span>
-                                                    {p.description && (
-                                                        <span className="text-sm opacity-80">
-                                                            {p.description}
-                                                        </span>
-                                                    )}
-                                                </label>
-                                            ))}
-                                        </div>
-                                        {e.pack && (
+                                                    {e.pack}
+                                                </span>
+                                            )}
+                                        </fieldset>
+                                    </>
+                                )}
+
+                                <label className="flex items-start gap-3 text-[15px] text-slate-700">
+                                    <input
+                                        type="checkbox"
+                                        className="mt-1 size-4"
+                                        checked={form.data.agree}
+                                        onChange={(x) =>
+                                            form.setData(
+                                                'agree',
+                                                x.target.checked,
+                                            )
+                                        }
+                                    />
+                                    <span>
+                                        I agree to {brokerage}&apos;s
+                                        independent contractor terms and
+                                        RightAlly&apos;s terms of service.
+                                        {e.agree && (
                                             <span
                                                 role="alert"
-                                                className="text-sm text-destructive"
+                                                className="block text-sm text-destructive"
                                             >
-                                                {e.pack}
+                                                {e.agree}
                                             </span>
                                         )}
-                                    </fieldset>
-                                </>
-                            )}
-
-                            <label className="flex items-start gap-3 text-[15px] text-slate-700">
-                                <input
-                                    type="checkbox"
-                                    className="mt-1 size-4"
-                                    checked={form.data.agree}
-                                    onChange={(x) =>
-                                        form.setData('agree', x.target.checked)
-                                    }
-                                />
-                                <span>
-                                    I agree to {brokerage}&apos;s independent
-                                    contractor terms and RightAlly&apos;s terms
-                                    of service.
-                                    {e.agree && (
-                                        <span
-                                            role="alert"
-                                            className="block text-sm text-destructive"
-                                        >
-                                            {e.agree}
-                                        </span>
-                                    )}
-                                </span>
-                            </label>
-                            <Button
-                                type="submit"
-                                size="lg"
-                                className="h-13 bg-[#0E1B2C] text-base text-white hover:bg-[#1A2C45]"
-                                disabled={form.processing || !ready}
-                            >
-                                {form.processing
-                                    ? 'Checking your licence…'
-                                    : packs.length > 0
-                                      ? 'Check my licence and continue to payment'
-                                      : 'Check my licence and join'}
-                            </Button>
-                        </form>
+                                    </span>
+                                </label>
+                                <Button
+                                    type="submit"
+                                    size="lg"
+                                    className="h-13 bg-[#0E1B2C] text-base text-white hover:bg-[#1A2C45]"
+                                    disabled={form.processing || !ready}
+                                >
+                                    {form.processing
+                                        ? 'Checking your licence…'
+                                        : packs.length > 0
+                                          ? 'Check my licence and continue to payment'
+                                          : 'Check my licence and join'}
+                                </Button>
+                            </form>
+                        )}
                     </div>
                 </section>
             </main>

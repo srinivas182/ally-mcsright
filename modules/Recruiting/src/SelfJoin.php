@@ -93,8 +93,14 @@ final class SelfJoin
     public function states(array $all): array
     {
         $codes = [...app(BrokerageLicences::class)->goodStates(), ...$this->page()['extra_states']];
+        // FX2: agents can only hang their licence with a brokerage licensed in that state, so never every state. With no
+        // licence on file yet, the brokerage's own state (from sign-up); with none at all, joining is not open yet.
+        if ($codes === []) {
+            $home = $this->tenants->current()->state_code;
+            $codes = is_string($home) && $home !== '' ? [strtoupper($home)] : [];
+        }
 
-        return $codes === [] ? $all : array_intersect_key($all, array_flip($codes));
+        return array_intersect_key($all, array_flip($codes));
     }
 
     /** The video's player address (YouTube and Vimeo play privacy-friendly; MP4 files as they are). */

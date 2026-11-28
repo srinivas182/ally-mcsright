@@ -17,6 +17,7 @@ use Modules\Compensation\Models\PlanAssignment;
 use Modules\Compensation\RevenueShare\Sponsorships;
 use Modules\Core\Identity\Enums\UserStatus;
 use Modules\Core\Support\Connections;
+use Modules\Core\Tenancy\TenantContext;
 use Modules\Recruiting\Http\MyNetworkController;
 use Modules\Recruiting\SelfJoin;
 
@@ -39,6 +40,8 @@ beforeEach(function (): void {
     $this->pro = $catalogue->savePlan(null, ['key' => 'pro', 'name' => 'Pro', 'list_cents' => 20_000, 'floor_cents' => 10_000, 'features' => ['backoffice.basic']]);
     app(Pricing::class)->setPrice($this->pro, 15_000, true, $this->owner);
     DB::connection(Connections::control())->table('idx_states')->insertOrIgnore(['code' => 'TX', 'name' => 'Texas', 'enabled' => true, 'created_at' => now(), 'updated_at' => now()]);
+    DB::connection(Connections::control())->table('idx_states')->insertOrIgnore(['code' => 'CA', 'name' => 'California', 'enabled' => true, 'created_at' => now(), 'updated_at' => now()]);
+    $this->tenant->forceFill(['state_code' => 'TX'])->save(); // FX2: the brokerage's home state, until its licences are on file
     $this->code = app(SelfJoin::class)->codeFor($this->sponsor);
 });
 
@@ -172,4 +175,15 @@ it('only offers a published plan to new agents, and stops when it is archived (A
     expect(app(SelfJoin::class)->plans())->toHaveCount(1);
     $plans->archive($draft->fresh());
     expect(app(SelfJoin::class)->plans())->toBe([]);
+});
+
+it('only lets agents join from states where the brokerage is licensed, never every state (FX2)', function (): void {
+    // No licence on file: the brokerage's home state only.
+    $this->get("/join/{$this->code}")->assertInertia(fn (Assert $page) => $page->where('states', ['TX' => 'Texas']));
+    $this->post("/join/{$this->code}", joinForm(['licence_state' => 'CA']))->assertSessionHasErrors('licence_state');
+
+    // No state known at all: joining online is not open yet.
+    $this->tenant->forceFill(['state_code' => null])->save();
+    app(TenantContext::class)->set($this->tenant->fresh());
+    $this->get("/join/{$this->code}")->assertInertia(fn (Assert $page) => $page->where('states', []));
 });
