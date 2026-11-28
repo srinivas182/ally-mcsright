@@ -187,3 +187,13 @@ it('only lets agents join from states where the brokerage is licensed, never eve
     app(TenantContext::class)->set($this->tenant->fresh());
     $this->get("/join/{$this->code}")->assertInertia(fn (Assert $page) => $page->where('states', []));
 });
+
+it('shows who referred the new agent: their sponsor, or the company account when there is none (FX3)', function (): void {
+    $this->get("/join/{$this->code}")->assertInertia(fn (Assert $page) => $page->where('sponsor.name', $this->sponsor->name)->where('root', null));
+    $this->get('/join')->assertInertia(fn (Assert $page) => $page->where('sponsor', null)->where('root', $this->owner->name));
+
+    // A code typed on the form (or the whole link pasted) names the sponsor; an unknown one is refused.
+    $this->post('/join', joinForm(['referral' => 'nobody99']))->assertSessionHasErrors('referral');
+    $this->post('/join', joinForm(['referral' => 'https://acme.rightally.site/join/'.$this->code.'?utm_source=x']), ['X-Inertia' => 'true'])->assertStatus(409);
+    expect(DB::connection(Connections::cell())->table('recruiting_join_applications')->value('sponsor_user_id'))->toBe($this->sponsor->id);
+});

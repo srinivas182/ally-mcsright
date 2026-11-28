@@ -441,7 +441,8 @@ final class RevenueShareEngine
         return $version instanceof PlanVersion ? $version->commissionRules()->revenueShare : null;
     }
 
-    private function rootUserId(): ?int
+    /** The company's root account (rs_settings, else the first owner): where agents with no sponsor sit. */
+    public function rootUserId(): ?int
     {
         $root = DB::connection(Connections::cell())->table('rs_settings')->value('root_user_id');
         if ($root !== null) {

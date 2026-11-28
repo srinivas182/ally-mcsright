@@ -11,6 +11,7 @@ import { usd } from '@/lib/cents';
 type Props = {
     brokerage: string;
     sponsor: { name: string; since: string | null } | null;
+    root: string | null;
     page: {
         headline: string;
         pitch: string;
@@ -81,11 +82,15 @@ function Step({ n, title }: { n: number; title: string }) {
     );
 }
 
-function Initials({ name }: { name: string }) {
+function Initials({ name, small = false }: { name: string; small?: boolean }) {
     return (
         <span
             aria-hidden="true"
-            className="grid size-14 shrink-0 place-items-center rounded-full bg-[#E9D9B4] text-lg font-semibold text-[#0E1B2C] ring-2 ring-[#C8A96A] ring-offset-2 ring-offset-[#0E1B2C]"
+            className={
+                small
+                    ? 'grid size-9 shrink-0 place-items-center rounded-full bg-[#E9D9B4] text-sm font-semibold text-[#0E1B2C]'
+                    : 'grid size-14 shrink-0 place-items-center rounded-full bg-[#E9D9B4] text-lg font-semibold text-[#0E1B2C] ring-2 ring-[#C8A96A] ring-offset-2 ring-offset-[#0E1B2C]'
+            }
         >
             {name
                 .split(' ')
@@ -105,6 +110,7 @@ function Initials({ name }: { name: string }) {
 export default function Join({
     brokerage,
     sponsor,
+    root,
     page,
     code,
     unknownCode,
@@ -115,6 +121,7 @@ export default function Join({
 }: Props) {
     const { tenant } = usePage().props;
     const form = useForm({
+        referral: '',
         first_name: '',
         last_name: '',
         email: '',
@@ -129,6 +136,7 @@ export default function Join({
         agree: false,
     });
     const [phoneShown, setPhoneShown] = useState('');
+    const [changeReferrer, setChangeReferrer] = useState(false);
     const [touched, setTouched] = useState<Record<string, boolean>>({});
     const touch = (k: string) => setTouched((t) => ({ ...t, [k]: true }));
     const local: Record<string, string | undefined> = {
@@ -326,6 +334,69 @@ export default function Join({
                                 }}
                             >
                                 <Step n={1} title="About you" />
+                                <div className="-mt-2 grid gap-1.5 text-[15px]">
+                                    <span
+                                        id="referred-by"
+                                        className="font-medium text-slate-800"
+                                    >
+                                        Referred by
+                                    </span>
+                                    <div
+                                        aria-labelledby="referred-by"
+                                        className="flex min-h-11 flex-wrap items-center gap-3 rounded-md border border-input bg-slate-50 px-3 py-2"
+                                    >
+                                        <Initials
+                                            name={
+                                                sponsor?.name ??
+                                                root ??
+                                                brokerage
+                                            }
+                                            small
+                                        />
+                                        <span className="grid">
+                                            <span className="font-semibold text-slate-900">
+                                                {sponsor?.name ??
+                                                    root ??
+                                                    brokerage}
+                                            </span>
+                                            <span className="text-sm text-slate-500">
+                                                {sponsor
+                                                    ? 'Your sponsor, from their link'
+                                                    : `${brokerage} company account. Agents with no sponsor join here.`}
+                                            </span>
+                                        </span>
+                                        {!sponsor && !changeReferrer && (
+                                            <button
+                                                type="button"
+                                                className="ml-auto text-sm font-medium text-[#9A7B3F] underline-offset-4 hover:underline"
+                                                onClick={() =>
+                                                    setChangeReferrer(true)
+                                                }
+                                            >
+                                                An agent referred me
+                                            </button>
+                                        )}
+                                    </div>
+                                    {!sponsor && changeReferrer && (
+                                        <Field
+                                            label="Their referral code or join link"
+                                            hint="Leave it empty to join under the company."
+                                            error={e.referral}
+                                        >
+                                            <Input
+                                                className="h-11"
+                                                value={form.data.referral}
+                                                onChange={(x) =>
+                                                    form.setData(
+                                                        'referral',
+                                                        x.target.value,
+                                                    )
+                                                }
+                                                placeholder="For example jamessmith"
+                                            />
+                                        </Field>
+                                    )}
+                                </div>
                                 <div className="-mt-2 grid gap-4 sm:grid-cols-2">
                                     <Field
                                         label="First name"
