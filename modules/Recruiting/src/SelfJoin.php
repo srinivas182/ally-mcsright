@@ -15,6 +15,7 @@ use Modules\Billing\Models\AgentPlan;
 use Modules\Billing\Pricing;
 use Modules\Billing\Signup\LicenceCheck;
 use Modules\Compensation\JoinChoices;
+use Modules\Compensation\RevenueShare\RevenueShareEngine;
 use Modules\Core\Audit\AuditLogger;
 use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Identity\Enums\UserStatus;
@@ -117,6 +118,31 @@ final class SelfJoin
         }
 
         return $url;
+    }
+
+    /**
+     * FX3: who a new agent with no sponsor joins under: the company's root account (the owner unless HQ set another),
+     * shown as "Referred by" on the join page.
+     */
+    public function rootReferrer(): ?User
+    {
+        $id = class_exists(RevenueShareEngine::class) ? app(RevenueShareEngine::class)->rootUserId()
+            : User::query()->where('kind', UserKind::Owner)->orderBy('id')->value('id');
+        $user = $id !== null ? User::query()->find($id) : null;
+
+        return $user instanceof User ? $user : null;
+    }
+
+    /** FX3: a referral code typed on the form, or pasted as the agent's whole join link. */
+    public static function codeFromInput(?string $input): ?string
+    {
+        $input = strtolower(trim((string) $input));
+        if ($input === '') {
+            return null;
+        }
+        $input = rtrim((string) preg_replace('#[?\#].*$#', '', $input), '/');
+
+        return basename($input);
     }
 
     /** The agent's own join code (made the first time it is needed). */

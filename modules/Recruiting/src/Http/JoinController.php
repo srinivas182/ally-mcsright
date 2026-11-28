@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use Modules\Core\Identity\Enums\UserKind;
@@ -34,6 +35,8 @@ final class JoinController
         $response = Inertia::render('public/join', [
             'brokerage' => app(TenantContext::class)->current()->name,
             'sponsor' => $sponsor !== null ? ['name' => $sponsor->name, 'since' => $sponsor->created_at?->format('Y')] : null,
+            // FX3: with no sponsor, the new agent joins under the company's root account.
+            'root' => $sponsor === null ? $join->rootReferrer()?->name : null,
             'page' => ['headline' => $page['headline'], 'pitch' => $page['pitch'], 'reasons' => $page['reasons'], 'video' => SelfJoin::player($page['video'])],
             'code' => $sponsor !== null ? $code : null,
             'unknownCode' => $code !== null && $sponsor === null,
@@ -56,8 +59,16 @@ final class JoinController
             'password' => ['required', 'confirmed', Password::min(12)],
             'licence_state' => ['required', 'string', 'size:2', 'in:'.implode(',', array_keys($states))], 'licence_number' => ['required', 'string', 'max:40'],
             'pack' => ['nullable', 'string', 'size:26'], 'plan' => ['nullable', 'string', 'size:26'], 'agree' => ['accepted'],
+            'referral' => ['nullable', 'string', 'max:200'],
         ], ['agree.accepted' => 'Please agree to the terms to join.', 'phone.regex' => 'Enter a 10-digit US phone number.', 'email.email' => 'Enter a full email address, like name@example.com.', 'licence_state.in' => 'Choose the state that issued your licence.']);
-        $next = $join->apply($data, $join->sponsorFor($code), $states[$data['licence_state']], $request->getSchemeAndHttpHost());
+        // FX3: a referral code typed on the form (or the agent's link pasted) names the sponsor when the link had none.
+        $typed = SelfJoin::codeFromInput($data['referral'] ?? null);
+        $sponsor = $join->sponsorFor($typed ?? $code);
+        if ($typed !== null && $sponsor === null) {
+            throw ValidationException::withMessages(['referral' => 'We could not find an agent with that referral code. Check it with them, or leave it empty to join under '.app(TenantContext::class)->current()->name.'.']);
+        }
+        unset($data['referral']);
+        $next = $join->apply($data, $sponsor, $states[$data['licence_state']], $request->getSchemeAndHttpHost());
 
         return str_starts_with($next, '/') ? redirect($next) : Inertia::location($next);
     }
