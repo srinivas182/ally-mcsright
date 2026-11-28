@@ -47,6 +47,8 @@ type Props = {
         phone: string | null;
         sms_allowed: boolean;
         voice_allowed: boolean;
+        copy_all: boolean;
+        can_copy: boolean;
     };
     canManage: boolean;
     focus: string | null;
@@ -90,12 +92,18 @@ export default function Leads({
     const opts = { preserveScroll: true };
     const [away, setAway] = useState('4');
     const [byScore, setByScore] = useState(false);
-    const save = (texts: boolean, calls: boolean, awayHours?: number | null) =>
+    const save = (
+        texts: boolean,
+        calls: boolean,
+        awayHours?: number | null,
+        copyAll: boolean = alerts.copy_all,
+    ) =>
         router.post(
             '/leads/alerts',
             {
                 texts,
                 calls,
+                copy_all: copyAll,
                 away_hours:
                     awayHours === undefined
                         ? alerts.away_until
@@ -358,7 +366,32 @@ export default function Leads({
                             />
                             Call me and connect me to new leads
                         </label>
+                        {alerts.can_copy && (
+                            <label className="flex items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    className="size-4"
+                                    checked={alerts.copy_all}
+                                    onChange={(e) =>
+                                        save(
+                                            alerts.texts,
+                                            alerts.calls,
+                                            undefined,
+                                            e.target.checked,
+                                        )
+                                    }
+                                />
+                                Email me a copy of every new lead, with who got
+                                it
+                            </label>
+                        )}
                     </div>
+                    {alerts.can_copy && (
+                        <p className="text-xs text-muted-foreground">
+                            Leads that go to the lead pond are always emailed to
+                            the broker, so no lead waits unseen.
+                        </p>
+                    )}
                     {(!alerts.sms_allowed || !alerts.voice_allowed) && (
                         <p className="text-xs text-muted-foreground">
                             Some alerts are not switched on for your brokerage

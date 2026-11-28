@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\ValidationException;
 use Modules\Core\Audit\AuditLogger;
+use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Messaging\MessagingSettings;
 use Modules\Core\Messaging\SmsSender;
 use Modules\Core\Messaging\VoiceCaller;
@@ -144,10 +145,12 @@ final class SpeedToLead
         return ['texts' => $p?->texts_consent_at !== null, 'calls' => $p?->calls_consent_at !== null,
             'away_until' => $p?->away_until !== null && CarbonImmutable::parse($p->away_until)->isFuture() ? CarbonImmutable::parse($p->away_until)->toIso8601String() : null,
             'phone' => $user->phone !== null && $user->phone !== '' ? '•••'.substr($user->phone, -4) : null,
-            'sms_allowed' => $this->messaging->smsFor($tenantId), 'voice_allowed' => $this->messaging->voiceFor($tenantId)];
+            'sms_allowed' => $this->messaging->smsFor($tenantId), 'voice_allowed' => $this->messaging->voiceFor($tenantId),
+            // FX6: owners and staff can ask for a copy of every new lead.
+            'copy_all' => (bool) ($p->copy_all ?? false), 'can_copy' => in_array($user->kind, [UserKind::Owner, UserKind::Staff], true)];
     }
 
-    public function savePrefs(User $user, bool $texts, bool $calls, ?int $awayHours): void
+    public function savePrefs(User $user, bool $texts, bool $calls, ?int $awayHours, ?bool $copyAll = null): void
     {
         if (($texts || $calls) && ($user->phone === null || $user->phone === '')) {
             throw ValidationException::withMessages(['phone' => 'Add your mobile number to your profile first.']);
@@ -159,9 +162,10 @@ final class SpeedToLead
             'texts_consent_at' => $texts ? ($p->texts_consent_at ?? $now) : null,
             'calls_consent_at' => $calls ? ($p->calls_consent_at ?? $now) : null,
             'away_until' => $awayHours !== null && $awayHours > 0 ? $now->addHours(min(24 * 30, $awayHours)) : null,
+            'copy_all' => $copyAll !== null ? ($copyAll && in_array($user->kind, [UserKind::Owner, UserKind::Staff], true)) : (bool) ($p->copy_all ?? false),
             'updated_at' => $now, 'created_at' => $p->created_at ?? $now,
         ]);
-        app(AuditLogger::class)->record('crm.leads.alert_choices', metadata: ['texts' => $texts, 'calls' => $calls, 'away_hours' => $awayHours], severity: 'notice');
+        app(AuditLogger::class)->record('crm.leads.alert_choices', metadata: ['texts' => $texts, 'calls' => $calls, 'away_hours' => $awayHours, 'copy_all' => $copyAll], severity: 'notice');
     }
 
     public static function summary(Lead $lead): string

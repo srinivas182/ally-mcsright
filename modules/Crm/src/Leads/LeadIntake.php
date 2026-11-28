@@ -130,6 +130,7 @@ final class LeadIntake
             } else {
                 $this->routing->route($lead);
             }
+            app(LeadCopies::class)->send($lead); // FX6: pond leads to the broker; copies for owners and staff who asked
             app(AiResponder::class)->leadReceived($lead->refresh(), self::handoff($in['ai_handoff'] ?? null));
             app(LeadScoring::class)->score($lead->refresh());
             CrmEvents::lead($lead);

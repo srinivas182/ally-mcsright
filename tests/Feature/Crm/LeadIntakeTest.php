@@ -12,6 +12,7 @@ use Inertia\Testing\AssertableInertia as Assert;
 use Modules\AI\Models\AiFeatureRoute;
 use Modules\AI\Models\AiModel;
 use Modules\AI\Providers\ProviderRegistry;
+use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Messaging\FakeSmsSender;
 use Modules\Core\Messaging\FakeVoiceCaller;
 use Modules\Core\Messaging\SmsSender;
@@ -28,6 +29,7 @@ use Modules\Crm\Leads\PortalEmail;
 use Modules\Crm\Models\Contact;
 use Modules\Crm\Models\Lead;
 use Modules\Crm\Models\LeadSource;
+use Modules\Crm\Models\RoutingRule;
 use Tests\Fixtures\FakeAiProvider;
 
 require_once __DIR__.'/../Contracts/contract-helpers.php';
@@ -318,4 +320,30 @@ it('lets owners manage sources, rules and the response window, and shows an API 
 it('sends the lead pages the data they need', function (): void {
     assertPageContract($this->actingAs($this->owner)->get('/leads'), 'crm/leads/index');
     assertPageContract($this->actingAs($this->owner)->get('/leads/settings'), 'crm/leads/settings');
+});
+
+it('emails the broker about leads that go to the lead pond, and copies owners and staff who ask (FX6)', function (): void {
+    $key = apiSource($this);
+    $headers = ['Authorization' => 'Bearer '.$key];
+    $staff = User::factory()->create(['kind' => UserKind::Staff, 'first_name' => 'Sue']);
+
+    // A pond rule: no agent is told, so the broker is.
+    app(LeadRouting::class)->saveRule(['name' => 'Pond', 'method' => 'pond'], $this->owner);
+    $this->postJson('/api/leads', ['name' => 'Pat Pond', 'email' => 'pat@x.test', 'intent' => 'buy'], $headers)->assertCreated();
+    Notification::assertSentTo($this->owner, LeadAlert::class, fn ($n) => str_contains($n->subject, 'lead pond'));
+    Notification::assertNotSentTo($staff, LeadAlert::class);
+
+    // Sue asks for a copy of every lead: she hears where each one went; the agent who got it is not emailed twice.
+    $this->actingAs($staff)->post('/leads/alerts', ['texts' => false, 'calls' => false, 'copy_all' => true])->assertSessionHasNoErrors();
+    RoutingRule::query()->delete();
+    roundRobin($this);
+    Notification::fake();
+    $this->postJson('/api/leads', ['name' => 'Rae Robin', 'email' => 'rae@x.test', 'intent' => 'buy'], $headers)->assertCreated();
+    Notification::assertSentToTimes($staff, LeadAlert::class, 1);
+    $agentTold = collect([$this->ann, $this->bob])->filter(fn ($u) => Notification::sent($u, LeadAlert::class)->count() === 1);
+    expect($agentTold)->toHaveCount(1);
+
+    // Agents cannot turn copies on for themselves.
+    $this->actingAs($this->ann)->post('/leads/alerts', ['texts' => false, 'calls' => false, 'copy_all' => true]);
+    expect(DB::connection(Connections::cell())->table('crm_lead_alert_prefs')->where('user_id', $this->ann->id)->value('copy_all'))->toBeFalsy();
 });
