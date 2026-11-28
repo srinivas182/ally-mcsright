@@ -12,6 +12,7 @@ type Props = {
     brokerage: string;
     sponsor: { name: string; since: string | null } | null;
     root: string | null;
+    suggested: boolean;
     page: {
         headline: string;
         pitch: string;
@@ -111,6 +112,7 @@ export default function Join({
     brokerage,
     sponsor,
     root,
+    suggested,
     page,
     code,
     unknownCode,
@@ -136,7 +138,57 @@ export default function Join({
         agree: false,
     });
     const [phoneShown, setPhoneShown] = useState('');
-    const [changeReferrer, setChangeReferrer] = useState(false);
+    // FX4: "Change" on Referred by: find an agent by phone, email or code.
+    const [changing, setChanging] = useState(false);
+    const [contact, setContact] = useState('');
+    const [lookup, setLookup] = useState<
+        | { state: 'idle' | 'busy' }
+        | { state: 'found'; name: string; code: string }
+        | { state: 'none' }
+    >({ state: 'idle' });
+    const [picked, setPicked] = useState<{ name: string; code: string } | null>(
+        null,
+    );
+    const referrerName = picked?.name ?? sponsor?.name ?? root ?? brokerage;
+    const referrerNote = picked
+        ? 'The agent you chose'
+        : sponsor
+          ? suggested
+              ? 'From the agent page you visited'
+              : 'Your sponsor, from their link'
+          : `${brokerage} company account. Agents with no sponsor join here.`;
+    const find = async () => {
+        if (contact.trim() === '') {
+            return;
+        }
+        setLookup({ state: 'busy' });
+        const token = decodeURIComponent(
+            document.cookie.match(/(?:^|; )XSRF-TOKEN=([^;]+)/)?.[1] ?? '',
+        );
+        try {
+            const r = await fetch('/join/referrer', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-XSRF-TOKEN': token,
+                },
+                body: JSON.stringify({ contact }),
+            });
+            const d = (await r.json()) as {
+                found?: boolean;
+                name?: string;
+                code?: string;
+            };
+            setLookup(
+                r.ok && d.found && d.name && d.code
+                    ? { state: 'found', name: d.name, code: d.code }
+                    : { state: 'none' },
+            );
+        } catch {
+            setLookup({ state: 'none' });
+        }
+    };
     const [touched, setTouched] = useState<Record<string, boolean>>({});
     const touch = (k: string) => setTouched((t) => ({ ...t, [k]: true }));
     const local: Record<string, string | undefined> = {
@@ -334,7 +386,7 @@ export default function Join({
                                 }}
                             >
                                 <Step n={1} title="About you" />
-                                <div className="-mt-2 grid gap-1.5 text-[15px]">
+                                <div className="-mt-2 grid gap-2 text-[15px]">
                                     <span
                                         id="referred-by"
                                         className="font-medium text-slate-800"
@@ -343,58 +395,163 @@ export default function Join({
                                     </span>
                                     <div
                                         aria-labelledby="referred-by"
-                                        className="flex min-h-11 flex-wrap items-center gap-3 rounded-md border border-input bg-slate-50 px-3 py-2"
+                                        className="flex min-h-11 items-center gap-3 rounded-md border border-input bg-slate-50 px-3 py-2"
                                     >
-                                        <Initials
-                                            name={
-                                                sponsor?.name ??
-                                                root ??
-                                                brokerage
-                                            }
-                                            small
-                                        />
-                                        <span className="grid">
+                                        <Initials name={referrerName} small />
+                                        <span className="grid min-w-0 flex-1">
                                             <span className="font-semibold text-slate-900">
-                                                {sponsor?.name ??
-                                                    root ??
-                                                    brokerage}
+                                                {referrerName}
                                             </span>
                                             <span className="text-sm text-slate-500">
-                                                {sponsor
-                                                    ? 'Your sponsor, from their link'
-                                                    : `${brokerage} company account. Agents with no sponsor join here.`}
+                                                {referrerNote}
                                             </span>
                                         </span>
-                                        {!sponsor && !changeReferrer && (
+                                        {!changing && (
                                             <button
                                                 type="button"
-                                                className="ml-auto text-sm font-medium text-[#9A7B3F] underline-offset-4 hover:underline"
-                                                onClick={() =>
-                                                    setChangeReferrer(true)
-                                                }
+                                                className="shrink-0 self-start text-sm font-medium text-[#9A7B3F] underline-offset-4 hover:underline"
+                                                onClick={() => {
+                                                    setChanging(true);
+                                                    setLookup({
+                                                        state: 'idle',
+                                                    });
+                                                }}
                                             >
-                                                An agent referred me
+                                                Change
                                             </button>
                                         )}
                                     </div>
-                                    {!sponsor && changeReferrer && (
-                                        <Field
-                                            label="Their referral code or join link"
-                                            hint="Leave it empty to join under the company."
-                                            error={e.referral}
+                                    {changing && (
+                                        <div className="grid gap-3 rounded-md border border-slate-200 p-3">
+                                            <label className="grid gap-1.5 font-medium text-slate-800">
+                                                Agent&apos;s mobile phone, email
+                                                or referral code
+                                                <span className="flex gap-2">
+                                                    <Input
+                                                        className="h-11"
+                                                        value={contact}
+                                                        onChange={(x) => {
+                                                            setContact(
+                                                                x.target.value,
+                                                            );
+                                                            setLookup({
+                                                                state: 'idle',
+                                                            });
+                                                        }}
+                                                        onKeyDown={(x) => {
+                                                            if (
+                                                                x.key ===
+                                                                'Enter'
+                                                            ) {
+                                                                x.preventDefault();
+                                                                void find();
+                                                            }
+                                                        }}
+                                                        placeholder="(512) 555-0100 or name@example.com"
+                                                    />
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        className="h-11"
+                                                        disabled={
+                                                            lookup.state ===
+                                                                'busy' ||
+                                                            contact.trim() ===
+                                                                ''
+                                                        }
+                                                        onClick={() =>
+                                                            void find()
+                                                        }
+                                                    >
+                                                        Find
+                                                    </Button>
+                                                </span>
+                                            </label>
+                                            <div
+                                                role="status"
+                                                aria-live="polite"
+                                            >
+                                                {lookup.state === 'found' && (
+                                                    <span className="flex flex-wrap items-center gap-3">
+                                                        <Initials
+                                                            name={lookup.name}
+                                                            small
+                                                        />
+                                                        <span className="font-semibold text-slate-900">
+                                                            {lookup.name}
+                                                        </span>
+                                                        <span className="ml-auto flex gap-2">
+                                                            <Button
+                                                                type="button"
+                                                                size="sm"
+                                                                onClick={() => {
+                                                                    setPicked({
+                                                                        name: lookup.name,
+                                                                        code: lookup.code,
+                                                                    });
+                                                                    form.setData(
+                                                                        'referral',
+                                                                        lookup.code,
+                                                                    );
+                                                                    setChanging(
+                                                                        false,
+                                                                    );
+                                                                    setContact(
+                                                                        '',
+                                                                    );
+                                                                }}
+                                                            >
+                                                                OK, use{' '}
+                                                                {
+                                                                    lookup.name.split(
+                                                                        ' ',
+                                                                    )[0]
+                                                                }
+                                                            </Button>
+                                                            <Button
+                                                                type="button"
+                                                                size="sm"
+                                                                variant="ghost"
+                                                                onClick={() =>
+                                                                    setChanging(
+                                                                        false,
+                                                                    )
+                                                                }
+                                                            >
+                                                                Cancel
+                                                            </Button>
+                                                        </span>
+                                                    </span>
+                                                )}
+                                                {lookup.state === 'none' && (
+                                                    <span className="text-sm text-amber-800">
+                                                        No agent at {brokerage}{' '}
+                                                        has those details. You
+                                                        stay referred by{' '}
+                                                        {referrerName}.
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {lookup.state !== 'found' && (
+                                                <button
+                                                    type="button"
+                                                    className="justify-self-start text-sm text-slate-500 underline-offset-4 hover:underline"
+                                                    onClick={() =>
+                                                        setChanging(false)
+                                                    }
+                                                >
+                                                    Keep {referrerName}
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
+                                    {e.referral && (
+                                        <span
+                                            role="alert"
+                                            className="text-sm text-destructive"
                                         >
-                                            <Input
-                                                className="h-11"
-                                                value={form.data.referral}
-                                                onChange={(x) =>
-                                                    form.setData(
-                                                        'referral',
-                                                        x.target.value,
-                                                    )
-                                                }
-                                                placeholder="For example jamessmith"
-                                            />
-                                        </Field>
+                                            {e.referral}
+                                        </span>
                                     )}
                                 </div>
                                 <div className="-mt-2 grid gap-4 sm:grid-cols-2">

@@ -20,6 +20,7 @@ use Modules\Listings\Feed\ResoFeed;
 use Modules\Listings\Models\MlsAuthorization;
 use Modules\Listings\Models\MlsSource;
 use Modules\Listings\Sync\ListingSync;
+use Modules\Recruiting\SelfJoin;
 use Modules\Sites\AgentSites;
 use Modules\Sites\Models\Site;
 use Modules\Sites\Models\SitePage;
@@ -302,4 +303,16 @@ it('moves agents\' existing pages to the profile opening, leaving pages they cha
     $page->forceFill(['sections' => [array_replace_recursive($old, ['props' => ['headline' => 'Your Austin home, made simple']]), ...array_slice($page->sections, 1)]])->save();
     (require base_path('modules/Sites/database/migrations/2027_07_02_000001_agent_profile_section.php'))->up();
     expect($page->fresh()->sections[0]['props']['headline'])->toBe('Your Austin home, made simple'); // changed by Jane: kept
+});
+
+it('suggests the agent whose page the visitor browsed when they click Join us, which they can change (FX4)', function (): void {
+    janeSite($this);
+    $code = app(SelfJoin::class)->codeFor($this->jane);
+    $r = $this->get($this->web.'/r/jane-doe?to=/join-us');
+    $cookie = collect($r->headers->getCookies())->first(fn ($c) => $c->getName() === 'ra_agent');
+
+    $join = $this->withUnencryptedCookie('ra_agent', $cookie->getValue())->get($this->web.'/join')->assertRedirect();
+    expect($join->headers->get('Location'))->toEndWith('/join/'.$code.'?via=page');
+    $this->unencryptedCookies = [];
+    expect($this->get($this->web.'/join')->headers->get('Location'))->toEndWith('/join'); // no agent page: the company
 });

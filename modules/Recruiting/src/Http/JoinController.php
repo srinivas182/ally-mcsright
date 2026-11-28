@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Recruiting\Http;
 
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rules\Password;
@@ -36,7 +37,8 @@ final class JoinController
             'brokerage' => app(TenantContext::class)->current()->name,
             'sponsor' => $sponsor !== null ? ['name' => $sponsor->name, 'since' => $sponsor->created_at?->format('Y')] : null,
             // FX3: with no sponsor, the new agent joins under the company's root account.
-            'root' => $sponsor === null ? $join->rootReferrer()?->name : null,
+            'root' => $join->rootReferrer()?->name,
+            'suggested' => $sponsor !== null && $request->query('via') === 'page', // FX4: from the agent page they browsed
             'page' => ['headline' => $page['headline'], 'pitch' => $page['pitch'], 'reasons' => $page['reasons'], 'video' => SelfJoin::player($page['video'])],
             'code' => $sponsor !== null ? $code : null,
             'unknownCode' => $code !== null && $sponsor === null,
@@ -71,6 +73,19 @@ final class JoinController
         $next = $join->apply($data, $sponsor, $states[$data['licence_state']], $request->getSchemeAndHttpHost());
 
         return str_starts_with($next, '/') ? redirect($next) : Inertia::location($next);
+    }
+
+    /**
+     * FX4: "Change" on Referred by: finds an agent of this brokerage by their mobile phone, email or referral code.
+     * Answers only with the name (agents are public on the website) and the code to join under; nothing else.
+     */
+    public function lookup(Request $request, SelfJoin $join): JsonResponse
+    {
+        $q = trim((string) $request->validate(['contact' => ['required', 'string', 'max:200']])['contact']);
+        $agent = $join->findReferrer($q);
+
+        return response()->json($agent !== null ? ['found' => true, 'name' => $agent->name, 'code' => $join->codeFor($agent)] : ['found' => false])
+            ->header('Cache-Control', 'no-store');
     }
 
     public function done(Request $request): Response

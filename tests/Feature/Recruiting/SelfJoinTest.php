@@ -129,9 +129,9 @@ it('counts link opens once per visitor, and shows the agent their network number
 
 it('sends the short link on the website on to the join page, keeping the agent (AG1)', function (): void {
     $this->get("/join/{$this->code}")->assertOk(); // the back office join page still answers
-    $response = app(MyNetworkController::class)->fromWebsite(app(SelfJoin::class), $this->code);
+    $response = app(MyNetworkController::class)->fromWebsite(request(), app(SelfJoin::class), $this->code);
     expect($response->getTargetUrl())->toEndWith("/join/{$this->code}");
-    expect(app(MyNetworkController::class)->fromWebsite(app(SelfJoin::class), 'nobody12')->getTargetUrl())->toEndWith('/join');
+    expect(app(MyNetworkController::class)->fromWebsite(request(), app(SelfJoin::class), 'nobody12')->getTargetUrl())->toEndWith('/join');
 });
 
 it('lets a new agent pick revenue share or a flat fee, told in plain words, and places them on it (AG4)', function (): void {
@@ -189,11 +189,26 @@ it('only lets agents join from states where the brokerage is licensed, never eve
 });
 
 it('shows who referred the new agent: their sponsor, or the company account when there is none (FX3)', function (): void {
-    $this->get("/join/{$this->code}")->assertInertia(fn (Assert $page) => $page->where('sponsor.name', $this->sponsor->name)->where('root', null));
+    $this->get("/join/{$this->code}")->assertInertia(fn (Assert $page) => $page->where('sponsor.name', $this->sponsor->name)->where('suggested', false));
     $this->get('/join')->assertInertia(fn (Assert $page) => $page->where('sponsor', null)->where('root', $this->owner->name));
 
     // A code typed on the form (or the whole link pasted) names the sponsor; an unknown one is refused.
     $this->post('/join', joinForm(['referral' => 'nobody99']))->assertSessionHasErrors('referral');
     $this->post('/join', joinForm(['referral' => 'https://acme.rightally.site/join/'.$this->code.'?utm_source=x']), ['X-Inertia' => 'true'])->assertStatus(409);
+    expect(DB::connection(Connections::cell())->table('recruiting_join_applications')->value('sponsor_user_id'))->toBe($this->sponsor->id);
+});
+
+it('finds the agent who referred someone by phone, email or code for Change, and nothing else (FX4)', function (): void {
+    $this->sponsor->forceFill(['phone' => '+15125550199', 'email' => 'james@acme.test'])->save();
+    $find = fn (string $q) => $this->postJson('/join/referrer', ['contact' => $q])->assertOk()->assertHeader('Cache-Control', 'no-store, private');
+
+    $find('(512) 555-0199')->assertExactJson(['found' => true, 'name' => 'James Smith', 'code' => $this->code]);
+    $find('JAMES@acme.test')->assertJsonPath('name', 'James Smith');
+    $find($this->code)->assertJsonPath('found', true);
+    $find('nobody@acme.test')->assertExactJson(['found' => false]);
+    $find('5125550100')->assertExactJson(['found' => false]);
+
+    // OK on the form sends the code; it wins over the link they came in on.
+    $this->post('/join', joinForm(['referral' => $this->code]), ['X-Inertia' => 'true'])->assertStatus(409);
     expect(DB::connection(Connections::cell())->table('recruiting_join_applications')->value('sponsor_user_id'))->toBe($this->sponsor->id);
 });

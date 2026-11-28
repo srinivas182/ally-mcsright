@@ -133,6 +133,27 @@ final class SelfJoin
         return $user instanceof User ? $user : null;
     }
 
+    /**
+     * FX4: an active agent (or owner) of this brokerage by mobile phone, email or referral code / join link; null when
+     * none matches. Phone numbers are compared as US E.164 (+1 and ten digits).
+     */
+    public function findReferrer(string $contact): ?User
+    {
+        $contact = trim($contact);
+        $active = fn () => User::query()->whereIn('kind', [UserKind::Agent, UserKind::Owner])->where('status', UserStatus::Active);
+        if (str_contains($contact, '@') && ! str_contains($contact, '/')) {
+            $user = $active()->where('email', mb_strtolower($contact))->first();
+        } elseif (preg_match('/^[\s()+.\-\d]{10,20}$/', $contact) === 1) {
+            $digits = (string) preg_replace('/\D/', '', $contact);
+            $digits = strlen($digits) === 11 && str_starts_with($digits, '1') ? substr($digits, 1) : $digits;
+            $user = strlen($digits) === 10 ? $active()->where('phone', '+1'.$digits)->first() : null;
+        } else {
+            return $this->sponsorFor(self::codeFromInput($contact));
+        }
+
+        return $user instanceof User ? $user : null;
+    }
+
     /** FX3: a referral code typed on the form, or pasted as the agent's whole join link. */
     public static function codeFromInput(?string $input): ?string
     {
