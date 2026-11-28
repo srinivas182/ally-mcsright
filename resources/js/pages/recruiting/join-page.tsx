@@ -152,7 +152,7 @@ export default function JoinPage({
                         <p className="text-sm text-muted-foreground">
                             {licensed.length > 0
                                 ? `Your licensed states are always included (${licensed.join(', ')}). Tick any other state where you work through a managing broker.`
-                                : 'Tick the states where agents can join. Add your brokerage licences under Settings › Licences and those states are included automatically.'}
+                                : 'Agents can only join from states where your brokerage holds a licence. Add your brokerage licences under Settings › Licences and those states are included automatically. Until then, only your home state is shown. Tick another state only if you work there through a managing broker.'}
                         </p>
                         <div className="grid max-h-72 gap-1 overflow-y-auto rounded-lg border p-3 sm:grid-cols-3">
                             {Object.entries(states).map(([code, name]) => (
