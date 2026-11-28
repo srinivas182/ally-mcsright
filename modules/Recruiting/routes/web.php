@@ -13,6 +13,7 @@ use Modules\Recruiting\Http\RecruitingController;
 // CM4: join through an agent's link; licence checked, pack paid, placed under the sponsor (no approval).
 Route::middleware(['web', EnsureTenantWorkspace::class])->group(function (): void {
     Route::get('join/done', [JoinController::class, 'done'])->name('join.done');
+    Route::post('join/referrer', [JoinController::class, 'lookup'])->middleware('throttle:10,1')->name('join.referrer'); // FX4: Change on Referred by
     Route::get('join/{code?}', [JoinController::class, 'show'])->where('code', '[a-z0-9]{6,12}')->middleware('throttle:60,1')->name('join');
     Route::post('join/{code?}', [JoinController::class, 'store'])->where('code', '[a-z0-9]{6,12}')->middleware('throttle:6,60')->name('join.store');
 });

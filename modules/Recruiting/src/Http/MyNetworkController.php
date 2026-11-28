@@ -13,6 +13,7 @@ use Modules\Core\Identity\Enums\UserKind;
 use Modules\Core\Tenancy\TenantContext;
 use Modules\Recruiting\MyNetwork;
 use Modules\Recruiting\SelfJoin;
+use Modules\Sites\Http\Controllers\ReferralController;
 
 /** AG1: My commissions › My network, and the join link's short address on the brokerage's website. */
 final class MyNetworkController
@@ -39,12 +40,21 @@ final class MyNetworkController
     }
 
     /** /join/{code} on the website: on to the join page in the back office (same brokerage), keeping the agent's code. */
-    public function fromWebsite(SelfJoin $join, ?string $code = null): RedirectResponse
+    public function fromWebsite(Request $request, SelfJoin $join, ?string $code = null): RedirectResponse
     {
         $host = app(TenantContext::class)->current()->primaryDomain()?->host;
         $known = $code !== null && $join->sponsorFor($code) !== null; // AG8: no agent: they join with the brokerage itself
+        $via = '';
+        if (! $known && class_exists(ReferralController::class)) {
+            // FX4: the visitor came through an agent's page on this website: suggest that agent (they can change it).
+            $site = ReferralController::agentFor($request);
+            $agent = $site?->user_id !== null ? User::query()->find($site->user_id) : null;
+            if ($agent instanceof User && $join->sponsorFor($join->codeFor($agent)) !== null) {
+                [$code, $known, $via] = [$join->codeFor($agent), true, '?via=page'];
+            }
+        }
 
-        return redirect()->away(($host !== null ? 'https://'.$host : '').'/join'.($known ? '/'.$code : ''), 302)
+        return redirect()->away(($host !== null ? 'https://'.$host : '').'/join'.($known ? '/'.$code : '').$via, 302)
             ->header('Cache-Control', 'no-store')->header('X-Robots-Tag', 'noindex');
     }
 }
