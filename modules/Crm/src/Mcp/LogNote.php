@@ -34,6 +34,19 @@ final class LogNote extends RightAllyTool
         return $user->kind !== UserKind::HqStaff;
     }
 
+    /**
+     * FX7: the "Do it" card names the contact (never a raw id), so people can check it before anything is saved.
+     *
+     * @return array<string, mixed>
+     */
+    protected function preview(Request $request, User $user): array
+    {
+        $c = McpContacts::visible($user, (string) $request->get('contact_id'));
+
+        return ['action' => isset($request->all()['call_outcome']) ? 'Log a call' : 'Add a note', 'contact' => trim($c->first_name.' '.$c->last_name),
+            'note' => (string) $request->get('note')];
+    }
+
     /** @return array<string, mixed> */
     protected function run(Request $request, User $user): array
     {

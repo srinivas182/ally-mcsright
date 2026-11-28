@@ -55,6 +55,7 @@ it('answers from the person\'s own data, using a skill first', function (): void
 });
 
 it('shows a preview before changing anything, and runs it once on "Do it"', function (): void {
+    says($this, ['step' => 'skill', 'skill' => 'search_contacts', 'arguments' => ['query' => 'Bella']]);
     says($this, ['step' => 'skill', 'skill' => 'add_task', 'arguments' => ['title' => 'Send the CMA to Jane', 'due' => 'tomorrow']]);
     $r = $this->actingAs($this->ann)->postJson('/assistant/ask', ['text' => 'Remind me to send Jane the CMA tomorrow'])->assertOk();
     $card = $r->json('turns.1');
@@ -115,4 +116,18 @@ it('forgets conversations after 30 days', function (): void {
     $this->travel(31)->days();
     $this->artisan('ai:assistant-prune')->assertSuccessful();
     expect(AssistantTurn::query()->count())->toBe(0);
+});
+
+it('names the contact on the "Do it" card for notes and tasks, never a raw id (FX7)', function (): void {
+    $bella = app(ManageContacts::class)->create(['first_name' => 'Bella', 'last_name' => 'Martinez', 'email' => 'bella@x.test'], $this->ann);
+    says($this, ['step' => 'skill', 'skill' => 'search_contacts', 'arguments' => ['query' => 'Bella']]);
+    says($this, ['step' => 'skill', 'skill' => 'log_note', 'arguments' => ['contact_id' => $bella->ulid, 'note' => 'Wants to see Brushy Creek Saturday']]);
+    $card = $this->actingAs($this->ann)->postJson('/assistant/ask', ['text' => 'Add a note to Bella'])->assertOk()->json('turns.1.card');
+    expect($card['preview'])->toBe(['action' => 'Add a note', 'contact' => 'Bella Martinez', 'note' => 'Wants to see Brushy Creek Saturday'])
+        ->and(json_encode($card['preview']))->not->toContain($bella->ulid);
+
+    says($this, ['step' => 'skill', 'skill' => 'search_contacts', 'arguments' => ['query' => 'Bella']]);
+    says($this, ['step' => 'skill', 'skill' => 'add_task', 'arguments' => ['title' => 'Call Bella', 'due' => 'tomorrow', 'contact_id' => $bella->ulid, 'high_priority' => true]]);
+    $card = $this->actingAs($this->ann)->postJson('/assistant/ask', ['text' => 'Remind me to call Bella'])->assertOk()->json('turns.1.card');
+    expect($card['preview'])->toBe(['action' => 'Add a task', 'task' => 'Call Bella', 'contact' => 'Bella Martinez', 'due' => 'tomorrow', 'priority' => 'High']);
 });
