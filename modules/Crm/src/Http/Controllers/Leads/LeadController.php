@@ -123,8 +123,10 @@ final class LeadController
 
     public function alerts(Request $request, SpeedToLead $speed): RedirectResponse
     {
-        $data = $request->validate(['texts' => ['required', 'boolean'], 'calls' => ['required', 'boolean'], 'away_hours' => ['nullable', 'integer', 'min:0', 'max:720']]);
-        $speed->savePrefs(self::user($request), (bool) $data['texts'], (bool) $data['calls'], isset($data['away_hours']) ? (int) $data['away_hours'] : null);
+        $data = $request->validate(['texts' => ['required', 'boolean'], 'calls' => ['required', 'boolean'], 'away_hours' => ['nullable', 'integer', 'min:0', 'max:720'],
+            'copy_all' => ['nullable', 'boolean']]);
+        $speed->savePrefs(self::user($request), (bool) $data['texts'], (bool) $data['calls'], isset($data['away_hours']) ? (int) $data['away_hours'] : null,
+            isset($data['copy_all']) ? (bool) $data['copy_all'] : null);
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Lead alerts saved.']);
 
         return back();
