@@ -144,6 +144,9 @@ export default function ListIqShow({
     const [showing, setShowing] = useState(l.showing ?? '');
     const [text, setText] = useState(l.description ?? '');
     const [es, setEs] = useState(l.description_es ?? '');
+    // FX8: show the saved description and Spanish version as soon as the server returns them (Save, Spanish version).
+    useEffect(() => setText(l.description ?? ''), [l.description]);
+    useEffect(() => setEs(l.description_es ?? ''), [l.description_es]);
     const [style, setStyle] = useState(styles[0] ?? 'modern');
     const [kind, setKind] = useState('sign');
     const [access, setAccess] = useState(sh.access ?? '');
