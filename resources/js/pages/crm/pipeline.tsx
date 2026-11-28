@@ -16,6 +16,7 @@ type Deal = {
     price_cents: number;
     stage: string;
     client: string | null;
+    client_role: string | null;
     agent: string | null;
     days: number;
 };
@@ -114,17 +115,24 @@ export default function Pipeline({ stages, deals, canCreateFor }: Props) {
                                     >
                                         <Link
                                             href={`/deals/${d.ulid}`}
-                                            className="font-semibold hover:underline"
+                                            className="text-base font-semibold hover:underline"
                                         >
-                                            {d.street}
-                                            {d.city ? `, ${d.city}` : ''}
+                                            {d.client ??
+                                                `${d.street}${d.city ? `, ${d.city}` : ''}`}
                                         </Link>
+                                        {d.client && (
+                                            <span>
+                                                {d.street}
+                                                {d.city ? `, ${d.city}` : ''}
+                                            </span>
+                                        )}
                                         <span className="text-muted-foreground">
                                             {typeLabel[d.type] ?? d.type}
-                                            {d.client ? ` · ${d.client}` : ''}
                                             {d.price_cents
                                                 ? ` · ${usd(d.price_cents)}`
                                                 : ''}
+                                            {!d.client &&
+                                                ' · No client added yet'}
                                         </span>
                                         <span className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
                                             <span>
@@ -138,7 +146,7 @@ export default function Pipeline({ stages, deals, canCreateFor }: Props) {
                                                     size="sm"
                                                     variant="ghost"
                                                     className="h-7 px-2"
-                                                    aria-label={`Move ${d.street} to ${next.label}`}
+                                                    aria-label={`Move ${d.client ?? d.street} to ${next.label}`}
                                                     onClick={() =>
                                                         move(d.ulid, next.key)
                                                     }

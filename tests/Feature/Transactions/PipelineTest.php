@@ -3,8 +3,12 @@
 declare(strict_types=1);
 
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
+use Modules\Core\Support\Connections;
+use Modules\Crm\Models\Contact;
 use Modules\Transactions\Deals;
+use Modules\Transactions\Reports\ListingBoard;
 
 /*
 | PG1: deals not under contract yet live in CRM › Pipeline, by stage. Agents see and move only their own; the
@@ -41,4 +45,19 @@ it('keeps deals under contract out of the pipeline', function (): void {
 
     $this->actingAs($this->agent)->get('/pipeline')->assertInertia(fn (Assert $page) => $page->has('deals', 0));
     $this->actingAs($this->agent)->post("/pipeline/{$this->mine->ulid}/stage", ['stage' => 'offer'])->assertStatus(422);
+});
+
+it('names the client on pipeline and listing cards: the buyer or seller, else the contact the deal came from (FX5)', function (): void {
+    $db = DB::connection(Connections::cell());
+    $contact = Contact::query()->create(['type' => 'person', 'first_name' => 'Bella', 'last_name' => 'Buyer', 'emails' => [], 'phones' => [], 'origin' => 'company', 'source' => 'manual', 'owner_user_id' => $this->agent->id]);
+    $this->mine->forceFill(['contact_id' => $contact->id])->save();
+    $db->table('tx_parties')->insert(['tenant_id' => $this->theirs->tenant_id, 'deal_id' => $this->theirs->id,
+        'role' => 'seller', 'name' => 'Sam Seller', 'created_at' => now(), 'updated_at' => now()]);
+
+    $this->actingAs($this->owner)->get('/pipeline')->assertInertia(fn (Assert $page) => $page
+        ->where('deals', fn ($deals): bool => collect($deals)->firstWhere('street', '12 Elm St')['client'] === 'Bella Buyer'
+            && collect($deals)->firstWhere('street', '9 Oak Ave')['client'] === 'Sam Seller'
+            && collect($deals)->firstWhere('street', '9 Oak Ave')['client_role'] === 'Seller'));
+    $board = app(ListingBoard::class)->build();
+    expect($board['columns']['getting_ready'][0]['client'])->toBe('Sam Seller');
 });
