@@ -39,6 +39,20 @@ final class AddTask extends RightAllyTool
         return $user->kind !== UserKind::HqStaff;
     }
 
+    /**
+     * FX7: the "Do it" card shows the task in words, with the contact's name (never a raw id).
+     *
+     * @return array<string, mixed>
+     */
+    protected function preview(Request $request, User $user): array
+    {
+        $id = (string) ($request->get('contact_id') ?? '');
+        $contact = $id !== '' ? McpContacts::visible($user, $id) : null;
+
+        return array_filter(['action' => 'Add a task', 'task' => (string) $request->get('title'), 'contact' => $contact !== null ? trim($contact->first_name.' '.$contact->last_name) : null,
+            'due' => (string) ($request->get('due') ?? 'tomorrow'), 'priority' => $request->get('high_priority') ? 'High' : null], fn ($v): bool => $v !== null && $v !== '');
+    }
+
     /** @return array<string, mixed> */
     protected function run(Request $request, User $user): array
     {

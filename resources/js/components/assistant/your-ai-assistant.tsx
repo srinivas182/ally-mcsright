@@ -93,7 +93,9 @@ export function YourAiAssistant() {
         }
     }, [open]);
 
-    useEffect(() => end.current?.scrollIntoView({ block: 'end' }), [turns]);
+    useEffect(() => {
+        end.current?.scrollIntoView({ block: 'end' });
+    }, [turns]);
 
     const merge = (r: Reply) => {
         setConversation(r.conversation);

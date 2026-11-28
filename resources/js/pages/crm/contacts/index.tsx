@@ -1,5 +1,5 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { PlusIcon } from 'lucide-react';
+import { PlusIcon, SparklesIcon } from 'lucide-react';
 import { useState } from 'react';
 
 import { VoiceButton } from '@/components/crm/voice-button';
@@ -382,6 +382,12 @@ export default function ContactsIndex({
                     description={`${contacts.total} ${isManager ? 'contacts you can see' : 'of your contacts'}`}
                     actions={
                         <>
+                            <Button variant="outline" asChild>
+                                <Link href="/contacts/ask">
+                                    <SparklesIcon aria-hidden="true" /> Ask your
+                                    database
+                                </Link>
+                            </Button>
                             <Button variant="outline" asChild>
                                 <Link
                                     href={`/contacts/work${filters.list ? `?list=${filters.list}` : ''}`}
