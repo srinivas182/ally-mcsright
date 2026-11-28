@@ -31,6 +31,7 @@ type Card = {
     city: string | null;
     price_cents: number;
     agent: string;
+    client: string | null;
     days: number | null;
     expires_on: string | null;
     expires_in: number | null;
@@ -187,12 +188,19 @@ function ListingCard({ card, column }: { card: Card; column: string }) {
         >
             <Link
                 href={`/deals/${card.ulid}`}
-                className="text-base font-medium underline-offset-2 hover:underline"
+                className="text-base font-semibold underline-offset-2 hover:underline"
             >
-                {card.street}
+                {card.client ?? card.street}
             </Link>
+            <p>
+                {card.client
+                    ? [card.street, card.city].filter(Boolean).join(', ')
+                    : (card.city ?? '')}
+            </p>
             <p className="text-muted-foreground">
-                {[card.city, card.agent].filter(Boolean).join(' · ')}
+                {card.client
+                    ? `Seller · ${card.agent}`
+                    : `${card.agent} · No seller added yet`}
             </p>
             <p>
                 <span className="text-base font-semibold tabular-nums">

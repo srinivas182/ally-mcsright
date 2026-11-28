@@ -6,6 +6,7 @@ namespace Modules\Transactions\Reports;
 
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Modules\Transactions\DealClients;
 use Modules\Transactions\Models\Deal;
 
 /**
@@ -18,7 +19,7 @@ final class ListingBoard
     public const COLUMNS = ['getting_ready' => 'Getting ready', 'active' => 'On the market', 'under_contract' => 'Under contract', 'sold' => 'Sold (last 30 days)'];
 
     /**
-     * @return array{columns: array<string, list<array{ulid: string, street: string, city: string|null, price_cents: int, agent: string, days: int|null, expires_on: string|null, expires_in: int|null, closing_date: string|null, warning: string|null}>>, totals: array<string, array{count: int, volume_cents: int}>, expiring: int}
+     * @return array{columns: array<string, list<array{ulid: string, street: string, city: string|null, price_cents: int, agent: string, client: string|null, days: int|null, expires_on: string|null, expires_in: int|null, closing_date: string|null, warning: string|null}>>, totals: array<string, array{count: int, volume_cents: int}>, expiring: int}
      */
     public function build(?User $only = null, ?CarbonImmutable $today = null): array
     {
@@ -28,6 +29,7 @@ final class ListingBoard
             ->when($only !== null, fn ($q) => $q->where('agent_user_id', $only?->id))
             ->orderBy('closing_date')->orderByDesc('id')->limit(1000)->get();
         $names = User::query()->whereIn('id', $deals->pluck('agent_user_id')->unique()->all() ?: [0])->get()->keyBy('id');
+        $clients = DealClients::for($deals); // FX5: the seller, by name
         $columns = array_fill_keys(array_keys(self::COLUMNS), []);
         $expiring = 0;
         foreach ($deals as $d) {
@@ -53,7 +55,7 @@ final class ListingBoard
             }
             $start = $column === 'under_contract' ? $d->contract_date : ($d->getAttribute('created_at') instanceof \DateTimeInterface ? CarbonImmutable::instance($d->getAttribute('created_at')) : null);
             $columns[$column][] = ['ulid' => $d->ulid, 'street' => $d->street, 'city' => $d->city, 'price_cents' => $d->price_cents,
-                'agent' => (string) ($names->get($d->agent_user_id)->name ?? 'Agent'), 'days' => $start !== null && $column !== 'sold' ? (int) $start->diffInDays($today) : null,
+                'agent' => (string) ($names->get($d->agent_user_id)->name ?? 'Agent'), 'client' => $clients[$d->id]['name'] ?? null, 'days' => $start !== null && $column !== 'sold' ? (int) $start->diffInDays($today) : null,
                 'expires_on' => $expiresOn?->toDateString(), 'expires_in' => $expiresIn, 'closing_date' => $d->closing_date?->toDateString(), 'warning' => $warning];
         }
         $totals = [];

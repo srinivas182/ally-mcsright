@@ -48,11 +48,14 @@ final class InboxController
             $contact = $conversation->contact;
             $current = [
                 'ulid' => $conversation->ulid,
-                'contact' => ['ulid' => $contact->ulid, 'name' => $contact->name, 'phone' => $contact->primary_phone, 'email' => $contact->primary_email],
+                'contact' => ['ulid' => $contact->ulid, 'name' => $contact->name, 'phone' => $contact->primary_phone, 'email' => $contact->primary_email,
+                    // FX6: who they are to the brokerage and whose they are, for the conversation's header.
+                    'lifecycle' => ucfirst(str_replace('_', ' ', $contact->lifecycle->value)), 'source' => $contact->source],
+                'agent' => $conversation->assigned_user_id !== null ? User::query()->find($conversation->assigned_user_id)?->name : null,
                 'messages' => Message::query()->where('conversation_id', $conversation->id)->latest('id')->limit(100)->get()->reverse()->values()
                     ->map(fn (Message $m): array => ['ulid' => $m->ulid, 'channel' => $m->channel, 'direction' => $m->direction, 'subject' => $m->subject, 'body' => $m->body,
                         'status' => $m->status, 'at' => $m->created_at->toIso8601String(), 'ai' => $m->ai_drafted,
-                        'by' => $m->user_id !== null ? User::query()->find($m->user_id)?->first_name : null]),
+                        'by' => $m->user_id !== null ? User::query()->find($m->user_id)?->name : null]),
                 'ai' => app(AiResponder::class)->brief($contact),
                 'nurture' => app(LongNurture::class)->state($contact),
                 // What stops a message right now (independent of what is written).
@@ -64,6 +67,7 @@ final class InboxController
 
         return Inertia::render('crm/inbox/index', [
             'conversations' => $list->map(fn (Conversation $c): array => ['ulid' => $c->ulid, 'name' => $c->contact->name, 'preview' => $c->preview, 'at' => $c->last_message_at?->toIso8601String(),
+                'last_in' => $c->last_direction === 'in', // FX6: whether the last word was theirs (so the list can say "You:" otherwise)
                 'unread' => $c->unread, 'needs_reply' => $c->needs_reply_since !== null, 'waiting_since' => $c->needs_reply_since?->toIso8601String(),
                 'agent' => $c->assigned_user_id !== null ? $names->get($c->assigned_user_id)?->name : null]),
             'filter' => $filter,
