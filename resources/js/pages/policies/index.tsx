@@ -270,10 +270,13 @@ export default function Policies({
                                                 size="sm"
                                                 variant="ghost"
                                                 onClick={() =>
-                                                    add.setData(
-                                                        'replaces',
-                                                        d.ulid,
-                                                    )
+                                                    // A new version keeps the document's title, so only the file is needed.
+                                                    add.setData((f) => ({
+                                                        ...f,
+                                                        replaces: d.ulid,
+                                                        title:
+                                                            f.title || d.title,
+                                                    }))
                                                 }
                                             >
                                                 Upload a new version

@@ -1,4 +1,5 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
+import { useEffect } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -76,6 +77,13 @@ export default function FileReview({
     file,
 }: Props) {
     const back = useForm({ note: brief?.note ?? '' });
+    // A new brief arrives as new props on the same page: put its suggested note in the box (unless one is typed).
+    useEffect(() => {
+        if (brief?.note && back.data.note.trim() === '') {
+            back.setData('note', brief.note);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [brief?.note]);
     const base = `/deals/${deal.ulid}/file-review`;
 
     return (

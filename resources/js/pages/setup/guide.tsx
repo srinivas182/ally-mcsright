@@ -1,4 +1,5 @@
 import { Head, Link, useForm } from '@inertiajs/react';
+import { useEffect } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -67,6 +68,14 @@ export default function SetupGuide({
     const form = useForm<Answers>({ ...answers });
     const set = <K extends keyof Answers>(k: K, v: Answers[K]) =>
         form.setData((d: Answers) => ({ ...d, [k]: v }));
+
+    // The AI's reading comes back as new props on the same page: show it in the questions below.
+    useEffect(() => {
+        if (suggested) {
+            form.setData((d: Answers) => ({ ...d, ...answers }));
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [suggested, answers]);
 
     return (
         <>

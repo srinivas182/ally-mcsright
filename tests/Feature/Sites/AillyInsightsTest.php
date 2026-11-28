@@ -122,7 +122,9 @@ it('answers with the brokerage\'s own answers for free, and collects questions i
     expect(json_encode($this->ai->requests[0]))->toContain('We are open 9am to 6pm');
 
     $this->actingAs($this->owner)->get('/settings/ailly')->assertInertia(fn (Assert $p) => $p->where('open_questions.0.times', 2)
-        ->where('answers.0.hits', 1));
+        ->where('answers.0.hits', 1)
+        // FX9: a free (repeated) answer still counts as an answer in the chats list
+        ->where('conversations', fn ($c) => collect($c)->pluck('answers')->all() === [1, 2]));
     $this->actingAs($this->owner)->post('/settings/ailly/answers', ['question' => 'Do you charge a buyer agency fee?', 'answer' => 'Our buyer agency fee is agreed with you up front.']);
     $this->actingAs($this->owner)->get('/settings/ailly')->assertInertia(fn (Assert $p) => $p->where('open_questions', [])->has('answers', 2));
 });

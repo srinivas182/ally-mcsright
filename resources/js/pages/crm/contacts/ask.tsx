@@ -26,9 +26,10 @@ type Props = {
 };
 
 const examples = [
-    'Buyers relocating to Fondren I have not called in 2 weeks',
+    // Examples work in any market: no place names from one state.
+    'Buyers relocating here I have not called in 2 weeks',
     'Who mentioned retiring or downsizing?',
-    'Past clients in Madison',
+    'Past clients who bought more than 5 years ago',
     'New leads from Zillow this month',
 ];
 

@@ -23,7 +23,9 @@ final class ChromeRenderer implements StudioRenderer
         }
         try {
             file_put_contents($dir.'/design.html', $html);
-            $args = [(string) config('studio.chrome'), '--headless=new', '--disable-gpu', '--hide-scrollbars', '--mute-audio', '--disable-extensions',
+            $args = [(string) config('studio.chrome'), '--headless=new', '--disable-gpu', '--hide-scrollbars',
+                // No background updates or first-run work: without these a server Chrome can stall the render.
+                '--disable-background-networking', '--disable-component-update', '--no-first-run', '--disable-sync', '--mute-audio', '--disable-extensions',
                 '--force-device-scale-factor=1', '--window-size='.$width.','.$height, '--virtual-time-budget=8000', '--user-data-dir='.$dir.'/profile',
                 '--screenshot='.$dir.'/out.png', 'file://'.$dir.'/design.html'];
             if ((bool) config('studio.no_sandbox')) {
